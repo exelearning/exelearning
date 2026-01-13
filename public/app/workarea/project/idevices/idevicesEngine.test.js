@@ -2309,7 +2309,7 @@ describe('IdevicesEngine', () => {
         });
     });
 
-    describe('setParentsAndChildrenIdevicesBlocks with checkEmptyBlock', () => {
+    describe('setParentsAndChildrenIdevicesBlocks with blockIdToCheck', () => {
         beforeEach(() => {
             vi.useFakeTimers();
         });
@@ -2318,7 +2318,7 @@ describe('IdevicesEngine', () => {
             vi.useRealTimers();
         });
 
-        it('removes empty blocks when removeIfEmpty is true', () => {
+        it('removes empty blocks when removeIfEmpty is true and blockIdToCheck matches', () => {
             const mockBlock = {
                 blockId: 'block-1',
                 idevices: [],
@@ -2329,12 +2329,30 @@ describe('IdevicesEngine', () => {
             engine.components.blocks = [mockBlock];
             engine.components.idevices = [];
 
-            engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Pass specific block ID to check
+            engine.setParentsAndChildrenIdevicesBlocks('block-1');
 
             expect(mockBlock.remove).toHaveBeenCalledWith(true);
         });
 
-        it('shows confirm modal for empty blocks when askForRemoveIfEmpty is true', () => {
+        it('does NOT check blocks when blockIdToCheck is null', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: true,
+                askForRemoveIfEmpty: false,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            // Pass null - should not check any blocks
+            engine.setParentsAndChildrenIdevicesBlocks(null);
+
+            expect(mockBlock.remove).not.toHaveBeenCalled();
+        });
+
+        it('shows confirm modal for empty blocks when askForRemoveIfEmpty is true and blockIdToCheck matches', () => {
             const mockBlock = {
                 blockId: 'block-1',
                 idevices: [],
@@ -2345,10 +2363,137 @@ describe('IdevicesEngine', () => {
             engine.components.blocks = [mockBlock];
             engine.components.idevices = [];
 
-            engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Pass specific block ID to check
+            engine.setParentsAndChildrenIdevicesBlocks('block-1');
             vi.advanceTimersByTime(400);
 
             expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+        });
+
+        it('does NOT show confirm modal for blocks not matching blockIdToCheck', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            // Pass different block ID - should not show modal for block-1
+            engine.setParentsAndChildrenIdevicesBlocks('block-other');
+            vi.advanceTimersByTime(400);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+        });
+
+        it('does nothing when blockIdToCheck refers to non-existent block', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: true,
+                askForRemoveIfEmpty: false,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            // Pass ID that doesn't exist - getBlockById returns undefined
+            engine.setParentsAndChildrenIdevicesBlocks('non-existent-block');
+
+            expect(mockBlock.remove).not.toHaveBeenCalled();
+        });
+
+        it('does NOT remove block when it still has idevices', () => {
+            const mockIdevice = { blockId: 'block-1' };
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [mockIdevice],
+                removeIfEmpty: true,
+                askForRemoveIfEmpty: false,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [mockIdevice];
+
+            // Block has idevices so should not be removed
+            engine.setParentsAndChildrenIdevicesBlocks('block-1');
+
+            expect(mockBlock.remove).not.toHaveBeenCalled();
+        });
+
+        it('correctly assigns idevices to their blocks during rebuild', () => {
+            const mockIdevice1 = { blockId: 'block-1' };
+            const mockIdevice2 = { blockId: 'block-2' };
+            const mockBlock1 = {
+                blockId: 'block-1',
+                idevices: ['old-ref'],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: false,
+            };
+            const mockBlock2 = {
+                blockId: 'block-2',
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: false,
+            };
+            engine.components.blocks = [mockBlock1, mockBlock2];
+            engine.components.idevices = [mockIdevice1, mockIdevice2];
+
+            engine.setParentsAndChildrenIdevicesBlocks(null);
+
+            expect(mockBlock1.idevices).toEqual([mockIdevice1]);
+            expect(mockBlock2.idevices).toEqual([mockIdevice2]);
+        });
+
+        it('executes confirmExec callback to remove block when user confirms', () => {
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [];
+
+            // Capture the confirmExec callback
+            let capturedConfirmExec = null;
+            eXeLearning.app.modals.confirm.show = vi.fn((options) => {
+                capturedConfirmExec = options.confirmExec;
+            });
+
+            engine.setParentsAndChildrenIdevicesBlocks('block-1');
+            vi.advanceTimersByTime(400);
+
+            // Verify modal was shown
+            expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+
+            // Execute the confirm callback (simulating user clicking "Yes")
+            capturedConfirmExec();
+
+            // Verify block was removed
+            expect(mockBlock.remove).toHaveBeenCalledWith(true);
+        });
+
+        it('handles idevices with non-existent blockId gracefully', () => {
+            const mockIdevice = { blockId: 'non-existent-block' };
+            const mockBlock = {
+                blockId: 'block-1',
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: false,
+            };
+            engine.components.blocks = [mockBlock];
+            engine.components.idevices = [mockIdevice];
+
+            // Should not throw, idevice just won't be assigned
+            expect(() => {
+                engine.setParentsAndChildrenIdevicesBlocks(null);
+            }).not.toThrow();
+
+            expect(mockBlock.idevices).toEqual([]);
         });
     });
 
@@ -2716,6 +2861,687 @@ describe('IdevicesEngine', () => {
 
             // Should be called once (only unique idevices)
             expect(mockLoadStyles).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('isInsideBlockHeader', () => {
+        it('returns false for null element', () => {
+            expect(engine.isInsideBlockHeader(null)).toBe(false);
+        });
+
+        it('returns false for undefined element', () => {
+            expect(engine.isInsideBlockHeader(undefined)).toBe(false);
+        });
+
+        it('returns true when element is a box-head', () => {
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            expect(engine.isInsideBlockHeader(header)).toBe(true);
+        });
+
+        it('returns true when element is inside a box-head', () => {
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const title = document.createElement('h1');
+            title.classList.add('box-title');
+            header.appendChild(title);
+            document.body.appendChild(header);
+
+            expect(engine.isInsideBlockHeader(title)).toBe(true);
+
+            // Cleanup
+            document.body.removeChild(header);
+        });
+
+        it('returns true for deeply nested elements inside box-head', () => {
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const div = document.createElement('div');
+            div.classList.add('content-editable-title');
+            const button = document.createElement('button');
+            div.appendChild(button);
+            header.appendChild(div);
+            document.body.appendChild(header);
+
+            expect(engine.isInsideBlockHeader(button)).toBe(true);
+
+            // Cleanup
+            document.body.removeChild(header);
+        });
+
+        it('returns false for element outside box-head', () => {
+            const container = document.createElement('div');
+            container.id = 'node-content';
+            const article = document.createElement('article');
+            article.classList.add('box');
+            const blockBody = document.createElement('div');
+            blockBody.classList.add('blockBody');
+            article.appendChild(blockBody);
+            container.appendChild(article);
+            document.body.appendChild(container);
+
+            expect(engine.isInsideBlockHeader(blockBody)).toBe(false);
+
+            // Cleanup
+            document.body.removeChild(container);
+        });
+
+        it('returns false for element in block body', () => {
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const blockBody = document.createElement('div');
+            blockBody.classList.add('blockBody');
+            const article = document.createElement('article');
+            article.classList.add('box');
+            article.appendChild(header);
+            article.appendChild(blockBody);
+
+            const idevice = document.createElement('div');
+            idevice.classList.add('idevice_node');
+            blockBody.appendChild(idevice);
+            document.body.appendChild(article);
+
+            expect(engine.isInsideBlockHeader(idevice)).toBe(false);
+
+            // Cleanup
+            document.body.removeChild(article);
+        });
+    });
+
+    describe('isDragableInside with block header validation', () => {
+        it('returns false when container is a box-head element', () => {
+            const element = document.createElement('div');
+            element.setAttribute('drag', 'idevice');
+            const container = document.createElement('header');
+            container.classList.add('box-head');
+            container.setAttribute('drop', '["idevice"]');
+
+            expect(engine.isDragableInside(element, container)).toBe(false);
+        });
+
+        it('returns false when container is inside a box-head', () => {
+            const element = document.createElement('div');
+            element.setAttribute('drag', 'idevice');
+
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const title = document.createElement('h1');
+            title.classList.add('box-title');
+            title.setAttribute('drop', '["idevice"]');
+            header.appendChild(title);
+            document.body.appendChild(header);
+
+            expect(engine.isDragableInside(element, title)).toBe(false);
+
+            // Cleanup
+            document.body.removeChild(header);
+        });
+
+        it('returns false for button inside box-head', () => {
+            const element = document.createElement('div');
+            element.setAttribute('drag', 'idevice');
+
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const button = document.createElement('button');
+            button.classList.add('btn-toggle');
+            button.setAttribute('drop', '["idevice"]');
+            header.appendChild(button);
+            document.body.appendChild(header);
+
+            expect(engine.isDragableInside(element, button)).toBe(false);
+
+            // Cleanup
+            document.body.removeChild(header);
+        });
+
+        it('returns true for valid drop in block body', () => {
+            const element = document.createElement('div');
+            element.setAttribute('drag', 'idevice');
+
+            const article = document.createElement('article');
+            article.classList.add('box');
+            const header = document.createElement('header');
+            header.classList.add('box-head');
+            const blockBody = document.createElement('div');
+            blockBody.classList.add('blockBody');
+            blockBody.setAttribute('drop', '["idevice"]');
+            article.appendChild(header);
+            article.appendChild(blockBody);
+            document.body.appendChild(article);
+
+            expect(engine.isDragableInside(element, blockBody)).toBe(true);
+
+            // Cleanup
+            document.body.removeChild(article);
+        });
+    });
+
+    describe('dropIdeviceContentInContent state synchronization', () => {
+        it('removes iDevice from source block array before moving', async () => {
+            // Setup source block with iDevice
+            const sourceBlock = {
+                blockId: 'block-source-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const targetBlock = {
+                blockId: 'block-target-456',
+                idevices: [],
+            };
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-source-123',
+                order: 0,
+                ideviceContent: document.createElement('div'),
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock, targetBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            // Mock getIdeviceById to return the idevice
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            vi.spyOn(engine, 'getBlockById').mockImplementation((id) => {
+                if (id === 'block-source-123') return sourceBlock;
+                if (id === 'block-target-456') return targetBlock;
+                return null;
+            });
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            // Mock addIdeviceNodeToContainer to simulate moving to different block
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode) => {
+                ideviceNode.blockId = 'block-target-456';
+            });
+
+            // Setup dragged element
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            // Create target container (target block)
+            const container = document.createElement('article');
+            container.id = 'block-target-456';
+            container.classList.add('box');
+
+            // Execute
+            await engine.dropIdeviceContentInContent(container);
+
+            // Verify source block's removeIdeviceOfListById was called
+            expect(sourceBlock.removeIdeviceOfListById).toHaveBeenCalledWith('idevice-123');
+        });
+
+        it('adds iDevice to target block array after moving', async () => {
+            const sourceBlock = {
+                blockId: 'block-source-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const targetBlock = {
+                blockId: 'block-target-456',
+                idevices: [],
+            };
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-source-123',
+                ideviceContent: document.createElement('div'),
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock, targetBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            // Return target block after setBlockDataToIdeviceNode updates blockId
+            vi.spyOn(engine, 'getBlockById').mockImplementation((id) => {
+                if (id === 'block-source-123') return sourceBlock;
+                if (id === 'block-target-456') return targetBlock;
+                return null;
+            });
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation((idevice, block) => {
+                idevice.blockId = block.blockId;
+            });
+            // Mock addIdeviceNodeToContainer to update blockId and avoid DOM manipulation issues
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode, container) => {
+                // Simulate blockId update that happens in real implementation
+                ideviceNode.blockId = container.id;
+            });
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            const container = document.createElement('article');
+            container.id = 'block-target-456';
+            container.classList.add('box');
+
+            await engine.dropIdeviceContentInContent(container);
+
+            // Verify target block's idevices array contains the moved iDevice
+            expect(targetBlock.idevices).toContain(mockIdeviceNode);
+        });
+    });
+
+    describe('addIdeviceNodeToContainer with Yjs block creation', () => {
+        it('creates block in Yjs before DOM when dropping outside blocks', () => {
+            const mockBridge = {
+                addBlock: vi.fn().mockReturnValue('yjs-block-id-123'),
+            };
+
+            // Enable Yjs
+            engine.project._yjsBridge = mockBridge;
+            engine.project.app.project.structure.getSelectNodePageId = vi.fn(() => 'page-123');
+
+            const mockIdeviceNode = {
+                idevice: { title: 'Test iDevice' },
+                ideviceContent: null,
+                makeIdeviceContentNode: vi.fn(() => {
+                    const div = document.createElement('div');
+                    div.classList.add('idevice_node');
+                    return div;
+                }),
+                mode: 'view',
+            };
+
+            // Setup node-content container
+            const container = document.createElement('article');
+            container.id = 'node-content';
+            document.body.appendChild(container);
+
+            // Setup dragged element for position calculation
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.getBoundingClientRect = vi.fn(() => ({
+                top: 100,
+                height: 50,
+            }));
+            container.appendChild(engine.draggedElement);
+
+            // Mock newBlockNode to verify it receives the Yjs blockId
+            const mockNewBlockNode = vi.fn().mockReturnValue({
+                blockId: 'yjs-block-id-123',
+                blockContent: document.createElement('article'),
+            });
+            vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
+            vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+            vi.spyOn(engine, 'syncNewIdeviceToYjs').mockImplementation(() => {});
+
+            // Execute
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            // Verify Yjs bridge.addBlock was called first
+            expect(mockBridge.addBlock).toHaveBeenCalledWith(
+                'page-123',
+                'Test iDevice',
+                null,
+                expect.any(Number)
+            );
+
+            // Verify newBlockNode received the Yjs blockId
+            expect(mockNewBlockNode).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    blockId: 'yjs-block-id-123',
+                }),
+                true
+            );
+
+            // Cleanup
+            document.body.removeChild(container);
+        });
+
+        it('generates local blockId when Yjs bridge is not available', () => {
+            // Disable Yjs
+            engine.project._yjsBridge = null;
+
+            const mockIdeviceNode = {
+                idevice: { title: 'Test iDevice' },
+                ideviceContent: null,
+                makeIdeviceContentNode: vi.fn(() => {
+                    const div = document.createElement('div');
+                    div.classList.add('idevice_node');
+                    return div;
+                }),
+                mode: 'view',
+            };
+
+            const container = document.createElement('article');
+            container.id = 'node-content';
+            document.body.appendChild(container);
+
+            engine.draggedElement = document.createElement('div');
+            container.appendChild(engine.draggedElement);
+
+            const mockNewBlockNode = vi.fn().mockReturnValue({
+                blockId: 'local-block-id',
+                blockContent: document.createElement('article'),
+            });
+            vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
+            vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
+            vi.spyOn(engine, 'syncNewIdeviceToYjs').mockImplementation(() => {});
+
+            engine.addIdeviceNodeToContainer(mockIdeviceNode, container);
+
+            // Verify newBlockNode was called with null blockId (will generate locally)
+            expect(mockNewBlockNode).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    blockId: null,
+                }),
+                true
+            );
+
+            // Cleanup
+            document.body.removeChild(container);
+        });
+    });
+
+    describe('dropIdeviceContentInContent order sync to Yjs', () => {
+        it('calls apiUpdateOrder for same-block reorder instead of apiUpdateBlock', async () => {
+            const sourceBlock = {
+                blockId: 'block-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const mockIdeviceContent = document.createElement('div');
+            mockIdeviceContent.classList.add('idevice_node');
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-123', // Same block
+                order: 0,
+                ideviceContent: mockIdeviceContent,
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            vi.spyOn(engine, 'getBlockById').mockReturnValue(sourceBlock);
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            // Mock addIdeviceNodeToContainer - simulates reorder within same block
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode) => {
+                // blockId stays the same (same block reorder)
+                ideviceNode.blockId = 'block-123';
+            });
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            // Create container as the same block
+            const container = document.createElement('article');
+            container.id = 'block-123';
+            container.classList.add('box');
+            container.appendChild(mockIdeviceContent);
+
+            await engine.dropIdeviceContentInContent(container);
+
+            // For same-block reorder, apiUpdateOrder should be called, NOT apiUpdateBlock
+            expect(mockIdeviceNode.apiUpdateOrder).toHaveBeenCalledWith(false);
+            expect(mockIdeviceNode.apiUpdateBlock).not.toHaveBeenCalled();
+        });
+
+        it('calls apiUpdateBlock when moving to different block', async () => {
+            const sourceBlock = {
+                blockId: 'block-source-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const targetBlock = {
+                blockId: 'block-target-456',
+                idevices: [],
+            };
+
+            const mockIdeviceContent = document.createElement('div');
+            mockIdeviceContent.classList.add('idevice_node');
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-source-123',
+                order: 0,
+                ideviceContent: mockIdeviceContent,
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock, targetBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            vi.spyOn(engine, 'getBlockById').mockImplementation((id) => {
+                if (id === 'block-source-123') return sourceBlock;
+                if (id === 'block-target-456') return targetBlock;
+                return null;
+            });
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            // Mock addIdeviceNodeToContainer - simulates moving to different block
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode) => {
+                // blockId changes (different block)
+                ideviceNode.blockId = 'block-target-456';
+            });
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            const container = document.createElement('article');
+            container.id = 'block-target-456';
+            container.classList.add('box');
+            container.appendChild(mockIdeviceContent);
+
+            await engine.dropIdeviceContentInContent(container);
+
+            // For different block, apiUpdateBlock should be called
+            expect(mockIdeviceNode.apiUpdateBlock).toHaveBeenCalled();
+            expect(mockIdeviceNode.apiUpdateOrder).not.toHaveBeenCalled();
+        });
+
+        it('passes source blockId to setParentsAndChildrenIdevicesBlocks when moving to different block', async () => {
+            vi.useFakeTimers();
+
+            const sourceBlock = {
+                blockId: 'block-source-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const targetBlock = {
+                blockId: 'block-target-456',
+                idevices: [],
+            };
+
+            const mockIdeviceContent = document.createElement('div');
+            mockIdeviceContent.classList.add('idevice_node');
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-source-123', // Original block
+                order: 0,
+                ideviceContent: mockIdeviceContent,
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock, targetBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            vi.spyOn(engine, 'getBlockById').mockImplementation((id) => {
+                if (id === 'block-source-123') return sourceBlock;
+                if (id === 'block-target-456') return targetBlock;
+                return null;
+            });
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            const setParentsSpy = vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode) => {
+                ideviceNode.blockId = 'block-target-456';
+            });
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            const container = document.createElement('article');
+            container.id = 'block-target-456';
+            container.classList.add('box');
+            container.appendChild(mockIdeviceContent);
+
+            await engine.dropIdeviceContentInContent(container);
+
+            // Advance timer to execute handlePostMove setTimeout
+            vi.advanceTimersByTime(100);
+
+            // Should pass the SOURCE block ID to check if it became empty
+            expect(setParentsSpy).toHaveBeenCalledWith('block-source-123');
+
+            vi.useRealTimers();
+        });
+
+        it('passes null to setParentsAndChildrenIdevicesBlocks for same-block reorder', async () => {
+            vi.useFakeTimers();
+
+            const sourceBlock = {
+                blockId: 'block-123',
+                idevices: [],
+                removeIdeviceOfListById: vi.fn(),
+            };
+
+            const mockIdeviceContent = document.createElement('div');
+            mockIdeviceContent.classList.add('idevice_node');
+
+            const mockIdeviceNode = {
+                odeIdeviceId: 'idevice-123',
+                blockId: 'block-123',
+                order: 0,
+                ideviceContent: mockIdeviceContent,
+                ideviceButtons: document.createElement('div'),
+                makeIdeviceButtonsElement: vi.fn(() => document.createElement('div')),
+                apiUpdateBlock: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [sourceBlock];
+            engine.components.idevices = [mockIdeviceNode];
+
+            vi.spyOn(engine, 'getIdeviceById').mockReturnValue(mockIdeviceNode);
+            vi.spyOn(engine, 'getBlockById').mockReturnValue(sourceBlock);
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+            const setParentsSpy = vi.spyOn(engine, 'setParentsAndChildrenIdevicesBlocks').mockImplementation(() => {});
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation((ideviceNode) => {
+                ideviceNode.blockId = 'block-123'; // Same block
+            });
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('idevice-id', 'idevice-123');
+            engine.draggedElement.classList.add('idevice_actions');
+
+            const container = document.createElement('article');
+            container.id = 'block-123';
+            container.classList.add('box');
+            container.appendChild(mockIdeviceContent);
+
+            await engine.dropIdeviceContentInContent(container);
+
+            // Advance timer to execute handlePostMove setTimeout
+            vi.advanceTimersByTime(100);
+
+            // For same-block reorder, should pass null (no block became empty)
+            expect(setParentsSpy).toHaveBeenCalledWith(null);
+
+            vi.useRealTimers();
+        });
+    });
+
+    describe('dropBlockContentInContent order sync to Yjs', () => {
+        it('calculates order from DOM position and calls apiUpdateOrder', async () => {
+            // Setup node-content with multiple blocks FIRST
+            const nodeContent = document.createElement('div');
+            nodeContent.id = 'node-content';
+
+            const block1 = document.createElement('article');
+            block1.classList.add('box');
+            block1.id = 'block-first';
+
+            // This is the block we're testing - it will be at index 1
+            const block2 = document.createElement('article');
+            block2.classList.add('box');
+            block2.id = 'block-123';
+
+            const mockHeadElement = document.createElement('header');
+            mockHeadElement.classList.add('box-head');
+            block2.appendChild(mockHeadElement);
+
+            nodeContent.appendChild(block1);
+            nodeContent.appendChild(block2);
+            document.body.appendChild(nodeContent);
+
+            // Create mockBlockNode with blockContent pointing to block2 (which is in DOM)
+            const mockBlockNode = {
+                blockId: 'block-123',
+                order: 0,
+                pageId: 'page-123',
+                blockContent: block2, // Points to actual DOM element
+                headElement: mockHeadElement,
+                toggleOn: vi.fn(),
+                apiUpdateOrder: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+            };
+
+            engine.components.blocks = [mockBlockNode];
+
+            vi.spyOn(engine, 'getBlockById').mockReturnValue(mockBlockNode);
+            vi.spyOn(engine, 'isDragableInside').mockReturnValue(true);
+            vi.spyOn(engine, 'resetDragElement').mockImplementation(() => {});
+            vi.spyOn(engine, 'resetDragOverClasses').mockImplementation(() => {});
+
+            engine.nodeContentElement = nodeContent;
+
+            engine.draggedElement = document.createElement('div');
+            engine.draggedElement.setAttribute('block-id', 'block-123');
+            engine.draggedElement.classList.add('box-head');
+            engine.draggedElement.toggle = false;
+
+            await engine.dropBlockContentInContent(nodeContent);
+
+            // apiUpdateOrder should be called with false (explicit order, not getCurrentOrder)
+            expect(mockBlockNode.apiUpdateOrder).toHaveBeenCalledWith(false);
+            // Order should be calculated from DOM position (block2 is at index 1)
+            expect(mockBlockNode.order).toBe(1);
+
+            // Cleanup
+            document.body.removeChild(nodeContent);
         });
     });
 
