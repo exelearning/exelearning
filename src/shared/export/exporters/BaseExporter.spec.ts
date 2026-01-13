@@ -128,6 +128,14 @@ class MockZipProvider implements ZipProvider {
         this.files.set(path, content);
     }
 
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
     async generateAsync(): Promise<Buffer> {
         // Return a mock buffer
         return Buffer.from('mock-zip-content');
@@ -505,16 +513,34 @@ describe('BaseExporter', () => {
 
             const xml = exporter.generateContentXml();
 
+            // Check XML declaration and DOCTYPE
             expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(xml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
             expect(xml).toContain('<ode xmlns="http://www.intef.es/xsd/ode"');
+
+            // Check ODE structure sections
+            expect(xml).toContain('<userPreferences>');
+            expect(xml).toContain('<odeResources>');
             expect(xml).toContain('<odeProperties>');
-            expect(xml).toContain('<pp_title>Test Project</pp_title>');
-            expect(xml).toContain('<odeNavStructure');
-            expect(xml).toContain('odeNavStructureId="p1"');
-            expect(xml).toContain('<odePagStructure');
-            expect(xml).toContain('<odeComponent');
-            expect(xml).toContain('FreeTextIdevice');
-            expect(xml).toContain('<![CDATA[<p>Test content</p>]]>');
+            expect(xml).toContain('<key>pp_title</key>');
+            expect(xml).toContain('<value>Test Project</value>');
+
+            // Check navigation structure (pages)
+            expect(xml).toContain('<odeNavStructures>');
+            expect(xml).toContain('<odeNavStructure>');
+            expect(xml).toContain('<odePageId>p1</odePageId>');
+            expect(xml).toContain('<pageName>Page 1</pageName>');
+
+            // Check block structure
+            expect(xml).toContain('<odePagStructures>');
+            expect(xml).toContain('<odePagStructure>');
+            expect(xml).toContain('<odeBlockId>b1</odeBlockId>');
+
+            // Check component structure
+            expect(xml).toContain('<odeComponents>');
+            expect(xml).toContain('<odeComponent>');
+            expect(xml).toContain('<odeIdeviceTypeName>FreeTextIdevice</odeIdeviceTypeName>');
+            expect(xml).toContain('<htmlView><![CDATA[<p>Test content</p>]]></htmlView>');
         });
 
         it('should escape special characters in XML', () => {

@@ -334,41 +334,7 @@ describe('ResourceFetcher', () => {
     });
   });
 
-  describe('fetchSchemas', () => {
-    it('returns cached schemas if available', async () => {
-      const fetcher = new ResourceFetcher();
-      const cachedFiles = new Map([['schema.xsd', new Blob(['xsd'])]]);
-      fetcher.cache.set('schemas:scorm12', cachedFiles);
-
-      const result = await fetcher.fetchSchemas('scorm12');
-
-      expect(result).toBe(cachedFiles);
-    });
-
-    it('fetches schemas from API with format', async () => {
-      const fetcher = new ResourceFetcher();
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetcher.fetchSchemas('scorm2004');
-
-      expect(mockFetch).toHaveBeenCalledWith('/web/exelearning/api/resources/schemas/scorm2004');
-    });
-
-    it('caches schemas with format-specific key', async () => {
-      const fetcher = new ResourceFetcher();
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetcher.fetchSchemas('ims');
-
-      expect(fetcher.cache.has('schemas:ims')).toBe(true);
-    });
-  });
+  // Note: fetchSchemas was removed - XSD schema files are no longer included in exports
 
   describe('fetchLibraryFile', () => {
     it('returns cached file if available', async () => {

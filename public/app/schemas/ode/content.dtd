@@ -47,7 +47,7 @@
     Each odeNavStructure represents a single page.
     Pages can have parent-child relationships via odeParentPageId.
 -->
-<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructures (odeNavStructure*)>
 <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
 
 <!-- Page identification -->

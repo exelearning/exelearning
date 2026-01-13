@@ -419,58 +419,6 @@ describe('Resources Routes', () => {
         });
     });
 
-    describe('GET /api/resources/schemas/:format', () => {
-        it('should return empty array if schemas directory does not exist', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath.includes('schemas')) return false;
-                        return fs.existsSync(filePath);
-                    },
-                    readdirSync: fs.readdirSync,
-                    statSync: fs.statSync,
-                    readFileSync: fs.readFileSync,
-                },
-            });
-            app = new Elysia().use(resourcesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/resources/schemas/scorm12'));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body).toEqual([]);
-        });
-
-        it('should return schema files if directory exists', async () => {
-            configure({
-                fs: {
-                    existsSync: (filePath: string) => {
-                        if (filePath === 'public/files/perm/schemas/scorm12') return true;
-                        return fs.existsSync(filePath);
-                    },
-                    readdirSync: (dirPath: any, options?: any) => {
-                        if (typeof dirPath === 'string' && dirPath.includes('schemas/scorm12')) {
-                            return [
-                                { name: 'imscp.xsd', isFile: () => true, isDirectory: () => false },
-                                { name: 'adlcp.xsd', isFile: () => true, isDirectory: () => false },
-                            ] as unknown as fs.Dirent[];
-                        }
-                        return fs.readdirSync(dirPath, options);
-                    },
-                    statSync: fs.statSync,
-                    readFileSync: fs.readFileSync,
-                },
-            });
-            app = new Elysia().use(resourcesRoutes);
-
-            const res = await app.handle(new Request('http://localhost/api/resources/schemas/scorm12'));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.length).toBe(2);
-        });
-    });
-
     describe('APP_VERSION environment variable', () => {
         it('should use APP_VERSION when set', async () => {
             configure({
