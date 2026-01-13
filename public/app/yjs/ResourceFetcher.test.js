@@ -787,6 +787,299 @@ describe('ResourceFetcher', () => {
     });
   });
 
+  describe('setUserThemeFiles', () => {
+    it('registers user theme files in userThemeFiles map', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([99, 115, 115]),
+        'config.xml': new Uint8Array([120, 109, 108]),
+      };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      expect(fetcher.userThemeFiles.has('my-theme')).toBe(true);
+      expect(fetcher.userThemeFiles.get('my-theme')).toBe(files);
+    });
+
+    it('converts Uint8Array files to Blob and caches them', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([99, 115, 115]),
+      };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const cacheKey = 'theme:my-theme';
+      expect(fetcher.cache.has(cacheKey)).toBe(true);
+      const cached = fetcher.cache.get(cacheKey);
+      expect(cached).toBeInstanceOf(Map);
+      expect(cached.has('style.css')).toBe(true);
+      expect(cached.get('style.css')).toBeInstanceOf(Blob);
+    });
+
+    it('detects correct MIME types for various file extensions', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([1]),
+        'script.js': new Uint8Array([1]),
+        'data.json': new Uint8Array([1]),
+        'page.html': new Uint8Array([1]),
+        'config.xml': new Uint8Array([1]),
+        'icon.svg': new Uint8Array([1]),
+        'image.png': new Uint8Array([1]),
+        'photo.jpg': new Uint8Array([1]),
+        'photo2.jpeg': new Uint8Array([1]),
+        'anim.gif': new Uint8Array([1]),
+        'font.woff': new Uint8Array([1]),
+        'font2.woff2': new Uint8Array([1]),
+        'font3.ttf': new Uint8Array([1]),
+        'unknown.xyz': new Uint8Array([1]),
+      };
+
+      await fetcher.setUserThemeFiles('test-theme', files);
+
+      const cached = fetcher.cache.get('theme:test-theme');
+      expect(cached.get('style.css').type).toBe('text/css');
+      expect(cached.get('script.js').type).toBe('application/javascript');
+      expect(cached.get('data.json').type).toBe('application/json');
+      expect(cached.get('page.html').type).toBe('text/html');
+      expect(cached.get('config.xml').type).toBe('text/xml');
+      expect(cached.get('icon.svg').type).toBe('image/svg+xml');
+      expect(cached.get('image.png').type).toBe('image/png');
+      expect(cached.get('photo.jpg').type).toBe('image/jpeg');
+      expect(cached.get('photo2.jpeg').type).toBe('image/jpeg');
+      expect(cached.get('anim.gif').type).toBe('image/gif');
+      expect(cached.get('font.woff').type).toBe('font/woff');
+      expect(cached.get('font2.woff2').type).toBe('font/woff2');
+      expect(cached.get('font3.ttf').type).toBe('font/ttf');
+      expect(cached.get('unknown.xyz').type).toBe('application/octet-stream');
+    });
+
+    it('logs theme registration', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = {
+        'style.css': new Uint8Array([1]),
+        'script.js': new Uint8Array([1]),
+      };
+
+      await fetcher.setUserThemeFiles('logged-theme', files);
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining("Registered user theme 'logged-theme' with 2 files")
+      );
+    });
+  });
+
+  describe('hasUserTheme', () => {
+    it('returns true when user theme is registered', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('existing-theme', files);
+
+      expect(fetcher.hasUserTheme('existing-theme')).toBe(true);
+    });
+
+    it('returns false when user theme is not registered', () => {
+      const fetcher = new ResourceFetcher();
+
+      expect(fetcher.hasUserTheme('non-existent-theme')).toBe(false);
+    });
+  });
+
+  describe('getUserTheme', () => {
+    it('returns cached theme files when available', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const result = fetcher.getUserTheme('my-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('returns null when theme not in cache', () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = fetcher.getUserTheme('non-existent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getUserThemeAsync', () => {
+    it('returns cached theme files when available in memory', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('my-theme', files);
+
+      const result = await fetcher.getUserThemeAsync('my-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('returns null when theme not found anywhere', async () => {
+      const fetcher = new ResourceFetcher();
+
+      const result = await fetcher.getUserThemeAsync('non-existent');
+
+      expect(result).toBeNull();
+    });
+
+    it('fetches from IndexedDB when not in memory but resourceCache available', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('db-theme');
+
+      expect(mockResourceCache.getUserTheme).toHaveBeenCalledWith('db-theme');
+      expect(result).toBe(mockThemeFiles);
+    });
+
+    it('caches theme in memory after loading from IndexedDB', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      await fetcher.getUserThemeAsync('db-theme');
+
+      expect(fetcher.cache.has('theme:db-theme')).toBe(true);
+      expect(fetcher.cache.get('theme:db-theme')).toBe(mockThemeFiles);
+    });
+
+    it('logs when loading from IndexedDB', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      await fetcher.getUserThemeAsync('db-theme');
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining("User theme 'db-theme' loaded from IndexedDB via getUserThemeAsync")
+      );
+    });
+
+    it('returns null when IndexedDB has no theme', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockResolvedValue(null),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('missing-theme');
+
+      expect(result).toBeNull();
+    });
+
+    it('handles IndexedDB error gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        getUserTheme: vi.fn().mockRejectedValue(new Error('DB error')),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.getUserThemeAsync('error-theme');
+
+      expect(result).toBeNull();
+      expect(console.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchTheme with user themes', () => {
+    it('returns user theme from memory cache', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('user-theme', files);
+
+      const result = await fetcher.fetchTheme('user-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(result.has('style.css')).toBe(true);
+    });
+
+    it('logs user theme source correctly', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      await fetcher.setUserThemeFiles('user-theme', files);
+      global.Logger.log.mockClear();
+
+      await fetcher.fetchTheme('user-theme');
+
+      expect(global.Logger.log).toHaveBeenCalledWith(
+        expect.stringContaining('(user theme)')
+      );
+    });
+
+    it('rebuilds cache when user theme registered but not in cache', async () => {
+      const fetcher = new ResourceFetcher();
+      const files = { 'style.css': new Uint8Array([1]) };
+
+      // Register but clear cache to simulate edge case
+      fetcher.userThemeFiles.set('edge-theme', files);
+      // Don't call setUserThemeFiles to avoid cache population
+
+      const result = await fetcher.fetchTheme('edge-theme');
+
+      expect(result).toBeInstanceOf(Map);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('registered but not in cache')
+      );
+    });
+
+    it('fetches user theme from IndexedDB when not in memory', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockThemeFiles = new Map([['style.css', new Blob(['css'])]]);
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        getUserTheme: vi.fn().mockResolvedValue({ files: mockThemeFiles }),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      const result = await fetcher.fetchTheme('indexeddb-theme');
+
+      expect(mockResourceCache.getUserTheme).toHaveBeenCalledWith('indexeddb-theme');
+      expect(result).toBe(mockThemeFiles);
+    });
+
+    it('handles IndexedDB user theme lookup error gracefully', async () => {
+      const fetcher = new ResourceFetcher();
+      const mockResourceCache = {
+        get: vi.fn().mockResolvedValue(null),
+        set: vi.fn(),
+        getUserTheme: vi.fn().mockRejectedValue(new Error('DB error')),
+      };
+      fetcher.resourceCache = mockResourceCache;
+
+      // Should fall through to server fetch
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      const result = await fetcher.fetchTheme('error-theme');
+
+      // The theme fetch should continue even if IndexedDB lookup fails
+      expect(result).toBeInstanceOf(Map);
+    });
+  });
+
   describe('loadBundleManifest', () => {
     it('loads manifest and sets bundlesAvailable to true', async () => {
       const fetcher = new ResourceFetcher();

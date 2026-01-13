@@ -224,17 +224,20 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                { timeout: 30000 },
             );
 
             // Verify the image container is visible in view mode
@@ -296,17 +299,20 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice (with default image)
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                { timeout: 30000 },
             );
 
             // Verify the image container is visible in view mode
@@ -353,17 +359,21 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice with default image
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500); // Brief wait for any animations
+
+            // Click save button
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                { timeout: 30000 },
             );
 
             // Find the magnifier image container
@@ -420,17 +430,20 @@ test.describe('Magnifier iDevice', () => {
             // Save the iDevice with default image
             const block = page.locator('#node-content article .idevice_node.magnifier').first();
             const saveBtn = block.locator('.btn-save-idevice');
-            if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
-            }
 
-            // Wait for edition mode to end
+            // Wait for save button to be visible and clickable (Firefox may need more time)
+            await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
+            await page.waitForTimeout(500);
+
+            await saveBtn.click();
+
+            // Wait for edition mode to end with longer timeout for Firefox
             await page.waitForFunction(
                 () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
-                { timeout: 15000 },
+                { timeout: 30000 },
             );
 
             // Save project

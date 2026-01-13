@@ -2870,34 +2870,34 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     }
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) thead {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) thead {
     vertical-align: middle;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) th {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) th {
     font-weight: 500;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr td {
     max-width: 280px;
     word-wrap: break-word;
     font-size: 14px;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr td {
     padding: var(--margin-s) var(--margin-m);
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr th {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr th {
     padding: var(--margin-s) var(--margin-m);
     border-bottom: 2px solid var(--dark-exe-color);
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr :is(td, th):last-child {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr :is(td, th):last-child {
     border-right: none;
 }
 
-:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles) :is(.table, .idevices-table, .ode-files-table) tr:last-child td {
+:is(#modalOdeBrokenLinks, #modalOdeUsedFiles, #modalIdeviceManager, #modalOpenUserOdeFiles, #modalImageOptimizer) :is(.table, .idevices-table, .ode-files-table) tr:last-child td {
     border-bottom: none;
 }
 
@@ -2940,6 +2940,38 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
                 }
             }
         }
+    }
+}
+
+/* ========================================================================
+   Image Optimizer Modal
+   ======================================================================== */
+#modalImageOptimizer {
+    .modal-dialog {
+        max-width: 900px;
+    }
+
+    .image-optimizer-settings {
+        border-bottom: 1px solid var(--gray-200, #e2e8f0);
+        padding-bottom: var(--margin-m);
+    }
+
+    .image-optimizer-queue {
+        border: 1px solid var(--gray-200, #e2e8f0);
+        border-radius: var(--radius, 4px);
+    }
+
+    .image-optimizer-thumbnail {
+        border-radius: 4px;
+        border: 1px solid var(--gray-200, #e2e8f0);
+    }
+
+    .image-optimizer-summary {
+        background-color: var(--gray-50, #f7fafc) !important;
+    }
+
+    .form-range {
+        width: 100px;
     }
 }
 
@@ -2990,7 +3022,8 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     #modalStyleManager,
     #modalIdeviceManager,
     #modalOdeBrokenLinks,
-    #modalOdeUsedFiles {
+    #modalOdeUsedFiles,
+    #modalImageOptimizer {
         .modal-dialog {
             min-width: auto !important;
             max-width: calc(100vw - 1rem) !important;

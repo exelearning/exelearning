@@ -25,6 +25,7 @@ class YjsProjectBridge {
     this.assetCache = null;  // Legacy - kept for backward compatibility
     this.assetManager = null; // New asset manager with asset:// URLs
     this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
+    this.resourceCache = null; // ResourceCache for persistent IndexedDB storage (themes, libs, iDevices)
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
     this.saveManager = null; // SaveManager for saving to server with progress
     this.connectionMonitor = null; // ConnectionMonitor for connection failure handling
@@ -102,19 +103,18 @@ class YjsProjectBridge {
     this.assetCache = new window.AssetCacheManager(projectId);
 
     // Create ResourceCache for persistent caching of themes, libraries, iDevices
-    let resourceCache = null;
     if (window.ResourceCache) {
-      resourceCache = new window.ResourceCache();
+      this.resourceCache = new window.ResourceCache();
       try {
-        await resourceCache.init();
+        await this.resourceCache.init();
         Logger.log('[YjsProjectBridge] ResourceCache initialized');
 
         // Clean old version entries on startup
         const currentVersion = window.eXeLearning?.version || 'v0.0.0';
-        await resourceCache.clearOldVersions(currentVersion);
+        await this.resourceCache.clearOldVersions(currentVersion);
       } catch (e) {
         console.warn('[YjsProjectBridge] ResourceCache initialization failed:', e);
-        resourceCache = null;
+        this.resourceCache = null;
       }
     }
 
@@ -122,7 +122,11 @@ class YjsProjectBridge {
     if (window.ResourceFetcher) {
       this.resourceFetcher = new window.ResourceFetcher();
       // Initialize with ResourceCache for persistent caching
-      await this.resourceFetcher.init(resourceCache);
+      await this.resourceFetcher.init(this.resourceCache);
+      // Also expose on eXeLearning.app for access from Theme class
+      if (this.app) {
+        this.app.resourceFetcher = this.resourceFetcher;
+      }
       Logger.log('[YjsProjectBridge] ResourceFetcher initialized with bundle support');
     }
 
@@ -210,6 +214,27 @@ class YjsProjectBridge {
 
     // Trigger initial structure load for observers (in case blank structure was created)
     this.triggerInitialStructureLoad();
+
+    // Load user themes from Yjs (for collaborator sync and project re-open)
+    await this.loadUserThemesFromYjs();
+
+    // Load user themes from IndexedDB (global themes that persist across projects)
+    // Pass resourceCache directly since _yjsBridge may not be set on the project yet
+    if (eXeLearning.app?.themes?.list?.loadUserThemesFromIndexedDB) {
+      try {
+        // Pass this.resourceCache directly to avoid timing issues with _yjsBridge reference
+        await eXeLearning.app.themes.list.loadUserThemesFromIndexedDB(this.resourceCache);
+      } catch (err) {
+        console.error('[YjsProjectBridge] loadUserThemesFromIndexedDB error:', err);
+      }
+      // Refresh NavbarStyles UI to show loaded themes
+      if (eXeLearning.app.menus?.navbar?.styles) {
+        eXeLearning.app.menus.navbar.styles.updateThemes();
+      }
+    }
+
+    // Set up observer for theme files changes (collaborator theme sync)
+    this.setupThemeFilesObserver();
 
     return this;
   }
@@ -1834,6 +1859,11 @@ class YjsProjectBridge {
    * theme will be used. Administrators should be aware that enabling this feature
    * allows users to run custom JavaScript in exported content.
    *
+   * Priority for finding themes:
+   * 1. Server themes (base/site) - always available
+   * 2. IndexedDB user themes - persistent local storage
+   * 3. Package theme folder - requires user confirmation
+   *
    * @param {string} themeName - Name of the theme from the package
    * @param {File} file - The original .elpx file to check for /theme/ folder
    * @private
@@ -1850,16 +1880,33 @@ class YjsProjectBridge {
 
     if (!isOfflineInstallation && !userStylesEnabled) {
       Logger.log('[YjsProjectBridge] Theme import disabled (ONLINE_THEMES_INSTALL=0), using default theme');
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+      // Save=true to update Yjs metadata with default theme (replacing imported theme)
+      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
       return;
     }
 
-    // Check if theme is installed
+    // 1. Check if theme is installed on server (base/site themes)
     const installedThemes = eXeLearning.app.themes?.list?.installed || {};
     if (Object.keys(installedThemes).includes(themeName)) {
-      Logger.log(`[YjsProjectBridge] Theme "${themeName}" already installed, selecting it`);
+      Logger.log(`[YjsProjectBridge] Theme "${themeName}" already installed (server), selecting it`);
       await eXeLearning.app.themes.selectTheme(themeName, true);
       return;
+    }
+
+    // 2. Check if theme exists in IndexedDB (persistent user themes)
+    if (this.resourceCache) {
+      try {
+        const hasUserTheme = await this.resourceCache.hasUserTheme(themeName);
+        if (hasUserTheme) {
+          Logger.log(`[YjsProjectBridge] Theme "${themeName}" found in IndexedDB, loading it`);
+          // Load theme from IndexedDB and register
+          await this._loadUserThemeFromIndexedDB(themeName);
+          await eXeLearning.app.themes.selectTheme(themeName, true);
+          return;
+        }
+      } catch (e) {
+        console.warn('[YjsProjectBridge] Error checking IndexedDB for theme:', e);
+      }
     }
 
     // Theme not installed - check if package has /theme/ folder
@@ -1875,7 +1922,8 @@ class YjsProjectBridge {
 
       if (!themeConfig) {
         Logger.log(`[YjsProjectBridge] No theme folder in package, using default`);
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+        // Save=true to update Yjs metadata with default theme (replacing imported theme)
+        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
         return;
       }
 
@@ -1887,12 +1935,16 @@ class YjsProjectBridge {
       this._showThemeImportModal(themeName);
     } catch (error) {
       console.error('[YjsProjectBridge] Error checking theme in package:', error);
-      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+      // Save=true to update Yjs metadata with default theme (replacing imported theme)
+      eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
     }
   }
 
   /**
    * Show modal to confirm theme import
+   * User themes from .elpx files are stored:
+   * 1. IndexedDB (persistent local storage, available across all projects)
+   * 2. Yjs (compressed ZIP, for collaboration and export)
    * @param {string} themeName - Name of the theme to import
    * @private
    */
@@ -1906,36 +1958,55 @@ class YjsProjectBridge {
       body: text,
       confirmExec: async () => {
         try {
-          // Package theme files from the stored ZIP
-          const themeZip = await this._packageThemeFromZip(themeName);
-          if (!themeZip) {
+          // Extract theme files from the stored ZIP
+          const themeFilesData = this._extractThemeFilesFromZip();
+          if (!themeFilesData || Object.keys(themeFilesData.files).length === 0) {
             throw new Error('Could not extract theme files from package');
           }
 
-          const params = {
-            themeDirname: themeName,
-            themeZip: themeZip,
-          };
-
           Logger.log('[YjsProjectBridge] Importing theme:', themeName);
-          const response = await eXeLearning.app.api.postOdeImportTheme(params);
+
+          // Parse config.xml to create theme configuration
+          const themeConfig = this._parseThemeConfigFromFiles(themeName, themeFilesData);
+          if (!themeConfig) {
+            throw new Error('Could not parse theme configuration');
+          }
+
+          // 1. Compress theme files and save to IndexedDB (persistent local storage)
+          if (this.resourceCache) {
+            const compressedFiles = this._compressThemeFiles(themeFilesData.files);
+            await this.resourceCache.setUserTheme(themeName, compressedFiles, themeConfig);
+            Logger.log(`[YjsProjectBridge] Saved theme to IndexedDB: ${themeName}`);
+          }
+
+          // 2. Copy compressed theme to Yjs for collaboration/export
+          await this._copyThemeToYjs(themeName, themeFilesData.files);
+
+          // 3. Register theme files with ResourceFetcher for export and preview
+          if (this.resourceFetcher) {
+            await this.resourceFetcher.setUserThemeFiles(themeName, themeFilesData.files);
+          }
+
+          // 4. Add theme to local installed list
+          eXeLearning.app.themes.list.addUserTheme(themeConfig);
+
+          // 5. Refresh NavbarStyles UI to show the new theme immediately
+          if (eXeLearning.app.menus?.navbar?.styles) {
+            eXeLearning.app.menus.navbar.styles.updateThemes();
+            // If styles panel is open, rebuild the list
+            const stylesPanel = document.getElementById('stylessidenav');
+            if (stylesPanel?.classList.contains('active')) {
+              eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+            }
+          }
 
           // Clean up stored references
           this._pendingThemeFile = null;
           this._pendingThemeZip = null;
 
-          if (response.responseMessage === 'OK' && response.themes) {
-            // Reload theme list and select imported theme
-            eXeLearning.app.themes.list.loadThemes(response.themes.themes);
-            await eXeLearning.app.themes.selectTheme(themeName, true);
-            Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
-          } else {
-            console.error('[YjsProjectBridge] Theme import failed:', response.responseMessage || response.error);
-            eXeLearning.app.modals.alert.show({
-              title: _('Error'),
-              body: response.error || response.responseMessage || _('Failed to import style'),
-            });
-          }
+          // Select the theme and save to metadata
+          await eXeLearning.app.themes.selectTheme(themeName, true);
+          Logger.log(`[YjsProjectBridge] Theme "${themeName}" imported successfully`);
         } catch (error) {
           console.error('[YjsProjectBridge] Theme import error:', error);
           // Clean up stored references
@@ -1951,19 +2022,18 @@ class YjsProjectBridge {
         // Clean up stored references
         this._pendingThemeFile = null;
         this._pendingThemeZip = null;
-        // Use default theme
-        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, false);
+        // Use default theme and save to Yjs (replacing imported theme in metadata)
+        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
       },
     });
   }
 
   /**
-   * Package theme files from stored ZIP into a new ZIP blob
-   * @param {string} themeName - Name of the theme
-   * @returns {Promise<Blob|null>} Theme ZIP blob or null if failed
+   * Extract theme files from stored ZIP
+   * @returns {{files: Object<string, Uint8Array>, configXml: string|null}|null}
    * @private
    */
-  async _packageThemeFromZip(themeName) {
+  _extractThemeFilesFromZip() {
     try {
       const zip = this._pendingThemeZip;
       if (!zip) {
@@ -1971,37 +2041,420 @@ class YjsProjectBridge {
         return null;
       }
 
-      const fflateLib = window.fflate;
-      if (!fflateLib) {
-        console.error('[YjsProjectBridge] fflate library not loaded');
-        return null;
-      }
-
       // Extract all files from theme/ folder
-      const themeFiles = {};
+      const files = {};
+      let configXml = null;
+
       for (const [filePath, fileData] of Object.entries(zip)) {
         if (filePath.startsWith('theme/') && !filePath.endsWith('/')) {
           // Remove 'theme/' prefix to get relative path
           const relativePath = filePath.substring(6); // 'theme/'.length = 6
           if (relativePath) {
-            themeFiles[relativePath] = fileData;
+            files[relativePath] = fileData;
+            // Capture config.xml content
+            if (relativePath === 'config.xml') {
+              configXml = new TextDecoder().decode(fileData);
+            }
           }
         }
       }
 
-      if (Object.keys(themeFiles).length === 0) {
+      if (Object.keys(files).length === 0) {
         console.error('[YjsProjectBridge] No theme files found in package');
         return null;
       }
 
-      Logger.log(`[YjsProjectBridge] Packaging ${Object.keys(themeFiles).length} theme files`);
-
-      // Create ZIP
-      const zipped = fflateLib.zipSync(themeFiles);
-      return new Blob([zipped], { type: 'application/zip' });
+      Logger.log(`[YjsProjectBridge] Extracted ${Object.keys(files).length} theme files`);
+      return { files, configXml };
     } catch (error) {
-      console.error('[YjsProjectBridge] Error packaging theme:', error);
+      console.error('[YjsProjectBridge] Error extracting theme:', error);
       return null;
+    }
+  }
+
+  /**
+   * Parse theme configuration from extracted files
+   * @param {string} themeName - Theme name/directory
+   * @param {{files: Object, configXml: string|null}} themeFilesData
+   * @returns {Object|null} Theme configuration object
+   * @private
+   */
+  _parseThemeConfigFromFiles(themeName, themeFilesData) {
+    try {
+      const { files, configXml } = themeFilesData;
+
+      // Default config values
+      const config = {
+        name: themeName,
+        dirName: themeName,
+        displayName: themeName,
+        title: themeName,
+        type: 'user', // User themes from .elpx
+        version: '1.0',
+        author: '',
+        license: '',
+        description: '',
+        cssFiles: [],
+        js: [],
+        icons: {},
+        valid: true,
+        isUserTheme: true, // Flag to indicate this is a client-side theme
+      };
+
+      // Parse config.xml if available
+      if (configXml) {
+        const getValue = (tag) => {
+          const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+          return match ? match[1].trim() : '';
+        };
+
+        config.name = getValue('name') || themeName;
+        config.displayName = getValue('name') || themeName;
+        config.title = getValue('name') || themeName;
+        config.version = getValue('version') || '1.0';
+        config.author = getValue('author') || '';
+        config.license = getValue('license') || '';
+        config.description = getValue('description') || '';
+      }
+
+      // Scan for CSS files
+      for (const filePath of Object.keys(files)) {
+        if (filePath.endsWith('.css') && !filePath.includes('/')) {
+          config.cssFiles.push(filePath);
+        }
+      }
+      if (config.cssFiles.length === 0) {
+        config.cssFiles.push('style.css');
+      }
+
+      // Scan for JS files
+      for (const filePath of Object.keys(files)) {
+        if (filePath.endsWith('.js') && !filePath.includes('/')) {
+          config.js.push(filePath);
+        }
+      }
+
+      // Scan for icons
+      for (const filePath of Object.keys(files)) {
+        if (filePath.startsWith('icons/') && (filePath.endsWith('.png') || filePath.endsWith('.svg'))) {
+          const iconName = filePath.replace('icons/', '').replace(/\.(png|svg)$/, '');
+          config.icons[iconName] = filePath;
+        }
+      }
+
+      return config;
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error parsing theme config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Convert Uint8Array to base64 string
+   * @param {Uint8Array} uint8Array
+   * @returns {string}
+   * @private
+   */
+  _uint8ArrayToBase64(uint8Array) {
+    let binary = '';
+    const len = uint8Array.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    return btoa(binary);
+  }
+
+  /**
+   * Convert base64 string to Uint8Array
+   * @param {string} base64
+   * @returns {Uint8Array}
+   * @private
+   */
+  _base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  /**
+   * Compress theme files to ZIP format using fflate
+   * @param {Object<string, Uint8Array>} files - Map of relativePath -> file content
+   * @returns {Uint8Array} Compressed ZIP data
+   * @private
+   */
+  _compressThemeFiles(files) {
+    if (!window.fflate) {
+      throw new Error('fflate library not loaded');
+    }
+
+    // fflate.zipSync expects {filename: Uint8Array} format
+    const toCompress = {};
+    for (const [path, uint8Array] of Object.entries(files)) {
+      toCompress[path] = uint8Array;
+    }
+
+    return window.fflate.zipSync(toCompress, { level: 6 });
+  }
+
+  /**
+   * Copy theme to Yjs for collaboration and export
+   * Stores the theme as a compressed ZIP in base64
+   * @param {string} themeName - Theme name
+   * @param {Object<string, Uint8Array>} files - Map of relativePath -> file content
+   * @private
+   */
+  async _copyThemeToYjs(themeName, files) {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+
+      // Compress files to ZIP
+      const compressed = this._compressThemeFiles(files);
+
+      // Convert to base64 for Yjs storage
+      const base64Compressed = this._uint8ArrayToBase64(compressed);
+
+      // Store as single compressed string in Yjs (NOT a Y.Map with individual files)
+      themeFilesMap.set(themeName, base64Compressed);
+
+      Logger.log(`[YjsProjectBridge] Copied theme '${themeName}' to Yjs (${Math.round(compressed.length / 1024)}KB compressed)`);
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error copying theme to Yjs:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load a user theme from IndexedDB and register it
+   * @param {string} themeName - Theme name
+   * @private
+   */
+  async _loadUserThemeFromIndexedDB(themeName) {
+    try {
+      if (!this.resourceCache) {
+        throw new Error('ResourceCache not initialized');
+      }
+
+      const userTheme = await this.resourceCache.getUserTheme(themeName);
+      if (!userTheme) {
+        throw new Error(`Theme '${themeName}' not found in IndexedDB`);
+      }
+
+      const { files, config } = userTheme;
+
+      // Convert Map<string, Blob> to Object<string, Uint8Array> for ResourceFetcher
+      const filesObject = {};
+      for (const [path, blob] of files) {
+        const arrayBuffer = await blob.arrayBuffer();
+        filesObject[path] = new Uint8Array(arrayBuffer);
+      }
+
+      // Register with ResourceFetcher
+      if (this.resourceFetcher) {
+        await this.resourceFetcher.setUserThemeFiles(themeName, filesObject);
+      }
+
+      // Add to installed themes if not already there
+      if (eXeLearning.app?.themes?.list?.installed && !eXeLearning.app.themes.list.installed[themeName]) {
+        eXeLearning.app.themes.list.addUserTheme(config);
+      }
+
+      Logger.log(`[YjsProjectBridge] Loaded user theme '${themeName}' from IndexedDB`);
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error loading theme from IndexedDB:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load user themes from Yjs into ResourceFetcher and theme list
+   * This is called on initialization to restore user themes for:
+   * - Reopening a project with user themes
+   * - Joining a collaborative session where another user imported a theme
+   *
+   * Priority:
+   * 1. Check if theme exists in local IndexedDB - use that if available
+   * 2. If not in IndexedDB, decompress from Yjs and save to IndexedDB
+   */
+  async loadUserThemesFromYjs() {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+      if (!themeFilesMap || themeFilesMap.size === 0) {
+        Logger.log('[YjsProjectBridge] No user themes in Yjs to load');
+        return;
+      }
+
+      Logger.log(`[YjsProjectBridge] Loading ${themeFilesMap.size} user theme(s) from Yjs...`);
+
+      // Iterate over each theme in the themeFiles map
+      for (const [themeName, themeData] of themeFilesMap.entries()) {
+        await this._loadUserThemeFromYjs(themeName, themeData);
+      }
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error loading user themes from Yjs:', error);
+    }
+  }
+
+  /**
+   * Load a single user theme from Yjs
+   * Handles both new compressed format (base64 ZIP) and legacy format (Y.Map)
+   *
+   * @param {string} themeName - Theme name
+   * @param {string|Y.Map} themeData - Either base64 compressed ZIP (new) or Y.Map (legacy)
+   * @private
+   */
+  async _loadUserThemeFromYjs(themeName, themeData) {
+    try {
+      // 1. Check if theme is already loaded in ResourceFetcher (memory)
+      if (this.resourceFetcher?.hasUserTheme(themeName)) {
+        Logger.log(`[YjsProjectBridge] User theme '${themeName}' already loaded in memory`);
+        return;
+      }
+
+      // 2. Check if theme exists in IndexedDB - load from there if available
+      if (this.resourceCache) {
+        try {
+          const hasInIndexedDB = await this.resourceCache.hasUserTheme(themeName);
+          if (hasInIndexedDB) {
+            Logger.log(`[YjsProjectBridge] User theme '${themeName}' found in IndexedDB, loading from there`);
+            await this._loadUserThemeFromIndexedDB(themeName);
+            return;
+          }
+        } catch (e) {
+          console.warn(`[YjsProjectBridge] Error checking IndexedDB for theme '${themeName}':`, e);
+        }
+      }
+
+      // 3. Theme not in IndexedDB - extract from Yjs
+      let files = {};
+      let configXml = null;
+
+      // Check if new compressed format (base64 string) or legacy format (Y.Map)
+      if (typeof themeData === 'string') {
+        // New compressed format - decompress ZIP
+        const decompressed = this._decompressThemeFromYjs(themeData);
+        files = decompressed.files;
+        configXml = decompressed.configXml;
+      } else if (themeData && typeof themeData.entries === 'function') {
+        // Legacy format - Y.Map with individual base64 files
+        for (const [relativePath, base64Content] of themeData.entries()) {
+          const uint8Array = this._base64ToUint8Array(base64Content);
+          files[relativePath] = uint8Array;
+          if (relativePath === 'config.xml') {
+            configXml = new TextDecoder().decode(uint8Array);
+          }
+        }
+      } else {
+        Logger.log(`[YjsProjectBridge] Unknown theme data format for '${themeName}', skipping`);
+        return;
+      }
+
+      if (Object.keys(files).length === 0) {
+        Logger.log(`[YjsProjectBridge] User theme '${themeName}' has no files, skipping`);
+        return;
+      }
+
+      Logger.log(`[YjsProjectBridge] Extracted ${Object.keys(files).length} files for user theme '${themeName}' from Yjs`);
+
+      // Parse theme configuration
+      const themeConfig = this._parseThemeConfigFromFiles(themeName, { files, configXml });
+      if (!themeConfig) {
+        console.warn(`[YjsProjectBridge] Could not parse config for theme '${themeName}'`);
+        return;
+      }
+
+      // 4. Save to IndexedDB for persistence (so we don't need to extract from Yjs again)
+      if (this.resourceCache) {
+        try {
+          const compressedFiles = this._compressThemeFiles(files);
+          await this.resourceCache.setUserTheme(themeName, compressedFiles, themeConfig);
+          Logger.log(`[YjsProjectBridge] Saved theme '${themeName}' to IndexedDB`);
+        } catch (e) {
+          console.warn(`[YjsProjectBridge] Could not save theme '${themeName}' to IndexedDB:`, e);
+        }
+      }
+
+      // 5. Register with ResourceFetcher
+      if (this.resourceFetcher) {
+        await this.resourceFetcher.setUserThemeFiles(themeName, files);
+      }
+
+      // 6. Add to installed themes if not already there
+      if (eXeLearning.app?.themes?.list?.installed && !eXeLearning.app.themes.list.installed[themeName]) {
+        eXeLearning.app.themes.list.addUserTheme(themeConfig);
+        Logger.log(`[YjsProjectBridge] Added user theme '${themeName}' to installed themes`);
+      }
+    } catch (error) {
+      console.error(`[YjsProjectBridge] Error loading user theme '${themeName}':`, error);
+    }
+  }
+
+  /**
+   * Decompress theme files from Yjs (base64 ZIP format)
+   * @param {string} base64Compressed - Base64 encoded ZIP data
+   * @returns {{files: Object<string, Uint8Array>, configXml: string|null}}
+   * @private
+   */
+  _decompressThemeFromYjs(base64Compressed) {
+    if (!window.fflate) {
+      throw new Error('fflate library not loaded');
+    }
+
+    // Decode base64 to Uint8Array
+    const compressed = this._base64ToUint8Array(base64Compressed);
+
+    // Decompress ZIP
+    const decompressed = window.fflate.unzipSync(compressed);
+
+    const files = {};
+    let configXml = null;
+
+    for (const [path, data] of Object.entries(decompressed)) {
+      files[path] = data;
+      if (path === 'config.xml') {
+        configXml = new TextDecoder().decode(data);
+      }
+    }
+
+    return { files, configXml };
+  }
+
+  /**
+   * Set up observer for theme files changes (for collaborator sync)
+   * When a collaborator imports a theme, this observer will load it locally
+   * and save it to IndexedDB for persistence
+   */
+  setupThemeFilesObserver() {
+    try {
+      const themeFilesMap = this.documentManager.getThemeFiles();
+
+      themeFilesMap.observe(async (event) => {
+        // Process added themes
+        for (const [themeName, change] of event.changes.keys) {
+          if (change.action === 'add') {
+            const themeData = themeFilesMap.get(themeName);
+            if (themeData) {
+              Logger.log(`[YjsProjectBridge] Collaborator added theme '${themeName}', loading...`);
+              await this._loadUserThemeFromYjs(themeName, themeData);
+            }
+          } else if (change.action === 'delete') {
+            Logger.log(`[YjsProjectBridge] Theme '${themeName}' removed from Yjs`);
+            // Theme was removed - we leave it in IndexedDB (user may want to keep it)
+            // But we should remove it from ResourceFetcher cache
+            if (this.resourceFetcher?.userThemeFiles) {
+              this.resourceFetcher.userThemeFiles.delete(themeName);
+              this.resourceFetcher.cache.delete(`theme:${themeName}`);
+            }
+          }
+        }
+      });
+
+      Logger.log('[YjsProjectBridge] Theme files observer set up');
+    } catch (error) {
+      console.error('[YjsProjectBridge] Error setting up theme files observer:', error);
     }
   }
 

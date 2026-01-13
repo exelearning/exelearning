@@ -10,7 +10,7 @@ import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
 
 // Base paths for resources
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
-const THEMES_USERS_PATH = 'public/files/perm/themes/users';
+// Note: User themes are stored client-side in IndexedDB, not on server
 const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
 const IDEVICES_USERS_PATH = 'public/files/perm/idevices/users';
 const LIBS_PATH = 'public/libs';
@@ -136,19 +136,15 @@ function buildFileList(dirPath: string, urlPrefix: string, pathPrefix?: string):
  */
 export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     // GET /api/resources/theme/:themeName - Get all files for a theme
+    // Note: User themes are stored client-side in IndexedDB and served via ResourceFetcher
     .get('/api/resources/theme/:themeName', ({ params, set }) => {
         const { themeName } = params;
         const version = getAppVersion();
         const basePath = getBasePath();
 
-        // Check user themes first, then base themes, then admin themes
-        let themePath = path.join(THEMES_USERS_PATH, themeName);
-        let urlPrefix = `/files/perm/themes/users/${themeName}`;
-
-        if (!deps.fs.existsSync(themePath)) {
-            themePath = path.join(THEMES_BASE_PATH, themeName);
-            urlPrefix = `/files/perm/themes/base/${themeName}`;
-        }
+        // Check base themes first
+        let themePath = path.join(THEMES_BASE_PATH, themeName);
+        const urlPrefix = `/files/perm/themes/base/${themeName}`;
 
         // Check site themes (from FILES_DIR)
         if (!deps.fs.existsSync(themePath)) {
@@ -390,37 +386,7 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
             return Bun.file(prebuiltPath);
         }
 
-        // Check if this is a user theme that needs on-demand ZIP generation
-        const userThemePath = path.join(THEMES_USERS_PATH, themeName);
-        if (deps.fs.existsSync(userThemePath)) {
-            // Generate ZIP on-the-fly for user themes
-            const files = scanDirectory(userThemePath);
-            if (files.length === 0) {
-                set.status = 404;
-                return { error: 'Not Found', message: `Theme ${themeName} is empty` };
-            }
-
-            // Use fflate to create ZIP dynamically
-            const { zipSync } = await import('fflate');
-            const zipData: { [key: string]: Uint8Array } = {};
-
-            for (const filePath of files) {
-                const fullPath = path.join(userThemePath, filePath);
-                try {
-                    const content = deps.fs.readFileSync(fullPath) as Buffer;
-                    zipData[filePath] = new Uint8Array(content);
-                } catch {
-                    // Skip files that can't be read
-                }
-            }
-
-            const zipBuffer = zipSync(zipData, { level: 6 });
-
-            set.headers['content-type'] = 'application/zip';
-            set.headers['cache-control'] = 'private, max-age=3600'; // Shorter cache for user themes
-            return new Response(zipBuffer);
-        }
-
+        // Note: User themes are stored client-side in IndexedDB, not on server
         // Check if this is a site theme that needs on-demand ZIP generation
         const siteThemesPath = getSiteThemesPath();
         const siteThemePath = path.join(siteThemesPath, themeName);

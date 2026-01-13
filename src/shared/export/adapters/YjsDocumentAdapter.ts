@@ -93,6 +93,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             addAccessibilityToolbar: this.parseBoolean(meta.get('addAccessibilityToolbar'), false),
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
+            globalFont: (meta.get('globalFont') as string) || 'default',
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,

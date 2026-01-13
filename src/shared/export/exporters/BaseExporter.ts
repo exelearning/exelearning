@@ -495,18 +495,21 @@ export abstract class BaseExporter {
 
     /**
      * Pre-process pages to add filenames to asset URLs in all component content
-     * Also replaces exe-package:elp protocol for download-source-file iDevice
      * And converts internal links (exe-node:) to proper page URLs
+     *
+     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
+     * so the XML content keeps the original protocol for re-import compatibility
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const meta = this.getMetadata();
-        const projectTitle = meta.title || 'eXeLearning';
+        // Deep clone pages to avoid mutating the original document
+        // This ensures multiple exports on the same document work correctly
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
         // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(pages);
+        const pageUrlMap = this.buildPageUrlMap(clonedPages);
 
-        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-            const page = pages[pageIndex];
+        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
+            const page = clonedPages[pageIndex];
             const isIndex = pageIndex === 0;
 
             for (const block of page.blocks || []) {
@@ -514,15 +517,13 @@ export abstract class BaseExporter {
                     if (component.content) {
                         // Add filenames to asset URLs
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Replace exe-package:elp protocol for client-side download
-                        component.content = this.replaceElpxProtocol(component.content, projectTitle);
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                 }
             }
         }
-        return pages;
+        return clonedPages;
     }
 
     /**
@@ -649,6 +650,7 @@ export abstract class BaseExporter {
 
     /**
      * Check if a specific page contains the download-source-file iDevice
+     * or a manual link using exe-package:elp protocol
      */
     protected pageHasDownloadSourceFile(page: ExportPage): boolean {
         for (const block of page.blocks || []) {
@@ -658,8 +660,12 @@ export abstract class BaseExporter {
                 if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
                     return true;
                 }
-                // Also check content for the CSS class (more reliable)
+                // Check content for the CSS class (download-source-file iDevice)
                 if (component.content?.includes('exe-download-package-link')) {
+                    return true;
+                }
+                // Check for manual exe-package:elp links (in text iDevices, etc.)
+                if (component.content?.includes('exe-package:elp')) {
                     return true;
                 }
             }

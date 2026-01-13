@@ -1,16 +1,16 @@
 @charset "UTF-8";
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-ExtraLightItalic.woff2) format("woff2"),
-        url(fonts/Nunito-ExtraLightItalic.woff) format("woff");
+    src: url(fonts/Nunito-Italic.woff2) format("woff2"),
+        url(fonts/Nunito-Italic.woff) format("woff");
     font-style: italic;
     font-display: swap;
 }
 
 @font-face {
     font-family: "Nunito";
-    src: url(fonts/Nunito-ExtraLight.woff2) format("woff2"),
-        url(fonts/Nunito-ExtraLight.woff) format("woff");
+    src: url(fonts/Nunito-Regular.woff2) format("woff2"),
+        url(fonts/Nunito-Regular.woff) format("woff");
     font-style: normal;
     font-display: swap;
 }

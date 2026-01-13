@@ -604,6 +604,10 @@
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1
+*   Files: /public/libs/pixo/\*
+    *   Copyright: Lee Robinson
+    *   License: MIT
+    *   Source: https://github.com/leerob/pixo
 *   Files: /public/style/workarea/fonts/\Inter*
     *   Copyright: The Inter Project Authors. Designed by Rasmus Andersson
     *   License: SIL Open Font License version 1.1
