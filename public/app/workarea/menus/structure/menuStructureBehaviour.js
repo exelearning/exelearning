@@ -7,7 +7,8 @@
 import ImportProgress from '../../interface/importProgress.js';
 
 // Use global AppLogger for debug-controlled logging
-const Logger = window.AppLogger || console;
+// Use global AppLogger for debug-controlled logging
+const Logger = (typeof window !== 'undefined' && window.AppLogger) || console;
 
 export default class MenuStructureBehaviour {
     constructor(structureEngine) {
@@ -89,6 +90,20 @@ export default class MenuStructureBehaviour {
         );
         navLabelElements.forEach((element) => {
             element.addEventListener('click', (event) => {
+                // Ignore clicks from dropdown menu or trigger (let them bubble to menuNav delegation)
+                if (event.target.closest('.dropdown-menu') || event.target.closest('.page-settings-trigger')) return;
+                
+                // FIX: Close any open dropdowns before checking IDEvice or stopping propagation
+                // because this stopPropagation prevents the document click listener from closing them.
+                const openDropdowns = document.querySelectorAll('.dropdown-menu.show');
+                openDropdowns.forEach(menu => {
+                     const toggle = menu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+                     if (toggle && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                         const dd = bootstrap.Dropdown.getInstance(toggle);
+                         if (dd) dd.hide();
+                     }
+                });
+
                 event.stopPropagation();
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 this.selectNode(element.parentElement).then((nodeElement) => {
@@ -112,6 +127,9 @@ export default class MenuStructureBehaviour {
         );
         navLabelElements.forEach((element) => {
             element.addEventListener('dblclick', (event) => {
+                // Ignore double-clicks from dropdown trigger
+                if (event.target.closest('.page-settings-trigger')) return;
+
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 event.stopPropagation();
                 this.dbclickNode = true;
@@ -120,19 +138,146 @@ export default class MenuStructureBehaviour {
     }
 
     addEventNavElementOnMenuIconClic() {
-        var navLabelMenuElements = this.menuNav.querySelectorAll(
-            `.nav-element:not([nav-id="root"]) > .nav-element-text .node-menu-button`
+        // 1. Handle Trigger Button (Toggle Dropdown)
+        var navTriggers = this.menuNav.querySelectorAll(
+            `.nav-element .page-settings-trigger`
         );
-        navLabelMenuElements.forEach((element) => {
+        navTriggers.forEach((element) => {
+            // FIX: Handle Z-Index dynamically on show/hide to prevent overlap by subsequent elements
+            const container = element.closest('.dropdown');
+            if (container) {
+                container.addEventListener('show.bs.dropdown', () => {
+                    const navEl = container.closest('.nav-element');
+                    if (navEl) navEl.style.zIndex = '1005'; // Higher than siblings (next rows)
+                    
+                    // FIX: Also elevate this container (textElement) so it sits above its own 
+                    // 'children-container' (which follows it in DOM).
+                    container.style.position = 'relative'; 
+                    container.style.zIndex = '1006';
+                });
+                container.addEventListener('hide.bs.dropdown', () => {
+                    const navEl = container.closest('.nav-element');
+                    if (navEl) navEl.style.zIndex = '';
+
+                    container.style.zIndex = '';
+                    container.style.position = '';
+                });
+            }
+
+            element.addEventListener('click', (event) => {
+                // We rely on Bootstrap's data-bs-toggle="dropdown" to handle the toggle.
+                // We ONLY need to stop propagation so the row doesn't get selected.
+                event.stopPropagation();
+            });
+            // Prevent double click on trigger
+            // Prevent double click on trigger
+            element.addEventListener('dblclick', (event) => {
+                event.stopPropagation();
+            });
+        });
+
+        // 2. Handle Properties Menu Item (and any legacy buttons)
+        // Note: The new Properties item has class 'node-menu-button' and 'page-settings'
+        var navPropertiesItems = this.menuNav.querySelectorAll(
+            `.nav-element .node-menu-button`
+        );
+        navPropertiesItems.forEach((element) => {
+            // Avoid adding this handler to the trigger itself if it still has node-menu-button class (it does, but we can check)
+            if (element.classList.contains('page-settings-trigger')) return;
+
             element.addEventListener('click', (event) => {
                 event.stopPropagation();
                 let node = this.structureEngine.getNode(
                     element.getAttribute('data-menunavid')
                 );
-                node.showModalProperties();
-                this.mutationForModalProperties();
+                if (node) {
+                    node.showModalProperties();
+                    this.mutationForModalProperties();
+                }
+                // Close dropdown if open (Bootstrap usually does this, but good to ensure)
             });
         });
+
+        // 3. Delegation for other Context Menu Actions (Import, Clone, Delete)
+        // Using a single listener on the menuNav to catch dropdown items
+        if (!this._contextMenuDelegationAdded) {
+            this.menuNav.addEventListener('click', (e) => {
+                const target = e.target.closest('.dropdown-item');
+                if (!target) return;
+                
+                // Stop propagation immediately if we hit a dropdown item!
+                e.stopPropagation();
+
+                // Helper to close dropdown
+                const closeDropdown = () => {
+                    const dropdownBtn = target.closest('.dropdown').querySelector('[data-bs-toggle="dropdown"]');
+                    if (dropdownBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                        const dd = bootstrap.Dropdown.getInstance(dropdownBtn);
+                        if (dd) dd.hide();
+                    }
+                };
+
+                // Import Page
+                if (target.classList.contains('action_import_idevices')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        this.importTargetNodeId = nodeId; 
+                        const input = this.menuNav.querySelector('input.local-ode-file-upload-input');
+                        if (input) input.click();
+                    }
+                }
+                
+                // Clone Page
+                if (target.classList.contains('action_clone')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                         // User requested revert: Clone directly, then Rename.
+                         this.structureEngine.cloneNodeAndReload(nodeId).then(() => {
+                             this.showModalRenameNode();
+                         });
+                    }
+                }
+
+                // Delete Page
+                if (target.classList.contains('action_delete')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                        this.showModalRemoveNode(nodeId);
+                    }
+                }
+                
+                // Properties
+                if (target.classList.contains('page-settings')) {
+                     e.stopPropagation();
+                     closeDropdown();
+                     const nodeId = target.getAttribute('data-menunavid');
+                     let node = this.structureEngine.getNode(nodeId);
+                     if (node) {
+                        node.showModalProperties();
+                        this.mutationForModalProperties();
+                     }
+                }
+
+                // Add Subpage
+                if (target.classList.contains('page-add')) {
+                     e.stopPropagation();
+                     closeDropdown();
+                     if (eXeLearning.app.project.checkOpenIdevice()) return;
+                     const parentNodeId = target.getAttribute('data-parentnavid');
+                     this.showModalNewNode(parentNodeId);
+                }
+            });
+            this._contextMenuDelegationAdded = true;
+        }
     }
 
     /**
@@ -296,8 +441,13 @@ export default class MenuStructureBehaviour {
                 const selectedNav =
                     this.nodeSelected &&
                     this.nodeSelected.getAttribute('nav-id');
+                // Use importTargetNodeId if set (from context menu), otherwise fallback to selection
+                const targetNodeId = this.importTargetNodeId || selectedNav;
                 // If root or no selection, parentId is null (import at root level)
-                const parentId = (!selectedNav || selectedNav === 'root') ? null : selectedNav;
+                const parentId = (!targetNodeId || targetNodeId === 'root') ? null : targetNodeId;
+                
+                // Reset target
+                this.importTargetNodeId = null;
 
                 Logger.log('[MenuStructure] Importing via Yjs, parentId:', parentId);
 
@@ -365,7 +515,9 @@ export default class MenuStructureBehaviour {
             .querySelector('.button_nav_action.action_import_idevices')
             .addEventListener('click', async (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
+                // If main button clicked, use selected node
                 if (this.nodeSelected) {
+                    this.importTargetNodeId = this.nodeSelected.getAttribute('nav-id');
                     this.menuNav
                         .querySelector('input.local-ode-file-upload-input')
                         .click();
@@ -614,10 +766,20 @@ export default class MenuStructureBehaviour {
      * Show confirmation modal for removing a node
      * Checks for other users via Yjs Awareness and shows appropriate warning
      */
-    showModalRemoveNode() {
-        const nodeId = this.nodeSelected.getAttribute('nav-id');
-        const pageId = this.nodeSelected.getAttribute('page-id') || nodeId;
-        const nodeName = this.nodeSelected.querySelector('.node-text-span')?.textContent || _('this page');
+    showModalRemoveNode(explicitNodeId = null) {
+        let nodeId = explicitNodeId;
+        let targetElement = this.nodeSelected;
+
+        if (nodeId) {
+             targetElement = this.menuNav.querySelector(`.nav-element[nav-id="${nodeId}"]`);
+        } else if (targetElement) {
+             nodeId = targetElement.getAttribute('nav-id');
+        }
+
+        if (!nodeId || !targetElement) return;
+
+        const pageId = targetElement.getAttribute('page-id') || nodeId;
+        const nodeName = targetElement.querySelector('.node-text-span')?.textContent || _('this page');
 
         // Check for other users on this page or descendants using Yjs
         const affectedUsers = this._getAffectedUsersForDeletion(pageId);
@@ -705,9 +867,14 @@ export default class MenuStructureBehaviour {
             body: _('Do you want to clone the page?'),
             confirmButtonText: _('Yes'),
             confirmExec: () => {
-                this.structureEngine.cloneNodeAndReload(
-                    this.nodeSelected.getAttribute('nav-id')
-                );
+                this.structureEngine.cloneNodeAndReload(nodeId).then(() => {
+                    // After cloning, we might want to rename the NEW node, but cloneNodeAndReload 
+                    // usually selects the new node. We can call showModalRenameNode then.
+                    // Ideally we should catch the new ID from cloneNodeAndReload but it might not return it directly.
+                    // For now, let's just clone as per original logic. User asked for "confirm then clone".
+                    // The renaming issue described by user ("clones directly") is fixed by this modal.
+                    // If they want to rename AFTER, they can use the rename option on the new node.
+                });
             },
         });
     }
