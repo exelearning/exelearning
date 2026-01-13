@@ -291,7 +291,6 @@ var $exeDevice = {
                 );
                 return;
             }
-
             const rawPageId =
                 row.odePageId != null ? String(row.odePageId).trim() : '';
             const rawParentId =
@@ -348,15 +347,11 @@ var $exeDevice = {
             }
         });
 
-        // ✅ ORDENAMIENTO CORREGIDO
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
                 p.components.sort((a, b) => {
-                    // Ordenar primero por blockOrder
                     const orderDiff = (a.blockOrder || 0) - (b.blockOrder || 0);
                     if (orderDiff !== 0) return orderDiff;
-
-                    // Si tienen el mismo blockOrder, usar ode_components_sync_order
                     return (
                         (a.ode_components_sync_order || 0) -
                         (b.ode_components_sync_order || 0)
