@@ -107,10 +107,12 @@ describe('challenge iDevice', () => {
       expect(typeof id).toBe('number');
     });
 
-    it('returns different IDs on consecutive calls', () => {
+    it('returns different IDs on consecutive calls', async () => {
       const id1 = $exeDevice.getId();
+      // Wait 1ms to ensure different timestamp
+      await new Promise(resolve => setTimeout(resolve, 1));
       const id2 = $exeDevice.getId();
-      // Due to time-based + random component, should be different (unless called in same millisecond)
+      // Due to time-based component, should be different after waiting
       expect(id1).not.toBe(id2);
     });
 

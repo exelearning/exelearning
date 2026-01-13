@@ -114,6 +114,9 @@ function createMockTemplate(): PagesTemplateDeps {
         renderTemplate: (template: string, data: any) => {
             return `<html><body>Template: ${template}, Locale: ${data.locale || 'en'}</body></html>`;
         },
+        setRenderLocale: (_locale: string) => {
+            // No-op for default mock
+        },
     };
 }
 
@@ -1271,6 +1274,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>Workarea: ${template}</body></html>`;
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1316,6 +1320,66 @@ describe('Pages Routes', () => {
             expect(templateData.t).toBeDefined();
         });
 
+        it('should call setRenderLocale with correct locale before rendering template', async () => {
+            let setLocaleCalledWith: string | null = null;
+            let renderTemplateCalledAfterSetLocale = false;
+            let setLocaleCalled = false;
+
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, _data: any) => {
+                    // Verify setRenderLocale was called before renderTemplate
+                    renderTemplateCalledAfterSetLocale = setLocaleCalled;
+                    return '<html></html>';
+                },
+                setRenderLocale: (locale: string) => {
+                    setLocaleCalledWith = locale;
+                    setLocaleCalled = true;
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Set user locale preference to Spanish
+            mockPreferences.set('1:locale', { value: 'es' });
+
+            mockSessions.set('setlocale-test', {
+                sessionId: 'setlocale-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=setlocale-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Verify setRenderLocale was called with the correct locale
+            expect(setLocaleCalled).toBe(true);
+            expect(setLocaleCalledWith).toBe('es');
+            // Verify setRenderLocale was called BEFORE renderTemplate
+            expect(renderTemplateCalledAfterSetLocale).toBe(true);
+        });
+
         it('should include all translation keys', async () => {
             let templateData: any = null;
             const customTemplate: PagesTemplateDeps = {
@@ -1323,6 +1387,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1373,6 +1438,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1422,6 +1488,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1469,6 +1536,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Template rendering failed');
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1519,6 +1587,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>${template}</body></html>`;
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1785,6 +1854,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1833,6 +1903,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1888,6 +1959,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -1936,6 +2008,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Admin template failed');
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2055,6 +2128,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2096,6 +2170,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2223,6 +2298,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
+                setRenderLocale: () => {},
             };
 
             const customDeps = {
@@ -2285,6 +2361,7 @@ describe('Pages Routes', () => {
                         templateData = data;
                         return `<html><body>Template: ${template}</body></html>`;
                     },
+                    setRenderLocale: () => {},
                 };
 
                 const customDeps = {

@@ -42,7 +42,7 @@
                         </ul>
                     </li>
                     <li class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
                     {% if config.isOfflineInstallation %}
                         <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
@@ -64,7 +64,7 @@
                             </ul>
                         </li>
                         <li class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     {% endif %}
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
