@@ -2033,8 +2033,10 @@ export default class IdeviceNode {
             true
         );
         if (response.responseMessage == 'OK') {
-            // Update list of components to assign the idevices to their respective blocks
-            this.engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Update list of components to rebuild block-iDevice relationships
+            // Note: Empty block check is handled by the caller (dropIdeviceContentInContent)
+            // which has access to the previous block ID
+            this.engine.setParentsAndChildrenIdevicesBlocks();
         }
         // Error saving idevice
         else {
@@ -2079,8 +2081,10 @@ export default class IdeviceNode {
             }
 
             if (success) {
-                // Update list of components to assign the idevices to their respective blocks
-                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                // Update list of components to rebuild block-iDevice relationships
+                // Note: Empty block check is handled by the caller (dropIdeviceContentInContent)
+                // which has access to the previous block ID
+                this.engine.setParentsAndChildrenIdevicesBlocks();
                 return { responseMessage: 'OK' };
             }
 
@@ -2104,6 +2108,9 @@ export default class IdeviceNode {
         if (this.isYjsEnabled()) {
             return await this.moveToPageViaYjs(odeNavStructureSyncId);
         }
+
+        // Store previous block ID before changing (for empty block check)
+        const previousBlockId = this.blockId;
 
         // Required parameters
         let params = [
@@ -2139,8 +2146,8 @@ export default class IdeviceNode {
         if (response.responseMessage == 'OK') {
             // Remove idevice view
             this.remove();
-            // Update list of components to assign the idevices to their respective blocks
-            this.engine.setParentsAndChildrenIdevicesBlocks(true);
+            // Update list of components and check only the source block for emptiness
+            this.engine.setParentsAndChildrenIdevicesBlocks(previousBlockId);
         }
         // Error saving idevice in database
         else {
@@ -2180,14 +2187,16 @@ export default class IdeviceNode {
             }
 
             if (result) {
+                // Store previous block ID before changing (for empty block check)
+                const previousBlockId = this.blockId;
                 // Update internal references
                 this.odeNavStructureSyncId = targetPageId;
                 this.blockId = result.blockId;
 
                 // Remove idevice view
                 this.remove();
-                // Update list of components to assign the idevices to their respective blocks
-                this.engine.setParentsAndChildrenIdevicesBlocks(true);
+                // Update list of components and check only the source block for emptiness
+                this.engine.setParentsAndChildrenIdevicesBlocks(previousBlockId);
                 return { responseMessage: 'OK' };
             }
 
