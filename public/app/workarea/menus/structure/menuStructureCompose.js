@@ -449,9 +449,9 @@ export default class MenuStructureCompose {
 
         // Add context menu button (three-dots) for non-root nodes
         if (node.id !== 'root') {
-            // 1. Create the Icon (Horizontal Dots)
+            // 1. Create the Icon (Vertical Dots)
             let menuIcon = document.createElement('i');
-            menuIcon.classList.add('small-icon', 'dots-menu-horizontal-icon-green');
+            menuIcon.classList.add('small-icon', 'dots-menu-vertical-icon-green');
             
             // 2. Create the Trigger Button (modified existing button)
             let menuButton = document.createElement('button');
