@@ -207,6 +207,13 @@ describe('ModalFilemanager', () => {
           expect(modal.sidebarEmpty).not.toBeNull();
           expect(modal.sidebarContent).not.toBeNull();
       });
+
+      it('should find both copy URL buttons (footer dropdown and sidebar)', () => {
+          modal.initElements();
+          expect(modal.dropdownCopyUrlBtn).not.toBeNull();
+          expect(modal.copyUrlBtn).not.toBeNull();
+          expect(modal.dropdownCopyUrlBtn).not.toBe(modal.copyUrlBtn);
+      });
   });
 
   describe('initBehaviour', () => {

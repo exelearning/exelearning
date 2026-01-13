@@ -1333,4 +1333,161 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('removeIdevices', () => {
+        it('only removes iDevices that belong to this block', () => {
+            const mockIdevice1 = {
+                blockId: 'test-block-id',
+                remove: vi.fn(),
+            };
+            const mockIdevice2 = {
+                blockId: 'other-block-id', // Different block
+                remove: vi.fn(),
+            };
+            const mockIdevice3 = {
+                blockId: 'test-block-id',
+                remove: vi.fn(),
+            };
+
+            block.idevices = [mockIdevice1, mockIdevice2, mockIdevice3];
+            block.blockId = 'test-block-id';
+
+            // Mock clearIdevicesOfList to not modify the array
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdevices();
+
+            // Only iDevices with matching blockId should be removed
+            expect(mockIdevice1.remove).toHaveBeenCalledWith(false);
+            expect(mockIdevice2.remove).not.toHaveBeenCalled(); // Different block
+            expect(mockIdevice3.remove).toHaveBeenCalledWith(false);
+        });
+
+        it('calls clearIdevicesOfList before removing', () => {
+            block.idevices = [];
+            block.blockId = 'test-block-id';
+
+            const clearSpy = vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdevices();
+
+            expect(clearSpy).toHaveBeenCalled();
+        });
+
+        it('handles empty idevices array', () => {
+            block.idevices = [];
+            block.blockId = 'test-block-id';
+
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            // Should not throw
+            expect(() => block.removeIdevices()).not.toThrow();
+        });
+
+        it('does not remove iDevices from other blocks (prevents cascading deletion)', () => {
+            const mockIdeviceFromOtherBlock = {
+                blockId: 'completely-different-block',
+                remove: vi.fn(),
+            };
+
+            block.idevices = [mockIdeviceFromOtherBlock];
+            block.blockId = 'test-block-id';
+
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdevices();
+
+            // Should NOT be removed because it belongs to a different block
+            expect(mockIdeviceFromOtherBlock.remove).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('removeIdeviceOfListById', () => {
+        it('removes iDevice by id', () => {
+            const mockIdevice1 = { id: 'idevice-1', odeIdeviceId: 'ode-1' };
+            const mockIdevice2 = { id: 'idevice-2', odeIdeviceId: 'ode-2' };
+            const mockIdevice3 = { id: 'idevice-3', odeIdeviceId: 'ode-3' };
+
+            block.idevices = [mockIdevice1, mockIdevice2, mockIdevice3];
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdeviceOfListById('idevice-2');
+
+            expect(block.idevices).toHaveLength(2);
+            expect(block.idevices).not.toContain(mockIdevice2);
+            expect(block.idevices).toContain(mockIdevice1);
+            expect(block.idevices).toContain(mockIdevice3);
+        });
+
+        it('removes iDevice by odeIdeviceId', () => {
+            const mockIdevice1 = { id: 'idevice-1', odeIdeviceId: 'ode-1' };
+            const mockIdevice2 = { id: 'idevice-2', odeIdeviceId: 'ode-2' };
+
+            block.idevices = [mockIdevice1, mockIdevice2];
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdeviceOfListById('ode-2');
+
+            expect(block.idevices).toHaveLength(1);
+            expect(block.idevices).not.toContain(mockIdevice2);
+            expect(block.idevices).toContain(mockIdevice1);
+        });
+
+        it('calls clearIdevicesOfList before filtering', () => {
+            block.idevices = [];
+            const clearSpy = vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdeviceOfListById('any-id');
+
+            expect(clearSpy).toHaveBeenCalled();
+        });
+
+        it('handles non-existent id gracefully', () => {
+            const mockIdevice = { id: 'idevice-1', odeIdeviceId: 'ode-1' };
+            block.idevices = [mockIdevice];
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            block.removeIdeviceOfListById('non-existent-id');
+
+            // Original idevice should still be there
+            expect(block.idevices).toHaveLength(1);
+            expect(block.idevices).toContain(mockIdevice);
+        });
+
+        it('removes iDevice when either id or odeIdeviceId matches', () => {
+            const mockIdevice = { id: 'matching-id', odeIdeviceId: 'ode-id' };
+            block.idevices = [mockIdevice];
+            vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
+
+            // Remove by id
+            block.removeIdeviceOfListById('matching-id');
+
+            expect(block.idevices).toHaveLength(0);
+        });
+    });
+
+    describe('clearIdevicesOfList', () => {
+        it('removes iDevices not in engine components list', () => {
+            const mockIdevice1 = { hasBeenDeleted: false };
+            const mockIdevice2 = { hasBeenDeleted: false };
+
+            // Only mockIdevice1 is in engine.components.idevices
+            block.engine.components = { idevices: [mockIdevice1] };
+            block.idevices = [mockIdevice1, mockIdevice2];
+
+            block.clearIdevicesOfList();
+
+            expect(block.idevices).toHaveLength(1);
+            expect(block.idevices).toContain(mockIdevice1);
+            expect(mockIdevice2.hasBeenDeleted).toBe(true);
+        });
+
+        it('handles empty idevices array', () => {
+            block.engine.components = { idevices: [] };
+            block.idevices = [];
+
+            expect(() => block.clearIdevicesOfList()).not.toThrow();
+            expect(block.idevices).toHaveLength(0);
+        });
+    });
+
 });
