@@ -1425,9 +1425,30 @@ var $eXeInforme = {
             : [];
     },
 
+    // Handler for gamification-evaluation-saved event (stored as named function for removal)
+    _onGamificationSaved: function (ev) {
+        const d = ev && ev.detail ? ev.detail : null;
+        if (!d) return;
+        const targetEval = $eXeInforme?.options?.evaluationID;
+        const eventEval = d.evaluationID || d.evaluationId;
+        if (
+            !targetEval ||
+            !eventEval ||
+            String(targetEval) !== String(eventEval)
+        )
+            return;
+
+        const data = $eXeInforme.updateIdevicesData(d);
+        $eXeInforme.updatePages(data);
+    },
+
     addEvents: function () {
-        // Use document-level delegation to handle all instances
-        $(document).on('click', '.informeReboot', function (e) {
+        // Remove any previously registered handlers to avoid duplicates
+        $(document).off('click.informeReport');
+        window.removeEventListener('gamification-evaluation-saved', $eXeInforme._onGamificationSaved);
+        
+        // Use document-level delegation to handle all instances with namespace
+        $(document).on('click.informeReport', '.informeReboot', function (e) {
             e.preventDefault();
             const idx = $(this).data('instance') || 0;
             if (confirm($eXeInforme.options.msgs.msgDelete)) {
@@ -1443,13 +1464,13 @@ var $eXeInforme = {
             }
         });
 
-        $(document).on('click', '.informeCapture', function (e) {
+        $(document).on('click.informeReport', '.informeCapture', function (e) {
             e.preventDefault();
             const idx = $(this).data('instance') || 0;
             $eXeInforme.saveReport(idx);
         });
 
-        $(document).on('click', '.IFPP-IdeviceLink', function (e) {
+        $(document).on('click.informeReport', '.IFPP-IdeviceLink', function (e) {
             e.preventDefault();
             const url = $(this).data('page-id');
             const idevice = $(this).data('idevice-id');
@@ -1460,21 +1481,8 @@ var $eXeInforme = {
             } catch (_) {}
         });
 
-        window.addEventListener('gamification-evaluation-saved', function (ev) {
-            const d = ev && ev.detail ? ev.detail : null;
-            if (!d) return;
-            const targetEval = $eXeInforme?.options?.evaluationID;
-            const eventEval = d.evaluationID || d.evaluationId;
-            if (
-                !targetEval ||
-                !eventEval ||
-                String(targetEval) !== String(eventEval)
-            )
-                return;
-
-            const data = $eXeInforme.updateIdevicesData(d);
-            $eXeInforme.updatePages(data);
-        });
+        // Add window event listener
+        window.addEventListener('gamification-evaluation-saved', $eXeInforme._onGamificationSaved);
     },
     updateIdevicesData: function (detail) {
         try {
