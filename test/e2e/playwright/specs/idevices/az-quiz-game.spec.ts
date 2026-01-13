@@ -443,6 +443,14 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
+            // Capture console messages for debugging SW issues
+            const consoleLogs: string[] = [];
+            page.on('console', msg => {
+                if (msg.text().includes('[Preview SW]') || msg.text().includes('Service Worker')) {
+                    consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
+                }
+            });
+
             const projectUuid = await createProject(page, 'AZ Quiz Preview Test');
             await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
@@ -474,8 +482,15 @@ test.describe('A-Z Quiz Game iDevice', () => {
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
 
-            // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            // Wait for page to load with error logging
+            try {
+                await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            } catch (error) {
+                console.log('--- SW Console Logs ---');
+                consoleLogs.forEach(log => console.log(log));
+                console.log('--- End SW Console Logs ---');
+                throw error;
+            }
 
             // Verify rosco elements are present
             await verifyRoscoInPreview(iframe);

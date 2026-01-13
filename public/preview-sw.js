@@ -434,6 +434,18 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                 }
                 break;
 
+            case 'VERIFY_READY':
+                // Explicit verification that content is ready to be served
+                // This handles Firefox's stricter event timing between messages and fetch
+                if (event.source) {
+                    event.source.postMessage({
+                        type: 'READY_VERIFIED',
+                        ready: contentReady && contentFiles.size > 0,
+                        fileCount: contentFiles.size,
+                    });
+                }
+                break;
+
             case 'GET_STATUS': {
                 // Return the current status
                 const statusResponse = {
@@ -454,10 +466,14 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
             }
 
             case 'CLAIM_CLIENTS':
-                // Force claim all clients
-                self.clients.claim();
-                // eslint-disable-next-line no-console
-                console.log('[Preview SW] Claimed all clients');
+                // Force claim all clients and notify when done
+                self.clients.claim().then(() => {
+                    // eslint-disable-next-line no-console
+                    console.log('[Preview SW] Claimed all clients');
+                    if (event.source) {
+                        event.source.postMessage({ type: 'CLIENTS_CLAIMED' });
+                    }
+                });
                 break;
 
             case 'SKIP_WAITING':

@@ -91,56 +91,142 @@ export default class App {
 
     /**
      * Register the preview Service Worker
-     * This enables unified preview/export rendering using the eXeViewer approach
+     * @returns {Promise<ServiceWorkerRegistration|null>} Registration promise
      */
     registerPreviewServiceWorker() {
         if (!('serviceWorker' in navigator)) {
-            console.warn('[Preview SW] Service Workers not supported');
-            return;
+            this._previewSwRegistrationPromise = Promise.resolve(null);
+            return this._previewSwRegistrationPromise;
         }
 
-        // Compose the SW path with base path
-        const basePath = this.getBasePath();
-        const swPath = `${basePath}/app/preview-sw.js`;
+        // Check secure context (required for SW)
+        const isSecureContext =
+            window.isSecureContext ||
+            location.protocol === 'https:' ||
+            location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1';
 
-        navigator.serviceWorker
-            .register(swPath, { scope: `${basePath}/` })
-            .then((registration) => {
-                console.log(
-                    '[Preview SW] Registered successfully:',
-                    registration.scope
-                );
+        if (!isSecureContext) {
+            this._previewSwRegistrationPromise = Promise.resolve(null);
+            return this._previewSwRegistrationPromise;
+        }
 
-                // Store registration for later use
+        // Derive paths from pathname (eXeViewer pattern)
+        const pathname = window.location.pathname;
+        const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+        const swPath = basePath + 'preview-sw.js';
+
+        this._previewSwRegistrationPromise = (async () => {
+            try {
+                // Check for existing registration
+                let registration = await navigator.serviceWorker.getRegistration(basePath);
+
+                if (registration?.active) {
+                    await registration.update();
+                    this._previewSwRegistration = registration;
+                    await this._tryClaimClients(registration);
+                    return registration;
+                }
+
+                // Register new Service Worker
+                registration = await navigator.serviceWorker.register(swPath, { scope: basePath });
                 this._previewSwRegistration = registration;
 
-                // Handle updates
+                // Wait for activation
+                await this._waitForActivation(registration);
+                await this._tryClaimClients(registration);
+
+                // Handle future updates
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     if (newWorker) {
                         newWorker.addEventListener('statechange', () => {
-                            if (
-                                newWorker.state === 'installed' &&
-                                navigator.serviceWorker.controller
-                            ) {
-                                console.log(
-                                    '[Preview SW] New version available'
-                                );
-                                // Skip waiting and activate the new worker
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
                             }
                         });
                     }
                 });
 
-                // If there's already an active SW, claim this client
-                if (registration.active) {
-                    registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
-                }
-            })
-            .catch((error) => {
+                return registration;
+            } catch (error) {
                 console.error('[Preview SW] Registration failed:', error);
-            });
+                return null;
+            }
+        })();
+
+        return this._previewSwRegistrationPromise;
+    }
+
+    /**
+     * Wait for SW to activate
+     * @param {ServiceWorkerRegistration} registration
+     * @private
+     */
+    async _waitForActivation(registration) {
+        const sw = registration.installing || registration.waiting || registration.active;
+        if (!sw || sw.state === 'activated') return;
+
+        await Promise.race([
+            new Promise((resolve) => {
+                const onStateChange = () => {
+                    if (sw.state === 'activated') {
+                        sw.removeEventListener('statechange', onStateChange);
+                        resolve();
+                    }
+                };
+                sw.addEventListener('statechange', onStateChange);
+                if (sw.state === 'activated') {
+                    sw.removeEventListener('statechange', onStateChange);
+                    resolve();
+                }
+            }),
+            new Promise((resolve) => setTimeout(resolve, 5000)),
+        ]);
+    }
+
+    /**
+     * Try to claim clients (non-fatal if fails)
+     * @param {ServiceWorkerRegistration} registration
+     * @private
+     */
+    async _tryClaimClients(registration) {
+        if (navigator.serviceWorker.controller || !registration.active) return;
+
+        registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
+        try {
+            await this._waitForController(5000);
+        } catch {
+            // Non-fatal: iframe will still work via SW scope
+        }
+    }
+
+    /**
+     * Wait for Service Worker to become the controller
+     * @param {number} timeout - Maximum time to wait in ms
+     * @returns {Promise<ServiceWorker>} The controller
+     * @private
+     */
+    _waitForController(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            if (navigator.serviceWorker.controller) {
+                resolve(navigator.serviceWorker.controller);
+                return;
+            }
+
+            const timeoutId = setTimeout(() => {
+                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+                reject(new Error('Controller timeout'));
+            }, timeout);
+
+            const onControllerChange = () => {
+                clearTimeout(timeoutId);
+                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+                resolve(navigator.serviceWorker.controller);
+            };
+
+            navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+        });
     }
 
     /**
@@ -152,11 +238,13 @@ export default class App {
     }
 
     /**
-     * Wait for the preview Service Worker to be ready and controlling this page
-     * @param {number} timeout - Maximum time to wait in ms (default 5000)
+     * Wait for the preview Service Worker to be ready
+     * Returns the active SW - doesn't require it to be controlling the parent page
+     * The preview iframe will be controlled by the SW based on its URL
+     * @param {number} timeout - Maximum time to wait in ms (default 10000)
      * @returns {Promise<ServiceWorker>} The active service worker
      */
-    async waitForPreviewServiceWorker(timeout = 5000) {
+    async waitForPreviewServiceWorker(timeout = 10000) {
         if (!('serviceWorker' in navigator)) {
             throw new Error('Service Workers not supported');
         }
@@ -166,49 +254,42 @@ export default class App {
             return navigator.serviceWorker.controller;
         }
 
-        // Wait for SW to be ready
-        const registration = await Promise.race([
-            navigator.serviceWorker.ready,
-            new Promise((_, reject) =>
-                setTimeout(
-                    () => reject(new Error('Service Worker registration timeout')),
-                    timeout
-                )
-            ),
-        ]);
+        // Wait for our registration to complete (it handles activation)
+        if (this._previewSwRegistrationPromise) {
+            const registration = await Promise.race([
+                this._previewSwRegistrationPromise,
+                new Promise((_, reject) =>
+                    setTimeout(
+                        () =>
+                            reject(
+                                new Error('Service Worker registration timeout')
+                            ),
+                        timeout
+                    )
+                ),
+            ]);
 
-        // If we have an active worker but no controller, request it to claim this client
-        if (registration.active && !navigator.serviceWorker.controller) {
-            registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
+            if (!registration) {
+                throw new Error('Service Worker registration failed');
+            }
 
-            // Wait for the controller to be set
-            await new Promise((resolve, reject) => {
-                const timeoutId = setTimeout(() => {
-                    reject(new Error('Service Worker claim timeout'));
-                }, 2000);
-
-                navigator.serviceWorker.addEventListener(
-                    'controllerchange',
-                    () => {
-                        clearTimeout(timeoutId);
-                        resolve();
-                    },
-                    { once: true }
-                );
-
-                // Also resolve immediately if controller is now set
-                if (navigator.serviceWorker.controller) {
-                    clearTimeout(timeoutId);
-                    resolve();
-                }
-            });
+            // Return the active SW from registration (doesn't need to be controlling parent page)
+            if (registration.active) {
+                return registration.active;
+            }
         }
 
-        if (!navigator.serviceWorker.controller) {
-            throw new Error('Service Worker not controlling this page');
+        // Fallback: check for controller one more time
+        if (navigator.serviceWorker.controller) {
+            return navigator.serviceWorker.controller;
         }
 
-        return navigator.serviceWorker.controller;
+        // Check if we have a stored registration with active SW
+        if (this._previewSwRegistration?.active) {
+            return this._previewSwRegistration.active;
+        }
+
+        throw new Error('Service Worker not available');
     }
 
     /**
@@ -227,11 +308,22 @@ export default class App {
             // Set up message listener for response
             const messageHandler = (event) => {
                 if (event.data?.type === 'CONTENT_READY') {
+                    // Content received by SW, now verify it can actually serve requests
+                    // This extra verification step handles Firefox's stricter event timing
+                    // between message events and fetch events in Service Workers
+                    sw.postMessage({ type: 'VERIFY_READY' });
+                } else if (event.data?.type === 'READY_VERIFIED') {
                     navigator.serviceWorker.removeEventListener(
                         'message',
                         messageHandler
                     );
-                    resolve({ fileCount: event.data.fileCount });
+                    if (event.data.ready) {
+                        resolve({ fileCount: event.data.fileCount });
+                    } else {
+                        reject(
+                            new Error('SW content not ready after verification')
+                        );
+                    }
                 }
             };
             navigator.serviceWorker.addEventListener('message', messageHandler);

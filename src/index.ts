@@ -167,10 +167,9 @@ const app = new Elysia()
                             'Cache-Control': 'public, max-age=3600',
                         };
 
-                        // Add Service-Worker-Allowed header for preview-sw.js
-                        // This allows the SW to have a broader scope than its location
-                        if (pathname.endsWith('/preview-sw.js')) {
-                            headers['Service-Worker-Allowed'] = '/';
+                        // Special handling for preview-sw.js - no caching and correct scope
+                        if (pathname === '/preview-sw.js') {
+                            headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
                         }
 
                         return new Response(content, { headers });
@@ -275,10 +274,16 @@ const app = new Elysia()
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+                // Special handling for preview-sw.js - needs no-cache for SW updates
+                const cacheControl =
+                    versionedMatch[1] === 'preview-sw.js'
+                        ? 'no-cache, no-store, must-revalidate'
+                        : 'public, max-age=31536000, immutable';
+
                 return new Response(content, {
                     headers: {
                         'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000, immutable',
+                        'Cache-Control': cacheControl,
                     },
                 });
             }
@@ -392,19 +397,20 @@ const app = new Elysia()
         set.status = 404;
         return 'Not Found';
     })
-    // Serve preview-sw.js with Service-Worker-Allowed header
-    // This allows the SW to register with scope '/' while being located at '/app/'
-    .get('/app/preview-sw.js', ({ set }) => {
-        const swPath = path.join(process.cwd(), 'public', 'app', 'preview-sw.js');
-        if (fs.existsSync(swPath)) {
-            const content = fs.readFileSync(swPath);
-            set.headers['Content-Type'] = 'application/javascript; charset=utf-8';
-            set.headers['Service-Worker-Allowed'] = '/';
-            set.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
-            return new Response(content);
+    // Serve preview-sw.js with Vary: Accept-Encoding (Firefox rejects Vary: *)
+    .get('/preview-sw.js', () => {
+        const swPath = path.join(process.cwd(), 'public', 'preview-sw.js');
+        if (!fs.existsSync(swPath)) {
+            return new Response('Not Found', { status: 404 });
         }
-        set.status = 404;
-        return 'Not Found';
+        return new Response(fs.readFileSync(swPath), {
+            headers: {
+                'Content-Type': 'application/javascript; charset=utf-8',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Vary': 'Accept-Encoding',
+                'Access-Control-Allow-Origin': '*',
+            },
+        });
     })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(

@@ -1240,6 +1240,7 @@ describe('App utility methods', () => {
           controller: mockController,
           ready: Promise.resolve(mockRegistration),
           register: vi.fn().mockResolvedValue(mockRegistration),
+          getRegistration: vi.fn().mockResolvedValue(null), // No existing registration by default
           addEventListener: vi.fn(),
           removeEventListener: vi.fn(),
         },
@@ -1275,23 +1276,44 @@ describe('App utility methods', () => {
         });
       });
 
-      it('registers service worker with correct path and scope', async () => {
+      it('checks for existing registration first (eXeViewer pattern)', async () => {
         appInstance.eXeLearning.config.basePath = '/exelearning';
-        const registerSpy = navigator.serviceWorker.register;
+        const getRegSpy = navigator.serviceWorker.getRegistration;
 
         appInstance.registerPreviewServiceWorker();
-
-        expect(registerSpy).toHaveBeenCalledWith('/exelearning/app/preview-sw.js', { scope: '/exelearning/' });
-      });
-
-      it('stores registration and sends CLAIM_CLIENTS when active', async () => {
-        await appInstance.registerPreviewServiceWorker();
-
-        // Wait for the promise to resolve
         await new Promise(resolve => setTimeout(resolve, 10));
 
-        expect(appInstance._previewSwRegistration).toBeDefined();
-        expect(mockController.postMessage).toHaveBeenCalledWith({ type: 'CLAIM_CLIENTS' });
+        expect(getRegSpy).toHaveBeenCalledWith('/exelearning/');
+      });
+
+      it('registers new SW when no existing registration', async () => {
+        appInstance.eXeLearning.config.basePath = '/exelearning';
+        const registerSpy = navigator.serviceWorker.register;
+        // Mock active worker with already activated state
+        mockRegistration.active = { ...mockController, state: 'activated' };
+        mockRegistration.installing = null;
+        mockRegistration.waiting = null;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(registerSpy).toHaveBeenCalledWith('/exelearning/preview-sw.js', { scope: '/exelearning/' });
+      });
+
+      it('reuses existing registration if SW is already active', async () => {
+        // Simulate existing registration found with update method
+        const existingReg = {
+          ...mockRegistration,
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should NOT call register since existing registration is available
+        expect(registerSpy).not.toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration).toBe(existingReg);
+        expect(existingReg.update).toHaveBeenCalled();
       });
 
       it('handles registration failure', async () => {
@@ -1299,10 +1321,38 @@ describe('App utility methods', () => {
         navigator.serviceWorker.register = vi.fn().mockRejectedValue(error);
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-        appInstance.registerPreviewServiceWorker();
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await appInstance.registerPreviewServiceWorker();
 
         expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Registration failed:', error);
+      });
+
+      it('waits for SW activation before returning (eXeViewer pattern)', async () => {
+        let stateChangeCallback;
+        const mockInstallingSW = {
+          state: 'installing',
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'statechange') {
+              stateChangeCallback = cb;
+            }
+          }),
+          removeEventListener: vi.fn(),
+        };
+        mockRegistration.installing = mockInstallingSW;
+        mockRegistration.waiting = null;
+        mockRegistration.active = null;
+
+        const promise = appInstance.registerPreviewServiceWorker();
+
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Simulate SW becoming activated
+        mockInstallingSW.state = 'activated';
+        mockRegistration.active = mockController;
+        stateChangeCallback({ target: { state: 'activated' } });
+
+        await promise;
+
+        expect(stateChangeCallback).toBeDefined();
       });
 
       it('handles updatefound event with new worker installation', async () => {
@@ -1312,20 +1362,28 @@ describe('App utility methods', () => {
           addEventListener: vi.fn(),
           postMessage: vi.fn(),
         };
-        mockRegistration.addEventListener = vi.fn((event, cb) => {
-          if (event === 'updatefound') {
-            updateCallback = cb;
-          }
-        });
-        mockRegistration.installing = mockNewWorker;
 
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(mockRegistration);
+        // Mock registration with active SW already (so activation wait is skipped)
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated' },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              updateCallback = cb;
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
 
-        appInstance.registerPreviewServiceWorker();
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await appInstance.registerPreviewServiceWorker();
+
+        // Now the updatefound listener should have been added
+        expect(updateCallback).toBeDefined();
 
         // Simulate updatefound
-        expect(updateCallback).toBeDefined();
+        regWithActive.installing = mockNewWorker;
         updateCallback();
 
         // Verify statechange listener was added
@@ -1344,20 +1402,26 @@ describe('App utility methods', () => {
           }),
           postMessage: vi.fn(),
         };
-        mockRegistration.addEventListener = vi.fn((event, cb) => {
-          if (event === 'updatefound') {
-            updateCallback = cb;
-          }
-        });
-        mockRegistration.installing = mockNewWorker;
 
-        navigator.serviceWorker.register = vi.fn().mockResolvedValue(mockRegistration);
+        // Mock registration with active SW already
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated' },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              updateCallback = cb;
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
         const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-        appInstance.registerPreviewServiceWorker();
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await appInstance.registerPreviewServiceWorker();
 
         // Trigger updatefound
+        regWithActive.installing = mockNewWorker;
         updateCallback();
 
         // Trigger statechange
@@ -1413,52 +1477,46 @@ describe('App utility methods', () => {
         expect(result).toBe(mockController);
       });
 
-      it('waits for SW ready when no controller', async () => {
+      it('waits for registration promise when no controller', async () => {
         navigator.serviceWorker.controller = null;
-        navigator.serviceWorker.addEventListener = vi.fn((event, cb) => {
-          if (event === 'controllerchange') {
-            // Simulate controller becoming available
-            setTimeout(() => {
-              navigator.serviceWorker.controller = mockController;
-              cb();
-            }, 10);
-          }
+
+        // Set up a registration promise with active SW (controller not required)
+        const activeSW = { ...mockController, state: 'activated' };
+        mockRegistration.active = activeSW;
+        appInstance._previewSwRegistrationPromise = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(mockRegistration);
+          }, 10);
         });
 
         const result = await appInstance.waitForPreviewServiceWorker();
-        expect(mockController.postMessage).toHaveBeenCalledWith({ type: 'CLAIM_CLIENTS' });
+        // Now returns the active SW from registration, not the controller
+        expect(result).toBe(activeSW);
       });
 
-      it('throws on timeout when SW not ready', async () => {
+      it('throws on timeout when registration promise never resolves', async () => {
         navigator.serviceWorker.controller = null;
-        navigator.serviceWorker.ready = new Promise(() => {}); // Never resolves
+        appInstance._previewSwRegistrationPromise = new Promise(() => {}); // Never resolves
 
         await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration timeout');
       });
 
-      it('throws when controller never set after claim', async () => {
+      it('throws when registration returns null', async () => {
         navigator.serviceWorker.controller = null;
-        navigator.serviceWorker.addEventListener = vi.fn(); // No callback execution
-        mockRegistration.active = mockController;
-        navigator.serviceWorker.ready = Promise.resolve(mockRegistration);
+        appInstance._previewSwRegistrationPromise = Promise.resolve(null); // Registration failed
 
-        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker claim timeout');
+        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration failed');
       });
 
-      it('resolves immediately if controller set during claim wait', async () => {
+      it('returns active SW even when controller not set after registration', async () => {
         navigator.serviceWorker.controller = null;
-        navigator.serviceWorker.addEventListener = vi.fn((event, cb, opts) => {
-          // Simulate immediate controller availability
-          if (event === 'controllerchange') {
-            navigator.serviceWorker.controller = mockController;
-          }
-        });
-        mockRegistration.active = mockController;
-        navigator.serviceWorker.ready = Promise.resolve(mockRegistration);
+        // Registration has an active SW
+        mockRegistration.active = { postMessage: vi.fn(), state: 'activated' };
+        appInstance._previewSwRegistrationPromise = Promise.resolve(mockRegistration);
 
-        // This tests the "Also resolve immediately if controller is now set" path
-        const result = await appInstance.waitForPreviewServiceWorker(5000);
-        expect(result).toBe(mockController);
+        // Now returns the active SW instead of throwing
+        const result = await appInstance.waitForPreviewServiceWorker(100);
+        expect(result).toBe(mockRegistration.active);
       });
     });
 
@@ -1469,21 +1527,26 @@ describe('App utility methods', () => {
         await expect(appInstance.sendContentToPreviewSW({}, {})).rejects.toThrow('Preview Service Worker not available');
       });
 
-      it('sends content to SW and waits for CONTENT_READY', async () => {
+      it('sends content to SW and waits for READY_VERIFIED', async () => {
         const files = {
           'index.html': new ArrayBuffer(10),
           'style.css': 'body {}',
         };
         const options = { openExternalLinksInNewWindow: true };
 
-        // Simulate CONTENT_READY response
+        // Simulate CONTENT_READY then READY_VERIFIED response (two-phase handshake)
         let messageHandler;
         navigator.serviceWorker.addEventListener = vi.fn((event, handler) => {
           if (event === 'message') {
             messageHandler = handler;
-            // Simulate response after a short delay
+            // First: simulate CONTENT_READY response
             setTimeout(() => {
               handler({ data: { type: 'CONTENT_READY', fileCount: 2 } });
+              // After CONTENT_READY, the code sends VERIFY_READY
+              // Then we respond with READY_VERIFIED
+              setTimeout(() => {
+                handler({ data: { type: 'READY_VERIFIED', ready: true, fileCount: 2 } });
+              }, 5);
             }, 10);
           }
         });
