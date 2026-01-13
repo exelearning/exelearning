@@ -591,11 +591,63 @@ class LegacyXmlParser {
   }
 
   /**
+   * Check if a page is a descendant of another page
+   *
+   * @param {Object} page - The page to check
+   * @param {string} ancestorId - The potential ancestor page ID
+   * @param {Map} pageIdMap - Map of page ID to page info
+   * @returns {boolean} True if page is a descendant of ancestor
+   */
+  _isDescendantOf(page, ancestorId, pageIdMap) {
+    let currentParentId = page.parent_id;
+    while (currentParentId) {
+      if (currentParentId === ancestorId) {
+        return true;
+      }
+      const parent = pageIdMap.get(currentParentId);
+      if (!parent) break;
+      currentParentId = parent.parent_id;
+    }
+    return false;
+  }
+
+  /**
+   * Build path from a promoted parent to a descendant page
+   *
+   * @param {Object} page - The descendant page
+   * @param {string} promotedParentId - The ID of the promoted parent
+   * @param {Map} pageIdMap - Map of page ID to page info
+   * @returns {string} Path from promoted parent to page (inclusive of both)
+   */
+  _buildPathFromPromotedParent(page, promotedParentId, pageIdMap) {
+    const pathParts = [page.name];
+    let currentParentId = page.parent_id;
+
+    // Walk up until we reach the promoted parent (inclusive)
+    while (currentParentId) {
+      const parent = pageIdMap.get(currentParentId);
+      if (!parent) break;
+      pathParts.unshift(parent.name);
+      if (currentParentId === promotedParentId) {
+        break;
+      }
+      currentParentId = parent.parent_id;
+    }
+
+    return pathParts.join(':');
+  }
+
+  /**
    * Build a map of full page paths to page IDs
    *
    * Example: "Root:Chapter1:Page1" -> "page-abc123"
    *
    * Based on Symfony OdeXmlUtil.php changeOldExeNodeLink()
+   *
+   * This method handles the LEGACY V2.X ROOT NODE FLATTENING CONVENTION:
+   * When direct children of root are promoted to top-level (parent_id = null),
+   * we also add paths that include the root title prefix, since links in the
+   * original content still reference paths with the root name.
    *
    * @param {Array} pages - Array of page objects
    * @returns {Map} Map of full path -> page ID
@@ -613,7 +665,7 @@ class LegacyXmlParser {
       });
     }
 
-    // Second pass: build full paths
+    // Second pass: build full paths (based on current parent_id structure)
     for (const page of pages) {
       const pathParts = [page.title];
       let currentParentId = page.parent_id;
@@ -636,6 +688,45 @@ class LegacyXmlParser {
         }
       } catch (e) {
         // Ignore decoding errors
+      }
+    }
+
+    // Third pass: Add root-prefixed paths for promoted children
+    // This handles the case where links in content still reference paths
+    // including the root name, but the children have been promoted to top-level
+    const rootPage = pages.find(p => p.parent_id === null && p.position === 0);
+    if (rootPage) {
+      const rootTitle = rootPage.title;
+
+      // Find promoted children (top-level pages that aren't the root)
+      const promotedChildren = pages.filter(p =>
+        p.parent_id === null && p.id !== rootPage.id
+      );
+
+      for (const promoted of promotedChildren) {
+        // Add path: RootTitle:PromotedChildTitle -> promoted.id
+        const pathWithRoot = `${rootTitle}:${promoted.title}`;
+        if (!fullPathMap.has(pathWithRoot)) {
+          fullPathMap.set(pathWithRoot, promoted.id);
+          Logger.log(`[LegacyXmlParser] Added root-prefixed path: ${pathWithRoot}`);
+        }
+
+        // Add paths for all descendants of this promoted child
+        // Format: RootTitle:PromotedChildTitle:Grandchild:... -> descendant.id
+        for (const page of pages) {
+          if (page.id !== promoted.id && this._isDescendantOf(page, promoted.id, pageIdMap)) {
+            const pathFromPromoted = this._buildPathFromPromotedParent(
+              pageIdMap.get(page.id),
+              promoted.id,
+              pageIdMap
+            );
+            const fullPathWithRoot = `${rootTitle}:${pathFromPromoted}`;
+            if (!fullPathMap.has(fullPathWithRoot)) {
+              fullPathMap.set(fullPathWithRoot, page.id);
+              Logger.log(`[LegacyXmlParser] Added root-prefixed path: ${fullPathWithRoot}`);
+            }
+          }
+        }
       }
     }
 
