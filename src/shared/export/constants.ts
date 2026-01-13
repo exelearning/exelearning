@@ -620,14 +620,8 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     // Interactive video variants
     'video-interactivo': 'interactive-video',
 
-    // Collaborative editing
-    'edicion-colaborativa': 'collaborative-editing',
-
     // Dragdrop variants
     'arrastrar-soltar': 'dragdrop',
-
-    // Attached files variants
-    'archivos-adjuntos': 'attached-files',
 
     // Select media files variants
     'seleccionar-archivos': 'select-media-files',

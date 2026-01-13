@@ -193,7 +193,6 @@
 
             <!-- External content iDevices -->
             <xs:enumeration value="external-website"/>
-            <xs:enumeration value="attached-files"/>
             <xs:enumeration value="casestudy"/>
 
             <!-- Legacy iDevices -->
