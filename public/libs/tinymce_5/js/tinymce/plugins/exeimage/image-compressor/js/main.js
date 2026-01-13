@@ -122,6 +122,7 @@ window.addEventListener('DOMContentLoaded', function () {
 			// var name = "exelearning.png";
 			// var url = "images/"+name;
 			var originalSrc = top.imgCompressor.originalSrc;
+			var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 
 			// Detect URL type for blob/asset handling
 			var isBlob = originalSrc.startsWith('blob:');
@@ -131,6 +132,33 @@ window.addEventListener('DOMContentLoaded', function () {
 			// Store URL type info for save handler
 			top.imgCompressor.isBlob = isBlob;
 			top.imgCompressor.isAsset = isAsset;
+			top.imgCompressor.assetId = null;
+
+			if (isAsset) {
+				if (assetManager && typeof assetManager.extractAssetId === 'function') {
+					top.imgCompressor.assetId = assetManager.extractAssetId(originalSrc);
+				} else {
+					var rawAssetId = originalSrc.replace('asset://', '').split('/')[0];
+					var dotIndex = rawAssetId.indexOf('.');
+					if (dotIndex > 0) rawAssetId = rawAssetId.substring(0, dotIndex);
+					top.imgCompressor.assetId = rawAssetId;
+				}
+			}
+
+			if (!top.imgCompressor.assetId && isBlob && assetManager && assetManager.reverseBlobCache) {
+				var cachedAssetId = assetManager.reverseBlobCache.get(originalSrc);
+				if (cachedAssetId) {
+					top.imgCompressor.assetId = cachedAssetId;
+				}
+			}
+
+			if (!top.imgCompressor.assetId) {
+				var selectedImg = top.tinymce?.activeEditor?.selection?.getNode?.();
+				var dataAssetId = selectedImg && selectedImg.getAttribute ? selectedImg.getAttribute('data-asset-id') : null;
+				if (dataAssetId) {
+					top.imgCompressor.assetId = dataAssetId;
+				}
+			}
 
 			var ext = originalSrc.split('.').pop();
 			ext = ext.toLowerCase();
@@ -167,10 +195,9 @@ window.addEventListener('DOMContentLoaded', function () {
 
 			// Handle asset:// URLs (from Yjs AssetManager)
 			if (isAsset) {
-				var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 				if (assetManager) {
 					// Extract assetId from asset://uuid/filename
-					var assetId = originalSrc.replace('asset://', '').split('/')[0];
+					var assetId = top.imgCompressor.assetId || originalSrc.replace('asset://', '').split('/')[0];
 					assetManager.getAsset(assetId).then(function(asset) {
 						if (asset && asset.blob) {
 							var blob = asset.blob;
@@ -310,15 +337,27 @@ var eXeImageCompressor = {
 		if (ext == "jpg" || ext == "jpeg" || url.indexOf("data:image/jpeg") == 0) jQuery("#inputQuality,label[for='inputQuality']").show();
 		else jQuery("#inputQuality,label[for='inputQuality']").hide();
 	},
-	init: function () {
-		this.i18n();
-		this.setMaxSize();
-		this.imgMaxSize = "";
-		if(parseInt(parent.document.querySelector("#width-dimension").value) >= parseInt(parent.document.querySelector("#height-dimension").value)){
-			this.imgMaxSize = document.querySelector("#inputSize").value = parent.document.querySelector("#width-dimension").value;
-		}else{
-			this.imgMaxSize = document.querySelector("#inputSize").value = parent.document.querySelector("#height-dimension").value;
-		}
+		init: function () {
+			this.i18n();
+			this.setMaxSize();
+			this.imgMaxSize = "";
+			var parentDoc = parent && parent.document ? parent.document : document;
+			var widthInput = parentDoc.querySelector("#width-dimension");
+			var heightInput = parentDoc.querySelector("#height-dimension");
+			var widthValue = widthInput ? parseInt(widthInput.value, 10) : NaN;
+			var heightValue = heightInput ? parseInt(heightInput.value, 10) : NaN;
+			var inputSizeEl = document.querySelector("#inputSize");
+			var maxValue = Math.max(isNaN(widthValue) ? 0 : widthValue, isNaN(heightValue) ? 0 : heightValue);
+
+			if (maxValue > 0) {
+				this.imgMaxSize = inputSizeEl.value = maxValue;
+			} else {
+				var fallbackValue = parseInt(inputSizeEl.value, 10);
+				if (isNaN(fallbackValue) || fallbackValue <= 0) {
+					fallbackValue = this.maxSize || this.sizeLimit || 1200;
+				}
+				this.imgMaxSize = inputSizeEl.value = fallbackValue;
+			}
 
 		if(this.imgMaxSize > 1200){
 			this.imgMaxSize = document.querySelector("#inputSize").value = 1200;
@@ -422,6 +461,68 @@ var eXeImageCompressor = {
 
 								// If blob/asset image and AssetManager is available, save to IndexedDB
 								if ((isBlob || isAsset) && assetManager) {
+									function normalizeFilenameForMime(filename, mimeType) {
+										if (!filename) return filename;
+										var extMap = {
+											'image/jpeg': 'jpg',
+											'image/png': 'png',
+											'image/gif': 'gif',
+											'image/webp': 'webp',
+										};
+										var desiredExt = extMap[mimeType];
+										if (!desiredExt) return filename;
+										if (filename.toLowerCase().endsWith('.' + desiredExt)) return filename;
+										if (filename.indexOf('.') === -1) return filename + '.' + desiredExt;
+										return filename.replace(/\.[^.]+$/, '.' + desiredExt);
+									}
+
+									function replaceExistingAsset(assetId, blob, mimeType, fallbackFilename) {
+										var metadata = assetManager.getAssetMetadata ? assetManager.getAssetMetadata(assetId) : null;
+										var filename = metadata?.filename || fallbackFilename;
+										filename = normalizeFilenameForMime(filename, mimeType);
+
+										return assetManager.calculateHash(blob).then(function(hash) {
+											var updatedAsset = {
+												id: assetId,
+												projectId: assetManager.projectId,
+												blob: blob,
+												mime: mimeType,
+												hash: hash,
+												size: blob.size,
+												uploaded: false,
+												createdAt: metadata?.createdAt || new Date().toISOString(),
+												filename: filename,
+												folderPath: metadata?.folderPath || ''
+											};
+
+											return assetManager.putAsset(updatedAsset).then(function() {
+												var oldBlobUrl = assetManager.blobURLCache.get(assetId);
+												if (oldBlobUrl) {
+													try {
+														URL.revokeObjectURL(oldBlobUrl);
+													} catch (e) {}
+													assetManager.blobURLCache.delete(assetId);
+													assetManager.reverseBlobCache.delete(oldBlobUrl);
+												}
+
+												var createUrl = assetManager.createBlobURL
+													? assetManager.createBlobURL(blob)
+													: Promise.resolve(URL.createObjectURL(blob));
+
+												return createUrl.then(function(newBlobUrl) {
+													assetManager.blobURLCache.set(assetId, newBlobUrl);
+													assetManager.reverseBlobCache.set(newBlobUrl, assetId);
+													if (assetManager.updateDomImagesForAsset) {
+														assetManager.updateDomImagesForAsset(assetId);
+													}
+													return newBlobUrl;
+												});
+											});
+										});
+									}
+
+									var existingAssetId = top.imgCompressor.assetId;
+
 									// Convert base64 to blob and save to AssetManager
 									fetch(base64data)
 										.then(function(response) { return response.blob(); })
@@ -430,18 +531,21 @@ var eXeImageCompressor = {
 											var mimeType = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
 											// Create File object for AssetManager
 											var filename = top.imgCompressor.fileToSave || ('optimized.' + ext);
+											if (existingAssetId) {
+												return replaceExistingAsset(existingAssetId, blob, mimeType, filename).then(function(blobUrl) {
+													return { assetUrl: assetManager.getAssetUrl ? assetManager.getAssetUrl(existingAssetId, filename) : null, blobUrl: blobUrl };
+												});
+											}
+
 											var file = new File([blob], filename, { type: mimeType });
-											return assetManager.insertImage(file);
-										})
-										.then(function(newAssetUrl) {
-											if (newAssetUrl) {
-												// Resolve asset:// URL to blob: URL for TinyMCE
+											return assetManager.insertImage(file).then(function(newAssetUrl) {
+												if (!newAssetUrl) {
+													throw new Error("Failed to save image");
+												}
 												return assetManager.resolveAssetURL(newAssetUrl).then(function(blobUrl) {
 													return { assetUrl: newAssetUrl, blobUrl: blobUrl };
 												});
-											} else {
-												throw new Error("Failed to save image");
-											}
+											});
 										})
 										.then(function(result) {
 											if (result.blobUrl) {

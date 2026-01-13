@@ -1993,6 +1993,173 @@ test.describe('Text iDevice', () => {
         });
     });
 
+    test.describe('Image Optimizer', () => {
+        test('should replace existing asset instead of creating a new one', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Image Optimizer Replace Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await addTextIdeviceFromPanel(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 10000 });
+
+            const editBtn = block.locator('.btn-edit-idevice');
+            if ((await editBtn.count()) > 0) {
+                await editBtn.click();
+            }
+
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            const imageBtn = page
+                .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                .first();
+            await expect(imageBtn).toBeVisible({ timeout: 10000 });
+            await imageBtn.click();
+
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            const browseBtn = page.locator(
+                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
+            );
+            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
+            await browseBtn.first().click();
+
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
+
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
+            await imageItem.click();
+
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            await page.waitForTimeout(1000);
+
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            if ((await tinyMceSaveBtn.count()) > 0) {
+                await tinyMceSaveBtn.click();
+            }
+
+            const editorFrameHandle = await page.locator('iframe.tox-edit-area__iframe').first().elementHandle();
+            const editorFrame = await editorFrameHandle?.contentFrame();
+            if (!editorFrame) {
+                throw new Error('TinyMCE editor frame not available');
+            }
+
+            await editorFrame.waitForFunction(() => {
+                const img = document.querySelector('img') as HTMLImageElement | null;
+                return img && img.naturalWidth > 0;
+            });
+
+            const imageDimensions = await editorFrame.evaluate(() => {
+                const img = document.querySelector('img') as HTMLImageElement | null;
+                return img ? { width: img.naturalWidth || img.width, height: img.naturalHeight || img.height } : null;
+            });
+
+            const assetStateBefore = await page.evaluate(() => {
+                const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                const editor = (window as any).tinymce?.activeEditor;
+                const img = editor?.getBody()?.querySelector('img');
+                if (!assetManager || !img) return null;
+
+                const src = img.getAttribute('src') || '';
+                const assetId = img.getAttribute('data-asset-id') || assetManager.reverseBlobCache?.get(src) || null;
+                const meta = assetId ? assetManager.getAssetMetadata?.(assetId) : null;
+                const count = assetManager.getAllAssetsMetadata?.().length || 0;
+
+                return {
+                    assetId,
+                    src,
+                    count,
+                    hash: meta?.hash || null,
+                    size: meta?.size || null,
+                };
+            });
+
+            if (!assetStateBefore?.assetId || !assetStateBefore?.hash) {
+                throw new Error('Asset metadata not available for inserted image');
+            }
+
+            await editorFrame.click('img');
+
+            await imageBtn.click();
+            await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+            const optimizerBtn = page.locator('#openOptimizer');
+            await expect(optimizerBtn).toBeVisible({ timeout: 10000 });
+            await optimizerBtn.click();
+
+            const optimizerFrameHandle = await page.locator('iframe[src*="image-compressor"]').elementHandle();
+            const optimizerFrame = await optimizerFrameHandle?.contentFrame();
+            if (!optimizerFrame) {
+                throw new Error('Image optimizer frame not available');
+            }
+
+            await optimizerFrame.locator('#inputSize').waitFor({ timeout: 10000 });
+
+            const targetSize = Math.max(50, Math.floor((imageDimensions?.width || 400) / 2));
+            await optimizerFrame.locator('#inputSize').fill(String(targetSize));
+            await optimizerFrame.locator('#inputSize').dispatchEvent('change');
+            await optimizerFrame.locator('#inputQuality').selectOption('0.5');
+
+            await optimizerFrame.waitForFunction(() => {
+                const img = document.getElementById('imageEditorOutputImg') as HTMLImageElement | null;
+                return img?.getAttribute('src') && img.naturalWidth > 0;
+            });
+
+            await optimizerFrame.locator('#imageEditorSaveImg').click();
+
+            await expect(page.locator('iframe[src*="image-compressor"]')).toHaveCount(0, { timeout: 15000 });
+
+            await page.waitForFunction(
+                ({ assetId, hash }) => {
+                    const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (!assetManager) return false;
+                    const meta = assetManager.getAssetMetadata?.(assetId);
+                    return meta?.hash != null && meta?.hash !== hash;
+                },
+                { assetId: assetStateBefore.assetId, hash: assetStateBefore.hash },
+                { timeout: 20000 },
+            );
+
+            const assetStateAfter = await page.evaluate(assetId => {
+                const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                const meta = assetManager?.getAssetMetadata?.(assetId);
+                const count = assetManager?.getAllAssetsMetadata?.().length || 0;
+                return {
+                    assetId,
+                    count,
+                    hash: meta?.hash || null,
+                    size: meta?.size || null,
+                };
+            }, assetStateBefore.assetId);
+
+            expect(assetStateAfter?.assetId).toBe(assetStateBefore.assetId);
+            expect(assetStateAfter?.count).toBe(assetStateBefore.count);
+            expect(assetStateAfter?.hash).not.toBe(assetStateBefore.hash);
+        });
+    });
+
     test.describe('Internal Links (exe-node)', () => {
         test('should create internal link and navigate in preview', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
