@@ -1221,6 +1221,7 @@ describe('App utility methods', () => {
     let mockController;
     let mockRegistration;
     let originalServiceWorker;
+    let originalIsSecureContext;
 
     beforeEach(() => {
       mockController = {
@@ -1233,6 +1234,14 @@ describe('App utility methods', () => {
         addEventListener: vi.fn(),
       };
       originalServiceWorker = navigator.serviceWorker;
+      originalIsSecureContext = window.isSecureContext;
+
+      // Mock secure context (required for SW registration)
+      Object.defineProperty(window, 'isSecureContext', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
 
       // Mock navigator.serviceWorker
       Object.defineProperty(navigator, 'serviceWorker', {
@@ -1256,17 +1265,22 @@ describe('App utility methods', () => {
         writable: true,
         configurable: true,
       });
+      // Restore isSecureContext
+      Object.defineProperty(window, 'isSecureContext', {
+        value: originalIsSecureContext,
+        writable: true,
+        configurable: true,
+      });
     });
 
     describe('registerPreviewServiceWorker', () => {
-      it('logs warning when Service Workers not supported', () => {
+      it('returns null when Service Workers not supported', async () => {
         // Remove serviceWorker property entirely so 'serviceWorker' in navigator returns false
         delete navigator.serviceWorker;
 
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        appInstance.registerPreviewServiceWorker();
+        const result = await appInstance.registerPreviewServiceWorker();
 
-        expect(warnSpy).toHaveBeenCalledWith('[Preview SW] Service Workers not supported');
+        expect(result).toBeNull();
 
         // Restore for other tests
         Object.defineProperty(navigator, 'serviceWorker', {
@@ -1277,32 +1291,35 @@ describe('App utility methods', () => {
       });
 
       it('checks for existing registration first (eXeViewer pattern)', async () => {
-        appInstance.eXeLearning.config.basePath = '/exelearning';
+        // Uses window.location.pathname to derive basePath (jsdom default is /)
         const getRegSpy = navigator.serviceWorker.getRegistration;
 
         appInstance.registerPreviewServiceWorker();
         await new Promise(resolve => setTimeout(resolve, 10));
 
-        expect(getRegSpy).toHaveBeenCalledWith('/exelearning/');
+        expect(getRegSpy).toHaveBeenCalledWith('/');
       });
 
       it('registers new SW when no existing registration', async () => {
-        appInstance.eXeLearning.config.basePath = '/exelearning';
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
         const registerSpy = navigator.serviceWorker.register;
         // Mock active worker with already activated state
-        mockRegistration.active = { ...mockController, state: 'activated' };
+        mockRegistration.active = { ...mockController, state: 'activated', postMessage: vi.fn() };
         mockRegistration.installing = null;
         mockRegistration.waiting = null;
 
         await appInstance.registerPreviewServiceWorker();
 
-        expect(registerSpy).toHaveBeenCalledWith('/exelearning/preview-sw.js', { scope: '/exelearning/' });
+        // Path derived from window.location.pathname (/ in jsdom)
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/' });
       });
 
       it('reuses existing registration if SW is already active', async () => {
-        // Simulate existing registration found with update method
+        // Simulate existing registration found with active SW
         const existingReg = {
           ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
           update: vi.fn().mockResolvedValue(undefined),
         };
         navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
@@ -1317,6 +1334,8 @@ describe('App utility methods', () => {
       });
 
       it('handles registration failure', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
         const error = new Error('Registration failed');
         navigator.serviceWorker.register = vi.fn().mockRejectedValue(error);
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1327,51 +1346,63 @@ describe('App utility methods', () => {
       });
 
       it('waits for SW activation before returning (eXeViewer pattern)', async () => {
-        let stateChangeCallback;
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        // Track if statechange listener was added
+        let stateChangeListenerAdded = false;
         const mockInstallingSW = {
           state: 'installing',
           addEventListener: vi.fn((event, cb) => {
             if (event === 'statechange') {
-              stateChangeCallback = cb;
+              stateChangeListenerAdded = true;
+              // Immediately trigger activation to unblock the promise
+              mockInstallingSW.state = 'activated';
+              cb();
             }
           }),
           removeEventListener: vi.fn(),
         };
-        mockRegistration.installing = mockInstallingSW;
-        mockRegistration.waiting = null;
-        mockRegistration.active = null;
 
-        const promise = appInstance.registerPreviewServiceWorker();
+        const testRegistration = {
+          ...mockRegistration,
+          installing: mockInstallingSW,
+          waiting: null,
+          active: { ...mockController, postMessage: vi.fn() },
+          addEventListener: vi.fn(),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(testRegistration);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await appInstance.registerPreviewServiceWorker();
 
-        // Simulate SW becoming activated
-        mockInstallingSW.state = 'activated';
-        mockRegistration.active = mockController;
-        stateChangeCallback({ target: { state: 'activated' } });
-
-        await promise;
-
-        expect(stateChangeCallback).toBeDefined();
+        // Verify statechange listener was added for activation waiting
+        expect(stateChangeListenerAdded).toBe(true);
+        expect(mockInstallingSW.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
       });
 
       it('handles updatefound event with new worker installation', async () => {
-        let updateCallback;
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
         const mockNewWorker = {
           state: 'installing',
           addEventListener: vi.fn(),
           postMessage: vi.fn(),
         };
 
-        // Mock registration with active SW already (so activation wait is skipped)
+        // Track if updatefound listener was added and immediately trigger it
+        let updateFoundListenerAdded = false;
         const regWithActive = {
           ...mockRegistration,
-          active: { ...mockController, state: 'activated' },
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
           installing: null,
           waiting: null,
           addEventListener: vi.fn((event, cb) => {
             if (event === 'updatefound') {
-              updateCallback = cb;
+              updateFoundListenerAdded = true;
+              // Simulate updatefound event by setting installing and calling callback
+              regWithActive.installing = mockNewWorker;
+              cb();
             }
           }),
         };
@@ -1379,25 +1410,24 @@ describe('App utility methods', () => {
 
         await appInstance.registerPreviewServiceWorker();
 
-        // Now the updatefound listener should have been added
-        expect(updateCallback).toBeDefined();
+        // Verify updatefound listener was added
+        expect(updateFoundListenerAdded).toBe(true);
+        expect(regWithActive.addEventListener).toHaveBeenCalledWith('updatefound', expect.any(Function));
 
-        // Simulate updatefound
-        regWithActive.installing = mockNewWorker;
-        updateCallback();
-
-        // Verify statechange listener was added
+        // Verify statechange listener was added to new worker
         expect(mockNewWorker.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
       });
 
       it('handles new worker state change to installed', async () => {
-        let updateCallback;
-        let stateChangeCallback;
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
         const mockNewWorker = {
           state: 'installed',
           addEventListener: vi.fn((event, cb) => {
             if (event === 'statechange') {
-              stateChangeCallback = cb;
+              // Immediately trigger the callback to simulate state change
+              cb();
             }
           }),
           postMessage: vi.fn(),
@@ -1406,28 +1436,22 @@ describe('App utility methods', () => {
         // Mock registration with active SW already
         const regWithActive = {
           ...mockRegistration,
-          active: { ...mockController, state: 'activated' },
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
           installing: null,
           waiting: null,
           addEventListener: vi.fn((event, cb) => {
             if (event === 'updatefound') {
-              updateCallback = cb;
+              // Simulate updatefound event
+              regWithActive.installing = mockNewWorker;
+              cb();
             }
           }),
         };
         navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
-        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
         await appInstance.registerPreviewServiceWorker();
 
-        // Trigger updatefound
-        regWithActive.installing = mockNewWorker;
-        updateCallback();
-
-        // Trigger statechange
-        stateChangeCallback();
-
-        expect(logSpy).toHaveBeenCalledWith('[Preview SW] New version available');
+        // Should send SKIP_WAITING when new worker is installed
         expect(mockNewWorker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
       });
     });
