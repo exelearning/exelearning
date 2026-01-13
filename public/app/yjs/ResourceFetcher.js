@@ -1096,7 +1096,7 @@ class ResourceFetcher {
   /**
    * Fetch global font files for embedding in exports
    * Global fonts are stored in /files/perm/fonts/global/{fontId}/
-   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'boo')
+   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
    * @returns {Promise<Map<string, Blob>>} Map of file paths to blobs
    */
   async fetchGlobalFontFiles(fontId) {
@@ -1113,20 +1113,23 @@ class ResourceFetcher {
         'OpenDyslexic-Bold.woff',
         'OpenDyslexic-Italic.woff',
         'OpenDyslexic-BoldItalic.woff',
+        'OFL.txt',
       ],
       andika: [
         'Andika-Regular.woff2',
         'Andika-Bold.woff2',
         'Andika-Italic.woff2',
         'Andika-BoldItalic.woff2',
+        'OFL.txt',
       ],
       nunito: [
         'Nunito-Regular.woff2',
         'Nunito-Bold.woff2',
         'Nunito-Italic.woff2',
         'Nunito-BoldItalic.woff2',
+        'OFL.txt',
       ],
-      boo: ['Boo.woff2', 'ATTRIBUTION.txt'],
+      'playwrite-es': ['PlaywriteES-Regular.woff2', 'OFL.txt'],
     };
 
     const files = fontConfigs[fontId];

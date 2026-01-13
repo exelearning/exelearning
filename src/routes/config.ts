@@ -391,7 +391,7 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
                 opendyslexic: 'OpenDyslexic',
                 andika: 'Andika',
                 nunito: 'Nunito',
-                boo: 'Boo',
+                'playwrite-es': 'Playwrite ES',
             },
             category: 'properties',
             groups: { export: GROUPS_TITLE.export },

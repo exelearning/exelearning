@@ -531,20 +531,20 @@ describe('BrowserResourceProvider', () => {
             expect(result.size).toBe(0);
         });
 
-        it('should handle multiple font files including attribution', async () => {
+        it('should handle font files with OFL license', async () => {
             const fontFiles = new Map<string, Blob>();
-            fontFiles.set('fonts/global/boo/Boo.woff2', createMockBlob('BOO_FONT_DATA'));
-            fontFiles.set('fonts/global/boo/ATTRIBUTION.txt', createMockBlob('jboo@edu.xunta.es'));
-            mockFetcher.setGlobalFontFiles('boo', fontFiles);
+            fontFiles.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', createMockBlob('PLAYWRITE_FONT_DATA'));
+            fontFiles.set('fonts/global/playwrite-es/OFL.txt', createMockBlob('SIL Open Font License'));
+            mockFetcher.setGlobalFontFiles('playwrite-es', fontFiles);
 
-            const result = await provider.fetchGlobalFontFiles('boo');
+            const result = await provider.fetchGlobalFontFiles('playwrite-es');
 
             expect(result.size).toBe(2);
-            expect(result.has('fonts/global/boo/Boo.woff2')).toBe(true);
-            expect(result.has('fonts/global/boo/ATTRIBUTION.txt')).toBe(true);
+            expect(result.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+            expect(result.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
 
-            const attribution = new TextDecoder().decode(result.get('fonts/global/boo/ATTRIBUTION.txt')!);
-            expect(attribution).toBe('jboo@edu.xunta.es');
+            const license = new TextDecoder().decode(result.get('fonts/global/playwrite-es/OFL.txt')!);
+            expect(license).toBe('SIL Open Font License');
         });
 
         it('should handle andika font with multiple weights', async () => {

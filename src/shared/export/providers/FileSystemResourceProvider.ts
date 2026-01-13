@@ -352,7 +352,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
 
     /**
      * Fetch global font files for embedding in exports
-     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'boo')
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
      * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
      */
     async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {

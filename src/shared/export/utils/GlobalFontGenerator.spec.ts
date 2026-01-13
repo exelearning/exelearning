@@ -12,7 +12,7 @@ describe('GlobalFontGenerator', () => {
             expect(GLOBAL_FONTS).toHaveProperty('opendyslexic');
             expect(GLOBAL_FONTS).toHaveProperty('andika');
             expect(GLOBAL_FONTS).toHaveProperty('nunito');
-            expect(GLOBAL_FONTS).toHaveProperty('boo');
+            expect(GLOBAL_FONTS).toHaveProperty('playwrite-es');
         });
 
         test('each font should have required properties', () => {
@@ -28,8 +28,8 @@ describe('GlobalFontGenerator', () => {
             expect(GLOBAL_FONTS.opendyslexic.files).toHaveLength(4);
         });
 
-        test('boo should have attribution', () => {
-            expect(GLOBAL_FONTS.boo.attribution).toContain('jboo@edu.xunta.es');
+        test('playwrite-es should have cursive fallback', () => {
+            expect(GLOBAL_FONTS['playwrite-es'].fallback).toContain('cursive');
         });
     });
 
@@ -92,10 +92,11 @@ describe('GlobalFontGenerator', () => {
             expect(result).toContain('serif'); // OpenDyslexic fallback
         });
 
-        test('should include attribution comment for boo font', () => {
-            const result = GlobalFontGenerator.generateCss('boo');
+        test('should generate correct CSS for playwrite-es', () => {
+            const result = GlobalFontGenerator.generateCss('playwrite-es');
 
-            expect(result).toContain('jboo@edu.xunta.es');
+            expect(result).toContain("font-family: 'Playwrite ES'");
+            expect(result).toContain('PlaywriteES-Regular.woff2');
         });
     });
 
@@ -122,10 +123,11 @@ describe('GlobalFontGenerator', () => {
             expect(result).toContain("url('http://localhost:8080/v1/files/perm/fonts/global/andika/");
         });
 
-        test('should include attribution comment for boo font', () => {
-            const result = GlobalFontGenerator.generatePreviewCss('boo');
+        test('should generate correct preview CSS for playwrite-es', () => {
+            const result = GlobalFontGenerator.generatePreviewCss('playwrite-es');
 
-            expect(result).toContain('jboo@edu.xunta.es');
+            expect(result).toContain("font-family: 'Playwrite ES'");
+            expect(result).toContain('playwrite-es/PlaywriteES-Regular.woff2');
         });
     });
 
@@ -150,25 +152,20 @@ describe('GlobalFontGenerator', () => {
             expect(result).toContain('fonts/global/opendyslexic/OpenDyslexic-BoldItalic.woff');
         });
 
-        test('should return paths including attribution file for boo', () => {
-            const result = GlobalFontGenerator.getFontFilePaths('boo');
+        test('should return correct paths for playwrite-es', () => {
+            const result = GlobalFontGenerator.getFontFilePaths('playwrite-es');
 
-            // Should include font file and possibly attribution
-            expect(result.some(p => p.includes('Boo.woff2'))).toBe(true);
+            expect(result).toHaveLength(1);
+            expect(result).toContain('fonts/global/playwrite-es/PlaywriteES-Regular.woff2');
         });
     });
 
     describe('getAttribution', () => {
-        test('should return null for fonts without attribution', () => {
+        test('should return null for all fonts (no inline attribution)', () => {
             expect(GlobalFontGenerator.getAttribution('opendyslexic')).toBeNull();
             expect(GlobalFontGenerator.getAttribution('andika')).toBeNull();
             expect(GlobalFontGenerator.getAttribution('nunito')).toBeNull();
-        });
-
-        test('should return attribution for boo font', () => {
-            const attribution = GlobalFontGenerator.getAttribution('boo');
-            expect(attribution).not.toBeNull();
-            expect(attribution).toContain('jboo@edu.xunta.es');
+            expect(GlobalFontGenerator.getAttribution('playwrite-es')).toBeNull();
         });
 
         test('should return null for invalid fonts', () => {
@@ -181,7 +178,7 @@ describe('GlobalFontGenerator', () => {
             expect(GlobalFontGenerator.isValidFont('opendyslexic')).toBe(true);
             expect(GlobalFontGenerator.isValidFont('andika')).toBe(true);
             expect(GlobalFontGenerator.isValidFont('nunito')).toBe(true);
-            expect(GlobalFontGenerator.isValidFont('boo')).toBe(true);
+            expect(GlobalFontGenerator.isValidFont('playwrite-es')).toBe(true);
         });
 
         test('should return false for invalid fonts', () => {
@@ -218,7 +215,7 @@ describe('GlobalFontGenerator', () => {
             expect(ids).toContain('opendyslexic');
             expect(ids).toContain('andika');
             expect(ids).toContain('nunito');
-            expect(ids).toContain('boo');
+            expect(ids).toContain('playwrite-es');
         });
 
         test('should not include default', () => {

@@ -49,7 +49,7 @@ export interface ExportMetadata {
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
-    globalFont?: string; // Global font: 'default' | 'opendyslexic' | 'andika' | 'nunito' | 'boo'
+    globalFont?: string; // Global font: 'default' | 'opendyslexic' | 'andika' | 'nunito' | 'playwrite-es'
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -199,7 +199,7 @@ export interface ResourceProvider {
 
     /**
      * Fetch global font files for embedding in exports
-     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'boo')
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
      * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
      */
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>>;

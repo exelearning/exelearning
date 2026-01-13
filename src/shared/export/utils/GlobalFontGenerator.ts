@@ -61,15 +61,53 @@ export const GLOBAL_FONTS: Record<string, GlobalFontConfig> = {
             { weight: 700, style: 'italic', filename: 'Nunito-BoldItalic.woff2', format: 'woff2' },
         ],
     },
-    boo: {
-        id: 'boo',
-        displayName: 'Boo',
-        fontFamily: 'Boo',
+    'playwrite-es': {
+        id: 'playwrite-es',
+        displayName: 'Playwrite ES',
+        fontFamily: 'Playwrite ES',
         fallback: 'cursive, sans-serif',
-        files: [{ weight: 400, style: 'normal', filename: 'Boo.woff2', format: 'woff2' }],
-        attribution: 'Font Boo by jboo@edu.xunta.es - https://www.edu.xunta.gal/centros/ceipfrions/es/node/101',
+        files: [
+            {
+                weight: 400,
+                style: 'normal',
+                filename: 'PlaywriteES-Regular.woff2',
+                format: 'woff2',
+            },
+        ],
     },
 };
+
+/** CSS selectors for applying global font */
+const FONT_SELECTORS = 'body, main, article, .exe-content, .iDevice_wrapper, .idevice-content';
+
+/**
+ * Build CSS string for a font configuration
+ */
+function buildFontCss(fontConfig: GlobalFontConfig, fontPath: string, label: string): string {
+    let css = `/* Global Font: ${fontConfig.displayName}${label} */\n`;
+
+    for (const file of fontConfig.files) {
+        css += `@font-face {
+    font-family: '${fontConfig.fontFamily}';
+    font-style: ${file.style};
+    font-weight: ${file.weight};
+    font-display: swap;
+    src: url('${fontPath}${file.filename}') format('${file.format}');
+}\n`;
+    }
+
+    css += `
+${FONT_SELECTORS} {
+    font-family: '${fontConfig.fontFamily}', ${fontConfig.fallback} !important;
+}
+`;
+
+    if (fontConfig.attribution) {
+        css += `/* ${fontConfig.attribution} */\n`;
+    }
+
+    return css;
+}
 
 /**
  * Global font generator utility class
@@ -106,33 +144,7 @@ export class GlobalFontGenerator {
             return '';
         }
 
-        const fontPath = `${basePath}fonts/global/${fontId}/`;
-        let css = `/* Global Font: ${fontConfig.displayName} */\n`;
-
-        // Generate @font-face rules
-        for (const file of fontConfig.files) {
-            css += `@font-face {
-    font-family: '${fontConfig.fontFamily}';
-    font-style: ${file.style};
-    font-weight: ${file.weight};
-    font-display: swap;
-    src: url('${fontPath}${file.filename}') format('${file.format}');
-}\n`;
-        }
-
-        // Apply font to body and common content areas with !important to override theme
-        css += `
-body, main, article, .exe-content, .iDevice_wrapper, .idevice-content {
-    font-family: '${fontConfig.fontFamily}', ${fontConfig.fallback} !important;
-}
-`;
-
-        // Add attribution comment if required
-        if (fontConfig.attribution) {
-            css += `/* ${fontConfig.attribution} */\n`;
-        }
-
-        return css;
+        return buildFontCss(fontConfig, `${basePath}fonts/global/${fontId}/`, '');
     }
 
     /**
@@ -151,60 +163,27 @@ body, main, article, .exe-content, .iDevice_wrapper, .idevice-content {
             return '';
         }
 
-        const fontPath = `${serverBasePath}/fonts/global/${fontId}/`;
-        let css = `/* Global Font: ${fontConfig.displayName} (Preview) */\n`;
-
-        // Generate @font-face rules with absolute URLs
-        for (const file of fontConfig.files) {
-            css += `@font-face {
-    font-family: '${fontConfig.fontFamily}';
-    font-style: ${file.style};
-    font-weight: ${file.weight};
-    font-display: swap;
-    src: url('${fontPath}${file.filename}') format('${file.format}');
-}\n`;
-        }
-
-        // Apply font
-        css += `
-body, main, article, .exe-content, .iDevice_wrapper, .idevice-content {
-    font-family: '${fontConfig.fontFamily}', ${fontConfig.fallback} !important;
-}
-`;
-
-        if (fontConfig.attribution) {
-            css += `/* ${fontConfig.attribution} */\n`;
-        }
-
-        return css;
+        return buildFontCss(fontConfig, `${serverBasePath}/fonts/global/${fontId}/`, ' (Preview)');
     }
 
     /**
      * Get list of font file paths to include in export
      * @param fontId - Font identifier
-     * @returns Array of relative file paths (e.g., 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     * @returns Array of relative file paths
      */
     static getFontFilePaths(fontId: string): string[] {
-        if (!fontId || fontId === 'default') {
-            return [];
-        }
-
         const fontConfig = GLOBAL_FONTS[fontId];
         if (!fontConfig) {
             return [];
         }
-
         return fontConfig.files.map(f => `fonts/global/${fontId}/${f.filename}`);
     }
 
     /**
      * Get attribution text for a font
-     * @param fontId - Font identifier
-     * @returns Attribution string or null
      */
     static getAttribution(fontId: string): string | null {
-        const fontConfig = GLOBAL_FONTS[fontId];
-        return fontConfig?.attribution || null;
+        return GLOBAL_FONTS[fontId]?.attribution || null;
     }
 
     /**
