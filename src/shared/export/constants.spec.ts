@@ -302,7 +302,7 @@ describe('Constants', () => {
 
         describe('LOM_NAMESPACES', () => {
             it('should have LOM namespace', () => {
-                expect(LOM_NAMESPACES.lom).toContain('LOM');
+                expect(LOM_NAMESPACES.lom).toContain('imsmd');
             });
 
             it('should have xsi namespace', () => {

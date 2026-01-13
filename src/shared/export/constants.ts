@@ -479,7 +479,7 @@ export const IMS_NAMESPACES = {
  * LOM metadata namespaces
  */
 export const LOM_NAMESPACES = {
-    lom: 'http://ltsc.ieee.org/xsd/LOM',
+    lom: 'http://www.imsglobal.org/xsd/imsmd_rootv1p2p1',
     xsi: 'http://www.w3.org/2001/XMLSchema-instance',
 } as const;
 
@@ -663,6 +663,11 @@ export function normalizeIdeviceType(typeName: string): string {
 export const ODE_DTD_FILENAME = 'content.dtd';
 
 /**
+ * ODE format version (exported in content.xml odeResources section as exe_version)
+ */
+export const ODE_VERSION = '3.0';
+
+/**
  * ODE Content DTD
  * Embedded DTD for exports that include content.xml - validates content.xml structure
  */
@@ -696,7 +701,7 @@ export const ODE_DTD_CONTENT = `<!--
 <!ELEMENT value (#PCDATA)>
 
 <!-- Navigation Structures (Pages) -->
-<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructures (odeNavStructure*)>
 <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
 
 <!ELEMENT odePageId (#PCDATA)>

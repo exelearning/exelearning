@@ -30,8 +30,7 @@ describe('LomMetadataGenerator', () => {
         it('should include LOM namespace', () => {
             const xml = generator.generate();
 
-            expect(xml).toContain('xmlns="http://ltsc.ieee.org/xsd/LOM"');
-            expect(xml).toContain('xsi:schemaLocation="http://ltsc.ieee.org/xsd/LOM lomCustom.xsd"');
+            expect(xml).toContain('xmlns="http://www.imsglobal.org/xsd/imsmd_rootv1p2p1"');
         });
 
         it('should close with </lom>', () => {

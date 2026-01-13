@@ -286,12 +286,19 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/libs/scorm - Get SCORM JavaScript files
+    // Excludes test files (.test.js, .spec.js) from exports
     .get('/api/resources/libs/scorm', () => {
         const scormPath = path.join(COMMON_PATH, 'scorm');
         if (!deps.fs.existsSync(scormPath)) {
             return [];
         }
-        return buildFileList(scormPath, '/app/common/scorm');
+        const files = scanDirectory(scormPath).filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js'));
+        const version = getAppVersion();
+        const basePath = getBasePath();
+        return files.map(filePath => ({
+            path: filePath,
+            url: `${basePath}/${version}/app/common/scorm/${filePath}`,
+        }));
     })
 
     // GET /api/resources/libs/epub - Get EPUB-specific files
@@ -323,19 +330,6 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
 
         // Include libraryName as path prefix so files end up in libs/{libraryName}/ in exports
         return buildFileList(libPath, urlPrefix, libraryName);
-    })
-
-    // GET /api/resources/schemas/:format - Get XSD schemas for a format
-    .get('/api/resources/schemas/:format', ({ params }) => {
-        const { format } = params;
-
-        // Schema files are typically in public/files/perm/schemas/
-        const schemasPath = path.join('public/files/perm/schemas', format);
-        if (!deps.fs.existsSync(schemasPath)) {
-            return [];
-        }
-
-        return buildFileList(schemasPath, `/files/perm/schemas/${format}`);
     })
 
     // GET /api/resources/content-css - Get content CSS files (base.css, etc.)

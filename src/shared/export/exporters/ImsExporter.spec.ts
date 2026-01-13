@@ -111,6 +111,14 @@ class MockZipProvider implements ZipProvider {
         this.files.set(path, content);
     }
 
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
     async generateAsync(): Promise<Buffer> {
         // Create actual ZIP for realistic testing using fflate
         const zipData: Record<string, Uint8Array> = {};
@@ -389,6 +397,32 @@ describe('ImsExporter', () => {
             const result = await exporter.export({ filename: 'my-ims-package.zip' });
 
             expect(result.filename).toBe('my-ims-package.zip');
+        });
+    });
+
+    describe('ODE XML', () => {
+        it('should include content.xml in IMS package with DOCTYPE', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(contentXml).toContain('<!DOCTYPE ode SYSTEM "content.dtd">');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should include content.dtd in IMS package', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml and content.dtd in manifest COMMON_FILES', async () => {
+            await exporter.export();
+
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            expect(manifest).toContain('<file href="content.xml"/>');
+            expect(manifest).toContain('<file href="content.dtd"/>');
         });
     });
 });

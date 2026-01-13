@@ -109,6 +109,14 @@ class MockZipProvider implements ZipProvider {
         }
     }
 
+    hasFile(path: string): boolean {
+        return this.files.has(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
     async generate(): Promise<Uint8Array> {
         // Simple mock that returns a minimal valid zip
         const { zipSync } = await import('fflate');

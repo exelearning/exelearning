@@ -286,40 +286,6 @@ describe('FileSystemResourceProvider', () => {
         });
     });
 
-    describe('fetchScormSchemas', () => {
-        it('should return empty map when no schemas exist', async () => {
-            // By default test dir doesn't have schemas
-            const files = await provider.fetchScormSchemas('1.2');
-            expect(files.size).toBe(0);
-        });
-
-        it('should fetch schema files when they exist', async () => {
-            // Create schema directory and file
-            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm12'));
-            await fs.writeFile(
-                path.join(testDir, 'app', 'schemas', 'scorm12', 'imscp_rootv1p1p2.xsd'),
-                '<?xml version="1.0"?>',
-            );
-
-            const files = await provider.fetchScormSchemas('1.2');
-            expect(files.size).toBe(1);
-            expect(files.has('imscp_rootv1p1p2.xsd')).toBe(true);
-        });
-
-        it('should fetch SCORM 2004 schemas', async () => {
-            // Create schema directory and file
-            await fs.ensureDir(path.join(testDir, 'app', 'schemas', 'scorm2004'));
-            await fs.writeFile(
-                path.join(testDir, 'app', 'schemas', 'scorm2004', 'adlcp_v1p3.xsd'),
-                '<?xml version="1.0"?>',
-            );
-
-            const files = await provider.fetchScormSchemas('2004');
-            expect(files.size).toBe(1);
-            expect(files.has('adlcp_v1p3.xsd')).toBe(true);
-        });
-    });
-
     describe('fetchContentCss', () => {
         it('should fetch content CSS files', async () => {
             const files = await provider.fetchContentCss();

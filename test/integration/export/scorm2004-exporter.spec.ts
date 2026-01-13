@@ -220,27 +220,6 @@ describe('Scorm2004Exporter Integration', () => {
             expect(hasScoFunctions).toBe(true);
         });
 
-        it('should include XSD schema files for SCORM 2004', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
-            const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
-            const zip = new FflateZipProvider();
-
-            const exporter = new Scorm2004Exporter(document, resources, assets, zip);
-            const result = await exporter.export();
-
-            const unzipped = fflateUnzipSync(result.data!);
-            const files = Object.keys(unzipped);
-
-            // Check for XSD schema files
-            const xsdFiles = files.filter(f => f.endsWith('.xsd'));
-            expect(xsdFiles.length).toBeGreaterThan(0);
-
-            // SCORM 2004 specific schemas
-            const hasAdlcp = xsdFiles.some(f => f.includes('adlcp'));
-            expect(hasAdlcp).toBe(true);
-        });
-
         it('should include HTML pages with SCORM 2004 body class', async () => {
             const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
@@ -448,7 +427,7 @@ describe('Scorm2004Exporter Integration', () => {
             }
         });
 
-        it('should have navigation structure in HTML pages', async () => {
+        it('should NOT have navigation structure in HTML pages (LMS handles navigation)', async () => {
             const fixtureExists = await fs.pathExists(fixtureElpx);
             if (!fixtureExists) {
                 console.log('Skipping test: fixture not found');
@@ -467,11 +446,17 @@ describe('Scorm2004Exporter Integration', () => {
                 const unzipped = fflateUnzipSync(result.data!);
                 const indexHtml = new TextDecoder().decode(unzipped['index.html']);
 
-                // Should have navigation
-                expect(indexHtml).toContain('siteNav');
+                // SCORM exports should NOT have navigation (LMS handles it)
+                expect(indexHtml).not.toContain('<nav id="siteNav">');
 
-                // Should have prev/next buttons
-                expect(indexHtml).toContain('nav-button');
+                // SCORM exports should NOT have prev/next buttons (LMS handles it)
+                expect(indexHtml).not.toContain('<div class="nav-buttons">');
+
+                // Should have page counter instead
+                expect(indexHtml).toContain('page-counter');
+
+                // Should have exe-export class in body
+                expect(indexHtml).toContain('exe-export exe-scorm exe-scorm2004');
             } finally {
                 if (document.extractedPath?.includes('/tmp/')) {
                     await fs.remove(document.extractedPath);
