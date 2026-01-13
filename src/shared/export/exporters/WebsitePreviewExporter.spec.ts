@@ -258,6 +258,11 @@ describe('WebsitePreviewExporter', () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('Hello World');
         });
+
+        it('should include scroll reset in navigation script', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('window.scrollTo(0, 0);');
+        });
     });
 
     describe('versioned paths', () => {

@@ -1148,6 +1148,8 @@ if (typeof $exeExport !== 'undefined' && $exeExport.init) {
     if (index < 0 || index >= pages.length) return;
     currentIndex = index;
     var activePage = pages[index];
+    // Reset scroll position to top when changing pages
+    window.scrollTo(0, 0);
     pages.forEach(function(p, i) {
       p.style.display = i === index ? 'block' : 'none';
       p.classList.toggle('active', i === index);
