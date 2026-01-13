@@ -475,7 +475,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify rosco elements are present
             await verifyRoscoInPreview(iframe);
@@ -515,7 +515,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for the rosco to initialize
             await page.waitForTimeout(2000);
@@ -575,7 +575,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -627,7 +627,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -673,7 +673,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -732,7 +732,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -798,7 +798,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -863,7 +863,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);
@@ -932,7 +932,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
             await page.waitForTimeout(2000);

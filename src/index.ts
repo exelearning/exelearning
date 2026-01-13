@@ -159,13 +159,21 @@ const app = new Elysia()
                         const content = fs.readFileSync(publicPath);
                         const ext = path.extname(publicPath).toLowerCase();
                         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600',
-                            },
-                        });
+
+                        // Build response headers
+                        const headers: Record<string, string> = {
+                            'Content-Type': contentType,
+                            'Content-Length': stats.size.toString(),
+                            'Cache-Control': 'public, max-age=3600',
+                        };
+
+                        // Add Service-Worker-Allowed header for preview-sw.js
+                        // This allows the SW to have a broader scope than its location
+                        if (pathname.endsWith('/preview-sw.js')) {
+                            headers['Service-Worker-Allowed'] = '/';
+                        }
+
+                        return new Response(content, { headers });
                     }
                 } catch {
                     // Fall through to let other handlers process
@@ -381,6 +389,20 @@ const app = new Elysia()
             return content;
         }
 
+        set.status = 404;
+        return 'Not Found';
+    })
+    // Serve preview-sw.js with Service-Worker-Allowed header
+    // This allows the SW to register with scope '/' while being located at '/app/'
+    .get('/app/preview-sw.js', ({ set }) => {
+        const swPath = path.join(process.cwd(), 'public', 'app', 'preview-sw.js');
+        if (fs.existsSync(swPath)) {
+            const content = fs.readFileSync(swPath);
+            set.headers['Content-Type'] = 'application/javascript; charset=utf-8';
+            set.headers['Service-Worker-Allowed'] = '/';
+            set.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+            return new Response(content);
+        }
         set.status = 404;
         return 'Not Found';
     })
