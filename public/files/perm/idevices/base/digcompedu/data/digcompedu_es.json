@@ -7,14 +7,14 @@
                 {
                     "competence": 1.1,
                     "title": "Comunicación organizativa",
-                    "descripcion": "Utilizar las tecnologías digitales establecidas por las Administraciones Educativas o, en su caso, por los titulares del centro, para aplicar las estrategias de comunicación organizativa entre los agentes de la comunidad educativa y de estos con terceros, contribuyendo a la mejora de dichas estrategias y a la proyección de la imagen institucional de la organización",
+                    "description": "Utilizar las tecnologías digitales establecidas por las Administraciones Educativas o, en su caso, por los titulares del centro, para aplicar las estrategias de comunicación organizativa entre los agentes de la comunidad educativa y de estos con terceros, contribuyendo a la mejora de dichas estrategias y a la proyección de la imagen institucional de la organización",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación en entornos controlados de las tecnologías digitales propuestas por las Administraciones Educativas (AAEE) o los titulares del centro para mejorar la comunicación y la proyección de la imagen institucional de la organización",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento general de las tecnologías de comunicación más utilizadas en los contextos educativos y comprensión de su finalidad",
                                     "achievement_indicators": [
                                         {
@@ -38,7 +38,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Iniciación en el uso de las tecnologías digitales determinadas por la Administración Educativa (AE) o titulares del centro educativo en situaciones de comunicación organizativa",
                                     "achievement_indicators": [
                                         {
@@ -64,7 +64,7 @@
                             "title": "Integración de las tecnologías digitales para la comunicación establecidas por la AE o por los titulares del centro en el desempeño profesional",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción de las estrategias de comunicación organizativa del centro educativo a través de tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -83,7 +83,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación del uso de las tecnologías digitales para la mejora de la comunicación organizativa",
                                     "achievement_indicators": [
                                         {
@@ -113,7 +113,7 @@
                             "title": "Investigación, evaluación y diseño de nuevas estrategias de comunicación organizativa en contextos educativos",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación de las tecnologías digitales para la comunicación empleadas en el centro educativo y coordinación del plan de comunicación organizativa",
                                     "achievement_indicators": [
                                         {
@@ -139,7 +139,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Diseño de las estrategias de comunicación organizativa de los centros docentes",
                                     "achievement_indicators": [
                                         {
@@ -165,14 +165,14 @@
                 {
                     "competence": 1.2,
                     "title": "Participación, colaboración y coordinación profesional",
-                    "descripcion": "Utilizar las tecnologías digitales para participar en los órganos colegiados de gobierno y de coordinación docente del centro, para coordinarse con los integrantes de los equipos docentes, de los servicios de orientación y apoyo educativo, así como para colaborar con profesorado de otros centros, educadores y miembros de otras instituciones en el desarrollo de planes y proyectos específicos promovidos desde el centro educativo",
+                    "description": "Utilizar las tecnologías digitales para participar en los órganos colegiados de gobierno y de coordinación docente del centro, para coordinarse con los integrantes de los equipos docentes, de los servicios de orientación y apoyo educativo, así como para colaborar con profesorado de otros centros, educadores y miembros de otras instituciones en el desarrollo de planes y proyectos específicos promovidos desde el centro educativo",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de las tecnologías digitales para la participación en los órganos de gobierno y de coordinación docente",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico/práctico del uso de las tecnologías de colaboración",
                                     "achievement_indicators": [
                                         {
@@ -191,7 +191,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Participación formal en los órganos de coordinación docente del centro empleando, de forma guiada, las tecnologías digitales establecidas por la AE o los titulares del centro",
                                     "achievement_indicators": [
                                         {
@@ -212,7 +212,7 @@
                             "title": "Utilización de las tecnologías digitales del centro para la participación y coordinación docente y transferencia de las estrategias de colaboración al desarrollo de proyectos institucionales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso convencional y autónomo de las tecnologías digitales establecidas por la AE o los titulares del centro para la participación y colaboración docente",
                                     "achievement_indicators": [
                                         {
@@ -231,7 +231,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Transferencia y adaptación de las estrategias y dinámicas de colaboración profesional a plataformas y entornos digitales para el desarrollo de proyectos institucionales",
                                     "achievement_indicators": [
                                         {
@@ -263,7 +263,7 @@
                             "title": "Innovación de las prácticas profesionales docentes de participación, coordinación y colaboración mediante tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación de las herramientas digitales de participación, coordinación y colaboración profesional empleadas por el centro y coordinación de las actuaciones asociadas a su uso",
                                     "achievement_indicators": [
                                         {
@@ -290,7 +290,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación sobre nuevos modelos de colaboración profesional a través plataformas digitales",
                                     "achievement_indicators": [
                                         {
@@ -325,14 +325,14 @@
                 {
                     "competence": 1.3,
                     "title": "Práctica reflexiva",
-                    "descripcion": "Reflexionar, de modo individual y colectivo, sobre la práctica pedagógica digital que se desarrolla en el aula y en el centro con la finalidad de aplicar las mejoras identificadas a través de este proceso",
+                    "description": "Reflexionar, de modo individual y colectivo, sobre la práctica pedagógica digital que se desarrolla en el aula y en el centro con la finalidad de aplicar las mejoras identificadas a través de este proceso",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de modelos de análisis, reflexión y evaluación, tanto individual como conjunta, del uso de las tecnologías en la práctica docente",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento de herramientas y modelos para llevar a cabo un análisis reflexivo del uso de las tecnologías digitales en la práctica docente",
                                     "achievement_indicators": [
                                         {
@@ -351,7 +351,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Práctica reflexiva tutelada",
                                     "achievement_indicators": [
                                         {
@@ -372,7 +372,7 @@
                             "title": "Análisis y aplicación de las prácticas pedagógicas digitales en el aula",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Análisis y reflexión individual sobre la aplicación personal de las metodologías y tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -392,7 +392,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Aplicación sistemática de la práctica reflexiva al utilizar las tecnologías digitales como método para la mejora de su desempeño profesional",
                                     "achievement_indicators": [
                                         {
@@ -427,7 +427,7 @@
                             "title": "Investigación y evaluación sobre prácticas pedagógicas digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis de las prácticas pedagógicas digitales propias y de otros",
                                     "achievement_indicators": [
                                         {
@@ -452,7 +452,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación y liderazgo en el desarrollo de procesos de práctica reflexiva",
                                     "achievement_indicators": [
                                         {
@@ -478,14 +478,14 @@
                 {
                     "competence": 1.4,
                     "title": "Desarrollo profesional digital continuo",
-                    "descripcion": "Desarrollar de forma continuada las competencias profesionales docentes a través de medios digitales. Mantener actualizada la competencia digital docente",
+                    "description": "Desarrollar de forma continuada las competencias profesionales docentes a través de medios digitales. Mantener actualizada la competencia digital docente",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Participación en actividades formativas para la aplicación práctica de los modelos teóricos de desarrollo profesional sobre o a través de las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Construcción de modelos docentes de referencia e identificación de las necesidades formativas para su concreción en la práctica",
                                     "achievement_indicators": [
                                         {
@@ -502,7 +502,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Participación en actividades formativas vinculadas con la práctica inicial contextualizada en el centro y en el propio desempeño profesional sobre y/o a través de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -523,7 +523,7 @@
                             "title": "Selección y participación en actividades de desarrollo profesional docente adaptadas a sus necesidades sobre o a través de las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Actualización y desarrollo profesional a través de tecnologías digitales o sobre su uso educativo empleando recursos elaborados por expertos",
                                     "achievement_indicators": [
                                         {
@@ -547,7 +547,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Participación en actividades formativas dirigidas a equipos profesionales que requieran la intervención activa de sus miembros en el diseño instructivo y el uso de tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -569,7 +569,7 @@
                             "title": "Creación colaborativa de nuevas actividades y modelos de formación para el desarrollo profesional continuo",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación y diseño de actividades y materiales formativos para la mejora de la práctica pedagógica digital y/o a través de entornos digitales",
                                     "achievement_indicators": [
                                         {
@@ -590,7 +590,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Diseño de nuevos programas de investigación aplicada a la educación para el desarrollo profesional docente mediante las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -619,14 +619,14 @@
                 {
                     "competence": 1.5,
                     "title": "Protección de datos personales, privacidad, seguridad y bienestar digital",
-                    "descripcion": "Proteger los datos personales, las comunicaciones y el acceso a los dispositivos, dentro del ámbito educativo, para evitar los riesgos y amenazas que afecten a los derechos y garantías digitales de todos los miembros de la comunidad educativa contemplados en la normativa vigente. Utilizar de manera responsable, segura y saludable las tecnologías digitales para evitar riesgos laborales, personales y en el entorno y para garantizar el bienestar físico, psicológico y social del alumnado al utilizar las tecnologías digitales",
+                    "description": "Proteger los datos personales, las comunicaciones y el acceso a los dispositivos, dentro del ámbito educativo, para evitar los riesgos y amenazas que afecten a los derechos y garantías digitales de todos los miembros de la comunidad educativa contemplados en la normativa vigente. Utilizar de manera responsable, segura y saludable las tecnologías digitales para evitar riesgos laborales, personales y en el entorno y para garantizar el bienestar físico, psicológico y social del alumnado al utilizar las tecnologías digitales",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento de las medidas sobre protección de datos, privacidad, seguridad, derechos digitales y bienestar digital aplicadas en el ámbito educativo",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento general de medidas para proteger los datos personales, la privacidad, la seguridad, los derechos digitales y el bienestar al utilizar las tecnologías digitales en contextos educativos",
                                     "achievement_indicators": [
                                         {
@@ -651,7 +651,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Conocimiento y aplicación, de forma guiada, de las medidas de protección de los datos personales y la privacidad, así como de las de seguridad y salvaguarda de los derechos digitales y el bienestar al utilizar las tecnologías digitales en contextos educativos reales",
                                     "achievement_indicators": [
                                         {
@@ -683,7 +683,7 @@
                             "title": "Adopción y evaluación de las medidas sobre protección de datos, privacidad, seguridad, derechos digitales y bienestar digital aplicadas en el centro educativo",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso sistemático y autónomo de las medidas establecidas para proteger los datos personales y la privacidad, así como las medidas de seguridad y salvaguarda de los derechos digitales y el bienestar al utilizar las tecnologías digitales en el centro educativo",
                                     "achievement_indicators": [
                                         {
@@ -708,7 +708,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Colaboración en la evaluación de los planes y protocolos del centro relacionados con la protección de datos personales, la privacidad, la seguridad, los derechos digitales y el bienestar al utilizar las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -743,7 +743,7 @@
                             "title": "Diseño y concreción de medidas para la protección de los datos personales, la privacidad, la seguridad, los derechos digitales y el bienestar digital de la comunidad educativa",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Identificación de riesgos y concreción de medidas para la protección de datos, la privacidad y los derechos digitales y para la seguridad en el centro educativo y colaboración en el diseño de las actuaciones para lograr una convivencia positiva en relación al uso de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -772,7 +772,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Referente en el diseño y aplicación de protocolos o medidas de seguridad, protección de datos personales, privacidad, derechos digitales y bienestar relacionados con la utilización de las tecnologías digitales en el ámbito educativo",
                                     "achievement_indicators": [
                                         {
@@ -808,14 +808,14 @@
                 {
                     "competence": 2.1,
                     "title": "Búsqueda y selección de contenidos digitales",
-                    "descripcion": "Localizar, evaluar y seleccionar contenidos digitales de calidad para apoyar y mejorar la enseñanza y el aprendizaje. Considerar, de forma específica, el objetivo de aprendizaje, el contexto, el enfoque pedagógico, el tipo de licencia y aspectos técnicos que garanticen la accesibilidad universal, la usabilidad y la interoperabilidad",
+                    "description": "Localizar, evaluar y seleccionar contenidos digitales de calidad para apoyar y mejorar la enseñanza y el aprendizaje. Considerar, de forma específica, el objetivo de aprendizaje, el contexto, el enfoque pedagógico, el tipo de licencia y aspectos técnicos que garanticen la accesibilidad universal, la usabilidad y la interoperabilidad",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación tutelada de criterios de calidad para seleccionar contenidos digitales adecuados y seguros y uso de estrategias de búsqueda y organización eficiente",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico de los criterios para la selección de contenidos digitales y aplicación práctica de estrategias de búsqueda y organización",
                                     "achievement_indicators": [
                                         {
@@ -841,7 +841,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Identificación, con asesoramiento, de los criterios relevantes para la búsqueda y selección de contenidos digitales ajustados a un contexto educativo real",
                                     "achievement_indicators": [
                                         {
@@ -868,7 +868,7 @@
                             "title": "Búsqueda y selección de contenidos educativos digitales orientados a su uso en el proceso de enseñanza y aprendizaje a partir de criterios de calidad y de un análisis riguroso del contexto concreto en el que se van a emplear",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso convencional y autónomo de los motores de búsqueda, repositorios de contenidos y BBDD para su aplicación educativa en un contexto (nivel, materia, competencia, tema, etc.) y una situación de aprendizaje concretos (refuerzo, ampliación o profundización)",
                                     "achievement_indicators": [
                                         {
@@ -891,7 +891,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Perfeccionamiento de las estrategias de búsqueda para la inclusión de metadatos y de nuevos criterios de calidad técnica, veracidad y relevancia de contenidos",
                                     "achievement_indicators": [
                                         {
@@ -921,7 +921,7 @@
                             "title": "Investigación para la optimización de la búsqueda y selección de contenidos digitales y transformación de las prácticas educativas a partir de la mejora en la definición de los criterios de calidad",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación y coordinación de acciones para una búsqueda y selección más eficiente de los contenidos digitales a partir del análisis de los criterios de calidad y de los nuevos desarrollos tecnológicos",
                                     "achievement_indicators": [
                                         {
@@ -945,7 +945,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Transformación de las prácticas de búsqueda y selección de contenidos educativos digitales",
                                     "achievement_indicators": [
                                         {
@@ -972,14 +972,14 @@
                 {
                     "competence": 2.2,
                     "title": "Creación y modificación de contenidos digitales",
-                    "descripcion": "Modificar y adaptar los contenidos educativos digitales respetando las condiciones de uso (obras derivadas y limitaciones recogidas en los derechos de propiedad intelectual) establecidas por cada licencia. Crear nuevos contenidos educativos digitales de forma individual o en colaboración con otros profesionales dentro de entornos seguros. Considerar, de modo específico, el objetivo de aprendizaje, el contexto, el enfoque pedagógico y los destinatarios al diseñar y crear o modificar los contenidos digitales. Seleccionar las herramientas digitales de autor, para la creación y modificación de contenidos, teniendo en cuenta las características técnicas y de accesibilidad y los términos de uso y la política de privacidad",
+                    "description": "Modificar y adaptar los contenidos educativos digitales respetando las condiciones de uso (obras derivadas y limitaciones recogidas en los derechos de propiedad intelectual) establecidas por cada licencia. Crear nuevos contenidos educativos digitales de forma individual o en colaboración con otros profesionales dentro de entornos seguros. Considerar, de modo específico, el objetivo de aprendizaje, el contexto, el enfoque pedagógico y los destinatarios al diseñar y crear o modificar los contenidos digitales. Seleccionar las herramientas digitales de autor, para la creación y modificación de contenidos, teniendo en cuenta las características técnicas y de accesibilidad y los términos de uso y la política de privacidad",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación, con ayuda y en entornos controlados, de los criterios didácticos, disciplinares y técnicos para la modificación y creación de contenidos digitales respetando la normativa sobre propiedad intelectual",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento, comprensión y aplicación teórica de los criterios didácticos, disciplinares y técnicos y el uso de herramientas de autor para la edición y creación de contenidos digitales de calidad respetando la normativa vigente sobre propiedad intelectual",
                                     "achievement_indicators": [
                                         {
@@ -1005,7 +1005,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación, en entornos controlados o con ayuda, de los criterios didácticos, disciplinares y técnicos en la edición y creación de contenidos digitales de calidad para utilizarlos con un grupo de alumnos concreto",
                                     "achievement_indicators": [
                                         {
@@ -1037,7 +1037,7 @@
                             "title": "Modificación de contenidos educativos digitales ya existentes e integración de contenidos de diversas procedencias -incluidos algunos elementos de creación propia- en unidades y secuencias de aprendizaje estructuradas",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción de los criterios didácticos, disciplinares y técnicos para la modificación de elementos integrados en contenidos educativos digitales estructurados ya existentes con objeto de adecuarlos a una situación de aprendizaje y alumnado concretos",
                                     "achievement_indicators": [
                                         {
@@ -1062,7 +1062,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Integración y modificación de contenidos digitales en diferentes formatos y procedentes de diversas fuentes, incluidos algunos elementos de creación propia, para generar nuevas unidades y secuencias de aprendizaje estructuradas y coherentes, adaptadas a una situación de aprendizaje y alumnado concretos",
                                     "achievement_indicators": [
                                         {
@@ -1099,7 +1099,7 @@
                             "title": "Investigación sobre la creación de modelos de contenidos educativos digitales que se adapten a un determinado enfoque pedagógico, así como sobre los aspectos técnicos necesarios y los estándares de calidad, y creación de contenidos educativos digitales originales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis de los estándares y herramientas de autor y coordinación de la creación colaborativa de unidades y secuencias de aprendizaje originales que respondan a enfoques pedagógicos concretos",
                                     "achievement_indicators": [
                                         {
@@ -1129,7 +1129,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Creación de contenidos educativos digitales originales para un nivel, materia, área, competencia e investigación formal sobre este ámbito",
                                     "achievement_indicators": [
                                         {
@@ -1159,14 +1159,14 @@
                 {
                     "competence": 2.3,
                     "title": "Protección, gestión y compartición de contenidos digitales",
-                    "descripcion": "Catalogar los contenidos educativos digitales y ponerlos a disposición de la comunidad educativa y del colectivo profesional utilizando entornos seguros. Proteger eficazmente los contenidos digitales. Respetar y aplicar correctamente la normativa sobre propiedad intelectual y derechos de autor en la gestión y compartición de contenidos digitales",
+                    "description": "Catalogar los contenidos educativos digitales y ponerlos a disposición de la comunidad educativa y del colectivo profesional utilizando entornos seguros. Proteger eficazmente los contenidos digitales. Respetar y aplicar correctamente la normativa sobre propiedad intelectual y derechos de autor en la gestión y compartición de contenidos digitales",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y respeto de la normativa sobre propiedad intelectual y derechos de autor y uso tutorizado con fines educativos de sistemas de catalogación y de plataformas para la compartición de contenidos digitales",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y respeto de la normativa sobre propiedad intelectual y derechos de autor, así como sobre los procedimientos de catalogación digital y las funcionalidades básicas de las plataformas para compartir con fines educativos contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -1196,7 +1196,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación de los procedimientos de publicación, compartición y catalogación de contenidos con la ayuda de un mentor en los CMS, repositorios, BBDD y CLMS ofrecidos por la AE o por el titular del centro",
                                     "achievement_indicators": [
                                         {
@@ -1227,7 +1227,7 @@
                             "title": "Uso de sistemas de catalogación y de plataformas de gestión, intercambio y compartición de contenidos educativos digitales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción de estándares para la publicación y catalogación de contenidos educativos digitales y uso convencional y autónomo de los CMS, repositorios, BBDD y CLMS",
                                     "achievement_indicators": [
                                         {
@@ -1253,7 +1253,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Aprovechamiento de las funcionalidades que ofrecen las plataformas y servicios digitales para mejorar la identificación y el acceso a los contenidos compartidos en contextos educativos y publicación en repositorios profesionales de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -1280,7 +1280,7 @@
                             "title": "Investigación aplicada sobre repositorios digitales y sobre sistemas de catalogación de contenidos educativos",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Configuración, administración y evaluación de repositorios para la compartición de contenidos digitales en el centro educativo",
                                     "achievement_indicators": [
                                         {
@@ -1304,7 +1304,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Identificación de nuevas funcionalidades técnicas y diseño de métodos y modelos para mejorar la compartición de contenidos digitales en el ámbito educativo o en la creación de nuevos repositorios",
                                     "achievement_indicators": [
                                         {
@@ -1336,14 +1336,14 @@
                 {
                     "competence": 3.1,
                     "title": "Enseñanza",
-                    "descripcion": "Integrar en las programaciones didácticas el uso de las tecnologías digitales, de forma creativa, segura y crítica para mejorar la eficacia de las prácticas docentes. Gestionar y coordinar adecuadamente las intervenciones didácticas digitales, asegurando el funcionamiento de los dispositivos, recursos y servicios durante la implementación de la programación didáctica. Desarrollar y experimentar con nuevos formatos y métodos pedagógicos para la enseñanza y para el aprendizaje",
+                    "description": "Integrar en las programaciones didácticas el uso de las tecnologías digitales, de forma creativa, segura y crítica para mejorar la eficacia de las prácticas docentes. Gestionar y coordinar adecuadamente las intervenciones didácticas digitales, asegurando el funcionamiento de los dispositivos, recursos y servicios durante la implementación de la programación didáctica. Desarrollar y experimentar con nuevos formatos y métodos pedagógicos para la enseñanza y para el aprendizaje",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada para la integración de los recursos digitales en la práctica docente de forma planificada",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Inclusión de las tecnologías digitales en la programación didáctica",
                                     "achievement_indicators": [
                                         {
@@ -1370,7 +1370,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Diseño de la programación didáctica e implementación en el aula, de forma guiada, utilizando las tecnologías digitales disponibles en el centro",
                                     "achievement_indicators": [
                                         {
@@ -1397,7 +1397,7 @@
                             "title": "Gestión autónoma y adaptación creativa de las intervenciones didácticas empleando recursos digitales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso autónomo, en la práctica docente, de las tecnologías digitales incorporadas en la programación didáctica",
                                     "achievement_indicators": [
                                         {
@@ -1428,7 +1428,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación de la práctica docente apoyada con tecnologías digitales a nuevos contextos de enseñanza-aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -1466,7 +1466,7 @@
                             "title": "Investigación, experimentación y diseño de nuevos modelos didácticos basados en la integración de las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis y adaptación flexible del uso de las tecnologías digitales para mejorar las estrategias pedagógicas en el centro",
                                     "achievement_indicators": [
                                         {
@@ -1497,7 +1497,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación y transformación de las prácticas de enseñanza-aprendizaje mediante la integración de las tecnologías digitales de forma sistemática, segura y crítica",
                                     "achievement_indicators": [
                                         {
@@ -1523,14 +1523,14 @@
                 {
                     "competence": 3.2,
                     "title": "Orientación y apoyo en el aprendizaje",
-                    "descripcion": "Utilizar las tecnologías y servicios digitales, cumpliendo con las medidas de seguridad y protección de datos, para mejorar la interacción individual y colectiva con el alumnado, dentro y fuera de las sesiones de aprendizaje. Emplear las tecnologías digitales para ofrecer orientación y asistencia pertinente y específica. Desarrollar y experimentar nuevas vías y formatos para ofrecer orientación y apoyo, respetando los derechos digitales de todo el alumnado y evitando cualquier tipo de discriminación o sesgo",
+                    "description": "Utilizar las tecnologías y servicios digitales, cumpliendo con las medidas de seguridad y protección de datos, para mejorar la interacción individual y colectiva con el alumnado, dentro y fuera de las sesiones de aprendizaje. Emplear las tecnologías digitales para ofrecer orientación y asistencia pertinente y específica. Desarrollar y experimentar nuevas vías y formatos para ofrecer orientación y apoyo, respetando los derechos digitales de todo el alumnado y evitando cualquier tipo de discriminación o sesgo",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y comprensión del uso de las tecnologías digitales para apoyar y orientar al alumnado durante los procesos de aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento de las tecnologías digitales para la comunicación e interacción en situaciones de enseñanza y aprendizaje y sistemas de monitorización de la participación del alumnado con el fin de prestarle apoyo en este proceso",
                                     "achievement_indicators": [
                                         {
@@ -1559,7 +1559,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Uso, con asesoramiento, de las tecnologías digitales de comunicación, interacción y monitorización, disponibles en el centro, para orientar y reconducir los procesos de aprendizaje del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -1593,7 +1593,7 @@
                             "title": "Uso autónomo y adaptación a nuevos contextos de las tecnologías digitales para ofrecer apoyo y orientación al alumnado durante los procesos de aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración, de forma autónoma, de las tecnologías digitales para comunicarse, interactuar y monitorizar el proceso de aprendizaje con el fin de ofrecer información, orientación y apoyo",
                                     "achievement_indicators": [
                                         {
@@ -1624,7 +1624,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación y transferencia de estrategias y tecnologías digitales de monitorización, comunicación e interacción para mejorar el apoyo y orientación durante los procesos de aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -1660,7 +1660,7 @@
                             "title": "Investigación y desarrollo de nuevas vías y formatos para ofrecer apoyo y orientación durante el proceso de aprendizaje utilizando tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación y coordinación de las actuaciones del centro para facilitar apoyo y orientación al alumnado en sus aprendizajes utilizando tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -1684,7 +1684,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación y diseño de nuevos modelos de apoyo y orientación al alumnado durante los procesos de aprendizaje empleando tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -1713,14 +1713,14 @@
                 {
                     "competence": 3.3,
                     "title": "Aprendizaje entre iguales",
-                    "descripcion": "Seleccionar y utilizar tecnologías digitales seguras para mejorar el aprendizaje del alumnado a través de la colaboración. Proporcionar estrategias al alumnado para utilizar las tecnologías digitales de comunicación y cooperación con el fin de enriquecer los procesos de aprendizaje y desarrollar su capacidad de aprender a aprender entre iguales",
+                    "description": "Seleccionar y utilizar tecnologías digitales seguras para mejorar el aprendizaje del alumnado a través de la colaboración. Proporcionar estrategias al alumnado para utilizar las tecnologías digitales de comunicación y cooperación con el fin de enriquecer los procesos de aprendizaje y desarrollar su capacidad de aprender a aprender entre iguales",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y uso guiado de tecnologías digitales para promover el aprendizaje entre iguales",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico de los criterios didácticos para la utilización de herramientas digitales de colaboración en el aula",
                                     "achievement_indicators": [
                                         {
@@ -1740,7 +1740,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación guiada de estrategias para potenciar el aprendizaje entre iguales empleando de forma segura tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -1763,7 +1763,7 @@
                             "title": "Integración en la práctica docente de las tecnologías digitales para promover y desarrollar el aprendizaje entre iguales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Aplicación de las tecnologías digitales para implementar, en el aula, las actividades de aprendizaje entre iguales incluidas en la programación didáctica",
                                     "achievement_indicators": [
                                         {
@@ -1786,7 +1786,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación de estrategias de aprendizaje entre iguales empleando medios digitales al diseño de actividades de colaboración y a la mejora de su aplicación práctica",
                                     "achievement_indicators": [
                                         {
@@ -1818,7 +1818,7 @@
                             "title": "Investigación y diseño de nuevas estrategias y modelos pedagógicos de aprendizaje entre iguales empleando las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Búsqueda y experimentación de nuevas estrategias y modelos de colaboración que permitan mejorar el aprendizaje entre iguales utilizando las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -1839,7 +1839,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Desarrollo e implementación de nuevas estrategias y modelos de aprendizaje entre iguales basados en tecnologías digitales de colaboración",
                                     "achievement_indicators": [
                                         {
@@ -1865,14 +1865,14 @@
                 {
                     "competence": 3.4,
                     "title": "Aprendizaje autorregulado",
-                    "descripcion": "Utilizar las tecnologías digitales para favorecer en el alumnado la metacognición, a través de la reflexión sobre el propio aprendizaje y el desarrollo de las acciones estratégicas para planificar, supervisar, contrastar ideas, solicitar ayuda y documentar los procesos de aprendizaje realizados",
+                    "description": "Utilizar las tecnologías digitales para favorecer en el alumnado la metacognición, a través de la reflexión sobre el propio aprendizaje y el desarrollo de las acciones estratégicas para planificar, supervisar, contrastar ideas, solicitar ayuda y documentar los procesos de aprendizaje realizados",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento teórico y utilización práctica de las tecnologías digitales aplicadas al aprendizaje autorregulado en situaciones educativas",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico y utilización práctica de las tecnologías digitales en situaciones de aprendizaje autorregulado",
                                     "achievement_indicators": [
                                         {
@@ -1893,7 +1893,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación, con asesoramiento, de las tecnologías digitales disponibles en el centro para desarrollar el aprendizaje autorregulado del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -1921,7 +1921,7 @@
                             "title": "Integración en el proceso de enseñanza-aprendizaje de las estrategias de aprendizaje autorregulado empleando las tecnologías digitales en función del contexto de aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción e implementación autónoma de actividades y tareas que requieren el uso de tecnologías digitales para mejorar el aprendizaje autorregulado del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -1944,7 +1944,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación de las tecnologías digitales y del contexto educativo (aspectos organizativos, temporales y espaciales) a las necesidades del alumnado para promover la autorregulación de su aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -1971,7 +1971,7 @@
                             "title": "Experimentación e investigación aplicada sobre estrategias docentes que promuevan el aprendizaje autorregulado a través del uso de las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación de las estrategias y diseño de propuestas de mejora para favorecer el aprendizaje autorregulado del alumnado a través de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -1987,7 +1987,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Transformación de las prácticas docentes mediante el desarrollo de nuevas estrategias y modelos de integración de las tecnologías digitales para la mejora del aprendizaje autorregulado del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -2015,14 +2015,14 @@
                 {
                     "competence": 4.1,
                     "title": "Estrategias de evaluación",
-                    "descripcion": "Utilizar las tecnologías digitales para el diseño de los medios e instrumentos de evaluación diagnóstica, formativa y sumativa e implementarlos cumpliendo con las medidas de seguridad y protección de datos personales. Mejorar la diversidad e idoneidad de los formatos y enfoques de evaluación",
+                    "description": "Utilizar las tecnologías digitales para el diseño de los medios e instrumentos de evaluación diagnóstica, formativa y sumativa e implementarlos cumpliendo con las medidas de seguridad y protección de datos personales. Mejorar la diversidad e idoneidad de los formatos y enfoques de evaluación",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento teórico y uso guiado de las tecnologías digitales para evaluar los procesos de enseñanza y aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento de las técnicas, medios e instrumentos para la evaluación de los procesos de enseñanza y aprendizaje empleando tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -2049,7 +2049,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Uso tutelado de las tecnologías digitales proporcionadas por las AAEE o por los titulares del centro para la evaluación diagnóstica, formativa y sumativa de los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2088,7 +2088,7 @@
                             "title": "Aplicación autónoma y adaptación a nuevos contextos de los medios e instrumentos digitales de evaluación de los procesos de enseñanza y aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Utilización de las tecnologías digitales de evaluación disponibles en el centro de forma autónoma",
                                     "achievement_indicators": [
                                         {
@@ -2122,7 +2122,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación del uso de las tecnologías digitales del centro a la implementación de las técnicas de evaluación conocidas en nuevos contextos",
                                     "achievement_indicators": [
                                         {
@@ -2155,7 +2155,7 @@
                             "title": "Investigación y diseño de nuevos modelos, medios e instrumentos de evaluación de los procesos de enseñanza y aprendizaje mediante el uso de tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Integración de las tecnologías digitales para la evaluación de los procesos de enseñanza y aprendizaje y de los planes y proyectos del centro",
                                     "achievement_indicators": [
                                         {
@@ -2181,7 +2181,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación sobre el uso de las tecnologías digitales en los procesos de enseñanza y aprendizaje y diseño de nuevos modelos, medios e instrumentos para la recogida de datos",
                                     "achievement_indicators": [
                                         {
@@ -2211,14 +2211,14 @@
                 {
                     "competence": 4.2,
                     "title": "Analíticas y evidencias de aprendizaje",
-                    "descripcion": "Generar, almacenar, validar, seleccionar, analizar e interpretar las evidencias digitales sobre la actividad, el rendimiento y el progreso del alumnado con el fin de mejorar el proceso de enseñanza y el aprendizaje, respetando la normativa vigente en cuanto a protección de datos",
+                    "description": "Generar, almacenar, validar, seleccionar, analizar e interpretar las evidencias digitales sobre la actividad, el rendimiento y el progreso del alumnado con el fin de mejorar el proceso de enseñanza y el aprendizaje, respetando la normativa vigente en cuanto a protección de datos",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento de los medios digitales para la gestión e interpretación de los datos procedentes de la evaluación educativa bajo criterios éticos y pedagógicos y aplicación tutelada de los procedimientos",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento del uso de las tecnologías digitales para obtener, tratar, visualizar, analizar e interpretar los datos recogidos en la evaluación de los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2248,7 +2248,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación tutelada de los conocimientos sobre análisis de datos para la evaluación de los procesos de enseñanza y aprendizaje generados mediante los programas del centro",
                                     "achievement_indicators": [
                                         {
@@ -2281,7 +2281,7 @@
                             "title": "Uso autónomo de las tecnologías digitales de análisis de datos del centro, en los procesos de evaluación de la enseñanza y el aprendizaje, y transferencia de su aplicación a nuevas estrategias educativas",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso autónomo de las tecnologías digitales del centro para gestionar e interpretar los datos en los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2308,7 +2308,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Uso innovador de las tecnologías digitales del centro en la recogida, tratamiento, análisis, representación e interpretación de los datos para evaluar los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2341,7 +2341,7 @@
                             "title": "Investigación aplicada sobre la gestión e interpretación de datos para la mejora de la evaluación de los procesos de enseñanza y aprendizaje utilizando las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis y validación de las funcionalidades que ofrecen las tecnologías digitales del centro incluyendo el estudio de datos para mejorar el proceso de evaluación",
                                     "achievement_indicators": [
                                         {
@@ -2361,7 +2361,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación sobre el uso de las tecnologías digitales para el análisis de datos y desarrollo de nuevas propuestas con el fin de mejorar las prácticas de evaluación de los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2386,14 +2386,14 @@
                 {
                     "competence": 4.3,
                     "title": "Retroalimentación y toma de decisiones",
-                    "descripcion": "Utilizar las tecnologías digitales para ofrecer retroalimentación al alumnado respetando la privacidad y seguridad de la información aportada. Adaptar las estrategias de enseñanza y proporcionar refuerzo específico a partir de los datos obtenidos. Informar al alumnado y a las familias y facilitar la comprensión de las evidencias de aprendizaje aportadas por las tecnologías digitales para que sean utilizadas en la toma de decisiones",
+                    "description": "Utilizar las tecnologías digitales para ofrecer retroalimentación al alumnado respetando la privacidad y seguridad de la información aportada. Adaptar las estrategias de enseñanza y proporcionar refuerzo específico a partir de los datos obtenidos. Informar al alumnado y a las familias y facilitar la comprensión de las evidencias de aprendizaje aportadas por las tecnologías digitales para que sean utilizadas en la toma de decisiones",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento de las tecnologías digitales empleadas para informar sobre los procesos de evaluación y orientar en consecuencia la enseñanza y el aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico del uso de las tecnologías digitales para informar sobre los procesos de evaluación y orientar la enseñanza y el aprendizaje a partir de dichas valoraciones",
                                     "achievement_indicators": [
                                         {
@@ -2414,7 +2414,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Selección y uso tutelado de las tecnologías digitales del centro para tomar decisiones, a partir de los datos obtenidos en el proceso de evaluación, y ofrecer retroalimentación, información y orientaciones sobre la enseñanza y el aprendizaje en función de su finalidad y destinatarios",
                                     "achievement_indicators": [
                                         {
@@ -2447,7 +2447,7 @@
                             "title": "Uso autónomo de las tecnologías digitales del centro para tomar decisiones y ofrecer retroalimentación, información y orientaciones sobre el desarrollo de los procesos de enseñanza y aprendizaje a partir de los datos obtenidos en los procesos de evaluación",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Uso autónomo y selectivo de las tecnologías digitales del centro para ofrecer retroalimentación, informar y orientar la enseñanza y el aprendizaje a partir de los datos obtenidos en los distintos procesos de evaluación",
                                     "achievement_indicators": [
                                         {
@@ -2474,7 +2474,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación contextualizada de los procedimientos y sistemas desarrollados mediante tecnologías digitales para integrar los datos asociados a la evaluación y facilitar la comprensión de la información y las orientaciones sobre los procesos de enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2504,7 +2504,7 @@
                             "title": "Evaluación, configuración y desarrollo de nuevos sistemas, empleando las tecnologías digitales, para ofrecer retroalimentación, informar y orientar la enseñanza y el aprendizaje a partir de los datos obtenidos en los distintos procesos de evaluación",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis y evaluación de los sistemas para ofrecer retroalimentación, informar y orientar la enseñanza y el aprendizaje empleados en el centro",
                                     "achievement_indicators": [
                                         {
@@ -2532,7 +2532,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Diseño de nuevos sistemas para ofrecer retroalimentación, informar y orientar la enseñanza y el aprendizaje a partir de los datos obtenidos en los distintos procesos de evaluación",
                                     "achievement_indicators": [
                                         {
@@ -2568,14 +2568,14 @@
                 {
                     "competence": 5.1,
                     "title": "Accesibilidad e inclusión",
-                    "descripcion": "Emplear las tecnologías digitales para facilitar el aprendizaje de todo el alumnado eliminando las barreras contextuales para su presencia, participación y progreso. Garantizar la accesibilidad física, sensorial y cognitiva a los recursos digitales. Adoptar medidas que promuevan la equidad y permitan reducir o compensar la brecha digital y el impacto de las desigualdades socioculturales y económicas en el aprendizaje",
+                    "description": "Emplear las tecnologías digitales para facilitar el aprendizaje de todo el alumnado eliminando las barreras contextuales para su presencia, participación y progreso. Garantizar la accesibilidad física, sensorial y cognitiva a los recursos digitales. Adoptar medidas que promuevan la equidad y permitan reducir o compensar la brecha digital y el impacto de las desigualdades socioculturales y económicas en el aprendizaje",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento de las soluciones tecnológicas existentes para lograr la accesibilidad universal e incorporación de las mismas en la práctica educativa",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento del uso pedagógico de las tecnologías digitales para facilitar la accesibilidad e inclusión de todo el alumnado",
                                     "achievement_indicators": [
                                         {
@@ -2602,7 +2602,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Utilización con ayuda de los principios de accesibilidad universal e inclusión en su práctica docente mediante tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -2629,7 +2629,7 @@
                             "title": "Aplicación de soluciones de accesibilidad universal al utilizar las tecnologías digitales en la práctica docente para responder a la diversidad de alumnado",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción de un uso convencional y autónomo de las tecnologías digitales proporcionadas por la AE o por los titulares del centro, respetando los principios de accesibilidad e inclusión",
                                     "achievement_indicators": [
                                         {
@@ -2651,7 +2651,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación de las tecnologías digitales y de su uso a diferentes contextos educativos para favorecer el aprendizaje de todo el alumnado",
                                     "achievement_indicators": [
                                         {
@@ -2680,7 +2680,7 @@
                             "title": "Experimentación de nuevas soluciones de accesibilidad y estrategias pedagógicas de uso para garantizar la inclusión de todo el alumnado en un mismo proceso didáctico",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación de las prácticas de accesibilidad e inclusión educativa empleando las tecnologías digitales del centro",
                                     "achievement_indicators": [
                                         {
@@ -2708,7 +2708,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Innovación de las prácticas de inclusión educativa a través de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -2736,14 +2736,14 @@
                 {
                     "competence": 5.2,
                     "title": "Atención a las diferencias personales en el aprendizaje",
-                    "descripcion": "Utilizar las tecnologías digitales para atender las diferencias del alumnado, garantizando sus derechos digitales, de forma que todos puedan alcanzar los objetivos de aprendizaje",
+                    "description": "Utilizar las tecnologías digitales para atender las diferencias del alumnado, garantizando sus derechos digitales, de forma que todos puedan alcanzar los objetivos de aprendizaje",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento de los recursos digitales para responder a las necesidades individuales de aprendizaje del alumnado bajo criterios éticos y pedagógicos",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento teórico de las funcionalidades de las tecnologías digitales para responder a las necesidades individuales del alumnado y de los criterios pedagógicos para su uso",
                                     "achievement_indicators": [
                                         {
@@ -2771,7 +2771,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Uso supervisado de las tecnologías digitales del centro para responder a las necesidades personales de aprendizaje del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -2799,7 +2799,7 @@
                             "title": "Uso de los recursos digitales y diseño de estrategias para dar respuesta a las necesidades del alumnado siguiendo criterios éticos y pedagógicos con objeto de que alcance los objetivos de aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Utilización autónoma de las tecnologías digitales en el desempeño docente para responder a la diversidad de necesidades de aprendizaje del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -2822,7 +2822,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Transferencia del uso de las tecnologías digitales y adopción de nuevas estrategias pedagógicas para dar respuesta a las necesidades personales del alumnado en nuevas situaciones de aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2855,7 +2855,7 @@
                             "title": "Investigación e innovación sobre el uso de las tecnologías digitales para dar respuesta a las necesidades personales del alumnado durante los procesos de enseñanza y aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Evaluación de la idoneidad de las estrategias pedagógicas y de los recursos tecnológicos empleados en el centro educativo para dar respuesta a las necesidades personales de aprendizaje del alumnado y toma de decisiones para su mejora",
                                     "achievement_indicators": [
                                         {
@@ -2880,7 +2880,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación sobre el uso de las tecnologías digitales para la atención personalizada de necesidades de aprendizaje y la creación de nuevos modelos pedagógicos o definición de nuevas funcionalidades",
                                     "achievement_indicators": [
                                         {
@@ -2913,14 +2913,14 @@
                 {
                     "competence": 5.3,
                     "title": "Compromiso activo del alumnado con su propio aprendizaje",
-                    "descripcion": "Integrar las tecnologías digitales en estrategias pedagógicas que promuevan el compromiso activo del alumnado con una materia, convirtiéndole en protagonista de su propio aprendizaje e incentivando el desarrollo de operaciones cognitivas complejas y de competencias transversales, como el pensamiento crítico o la creatividad",
+                    "description": "Integrar las tecnologías digitales en estrategias pedagógicas que promuevan el compromiso activo del alumnado con una materia, convirtiéndole en protagonista de su propio aprendizaje e incentivando el desarrollo de operaciones cognitivas complejas y de competencias transversales, como el pensamiento crítico o la creatividad",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento teórico y uso tutelado de las tecnologías digitales para favorecer el compromiso activo del alumnado y el desarrollo de las competencias transversales y de operaciones cognitivas complejas",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica del modo en que las tecnologías digitales pueden favorecer el compromiso activo del alumnado con su aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -2946,7 +2946,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Utilización de estrategias pedagógicas para desarrollar el compromiso activo del alumnado con su aprendizaje basadas en el uso de las tecnologías digitales en entornos controlados o de forma guiada",
                                     "achievement_indicators": [
                                         {
@@ -2977,7 +2977,7 @@
                             "title": "Uso autónomo e integración de las tecnologías digitales para favorecer el compromiso activo del alumnado con su aprendizaje en las distintas áreas y materias y en el desarrollo de las competencias transversales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Adopción de un uso convencional y autónomo de las tecnologías digitales que permiten incrementar la motivación, el protagonismo y la responsabilidad del alumnado en su aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -3003,7 +3003,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación de las estrategias metodológicas y del uso de las tecnologías digitales a nuevas situaciones de aprendizaje para desarrollar el compromiso activo del alumnado",
                                     "achievement_indicators": [
                                         {
@@ -3033,7 +3033,7 @@
                             "title": "Investigación e innovación sobre la integración de las tecnologías digitales en procesos de transformación de las prácticas pedagógicas con el fin de mejorar la motivación y el compromiso activo del alumnado con su aprendizaje",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Análisis, evaluación y promoción de las prácticas pedagógicas digitales desarrolladas en el centro para mejorar la motivación e implicación del alumnado en su aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -3054,7 +3054,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación, innovación y liderazgo en el proceso de transformación de las prácticas pedagógicas digitales para mejorar el compromiso activo del alumnado con su propio aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -3087,14 +3087,14 @@
                 {
                     "competence": 6.1,
                     "title": "Alfabetización mediática y en el tratamiento de la información y de los datos",
-                    "descripcion": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en alfabetización mediática y en el tratamiento de la información y de los datos",
+                    "description": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en alfabetización mediática y en el tratamiento de la información y de los datos",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de las estrategias pedagógicas para integrar, en los procesos de enseñanza y aprendizaje, los aspectos curriculares de la competencia digital sobre alfabetización mediática y en tratamiento de información y datos del alumnado",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica de los aspectos técnicos implicados en la alfabetización mediática y en el tratamiento de información y datos y de los criterios didácticos para su enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -3118,7 +3118,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación, de forma guiada en contextos reales, de procesos de enseñanza y aprendizaje relativos a la alfabetización mediática y en tratamiento de la información y de los datos",
                                     "achievement_indicators": [
                                         {
@@ -3147,7 +3147,7 @@
                             "title": "Diseño e integración de situaciones de aprendizaje para desarrollar la competencia digital del alumnado en tratamiento de la información y de los datos",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración de los aspectos curriculares relativos a la alfabetización del alumnado en el tratamiento de la información y de los datos en los procesos de enseñanza y aprendizaje de forma autónoma",
                                     "achievement_indicators": [
                                         {
@@ -3177,7 +3177,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación a nuevos contextos de las tecnologías del centro y de las estrategias pedagógicas para potenciar el desarrollo de la competencia digital del alumnado en el tratamiento de información y datos",
                                     "achievement_indicators": [
                                         {
@@ -3211,7 +3211,7 @@
                             "title": "Investigación e innovación en el diseño de estrategias pedagógicas para el desarrollo de la competencia digital del alumnado en alfabetización mediática y en el tratamiento de la información y de los datos",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación o diseño de las actuaciones del centro para desarrollar la competencia digital del alumnado en alfabetización mediática y en el tratamiento de la información y de los datos",
                                     "achievement_indicators": [
                                         {
@@ -3238,7 +3238,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Transformación de las prácticas de enseñanza y aprendizaje para desarrollar la competencia digital del alumnado en alfabetización mediática y en tratamiento de la información y de los datos mediante la investigación y diseño de nuevas estrategias pedagógicas",
                                     "achievement_indicators": [
                                         {
@@ -3265,14 +3265,14 @@
                 {
                     "competence": 6.2,
                     "title": "Comunicación, colaboración y ciudadanía digital",
-                    "descripcion": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la comunicación y colaboración, empleando tecnologías y respetando la etiqueta digital, así como para la construcción de una ciudadanía e identidad digital responsables",
+                    "description": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la comunicación y colaboración, empleando tecnologías y respetando la etiqueta digital, así como para la construcción de una ciudadanía e identidad digital responsables",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación, en entornos controlados, de propuestas pedagógicas para integrar en los procesos de enseñanza y aprendizaje los aspectos curriculares de la competencia digital del alumnado sobre comunicación y colaboración y sobre ciudadanía e identidad digital",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica de los aspectos implicados en los procesos de comunicación y colaboración en entornos digitales y de los criterios didácticos para que el alumnado aprenda a emplear estas herramientas y a construir su ciudadanía e identidad digital de forma responsable y segura",
                                     "achievement_indicators": [
                                         {
@@ -3297,7 +3297,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación de propuestas didácticas, de forma guiada, para el desarrollo de las competencias del alumnado para comunicarse, colaborar y participar en entornos digitales, construyendo, de forma progresiva y responsable, su identidad y ciudadanía digital",
                                     "achievement_indicators": [
                                         {
@@ -3330,7 +3330,7 @@
                             "title": "Diseño e integración de situaciones de aprendizaje para desarrollar la competencia digital del alumnado para la comunicación, colaboración y participación ciudadana y para la creación de su identidad digital",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración de los aspectos curriculares relativos al desarrollo de la competencia digital del alumnado para la comunicación y la colaboración y para el ejercicio de la ciudadanía y la construcción de la identidad digital en los procesos de enseñanza y aprendizaje de forma autónoma",
                                     "achievement_indicators": [
                                         {
@@ -3355,7 +3355,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Diseño y adaptación de las estrategias pedagógicas para potenciar el desarrollo de la competencia digital del alumnado en la comunicación, colaboración y participación mediante las tecnologías digitales y en la construcción de la identidad digital",
                                     "achievement_indicators": [
                                         {
@@ -3387,7 +3387,7 @@
                             "title": "Investigación e innovación en el diseño de nuevas estrategias pedagógicas para el desarrollo de la competencia del alumnado para la comunicación, la colaboración y la participación en entornos digitales",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación o diseño de las actuaciones del centro para desarrollar la competencia digital del alumnado en la comunicación, colaboración y participación mediante las tecnologías digitales y en la construcción de la identidad digital",
                                     "achievement_indicators": [
                                         {
@@ -3416,7 +3416,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación e innovación sobre las prácticas de enseñanza y aprendizaje dirigidas al desarrollo de la competencia digital del alumnado en el uso de las tecnologías de la comunicación y de la colaboración y en la construcción de la identidad digital y de una ciudadanía activa y responsable",
                                     "achievement_indicators": [
                                         {
@@ -3443,14 +3443,14 @@
                 {
                     "competence": 6.3,
                     "title": "Creación de contenidos digitales",
-                    "descripcion": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la creación y reelaboración de contenidos digitales, incluyendo la programación y los contenidos o funcionalidades para crearlos o editarlos de las tecnologías emergentes, aplicando los derechos de autoría y de propiedad intelectual",
+                    "description": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la creación y reelaboración de contenidos digitales, incluyendo la programación y los contenidos o funcionalidades para crearlos o editarlos de las tecnologías emergentes, aplicando los derechos de autoría y de propiedad intelectual",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de las estrategias pedagógicas para integrar en los procesos de enseñanza y aprendizaje los aspectos curriculares de la competencia digital del alumnado para la creación de contenidos digitales",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica de los aspectos técnicos implicados en el desarrollo de la competencia digital del alumnado para crear contenidos digitales y de los criterios didácticos para su enseñanza y aprendizaje",
                                     "achievement_indicators": [
                                         {
@@ -3481,7 +3481,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación, de forma guiada en contextos reales, de procesos de enseñanza y aprendizaje para desarrollar la competencia del alumnado en la creación de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -3513,7 +3513,7 @@
                             "title": "Diseño e integración de situaciones de aprendizaje para desarrollar la competencia digital del alumnado en la creación de contenidos digitales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración en los procesos de enseñanza y aprendizaje, de forma autónoma, de los aspectos curriculares relativos al desarrollo de la competencia del alumnado en la creación de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -3541,7 +3541,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación a nuevos contextos de las tecnologías del centro y de las estrategias pedagógicas para potenciar el desarrollo de la competencia digital del alumnado para la creación de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -3573,7 +3573,7 @@
                             "title": "Investigación aplicada e innovación en el desarrollo de propuestas didácticas para estimular la creatividad en la expresión de ideas y conocimientos a través de la elaboración de contenidos digitales por parte del alumnado",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación o diseño de las actuaciones del centro para desarrollar la competencia digital del alumnado en la creación de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -3602,7 +3602,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Innovación de las prácticas de enseñanza y aprendizaje para desarrollar la competencia digital del alumnado para la creación de contenidos digitales",
                                     "achievement_indicators": [
                                         {
@@ -3629,14 +3629,14 @@
                 {
                     "competence": 6.4,
                     "title": "Uso responsable y bienestar digital",
-                    "descripcion": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en el uso seguro, responsable, crítico, saludable y sostenible de las tecnologías digitales",
+                    "description": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en el uso seguro, responsable, crítico, saludable y sostenible de las tecnologías digitales",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de las estrategias pedagógicas para integrar en los procesos de enseñanza y aprendizaje los aspectos curriculares de la competencia digital del alumnado sobre el uso seguro, responsable, crítico, saludable y sostenible a la hora de utilizar las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica de los aspectos implicados en la utilización responsable y saludable de las tecnologías digitales y de los criterios didácticos para que el alumnado adquiera hábitos de uso seguro y adopte decisiones reflexivas",
                                     "achievement_indicators": [
                                         {
@@ -3665,7 +3665,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación de propuestas didácticas, de forma guiada, para el desarrollo de la competencia del alumnado en el uso responsable, seguro y sostenible de las tecnologías digitales y para garantizar su bienestar digital",
                                     "achievement_indicators": [
                                         {
@@ -3694,7 +3694,7 @@
                             "title": "Diseño e integración de situaciones de aprendizaje para desarrollar la competencia digital del alumnado para que haga un uso seguro, responsable, crítico, saludable y sostenible de las tecnologías digitales",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración de los aspectos curriculares relativos al desarrollo de la competencia digital del alumnado sobre el uso seguro, responsable, crítico, saludable y sostenible de las tecnologías digitales en los procesos de enseñanza y aprendizaje de forma autónoma",
                                     "achievement_indicators": [
                                         {
@@ -3720,7 +3720,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Diseño y adaptación de las estrategias pedagógicas para potenciar el desarrollo de la competencia digital del alumnado en el uso responsable, seguro, crítico, saludable y sostenible de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -3747,7 +3747,7 @@
                             "title": "Investigación e innovación en el diseño de estrategias pedagógicas para el desarrollo de la competencia del alumnado en el uso de las tecnologías de forma segura, responsable, crítica y sostenible y para salvaguardar su propio bienestar y el de otras personas",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación o diseño de las actuaciones del centro para desarrollar la competencia digital del alumnado en el uso de las tecnologías digitales de forma segura, responsable, crítica, saludable y sostenible",
                                     "achievement_indicators": [
                                         {
@@ -3777,7 +3777,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación e innovación sobre las prácticas de enseñanza y aprendizaje, de forma que se adapte a la continua evolución de los riesgos y de las tecnologías dirigidas al desarrollo de la competencia digital del alumnado en el uso de las dispositivos y servicios digitales de forma segura, responsable, crítica, saludable y sostenible",
                                     "achievement_indicators": [
                                         {
@@ -3805,14 +3805,14 @@
                 {
                     "competence": 6.5,
                     "title": "Resolución de problemas",
-                    "descripcion": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la utilización de las tecnologías digitales para resolver problemas cotidianos y desenvolverse, como prosumidor, de forma creativa y crítica en un mundo digitalizado",
+                    "description": "Diseñar, implementar e integrar, en los procesos de enseñanza y aprendizaje, propuestas pedagógicas para el desarrollo y evaluación de la competencia digital del alumnado en la utilización de las tecnologías digitales para resolver problemas cotidianos y desenvolverse, como prosumidor, de forma creativa y crítica en un mundo digitalizado",
                     "stages": [
                         {
                             "stage": "A",
                             "title": "Conocimiento y aplicación guiada de las estrategias pedagógicas para integrar en los procesos de enseñanza y aprendizaje los aspectos curriculares de la competencia digital del alumnado para comprender el funcionamiento de las tecnologías y actuar como prosumidor en una sociedad digital",
                             "levels": [
                                 {
-                                    "nivel": "A1",
+                                    "level": "A1",
                                     "title": "Conocimiento y comprensión teórica de los aspectos didácticos implicados en el desarrollo de la competencia del alumnado para que aprenda a utilizar la tecnología como medio para resolver problemas y cubrir sus necesidades en el contexto de una sociedad digital",
                                     "achievement_indicators": [
                                         {
@@ -3840,7 +3840,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "A2",
+                                    "level": "A2",
                                     "title": "Aplicación, de forma guiada, de propuestas didácticas para el desarrollo de la competencia del alumnado para comprender el funcionamiento de las tecnologías y actuar como prosumidor en una sociedad digital",
                                     "achievement_indicators": [
                                         {
@@ -3871,7 +3871,7 @@
                             "title": "Diseño e implementación de estrategias pedagógicas para integrar en los procesos de enseñanza y aprendizaje los aspectos curriculares de la competencia del alumnado para comprender el funcionamiento de las tecnologías y actuar como prosumidor en una sociedad digital",
                             "levels": [
                                 {
-                                    "nivel": "B1",
+                                    "level": "B1",
                                     "title": "Integración en los procesos de enseñanza y aprendizaje, de forma autónoma, de los aspectos curriculares relativos al desarrollo de la competencia del alumnado en el uso de las tecnologías digitales para dar respuesta a problemas cotidianos y llevar a la práctica proyectos individuales y colectivos",
                                     "achievement_indicators": [
                                         {
@@ -3898,7 +3898,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "B2",
+                                    "level": "B2",
                                     "title": "Adaptación a nuevos contextos de las estrategias pedagógicas en el desarrollo de la competencia digital del alumnado para que resuelva problemas cotidianos y se desenvuelva en un mundo digitalizado haciendo un uso creativo y crítico de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -3932,7 +3932,7 @@
                             "title": "Investigación e innovación en el diseño de estrategias pedagógicas para el desarrollo de la competencia del alumnado para comprender el funcionamiento de las tecnologías y actuar como prosumidor en una sociedad digital",
                             "levels": [
                                 {
-                                    "nivel": "C1",
+                                    "level": "C1",
                                     "title": "Coordinación o diseño de las actuaciones del centro para desarrollar la competencia digital del alumnado para que resuelva problemas cotidianos y se desenvuelva en un mundo digitalizado haciendo un uso creativo y crítico de las tecnologías digitales",
                                     "achievement_indicators": [
                                         {
@@ -3960,7 +3960,7 @@
                                     ]
                                 },
                                 {
-                                    "nivel": "C2",
+                                    "level": "C2",
                                     "title": "Investigación e innovación sobre las prácticas de enseñanza y aprendizaje aplicadas en un mundo digitalizado en continua evolución y dirigidas al desarrollo de la competencia digital del alumnado para que se desenvuelva en él haciendo un uso eficaz creativo y crítico de las tecnologías",
                                     "achievement_indicators": [
                                         {

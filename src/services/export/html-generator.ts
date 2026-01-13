@@ -11,6 +11,7 @@
 import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/interfaces';
 import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
+import { getLicenseClass } from '../../shared/export/constants';
 
 // Import shared iDevice configuration service
 import { getIdeviceConfig, getIdeviceExportFiles } from '../idevice-config';
@@ -523,7 +524,7 @@ function generateFooterSection(options: { license: string; licenseUrl?: string; 
         userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
     }
 
-    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="cc cc-by-sa"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${escapeHtml(license)}</a></p>
+    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${escapeHtml(license)}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
 }
