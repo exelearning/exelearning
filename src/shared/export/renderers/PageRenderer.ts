@@ -97,6 +97,9 @@ export class PageRenderer {
             onUnloadScript = '',
             // Theme files (CSS/JS from theme root directory)
             themeFiles = [],
+            // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+            hideNavigation = false,
+            hideNavButtons = false,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -133,6 +136,12 @@ export class PageRenderer {
         // Build "Made with eXeLearning" link (only if enabled)
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
 
+        // Build navigation HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navHtml = hideNavigation ? '' : this.renderNavigation(allPages, page.id, basePath);
+
+        // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
+        const navButtonsHtml = hideNavButtons ? '' : this.renderNavButtons(page, allPages, basePath, language);
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
@@ -140,10 +149,10 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
-<div class="exe-content exe-export pre-js siteNav-hidden"> ${this.renderNavigation(allPages, page.id, basePath)}<main id="${page.id}" class="page"> ${searchBoxHtml}
+<div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
-</div></main>${this.renderNavButtons(page, allPages, basePath, language)}
+</div></main>${navButtonsHtml}
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${madeWithExeHtml}

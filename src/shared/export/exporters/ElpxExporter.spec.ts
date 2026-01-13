@@ -116,6 +116,10 @@ class MockZipProvider implements ZipProvider {
         return this.files.has(path);
     }
 
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
     async generateAsync(): Promise<Buffer> {
         // Create actual ZIP for realistic testing using fflate
         const zipData: Record<string, Uint8Array> = {};

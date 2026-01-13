@@ -109,6 +109,14 @@ export class FflateZipProvider implements ZipProvider, ZipArchive {
     }
 
     /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings (e.g., imsmanifest.xml)
+     */
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
+    }
+
+    /**
      * Get file content (for testing)
      */
     getFile(path: string): Uint8Array | undefined {

@@ -82,9 +82,7 @@ export class LomMetadataGenerator {
      * @returns LOM opening XML
      */
     generateLomOpen(): string {
-        return `<lom xmlns="${LOM_NAMESPACES.lom}"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="${LOM_NAMESPACES.lom} lomCustom.xsd">
+        return `<lom xmlns="${LOM_NAMESPACES.lom}">
 `;
     }
 
