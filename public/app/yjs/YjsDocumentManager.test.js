@@ -330,7 +330,7 @@ describe('YjsDocumentManager', () => {
     });
   });
 
-  describe('getNavigation / getMetadata / getLocks / getDoc', () => {
+  describe('getNavigation / getMetadata / getLocks / getDoc / getThemeFiles', () => {
     beforeEach(async () => {
       await manager.initialize();
     });
@@ -357,6 +357,23 @@ describe('YjsDocumentManager', () => {
       const doc = manager.getDoc();
       expect(doc).toBeDefined();
       expect(doc).toBeInstanceOf(global.window.Y.Doc);
+    });
+
+    it('getThemeFiles returns Y.Map for user themes', () => {
+      const themeFiles = manager.getThemeFiles();
+      expect(themeFiles).toBeDefined();
+      expect(themeFiles).toBeInstanceOf(global.window.Y.Map);
+    });
+
+    it('getThemeFiles throws when not initialized', () => {
+      const uninitManager = new YjsDocumentManager('uninitialized-project', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: true,
+      });
+
+      expect(() => uninitManager.getThemeFiles()).toThrow('YjsDocumentManager not initialized');
     });
   });
 

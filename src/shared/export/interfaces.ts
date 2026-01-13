@@ -188,13 +188,6 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
-
-    /**
-     * Fetch SCORM schema XSD files for validation
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of relative path -> content buffer
-     */
-    fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
 }
 
 /**
@@ -273,6 +266,13 @@ export interface ZipArchive {
      * @returns True if file exists
      */
     hasFile(path: string): boolean;
+
+    /**
+     * Get all file paths in the archive
+     * Used for generating complete manifest listings
+     * @returns Array of file paths
+     */
+    getFilePaths(): string[];
 
     /**
      * Generate the ZIP archive
@@ -494,6 +494,12 @@ export interface PageRenderOptions {
     extraHeadScripts?: string;
     onLoadScript?: string;
     onUnloadScript?: string;
+
+    // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
+    /** Hide the navigation menu (default: false) */
+    hideNavigation?: boolean;
+    /** Hide the prev/next navigation buttons (default: false) */
+    hideNavButtons?: boolean;
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;

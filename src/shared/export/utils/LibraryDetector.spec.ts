@@ -144,6 +144,34 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('jquery-ui/jquery-ui.min.js');
         });
 
+        it('should detect exe_elpx_download by class pattern (download-source-file iDevice)', () => {
+            const html = '<a href="#" class="exe-download-package-link">Download</a>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.count).toBe(1);
+            expect(result.libraries[0].name).toBe('exe_elpx_download');
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+
+        it('should detect exe_elpx_download_protocol by exe-package:elp link', () => {
+            const html = '<a href="exe-package:elp" download="exe-package:elp-name">Download source</a>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.libraries.some(l => l.name === 'exe_elpx_download_protocol')).toBe(true);
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+
+        it('should detect exe_elpx_download for manual links in text iDevice content', () => {
+            // This simulates a manual link created in a text iDevice
+            const html = '<p>Click <a href="exe-package:elp">here</a> to download the source file.</p>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.files).toContain('fflate/fflate.umd.js');
+            expect(result.files).toContain('exe_elpx_download/exe_elpx_download.js');
+        });
+
         it('should detect multiple libraries', () => {
             const html = `
                 <div class="exe-fx animated">Effects</div>

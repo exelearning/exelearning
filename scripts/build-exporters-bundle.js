@@ -38,22 +38,17 @@ const browserAliasPlugin = {
             }
         });
 
-        // Redirect fs-extra to browser shim (used by xml-builder.ts which is imported by YjsDocumentAdapter)
+        // Mark Node.js-only modules as external (not used in browser bundle)
         build.onResolve({ filter: /^fs-extra$/ }, () => {
-            return {
-                path: path.join(projectRoot, 'src/shared/export/browser/fs-extra-shim.ts'),
-            };
+            return { path: 'fs-extra', external: true };
         });
 
         build.onResolve({ filter: /^fs$/ }, () => {
             return { path: 'fs', external: true };
         });
 
-        // Redirect path to browser shim (used by xml-builder.ts)
         build.onResolve({ filter: /^path$/ }, () => {
-            return {
-                path: path.join(projectRoot, 'src/shared/export/browser/path-shim.ts'),
-            };
+            return { path: 'path', external: true };
         });
     },
 };

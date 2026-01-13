@@ -466,6 +466,126 @@ describe('ThemesManager', () => {
     });
   });
 
+  describe('_ensureUserThemeInYjs', () => {
+    let mockThemeFilesMap;
+    let mockResourceCache;
+
+    beforeEach(() => {
+      mockThemeFilesMap = new Map();
+      mockThemeFilesMap.has = vi.fn((key) => mockThemeFilesMap._data?.has(key));
+      mockThemeFilesMap.set = vi.fn((key, value) => {
+        if (!mockThemeFilesMap._data) mockThemeFilesMap._data = new Map();
+        mockThemeFilesMap._data.set(key, value);
+      });
+      mockThemeFilesMap._data = new Map();
+
+      mockDocumentManager.getThemeFiles = vi.fn(() => mockThemeFilesMap);
+
+      mockResourceCache = {
+        getUserThemeRaw: vi.fn(),
+      };
+
+      mockBridge.resourceCache = mockResourceCache;
+      mockBridge._uint8ArrayToBase64 = vi.fn((arr) => 'base64data');
+    });
+
+    it('should not throw when bridge is not available', async () => {
+      themesManager.app.project._yjsBridge = null;
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+
+    it('should not throw when documentManager is not available', async () => {
+      mockBridge.getDocumentManager.mockReturnValue(null);
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+
+    it('should not copy if theme already in Yjs', async () => {
+      mockThemeFilesMap._data.set('user-theme', 'existing-data');
+      mockThemeFilesMap.has.mockReturnValue(true);
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockResourceCache.getUserThemeRaw).not.toHaveBeenCalled();
+    });
+
+    it('should not copy if resourceCache is not available', async () => {
+      mockBridge.resourceCache = null;
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockThemeFilesMap.set).not.toHaveBeenCalled();
+    });
+
+    it('should not copy if theme not found in IndexedDB', async () => {
+      mockResourceCache.getUserThemeRaw.mockResolvedValue(null);
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockThemeFilesMap.set).not.toHaveBeenCalled();
+    });
+
+    it('should copy theme to Yjs when not already there', async () => {
+      const mockCompressed = new Uint8Array([1, 2, 3]);
+      mockResourceCache.getUserThemeRaw.mockResolvedValue({
+        compressedFiles: mockCompressed,
+      });
+
+      await themesManager._ensureUserThemeInYjs('user-theme', {});
+
+      expect(mockBridge._uint8ArrayToBase64).toHaveBeenCalledWith(mockCompressed);
+      expect(mockThemeFilesMap.set).toHaveBeenCalledWith('user-theme', 'base64data');
+    });
+
+    it('should handle errors gracefully', async () => {
+      mockResourceCache.getUserThemeRaw.mockRejectedValue(new Error('DB error'));
+
+      await expect(themesManager._ensureUserThemeInYjs('user-theme', {})).resolves.not.toThrow();
+    });
+  });
+
+  describe('_removeUserThemeFromYjs', () => {
+    let mockThemeFilesMap;
+
+    beforeEach(() => {
+      mockThemeFilesMap = new Map();
+      mockThemeFilesMap.has = vi.fn((key) => mockThemeFilesMap._data?.has(key));
+      mockThemeFilesMap.delete = vi.fn((key) => mockThemeFilesMap._data?.delete(key));
+      mockThemeFilesMap._data = new Map();
+
+      mockDocumentManager.getThemeFiles = vi.fn(() => mockThemeFilesMap);
+    });
+
+    it('should not throw when bridge is not available', async () => {
+      themesManager.app.project._yjsBridge = null;
+
+      await expect(themesManager._removeUserThemeFromYjs('user-theme')).resolves.not.toThrow();
+    });
+
+    it('should not throw when documentManager is not available', async () => {
+      mockBridge.getDocumentManager.mockReturnValue(null);
+
+      await expect(themesManager._removeUserThemeFromYjs('user-theme')).resolves.not.toThrow();
+    });
+
+    it('should remove theme from Yjs themeFiles', async () => {
+      mockThemeFilesMap._data.set('user-theme', 'theme-data');
+      mockThemeFilesMap.has.mockReturnValue(true);
+
+      await themesManager._removeUserThemeFromYjs('user-theme');
+
+      expect(mockThemeFilesMap.delete).toHaveBeenCalledWith('user-theme');
+    });
+
+    it('should not throw if theme not in Yjs', async () => {
+      mockThemeFilesMap.has.mockReturnValue(false);
+
+      await expect(themesManager._removeUserThemeFromYjs('non-existent')).resolves.not.toThrow();
+      expect(mockThemeFilesMap.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe('integration', () => {
     it('should initialize Yjs and handle theme sync', () => {
       mockMetadata._data.set('theme', 'test-theme');

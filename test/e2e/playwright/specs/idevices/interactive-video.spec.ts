@@ -240,8 +240,23 @@ async function openVideoEditor(page: Page): Promise<FrameLocator> {
     // Wait for the editor to initialize
     await editorIframe.locator('#admin-content').waitFor({ state: 'attached', timeout: 15000 });
 
+    // Wait for the iframe body to be visible (starts with display:none, becomes visible after scripts load)
+    // This is critical for Firefox which may be slower to initialize scripts
+    await page.waitForFunction(
+        () => {
+            const iframe = document.querySelector('#modalGenericIframeContainer iframe') as HTMLIFrameElement;
+            if (!iframe?.contentDocument?.body) return false;
+            const bodyStyle = window.getComputedStyle(iframe.contentDocument.body);
+            return bodyStyle.display !== 'none';
+        },
+        { timeout: 15000 },
+    );
+
+    // Wait for the controls to be visible (frontpage-link is inside #controls)
+    await editorIframe.locator('#controls').waitFor({ state: 'visible', timeout: 10000 });
+
     // Give time for TinyMCE and other components to initialize
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
 
     return editorIframe;
 }

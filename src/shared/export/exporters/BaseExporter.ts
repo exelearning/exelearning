@@ -9,8 +9,6 @@
 import type {
     ExportDocument,
     ExportPage,
-    ExportBlock,
-    ExportComponent,
     ExportMetadata,
     ResourceProvider,
     AssetProvider,
@@ -21,6 +19,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { generateOdeXml } from '../generators/OdeXmlGenerator';
 
 /**
  * Abstract base class for exporters
@@ -496,18 +495,21 @@ export abstract class BaseExporter {
 
     /**
      * Pre-process pages to add filenames to asset URLs in all component content
-     * Also replaces exe-package:elp protocol for download-source-file iDevice
      * And converts internal links (exe-node:) to proper page URLs
+     *
+     * Note: exe-package:elp protocol transformation is now done in PageRenderer.renderPageContent()
+     * so the XML content keeps the original protocol for re-import compatibility
      */
     async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
-        const meta = this.getMetadata();
-        const projectTitle = meta.title || 'eXeLearning';
+        // Deep clone pages to avoid mutating the original document
+        // This ensures multiple exports on the same document work correctly
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
 
         // Build page URL map for internal link conversion
-        const pageUrlMap = this.buildPageUrlMap(pages);
+        const pageUrlMap = this.buildPageUrlMap(clonedPages);
 
-        for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-            const page = pages[pageIndex];
+        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
+            const page = clonedPages[pageIndex];
             const isIndex = pageIndex === 0;
 
             for (const block of page.blocks || []) {
@@ -515,15 +517,13 @@ export abstract class BaseExporter {
                     if (component.content) {
                         // Add filenames to asset URLs
                         component.content = await this.addFilenamesToAssetUrls(component.content);
-                        // Replace exe-package:elp protocol for client-side download
-                        component.content = this.replaceElpxProtocol(component.content, projectTitle);
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
                 }
             }
         }
-        return pages;
+        return clonedPages;
     }
 
     /**
@@ -650,6 +650,7 @@ export abstract class BaseExporter {
 
     /**
      * Check if a specific page contains the download-source-file iDevice
+     * or a manual link using exe-package:elp protocol
      */
     protected pageHasDownloadSourceFile(page: ExportPage): boolean {
         for (const block of page.blocks || []) {
@@ -659,8 +660,12 @@ export abstract class BaseExporter {
                 if (type.includes('download-source-file') || type.includes('downloadsourcefile')) {
                     return true;
                 }
-                // Also check content for the CSS class (more reliable)
+                // Check content for the CSS class (download-source-file iDevice)
                 if (component.content?.includes('exe-download-package-link')) {
+                    return true;
+                }
+                // Check for manual exe-package:elp links (in text iDevices, etc.)
+                if (component.content?.includes('exe-package:elp')) {
                     return true;
                 }
             }
@@ -700,127 +705,12 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
 
     /**
      * Generate content.xml from document structure
+     * Uses unified OdeXmlGenerator for consistent output across all exporters
      */
     generateContentXml(): string {
         const metadata = this.getMetadata();
         const pages = this.getNavigation();
-
-        let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-        xml += '<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">\n';
-        xml += this.generatePropertiesXml(metadata);
-        xml += '<odeNavStructures>\n';
-
-        for (let i = 0; i < pages.length; i++) {
-            xml += this.generatePageXml(pages[i], i);
-        }
-
-        xml += '</odeNavStructures>\n';
-        xml += '</ode>';
-        return xml;
-    }
-
-    /**
-     * Generate properties XML section
-     */
-    protected generatePropertiesXml(metadata: ExportMetadata): string {
-        let xml = '<odeProperties>\n';
-        const props: Record<string, string> = {
-            pp_title: metadata.title || 'Untitled',
-            pp_subtitle: metadata.subtitle || '',
-            pp_author: metadata.author || '',
-            pp_lang: metadata.language || 'en',
-            pp_description: metadata.description || '',
-            pp_license: metadata.license || '',
-            pp_theme: metadata.theme || 'base',
-            // Export options
-            pp_addExeLink: String(metadata.addExeLink ?? true),
-            pp_addPagination: String(metadata.addPagination ?? false),
-            pp_addSearchBox: String(metadata.addSearchBox ?? false),
-            pp_addAccessibilityToolbar: String(metadata.addAccessibilityToolbar ?? false),
-            pp_addMathJax: String(metadata.addMathJax ?? false),
-            exportSource: String(metadata.exportSource ?? true),
-        };
-
-        // Add custom content if present
-        if (metadata.extraHeadContent) {
-            props['pp_extraHeadContent'] = metadata.extraHeadContent;
-        }
-        if (metadata.footer) {
-            props['footer'] = metadata.footer;
-        }
-
-        for (const [key, value] of Object.entries(props)) {
-            xml += `  <${key}>${this.escapeXml(value)}</${key}>\n`;
-        }
-
-        xml += '</odeProperties>\n';
-        return xml;
-    }
-
-    /**
-     * Generate page XML
-     */
-    protected generatePageXml(page: ExportPage, index: number): string {
-        const pageId = page.id;
-        const pageName = page.title || 'Page';
-        const parentId = page.parentId || '';
-        const order = page.order ?? index;
-
-        let xml = `<odeNavStructure odeNavStructureId="${this.escapeXml(pageId)}" `;
-        xml += `odePageName="${this.escapeXml(pageName)}" odeNavStructureOrder="${order}" `;
-        if (parentId) {
-            xml += `parentOdeNavStructureId="${this.escapeXml(parentId)}" `;
-        }
-        xml += `>\n`;
-
-        for (let i = 0; i < (page.blocks || []).length; i++) {
-            xml += this.generateBlockXml(page.blocks![i], i);
-        }
-
-        xml += '</odeNavStructure>\n';
-        return xml;
-    }
-
-    /**
-     * Generate block XML
-     */
-    protected generateBlockXml(block: ExportBlock, index: number): string {
-        const blockId = block.id;
-        const blockName = block.name || '';
-        const order = block.order ?? index;
-
-        let xml = `  <odePagStructure odePagStructureId="${this.escapeXml(blockId)}" `;
-        xml += `blockName="${this.escapeXml(blockName)}" odePagStructureOrder="${order}">\n`;
-
-        for (let i = 0; i < (block.components || []).length; i++) {
-            xml += this.generateComponentXml(block.components![i], i);
-        }
-
-        xml += '  </odePagStructure>\n';
-        return xml;
-    }
-
-    /**
-     * Generate component XML
-     */
-    protected generateComponentXml(component: ExportComponent, index: number): string {
-        const compId = component.id;
-        const ideviceType = component.type || 'FreeTextIdevice';
-        const order = component.order ?? index;
-
-        let xml = `    <odeComponent odeComponentId="${this.escapeXml(compId)}" `;
-        xml += `odeIdeviceTypeDirName="${this.escapeXml(ideviceType)}" odeComponentOrder="${order}">\n`;
-
-        if (component.content) {
-            xml += `      <htmlView><![CDATA[${this.escapeCdata(component.content)}]]></htmlView>\n`;
-        }
-
-        if (component.properties && Object.keys(component.properties).length > 0) {
-            xml += `      <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(component.properties))}]]></jsonProperties>\n`;
-        }
-
-        xml += '    </odeComponent>\n';
-        return xml;
+        return generateOdeXml(metadata, pages);
     }
 
     // =========================================================================

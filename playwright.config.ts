@@ -82,6 +82,7 @@ export default defineConfig({
                   PORT: '3001',
                   APP_PORT: '3001',
                   APP_AUTH_METHODS: 'password,guest',
+                  ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
               },
           },
 

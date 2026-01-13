@@ -2295,6 +2295,149 @@ test.describe('Text iDevice', () => {
         });
     });
 
+    test.describe('ELPX Download Links (exe-package:elp)', () => {
+        test('should handle exe-package:elp links in preview using postMessage', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Text iDevice ELPX Link Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Add a text iDevice
+            await addTextIdeviceFromPanel(page);
+
+            // Get TinyMCE editor and add content with exe-package:elp link
+            await page.waitForSelector('.tox-editor-header', { timeout: 15000 });
+
+            // Insert content with exe-package:elp link directly into TinyMCE
+            await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(
+                        '<p><a href="exe-package:elp" download="exe-package:elp-name">Download source file</a></p>',
+                    );
+                    editor.fire('change');
+                    editor.setDirty(true);
+                }
+            });
+
+            await page.waitForTimeout(500);
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.text').last();
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save the project
+            await workarea.save();
+            await page.waitForTimeout(1000);
+
+            // Open preview panel
+            await page.click('#head-bottom-preview');
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to load
+            const iframe = page.frameLocator('#preview-iframe');
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+
+            // Check that preview uses postMessage-based downloadElpx function (not the library)
+            // The exe_elpx_download.js library should NOT be loaded - we use postMessage instead
+            const downloadInfo = await iframe.locator('html').evaluate(() => {
+                const win = window as any;
+                return {
+                    hasDownloadElpx: typeof win.downloadElpx === 'function',
+                    // The postMessage version should include 'postMessage' in its source
+                    functionSource: win.downloadElpx?.toString() || '',
+                };
+            });
+
+            expect(downloadInfo.hasDownloadElpx).toBe(true);
+            // Verify it's the postMessage version (not the library version)
+            expect(downloadInfo.functionSource).toContain('postMessage');
+            expect(downloadInfo.functionSource).toContain('exe-download-elpx');
+            // The library version would check for __ELPX_MANIFEST__
+            expect(downloadInfo.functionSource).not.toContain('__ELPX_MANIFEST__');
+
+            // Verify the link has been transformed to use onclick handler
+            // Note: link may be hidden in collapsed iDevice content, so use 'attached' instead of 'visible'
+            const downloadLink = iframe.locator('a[download]').first();
+            await downloadLink.waitFor({ state: 'attached', timeout: 10000 });
+
+            const onclick = await downloadLink.getAttribute('onclick');
+            expect(onclick).toContain('downloadElpx');
+
+            // Verify the download attribute was transformed to include project name
+            const downloadAttr = await downloadLink.getAttribute('download');
+            expect(downloadAttr).toContain('.elpx');
+            expect(downloadAttr).not.toBe('exe-package:elp-name');
+
+            // Verify exe_elpx_download.js is NOT loaded (we use postMessage instead)
+            const scriptsLoaded = await iframe.locator('html').evaluate(() => {
+                const scripts = Array.from(document.querySelectorAll('script[src]'));
+                return scripts.map(s => s.getAttribute('src') || '');
+            });
+            const hasElpxLibrary = scriptsLoaded.some(src => src.includes('exe_elpx_download'));
+            expect(hasElpxLibrary).toBe(false);
+
+            // Click the link and verify postMessage is sent to parent (not library error)
+            const postMessageReceived = await page.evaluate(async () => {
+                return new Promise<{ received: boolean; type?: string; error?: string }>(resolve => {
+                    const timeout = setTimeout(() => {
+                        resolve({ received: false, error: 'timeout' });
+                    }, 3000);
+
+                    window.addEventListener(
+                        'message',
+                        event => {
+                            if (event.data && event.data.type === 'exe-download-elpx') {
+                                clearTimeout(timeout);
+                                resolve({ received: true, type: event.data.type });
+                            }
+                        },
+                        { once: true },
+                    );
+
+                    // Click the link in the iframe
+                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    const doc = previewIframe?.contentDocument;
+                    const link = doc?.querySelector('a[download]') as HTMLAnchorElement;
+                    if (link) {
+                        link.click();
+                    } else {
+                        clearTimeout(timeout);
+                        resolve({ received: false, error: 'link not found' });
+                    }
+                });
+            });
+
+            expect(postMessageReceived.received).toBe(true);
+            expect(postMessageReceived.type).toBe('exe-download-elpx');
+        });
+    });
+
     /**
      * Test that HTML iframe asset resolution code exists and functions
      *
