@@ -425,6 +425,34 @@ describe('PageRenderer', () => {
             expect(html).toContain('href="https://example.com/license"');
         });
 
+        it('should render correct license class for different licenses', () => {
+            const licenses = [
+                { name: 'creative commons: attribution 4.0', class: 'cc' },
+                { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
+                { name: 'creative commons: attribution - non derived work 4.0', class: 'cc cc-by-nd' },
+                { name: 'creative commons: attribution - non commercial 4.0', class: 'cc cc-by-nc' },
+                { name: 'creative commons: attribution - non commercial - share alike 4.0', class: 'cc cc-by-nc-sa' },
+                {
+                    name: 'creative commons: attribution - non derived work - non commercial 4.0',
+                    class: 'cc cc-by-nc-nd',
+                },
+                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'propietary license', class: 'propietary' },
+                // Robustness tests
+                { name: '  creative commons:   attribution - non commercial 4.0  ', class: 'cc cc-by-nc' }, // Extra spaces
+                { name: 'CREATIVE COMMONS: ATTRIBUTION - NON COMMERCIAL 4.0', class: 'cc cc-by-nc' }, // Case insensitivity
+                { name: 'Some other license text containing by-nc-sa', class: 'cc cc-by-nc-sa' }, // Partial match
+            ];
+
+            for (const lic of licenses) {
+                const html = renderer.renderFooterSection({
+                    license: lic.name,
+                    licenseUrl: 'https://example.com',
+                });
+                expect(html).toContain(`class="${lic.class}"`);
+            }
+        });
+
         it('should include user footer content when provided', () => {
             const html = renderer.renderFooterSection({
                 license: 'CC',
