@@ -61,6 +61,7 @@ export default class ModalFilemanager extends Modal {
         this.downloadBtn = null;
         this.moreBtn = null;
         this.extractBtn = null;
+        this.dropdownCopyUrlBtn = null;
         this.copyUrlBtn = null;
         this.fullSizeBtn = null;
     }
@@ -94,7 +95,7 @@ export default class ModalFilemanager extends Modal {
 
         // More options dropdown items
         this.extractBtn = footer?.querySelector('.media-library-extract-btn');
-        this.copyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
+        this.dropdownCopyUrlBtn = footer?.querySelector('.media-library-copyurl-btn');
         this.fullSizeBtn = footer?.querySelector('.media-library-fullsize-btn');
 
         // WebSocket handler reference and bound event handlers for rename sync
@@ -208,8 +209,8 @@ export default class ModalFilemanager extends Modal {
             });
         }
 
-        if (this.copyUrlBtn) {
-            this.copyUrlBtn.addEventListener('click', (e) => {
+        if (this.dropdownCopyUrlBtn) {
+            this.dropdownCopyUrlBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 this.copyAssetUrl();
             });
