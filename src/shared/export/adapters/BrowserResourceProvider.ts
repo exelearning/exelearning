@@ -29,6 +29,7 @@ interface ResourceFetcherInterface {
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
 }
 
 /**
@@ -191,6 +192,19 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchContentCss();
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+        const blobMap = await this.fetcher.fetchGlobalFontFiles(fontId);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 

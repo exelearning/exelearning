@@ -5,12 +5,7 @@
 services:
 
   exelearning:
-    build:
-      context: .
-      args:
-        VERSION: ${VERSION:-v0.0.0-alpha}
-        VCS_REF: ${VCS_REF:-unknown}
-        BUILD_DATE: ${BUILD_DATE:-unknown}
+    build: .
     container_name: exelearning
     hostname: exelearning # Important! To be called from chrome container
     env_file:

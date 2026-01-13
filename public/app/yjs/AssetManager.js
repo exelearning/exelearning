@@ -2391,15 +2391,11 @@ class AssetManager {
     const assetFiles = [];
 
     // Detect format: legacy .elp has contentv3.xml, new .elpx has content.xml
-    // EPUB format has content.xml inside EPUB/ folder (marked by ElpxImporter)
     const isLegacyFormat = Object.keys(zip).some(path => path === 'contentv3.xml' || path.endsWith('/contentv3.xml'));
-    const isEpubFormat = zip._isEpubFormat === true || Object.keys(zip).some(path => path === 'EPUB/content.xml');
-    Logger.log(`[AssetManager] Detected format: ${isLegacyFormat ? 'legacy .elp (contentv3.xml)' : isEpubFormat ? 'EPUB (EPUB/content.xml)' : 'new .elpx (content.xml)'}`);
+    Logger.log(`[AssetManager] Detected format: ${isLegacyFormat ? 'legacy .elp (contentv3.xml)' : 'new .elpx (content.xml)'}`);
 
     // Find all asset files (zip is an object with path -> Uint8Array)
     for (const [relativePath, fileData] of Object.entries(zip)) {
-      // Skip internal properties (like _isEpubFormat)
-      if (relativePath.startsWith('_')) continue;
       // Skip directories (they end with /)
       if (relativePath.endsWith('/')) continue;
       if (relativePath.startsWith('__MACOSX')) continue;
@@ -2407,27 +2403,17 @@ class AssetManager {
       if (relativePath.endsWith('.xsd')) continue;
       if (relativePath.endsWith('.data')) continue;
 
-      // For EPUB format, normalize path by stripping EPUB/ prefix
-      const normalizedPath = isEpubFormat && relativePath.startsWith('EPUB/')
-        ? relativePath.substring(5) // Remove 'EPUB/' prefix
-        : relativePath;
-
       // Skip system folders - these are bundled with the export, not user assets
-      const isSystemFile = normalizedPath.startsWith('idevices/') ||
-                          normalizedPath.startsWith('libs/') ||
-                          normalizedPath.startsWith('theme/') ||
-                          normalizedPath.startsWith('content/css/') ||
-                          normalizedPath.startsWith('content/img/') ||
-                          normalizedPath.startsWith('html/') ||
-                          normalizedPath === 'index.html' ||
-                          normalizedPath === 'index.xhtml' ||
-                          normalizedPath === 'nav.xhtml' ||
-                          normalizedPath === 'package.opf' ||
-                          normalizedPath === 'base.css' ||
-                          normalizedPath === 'common_i18n.js' ||
-                          normalizedPath === 'common.js' ||
-                          normalizedPath === 'mimetype' ||
-                          relativePath.startsWith('META-INF/');
+      const isSystemFile = relativePath.startsWith('idevices/') ||
+                          relativePath.startsWith('libs/') ||
+                          relativePath.startsWith('theme/') ||
+                          relativePath.startsWith('content/css/') ||
+                          relativePath.startsWith('content/img/') ||
+                          relativePath.startsWith('html/') ||
+                          relativePath === 'index.html' ||
+                          relativePath === 'base.css' ||
+                          relativePath === 'common_i18n.js' ||
+                          relativePath === 'common.js';
 
       if (isSystemFile) continue;
 
@@ -2441,20 +2427,18 @@ class AssetManager {
           shouldInclude = true;
         }
       } else {
-        // New format (including EPUB): Assets are in resources/ folders
+        // New format: Assets are in resources/ folders
         // Patterns: "resources/file.jpg", "content/resources/uuid/file.jpg"
-        // For EPUB: "EPUB/content/resources/uuid/file.jpg"
-        const isResourceFile = normalizedPath.startsWith('resources/') ||
-                              normalizedPath.startsWith('content/resources/') ||
-                              normalizedPath.includes('/resources/');
+        const isResourceFile = relativePath.startsWith('resources/') ||
+                              relativePath.startsWith('content/resources/') ||
+                              relativePath.includes('/resources/');
         if (isResourceFile) {
           shouldInclude = true;
         }
       }
 
       if (shouldInclude) {
-        // Store with normalized path (without EPUB/ prefix) for asset mapping
-        assetFiles.push({ path: normalizedPath, fileData, originalPath: relativePath });
+        assetFiles.push({ path: relativePath, fileData });
       }
     }
 

@@ -83,6 +83,25 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchScormSchemas(_version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
+
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+        const files = new Map<string, Buffer>();
+        if (fontId === 'opendyslexic') {
+            files.set('fonts/global/opendyslexic/OpenDyslexic-Regular.woff', Buffer.from('mock-font-data'));
+            files.set('fonts/global/opendyslexic/OFL.txt', Buffer.from('SIL OFL License'));
+        } else if (fontId === 'playwrite-es') {
+            files.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', Buffer.from('mock-playwrite-font'));
+            files.set('fonts/global/playwrite-es/OFL.txt', Buffer.from('SIL OFL License'));
+        }
+        return files;
+    }
 }
 
 // Mock asset provider
@@ -1405,6 +1424,69 @@ describe('Html5Exporter', () => {
 
             // Should NOT have search_index.js file
             expect(zip.files.has('search_index.js')).toBe(false);
+        });
+    });
+
+    describe('Global Font Support', () => {
+        let resources: MockResourceProvider;
+        let assets: MockAssetProvider;
+        let zip: MockZipProvider;
+
+        const simplePage: ExportPage = {
+            id: 'page1',
+            title: 'Page 1',
+            parentId: null,
+            order: 0,
+            blocks: [],
+        };
+
+        function createExporter(globalFont: string, res = resources): Html5Exporter {
+            const doc = new MockDocument({ globalFont }, [simplePage]);
+            return new Html5Exporter(doc, res, assets, zip);
+        }
+
+        beforeEach(() => {
+            resources = new MockResourceProvider();
+            assets = new MockAssetProvider();
+            zip = new MockZipProvider();
+        });
+
+        it('should include global font files when globalFont is set', async () => {
+            await createExporter('opendyslexic').export();
+
+            expect(zip.files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(true);
+            expect(zip.files.has('fonts/global/opendyslexic/OFL.txt')).toBe(true);
+        });
+
+        it('should include Playwrite ES Guides font files when selected', async () => {
+            await createExporter('playwrite-es').export();
+
+            expect(zip.files.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+            expect(zip.files.has('fonts/global/playwrite-es/OFL.txt')).toBe(true);
+        });
+
+        it('should not include global font files when globalFont is default', async () => {
+            await createExporter('default').export();
+
+            expect(zip.files.has('fonts/global/opendyslexic/OpenDyslexic-Regular.woff')).toBe(false);
+            expect(zip.files.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(false);
+        });
+
+        it('should include global font CSS in rendered pages', async () => {
+            await createExporter('opendyslexic').export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('OpenDyslexic');
+        });
+
+        it('should handle fetchGlobalFontFiles errors gracefully', async () => {
+            const errorResources = new MockResourceProvider();
+            errorResources.fetchGlobalFontFiles = async () => {
+                throw new Error('Font fetch failed');
+            };
+
+            const result = await createExporter('opendyslexic', errorResources).export();
+            expect(result.success).toBe(true);
         });
     });
 });
