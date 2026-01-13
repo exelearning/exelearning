@@ -479,7 +479,7 @@ export const IMS_NAMESPACES = {
  * LOM metadata namespaces
  */
 export const LOM_NAMESPACES = {
-    lom: 'http://ltsc.ieee.org/xsd/LOM',
+    lom: 'http://www.imsglobal.org/xsd/imsmd_rootv1p2p1',
     xsi: 'http://www.w3.org/2001/XMLSchema-instance',
 } as const;
 

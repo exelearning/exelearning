@@ -286,12 +286,19 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     })
 
     // GET /api/resources/libs/scorm - Get SCORM JavaScript files
+    // Excludes test files (.test.js, .spec.js) from exports
     .get('/api/resources/libs/scorm', () => {
         const scormPath = path.join(COMMON_PATH, 'scorm');
         if (!deps.fs.existsSync(scormPath)) {
             return [];
         }
-        return buildFileList(scormPath, '/app/common/scorm');
+        const files = scanDirectory(scormPath).filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js'));
+        const version = getAppVersion();
+        const basePath = getBasePath();
+        return files.map(filePath => ({
+            path: filePath,
+            url: `${basePath}/${version}/app/common/scorm/${filePath}`,
+        }));
     })
 
     // GET /api/resources/libs/epub - Get EPUB-specific files

@@ -214,27 +214,21 @@ function generateOdePagStructureXml(block: ExportBlock, pageId: string, order: n
     xml += `      <iconName>${escapeXml(block.iconName || '')}</iconName>\n`;
     xml += `      <odePagStructureOrder>${block.order ?? order}</odePagStructureOrder>\n`;
 
-    // Block-level properties - export ALL properties
+    // Block-level properties
     xml += '      <odePagStructureProperties>\n';
     if (block.properties) {
-        const props = block.properties;
-        if (props.visibility !== undefined) {
-            xml += generatePagStructurePropertyEntry('visibility', String(props.visibility));
-        }
-        if (props.teacherOnly !== undefined) {
-            xml += generatePagStructurePropertyEntry('teacherOnly', String(props.teacherOnly));
-        }
-        if (props.allowToggle !== undefined) {
-            xml += generatePagStructurePropertyEntry('allowToggle', String(props.allowToggle));
-        }
-        if (props.minimized !== undefined) {
-            xml += generatePagStructurePropertyEntry('minimized', String(props.minimized));
-        }
-        if (props.identifier !== undefined) {
-            xml += generatePagStructurePropertyEntry('identifier', String(props.identifier));
-        }
-        if (props.cssClass !== undefined) {
-            xml += generatePagStructurePropertyEntry('cssClass', String(props.cssClass));
+        const blockPropKeys = [
+            'visibility',
+            'teacherOnly',
+            'allowToggle',
+            'minimized',
+            'identifier',
+            'cssClass',
+        ] as const;
+        for (const key of blockPropKeys) {
+            if (block.properties[key] !== undefined) {
+                xml += generatePagStructurePropertyEntry(key, String(block.properties[key]));
+            }
         }
     }
     xml += '      </odePagStructureProperties>\n';
@@ -287,21 +281,14 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
 
     xml += `          <odeComponentsOrder>${component.order ?? order}</odeComponentsOrder>\n`;
 
-    // Component-level structure properties - export all 4 properties
+    // Component-level structure properties
     xml += '          <odeComponentsProperties>\n';
     if (component.structureProperties) {
-        const props = component.structureProperties;
-        if (props.visibility !== undefined) {
-            xml += generateComponentPropertyEntry('visibility', String(props.visibility));
-        }
-        if (props.teacherOnly !== undefined) {
-            xml += generateComponentPropertyEntry('teacherOnly', String(props.teacherOnly));
-        }
-        if (props.identifier !== undefined) {
-            xml += generateComponentPropertyEntry('identifier', String(props.identifier));
-        }
-        if (props.cssClass !== undefined) {
-            xml += generateComponentPropertyEntry('cssClass', String(props.cssClass));
+        const componentPropKeys = ['visibility', 'teacherOnly', 'identifier', 'cssClass'] as const;
+        for (const key of componentPropKeys) {
+            if (component.structureProperties[key] !== undefined) {
+                xml += generateComponentPropertyEntry(key, String(component.structureProperties[key]));
+            }
         }
     } else {
         // Default visibility if no structure properties
