@@ -1766,5 +1766,160 @@ describe('Html5Exporter', () => {
             const cssText = decoder.decode(baseCss as Uint8Array);
             expect(cssText).toContain('exe-mermaid-rendered');
         });
+
+        it('should call preRenderDataGameLatex hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (DataGame LaTeX)'),
+                        hasLatex: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderDataGameLatex hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async () => {
+                    throw new Error('DataGame LaTeX failed');
+                },
+            });
+
+            // Should still succeed
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should create ELPX manifest when download-source-file is used', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+
+            const manifestContent = files.get('libs/elpx-manifest.js');
+            const manifestJs =
+                typeof manifestContent === 'string'
+                    ? manifestContent
+                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            expect(manifestJs).toContain('"files"');
+        });
+
+        it('should create ELPX manifest when exe-package:elp class is in content', async () => {
+            const pagesWithElpClass: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p class="exe-download-package-link">Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithElpClass);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+        });
+
+        it('should include eXeLearning logo when available', async () => {
+            resources.fetchExeLogo = async () => new Uint8Array([1, 2, 3, 4]);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should handle eXeLearning logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+            // Logo should not be present
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle iDevice resource fetch failure gracefully', async () => {
+            resources.fetchIdeviceResources = async () => {
+                throw new Error('iDevice resources not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should not skip LaTeX pre-rendering when addMathJax is true', async () => {
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let latexHookCalled = false;
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => {
+                    latexHookCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            // LaTeX hook should NOT be called when addMathJax is true
+            expect(latexHookCalled).toBe(false);
+            expect(files.has('index.html')).toBe(true);
+        });
     });
 });

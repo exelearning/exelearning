@@ -436,6 +436,602 @@ describe('PreviewPanelManager', () => {
 
       expect(closeSpy).not.toHaveBeenCalled();
     });
+
+    it('should not close on Escape when pinned', () => {
+      manager.bindEvents();
+      manager.isOpen = true;
+      manager.isPinned = true;
+      const closeSpy = vi.spyOn(manager, 'close');
+
+      const event = new KeyboardEvent('keydown', { key: 'Escape' });
+      document.dispatchEvent(event);
+
+      expect(closeSpy).not.toHaveBeenCalled();
+    });
+
+    it('should toggle on Ctrl+Shift+P', async () => {
+      manager.bindEvents();
+      const toggleSpy = vi.spyOn(manager, 'toggle').mockResolvedValue();
+
+      const event = new KeyboardEvent('keydown', { key: 'P', ctrlKey: true, shiftKey: true });
+      document.dispatchEvent(event);
+
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('isServiceWorkerPreviewAvailable', () => {
+    it('returns falsy when serviceWorker not in navigator', () => {
+      const originalSW = navigator.serviceWorker;
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
+
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: originalSW,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('returns falsy when no controller', () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: null },
+        writable: true,
+        configurable: true,
+      });
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
+    });
+
+    it('returns falsy when sendContentToPreviewSW not available', () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: {} },
+        writable: true,
+        configurable: true,
+      });
+      window.eXeLearning.app.sendContentToPreviewSW = undefined;
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
+    });
+
+    it('returns falsy when SharedExporters.generatePreviewForSW not available', () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: {} },
+        writable: true,
+        configurable: true,
+      });
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
+      window.SharedExporters.generatePreviewForSW = undefined;
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
+    });
+
+    it('returns truthy when all conditions are met', () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: {} },
+        writable: true,
+        configurable: true,
+      });
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
+      window.SharedExporters.generatePreviewForSW = vi.fn();
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeTruthy();
+    });
+  });
+
+  describe('loadPreviewFromServiceWorker', () => {
+    it('should revoke previous blob URL if exists', () => {
+      mockElements['preview-iframe']._blobUrl = 'blob:test-old-url';
+      manager.loadPreviewFromServiceWorker();
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-old-url');
+      expect(mockElements['preview-iframe']._blobUrl).toBeNull();
+    });
+
+    it('should use pinned iframe when pinned', () => {
+      manager.isPinned = true;
+      mockElements['preview-pinned-iframe']._blobUrl = 'blob:pinned-url';
+
+      manager.loadPreviewFromServiceWorker();
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pinned-url');
+    });
+
+    it('should set iframe src to viewer URL', () => {
+      window.eXeLearning.app.getBasePath = () => '/myapp';
+
+      manager.loadPreviewFromServiceWorker();
+
+      // happy-dom normalizes URLs, so check for the path
+      expect(mockElements['preview-iframe'].src).toContain('/myapp/viewer/index.html');
+    });
+
+    it('should force reload when src is already viewer URL', async () => {
+      vi.useFakeTimers();
+      mockElements['preview-iframe'].src = 'http://localhost/viewer/index.html';
+      window.eXeLearning.app.getBasePath = () => '';
+
+      manager.loadPreviewFromServiceWorker();
+
+      // First set to about:blank
+      expect(mockElements['preview-iframe'].src).toContain('about:blank');
+
+      // After timeout, set to viewer URL
+      vi.advanceTimersByTime(60);
+      expect(mockElements['preview-iframe'].src).toContain('/viewer/index.html');
+
+      vi.useRealTimers();
+    });
+
+    it('should not throw when no iframe available', () => {
+      // Create manager with no iframe
+      vi.spyOn(document, 'getElementById').mockImplementation(id => {
+        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
+        return mockElements[id] || null;
+      });
+
+      const newManager = new PreviewPanelManager();
+
+      // Should not throw - just silently return
+      expect(() => newManager.loadPreviewFromServiceWorker()).not.toThrow();
+    });
+  });
+
+  describe('injectHtmlToIframe', () => {
+    it('should revoke previous blob URL', () => {
+      mockElements['preview-iframe']._blobUrl = 'blob:previous-url';
+
+      manager.injectHtmlToIframe('<html></html>');
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:previous-url');
+    });
+
+    it('should create new blob URL and set iframe src', () => {
+      manager.injectHtmlToIframe('<html><body>Test</body></html>');
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockElements['preview-iframe'].src).toBe('blob:test-url');
+      expect(mockElements['preview-iframe']._blobUrl).toBe('blob:test-url');
+    });
+
+    it('should use pinned iframe when pinned', () => {
+      manager.isPinned = true;
+
+      manager.injectHtmlToIframe('<html></html>');
+
+      expect(mockElements['preview-pinned-iframe'].src).toBe('blob:test-url');
+    });
+
+    it('should not throw when no iframe available', () => {
+      vi.spyOn(document, 'getElementById').mockImplementation(id => {
+        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
+        return mockElements[id] || null;
+      });
+
+      const newManager = new PreviewPanelManager();
+
+      // Should not throw - just silently return
+      expect(() => newManager.injectHtmlToIframe('<html></html>')).not.toThrow();
+    });
+  });
+
+  describe('refreshWithServiceWorker', () => {
+    beforeEach(() => {
+      // Setup complete mock environment
+      window.eXeLearning.app.themes = { selected: { id: 'base' } };
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn().mockResolvedValue();
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: true,
+        files: { 'index.html': new Uint8Array([1, 2, 3]) },
+      });
+    });
+
+    it('should throw when Yjs document manager not available', async () => {
+      window.eXeLearning.app.project._yjsBridge.documentManager = null;
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Yjs document manager not available');
+    });
+
+    it('should throw when SharedExporters.generatePreviewForSW not available', async () => {
+      window.SharedExporters.generatePreviewForSW = undefined;
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('SharedExporters.generatePreviewForSW not available');
+    });
+
+    it('should throw when preview generation fails', async () => {
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Generation failed',
+      });
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Generation failed');
+    });
+
+    it('should throw with generic message when generation fails without error', async () => {
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: false,
+      });
+
+      await expect(manager.refreshWithServiceWorker()).rejects.toThrow('Failed to generate preview files');
+    });
+
+    it('should send files to SW and load preview', async () => {
+      const loadSpy = vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
+      expect(window.eXeLearning.app.sendContentToPreviewSW).toHaveBeenCalled();
+      expect(loadSpy).toHaveBeenCalled();
+    });
+
+    it('should use theme from eXeLearning.app.themes.selected', async () => {
+      window.eXeLearning.app.themes.selected = { id: 'custom-theme' };
+      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      // Verify the last argument contains the theme
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
+      const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
+      expect(lastCall[4]).toEqual({ theme: 'custom-theme' });
+    });
+
+    it('should use theme name when id not available', async () => {
+      window.eXeLearning.app.themes.selected = { name: 'theme-name' };
+      vi.spyOn(manager, 'loadPreviewFromServiceWorker').mockImplementation(() => {});
+
+      await manager.refreshWithServiceWorker();
+
+      // Verify the last argument contains the theme
+      const lastCall = window.SharedExporters.generatePreviewForSW.mock.calls[0];
+      expect(lastCall[4]).toEqual({ theme: 'theme-name' });
+    });
+  });
+
+  describe('showLoadingState and hideLoadingState', () => {
+    it('should add preview-loading class when open', () => {
+      manager.isOpen = true;
+      manager.showLoadingState();
+
+      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
+      expect(body.classList.contains('preview-loading')).toBe(true);
+    });
+
+    it('should add preview-loading class when pinned', () => {
+      manager.isPinned = true;
+      manager.showLoadingState();
+
+      const body = mockElements['preview-pinned-container'].querySelector('.preview-pinned-body');
+      expect(body.classList.contains('preview-loading')).toBe(true);
+    });
+
+    it('should remove preview-loading class when open', () => {
+      manager.isOpen = true;
+      const body = mockElements.previewsidenav.querySelector('.preview-panel-body');
+      body.classList.add('preview-loading');
+
+      manager.hideLoadingState();
+
+      expect(body.classList.contains('preview-loading')).toBe(false);
+    });
+  });
+
+  describe('showError', () => {
+    it('should inject error HTML into iframe', () => {
+      const injectSpy = vi.spyOn(manager, 'injectHtmlToIframe');
+
+      manager.showError('Test error message');
+
+      expect(injectSpy).toHaveBeenCalled();
+      const html = injectSpy.mock.calls[0][0];
+      expect(html).toContain('Preview Error');
+      expect(html).toContain('Test error message');
+    });
+
+    it('should escape HTML in error message', () => {
+      const injectSpy = vi.spyOn(manager, 'injectHtmlToIframe');
+
+      manager.showError('<script>alert(1)</script>');
+
+      const html = injectSpy.mock.calls[0][0];
+      expect(html).toContain('&lt;script&gt;');
+      expect(html).not.toContain('<script>alert(1)</script>');
+    });
+  });
+
+  describe('savePinnedPreference and loadPinnedPreference', () => {
+    it('should save true to localStorage', () => {
+      const mockLocalStorage = { setItem: vi.fn() };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      manager.savePinnedPreference(true);
+
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('exe-preview-pinned', 'true');
+    });
+
+    it('should save false to localStorage', () => {
+      const mockLocalStorage = { setItem: vi.fn() };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      manager.savePinnedPreference(false);
+
+      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('exe-preview-pinned', 'false');
+    });
+
+    it('should handle localStorage error on save gracefully', () => {
+      const mockLocalStorage = {
+        setItem: vi.fn(() => { throw new Error('localStorage error'); }),
+      };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      expect(() => manager.savePinnedPreference(true)).not.toThrow();
+    });
+
+    it('should load true from localStorage', () => {
+      const mockLocalStorage = { getItem: vi.fn(() => 'true') };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      expect(manager.loadPinnedPreference()).toBe(true);
+    });
+
+    it('should return false for non-true values', () => {
+      const mockLocalStorage = { getItem: vi.fn(() => 'false') };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      expect(manager.loadPinnedPreference()).toBe(false);
+    });
+
+    it('should handle localStorage error on load gracefully', () => {
+      const mockLocalStorage = {
+        getItem: vi.fn(() => { throw new Error('localStorage error'); }),
+      };
+      Object.defineProperty(window, 'localStorage', {
+        value: mockLocalStorage,
+        writable: true,
+      });
+
+      expect(manager.loadPinnedPreference()).toBe(false);
+    });
+  });
+
+  describe('setAutoRefresh', () => {
+    it('should enable auto-refresh', () => {
+      manager.autoRefreshEnabled = false;
+
+      manager.setAutoRefresh(true);
+
+      expect(manager.autoRefreshEnabled).toBe(true);
+    });
+
+    it('should disable auto-refresh', () => {
+      manager.autoRefreshEnabled = true;
+
+      manager.setAutoRefresh(false);
+
+      expect(manager.autoRefreshEnabled).toBe(false);
+    });
+  });
+
+  describe('scheduleRefresh edge cases', () => {
+    it('should not schedule when auto-refresh disabled', () => {
+      manager.autoRefreshEnabled = false;
+      const refreshSpy = vi.spyOn(manager, 'refresh');
+
+      manager.scheduleRefresh();
+
+      expect(manager.refreshDebounceTimer).toBeNull();
+      expect(refreshSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('subscribeToChanges edge cases', () => {
+    it('should not subscribe when Yjs not enabled', () => {
+      mockProject._yjsEnabled = false;
+
+      manager.subscribeToChanges();
+
+      expect(mockBridge.onStructureChange).not.toHaveBeenCalled();
+    });
+
+    it('should not subscribe when bridge not available', () => {
+      mockProject._yjsBridge = null;
+
+      manager.subscribeToChanges();
+
+      expect(manager._unsubscribeStructure).toBeNull();
+    });
+
+    it('should not refresh on structure change when not open or pinned', () => {
+      vi.useFakeTimers();
+      manager.subscribeToChanges();
+      manager.isOpen = false;
+      manager.isPinned = false;
+
+      const structureCallback = mockBridge.onStructureChange.mock.calls[0][0];
+      structureCallback();
+
+      expect(manager.refreshDebounceTimer).toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('should skip system-originated ydoc updates', () => {
+      vi.useFakeTimers();
+      manager.subscribeToChanges();
+      manager.isOpen = true;
+
+      const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
+      updateCallback(new Uint8Array(), 'system'); // System origin
+
+      // No refresh should be scheduled
+      expect(manager.refreshDebounceTimer).toBeNull();
+      vi.useRealTimers();
+    });
+
+    it('should skip initial-originated ydoc updates', () => {
+      vi.useFakeTimers();
+      manager.subscribeToChanges();
+      manager.isOpen = true;
+
+      const updateCallback = mockYdoc.on.mock.calls.find(call => call[0] === 'update')[1];
+      updateCallback(new Uint8Array(), 'initial'); // Initial origin
+
+      expect(manager.refreshDebounceTimer).toBeNull();
+      vi.useRealTimers();
+    });
+  });
+
+  describe('open edge cases', () => {
+    it('should not open when already pinned', async () => {
+      manager.isPinned = true;
+      const refreshSpy = vi.spyOn(manager, 'refresh');
+
+      await manager.open();
+
+      expect(refreshSpy).not.toHaveBeenCalled();
+      expect(manager.isOpen).toBe(false);
+    });
+  });
+
+  describe('close edge cases', () => {
+    it('should not close when pinned', () => {
+      manager.isPinned = true;
+      manager.isOpen = true;
+
+      manager.close();
+
+      expect(manager.isOpen).toBe(true); // Still open because pinned
+    });
+  });
+
+  describe('toggle', () => {
+    it('should unpin when toggling while pinned', async () => {
+      manager.isPinned = true;
+      const unpinSpy = vi.spyOn(manager, 'unpin');
+
+      await manager.toggle();
+
+      expect(unpinSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('bindEvents edge cases', () => {
+    it('should handle close button keyboard events', () => {
+      manager.bindEvents();
+      const closeSpy = vi.spyOn(manager, 'close');
+
+      // Test Enter key
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter' });
+      mockElements.previewsidenavclose.dispatchEvent(enterEvent);
+      expect(closeSpy).toHaveBeenCalled();
+
+      closeSpy.mockClear();
+
+      // Test Space key
+      const spaceEvent = new KeyboardEvent('keydown', { key: ' ' });
+      mockElements.previewsidenavclose.dispatchEvent(spaceEvent);
+      expect(closeSpy).toHaveBeenCalled();
+    });
+
+    it('should handle ELPX download request from preview', async () => {
+      manager.bindEvents();
+      const mockExport = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.exportToElpxViaYjs = mockExport;
+
+      const event = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockExport).toHaveBeenCalledWith({ saveAs: true });
+    });
+
+    it('should show error when exportToElpxViaYjs not available', async () => {
+      manager.bindEvents();
+      window.eXeLearning.app.project.exportToElpxViaYjs = undefined;
+
+      // Mock alert
+      const originalAlert = window.alert;
+      window.alert = vi.fn();
+
+      const event = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(window.alert).toHaveBeenCalled();
+
+      window.alert = originalAlert;
+    });
+
+    it('should handle ELPX export error', async () => {
+      manager.bindEvents();
+      window.eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('Export failed'));
+
+      const originalAlert = window.alert;
+      window.alert = vi.fn();
+
+      const event = new MessageEvent('message', {
+        data: { type: 'exe-download-elpx' },
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Export failed'));
+
+      window.alert = originalAlert;
+    });
+  });
+
+  describe('refresh with SW wait', () => {
+    it('should wait for SW when no controller but waitForPreviewServiceWorker available', async () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: null },
+        writable: true,
+        configurable: true,
+      });
+
+      const waitSpy = vi.fn().mockResolvedValue({});
+      window.eXeLearning.app.waitForPreviewServiceWorker = waitSpy;
+
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+
+      await manager.refresh();
+
+      expect(waitSpy).toHaveBeenCalled();
+    });
+
+    it('should prevent concurrent refreshes', async () => {
+      manager.isLoading = true;
+      const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker');
+
+      await manager.refresh();
+
+      expect(swRefreshSpy).not.toHaveBeenCalled();
+    });
   });
 
 });
