@@ -375,39 +375,44 @@ function renderBlock(block: RenderBlock, resourcesPrefix: string): string {
         classes.push(String(properties.cssClass));
     }
 
-    let headerHtml = '';
-    if (hasHeader) {
-        const hasIcon = block.iconName && block.iconName.trim() !== '';
-        const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+    // Build block header - always render icon and toggle if enabled, even without title text
+    const hasIcon = block.iconName && block.iconName.trim() !== '';
+    const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
-        // Build icon HTML if iconName exists
-        let iconHtml = '';
-        if (hasIcon) {
-            const iconPath = `${resourcesPrefix}theme/icons/${block.iconName}.png`;
-            iconHtml = `<div class="box-icon exe-icon">
+    // Build icon HTML if iconName exists
+    let iconHtml = '';
+    if (hasIcon) {
+        const iconPath = `${resourcesPrefix}theme/icons/${block.iconName}.png`;
+        iconHtml = `<div class="box-icon exe-icon">
 <img src="${escapeAttr(iconPath)}" alt="">
 </div>
 `;
-        }
-
-        // Build toggle button if allowToggle is enabled
-        let toggleHtml = '';
-        if (properties.allowToggle === true || properties.allowToggle === 'true') {
-            const toggleClass =
-                properties.minimized === true || properties.minimized === 'true'
-                    ? 'box-toggle box-toggle-off'
-                    : 'box-toggle box-toggle-on';
-            toggleHtml = `<button class="${toggleClass}" title="Toggle content">
-<span>Toggle content</span>
-</button>`;
-        }
-
-        headerHtml = `<header class="${headerClass}">
-${iconHtml}<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
-${toggleHtml}</header>`;
-    } else {
-        headerHtml = '<div class="box-head"></div>';
     }
+
+    // Build toggle button if allowToggle is enabled (default: true when undefined)
+    // allowToggle defaults to true for backwards compatibility - users must explicitly disable it
+    let toggleHtml = '';
+    const shouldShowToggle = properties.allowToggle !== false && properties.allowToggle !== 'false';
+    if (shouldShowToggle) {
+        const toggleClass =
+            properties.minimized === true || properties.minimized === 'true'
+                ? 'box-toggle box-toggle-off'
+                : 'box-toggle box-toggle-on';
+        // Static text - will be translated at runtime by exe_export.js using $exe_i18n.toggleContent
+        const toggleText = 'Toggle content';
+        toggleHtml = `<button class="${toggleClass}" title="${escapeAttr(toggleText)}">
+<span>${escapeHtml(toggleText)}</span>
+</button>`;
+    }
+
+    // Build title only if blockName has text
+    const titleHtml = hasHeader
+        ? `<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
+`
+        : '';
+
+    const headerHtml = `<header class="${headerClass}">
+${iconHtml}${titleHtml}${toggleHtml}</header>`;
 
     const contentHtml = block.components.map(component => renderIdevice(component, resourcesPrefix)).join('\n');
 
