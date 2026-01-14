@@ -102,6 +102,7 @@ export interface NormalizedPage {
     level: number;
     parent_id: string | null;
     position: number;
+    properties?: Record<string, PropertyValue>; // Page-level properties
 }
 
 export interface NormalizedComponent {

@@ -160,21 +160,20 @@ ${contentHtml}
             classes.push('no-header');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.minimized === true || properties.minimized === 'true') {
+        if (String(properties.minimized) === 'true') {
             classes.push('minimized');
         }
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (String(properties.visibility) === 'false') {
             classes.push('novisible');
         }
         if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
+            String(properties.teacherOnly) === 'true' ||
             properties.visibilityType === 'teacher'
         ) {
             classes.push('teacher-only');
         }
         if (properties.cssClass) {
-            classes.push(properties.cssClass);
+            classes.push(properties.cssClass as string);
         }
 
         // Build block header
@@ -198,9 +197,9 @@ ${contentHtml}
 
             // Build toggle button if allowToggle is enabled
             let toggleHtml = '';
-            if (properties.allowToggle === true || properties.allowToggle === 'true') {
+            if (String(properties.allowToggle) === 'true') {
                 const toggleClass =
-                    properties.minimized === true || properties.minimized === 'true'
+                    String(properties.minimized) === 'true'
                         ? 'box-toggle box-toggle-off'
                         : 'box-toggle box-toggle-on';
                 toggleHtml = `<button class="${toggleClass}" title="Toggle content">

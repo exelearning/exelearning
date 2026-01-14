@@ -103,10 +103,18 @@ function createMockExportSystem(): ExportSystemDeps {
             getProjectAssets = async () => [];
             getAsset = async () => null;
         } as any,
+        DatabaseAssetProvider: class MockDatabaseAssetProvider {
+            getProjectAssets = async () => [];
+            getAsset = async () => null;
+        } as any,
+        CombinedAssetProvider: class MockCombinedAssetProvider {
+            getProjectAssets = async () => [];
+            getAsset = async () => null;
+        } as any,
         FflateZipProvider: class MockZipProvider {
             createZip = () => ({
-                addFile: () => {},
-                addFiles: () => {},
+                addFile: () => { },
+                addFiles: () => { },
                 generate: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
             });
         } as any,
@@ -117,6 +125,9 @@ function createMockExportSystem(): ExportSystemDeps {
         ImsExporter: MockExporter as any,
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
+        PageElpxExporter: MockExporter as any,
+        YjsDocumentAdapter: class MockYjsAdapter { } as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper { } as any,
     };
 }
 

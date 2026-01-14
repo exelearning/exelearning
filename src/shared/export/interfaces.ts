@@ -380,6 +380,8 @@ export interface Epub3ExportOptions extends ExportOptions {
 export interface ElpxExportOptions extends ExportOptions {
     /** Include HTML preview pages */
     includeHtmlContent?: boolean;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 // =============================================================================
