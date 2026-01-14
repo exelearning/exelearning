@@ -375,6 +375,9 @@ export default class NavbarFile {
     makeMenuThemeEdit(theme) {
         const li = document.createElement('li');
 
+        // TODO Disabled the edition right now, study if we will support direct edit in the future
+        li.classList.add('d-none');
+
         const icon = document.createElement('span');
         icon.classList.add('small-icon', 'edit-icon-green');
         li.appendChild(icon);
@@ -747,8 +750,16 @@ export default class NavbarFile {
 
             // Extract theme name from config.xml
             let themeName = getValue('name') || fileName.replace('.zip', '');
+            const downloadable = getValue('downloadable') || '1';
             // Sanitize theme name for use as directory/key
             const dirName = themeName.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+
+            if (downloadable === '0') {
+                this.showElementAlert(_('Failed to install the new style'), {
+                    error: _('This style cannot be downloaded'),
+                });
+                return;
+            }
 
             // Check if theme already exists
             if (eXeLearning.app.themes.list.installed[dirName]) {
@@ -767,7 +778,7 @@ export default class NavbarFile {
                 author: getValue('author') || '',
                 license: getValue('license') || '',
                 description: getValue('description') || '',
-                downloadable: getValue('downloadable') || '1', // Default to downloadable
+                downloadable, // Default to downloadable
                 cssFiles: [],
                 js: [],
                 icons: {},
