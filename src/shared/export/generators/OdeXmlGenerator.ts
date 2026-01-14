@@ -121,6 +121,7 @@ function generateOdePropertiesXml(meta: ExportMetadata): string {
     // Core properties
     const properties: Record<string, string | boolean | undefined> = {
         pp_title: meta.title,
+        pp_subtitle: meta.subtitle,
         pp_author: meta.author,
         pp_lang: meta.language,
         pp_description: meta.description,

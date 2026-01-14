@@ -123,6 +123,7 @@ if (typeof window !== 'undefined' && window.ElpxExporter) {
       let xml = '<odeProperties>\n';
       const props = {
         pp_title: metadata.get('title') || 'Untitled',
+        pp_subtitle: metadata.get('subtitle') || '',
         pp_author: metadata.get('author') || '',
         pp_lang: metadata.get('language') || 'en',
         pp_description: metadata.get('description') || '',

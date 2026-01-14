@@ -343,7 +343,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons', () => {
+        it('should render prev/next nav buttons with data-i18n attributes', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -355,8 +355,12 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="nav-buttons"');
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
+            // English text defaults (translated at runtime via $exe_i18n)
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
+            // data-i18n attributes for runtime translation
+            expect(html).toContain('data-i18n="previous"');
+            expect(html).toContain('data-i18n="next"');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -372,6 +376,9 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('<span class="nav-button nav-button-left"');
             expect(html).toContain('<a href=');
+            // data-i18n attributes present on both disabled and enabled buttons
+            expect(html).toContain('data-i18n="previous"');
+            expect(html).toContain('data-i18n="next"');
         });
 
         it('should render disabled next button for last page', () => {
@@ -387,6 +394,9 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('<span class="nav-button nav-button-right"');
             expect(html).toContain('<a href=');
+            // data-i18n attributes present on both
+            expect(html).toContain('data-i18n="previous"');
+            expect(html).toContain('data-i18n="next"');
         });
 
         it('should render both buttons disabled for single page', () => {
@@ -399,6 +409,26 @@ describe('PageRenderer', () => {
             expect(html).toContain('<span class="nav-button nav-button-left"');
             expect(html).toContain('<span class="nav-button nav-button-right"');
             expect(html).not.toContain('<a href=');
+            // data-i18n attributes present on disabled buttons too
+            expect(html).toContain('data-i18n="previous"');
+            expect(html).toContain('data-i18n="next"');
+        });
+
+        it('should always output English text regardless of language param (deprecated)', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+
+            // Language param is deprecated; runtime translation via $exe_i18n
+            const htmlEs = renderer.renderNavButtons(pages[0], pages, '', 'es');
+            const htmlEn = renderer.renderNavButtons(pages[0], pages, '', 'en');
+
+            // Both should output the same English text (runtime translation handles localization)
+            expect(htmlEs).toContain('Previous');
+            expect(htmlEs).toContain('Next');
+            expect(htmlEn).toContain('Previous');
+            expect(htmlEn).toContain('Next');
         });
     });
 

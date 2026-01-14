@@ -49,7 +49,7 @@ export const EXPORT_FORMAT_INFO: Record<
     [ExportFormat.SCORM_12]: {
         name: 'SCORM 1.2',
         extension: '.zip',
-        suffix: '_scorm12',
+        suffix: '_scorm',
         description: 'SCORM 1.2 package for LMS',
     },
     [ExportFormat.SCORM_2004]: {

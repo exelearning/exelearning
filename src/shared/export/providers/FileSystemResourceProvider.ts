@@ -110,7 +110,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
             // Common JS files (in app/common/)
             { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
             { src: 'app/common/common.js', dest: 'common.js' },
-            { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
+            // Note: common_i18n.js is generated dynamically by I18nGenerator per project language
         ];
 
         for (const { src, dest } of libsMapping) {
