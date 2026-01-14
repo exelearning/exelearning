@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, Page } from '../fixtures/auth.fixture';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -10,6 +10,25 @@ import { test, expect } from '../fixtures/auth.fixture';
  *    must be updated (ELPX imports set both, but rename only updated pageName)
  * 2. Page reorder: Pages must be sorted by hierarchical 'order' field
  */
+
+/**
+ * Helper function to wait for Service Worker to be ready
+ * Firefox takes longer to register and activate the SW
+ */
+async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const app = (window as any).eXeLearning?.app;
+            // Check if SW registration promise exists and has completed
+            return (
+                app?._previewSwRegistration?.active?.state === 'activated' ||
+                navigator.serviceWorker?.controller !== null
+            );
+        },
+        { timeout },
+    );
+}
+
 test.describe('Preview Page Updates', () => {
     test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -62,6 +81,9 @@ test.describe('Preview Page Updates', () => {
 
         // Wait for Yjs to process
         await page.waitForTimeout(500);
+
+        // Wait for Service Worker to be ready (Firefox takes longer)
+        await waitForServiceWorker(page);
 
         // Open Preview panel via the preview button
         const previewButton = page.locator('#head-bottom-preview');
@@ -221,6 +243,9 @@ test.describe('Preview Page Updates', () => {
         // Wait for pages to be created in Yjs
         await page.waitForTimeout(500);
 
+        // Wait for Service Worker to be ready (Firefox takes longer)
+        await waitForServiceWorker(page);
+
         // Open Preview
         const previewButton = page.locator('#head-bottom-preview');
         await previewButton.click();
@@ -320,6 +345,9 @@ test.describe('Preview Page Updates', () => {
 
         // Wait for move operation to complete
         await page.waitForTimeout(500);
+
+        // Wait for Service Worker to be ready (Firefox takes longer)
+        await waitForServiceWorker(page);
 
         // Open Preview
         const previewButton = page.locator('#head-bottom-preview');
