@@ -29,7 +29,7 @@ export class Scorm12Exporter extends Html5Exporter {
      * Get file suffix for SCORM 1.2 format
      */
     getFileSuffix(): string {
-        return '_scorm12';
+        return '_scorm';
     }
 
     /**
