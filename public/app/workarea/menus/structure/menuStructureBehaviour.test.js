@@ -597,4 +597,152 @@ describe('MenuStructureBehaviour', () => {
              expect(behaviour.importTargetNodeId).toBe('node-1');
         });
     });
+
+    describe('createAddTextBtn', () => {
+        it('adds button to node content if properties form is hidden', () => {
+             // Ensure properties form is hidden
+             const form = document.getElementById('properties-node-content-form');
+             form.style.display = 'none';
+
+             behaviour.createAddTextBtn();
+             
+             const btnWrapper = document.getElementById('eXeAddContentBtnWrapper');
+             expect(btnWrapper).not.toBeNull();
+        });
+
+        it('does NOT add button if properties form is visible', () => {
+             const form = document.getElementById('properties-node-content-form');
+             form.style.display = 'block';
+
+             behaviour.createAddTextBtn();
+
+             const btnWrapper = document.getElementById('eXeAddContentBtnWrapper');
+             expect(btnWrapper).toBeNull();
+        });
+
+        it('triggers text idevice click when clicked', () => {
+             const form = document.getElementById('properties-node-content-form');
+             form.style.display = 'none';
+             
+             // Mock text idevice button
+             const textIdevice = document.querySelector('#list_menu_idevices #text');
+             let clicked = false;
+             textIdevice.addEventListener('click', () => clicked = true);
+
+             behaviour.createAddTextBtn();
+             
+             const btn = document.querySelector('#eXeAddContentBtnWrapper button');
+             btn.click();
+             
+             expect(clicked).toBe(true);
+             expect(document.getElementById('eXeAddContentBtnWrapper')).toBeNull(); // Should be removed after click
+        });
+
+
+        it('does nothing when clicked if properties form becomes visible', () => {
+             const form = document.getElementById('properties-node-content-form');
+             form.style.display = 'none';
+
+             // Mock text idevice button
+             const textIdevice = document.querySelector('#list_menu_idevices #text');
+             let clicked = false;
+             textIdevice.addEventListener('click', () => clicked = true);
+
+             behaviour.createAddTextBtn();
+             
+             // Now make it visible
+             form.style.display = 'block';
+             
+             const btn = document.querySelector('#eXeAddContentBtnWrapper button');
+             btn.click();
+             
+             expect(clicked).toBe(false);
+             expect(document.getElementById('eXeAddContentBtnWrapper')).not.toBeNull(); // Should NOT be removed
+        });
+    });
+
+    describe('setNodeIdToNodeContentElement', () => {
+        it('sets node-selected attribute on node-content', () => {
+             // Mock node selection
+             behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
+             
+             behaviour.setNodeIdToNodeContentElement();
+             
+             const content = document.getElementById('node-content');
+             expect(content.getAttribute('node-selected')).toBe('page-1');
+        });
+    });
+
+    describe('checkIfEmptyNode', () => {
+        it('adds empty message if no articles exist', () => {
+            const content = document.getElementById('node-content');
+            // Ensure empty
+            content.innerHTML = ''; 
+            
+            behaviour.checkIfEmptyNode();
+            
+            expect(content.querySelector('#empty_articles')).not.toBeNull();
+        });
+
+        it('removes empty message if articles exist', () => {
+            const content = document.getElementById('node-content');
+            // Add a mock article
+            content.innerHTML = '<article></article><article id="empty_articles"></article>';
+            
+            behaviour.checkIfEmptyNode();
+            
+            expect(content.querySelector('#empty_articles')).toBeNull();
+        });
+    });
+
+    describe('Input Modal Behavior', () => {
+        it('focuses input and resets value cursor', () => {
+             vi.useFakeTimers();
+             const input = document.createElement('input');
+             input.value = 'test';
+             document.body.appendChild(input);
+             
+             const spy = vi.spyOn(input, 'focus');
+             
+             behaviour.addBehaviourToInputTextModal(input, () => {});
+             
+             vi.runAllTimers();
+             
+             expect(spy).toHaveBeenCalled();
+             expect(input.value).toBe('test'); // Should remain same
+             vi.useRealTimers();
+             input.remove();
+        });
+    });
+
+    describe('selectFirst', () => {
+        it('returns null if no nav elements found', async () => {
+            document.getElementById('nav_list').innerHTML = ''; // Clear nav list
+            const result = await behaviour.selectFirst();
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('Action Buttons Fallback', () => {
+         it('enables all buttons if Yjs binding is missing', () => {
+             // Remove binding
+             eXeLearning.app.project._yjsBridge.structureBinding = null;
+             
+             behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
+             behaviour.enabledActionButtons();
+             
+             const btnUp = document.querySelector('.button_nav_action.action_move_prev');
+             expect(btnUp.disabled).toBe(false);
+         });
+         it('only enables add button for root node', () => {
+             behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="root"]');
+             behaviour.enabledActionButtons();
+             
+             const btnAdd = document.querySelector('.button_nav_action.action_add');
+             const btnDel = document.querySelector('.button_nav_action.action_delete');
+             
+             expect(btnAdd.disabled).toBe(false);
+             expect(btnDel.disabled).toBe(true); // Should be disabled for root
+         });
+    });
 });
