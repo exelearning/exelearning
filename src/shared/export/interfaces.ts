@@ -691,7 +691,7 @@ export interface Exporter {
     getFileExtension(): string;
 
     /**
-     * Get the file suffix for this format (e.g., '_web', '_scorm12')
+     * Get the file suffix for this format (e.g., '_web', '_scorm')
      */
     getFileSuffix(): string;
 }
