@@ -1757,10 +1757,23 @@ class ElpxImporter {
                 const feedbackInput = ideviceData.properties?.textFeedbackInput || ideviceData.feedbackButton || '';
                 const feedbackTextarea = ideviceData.properties?.textFeedbackTextarea || ideviceData.feedbackHtml || '';
 
+                // Process extra properties (like Task info from TaskHandler)
+                let extraProps = {};
+                if (ideviceData.properties) {
+                  // Clone properties to avoid modifying original
+                  const propsToProcess = { ...ideviceData.properties };
+                  // Remove feedback props as they are handled explicitly above (to ensure order/precedence)
+                  delete propsToProcess.textFeedbackInput;
+                  delete propsToProcess.textFeedbackTextarea;
+                  
+                  extraProps = transformPropertiesAssets(propsToProcess, replaceAssetPathsWithMediaTypes);
+                }
+
                 const jsonProps = {
                   textTextarea: transformedHtml || '',
                   textFeedbackInput: feedbackInput,
-                  textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : ''
+                  textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : '',
+                  ...extraProps
                 };
                 compMap.set('jsonProperties', JSON.stringify(jsonProps));
               } else {
