@@ -4,7 +4,7 @@
  * Generates a single-page HTML preview for printing.
  * All pages are rendered together in one document, optimized for print.
  *
- * Key differences from WebsitePreviewExporter:
+ * Key differences from Html5Exporter:
  * - All pages visible at once (not SPA)
  * - Body class includes 'exe-single-page' for print styles
  * - Navigation uses anchor links (not JavaScript page switching)

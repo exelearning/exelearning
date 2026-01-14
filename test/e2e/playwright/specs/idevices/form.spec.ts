@@ -536,7 +536,7 @@ test.describe('Form iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -581,7 +581,7 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -631,7 +631,7 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 

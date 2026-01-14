@@ -484,7 +484,7 @@ test.describe('UDL Content iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify UDL container has correct type class
             const udlContainer = iframe.locator('.exe-udlContent');
@@ -566,7 +566,7 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
@@ -665,7 +665,7 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
