@@ -461,7 +461,7 @@ test.describe('DigCompEdu iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the DigCompEdu content is displayed
             const digcompeduContent = iframe.locator('.digcompeduIdeviceContent').first();
@@ -525,7 +525,7 @@ test.describe('DigCompEdu iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the DigCompEdu content is displayed
             const digcompeduContent = iframe.locator('.digcompeduIdeviceContent').first();

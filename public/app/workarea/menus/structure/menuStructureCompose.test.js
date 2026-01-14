@@ -349,10 +349,11 @@ describe('MenuStructureCompose', () => {
             };
         });
 
-        it('should create button element with nav-element-text class', () => {
+        it('should create div element with nav-element-text and dropdown classes', () => {
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
-            expect(result.tagName).toBe('BUTTON');
+            expect(result.tagName).toBe('DIV');
             expect(result.classList.contains('nav-element-text')).toBe(true);
+            expect(result.classList.contains('dropdown')).toBe(true);
         });
 
         it('should set title attribute to pageName', () => {

@@ -702,7 +702,7 @@ test.describe('Interactive Video iDevice', () => {
 
             // Access preview iframe
             const previewIframe = page.frameLocator('#preview-iframe');
-            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the interactive video container is visible in preview
             const videoContainer = previewIframe.locator('.exe-interactive-video').first();

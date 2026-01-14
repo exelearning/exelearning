@@ -15,6 +15,7 @@
 
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
+import { generateI18nScript } from '../generators/I18nGenerator';
 
 /**
  * PageExporter - Single-page HTML export
@@ -81,6 +82,10 @@ export class PageExporter extends Html5Exporter {
             } catch {
                 // No base libraries available
             }
+
+            // 5.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            this.zip.addFile('libs/common_i18n.js', i18nContent);
 
             // 6. Fetch and add iDevice assets (test files filtered at provider level)
             for (const idevice of usedIdevices) {

@@ -58,11 +58,11 @@ export class NavigationPage {
     async getNodeIdByTitle(title: string): Promise<string | null> {
         return this.page.evaluate(t => {
             const titleText = String(t).trim();
-            // First try using [role="treeitem"] buttons (new structure)
+            // First try using [role="treeitem"] .nav-element-text (new structure)
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
             for (const item of treeItems) {
-                const button = item.querySelector('button');
-                if (button?.textContent && button.textContent.trim() === titleText) {
+                const textDiv = item.querySelector('.nav-element-text');
+                if (textDiv?.textContent && textDiv.textContent.trim() === titleText) {
                     return item.getAttribute('data-node-id') || item.getAttribute('nav-id') || item.id || null;
                 }
             }
@@ -85,7 +85,7 @@ export class NavigationPage {
     async selectNodeById(id: string, expectedTitle?: string): Promise<void> {
         // If we have an expected title, try clicking by text first (more reliable)
         if (expectedTitle) {
-            const treeSelector = `[role="tree"] [role="treeitem"] button:has-text("${expectedTitle}")`;
+            const treeSelector = `[role="tree"] [role="treeitem"] .nav-element-text:has-text("${expectedTitle}")`;
             const treeItem = this.page.locator(treeSelector).first();
             if (await treeItem.count()) {
                 await treeItem.click();
@@ -96,7 +96,7 @@ export class NavigationPage {
 
         // Fallback: try by data-node-id
         const legacySelector = `[data-testid="nav-node-text"][data-node-id="${id}"] .node-text-span`;
-        const idSelector = `[data-node-id="${id}"] button`;
+        const idSelector = `[data-node-id="${id}"] .nav-element-text`;
         const locator = this.page.locator(`${idSelector}, ${legacySelector}`).first();
         await locator.waitFor({ timeout: 20000 });
         await locator.click();
@@ -237,10 +237,11 @@ export class NavigationPage {
             const titleText = String(title).trim();
 
             // Find parent treeitem by button text
+            // Find parent treeitem by text
             const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
             const parentItem = treeItems.find(item => {
-                const button = item.querySelector(':scope > button');
-                return button?.textContent && button.textContent.trim() === titleText;
+                const textDiv = item.querySelector(':scope > .nav-element-text');
+                return textDiv?.textContent && textDiv.textContent.trim() === titleText;
             });
 
             if (!parentItem) return [];
@@ -248,8 +249,8 @@ export class NavigationPage {
             // Expand if collapsed
             const expanded = parentItem.getAttribute('aria-expanded');
             if (expanded === 'false') {
-                const button = parentItem.querySelector(':scope > button') as HTMLElement;
-                button?.click();
+                const textDiv = parentItem.querySelector(':scope > .nav-element-text') as HTMLElement;
+                textDiv?.click();
             }
 
             // Get children from group element
@@ -260,8 +261,8 @@ export class NavigationPage {
             const childItems = Array.from(group.querySelectorAll(':scope > [role="treeitem"]'));
             return childItems
                 .map(item => {
-                    const button = item.querySelector(':scope > button');
-                    return button ? button.textContent?.trim() || '' : '';
+                    const textDiv = item.querySelector(':scope > .nav-element-text');
+                    return textDiv ? textDiv.textContent?.trim() || '' : '';
                 })
                 .filter(text => text !== '');
         }, parentTitle);
@@ -277,11 +278,11 @@ export class NavigationPage {
                 const title = String(args.parentTitle).trim();
                 const expected = args.expectedOrder;
 
-                // Find parent treeitem by button text
+                // Find parent treeitem by text
                 const treeItems = Array.from(document.querySelectorAll('[role="tree"] [role="treeitem"]'));
                 const parentItem = treeItems.find(item => {
-                    const button = item.querySelector(':scope > button');
-                    return button?.textContent && button.textContent.trim() === title;
+                    const textDiv = item.querySelector(':scope > .nav-element-text');
+                    return textDiv?.textContent && textDiv.textContent.trim() === title;
                 });
 
                 if (!parentItem) return false;
@@ -289,8 +290,8 @@ export class NavigationPage {
                 // Expand if collapsed
                 const expanded = parentItem.getAttribute('aria-expanded');
                 if (expanded === 'false') {
-                    const button = parentItem.querySelector(':scope > button') as HTMLElement;
-                    button?.click();
+                    const textDiv = parentItem.querySelector(':scope > .nav-element-text') as HTMLElement;
+                    textDiv?.click();
                     return false; // Wait for expansion
                 }
 
@@ -302,8 +303,8 @@ export class NavigationPage {
                 const childItems = Array.from(group.querySelectorAll(':scope > [role="treeitem"]'));
                 const labels = childItems
                     .map(item => {
-                        const button = item.querySelector(':scope > button');
-                        return button ? button.textContent?.trim() || '' : '';
+                        const textDiv = item.querySelector(':scope > .nav-element-text');
+                        return textDiv ? textDiv.textContent?.trim() || '' : '';
                     })
                     .filter(text => text !== '');
 

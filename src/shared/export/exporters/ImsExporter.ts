@@ -21,6 +21,7 @@ import { Html5Exporter } from './Html5Exporter';
 import { ImsManifestGenerator } from '../generators/ImsManifest';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class ImsExporter extends Html5Exporter {
     protected manifestGenerator: ImsManifestGenerator | null = null;
@@ -153,6 +154,11 @@ export class ImsExporter extends Html5Exporter {
             } catch {
                 // No base libraries available
             }
+
+            // 4.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            this.zip.addFile('libs/common_i18n.js', i18nContent);
+            commonFiles.push('libs/common_i18n.js');
 
             // 5. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);

@@ -616,7 +616,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe container is visible in preview
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl);
@@ -657,7 +657,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe has correct height (500px for large)
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl, 500);

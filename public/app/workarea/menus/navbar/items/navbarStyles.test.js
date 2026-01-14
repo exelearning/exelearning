@@ -677,6 +677,24 @@ describe('NavbarStyles', () => {
             );
         });
 
+        it('shows alert when theme is marked as non-downloadable', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode(
+                    '<theme><name>Blocked Theme</name><downloadable>0</downloadable></theme>'
+                ),
+                'style.css': new Uint8Array([1, 2, 3]),
+            });
+            const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(alertSpy).toHaveBeenCalledWith(
+                expect.stringContaining('Failed to install'),
+                expect.objectContaining({ error: expect.stringContaining('cannot be downloaded') })
+            );
+            expect(mockResourceCache.setUserTheme).not.toHaveBeenCalled();
+        });
+
         it('shows alert when storage is not available', async () => {
             delete eXeLearning.app.project._yjsBridge;
             const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
