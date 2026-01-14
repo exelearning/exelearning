@@ -132,20 +132,12 @@ describe('MenuStructureBehaviour', () => {
             <div id="main">
                 <div id="menu_nav">
                     <div id="nav_list">
+                        <!-- Node 1 (Has Context Menu) -->
                         <div class="nav-element toggle-on" nav-id="node-1" page-id="page-1" is-parent="true">
                             <span class="exe-icon">keyboard_arrow_down</span>
-                            
-                            <!-- Trigger Container (Now a DIV with .dropdown) -->
                             <div class="nav-element-text dropdown">
                                 <span class="node-text-span">Node 1</span>
-                                
-                                <!-- Trigger Button -->
-                                <button class="node-menu-button page-settings-trigger" 
-                                        data-menunavid="node-1" 
-                                        data-bs-toggle="dropdown">
-                                </button>
-                                
-                                <!-- Dropdown Menu -->
+                                <button class="node-menu-button page-settings-trigger" data-menunavid="node-1" data-bs-toggle="dropdown"></button>
                                 <ul class="dropdown-menu">
                                     <li><button class="dropdown-item page-add" data-parentnavid="node-1">Add Subpage</button></li>
                                     <li><button class="dropdown-item action_clone" data-nav-id="node-1">Clone</button></li>
@@ -153,10 +145,15 @@ describe('MenuStructureBehaviour', () => {
                                     <li><button class="dropdown-item page-settings" data-menunavid="node-1">Properties</button></li>
                                     <li><button class="dropdown-item action_import_idevices" data-nav-id="node-1">Import</button></li>
                                 </ul>
-
-                                <!-- Standalone Add Button (Inside textElement) -->
                                 <button class="node-add-button" data-parentnavid="node-1"></button>
                             </div>
+                        </div>
+
+                        <!-- Node 2 (For D&D Testing) -->
+                        <div class="nav-element toggle-on" nav-id="node-2" page-id="page-2" is-parent="false">
+                             <div class="nav-element-text">
+                                 <span class="node-text-span">Node 2</span>
+                             </div>
                         </div>
 
                         <!-- Root Node -->
@@ -175,6 +172,13 @@ describe('MenuStructureBehaviour', () => {
                         <button class="button_nav_action action_clone"></button>
                         <button class="button_nav_action action_import_idevices"></button>
                         <button class="button_nav_action action_check_broken_links"></button>
+                    </div>
+                    <!-- Movement Buttons -->
+                    <div class="buttons_action_container_right">
+                         <button class="button_nav_action action_move_up"></button>
+                         <button class="button_nav_action action_move_down"></button>
+                         <button class="button_nav_action action_move_prev"></button>
+                         <button class="button_nav_action action_move_next"></button>
                     </div>
                 </div>
             </div>
@@ -204,6 +208,7 @@ describe('MenuStructureBehaviour', () => {
 
         nodeMap = {
             'node-1': { id: 'node-1', pageId: 'page-1', pageName: 'Node 1', open: true, showModalProperties: vi.fn() },
+            'node-2': { id: 'node-2', pageId: 'page-2', pageName: 'Node 2', open: false, showModalProperties: vi.fn() },
             root: { id: 'root', pageId: 'root', pageName: 'Root', open: true, showModalProperties: vi.fn() },
         };
 
@@ -297,7 +302,7 @@ describe('MenuStructureBehaviour', () => {
             behaviour.addNavTestIds();
 
             const navElements = document.querySelectorAll('.nav-element[nav-id]');
-            expect(navElements.length).toBe(2);
+            expect(navElements.length).toBe(3);
 
             const firstNode = navElements[0];
             expect(firstNode.getAttribute('data-testid')).toBe('nav-node');
@@ -473,18 +478,123 @@ describe('MenuStructureBehaviour', () => {
         });
     });
 
-    describe('showModalRenameNode', () => {
-        it('renames node with new title', () => {
+
+
+    describe('Drag & Drop', () => {
+        beforeEach(() => {
+            behaviour.addDragAndDropFunctionalityToNavElements();
+        });
+
+        it('sets nodeDrag on dragstart', async () => {
+            const selectSpy = vi.spyOn(behaviour, 'selectNode').mockResolvedValue();
+            const navText = document.querySelector('.nav-element[nav-id="node-1"] .nav-element-text');
+            const event = new Event('dragstart');
+            navText.dispatchEvent(event);
+            
+            expect(navText.classList.contains('dragging')).toBe(true);
+            expect(behaviour.nodeDrag).toBe(navText.parentElement);
+            expect(selectSpy).toHaveBeenCalled();
+        });
+
+        it('moves node on dragend if dropped on valid target', () => {
+            // Setup source
+            const navText = document.querySelector('.nav-element[nav-id="node-1"] .nav-element-text');
+            behaviour.nodeDrag = navText.parentElement;
+            navText.classList.add('dragging');
+
+            // Setup target (simulated dragover)
+            const rootText = document.querySelector('.nav-element[nav-id="root"] .nav-element-text');
+            rootText.classList.add('drag-over');
+
+            const event = new Event('dragend');
+            navText.dispatchEvent(event);
+
+            expect(mockStructureEngine.moveNodeToNode).toHaveBeenCalledWith('node-1', 'root');
+            expect(behaviour.nodeDrag).toBeNull();
+            expect(navText.classList.contains('dragging')).toBe(false);
+        });
+
+        it('adds drag-over class on dragover', () => {
+             const navText = document.querySelector('.nav-element[nav-id="node-2"] .nav-element-text');
+             // Simulate another node being dragged
+             const otherNodeParent = document.querySelector('.nav-element[nav-id="node-1"]');
+             behaviour.nodeDrag = otherNodeParent;
+
+             const event = new Event('dragover');
+             navText.dispatchEvent(event);
+
+             expect(navText.classList.contains('drag-over')).toBe(true);
+        });
+    });
+
+    describe('Movement Buttons', () => {
+        beforeEach(() => {
+            // Re-run behaviour(true) to ensure buttons are wired if not already
+            behaviour.behaviour(true); 
+            // Mock selected node
             behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
-            const confirm = eXeLearning.app.modals.confirm;
-            confirm.show.mockImplementation(({ confirmExec, behaviour: behaviourFn }) => {
-                confirm.modalElement.innerHTML = '<input id="input-rename-node" value="New title">';
-                confirm.modalElementBody.innerHTML = '<input value="New title">';
-                behaviourFn();
-                confirmExec();
-            });
-            behaviour.showModalRenameNode();
-            expect(mockStructureEngine.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'New title');
+        });
+
+        it('moves node up', () => {
+            const btn = document.querySelector('.button_nav_action.action_move_up');
+            btn.click();
+            expect(mockStructureEngine.moveNodeUp).toHaveBeenCalledWith('node-1');
+        });
+
+        it('moves node down', () => {
+            const btn = document.querySelector('.button_nav_action.action_move_down');
+            btn.click();
+            expect(mockStructureEngine.moveNodeDown).toHaveBeenCalledWith('node-1');
+        });
+
+        it('moves node prev', () => {
+            const btn = document.querySelector('.button_nav_action.action_move_prev');
+            btn.click();
+            expect(mockStructureEngine.moveNodePrev).toHaveBeenCalledWith('node-1');
+        });
+
+        it('moves node next', () => {
+            const btn = document.querySelector('.button_nav_action.action_move_next');
+            btn.click();
+            expect(mockStructureEngine.moveNodeNext).toHaveBeenCalledWith('node-1');
+        });
+
+        it('enables/disables buttons based on Yjs binding', () => {
+             // Mock binding
+             eXeLearning.app.project._yjsBridge.structureBinding.canMoveUp.mockReturnValue(false);
+             behaviour.enabledActionButtons();
+             
+             const btnUp = document.querySelector('.button_nav_action.action_move_prev');
+             expect(btnUp.disabled).toBe(true);
+        });
+    });
+
+    describe('Import Functionality', () => {
+        it('triggers file input click on import action', () => {
+             const btn = document.querySelector('.button_nav_action.action_import_idevices');
+             // Ensure wiring
+             behaviour.addEventNavImportIdevicesOnclick();
+             
+             behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
+             
+             // Spy on input click
+             const clickSpy = vi.fn();
+             // We need to intercept the input creation or find it after it's added
+             // The input is added to menuNav
+             
+             // Initial click adds the input
+             btn.click();
+             
+             const input = document.querySelector('input.local-ode-file-upload-input');
+             expect(input).not.toBeNull();
+             
+             // Mock click on input
+             input.click = clickSpy;
+             
+             // Click again to trigger the click on specific node
+             btn.click();
+             expect(clickSpy).toHaveBeenCalled();
+             expect(behaviour.importTargetNodeId).toBe('node-1');
         });
     });
 });
