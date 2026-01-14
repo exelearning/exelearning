@@ -546,7 +546,9 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
                             Y.applyUpdate(ydoc, new Uint8Array(snapshot.snapshot_data));
                             data = extractIdevicesFromYjsDoc(odeSessionId, ydoc);
                             ydoc.destroy();
-                            console.log(`[Games] Loaded ${data.length} items from Yjs snapshot for session ${odeSessionId}`);
+                            console.log(
+                                `[Games] Loaded ${data.length} items from Yjs snapshot for session ${odeSessionId}`,
+                            );
                         }
                     }
                 } catch (error) {

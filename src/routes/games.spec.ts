@@ -574,20 +574,22 @@ describe('Games Routes', () => {
          * Helper function to create a Yjs document with navigation structure
          * Mirrors the structure used by YjsDocumentAdapter
          */
-        function createTestYjsDoc(pages: Array<{
-            id: string;
-            title: string;
-            parentId?: string;
-            blocks?: Array<{
+        function createTestYjsDoc(
+            pages: Array<{
                 id: string;
-                name?: string;
-                components?: Array<{
+                title: string;
+                parentId?: string;
+                blocks?: Array<{
                     id: string;
-                    type?: string;
-                    content?: string;
+                    name?: string;
+                    components?: Array<{
+                        id: string;
+                        type?: string;
+                        content?: string;
+                    }>;
                 }>;
-            }>;
-        }>): Uint8Array {
+            }>,
+        ): Uint8Array {
             const ydoc = new Y.Doc();
             const navigation = ydoc.getArray('navigation');
 
@@ -641,14 +643,12 @@ describe('Games Routes', () => {
             // This test simulates what happens when session.structure is empty
             // but data exists in the Yjs snapshot in the database.
             // Since we can't easily mock the database in unit tests,
-            // we test the extraction function indirectly by verifying 
+            // we test the extraction function indirectly by verifying
             // that the endpoint returns empty when no session exists.
-            
+
             // For a session without structure, it should try Yjs fallback
             // (which won't find anything in test environment)
-            const response = await app.handle(
-                new Request('http://localhost/api/games/yjs-test-session/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/yjs-test-session/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -678,9 +678,7 @@ describe('Games Routes', () => {
                 },
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-prefer-structure/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-prefer-structure/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -698,9 +696,7 @@ describe('Games Routes', () => {
                 // No structure property
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/test-empty-structure/idevices')
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/test-empty-structure/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
@@ -712,7 +708,7 @@ describe('Games Routes', () => {
             // For non-existent session, Yjs fallback is tried but finds nothing
             // Should still return success:true with empty data
             const response = await app.handle(
-                new Request('http://localhost/api/games/completely-unknown-session/idevices')
+                new Request('http://localhost/api/games/completely-unknown-session/idevices'),
             );
 
             expect(response.status).toBe(200);
