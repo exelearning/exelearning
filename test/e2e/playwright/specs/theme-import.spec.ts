@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -50,7 +49,6 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
 }
 
 test.describe('Theme Import from ELPX', () => {
-    serverOnly(); // Skip in static mode - requires server for file import
     /**
      * Test that ELPX import completes successfully
      * Note: Full theme import verification requires manual testing

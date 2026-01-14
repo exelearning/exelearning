@@ -30,10 +30,18 @@ export interface PageFileInfo {
  * Options for manifest generation
  */
 export interface ImsGenerateOptions {
-    /** List of common files to include */
+    /** List of common files to include (legacy, used if allZipFiles not provided) */
     commonFiles?: string[];
     /** Map of pageId to file info */
     pageFiles?: Record<string, PageFileInfo>;
+    /**
+     * Complete list of all files in the ZIP archive.
+     * When provided, the generator will automatically categorize files:
+     * - Page HTML files go in their respective page resources
+     * - All other files go in COMMON_FILES
+     * This ensures the manifest contains ALL files in the export.
+     */
+    allZipFiles?: string[];
 }
 
 /**
@@ -70,16 +78,54 @@ export class ImsManifestGenerator {
      * @returns Complete XML string
      */
     generate(options: ImsGenerateOptions = {}): string {
-        const { commonFiles = [], pageFiles = {} } = options;
+        const { commonFiles = [], pageFiles = {}, allZipFiles } = options;
+
+        // If allZipFiles is provided, use it to build complete file lists
+        let effectiveCommonFiles = commonFiles;
+        if (allZipFiles && allZipFiles.length > 0) {
+            effectiveCommonFiles = this.categorizeFilesForCommon(allZipFiles, pageFiles);
+        }
 
         let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
         xml += this.generateManifestOpen();
         xml += this.generateMetadata();
         xml += this.generateOrganizations();
-        xml += this.generateResources(commonFiles, pageFiles);
+        xml += this.generateResources(effectiveCommonFiles, pageFiles);
         xml += '</manifest>\n';
 
         return xml;
+    }
+
+    /**
+     * Categorize files into COMMON_FILES based on complete ZIP file list.
+     * All files except page HTML files and imsmanifest.xml go into COMMON_FILES.
+     * @param allFiles - Complete list of files in the ZIP
+     * @param pageFiles - Map of page file info (to identify page HTML files)
+     * @returns List of files for COMMON_FILES resource
+     */
+    protected categorizeFilesForCommon(allFiles: string[], pageFiles: Record<string, PageFileInfo>): string[] {
+        // Build set of page HTML files
+        const pageHtmlFiles = new Set<string>();
+        for (const page of this.pages) {
+            const pageFile = pageFiles[page.id];
+            if (pageFile?.fileUrl) {
+                pageHtmlFiles.add(pageFile.fileUrl);
+            } else {
+                // Default file URL
+                const isIndex = this.pages.indexOf(page) === 0;
+                const defaultUrl = isIndex ? 'index.html' : `html/${this.sanitizeFilename(page.title)}.html`;
+                pageHtmlFiles.add(defaultUrl);
+            }
+        }
+
+        // Files that should be excluded from COMMON_FILES:
+        // - Page HTML files (they go in their own resource)
+        // - imsmanifest.xml (it's the manifest itself)
+        // - imslrm.xml (referenced separately in SCORM metadata)
+        const excludedFiles = new Set([...pageHtmlFiles, 'imsmanifest.xml', 'imslrm.xml']);
+
+        // All other files go to COMMON_FILES
+        return allFiles.filter(file => !excludedFiles.has(file)).sort();
     }
 
     /**
@@ -89,10 +135,7 @@ export class ImsManifestGenerator {
     generateManifestOpen(): string {
         return `<manifest identifier="eXe-MANIFEST-${this.escapeXml(this.projectId)}"
   xmlns="${IMS_NAMESPACES.imscp}"
-  xmlns:imsmd="${IMS_NAMESPACES.imsmd}"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="${IMS_NAMESPACES.imscp} imscp_v1p1.xsd
-    ${IMS_NAMESPACES.imsmd} imsmd_v1p2p2.xsd">
+  xmlns:imsmd="${IMS_NAMESPACES.imsmd}">
 `;
     }
 

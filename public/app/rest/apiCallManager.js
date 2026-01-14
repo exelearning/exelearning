@@ -1,101 +1,22 @@
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
 
 export default class ApiCallManager {
-    /**
-     * @param {Object} app - App instance
-     * @param {Object} [options] - Optional adapters for dependency injection
-     * @param {Object} [options.projectRepo] - Project repository adapter
-     * @param {Object} [options.catalog] - Catalog adapter
-     * @param {Object} [options.assets] - Asset adapter
-     * @param {Object} [options.collaboration] - Collaboration adapter
-     * @param {Object} [options.exportAdapter] - Export adapter
-     * @param {Object} [options.userPreferences] - User preferences adapter
-     * @param {Object} [options.linkValidation] - Link validation adapter
-     * @param {Object} [options.cloudStorage] - Cloud storage adapter
-     * @param {Object} [options.platformIntegration] - Platform integration adapter
-     * @param {Object} [options.sharing] - Sharing adapter
-     * @param {Object} [options.content] - Content adapter for page/block operations
-     */
-    constructor(app, options = {}) {
+    constructor(app) {
         this.app = app;
         this.apiUrlBase = `${app.eXeLearning.config.baseURL}`;
         this.apiUrlBasePath = `${app.eXeLearning.config.basePath}`;
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
-
-        // Injected adapters (optional, for gradual migration)
-        // When adapters are provided, methods will use them instead of conditionals
-        this._projectRepo = options.projectRepo || null;
-        this._catalog = options.catalog || null;
-        this._assets = options.assets || null;
-        this._collaboration = options.collaboration || null;
-        this._exportAdapter = options.exportAdapter || null;
-        this._userPreferences = options.userPreferences || null;
-        this._linkValidation = options.linkValidation || null;
-        this._cloudStorage = options.cloudStorage || null;
-        this._platformIntegration = options.platformIntegration || null;
-        this._sharing = options.sharing || null;
-        this._content = options.content || null;
-    }
-
-    /**
-     * Check if an adapter is available for use.
-     * @param {string} adapterName - Name of the adapter
-     * @returns {boolean}
-     */
-    _hasAdapter(adapterName) {
-        return this[`_${adapterName}`] !== null;
-    }
-
-    /**
-     * Inject adapters after construction.
-     * This allows for async adapter creation during app initialization.
-     * @param {Object} adapters - Object containing adapter instances
-     */
-    setAdapters(adapters) {
-        if (adapters.projectRepo) this._projectRepo = adapters.projectRepo;
-        if (adapters.catalog) this._catalog = adapters.catalog;
-        if (adapters.assets) this._assets = adapters.assets;
-        if (adapters.collaboration) this._collaboration = adapters.collaboration;
-        if (adapters.exportAdapter) this._exportAdapter = adapters.exportAdapter;
-        if (adapters.userPreferences) this._userPreferences = adapters.userPreferences;
-        if (adapters.linkValidation) this._linkValidation = adapters.linkValidation;
-        if (adapters.cloudStorage) this._cloudStorage = adapters.cloudStorage;
-        if (adapters.platformIntegration) this._platformIntegration = adapters.platformIntegration;
-        if (adapters.sharing) this._sharing = adapters.sharing;
-        if (adapters.content) this._content = adapters.content;
-    }
-
-    /**
-     * Safely get endpoint URL
-     * Returns null if endpoint doesn't exist (common in static mode)
-     * @param {string} endpointName - Name of the endpoint
-     * @returns {string|null} - URL or null if not available
-     */
-    _getEndpointUrl(endpointName) {
-        const endpoint = this.endpoints[endpointName];
-        if (!endpoint || !endpoint.path) {
-            // Silently return null if no remote storage (static/offline mode)
-            const capabilities = this.app.capabilities;
-            if (capabilities && !capabilities.storage.remote) {
-                return null;
-            }
-            console.warn(
-                `[apiCallManager] Endpoint not found: ${endpointName}`
-            );
-            return null;
-        }
-        return endpoint.path;
     }
 
     /**
      * Load symfony api endpoints routes
-     * In static mode, loads from DataProvider instead of server
+     *
      */
     async loadApiParameters() {
         this.parameters = await this.getApiParameters();
-        for (var [key, data] of Object.entries(this.parameters.routes || {})) {
+        for (var [key, data] of Object.entries(this.parameters.routes)) {
             this.endpoints[key] = {};
             this.endpoints[key].path = this.apiUrlBase + data.path;
             this.endpoints[key].methods = data.methods;
@@ -104,84 +25,116 @@ export default class ApiCallManager {
 
     /**
      * Get symfony api endpoints parameters
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getApiParameters() {
-        return this._catalog.getApiParameters();
+        let url = this.apiUrlParameters;
+        return await this.func.get(url);
     }
 
     /**
      * Get app changelog text
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getChangelogText() {
-        return this._catalog.getChangelog();
+        let url = this.app.eXeLearning.config.changelogURL;
+        url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
+        return await this.func.getText(url);
     }
 
     /**
      * Get upload limits configuration
-     * Uses injected catalog adapter (server or static mode)
+     *
+     * Returns the effective file upload size limit considering both
+     * PHP limits and application configuration.
      *
      * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details: object}>}
      */
     async getUploadLimits() {
-        return this._catalog.getUploadLimits();
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
+        return await this.func.get(url);
     }
 
     /**
      * Get the third party code information
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getThirdPartyCodeText() {
-        return this._catalog.getThirdPartyCode();
+        // Use basePath + version for proper cache busting
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README)
+        const version = eXeLearning?.version || 'v1.0.0';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README';
+        return await this.func.getText(url);
     }
 
     /**
      * Get the list of licenses
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getLicensesList() {
-        return this._catalog.getLicensesList();
+        // Use basePath + version for proper cache busting
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/LICENSES)
+        const version = eXeLearning?.version || 'v1.0.0';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/LICENSES';
+        return await this.func.getText(url);
     }
 
     /**
      * Get idevices installed
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getIdevicesInstalled() {
-        return this._catalog.getIDevices();
+        let url = this.endpoints.api_idevices_installed.path;
+        return await this.func.get(url);
     }
 
     /**
      * Get themes installed
-     * Uses injected catalog adapter (server or static mode)
      *
      * @returns
      */
     async getThemesInstalled() {
-        return this._catalog.getThemes();
+        let url = this.endpoints.api_themes_installed.path;
+        return await this.func.get(url);
     }
 
     /**
      * Get user odefiles (projects)
-     * Uses injected project repository (server or static mode)
+     * Uses NestJS endpoint for Yjs-based projects
      *
      * @returns {Promise<Object>} Response with odeFiles containing odeFilesSync array
      */
     async getUserOdeFiles() {
+        // Use NestJS endpoint for Yjs projects
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/user/list`;
+
+        // Get auth token from available sources
+        const authToken = eXeLearning?.app?.project?._yjsBridge?.authToken ||
+                          eXeLearning?.app?.auth?.getToken?.() ||
+                          eXeLearning?.config?.token ||
+                          localStorage.getItem('authToken');
+
         try {
-            const projects = await this._projectRepo.list();
-            return { odeFiles: { odeFilesSync: projects } };
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                console.error('[API] getUserOdeFiles failed:', response.status);
+                return { odeFiles: { odeFilesSync: [] } };
+            }
+
+            return await response.json();
         } catch (error) {
             console.error('[API] getUserOdeFiles error:', error);
             return { odeFiles: { odeFilesSync: [] } };
@@ -189,53 +142,38 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get local projects from IndexedDB (for static mode)
-     * Scans IndexedDB for exelearning-project-* databases
-     * @private
-     */
-    async _getLocalProjects() {
-        try {
-            // Get list of IndexedDB databases (if supported)
-            if (!window.indexedDB?.databases) {
-                console.log('[API] indexedDB.databases() not supported, returning empty list');
-                return { odeFiles: { odeFilesSync: [] } };
-            }
-
-            const databases = await window.indexedDB.databases();
-            const projectDatabases = databases.filter(
-                db => db.name?.startsWith('exelearning-project-')
-            );
-
-            const projects = projectDatabases.map(db => {
-                const uuid = db.name.replace('exelearning-project-', '');
-                return {
-                    uuid: uuid,
-                    title: `Local Project (${uuid.substring(0, 8)}...)`,
-                    updatedAt: new Date().toISOString(),
-                    isLocal: true,
-                };
-            });
-
-            return {
-                odeFiles: {
-                    odeFilesSync: projects,
-                },
-            };
-        } catch (error) {
-            console.error('[API] _getLocalProjects error:', error);
-            return { odeFiles: { odeFilesSync: [] } };
-        }
-    }
-
-    /**
      * Get recent user odefiles (projects)
-     * Uses injected project repository (server or static mode)
+     * Uses NestJS endpoint for Yjs-based projects
+     * Returns the 3 most recently updated projects
      *
      * @returns {Promise<Array>} Array of recent project objects
      */
     async getRecentUserOdeFiles() {
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/projects/user/recent`;
+
+        // Get auth token from available sources
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            eXeLearning?.config?.token ||
+            localStorage.getItem('authToken');
+
         try {
-            return await this._projectRepo.getRecent();
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                console.error('[API] getRecentUserOdeFiles failed:', response.status);
+                return [];
+            }
+
+            return await response.json();
         } catch (error) {
             console.error('[API] getRecentUserOdeFiles error:', error);
             return [];
@@ -264,117 +202,132 @@ export default class ApiCallManager {
 
     /**
      * Get available templates for a given locale
-     * Uses injected catalog adapter (server or static mode)
      *
      * @param {string} locale - The locale code (e.g., 'en', 'es')
      * @returns {Promise<Array>} - Array of template objects
      */
     async getTemplates(locale) {
-        return this._catalog.getTemplates(locale);
+        let url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/templates?locale=${locale}`;
+        return await this.func.get(url);
     }
 
     /**
      * Post odeSessionId and check availability
-     * Uses injected project repository (server or static mode)
      *
      * @param {*} params
      * @returns
      */
     async postJoinCurrentOdeSessionId(params) {
-        const result = await this._projectRepo.joinSession(params.odeSessionId);
-        return { responseMessage: 'OK', ...result };
+        let url = this.endpoints.check_current_users_ode_session_id.path;
+        return await this.func.post(url, params);
     }
 
     /**
      * Post selected odefile
-     * Uses injected project repository (server or static mode)
      *
      * @param {*} odeFileName
      * @returns
      */
     async postSelectedOdeFile(odeFileName) {
-        return this._projectRepo.openFile(odeFileName);
+        let url = this.endpoints.api_odes_ode_elp_open.path;
+        return await this.func.post(url, odeFileName);
     }
 
     /**
-     * Open large local ODE file
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} data
      * @returns
      */
     async postLocalLargeOdeFile(data) {
-        return this._projectRepo.openLargeLocalFile(data);
+        let url = this.endpoints.api_odes_ode_local_large_elp_open.path;
+        return await this.func.fileSendPost(url, data);
     }
 
     /**
-     * Open local ODE file
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} data
      * @returns
      */
     async postLocalOdeFile(data) {
-        return this._projectRepo.openLocalFile(data);
+        let url = this.endpoints.api_odes_ode_local_elp_open.path;
+        return await this.func.post(url, data);
     }
 
     /**
-     * Get local XML properties file
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} data
      * @returns
      */
     async postLocalXmlPropertiesFile(data) {
-        return this._projectRepo.getLocalProperties(data);
+        let url = this.endpoints.api_odes_ode_local_xml_properties_open.path;
+        return await this.func.post(url, data);
     }
 
     /**
-     * Import ELP to root
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} data
      * @returns
      */
     async postImportElpToRoot(data) {
-        return this._projectRepo.importToRoot(data);
+        let url = this.endpoints.api_odes_ode_local_elp_import_root.path;
+        return await this.func.fileSendPost(url, data);
     }
 
     /**
      * Import a previously uploaded file into the root by server local path.
-     * Uses injected project repository (server or static mode)
+     * Payload: { odeSessionId, odeFileName, odeFilePath }
      * @param {Object} payload
      * @returns {Promise<Object>}
      */
     async postImportElpToRootFromLocal(payload = {}) {
-        return this._projectRepo.importToRootFromLocal(payload);
+        let url =
+            this.endpoints.api_odes_ode_local_elp_import_root_from_local?.path;
+        if (!url) {
+            // Fallback if route not yet defined
+            url =
+                this.apiUrlBase +
+                this.apiUrlBasePath +
+                '/api/ode-management/odes/ode/import/local/root';
+        }
+        return await this.func.post(url, payload);
     }
 
     /**
-     * Get local ODE components
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} data
      * @returns
      */
     async postLocalOdeComponents(data) {
-        return this._projectRepo.getLocalComponents(data);
+        let url = this.endpoints.api_odes_ode_local_idevices_open.path;
+        return await this.func.post(url, data);
     }
 
     /**
-     * Open multiple local ODE files
-     * Uses injected project repository (server or static mode)
      * @param {*} data
      * @returns
+     *
      */
     async postMultipleLocalOdeFiles(data) {
-        return this._projectRepo.openMultipleLocalFiles(data);
+        let url = this.endpoints.api_odes_ode_multiple_local_elp_open.path;
+        return await this.func.post(url, data);
     }
 
     /**
-     * Import ELP as child node
-     * Uses injected project repository (server or static mode)
+     *
      * @param {String} navId
      * @param {Object} payload
      * @returns
      */
     async postImportElpAsChildFromLocal(navId, payload = {}) {
-        return this._projectRepo.importAsChild(navId, payload);
+        let url = this.endpoints.api_nav_structures_import_elp_child?.path;
+        if (!url) {
+            url =
+                this.apiUrlBase +
+                this.apiUrlBasePath +
+                '/api/nav-structure-management/nav-structures/{odeNavStructureSyncId}/import-elp';
+        }
+        url = url.replace('{odeNavStructureSyncId}', navId);
+        return await this.func.post(url, payload);
     }
 
     // Backwards compatibility wrapper
@@ -383,69 +336,78 @@ export default class ApiCallManager {
     }
 
     /**
-     * Delete ODE file
-     * Uses injected project repository (server or static mode)
+     * Post ode file to remove
+     *
      * @param {*} odeFileId
      * @returns
      */
     async postDeleteOdeFile(odeFileId) {
-        await this._projectRepo.delete(odeFileId);
-        return { responseMessage: 'OK' };
+        let url = this.endpoints.api_odes_remove_ode_file.path;
+        return await this.func.post(url, odeFileId);
     }
 
     /**
-     * Delete ODE files by date
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} params
      * @returns
      */
     async postDeleteOdeFilesByDate(params) {
-        return this._projectRepo.deleteByDate(params);
+        let url = this.endpoints.api_odes_remove_date_ode_files.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Check current ODE users
-     * Uses injected project repository (server or static mode)
+     * Post to check number of current ode users
+     *
      * @param {*} params
      * @returns
+     *
      */
     async postCheckCurrentOdeUsers(params) {
-        return this._projectRepo.checkCurrentUsers(params);
+        let url = this.endpoints.api_odes_check_before_leave_ode_session.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Clean autosaves by user
-     * Uses injected project repository (server or static mode)
+     * clean autosaves
+     *
      * @param {*} params
      * @returns
+     *
      */
     async postCleanAutosavesByUser(params) {
-        return this._projectRepo.cleanAutosaves(params);
+        let url = this.endpoints.api_odes_clean_init_autosave_elp.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Close session
-     * Uses injected project repository (server or static mode)
+     * Post session to close
+     *
      * @param {*} params
      * @returns
+     *
      */
     async postCloseSession(params) {
-        return this._projectRepo.closeSession(params);
+        let url = this.endpoints.api_odes_ode_session_close.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Upload theme
-     * Uses injected catalog adapter (server or static mode)
+     * Import theme
+     *
      * @param {*} params
      * @returns
      */
     async postUploadTheme(params) {
-        return this._catalog.uploadTheme(params);
+        let url = this.endpoints.api_themes_upload.path;
+        return await this.func.post(url, params);
     }
 
     /**
      * Import theme from ELP file
-     * Uses injected catalog adapter (server or static mode)
+     *
+     * Uploads a packaged theme ZIP to the server for installation.
+     * The caller must package the theme files before calling this method.
      *
      * @param {Object} params
      * @param {string} params.themeDirname - Directory name of the theme
@@ -453,509 +415,315 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} Response with updated theme list
      */
     async postOdeImportTheme(params) {
-        return this._catalog.importTheme(params);
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/themes/import`;
+
+        // Theme ZIP is required - callers must package theme before calling
+        if (!params.themeZip) {
+            console.error('[API] postOdeImportTheme: themeZip parameter is required');
+            return {
+                responseMessage: 'ERROR',
+                error: 'Theme import requires the theme files. Please package the theme before calling this method.',
+            };
+        }
+
+        if (!params.themeDirname) {
+            console.error('[API] postOdeImportTheme: themeDirname parameter is required');
+            return {
+                responseMessage: 'ERROR',
+                error: 'Theme directory name is required.',
+            };
+        }
+
+        // Get auth token
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            eXeLearning?.config?.token ||
+            localStorage.getItem('authToken');
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('themeDirname', params.themeDirname);
+        formData.append('themeZip', params.themeZip, `${params.themeDirname}.zip`);
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    error: errorData.error || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] postOdeImportTheme error:', error);
+            return { responseMessage: 'ERROR', error: error.message };
+        }
     }
 
     /**
-     * Delete theme
-     * Uses injected catalog adapter (server or static mode)
+     * Delete style
+     *
      * @param {*} params
      * @returns
      */
     async deleteTheme(params) {
-        return this._catalog.deleteTheme(params);
+        let url = this.endpoints.api_themes_installed_delete.path;
+        return await this.func.delete(url, params);
     }
 
     /**
      * Get installed theme zip
-     * Uses injected catalog adapter (server or static mode)
+     *
      * @param {*} odeSessionId
-     * @param {*} themeDirName
+     * @param {*} $themeDirName
      * @returns
      */
     async getThemeZip(odeSessionId, themeDirName) {
-        return this._catalog.getThemeZip(odeSessionId, themeDirName);
+        let url = this.endpoints.api_themes_download.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+        url = url.replace('{themeDirName}', themeDirName);
+        return await this.func.get(url);
     }
 
     /**
-     * Create new theme
-     * Uses injected catalog adapter (server or static mode)
-     * @param {*} params
-     * @returns
+     *
+     * @param {*} themeConfig
+     * @param {*} themeRules
      */
     async postNewTheme(params) {
-        return this._catalog.createTheme(params);
+        let url = this.endpoints.api_themes_new.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Edit theme
-     * Uses injected catalog adapter (server or static mode)
+     *
      * @param {*} themeDir
-     * @param {*} params
-     * @returns
+     * @param {*} themeConfig
+     * @param {*} themeRules
      */
     async putEditTheme(themeDir, params) {
-        return this._catalog.updateTheme(themeDir, params);
+        let url = this.endpoints.api_themes_edit.path;
+        url = url.replace('{themeId}', themeDir);
+        return await this.func.put(url, params);
     }
 
     /**
-     * Upload iDevice
-     * Uses injected catalog adapter (server or static mode)
+     * Import idevice
+     *
      * @param {*} params
      * @returns
      */
     async postUploadIdevice(params) {
-        return this._catalog.uploadIdevice(params);
+        let url = this.endpoints.api_idevices_upload.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Delete installed iDevice
-     * Uses injected catalog adapter (server or static mode)
+     * Delete idevice installed
+     *
      * @param {*} params
      * @returns
      */
     async deleteIdeviceInstalled(params) {
-        return this._catalog.deleteIdevice(params);
+        let url = this.endpoints.api_idevices_installed_delete.path;
+        return await this.func.delete(url, params);
     }
 
     /**
-     * Get installed iDevice zip
-     * Uses injected catalog adapter (server or static mode)
+     * Get installed idevice zip
+     *
      * @param {*} odeSessionId
-     * @param {*} ideviceDirName
+     * @param {*} $ideviceDirName
      * @returns
      */
     async getIdeviceInstalledZip(odeSessionId, ideviceDirName) {
-        return this._catalog.getIdeviceZip(odeSessionId, ideviceDirName);
+        let url = this.endpoints.api_idevices_installed_download.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+        url = url.replace('{ideviceDirName}', ideviceDirName);
+        return await this.func.get(url);
     }
 
     /**
-     * Accept LOPD (data protection)
-     * Uses injected user preferences adapter (server or static mode)
+     * Accept LOPD
      *
      * @returns
      */
     async postUserSetLopdAccepted() {
-        return this._userPreferences.acceptLopd();
+        let url = this.endpoints.api_user_set_lopd_accepted.path;
+        return await this.func.post(url);
     }
 
     /**
      * Get user preferences
-     * Uses injected user preferences adapter (server or static mode)
      *
      * @returns
      */
     async getUserPreferences() {
-        return this._userPreferences.getPreferences();
+        let url = this.endpoints.api_user_preferences_get.path;
+        return await this.func.get(url);
     }
 
     /**
      * Save user preferences
-     * Uses injected user preferences adapter (server or static mode)
      *
      * @param {*} params
      * @returns
      */
     async putSaveUserPreferences(params) {
-        return this._userPreferences.savePreferences(params);
+        let url = this.endpoints.api_user_preferences_save.path;
+        return await this.func.put(url, params);
     }
 
     /**
-     * Get ODE last updated
-     * Uses injected project repository (server or static mode)
+     * Get ode last update
+     *
      * @param {*} odeId
      * @returns
      */
     async getOdeLastUpdated(odeId) {
-        return this._projectRepo.getLastUpdated(odeId);
+        let url = this.endpoints.api_odes_last_updated.path;
+        url = url.replace('{odeId}', odeId);
+        return await this.func.get(url);
     }
 
     /**
-     * Get ODE concurrent users
-     * Uses injected project repository (server or static mode)
+     * get ode concurrent users
+     *
      * @param {*} odeId
      * @param {*} versionId
      * @param {*} sessionId
      * @returns
      */
     async getOdeConcurrentUsers(odeId, versionId, sessionId) {
-        const result = await this._projectRepo.getConcurrentUsers(odeId, versionId, sessionId);
-        return { currentUsers: result.users?.length || 0, users: result.users || [] };
+        let url = this.endpoints.api_odes_current_users.path;
+        url = url.replace('{odeId}', odeId);
+        url = url.replace('{odeVersionId}', versionId);
+        url = url.replace('{odeSessionId}', sessionId);
+        return await this.func.get(url, null, false);
     }
 
     /**
-     * Get ODE structure
-     * Uses injected project repository (server or static mode)
+     * get ode structure
+     *
      * @param {*} versionId
      * @param {*} sessionId
      * @returns
      */
     async getOdeStructure(versionId, sessionId) {
-        return this._projectRepo.getStructure(versionId, sessionId);
+        let url = this.endpoints.api_nav_structures_nav_structure_get.path;
+        url = url.replace('{odeVersionId}', versionId);
+        url = url.replace('{odeSessionId}', sessionId);
+        return await this.func.get(url);
     }
 
     /**
-     * Get ODE session broken links
-     * Uses injected link validation adapter (server or static mode)
+     * Get ode broken links
+     *
      * @param {*} params
      * @returns
      */
     async getOdeSessionBrokenLinks(params) {
-        return this._linkValidation.getSessionBrokenLinks(params);
+        let url = this.endpoints.api_odes_session_get_broken_links.path;
+        return await this.func.postJson(url, params);
     }
 
     /**
-     * Extract links from iDevices for validation
-     * Extracts links from Yjs content (always available)
+     * Extract links from idevices for validation (fast, no validation)
+     *
      * @param {Object} params - { odeSessionId, idevices }
      * @returns {Promise<Object>} - { responseMessage, links, totalLinks }
      */
     async extractLinksForValidation(params) {
-        return this._extractLinksFromYjs();
-    }
-
-    /**
-     * Extract links from Yjs document by scanning all content.
-     * @private
-     * @returns {Promise<{responseMessage: string, links: Array, totalLinks: number}>}
-     */
-    _extractLinksFromYjs() {
-        const projectManager = eXeLearning?.app?.project;
-        const bridge = projectManager?._yjsBridge;
-        const structureBinding = bridge?.structureBinding;
-
-        if (!structureBinding) {
-            console.warn('[apiCallManager] _extractLinksFromYjs: No structureBinding available');
-            return { responseMessage: 'OK', links: [], totalLinks: 0 };
-        }
-
-        const links = [];
-        const linkCounts = new Map(); // Track link occurrences by URL
-
-        // Regex to find URLs in HTML content
-        const urlRegex = /href=["']([^"']+)["']/gi;
-
-        // Get all pages
-        const pages = structureBinding.getPages() || [];
-
-        for (const page of pages) {
-            const pageId = page.id;
-            const pageName = page.pageName || 'Page';
-
-            // Get blocks for this page
-            const blocks = structureBinding.getBlocks(pageId) || [];
-
-            for (const block of blocks) {
-                const blockName = block.blockName || '';
-
-                // Get components for this block
-                const components = structureBinding.getComponents(pageId, block.id) || [];
-
-                for (const component of components) {
-                    const htmlContent = component.htmlContent || '';
-                    const ideviceType = component.ideviceType || '';
-                    const order = component.order || 0;
-
-                    // Find all href URLs
-                    let match;
-                    while ((match = urlRegex.exec(htmlContent)) !== null) {
-                        const url = match[1];
-
-                        // Skip internal anchors, asset URLs, and internal navigation links
-                        if (url.startsWith('#') || url.startsWith('asset://') ||
-                            url.startsWith('data:') || url.startsWith('blob:') ||
-                            url.startsWith('javascript:') || url.startsWith('exe-node:')) {
-                            continue;
-                        }
-
-                        // Track count for this URL
-                        const count = (linkCounts.get(url) || 0) + 1;
-                        linkCounts.set(url, count);
-
-                        // Generate unique ID
-                        const linkId = `link-${crypto.randomUUID().substring(0, 8)}`;
-
-                        links.push({
-                            id: linkId,
-                            url: url,
-                            count: count,
-                            pageName: pageName,
-                            blockName: blockName,
-                            ideviceType: ideviceType.replace('Idevice', ''),
-                            order: order,
-                        });
-                    }
-
-                    // Reset regex lastIndex for next iteration
-                    urlRegex.lastIndex = 0;
-                }
-            }
-        }
-
-        // Update counts in all links (same URL should show total count)
-        for (const link of links) {
-            link.count = linkCounts.get(link.url) || 1;
-        }
-
-        console.log('[apiCallManager] _extractLinksFromYjs: Found', links.length, 'links');
-        return { responseMessage: 'OK', links, totalLinks: links.length };
+        const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/extract`;
+        return await this.func.postJson(url, params);
     }
 
     /**
      * Get the URL for the link validation stream endpoint
-     * Uses injected link validation adapter (server or static mode)
-     * @returns {string|null}
+     *
+     * @returns {string}
      */
     getLinkValidationStreamUrl() {
-        return this._linkValidation.getValidationStreamUrl();
+        return `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/validate-stream`;
     }
 
     /**
      * Get page broken links
-     * Uses injected link validation adapter (server or static mode)
+     *
      * @param {*} pageId
      * @returns
      */
     async getOdePageBrokenLinks(pageId) {
-        return this._linkValidation.getPageBrokenLinks(pageId);
+        let url = this.endpoints.api_odes_pag_get_broken_links.path;
+        url = url.replace('{odePageId}', pageId);
+        return await this.func.get(url);
     }
 
     /**
      * Get block broken links
-     * Uses injected link validation adapter (server or static mode)
-     * @param {*} blockId
+     *
+     * @param {*} BlockId
      * @returns
      */
     async getOdeBlockBrokenLinks(blockId) {
-        return this._linkValidation.getBlockBrokenLinks(blockId);
+        let url = this.endpoints.api_odes_block_get_broken_links.path;
+        url = url.replace('{odeBlockId}', blockId);
+        return await this.func.get(url);
     }
 
     /**
-     * Get iDevice broken links
-     * Uses injected link validation adapter (server or static mode)
-     * @param {*} ideviceId
+     * Get idevice broken links
+     *
+     * @param {*} IdeviceId
      * @returns
      */
     async getOdeIdeviceBrokenLinks(ideviceId) {
-        return this._linkValidation.getIdeviceBrokenLinks(ideviceId);
+        let url = this.endpoints.api_odes_idevice_get_broken_links.path;
+        url = url.replace('{odeIdeviceId}', ideviceId);
+        return await this.func.get(url);
     }
 
     /**
-     * Get ODE properties
-     * Uses injected project repository (server or static mode)
+     *
      * @param {*} odeSessionId
      * @returns
      */
     async getOdeProperties(odeSessionId) {
-        return this._projectRepo.getProperties(odeSessionId);
+        let url = this.endpoints.api_odes_properties_get.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+        return await this.func.get(url);
     }
 
     /**
-     * Save ODE properties
-     * Uses injected project repository (server or static mode)
-     * @param {*} params
+     *
+     * @param {*} odeId
      * @returns
      */
     async putSaveOdeProperties(params) {
-        return this._projectRepo.saveProperties(params);
+        let url = this.endpoints.api_odes_properties_save.path;
+        return await this.func.put(url, params);
     }
 
     /**
-     * Get ODE session used files
-     * Gets assets from Yjs AssetManager (always available)
+     * Get ode used files
+     *
      * @param {*} params
-     * @returns {Promise<{usedFiles: Array}>}
+     * @returns
      */
     async getOdeSessionUsedFiles(params) {
-        return this._getUsedFilesFromYjs();
-    }
-
-    /**
-     * Extract used files from Yjs document by scanning all content.
-     * @private
-     * @returns {Promise<{responseMessage: string, usedFiles: Array}>}
-     */
-    async _getUsedFilesFromYjs() {
-        const projectManager = eXeLearning?.app?.project;
-        const bridge = projectManager?._yjsBridge;
-        const structureBinding = bridge?.structureBinding;
-        const assetManager = bridge?.assetManager;
-
-        if (!structureBinding) {
-            console.warn('[apiCallManager] _getUsedFilesFromYjs: No structureBinding available');
-            return { responseMessage: 'OK', usedFiles: [] };
-        }
-
-        const usedFiles = [];
-        const seenAssets = new Set(); // Track unique assets
-        const assetUsageMap = new Map(); // Track where each asset is used: assetId -> {pageName, blockName, ideviceType, order}
-
-        // Regex to find asset URLs in HTML content
-        const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
-
-        // Step 1: Scan all content to find where each asset is used
-        const pages = structureBinding.getPages() || [];
-        console.log('[apiCallManager] _getUsedFilesFromYjs: Scanning', pages.length, 'pages for asset usage');
-
-        for (const page of pages) {
-            const pageId = page.id;
-            const pageName = page.pageName || 'Page';
-
-            // Get blocks for this page
-            const blocks = structureBinding.getBlocks(pageId) || [];
-
-            for (const block of blocks) {
-                const blockName = block.blockName || '';
-
-                // Get components for this block
-                const components = structureBinding.getComponents(pageId, block.id) || [];
-
-                for (const component of components) {
-                    const ideviceType = component.ideviceType || '';
-                    const order = component.order || 0;
-
-                    // Access raw HTML content from Y.Map (before URL resolution)
-                    // component._ymap contains the original Y.Map with asset:// URLs
-                    let rawHtmlContent = '';
-                    let rawJsonProperties = '';
-
-                    if (component._ymap) {
-                        const rawHtml = component._ymap.get('htmlContent');
-                        if (rawHtml && typeof rawHtml.toString === 'function') {
-                            rawHtmlContent = rawHtml.toString();
-                        } else if (typeof rawHtml === 'string') {
-                            rawHtmlContent = rawHtml;
-                        }
-                        // Also check htmlView as fallback
-                        if (!rawHtmlContent) {
-                            const htmlView = component._ymap.get('htmlView');
-                            if (typeof htmlView === 'string') {
-                                rawHtmlContent = htmlView;
-                            }
-                        }
-                        // Check jsonProperties for assets too
-                        const jsonProps = component._ymap.get('jsonProperties');
-                        if (typeof jsonProps === 'string') {
-                            rawJsonProperties = jsonProps;
-                        }
-                    }
-
-                    // Combine htmlContent and jsonProperties for scanning
-                    const contentToScan = rawHtmlContent + ' ' + rawJsonProperties;
-
-                    // Find asset:// URLs and record their location
-                    let match;
-                    while ((match = assetRegex.exec(contentToScan)) !== null) {
-                        const assetId = match[1];
-                        // Only store first occurrence location
-                        if (!assetUsageMap.has(assetId)) {
-                            assetUsageMap.set(assetId, {
-                                pageName,
-                                blockName,
-                                ideviceType: ideviceType.replace('Idevice', ''),
-                                order,
-                            });
-                        }
-                    }
-
-                    // Reset regex lastIndex for next iteration
-                    assetRegex.lastIndex = 0;
-                }
-            }
-        }
-
-        console.log('[apiCallManager] _getUsedFilesFromYjs: Found', assetUsageMap.size, 'assets referenced in content');
-
-        // Step 2: Get all assets from AssetManager and combine with usage info
-        if (assetManager) {
-            try {
-                const allAssets = assetManager.getAllAssetsMetadata?.() || [];
-                console.log('[apiCallManager] _getUsedFilesFromYjs: Found', allAssets.length, 'total assets in AssetManager');
-
-                for (const asset of allAssets) {
-                    const assetId = asset.id || asset.uuid;
-                    if (!assetId) continue;
-
-                    const assetUrl = `asset://${assetId}`;
-                    if (seenAssets.has(assetUrl)) continue;
-                    seenAssets.add(assetUrl);
-
-                    const fileName = asset.name || asset.filename || assetId.substring(0, 8) + '...';
-                    const fileSize = asset.size ? this._formatFileSize(asset.size) : '';
-
-                    // Get usage location if available
-                    const usage = assetUsageMap.get(assetId);
-
-                    usedFiles.push({
-                        usedFiles: fileName,
-                        usedFilesPath: assetUrl,
-                        usedFilesSize: fileSize,
-                        pageNamesUsedFiles: usage?.pageName || '-',
-                        blockNamesUsedFiles: usage?.blockName || '-',
-                        typeComponentSyncUsedFiles: usage?.ideviceType || '-',
-                        orderComponentSyncUsedFiles: usage?.order || 0,
-                    });
-                }
-            } catch (e) {
-                console.debug('[apiCallManager] Could not get assets from AssetManager:', e);
-            }
-        }
-
-        // Step 3: Add any assets found in content but not in AssetManager (shouldn't happen normally)
-        for (const [assetId, usage] of assetUsageMap.entries()) {
-            const assetUrl = `asset://${assetId}`;
-            if (seenAssets.has(assetUrl)) continue;
-            seenAssets.add(assetUrl);
-
-            // Try to get metadata from AssetManager
-            let fileName = assetId.substring(0, 8) + '...';
-            let fileSize = '';
-
-            if (assetManager) {
-                try {
-                    const asset = await assetManager.getAsset(assetId);
-                    if (asset) {
-                        fileName = asset.name || asset.filename || fileName;
-                        if (asset.blob?.size) {
-                            fileSize = this._formatFileSize(asset.blob.size);
-                        } else if (asset.size) {
-                            fileSize = this._formatFileSize(asset.size);
-                        }
-                    }
-                } catch (e) {
-                    console.debug('[apiCallManager] Could not get asset metadata:', assetId, e);
-                }
-            }
-
-            usedFiles.push({
-                usedFiles: fileName,
-                usedFilesPath: assetUrl,
-                usedFilesSize: fileSize,
-                pageNamesUsedFiles: usage.pageName,
-                blockNamesUsedFiles: usage.blockName,
-                typeComponentSyncUsedFiles: usage.ideviceType,
-                orderComponentSyncUsedFiles: usage.order,
-            });
-        }
-
-        console.log('[apiCallManager] _getUsedFilesFromYjs: Returning', usedFiles.length, 'assets total');
-        return { responseMessage: 'OK', usedFiles };
-    }
-
-    /**
-     * Format file size in human-readable format.
-     * @private
-     */
-    _formatFileSize(bytes) {
-        if (!bytes || bytes === 0) return '';
-        const units = ['B', 'KB', 'MB', 'GB'];
-        let unitIndex = 0;
-        let size = bytes;
-        while (size >= 1024 && unitIndex < units.length - 1) {
-            size /= 1024;
-            unitIndex++;
-        }
-        return `${size.toFixed(1)} ${units[unitIndex]}`;
+        let url = this.endpoints.api_odes_session_get_used_files.path;
+        return await this.func.postJson(url, params);
     }
 
     /**
@@ -972,15 +740,25 @@ export default class ApiCallManager {
     }
 
     /**
-     * Download ODE export
-     * Uses injected export adapter (server or static mode)
+     * Download ode export
      *
-     * @param {*} odeSessionId
-     * @param {*} exportType
+     * @param {*} params
      * @returns
      */
     async getOdeExportDownload(odeSessionId, exportType) {
-        return this._exportAdapter.downloadExport(odeSessionId, exportType);
+        let url = this.endpoints.api_ode_export_download.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+        url = url.replace('{exportType}', exportType);
+
+        // Check if this is a Yjs session - send structure via POST
+        if (odeSessionId && odeSessionId.startsWith('yjs-')) {
+            const structure = this.buildStructureFromYjs();
+            if (structure) {
+                return await this.func.post(url, { structure });
+            }
+        }
+
+        return await this.func.get(url);
     }
 
     /**
@@ -1092,96 +870,112 @@ export default class ApiCallManager {
     }
 
     /**
-     * Preview ODE export
-     * Uses injected export adapter (server or static mode)
+     * Preview ode export
      *
-     * @param {*} odeSessionId
+     * @param {*} params
      * @returns
      */
     async getOdePreviewUrl(odeSessionId) {
-        return this._exportAdapter.getPreviewUrl(odeSessionId);
+        let url = this.endpoints.api_ode_export_preview.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+
+        return await this.func.get(url);
     }
 
     /**
-     * Download iDevice/block content
-     * Uses injected export adapter (server or static mode)
+     * download idevice/block content
      *
-     * @param {*} odeSessionId
-     * @param {*} odeBlockId
-     * @param {*} odeIdeviceId
+     * @param {*} params
      * @returns
      */
     async getOdeIdevicesDownload(odeSessionId, odeBlockId, odeIdeviceId) {
-        return this._exportAdapter.downloadIDevice(odeSessionId, odeBlockId, odeIdeviceId);
+        let downloadResponse = [];
+        let url = this.endpoints.api_idevices_download_ode_components.path;
+
+        downloadResponse['url'] = url.replace('{odeSessionId}', odeSessionId);
+        downloadResponse['url'] = downloadResponse['url'].replace(
+            '{odeBlockId}',
+            odeBlockId
+        );
+        downloadResponse['url'] = downloadResponse['url'].replace(
+            '{odeIdeviceId}',
+            odeIdeviceId
+        );
+        downloadResponse['response'] = await this.func.getText(
+            downloadResponse['url']
+        );
+
+        return downloadResponse;
     }
 
     /**
-     * Force download file resources
-     * Uses injected assets adapter (server or static mode)
+     * Force to download file resources (case xml)
+     * Only gets url
      *
      * @param {*} resource
      * @returns
      */
     async getFileResourcesForceDownload(resource) {
-        return this._assets.getDownloadUrl(resource);
+        let downloadResponse = [];
+        let url =
+            this.endpoints.api_idevices_force_download_file_resources.path;
+        downloadResponse['url'] = url + '?resource=' + resource;
+        return downloadResponse;
     }
 
     /**
-     * Save ODE
-     * Uses injected project repository (server or static mode)
+     * Save ode
      *
      * @param {*} params
      * @returns
      */
     async postOdeSave(params) {
-        const sessionId = params?.odeSessionId || window.eXeLearning?.odeSessionId;
-        return this._projectRepo.save(sessionId, params);
+        let url = this.endpoints.api_odes_ode_save_manual.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Autosave ODE
-     * Uses injected project repository (server or static mode)
+     * Autosave ode
      *
      * @param {*} params
      * @returns
      */
     async postOdeAutosave(params) {
-        const sessionId = params?.odeSessionId || window.eXeLearning?.odeSessionId;
-        return this._projectRepo.autoSave(sessionId, params);
+        let url = this.endpoints.api_odes_ode_save_auto.path;
+        this.func.post(url, params);
     }
 
     /**
-     * Save ODE as new file
-     * Uses injected project repository (server or static mode)
+     * Save as ode
      *
      * @param {*} params
      * @returns
      */
     async postOdeSaveAs(params) {
-        const sessionId = params?.odeSessionId || window.eXeLearning?.odeSessionId;
-        return this._projectRepo.saveAs(sessionId, params);
+        let url = this.endpoints.api_odes_ode_save_as.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Upload new ELP to first type platform
-     * Uses injected platform integration adapter (server or static mode)
+     * Upload new elp to first type platform
      *
      * @param {*} params
      * @returns
      */
     async postFirstTypePlatformIntegrationElpUpload(params) {
-        return this._platformIntegration.uploadElp(params);
+        let url = this.endpoints.set_platform_new_ode.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Open ELP from platform
-     * Uses injected platform integration adapter (server or static mode)
+     * Open elp from platform
      *
      * @param {*} params
      * @returns
      */
     async platformIntegrationOpenElp(params) {
-        return this._platformIntegration.openElp(params);
+        let url = this.endpoints.open_platform_elp.path;
+        return await this.func.post(url, params);
     }
 
     /**
@@ -1231,105 +1025,98 @@ export default class ApiCallManager {
     }
 
     /**
-     * Obtain ODE block sync
-     * In static mode, Yjs handles all sync
      *
      * @param {*} params
      * @returns
      */
     async postObtainOdeBlockSync(params) {
-        return this._collaboration.obtainBlockSync(params);
+        let url = this.endpoints.get_current_block_update.path;
+        return await this.func.post(url, params);
     }
 
     /**
      * Get all translations
-     * Uses injected catalog adapter (server or static mode)
      *
+     * @param {*} locale
      * @returns
      */
     async getTranslationsAll() {
-        const locales = await this._catalog.getLocales();
-        const localeCodes = Array.isArray(locales)
-            ? locales.map(l => l.code || l)
-            : ['en'];
-        return {
-            locales: localeCodes,
-            packageLocales: localeCodes,
-            defaultLocale: 'en',
-        };
+        let url = this.endpoints.api_translations_lists.path;
+        return await this.func.get(url);
     }
 
     /**
      * Get translations
-     * Uses injected catalog adapter (server or static mode)
      *
      * @param {*} locale
      * @returns
      */
     async getTranslations(locale) {
-        return this._catalog.getTranslations(locale);
+        let url = this.endpoints.api_translations_list_by_locale.path;
+        url = url.replace('{locale}', locale);
+        return await this.func.get(url);
     }
 
     /**
-     * Get login URL of Google Drive
-     * Uses injected cloud storage adapter (server or static mode)
+     * Get login url of Google Drive
      *
      * @returns
      */
     async getUrlLoginGoogleDrive() {
-        return this._cloudStorage.getGoogleDriveLoginUrl();
+        let url = this.endpoints.api_google_oauth_login_url_get.path;
+        return await this.func.get(url);
     }
 
     /**
      * Get folders of Google Drive account
-     * Uses injected cloud storage adapter (server or static mode)
      *
      * @returns
      */
     async getFoldersGoogleDrive() {
-        return this._cloudStorage.getGoogleDriveFolders();
+        let url = this.endpoints.api_google_drive_folders_list.path;
+        return await this.func.get(url);
     }
 
     /**
      * Upload file to Google Drive
-     * Uses injected cloud storage adapter (server or static mode)
      *
      * @param {*} params
      * @returns
      */
     async uploadFileGoogleDrive(params) {
-        return this._cloudStorage.uploadToGoogleDrive(params);
+        let url = this.endpoints.api_google_drive_file_upload.path;
+        return await this.func.post(url, params);
     }
 
     /**
-     * Get login URL of Dropbox
-     * Uses injected cloud storage adapter (server or static mode)
+     * Get login url of Dropbox
      *
      * @returns
      */
     async getUrlLoginDropbox() {
-        return this._cloudStorage.getDropboxLoginUrl();
+        let url = this.endpoints.api_dropbox_oauth_login_url_get.path;
+        return await this.func.get(url);
     }
 
     /**
      * Get folders of Dropbox account
-     * Uses injected cloud storage adapter (server or static mode)
      *
      * @returns
      */
     async getFoldersDropbox() {
-        return this._cloudStorage.getDropboxFolders();
+        let url = this.endpoints.api_dropbox_folders_list.path;
+        return await this.func.get(url);
     }
 
     /**
      * Upload file to Dropbox
-     * Uses injected cloud storage adapter (server or static mode)
      *
      * @param {*} params
      * @returns
      */
     async uploadFileDropbox(params) {
-        return this._cloudStorage.uploadToDropbox(params);
+        let url = this.endpoints.api_dropbox_file_upload.path;
+        return await this.func.post(url, params);
     }
 
     /**
@@ -1363,19 +1150,7 @@ export default class ApiCallManager {
             return this._getComponentsByPageFromYjs(odeNavStructureSyncId);
         }
 
-        // Check if endpoint is available
-        const endpoint = this.endpoints?.api_idevices_list_by_page;
-        if (!endpoint?.path) {
-            console.warn('[apiCallManager] getComponentsByPage: Endpoint not available, returning empty structure');
-            return {
-                id: odeNavStructureSyncId,
-                odePageId: odeNavStructureSyncId,
-                pageName: 'Page',
-                odePagStructureSyncs: []
-            };
-        }
-
-        let url = endpoint.path;
+        let url = this.endpoints.api_idevices_list_by_page.path;
         url = url.replace('{odeNavStructureSyncId}', odeNavStructureSyncId);
         return await this.func.get(url);
     }
@@ -1505,25 +1280,27 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get HTML template of iDevice
-     * Uses injected catalog adapter (server or static mode)
+     * Get html template of idevice
      *
      * @param {*} odeNavStructureSyncId
      * @returns
      */
     async getComponentHtmlTemplate(odeNavStructureSyncId) {
-        return this._catalog.getComponentHtmlTemplate(odeNavStructureSyncId);
+        let url = this.endpoints.api_idevices_html_template_get.path;
+        url = url.replace('{odeComponentsSyncId}', odeNavStructureSyncId);
+        return await this.func.get(url);
     }
 
     /**
-     * Get iDevice HTML saved
-     * Uses injected catalog adapter (server or static mode)
+     * Get idevice html saved
      *
-     * @param {*} odeComponentsSyncId
+     * @param {*} params
      * @returns
      */
     async getSaveHtmlView(odeComponentsSyncId) {
-        return this._catalog.getSaveHtmlView(odeComponentsSyncId);
+        let url = this.endpoints.api_idevices_html_view_get.path;
+        url.replace('{odeComponentsSyncId}', odeComponentsSyncId);
+        return await this.func.get(url);
     }
 
     /**
@@ -1791,21 +1568,11 @@ export default class ApiCallManager {
 
     /**
      * Reorder idevice
-     * In static mode, handled by Yjs structure binding
      *
      * @param {*} params
      * @returns
      */
     async putReorderIdevice(params) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.reorderIdevice(params);
-            } catch (error) {
-                console.error('[API] putReorderIdevice via content adapter error:', error);
-            }
-        }
-
         let url = this.endpoints.api_idevices_idevice_reorder.path;
         return await this.func.put(url, params);
     }
@@ -1931,21 +1698,11 @@ export default class ApiCallManager {
 
     /**
      * Reorder block
-     * In static mode, handled by Yjs structure binding
      *
      * @param {*} params
      * @returns
      */
     async putReorderBlock(params) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.reorderBlock(params);
-            } catch (error) {
-                console.error('[API] putReorderBlock via content adapter error:', error);
-            }
-        }
-
         // Note: Yjs reordering is handled by blockNode.reorderViaYjs() before this is called
         // This method is only used for legacy API mode
         let url = this.endpoints.api_pag_structures_pag_structure_reorder.path;
@@ -1954,21 +1711,11 @@ export default class ApiCallManager {
 
     /**
      * Delete block
-     * In static mode, handled by Yjs structure binding
      *
      * @param {*} blockId
      * @returns
      */
     async deleteBlock(blockId) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.deleteBlock(blockId);
-            } catch (error) {
-                console.error('[API] deleteBlock via content adapter error:', error);
-            }
-        }
-
         let url = this.endpoints.api_pag_structures_pag_structure_delete.path;
         url = url.replace('{odePagStructureSyncId}', blockId);
         return await this.func.delete(url);
@@ -1976,21 +1723,11 @@ export default class ApiCallManager {
 
     /**
      * Save page node
-     * In static mode, handled by Yjs
      *
      * @param {*} params
      * @returns
      */
     async putSavePage(params) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.savePage(params);
-            } catch (error) {
-                console.error('[API] putSavePage via content adapter error:', error);
-            }
-        }
-
         let url =
             this.endpoints.api_nav_structures_nav_structure_data_save.path;
         return await this.func.put(url, params);
@@ -2050,42 +1787,22 @@ export default class ApiCallManager {
 
     /**
      * Reorder page node
-     * In static mode, handled by Yjs
      *
      * @param {*} params
      * @returns
      */
     async putReorderPage(params) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.reorderPage(params);
-            } catch (error) {
-                console.error('[API] putReorderPage via content adapter error:', error);
-            }
-        }
-
         let url = this.endpoints.api_nav_structures_nav_structure_reorder.path;
         return await this.func.put(url, params);
     }
 
     /**
      * Duplicate page
-     * In static mode, handled by Yjs structure binding
      *
      * @param {*} params
      * @returns
      */
     async postClonePage(params) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.clonePage(params);
-            } catch (error) {
-                console.error('[API] postClonePage via content adapter error:', error);
-            }
-        }
-
         let url =
             this.endpoints.api_nav_structures_nav_structure_duplicate.path;
         return await this.func.post(url, params);
@@ -2093,21 +1810,11 @@ export default class ApiCallManager {
 
     /**
      * Delete page node
-     * In static mode, handled by Yjs
      *
      * @param {*} blockId
      * @returns
      */
     async deletePage(pageId) {
-        // Use injected content adapter if available (new pattern)
-        if (this._content) {
-            try {
-                return await this._content.deletePage(pageId);
-            } catch (error) {
-                console.error('[API] deletePage via content adapter error:', error);
-            }
-        }
-
         let url = this.endpoints.api_nav_structures_nav_structure_delete.path;
         url = url.replace('{odeNavStructureSyncId}', pageId);
         return await this.func.delete(url);
@@ -2115,65 +1822,33 @@ export default class ApiCallManager {
 
     /**
      * Upload file
-     * In static mode, files are stored via AssetManager in IndexedDB
      *
      * @param {*} params
      * @returns
      */
     async postUploadFileResource(params) {
-        // Use injected assets adapter if available (new pattern)
-        if (this._assets && params.file && params.projectId) {
-            try {
-                const result = await this._assets.upload(params.projectId, params.file, params.path || '');
-                return { responseMessage: 'OK', ...result };
-            } catch (error) {
-                console.error('[API] postUploadFileResource via adapter error:', error);
-                return { responseMessage: 'ERROR', error: error.message };
-            }
-        }
-
         let url = this.endpoints.api_idevices_upload_file_resources.path;
         return await this.func.post(url, params);
     }
 
     /**
      * Upload large file
-     * In static mode, files are stored via AssetManager in IndexedDB
      *
      * @param {*} params
      * @returns
      */
     async postUploadLargeFileResource(params) {
-        // Use injected assets adapter if available (new pattern)
-        if (this._assets && params.file && params.projectId) {
-            try {
-                const result = await this._assets.upload(params.projectId, params.file, params.path || '');
-                return { responseMessage: 'OK', ...result };
-            } catch (error) {
-                console.error('[API] postUploadLargeFileResource via adapter error:', error);
-                return { responseMessage: 'ERROR', error: error.message };
-            }
-        }
-
         let url = this.endpoints.api_idevices_upload_large_file_resources.path;
         return await this.func.fileSendPost(url, params);
     }
 
     /**
      * Base api func call
-     * In static mode, returns error since no server is available
      *
      * @param {*} endpointId
      * @param {*} params
      */
     async send(endpointId, params) {
-        // Generic API calls are server-only (no adapter pattern for this)
-        // In static mode, endpoints won't be available so this will fail gracefully
-        if (!this.endpoints[endpointId]) {
-            console.warn('[apiCallManager] Endpoint not found:', endpointId);
-            return { responseMessage: 'NOT_SUPPORTED' };
-        }
-
         let url = this.endpoints[endpointId].path;
         let method = this.endpoints[endpointId].method;
         return await this.func.do(method, url, params);
@@ -2181,21 +1856,11 @@ export default class ApiCallManager {
 
     /**
      * Games get idevices by session ID
-     * In static mode, returns empty list
      *
      * @param {string} odeSessionId
      * @returns {Promise<any>}
      */
     async getIdevicesBySessionId(odeSessionId) {
-        // Use injected catalog adapter if available (new pattern)
-        if (this._catalog) {
-            try {
-                return await this._catalog.getIdevicesBySessionId(odeSessionId);
-            } catch (error) {
-                console.error('[API] getIdevicesBySessionId via catalog adapter error:', error);
-            }
-        }
-
         let url = this.endpoints.api_games_session_idevices.path;
         url = url.replace('{odeSessionId}', odeSessionId);
         return await this.func.get(url);
@@ -2233,21 +1898,11 @@ export default class ApiCallManager {
     /**
      * Get project sharing information (owner, collaborators, visibility)
      * Accepts both numeric ID and UUID
-     * In static mode, sharing not available
      *
      * @param {number|string} projectId - The project ID or UUID
      * @returns {Promise<Object>} Response with project sharing info
      */
     async getProject(projectId) {
-        // Use injected sharing adapter if available (new pattern)
-        if (this._sharing) {
-            try {
-                return await this._sharing.getProject(projectId);
-            } catch (error) {
-                console.error('[API] getProject via adapter error:', error);
-            }
-        }
-
         const url = this._buildProjectUrl(projectId, '/sharing');
 
         const authToken =
@@ -2282,19 +1937,49 @@ export default class ApiCallManager {
 
     /**
      * Update project visibility
-     * Uses injected sharing adapter (server or static mode)
+     * Accepts both numeric ID and UUID
      *
      * @param {number|string} projectId - The project ID or UUID
      * @param {string} visibility - 'public' or 'private'
      * @returns {Promise<Object>} Response with updated project
      */
     async updateProjectVisibility(projectId, visibility) {
-        return this._sharing.updateVisibility(projectId, visibility);
+        const url = this._buildProjectUrl(projectId, '/visibility');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ visibility }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] updateProjectVisibility error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
     }
 
     /**
      * Add a collaborator to a project
-     * Uses injected sharing adapter (server or static mode)
+     * Accepts both numeric ID and UUID
      *
      * @param {number|string} projectId - The project ID or UUID
      * @param {string} email - The collaborator's email
@@ -2302,43 +1987,96 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} Response
      */
     async addProjectCollaborator(projectId, email, role = 'editor') {
-        return this._sharing.addCollaborator(projectId, email, role);
+        const url = this._buildProjectUrl(projectId, '/collaborators');
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ email, role }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                // Map common error codes
+                if (response.status === 404) {
+                    return { responseMessage: 'USER_NOT_FOUND', detail: errorData.message };
+                }
+                if (response.status === 400 && errorData.message?.includes('already')) {
+                    return { responseMessage: 'ALREADY_COLLABORATOR', detail: errorData.message };
+                }
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] addProjectCollaborator error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
     }
 
     /**
      * Remove a collaborator from a project
-     * Uses injected sharing adapter (server or static mode)
+     * Accepts both numeric ID and UUID
      *
      * @param {number|string} projectId - The project ID or UUID
      * @param {number} userId - The collaborator's user ID
      * @returns {Promise<Object>} Response
      */
     async removeProjectCollaborator(projectId, userId) {
-        return this._sharing.removeCollaborator(projectId, userId);
+        const url = this._buildProjectUrl(projectId, `/collaborators/${userId}`);
+
+        const authToken =
+            eXeLearning?.app?.project?._yjsBridge?.authToken ||
+            eXeLearning?.app?.auth?.getToken?.() ||
+            localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                return {
+                    responseMessage: 'ERROR',
+                    detail: errorData.message || `HTTP ${response.status}`,
+                };
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('[API] removeProjectCollaborator error:', error);
+            return { responseMessage: 'ERROR', detail: error.message };
+        }
     }
 
     /**
      * Transfer project ownership to another user
      * Accepts both numeric ID and UUID
-     * In static mode, sharing not available
      *
      * @param {number|string} projectId - The project ID or UUID
      * @param {number} newOwnerId - The new owner's user ID
      * @returns {Promise<Object>} Response with updated project
      */
     async transferProjectOwnership(projectId, newOwnerId) {
-        // Use injected sharing adapter if available (new pattern)
-        if (this._sharing) {
-            try {
-                return await this._sharing.transferOwnership(projectId, newOwnerId);
-            } catch (error) {
-                console.error(
-                    '[API] transferProjectOwnership via adapter error:',
-                    error
-                );
-            }
-        }
-
         const url = this._buildProjectUrl(projectId, '/owner');
 
         const authToken =

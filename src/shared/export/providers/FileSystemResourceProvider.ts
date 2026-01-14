@@ -270,18 +270,6 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of file paths to content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Buffer>> {
-        // Schema files are in app/schemas/scorm12/ or app/schemas/scorm2004/
-        const schemaDir = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const schemaPath = path.join(this.publicDir, 'app', 'schemas', schemaDir);
-        return this.readDirectoryRecursive(schemaPath, '');
-    }
-
-    /**
      * Read all files from a directory recursively
      * @param dirPath - Directory path
      * @param prefix - Prefix for output paths (can be empty string)
@@ -348,5 +336,38 @@ export class FileSystemResourceProvider implements ResourceProvider {
             return fs.readFile(logoPath);
         }
         return null;
+    }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+
+        // Global fonts are stored in public/files/perm/fonts/global/{fontId}/
+        const fontPath = path.join(this.publicDir, 'files', 'perm', 'fonts', 'global', fontId);
+
+        if (!(await fs.pathExists(fontPath))) {
+            console.warn(`[FileSystemResourceProvider] Global font not found: ${fontId}`);
+            return new Map();
+        }
+
+        // Read all font files from directory with proper prefix
+        const files = await this.readDirectoryRecursive(fontPath, `fonts/global/${fontId}`);
+
+        // Filter to only include font files (woff, woff2, ttf) and attribution
+        const fontFiles = new Map<string, Buffer>();
+        for (const [filePath, content] of files) {
+            const ext = path.extname(filePath).toLowerCase();
+            if (['.woff', '.woff2', '.ttf', '.txt'].includes(ext)) {
+                fontFiles.set(filePath, content);
+            }
+        }
+
+        return fontFiles;
     }
 }

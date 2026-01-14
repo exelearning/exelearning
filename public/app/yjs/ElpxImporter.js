@@ -120,11 +120,8 @@ class ElpxImporter {
     // This handles cases where a user opens a .zip that contains an .elp/.elpx file
     let workingZip = zip;
 
-    // Track if this is an EPUB format (content in EPUB/ folder)
-    let isEpubFormat = false;
-
-    // First, check if content.xml or contentv3.xml exists at root or in EPUB/ folder
-    if (!zip['content.xml'] && !zip['contentv3.xml'] && !zip['EPUB/content.xml']) {
+    // First, check if content.xml or contentv3.xml exists at root
+    if (!zip['content.xml'] && !zip['contentv3.xml']) {
       // Scan for nested .elp/.elpx files at root level
       const elpFiles = Object.keys(zip).filter(name =>
         !name.includes('/') && // Root level only
@@ -142,19 +139,10 @@ class ElpxImporter {
       // If no ELP files found, workingZip remains as original zip (will fail below if no content.xml)
     }
 
-    // Find content.xml (could be content.xml, contentv3.xml for legacy, or EPUB/content.xml for EPUB)
+    // Find content.xml (could be content.xml or contentv3.xml for legacy)
     let contentXml = null;
     let contentFile = workingZip['content.xml'];
     let isLegacyFormat = false;
-
-    if (!contentFile) {
-      // Check for EPUB format (content.xml inside EPUB/ folder)
-      contentFile = workingZip['EPUB/content.xml'];
-      if (contentFile) {
-        isEpubFormat = true;
-        Logger.log('[ElpxImporter] EPUB format detected (content.xml in EPUB/ folder)');
-      }
-    }
 
     if (!contentFile) {
       contentFile = workingZip['contentv3.xml'];
@@ -164,9 +152,6 @@ class ElpxImporter {
     if (!contentFile) {
       throw new Error('No content.xml found in .elpx file');
     }
-
-    // Store EPUB format flag for asset extraction
-    workingZip._isEpubFormat = isEpubFormat;
 
     contentXml = new TextDecoder().decode(contentFile);
 

@@ -27,9 +27,9 @@ interface ResourceFetcherInterface {
     fetchScormFiles(): Promise<Map<string, Blob>>;
     fetchLibraryFiles(paths: string[]): Promise<Map<string, Blob>>;
     fetchLibraryDirectory(libraryName: string): Promise<Map<string, Blob>>;
-    fetchSchemas(format: string): Promise<Map<string, Blob>>;
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
+    fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
 }
 
 /**
@@ -90,17 +90,6 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchScormFiles(_version: '1.2' | '2004' = '1.2'): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchScormFiles();
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
-     * Fetch SCORM schema XSD files
-     * @param version - SCORM version: '1.2' or '2004'
-     * @returns Map of path -> content
-     */
-    async fetchScormSchemas(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>> {
-        const format = version === '1.2' ? 'scorm12' : 'scorm2004';
-        const blobMap = await this.fetcher.fetchSchemas(format);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 
@@ -175,16 +164,6 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch schema files for a format
-     * @param format - Format name (scorm12, scorm2004, ims, epub3)
-     * @returns Map of path -> content
-     */
-    async fetchSchemas(format: string): Promise<Map<string, Uint8Array>> {
-        const blobMap = await this.fetcher.fetchSchemas(format);
-        return this.convertBlobMapToUint8ArrayMap(blobMap);
-    }
-
-    /**
      * Normalize iDevice type name to directory name
      * @param ideviceType - Raw iDevice type name (e.g., 'FreeTextIdevice')
      * @returns Normalized directory name (e.g., 'text')
@@ -213,6 +192,19 @@ export class BrowserResourceProvider implements ResourceProvider {
      */
     async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const blobMap = await this.fetcher.fetchContentCss();
+        return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch global font files for embedding in exports
+     * @param fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+     * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
+     */
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>> {
+        if (!fontId || fontId === 'default') {
+            return new Map();
+        }
+        const blobMap = await this.fetcher.fetchGlobalFontFiles(fontId);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
     }
 

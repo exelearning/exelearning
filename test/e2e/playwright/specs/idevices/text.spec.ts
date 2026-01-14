@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -108,7 +107,7 @@ test.describe('Text iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Text iDevice Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -145,12 +144,11 @@ test.describe('Text iDevice', () => {
         });
 
         test('should save and persist text content', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -205,12 +203,11 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE Advanced Editor (CodeMagic)', () => {
         test('should open advanced HTML editor without blank window', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'CodeMagic iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -246,7 +243,10 @@ test.describe('Text iDevice', () => {
 
             // Open Tools menu (support both English and Spanish)
             // Use first() since there may be multiple TinyMCE editors (main text + feedback)
-            const toolsMenu = page.locator('.tox-mbtn').filter({ hasText: /Tools/i }).first();
+            const toolsMenu = page
+                .locator('.tox-mbtn')
+                .filter({ hasText: /Tools|Herramientas/i })
+                .first();
             await expect(toolsMenu).toBeVisible({ timeout: 10000 });
             await toolsMenu.click();
 
@@ -283,12 +283,11 @@ test.describe('Text iDevice', () => {
         });
 
         test('should edit HTML source and apply changes', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'CodeMagic iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Edit Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -324,7 +323,10 @@ test.describe('Text iDevice', () => {
             await page.waitForSelector('.tox-menubar', { timeout: 15000 });
 
             // Open Tools menu (use first() since there may be multiple TinyMCE editors)
-            const toolsMenu = page.locator('.tox-mbtn').filter({ hasText: 'Tools' }).first();
+            const toolsMenu = page
+                .locator('.tox-mbtn')
+                .filter({ hasText: /Tools|Herramientas/i })
+                .first();
             await toolsMenu.click();
             await page.waitForTimeout(300);
 
@@ -405,12 +407,11 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE Mind Map Editor (exemindmap)', () => {
         test('should open mind map editor without blank window', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'MindMap iframe requires server resources');
             const page = authenticatedPage;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'MindMap Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -447,7 +448,9 @@ test.describe('Text iDevice', () => {
             // The mindmap button is on the 4th toolbar row (buttons3), which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -499,8 +502,6 @@ test.describe('Text iDevice', () => {
                 .first();
             if ((await closeEditorButton.count()) > 0) {
                 await closeEditorButton.click();
-                // Wait for the editor dialog to close before trying to close the main dialog
-                await expect(editorDialog).not.toBeVisible({ timeout: 5000 });
             }
 
             // Then close the main mindmap dialog
@@ -523,7 +524,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Formatting Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -618,7 +619,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Diagram Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -656,7 +657,9 @@ test.describe('Text iDevice', () => {
             // The mermaid button is on the 4th toolbar row (buttons3), which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -694,7 +697,7 @@ test.describe('Text iDevice', () => {
             await textarea.fill(mermaidCode);
 
             // Click Save button to insert the mermaid code
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
             await saveDialogBtn.click();
 
             // Wait for dialog to close
@@ -808,7 +811,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Update Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -843,7 +846,9 @@ test.describe('Text iDevice', () => {
 
             // Expand toolbars
             const toggleToolbarsButton = page
-                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -867,7 +872,7 @@ test.describe('Text iDevice', () => {
             const textarea = dialog.locator('textarea');
             await textarea.fill(initialCode);
 
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
             await saveDialogBtn.click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
@@ -902,7 +907,7 @@ test.describe('Text iDevice', () => {
 
             await updateTextarea.fill(updatedCode);
 
-            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: 'Save' });
+            const updateSaveBtn = updateDialog.locator('button').filter({ hasText: /Save|Guardar/i });
             await updateSaveBtn.click();
             await expect(updateDialog).not.toBeVisible({ timeout: 5000 });
 
@@ -942,7 +947,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid PreRender Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -977,7 +982,9 @@ test.describe('Text iDevice', () => {
 
             // Expand toolbars
             const toggleToolbarsButton = page
-                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -1001,7 +1008,7 @@ test.describe('Text iDevice', () => {
             const textarea = dialog.locator('textarea');
             await textarea.fill(mermaidCode);
 
-            const saveDialogBtn = dialog.locator('button').filter({ hasText: 'Save' });
+            const saveDialogBtn = dialog.locator('button').filter({ hasText: /Save|Guardar/i });
             await saveDialogBtn.click();
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
 
@@ -1095,7 +1102,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Recorder Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1132,7 +1139,9 @@ test.describe('Text iDevice', () => {
             // The audio recorder button is on the 4th toolbar row, which is hidden by default
             // First, click the toggletoolbars button to expand all toolbars
             const toggleToolbarsButton = page
-                .locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[title*="Toggle"]')
+                .locator(
+                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
+                )
                 .first();
             if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
                 await toggleToolbarsButton.click();
@@ -1218,7 +1227,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Asset URL Resolution Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1364,7 +1373,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Asset URL Resolution Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1438,7 +1447,7 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1539,7 +1548,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -1719,13 +1728,12 @@ test.describe('Text iDevice', () => {
 
     test.describe('Image Persistence', () => {
         test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -1871,7 +1879,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -1992,7 +2000,7 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Internal Link Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2151,7 +2159,7 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Editor Internal Link Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2296,7 +2304,7 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text iDevice ELPX Link Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -2449,7 +2457,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Iframe Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2588,7 +2596,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'ZIP HTML Embed Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
             await waitForLoadingScreenHidden(page);
 
@@ -2975,7 +2983,7 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Asset Link Warning Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await waitForLoadingScreenHidden(page);
             await page.waitForTimeout(2000);
 

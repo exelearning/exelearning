@@ -42,9 +42,7 @@
                         </ul>
                     </li>
                     <li class="dropdown-divider"></li>
-                    {% if not config.isOfflineInstallation %}
-                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
-                    {% endif %}
+                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
                     {% if config.isOfflineInstallation %}
                         <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
@@ -66,7 +64,7 @@
                             </ul>
                         </li>
                         <li class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.settings or 'Settings' }}</a></li>
+                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     {% endif %}
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
@@ -96,6 +94,7 @@
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> {{ t.resources_report or 'Resources report' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  {{ t.link_validation or 'Link validation' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon image-icon-green"></span> {{ t.file_manager or 'File manager' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon"></span> {{ t.image_optimizer or 'Image optimizer' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> {{ t.styles or 'Styles' }}</a></li>
                     <li class="dropdown-divider"></li>

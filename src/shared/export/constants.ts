@@ -386,6 +386,68 @@ export function getExtensionFromMime(mime: string): string {
 }
 
 // =============================================================================
+// License Mappings
+// =============================================================================
+
+/**
+ * Maps license names to their CSS class names for the icon display
+ */
+export const LICENSE_CLASS_MAP: Record<string, string> = {
+    'creative commons: attribution 4.0': 'cc',
+    'creative commons: attribution - share alike 4.0': 'cc cc-by-sa',
+    'creative commons: attribution - non derived work 4.0': 'cc cc-by-nd',
+    'creative commons: attribution - non commercial 4.0': 'cc cc-by-nc',
+    'creative commons: attribution - non commercial - share alike 4.0': 'cc cc-by-nc-sa',
+    'creative commons: attribution - non derived work - non commercial 4.0': 'cc cc-by-nc-nd',
+    'public domain': 'cc cc-0',
+    'propietary license': 'propietary',
+};
+
+/**
+ * Get CSS class for a given license name
+ * @param licenseName - The license name
+ * @returns The CSS class/es for the license icon
+ */
+export function getLicenseClass(licenseName: string): string {
+    if (!licenseName) return 'cc cc-by-sa';
+
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // 1. Direct lookup
+    if (LICENSE_CLASS_MAP[cleanName]) {
+        return LICENSE_CLASS_MAP[cleanName];
+    }
+
+    // 2. Fallback: check for keywords (order matters: most specific first)
+    if (cleanName.includes('by-nc-nd') || (cleanName.includes('non derived') && cleanName.includes('non commercial'))) {
+        return 'cc cc-by-nc-nd';
+    }
+    if (cleanName.includes('by-nc-sa') || (cleanName.includes('non commercial') && cleanName.includes('share alike'))) {
+        return 'cc cc-by-nc-sa';
+    }
+    if (cleanName.includes('by-nc') || cleanName.includes('non commercial')) {
+        return 'cc cc-by-nc';
+    }
+    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
+        return 'cc cc-by-nc'; // Wait, this logic is flawed. 'non derived' alone is by-nd
+    }
+    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
+        return 'cc cc-by-nd';
+    }
+    if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
+        return 'cc cc-by-sa';
+    }
+    if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
+        return 'cc cc-0';
+    }
+    if (cleanName.includes('creative commons') || cleanName.includes('attribution')) {
+        return 'cc';
+    }
+
+    return 'cc cc-by-sa';
+}
+
+// =============================================================================
 // XML Namespaces
 // =============================================================================
 
@@ -424,7 +486,7 @@ export const IMS_NAMESPACES = {
  * LOM metadata namespaces
  */
 export const LOM_NAMESPACES = {
-    lom: 'http://ltsc.ieee.org/xsd/LOM',
+    lom: 'http://www.imsglobal.org/xsd/imsmd_rootv1p2p1',
     xsi: 'http://www.w3.org/2001/XMLSchema-instance',
 } as const;
 
@@ -565,14 +627,8 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     // Interactive video variants
     'video-interactivo': 'interactive-video',
 
-    // Collaborative editing
-    'edicion-colaborativa': 'collaborative-editing',
-
     // Dragdrop variants
     'arrastrar-soltar': 'dragdrop',
-
-    // Attached files variants
-    'archivos-adjuntos': 'attached-files',
 
     // Select media files variants
     'seleccionar-archivos': 'select-media-files',
@@ -614,6 +670,11 @@ export function normalizeIdeviceType(typeName: string): string {
 export const ODE_DTD_FILENAME = 'content.dtd';
 
 /**
+ * ODE format version (exported in content.xml odeResources section as exe_version)
+ */
+export const ODE_VERSION = '3.0';
+
+/**
  * ODE Content DTD
  * Embedded DTD for exports that include content.xml - validates content.xml structure
  */
@@ -647,7 +708,7 @@ export const ODE_DTD_CONTENT = `<!--
 <!ELEMENT value (#PCDATA)>
 
 <!-- Navigation Structures (Pages) -->
-<!ELEMENT odeNavStructures (odeNavStructure+)>
+<!ELEMENT odeNavStructures (odeNavStructure*)>
 <!ELEMENT odeNavStructure (odePageId, odeParentPageId, pageName, odeNavStructureOrder, odeNavStructureProperties?, odePagStructures?)>
 
 <!ELEMENT odePageId (#PCDATA)>

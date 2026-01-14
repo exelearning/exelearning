@@ -26,6 +26,9 @@ export default class NavbarFile {
         this.projectPreferencesButton = document.querySelector(
             '#head-top-settings-button'
         );
+        this.imageOptimizerButton = this.menu.navbar.querySelector(
+            '#navbar-button-imageoptimizer'
+        );
     }
 
     /**
@@ -40,6 +43,7 @@ export default class NavbarFile {
         this.setOdeUsedFilesEvent();
         this.setPreviewEvent();
         this.setProjectPreferencesEvent();
+        this.setImageOptimizerEvent();
     }
 
     /**************************************************************************************
@@ -139,6 +143,19 @@ export default class NavbarFile {
         });
     }
 
+    /**
+     * Image Optimizer
+     * Utilities -> Image Optimizer
+     *
+     */
+    setImageOptimizerEvent() {
+        if (this.imageOptimizerButton) {
+            this.imageOptimizerButton.addEventListener('click', () => {
+                this.imageOptimizerEvent();
+            });
+        }
+    }
+
     /**************************************************************************************
      * EVENTS
      **************************************************************************************/
@@ -165,6 +182,14 @@ export default class NavbarFile {
      */
     fileManagerEvent() {
         eXeLearning.app.modals.filemanager.show();
+    }
+
+    /**
+     * Show Image Optimizer modal
+     *
+     */
+    imageOptimizerEvent() {
+        eXeLearning.app.modals.imageoptimizer.show();
     }
 
     /**

@@ -466,16 +466,6 @@ export default class PreviewPanelManager {
         const documentManager = yjsBridge.documentManager;
         const resourceFetcher = yjsBridge.resourceFetcher || null;
 
-        // Check if we're in static mode (no remote storage capability)
-        const capabilities = eXeLearning.app?.capabilities;
-        const isStaticMode = !capabilities?.storage?.remote;
-
-        // Get the static base path from current URL (handles subdirectory deployments)
-        // e.g., /exelearning/pr-preview/pr-17/ -> /exelearning/pr-preview/pr-17
-        const staticBasePath = isStaticMode
-            ? window.location.pathname.replace(/\/?(index\.html)?$/, '')
-            : '';
-
         // Get theme URL (same logic as generatePreviewHtml)
         const selectedTheme = eXeLearning.app?.themes?.selected;
         let themeUrl = selectedTheme?.path || null;
@@ -517,22 +507,14 @@ export default class PreviewPanelManager {
                 Logger.warn('[PreviewPanel] Failed to load user theme CSS/JS for standalone:', error);
             }
             themeUrl = null;
-        } else if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:') && !themeUrl.startsWith('exe:')) {
-            // Make theme URL absolute for standalone preview (blob URL context)
-            const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
-                                  themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
-            const base = isStaticMode
-                ? `${window.location.origin}${staticBasePath}`
-                : window.location.origin;
-            themeUrl = `${base}/${cleanThemeUrl}`;
+        } else if (themeUrl && !themeUrl.startsWith('http')) {
+            themeUrl = window.location.origin + themeUrl;
         }
 
         const previewOptions = {
             baseUrl: window.location.origin,
-            // basePath MUST start with '/' to trigger isPreviewMode=true in the exporter
-            basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
-            version: window.eXeLearning?.config?.version || 'v1.0.0',
-            isStaticMode: isStaticMode,
+            basePath: eXeLearning.app.config?.basePath || '',
+            version: eXeLearning.app.config?.version || 'v1',
             themeUrl: themeUrl,
             userThemeCss: userThemeCss,
             userThemeJs: userThemeJs,
@@ -549,30 +531,10 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate preview');
         }
 
-        // In static mode, convert relative URLs to absolute URLs
-        // This is essential for standalone preview (new tab) to work correctly
-        // because blob URLs cannot resolve relative paths
-        let generatedHtml = result.html;
-        if (isStaticMode) {
-            const fullBase = `${window.location.origin}${staticBasePath}`;
-            // Convert URLs starting with / to absolute URLs
-            // Matches: href="/path" or src="/path" (but not href="//..." or href="http...")
-            generatedHtml = generatedHtml.replace(
-                /((?:href|src)=["'])(\/(?!\/|[a-z]+:))([^"']+)(["'])/gi,
-                (match, prefix, slash, path, quote) => {
-                    // /v1/libs/... -> fullBase/libs/... (strip version prefix if present)
-                    let cleanPath = path;
-                    cleanPath = cleanPath.replace(/^v[^/]*\//, '');
-                    return `${prefix}${fullBase}/${cleanPath}${quote}`;
-                }
-            );
-            Logger.log('[PreviewPanel] Converted relative URLs to absolute for standalone preview, base:', fullBase);
-        }
-
         // Add MIME types to media elements
         let html = typeof window.addMediaTypes === 'function'
-            ? window.addMediaTypes(generatedHtml)
-            : generatedHtml;
+            ? window.addMediaTypes(result.html)
+            : result.html;
 
         // Simplify MediaElement.js structures
         if (typeof window.simplifyMediaElements === 'function') {
@@ -626,28 +588,9 @@ export default class PreviewPanelManager {
         // Get theme URL from currently selected theme (handles admin vs builtin themes)
         // Ensure it's an absolute URL (blob: contexts don't resolve relative URLs correctly)
         const selectedTheme = eXeLearning.app?.themes?.selected;
-        // Check if we're in static mode (no remote storage capability)
-        const capabilities = eXeLearning.app?.capabilities;
-        const isStaticMode = !capabilities?.storage?.remote;
         let themeUrl = selectedTheme?.path || null;
         let userThemeCss = null;
         let userThemeJs = null;
-
-        // For preview (loaded via blob URL), we ALWAYS need absolute URLs
-        // because blob URLs cannot resolve relative paths.
-        // In static mode:
-        //   - Files may be in a subdirectory (e.g., /exelearning/pr-preview/pr-17/)
-        //   - We need the full base including pathname, not just origin
-        //   - basePath should be the pathname directory
-        // In server mode:
-        //   - Files use versioned paths (/v1/libs/bootstrap.min.css)
-        //   - baseUrl is origin, basePath may be set
-
-        // Get the static base path from current URL (handles subdirectory deployments)
-        // e.g., /exelearning/pr-preview/pr-17/ -> /exelearning/pr-preview/pr-17
-        const staticBasePath = isStaticMode
-            ? window.location.pathname.replace(/\/?(index\.html)?$/, '')
-            : '';
 
         // Check if it's a user theme (imported from ELPX, stored in IndexedDB)
         // User themes use the 'user-theme://' pseudo-protocol which isn't a valid HTTP URL
@@ -695,27 +638,15 @@ export default class PreviewPanelManager {
                 console.error('[PreviewPanel] Failed to load user theme CSS/JS:', error);
             }
             themeUrl = null; // Don't use invalid user-theme:// URL
-        } else if (themeUrl && !themeUrl.startsWith('http') && !themeUrl.startsWith('blob:') && !themeUrl.startsWith('exe:')) {
-            // Make theme URL absolute for blob URL context
-            // Remove leading ./ if present and make absolute
-            const cleanThemeUrl = themeUrl.startsWith('./') ? themeUrl.slice(2) :
-                                  themeUrl.startsWith('/') ? themeUrl.slice(1) : themeUrl;
-            const base = isStaticMode
-                ? `${window.location.origin}${staticBasePath}`
-                : window.location.origin;
-            themeUrl = `${base}/${cleanThemeUrl}`;
+        } else if (themeUrl && !themeUrl.startsWith('http')) {
+            themeUrl = window.location.origin + themeUrl;
         }
 
         const previewOptions = {
-            // Always use absolute URLs for preview (blob URL context)
             baseUrl: window.location.origin,
-            // basePath MUST start with '/' to trigger isPreviewMode=true in the exporter
-            // This ensures asset:// URLs are preserved (not converted to server paths)
-            // and will be resolved to blob URLs from IndexedDB by resolveAssetUrlsAsync
-            basePath: isStaticMode ? '/' : (eXeLearning.app.config?.basePath || '/'),
-            version: window.eXeLearning?.config?.version || 'v1.0.0',
-            isStaticMode: isStaticMode,
-            themeUrl: themeUrl, // Absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
+            basePath: eXeLearning.app.config?.basePath || '',
+            version: eXeLearning.app.config?.version || 'v1',
+            themeUrl: themeUrl, // Full absolute theme URL (e.g., 'http://localhost:8081/v1/site-files/themes/chiquito/')
             userThemeCss: userThemeCss, // Inline CSS for user themes (from IndexedDB)
             userThemeJs: userThemeJs, // Inline JS for user themes (from IndexedDB)
         };
@@ -731,33 +662,11 @@ export default class PreviewPanelManager {
             throw new Error(result.error || 'Failed to generate preview');
         }
 
-        // In static mode, the exporter generates URLs with basePath='/'
-        // These need to be converted to absolute URLs for blob URL context
-        // Important: Use full base path including pathname for subdirectory deployments
-        let generatedHtml = result.html;
-        if (isStaticMode) {
-            const fullBase = `${window.location.origin}${staticBasePath}`;
-            // Convert URLs starting with / to absolute URLs
-            // Matches: href="/path" or src="/path" (but not href="//..." or href="http...")
-            generatedHtml = generatedHtml.replace(
-                /((?:href|src)=["'])(\/(?!\/|[a-z]+:))([^"']+)(["'])/gi,
-                (match, prefix, slash, path, quote) => {
-                    // /v1/libs/... -> fullBase/libs/... (strip version prefix if present)
-                    // /libs/... -> fullBase/libs/...
-                    let cleanPath = path;
-                    // Remove version prefix if present (e.g., /v1/, /v0.0.0-alpha/)
-                    cleanPath = cleanPath.replace(/^v[^/]*\//, '');
-                    return `${prefix}${fullBase}/${cleanPath}${quote}`;
-                }
-            );
-            Logger.log('[PreviewPanel] Converted relative URLs to absolute for static mode, base:', fullBase);
-        }
-
         // Add MIME types to media elements BEFORE resolving URLs
         // (while asset:// URLs still contain filename with extension)
         let html = typeof window.addMediaTypes === 'function'
-            ? window.addMediaTypes(generatedHtml)
-            : generatedHtml;
+            ? window.addMediaTypes(result.html)
+            : result.html;
 
         // Simplify MediaElement.js structures to native HTML5 video/audio
         // (fixes playback issues with large videos)

@@ -195,6 +195,100 @@ describe('PageRenderer', () => {
             expect(html).toContain('onload="initScorm()"');
             expect(html).toContain('onunload="terminateScorm()"');
         });
+
+        it('should hide navigation when hideNavigation is true', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavigation: true,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation should NOT be present
+            expect(html).not.toContain('<nav id="siteNav">');
+            expect(html).not.toContain('</nav>');
+        });
+
+        it('should show navigation when hideNavigation is false (default)', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavigation: false,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation should be present
+            expect(html).toContain('<nav id="siteNav">');
+        });
+
+        it('should hide nav buttons when hideNavButtons is true', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavButtons: true,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Nav buttons should NOT be present
+            expect(html).not.toContain('<div class="nav-buttons">');
+            expect(html).not.toContain('nav-button-left');
+            expect(html).not.toContain('nav-button-right');
+        });
+
+        it('should show nav buttons when hideNavButtons is false (default)', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                hideNavButtons: false,
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Nav buttons should be present
+            expect(html).toContain('<div class="nav-buttons">');
+        });
+
+        it('should hide both navigation and nav buttons for SCORM-like exports', () => {
+            const pages = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+            ];
+            const options = createDefaultOptions({
+                allPages: pages,
+                isScorm: true,
+                hideNavigation: true,
+                hideNavButtons: true,
+                addPagination: true,
+                bodyClass: 'exe-export exe-scorm exe-scorm12',
+            });
+
+            const html = renderer.render(pages[0], options);
+
+            // Navigation and nav buttons should NOT be present
+            expect(html).not.toContain('<nav id="siteNav">');
+            expect(html).not.toContain('<div class="nav-buttons">');
+
+            // Page counter should be present
+            expect(html).toContain('page-counter');
+
+            // Body class should include exe-export
+            expect(html).toContain('exe-export exe-scorm exe-scorm12');
+        });
     });
 
     describe('renderNavigation', () => {
@@ -423,6 +517,34 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="license-label">Licencia: </span>');
             expect(html).toContain('class="license">Creative Commons</a>');
             expect(html).toContain('href="https://example.com/license"');
+        });
+
+        it('should render correct license class for different licenses', () => {
+            const licenses = [
+                { name: 'creative commons: attribution 4.0', class: 'cc' },
+                { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
+                { name: 'creative commons: attribution - non derived work 4.0', class: 'cc cc-by-nd' },
+                { name: 'creative commons: attribution - non commercial 4.0', class: 'cc cc-by-nc' },
+                { name: 'creative commons: attribution - non commercial - share alike 4.0', class: 'cc cc-by-nc-sa' },
+                {
+                    name: 'creative commons: attribution - non derived work - non commercial 4.0',
+                    class: 'cc cc-by-nc-nd',
+                },
+                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'propietary license', class: 'propietary' },
+                // Robustness tests
+                { name: '  creative commons:   attribution - non commercial 4.0  ', class: 'cc cc-by-nc' }, // Extra spaces
+                { name: 'CREATIVE COMMONS: ATTRIBUTION - NON COMMERCIAL 4.0', class: 'cc cc-by-nc' }, // Case insensitivity
+                { name: 'Some other license text containing by-nc-sa', class: 'cc cc-by-nc-sa' }, // Partial match
+            ];
+
+            for (const lic of licenses) {
+                const html = renderer.renderFooterSection({
+                    license: lic.name,
+                    licenseUrl: 'https://example.com',
+                });
+                expect(html).toContain(`class="${lic.class}"`);
+            }
         });
 
         it('should include user footer content when provided', () => {

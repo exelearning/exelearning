@@ -2605,54 +2605,6 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('content/resources/20251009090601DKVACR/colegio.mp3')).toBe(true);
       expect(assetMap.has('content/resources/20251009090601ROYVYO/sq01.jpg')).toBe(true);
     });
-
-    it('detects EPUB format and extracts assets from EPUB/ folder', async () => {
-      const zipData = {
-        'mimetype': new Uint8Array([97, 112, 112]),
-        'META-INF/container.xml': new Uint8Array([60, 63]),
-        'EPUB/content.xml': new Uint8Array([60, 63]),
-        'EPUB/package.opf': new Uint8Array([60, 63]),
-        'EPUB/content/resources/uuid123/image.jpg': new Uint8Array([1, 2, 3]),
-        'EPUB/content/resources/uuid456/audio.mp3': new Uint8Array([4, 5, 6]),
-      };
-
-      const assetMap = await assetManager.extractAssetsFromZip(zipData);
-
-      // Should extract 2 assets with normalized paths (without EPUB/ prefix)
-      expect(assetMap.size).toBe(2);
-      expect(assetMap.has('content/resources/uuid123/image.jpg')).toBe(true);
-      expect(assetMap.has('content/resources/uuid456/audio.mp3')).toBe(true);
-    });
-
-    it('skips EPUB system files when extracting from EPUB format', async () => {
-      const zipData = {
-        'mimetype': new Uint8Array([97]),
-        'META-INF/container.xml': new Uint8Array([60]),
-        'EPUB/content.xml': new Uint8Array([60]),
-        'EPUB/package.opf': new Uint8Array([60]),
-        'EPUB/nav.xhtml': new Uint8Array([60]),
-        'EPUB/index.xhtml': new Uint8Array([60]),
-        'EPUB/content/resources/uuid/file.jpg': new Uint8Array([1]),
-      };
-
-      const assetMap = await assetManager.extractAssetsFromZip(zipData);
-
-      // Should only extract the asset, not system files
-      expect(assetMap.size).toBe(1);
-      expect(assetMap.has('content/resources/uuid/file.jpg')).toBe(true);
-    });
-
-    it('detects EPUB format using _isEpubFormat flag', async () => {
-      const zipData = {
-        '_isEpubFormat': true, // Set by ElpxImporter
-        'EPUB/content/resources/test/image.png': new Uint8Array([1, 2]),
-      };
-
-      const assetMap = await assetManager.extractAssetsFromZip(zipData);
-
-      expect(assetMap.size).toBe(1);
-      expect(assetMap.has('content/resources/test/image.png')).toBe(true);
-    });
   });
 });
 

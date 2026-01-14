@@ -47,73 +47,9 @@ class ResourceFetcher {
     this.bundleManifest = null;
     // Whether bundles are available
     this.bundlesAvailable = false;
-    // Static mode detection (cached for performance)
-    this._isStaticMode = null;
     // User theme files (from .elpx imports, stored in Yjs)
     // Map<themeName, Object<relativePath, Uint8Array>>
     this.userThemeFiles = new Map();
-  }
-
-  /**
-   * Check if running in static (offline) mode.
-   * Prefers capabilities check, falls back to direct mode detection.
-   * @returns {boolean}
-   */
-  isStaticMode() {
-    if (this._isStaticMode === null) {
-      // Prefer capabilities check (new pattern)
-      const capabilities = window.eXeLearning?.app?.capabilities;
-      if (capabilities) {
-        this._isStaticMode = !capabilities.storage.remote;
-      } else {
-        // Fallback to direct detection
-        this._isStaticMode = window.__EXE_STATIC_MODE__ === true ||
-                             window.eXeLearning?.config?.isStaticMode === true;
-      }
-    }
-    return this._isStaticMode;
-  }
-
-  /**
-   * Get the URL for a bundle file, handling static mode
-   * @param {string} bundleType - Type of bundle (theme, idevices, libs, etc.)
-   * @param {string} [name] - Name for named bundles (e.g., theme name)
-   * @returns {string} Bundle URL
-   */
-  getBundleUrl(bundleType, name = null) {
-    if (this.isStaticMode()) {
-      // In static mode, bundles are in ./bundles/ folder
-      switch (bundleType) {
-        case 'theme':
-          return `${this.basePath}/bundles/themes/${name}.zip`;
-        case 'idevices':
-          return `${this.basePath}/bundles/idevices.zip`;
-        case 'libs':
-          return `${this.basePath}/bundles/libs.zip`;
-        case 'common':
-          return `${this.basePath}/bundles/common.zip`;
-        case 'content-css':
-          return `${this.basePath}/bundles/content-css.zip`;
-        default:
-          return `${this.basePath}/bundles/${bundleType}.zip`;
-      }
-    }
-
-    // Server mode: use API endpoints
-    switch (bundleType) {
-      case 'theme':
-        return `${this.apiBase}/bundle/theme/${name}`;
-      case 'idevices':
-        return `${this.apiBase}/bundle/idevices`;
-      case 'libs':
-        return `${this.apiBase}/bundle/libs`;
-      case 'common':
-        return `${this.apiBase}/bundle/common`;
-      case 'content-css':
-        return `${this.apiBase}/bundle/content-css`;
-      default:
-        return `${this.apiBase}/bundle/${bundleType}`;
-    }
   }
 
   /**
@@ -233,45 +169,10 @@ class ResourceFetcher {
   }
 
   /**
-   * Load bundle manifest from server or static data
+   * Load bundle manifest from server
    * @returns {Promise<void>}
    */
   async loadBundleManifest() {
-    // Check if running in static mode (prefer capabilities, fallback to direct check)
-    const capabilities = window.eXeLearning?.app?.capabilities;
-    const isStaticMode = capabilities
-      ? !capabilities.storage.remote
-      : (window.__EXE_STATIC_MODE__ === true || window.eXeLearning?.config?.isStaticMode === true);
-
-    if (isStaticMode) {
-      // In static mode, use manifest from bundled data
-      const staticData = window.__EXE_STATIC_DATA__;
-      if (staticData?.bundleManifest) {
-        this.bundleManifest = staticData.bundleManifest;
-        this.bundlesAvailable = true;
-        console.log('[ResourceFetcher] ✅ Using static bundle manifest');
-        return;
-      }
-
-      // Try to fetch from local bundles/manifest.json
-      try {
-        const response = await fetch(`${this.basePath}/bundles/manifest.json`);
-        if (response.ok) {
-          this.bundleManifest = await response.json();
-          this.bundlesAvailable = true;
-          console.log('[ResourceFetcher] ✅ Loaded manifest from bundles/manifest.json');
-          return;
-        }
-      } catch (e) {
-        console.log('[ResourceFetcher] Static mode: No local manifest.json');
-      }
-
-      this.bundlesAvailable = false;
-      console.log('[ResourceFetcher] Static mode: Using fallback (no bundles)');
-      return;
-    }
-
-    // Server mode: fetch from API
     try {
       const manifestUrl = `${this.apiBase}/bundle/manifest`;
       console.log('[ResourceFetcher] Loading bundle manifest from:', manifestUrl);
@@ -454,7 +355,7 @@ class ResourceFetcher {
 
     // 5. Try ZIP bundle (faster, single request)
     if (this.bundlesAvailable) {
-      const bundleUrl = this.getBundleUrl('theme', themeName);
+      const bundleUrl = `${this.apiBase}/bundle/theme/${themeName}`;
       console.log(`[ResourceFetcher] 📦 Fetching theme '${themeName}' via bundle:`, bundleUrl);
       themeFiles = await this.fetchBundle(bundleUrl);
       if (themeFiles && themeFiles.size > 0) {
@@ -596,7 +497,7 @@ class ResourceFetcher {
    * @returns {Promise<void>}
    */
   async loadIdevicesBundle() {
-    const bundleUrl = this.getBundleUrl('idevices');
+    const bundleUrl = `${this.apiBase}/bundle/idevices`;
     const allFiles = await this.fetchBundle(bundleUrl);
 
     if (!allFiles || allFiles.size === 0) {
@@ -740,7 +641,7 @@ class ResourceFetcher {
 
     // 3. Try ZIP bundle (faster, single request)
     if (this.bundlesAvailable) {
-      const bundleUrl = this.getBundleUrl('libs');
+      const bundleUrl = `${this.apiBase}/bundle/libs`;
       libFiles = await this.fetchBundle(bundleUrl);
     }
 
@@ -919,63 +820,6 @@ class ResourceFetcher {
   }
 
   // =========================================================================
-  // Schema Resources
-  // =========================================================================
-
-  /**
-   * Fetch XSD schema files for a specific format
-   * @param {string} format - 'scorm12', 'scorm2004', 'ims', or 'epub3'
-   * @returns {Promise<Map<string, Blob>>} Map of relative path -> blob
-   */
-  async fetchSchemas(format) {
-    const cacheKey = `schemas:${format}`;
-    if (this.cache.has(cacheKey)) {
-      Logger.log(`[ResourceFetcher] Schemas for '${format}' loaded from cache`);
-      return this.cache.get(cacheKey);
-    }
-
-    Logger.log(`[ResourceFetcher] Fetching schemas for '${format}' from server...`);
-
-    try {
-      const response = await fetch(`${this.apiBase}/schemas/${format}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch schemas list: ${response.status}`);
-      }
-
-      const fileList = await response.json();
-      const schemaFiles = new Map();
-
-      // Fetch all files in parallel
-      const fetchPromises = fileList.map(async file => {
-        try {
-          const fileResponse = await fetch(file.url);
-          if (fileResponse.ok) {
-            const blob = await fileResponse.blob();
-            return { path: file.path, blob };
-          }
-        } catch (e) {
-          console.warn(`[ResourceFetcher] Error fetching schema file ${file.url}:`, e);
-        }
-        return null;
-      });
-
-      const results = await Promise.all(fetchPromises);
-      for (const result of results) {
-        if (result) {
-          schemaFiles.set(result.path, result.blob);
-        }
-      }
-
-      this.cache.set(cacheKey, schemaFiles);
-      Logger.log(`[ResourceFetcher] Schemas for '${format}' loaded (${schemaFiles.size} files)`);
-      return schemaFiles;
-    } catch (e) {
-      console.error(`[ResourceFetcher] Failed to fetch schemas for '${format}':`, e);
-      return new Map();
-    }
-  }
-
-  // =========================================================================
   // Dynamic Library Resources
   // =========================================================================
 
@@ -995,32 +839,16 @@ class ResourceFetcher {
     const firstDir = path.split('/')[0];
     const isThirdParty = THIRD_PARTY_LIBS.has(firstDir);
 
-    // Build paths based on mode
-    let possiblePaths;
-    if (this.isStaticMode()) {
-      // Static mode: use relative paths without version prefix
-      const staticBase = this.basePath || '.';
-      possiblePaths = isThirdParty
-        ? [
-            `${staticBase}/libs/${path}`,
-            `${staticBase}/app/common/${path}`,
-          ]
-        : [
-            `${staticBase}/app/common/${path}`,
-            `${staticBase}/libs/${path}`,
-          ];
-    } else {
-      // Server mode: use versioned paths for cache busting
-      possiblePaths = isThirdParty
-        ? [
-            `${this.basePath}/${this.version}/libs/${path}`,
-            `${this.basePath}/${this.version}/app/common/${path}`,
-          ]
-        : [
-            `${this.basePath}/${this.version}/app/common/${path}`,
-            `${this.basePath}/${this.version}/libs/${path}`,
-          ];
-    }
+    // Try the most likely path first (with version for cache busting)
+    const possiblePaths = isThirdParty
+      ? [
+          `${this.basePath}/${this.version}/libs/${path}`,
+          `${this.basePath}/${this.version}/app/common/${path}`,
+        ]
+      : [
+          `${this.basePath}/${this.version}/app/common/${path}`,
+          `${this.basePath}/${this.version}/libs/${path}`,
+        ];
 
     for (const url of possiblePaths) {
       try {
@@ -1224,14 +1052,7 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // Build path based on mode
-    let logoUrl;
-    if (this.isStaticMode()) {
-      const staticBase = this.basePath || '.';
-      logoUrl = `${staticBase}/app/common/exe_powered_logo/exe_powered_logo.png`;
-    } else {
-      logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
-    }
+    const logoUrl = `${this.basePath}/${this.version}/app/common/exe_powered_logo/exe_powered_logo.png`;
     try {
       const response = await fetch(logoUrl);
       if (response.ok) {
@@ -1283,7 +1104,7 @@ class ResourceFetcher {
 
     // 3. Try ZIP bundle
     if (this.bundlesAvailable) {
-      const bundleUrl = this.getBundleUrl('content-css');
+      const bundleUrl = `${this.apiBase}/bundle/content-css`;
       cssFiles = await this.fetchBundle(bundleUrl);
     }
 
@@ -1348,6 +1169,84 @@ class ResourceFetcher {
     }
 
     return cssFiles;
+  }
+
+  /**
+   * Fetch global font files for embedding in exports
+   * Global fonts are stored in /files/perm/fonts/global/{fontId}/
+   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+   * @returns {Promise<Map<string, Blob>>} Map of file paths to blobs
+   */
+  async fetchGlobalFontFiles(fontId) {
+    const fontFiles = new Map();
+
+    if (!fontId || fontId === 'default') {
+      return fontFiles;
+    }
+
+    // Font configuration - matches GlobalFontGenerator.ts
+    const fontConfigs = {
+      opendyslexic: [
+        'OpenDyslexic-Regular.woff',
+        'OpenDyslexic-Bold.woff',
+        'OpenDyslexic-Italic.woff',
+        'OpenDyslexic-BoldItalic.woff',
+        'OFL.txt',
+      ],
+      andika: [
+        'Andika-Regular.woff2',
+        'Andika-Bold.woff2',
+        'Andika-Italic.woff2',
+        'Andika-BoldItalic.woff2',
+        'OFL.txt',
+      ],
+      nunito: [
+        'Nunito-Regular.woff2',
+        'Nunito-Bold.woff2',
+        'Nunito-Italic.woff2',
+        'Nunito-BoldItalic.woff2',
+        'OFL.txt',
+      ],
+      'playwrite-es': ['PlaywriteES-Regular.woff2', 'OFL.txt'],
+    };
+
+    const files = fontConfigs[fontId];
+    if (!files) {
+      console.warn(`[ResourceFetcher] Unknown global font: ${fontId}`);
+      return fontFiles;
+    }
+
+    const basePath = `${this.basePath}/files/perm/fonts/global/${fontId}`;
+
+    // Fetch all font files in parallel
+    const fetchPromises = files.map(async filename => {
+      const url = `${basePath}/${filename}`;
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          // Store with proper export path
+          return {
+            path: `fonts/global/${fontId}/${filename}`,
+            blob,
+          };
+        } else {
+          console.warn(`[ResourceFetcher] Font file not found: ${url}`);
+        }
+      } catch (e) {
+        console.warn(`[ResourceFetcher] Error fetching font file ${url}:`, e);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(fetchPromises);
+    for (const result of results) {
+      if (result) {
+        fontFiles.set(result.path, result.blob);
+      }
+    }
+
+    return fontFiles;
   }
 }
 
