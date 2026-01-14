@@ -2,12 +2,16 @@
  * Tests for progress-report edition iDevice
  */
 
-import { describe, test, expect, beforeAll, beforeEach, mock } from 'bun:test';
+/* eslint-disable no-undef */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load the iDevice code
-const iDevicePath = path.join(import.meta.dir, 'progress-report.js');
+const iDevicePath = path.join(__dirname, 'progress-report.js');
 const iDeviceCode = fs.readFileSync(iDevicePath, 'utf8');
 
 /**
@@ -55,7 +59,7 @@ function loadIdevice() {
     };
 
     // Mock jQuery
-    global.$ = mock(() => ({
+    global.$ = (typeof mock !== 'undefined' ? mock : function() {})(() => ({
         val: () => '',
         find: () => ({ length: 0 }),
         hide: () => {},
@@ -66,13 +70,6 @@ function loadIdevice() {
         children: () => ({ length: 0, each: () => {} }),
     }));
     global.jQuery = global.$;
-
-    // Mock DOM
-    global.document = {
-        getElementById: () => null,
-        querySelector: () => null,
-        querySelectorAll: () => [],
-    };
 
     // Mock eXeLearning
     global.eXeLearning = {

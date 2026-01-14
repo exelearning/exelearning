@@ -9,7 +9,6 @@
  * - buildNestedPages: Page structure building
  */
 /* eslint-disable no-undef */
-import { describe, it, expect, beforeEach } from 'bun:test';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -38,6 +37,8 @@ function loadIdevice(code) {
     app: {
       isInExe: () => false,
       getIdeviceInstalledExportPath: () => '',
+      clearHistory: () => {},
+      _confirmResponses: new Map(),
     },
   };
 
