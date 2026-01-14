@@ -785,7 +785,11 @@ ${userFooterHtml}</div></footer>`;
      * @param faviconType - MIME type of favicon
      * @returns Link tag HTML
      */
-    renderFavicon(basePath: string, faviconPath: string = 'libs/favicon.ico', faviconType: string = 'image/x-icon'): string {
+    renderFavicon(
+        basePath: string,
+        faviconPath: string = 'libs/favicon.ico',
+        faviconType: string = 'image/x-icon',
+    ): string {
         const faviconHref = `${basePath}${faviconPath}`;
         return `<link rel="icon" type="${this.escapeAttr(faviconType)}" href="${this.escapeAttr(faviconHref)}">`;
     }

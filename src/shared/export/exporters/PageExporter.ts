@@ -13,7 +13,7 @@
  * - content/css/ (base CSS)
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { generateI18nScript } from '../generators/I18nGenerator';
 
@@ -50,15 +50,12 @@ export class PageExporter extends Html5Exporter {
             const usedIdevices = this.getUsedIdevices(pages);
 
             // 4. Fetch and add theme
-            let faviconInfo: { path: string; type: string } | null = null;
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [path, content] of themeFiles) {
-                    this.zip.addFile(`theme/${path}`, content);
+            const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    this.zip.addFile(`theme/${filePath}`, content);
                 }
-                // Detect favicon in theme
-                faviconInfo = this.detectFavicon(themeFiles);
-            } catch {
+            } else {
                 this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
                 this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
             }
@@ -128,7 +125,7 @@ export class PageExporter extends Html5Exporter {
         pages: ExportPage[],
         meta: ExportMetadata,
         usedIdevices: string[],
-        faviconInfo?: { path: string; type: string } | null,
+        faviconInfo?: FaviconInfo | null,
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',

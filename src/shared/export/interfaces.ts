@@ -228,6 +228,29 @@ export interface ExportAsset {
     data: Uint8Array | Blob;
 }
 
+/**
+ * Favicon information for export
+ */
+export interface FaviconInfo {
+    /** Path relative to export root (e.g., 'theme/img/favicon.ico' or 'libs/favicon.ico') */
+    path: string;
+    /** MIME type (e.g., 'image/x-icon', 'image/png') */
+    type: string;
+}
+
+/**
+ * Theme data prepared for export
+ * Contains theme files, root-level CSS/JS files, and detected favicon
+ */
+export interface ThemeData {
+    /** Map of all theme files (path -> content) */
+    themeFilesMap: Map<string, Uint8Array> | null;
+    /** List of root-level CSS/JS filenames */
+    themeRootFiles: string[];
+    /** Detected favicon info, or null if not found in theme */
+    faviconInfo: FaviconInfo | null;
+}
+
 // =============================================================================
 // ZIP Provider Interface
 // =============================================================================
