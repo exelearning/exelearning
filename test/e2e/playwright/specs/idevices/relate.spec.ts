@@ -378,7 +378,7 @@ test.describe('Relate iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for game to initialize
             await page.waitForTimeout(2000);
@@ -423,7 +423,7 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -478,19 +478,20 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(3000);
 
-            // Verify images are loaded (have blob: src)
+            // Verify images are loaded (have valid src)
             const images = iframe.locator('.RLCP-Image');
             const imageCount = await images.count();
             expect(imageCount).toBeGreaterThanOrEqual(2);
 
-            // Check first image has a valid src
+            // Check first image has a valid src (blob URL or relative path)
             const firstImageSrc = await images.first().getAttribute('src');
             expect(firstImageSrc).toBeTruthy();
-            expect(firstImageSrc).toMatch(/^blob:/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(firstImageSrc).toMatch(/^(blob:|content\/resources\/)/);
         });
     });
 
@@ -530,7 +531,7 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 

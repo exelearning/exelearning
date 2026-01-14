@@ -349,9 +349,95 @@ const exporter = ExportFactory.create('scorm12');
 const zipPath = await exporter.export(session, options);
 ```
 
-## 8. Database Architecture
+## 8. Preview System (Service Worker Architecture)
 
-### 8.1 Multi-Database Support
+The workarea preview uses a **Service Worker** to serve exported HTML files directly, ensuring the preview exactly matches the exported output.
+
+### 8.1 Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      WORKAREA                                │
+├─────────────────────────────────────────────────────────────┤
+│  Yjs Bridge                    PreviewPanelManager          │
+│      │                               │                       │
+│      │ onStructureChange()           │                       │
+│      └──────────────────────────────►│                       │
+│                                      │                       │
+│                            1. Generate export                │
+│                               (Html5Exporter)                │
+│                                      │                       │
+│                            2. Send to SW                     │
+│                               (SET_CONTENT)                  │
+│                                      │                       │
+│                            3. Load iframe                    │
+│                               /viewer/index.html             │
+└─────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   SERVICE WORKER                             │
+├─────────────────────────────────────────────────────────────┤
+│  contentFiles: Map<path, ArrayBuffer>                        │
+│                                                              │
+│  fetch('/viewer/*') → handleViewerRequest()                  │
+│      ├── Look up path in contentFiles                        │
+│      ├── Return Response with correct MIME type              │
+│      └── Inject external link handler for HTML               │
+└─────────────────────────────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   PREVIEW IFRAME                             │
+├─────────────────────────────────────────────────────────────┤
+│  <iframe src="/viewer/index.html">                          │
+│      │                                                       │
+│      ├── CSS: /viewer/theme/style.css                       │
+│      ├── JS:  /viewer/libs/common.js                        │
+│      ├── IMG: /viewer/content/resources/image.jpg           │
+│      └── All served by SW from memory!                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 8.2 How It Works
+
+1. **Generate Export**: When preview is requested, `Html5Exporter.generateForPreview()` generates all export files in memory as `Map<string, Uint8Array | string>`
+
+2. **Send to Service Worker**: Files are sent to the SW via `postMessage({ type: 'SET_CONTENT', files })`
+
+3. **Load Preview**: The iframe loads `/viewer/index.html` - all requests intercepted by SW
+
+4. **Serve Files**: SW serves files from its in-memory cache with correct MIME types
+
+### 8.3 Key Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Service Worker** | `public/app/preview-sw.js` | Intercepts `/viewer/*` requests |
+| **Preview Panel** | `public/app/workarea/interface/elements/previewPanel.js` | UI and orchestration |
+| **Export Generator** | `src/shared/export/exporters/Html5Exporter.ts` | Generates export files |
+| **Browser API** | `src/shared/export/browser/index.ts` | Browser-side export functions |
+
+### 8.4 Benefits
+
+- **Exact match**: Preview IS the exported HTML (same code path, same output)
+- **No workarounds**: No blob:// URL complexity for assets
+- **Native PDF viewer**: PDFs work without PDF.js workaround (not in nested blob context)
+- **External links**: Handled correctly (SW injects click handler)
+- **Multi-page navigation**: Works exactly like the real export
+
+### 8.5 Service Worker Protocol
+
+```javascript
+// Messages sent to Service Worker
+{ type: 'SET_CONTENT', files: Map<path, ArrayBuffer> }  // Set preview content
+{ type: 'CLEAR_CONTENT' }                                // Clear preview cache
+{ type: 'CLAIM_CLIENTS' }                                // Activate SW for page
+```
+
+## 9. Database Architecture
+
+### 9.1 Multi-Database Support
 
 Kysely ORM with dialect adapters:
 
@@ -369,7 +455,7 @@ function createDialect(): Dialect {
 }
 ```
 
-### 8.2 Query Pattern with Dependency Injection
+### 9.2 Query Pattern with Dependency Injection
 
 All queries accept `db` as first parameter for testability:
 
@@ -396,9 +482,9 @@ configure({
 afterEach(() => resetDependencies());
 ```
 
-## 9. Configuration
+## 10. Configuration
 
-### 9.1 Environment Variables
+### 10.1 Environment Variables
 
 Key configuration in `.env`:
 
@@ -419,7 +505,7 @@ BASE_PATH=/exelearning        # URL prefix for subdirectory install
 APP_AUTH_METHODS=password     # password,cas,openid,guest
 ```
 
-### 9.2 Desktop vs Server Configuration
+### 10.2 Desktop vs Server Configuration
 
 | Setting | Desktop (Electron) | Server |
 |---------|-------------------|--------|
@@ -428,7 +514,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | Compact threshold | 100 updates | 50 updates |
 | WebSocket timeout | 70s | 40s |
 
-## 10. Key File Locations
+## 11. Key File Locations
 
 ### Backend (src/)
 
@@ -442,6 +528,8 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `src/websocket/yjs-websocket.ts` | WebSocket handler |
 | `src/websocket/room-manager.ts` | Room lifecycle |
 | `src/websocket/asset-coordinator.ts` | P2P coordination |
+| `src/shared/export/exporters/Html5Exporter.ts` | HTML5 export (also used for preview) |
+| `src/shared/export/browser/index.ts` | Browser-side export API |
 
 ### Frontend (public/app/)
 
@@ -452,6 +540,8 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `public/app/yjs/AssetWebSocketHandler.js` | Asset protocol |
 | `public/app/yjs/SaveManager.js` | Save orchestration |
 | `public/app/yjs/YjsProjectBridge.js` | Coordination hub |
+| `public/app/preview-sw.js` | Preview Service Worker |
+| `public/app/workarea/interface/elements/previewPanel.js` | Preview panel UI |
 
 ### Configuration
 
@@ -462,7 +552,7 @@ APP_AUTH_METHODS=password     # password,cas,openid,guest
 | `bunfig.toml` | Bun configuration |
 | `Makefile` | Build commands |
 
-## 11. Testing
+## 12. Testing
 
 ### Test Strategy
 
@@ -499,7 +589,7 @@ configure({
 afterEach(() => resetDependencies());
 ```
 
-## 12. Security
+## 13. Security
 
 ### Authentication
 
@@ -532,9 +622,9 @@ ws.on('open', async () => {
 });
 ```
 
-## 13. Theme Architecture
+## 14. Theme Architecture
 
-### 13.1 Theme Types
+### 14.1 Theme Types
 
 eXeLearning supports three types of themes:
 
@@ -544,7 +634,7 @@ eXeLearning supports three types of themes:
 | **Site** | Admin-installed for all users | Server `/perm/themes/site/` | Server |
 | **User** | Imported by user or from .elpx | Client IndexedDB + Yjs | **Never server** |
 
-### 13.2 Server Themes (Base & Site)
+### 14.2 Server Themes (Base & Site)
 
 **Base themes** are included with eXeLearning and synchronized at startup:
 - Located in `/public/files/perm/themes/base/`
@@ -557,7 +647,7 @@ eXeLearning supports three types of themes:
 - Admin can set a default theme for new projects
 - Served directly by the server
 
-### 13.3 User Themes (Client-Side Only)
+### 14.3 User Themes (Client-Side Only)
 
 > **Important**: User themes are NEVER stored or served by the server.
 
@@ -582,7 +672,7 @@ User themes are stored entirely on the client side:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 13.4 User Theme Flow
+### 14.4 User Theme Flow
 
 ```
 1. IMPORT THEME
@@ -604,7 +694,7 @@ User themes are stored entirely on the client side:
    (if ONLINE_THEMES_INSTALL is enabled)
 ```
 
-### 13.5 Admin Configuration
+### 14.5 Admin Configuration
 
 ```bash
 # Allow users to import/install styles
@@ -615,7 +705,7 @@ When disabled (`ONLINE_THEMES_INSTALL=0`):
 - Users cannot import external themes via the interface
 - Users cannot open .elpx files with embedded themes
 
-### 13.6 Why User Themes Are Client-Side
+### 14.6 Why User Themes Are Client-Side
 
 This design follows the same pattern as other user-specific data (like favorite iDevices):
 

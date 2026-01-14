@@ -17,6 +17,7 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
+import { generateI18nScript } from '../generators/I18nGenerator';
 
 /**
  * EPUB3 XML namespaces
@@ -241,6 +242,11 @@ export class Epub3Exporter extends BaseExporter {
                     // No libraries available
                 }
             }
+
+            // 7.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
+            this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
 
             // 8. Fetch and add iDevice assets (skip .html templates - they're for JS rendering, not EPUB)
             const usedIdevices = this.getUsedIdevices(pages);

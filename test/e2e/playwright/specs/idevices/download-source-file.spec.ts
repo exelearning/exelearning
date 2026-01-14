@@ -536,7 +536,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the download link in preview
             await verifyDownloadLinkInPreview(iframe, TEST_DATA.customButtonText, TEST_DATA.customBgColor);
@@ -578,22 +578,25 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Check that preview uses postMessage-based downloadElpx function
-            // In preview mode, we use postMessage to parent app instead of embedding manifest
+            // Check that preview has downloadElpx function available
+            // With SW-based preview, we use manifest-based download approach
             const downloadInfo = await iframe.locator('html').evaluate(() => {
                 const win = window as any;
+                const fnSource = win.downloadElpx?.toString() || '';
                 return {
                     hasDownloadElpx: typeof win.downloadElpx === 'function',
-                    hasPostMessageLogic:
-                        win.downloadElpx?.toString().includes('postMessage') &&
-                        win.downloadElpx?.toString().includes('exe-download-elpx'),
+                    // SW preview uses manifest-based approach (checks for __ELPX_MANIFEST__)
+                    hasManifestLogic: fnSource.includes('__ELPX_MANIFEST__'),
+                    // Legacy blob preview uses postMessage approach
+                    hasPostMessageLogic: fnSource.includes('postMessage') && fnSource.includes('exe-download-elpx'),
                 };
             });
 
             expect(downloadInfo.hasDownloadElpx).toBe(true);
-            expect(downloadInfo.hasPostMessageLogic).toBe(true);
+            // Either manifest-based (SW preview) or postMessage-based (legacy) is valid
+            expect(downloadInfo.hasManifestLogic || downloadInfo.hasPostMessageLogic).toBe(true);
 
             // Verify onclick handler is present (indicates proper export with ELPX download support)
             const downloadLink = iframe.locator('.exe-download-package-link a').first();
@@ -636,7 +639,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the project info table is present
             const infoTable = iframe.locator('.exe-download-package-instructions .exe-package-info').first();

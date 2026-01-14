@@ -1,3 +1,28 @@
+/**
+ * Get i18n text with fallback to default
+ * @param {string} key - Translation key
+ * @param {string} defaultText - Fallback text if translation not found
+ * @returns {string} Translated or default text
+ */
+function getI18nText(key, defaultText) {
+    return (typeof $exe_i18n !== 'undefined' && $exe_i18n[key])
+        ? $exe_i18n[key]
+        : defaultText;
+}
+
+/**
+ * Translate elements with data-i18n attribute
+ * @param {string} key - The i18n key to look up
+ * @param {string} defaultText - Fallback text
+ */
+function translateI18nElement(key, defaultText) {
+    var text = getI18nText(key, defaultText);
+    $('[data-i18n="' + key + '"]').each(function() {
+        $(this).attr('title', text);
+        $('span', this).text(text);
+    });
+}
+
 const $exeExport = window.$exeExport = {
 
     isTogglingBox: false,
@@ -10,6 +35,7 @@ const $exeExport = window.$exeExport = {
     init: function () {
         try {
             this.addBoxToggleEvent();
+            this.translateNavButtons();
         } catch (err) {
             console.error('Error: Failed to initialize box toggle events');
         }
@@ -337,7 +363,15 @@ const $exeExport = window.$exeExport = {
      * Add functionality to the boxes toggle button
      */
     addBoxToggleEvent: function () {
-        
+        // Apply i18n text to toggle buttons (translations from common_i18n.js)
+        var toggleText = (typeof $exe_i18n !== 'undefined' && $exe_i18n.toggleContent)
+            ? $exe_i18n.toggleContent
+            : 'Toggle content';
+        $('article.box .box-head .box-toggle').each(function() {
+            $(this).attr('title', toggleText);
+            $('span', this).text(toggleText);
+        });
+
         $('article.box .box-head .box-toggle').on('click', function(){
             if ($exeExport.isTogglingBox) return;
             $exeExport.isTogglingBox = true;
@@ -359,7 +393,18 @@ const $exeExport = window.$exeExport = {
             if (t.hasClass('box-toggle')) return false;
             $('.box-toggle', this).trigger('click');
         });
-        
+
+    },
+
+    /**
+     * Translate navigation buttons using data-i18n attributes
+     * Applies translations from $exe_i18n (loaded from common_i18n.js)
+     */
+    translateNavButtons: function () {
+        if (typeof $exe_i18n === 'undefined') return;
+        translateI18nElement('previous', 'Previous');
+        translateI18nElement('next', 'Next');
+        translateI18nElement('menu', 'Menu');
     },
 
     /**
@@ -462,7 +507,7 @@ $exeExport.searchBar = {
                 <p>
                     <label for="exe-client-search-text" class="sr-av">${$exe_i18n.search}</label>
                     <input id="exe-client-search-text" type="text" placeholder="${$exe_i18n.search}">
-                    <input id="exe-client-search-submit" type="submit" value="Búsqueda">
+                    <input id="exe-client-search-submit" type="submit" value="${$exe_i18n.search || 'Search'}">
                     <a id="exe-client-search-reset" href="#main" title="${$exe_i18n.hide}"><span>${$exe_i18n.hide}</span></a>
                 </p>
             </form>
@@ -577,13 +622,14 @@ $exeExport.searchBar = {
             if (boxtitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
+                var blockLabel = (typeof $exe_i18n !== 'undefined' && $exe_i18n.block) ? $exe_i18n.block : 'block';
                 if (fullLink) {
                     if (this.deepLinking) lnk += '#' + x;
                     res += '<li><a href="' + lnk+ '">' + nodeTitle + '</a>';
-                    if (boxCounter > 1) res += '<span> (bloque ' + boxOrder + ')</span></li>';
+                    if (boxCounter > 1) res += '<span> (' + blockLabel + ' ' + boxOrder + ')</span></li>';
                 }
                 else {
-                    if (boxCounter > 1) res += ', <a href="' + lnk +'#' + x + '">bloque ' + boxOrder + '</a>';
+                    if (boxCounter > 1) res += ', <a href="' + lnk +'#' + x + '">' + blockLabel + ' ' + boxOrder + '</a>';
                 }
             }
         }

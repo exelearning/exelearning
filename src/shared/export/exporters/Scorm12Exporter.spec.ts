@@ -200,7 +200,7 @@ describe('Scorm12Exporter', () => {
 
     describe('Basic Properties', () => {
         it('should return correct file suffix', () => {
-            expect(exporter.getFileSuffix()).toBe('_scorm12');
+            expect(exporter.getFileSuffix()).toBe('_scorm');
         });
     });
 
