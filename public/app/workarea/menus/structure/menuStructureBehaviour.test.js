@@ -132,7 +132,6 @@ describe('MenuStructureBehaviour', () => {
             <div id="main">
                 <div id="menu_nav">
                     <div id="nav_list">
-                        <!-- Node 1 (Has Context Menu) -->
                         <div class="nav-element toggle-on" nav-id="node-1" page-id="page-1" is-parent="true">
                             <span class="exe-icon">keyboard_arrow_down</span>
                             
@@ -154,10 +153,10 @@ describe('MenuStructureBehaviour', () => {
                                     <li><button class="dropdown-item page-settings" data-menunavid="node-1">Properties</button></li>
                                     <li><button class="dropdown-item action_import_idevices" data-nav-id="node-1">Import</button></li>
                                 </ul>
+
+                                <!-- Standalone Add Button (Inside textElement) -->
+                                <button class="node-add-button" data-parentnavid="node-1"></button>
                             </div>
-                            
-                            <!-- Standalone Add Button (Still exists) -->
-                            <button class="node-add-button" data-parentnavid="node-1"></button>
                         </div>
 
                         <!-- Root Node -->
@@ -165,8 +164,8 @@ describe('MenuStructureBehaviour', () => {
                             <span class="exe-icon">keyboard_arrow_down</span>
                             <div class="nav-element-text dropdown">
                                 <span class="node-text-span">Root</span>
+                                <button class="node-add-button" data-parentnavid="root"></button>
                             </div>
-                            <button class="node-add-button" data-parentnavid="root"></button>
                         </div>
                     </div>
                     <div id="nav_actions">

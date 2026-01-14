@@ -347,27 +347,31 @@ export default class MenuStructureBehaviour {
      * Add click event for main "New page" button - always creates at root level
      */
     addEventNavNewNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_add')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_add');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // Always create at root level (pass null explicitly)
                 this.showModalNewNode(null);
             });
+        }
     }
 
     /**
      *
      */
     addEventNavPropertiesNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_properties')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_properties'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.showModalPropertiesNode();
                 }
             });
+        }
     }
 
     /**
@@ -375,23 +379,24 @@ export default class MenuStructureBehaviour {
      * Uses Yjs Awareness to check for other users on the page
      */
     addEventNavRemoveNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_delete')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_delete');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.showModalRemoveNode();
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavCloneNodeOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_clone')
-            .addEventListener('click', async (e) => {
+        const btn = this.menuNav.querySelector('.button_nav_action.action_clone');
+        if (btn) {
+            btn.addEventListener('click', async (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     await this.structureEngine.cloneNodeAndReload(
@@ -400,6 +405,7 @@ export default class MenuStructureBehaviour {
                     this.showModalRenameNode();
                 }
             });
+        }
     }
 
     /**
@@ -511,18 +517,24 @@ export default class MenuStructureBehaviour {
      */
     addEventNavImportIdevicesOnclick() {
         this.createIdevicesUploadInput();
-        this.menuNav
-            .querySelector('.button_nav_action.action_import_idevices')
-            .addEventListener('click', async (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_import_idevices'
+        );
+        if (btn) {
+            btn.addEventListener('click', async (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // If main button clicked, use selected node
                 if (this.nodeSelected) {
-                    this.importTargetNodeId = this.nodeSelected.getAttribute('nav-id');
-                    this.menuNav
-                        .querySelector('input.local-ode-file-upload-input')
-                        .click();
+                    this.importTargetNodeId = this.nodeSelected.getAttribute(
+                        'nav-id'
+                    );
+                    const input = this.menuNav.querySelector(
+                        'input.local-ode-file-upload-input'
+                    );
+                    if (input) input.click();
                 }
             });
+        }
     }
 
     /**
@@ -539,21 +551,23 @@ export default class MenuStructureBehaviour {
      *
      */
     addEventNavCheckOdePageBrokenLinksOnclick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_check_broken_links')
-            .addEventListener('click', (e) => {
+        // Safe check in case element is missing
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_check_broken_links'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
                         '#main .toggle-on .selected'
                     );
+                    if (!selectedNav) return; // robustness
                     let pageId = selectedNav.getAttribute('page-id');
                     this.getOdePageBrokenLinksEvent(pageId).then((response) => {
                         if (!response.responseMessage) {
                             // Show eXe OdeBrokenList modal
-                            eXeLearning.app.modals.odebrokenlinks.show(
-                                response
-                            );
+                            eXeLearning.app.modals.odebrokenlinks.show(response);
                         } else {
                             // Open eXe alert modal
                             eXeLearning.app.modals.alert.show({
@@ -564,15 +578,18 @@ export default class MenuStructureBehaviour {
                     });
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovPrevOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_prev')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_prev'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodePrev(
@@ -580,15 +597,18 @@ export default class MenuStructureBehaviour {
                     );
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovNextOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_next')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_next'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeNext(
@@ -596,15 +616,18 @@ export default class MenuStructureBehaviour {
                     );
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovUpOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_up')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_up'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeUp(
@@ -612,15 +635,18 @@ export default class MenuStructureBehaviour {
                     );
                 }
             });
+        }
     }
 
     /**
      *
      */
     addEventNavMovDownOnClick() {
-        this.menuNav
-            .querySelector('.button_nav_action.action_move_down')
-            .addEventListener('click', (e) => {
+        const btn = this.menuNav.querySelector(
+            '.button_nav_action.action_move_down'
+        );
+        if (btn) {
+            btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     this.structureEngine.moveNodeDown(
@@ -628,6 +654,7 @@ export default class MenuStructureBehaviour {
                     );
                 }
             });
+        }
     }
 
     /*******************************************************************************
