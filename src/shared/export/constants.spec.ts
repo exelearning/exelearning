@@ -62,7 +62,7 @@ describe('Constants', () => {
             const scormInfo = EXPORT_FORMAT_INFO[ExportFormat.SCORM_12];
             expect(scormInfo.name).toBe('SCORM 1.2');
             expect(scormInfo.extension).toBe('.zip');
-            expect(scormInfo.suffix).toBe('_scorm12');
+            expect(scormInfo.suffix).toBe('_scorm');
         });
 
         it('should have correct EPUB3 format info', () => {
