@@ -84,6 +84,34 @@ describe('Themes Routes', () => {
             expect(typeof theme.icons).toBe('object');
         });
 
+        it('should return icons with proper ThemeIcon structure (id, title, type, value)', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+
+            const body = await res.json();
+
+            // Find a theme with icons
+            const themeWithIcons = body.themes.find(
+                (t: { icons?: Record<string, unknown> }) => Object.keys(t.icons || {}).length > 0,
+            );
+
+            if (themeWithIcons) {
+                const firstIconKey = Object.keys(themeWithIcons.icons)[0];
+                const icon = themeWithIcons.icons[firstIconKey];
+
+                // Verify ThemeIcon structure - this is critical for the frontend
+                expect(icon).toHaveProperty('id');
+                expect(icon).toHaveProperty('title');
+                expect(icon).toHaveProperty('type');
+                expect(icon).toHaveProperty('value');
+                expect(typeof icon.id).toBe('string');
+                expect(typeof icon.title).toBe('string');
+                expect(typeof icon.type).toBe('string');
+                expect(typeof icon.value).toBe('string');
+                expect(icon.value).toMatch(/\/icons\//);
+                expect(icon.type).toBe('img');
+            }
+        });
+
         it('should have type as base or site only', async () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 

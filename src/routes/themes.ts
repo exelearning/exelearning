@@ -73,6 +73,16 @@ const getAppVersion = (): string => {
 };
 
 /**
+ * Theme icon structure expected by the frontend
+ */
+interface ThemeIcon {
+    id: string;
+    title: string;
+    type: string;
+    value: string;
+}
+
+/**
  * Theme configuration interface
  */
 interface ThemeConfig {
@@ -93,7 +103,7 @@ interface ThemeConfig {
     downloadable: string;
     cssFiles: string[];
     js: string[];
-    icons: Record<string, string>;
+    icons: Record<string, ThemeIcon>;
     valid: boolean;
     isDefault?: boolean;
 }
@@ -119,8 +129,8 @@ function scanThemeFiles(themePath: string, extension: string): string[] {
 /**
  * Scan theme directory for icon files
  */
-function scanThemeIcons(themePath: string, themeUrl: string): Record<string, string> {
-    const icons: Record<string, string> = {};
+function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
+    const icons: Record<string, ThemeIcon> = {};
     const iconsPath = path.join(themePath, 'icons');
 
     if (!deps.fs.existsSync(iconsPath)) {
@@ -130,8 +140,13 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, str
     const entries = deps.fs.readdirSync(iconsPath, { withFileTypes: true });
     for (const entry of entries) {
         if (entry.isFile() && (entry.name.endsWith('.png') || entry.name.endsWith('.svg'))) {
-            const iconName = entry.name.replace(/\.(png|svg)$/, '');
-            icons[iconName] = `${themeUrl}/icons/${entry.name}`;
+            const iconId = entry.name.replace(/\.(png|svg)$/, '');
+            icons[iconId] = {
+                id: iconId,
+                title: iconId,
+                type: 'img',
+                value: `${themeUrl}/icons/${entry.name}`,
+            };
         }
     }
     return icons;

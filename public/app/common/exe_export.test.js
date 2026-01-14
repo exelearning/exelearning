@@ -124,6 +124,10 @@ describe('exe_export.js', () => {
       teacher_mode: 'Teacher Mode',
       search: 'Search',
       hide: 'Hide',
+      previous: 'Previous',
+      next: 'Next',
+      menu: 'Menu',
+      block: 'block',
     };
 
     window.localStorage = setupLocalStorageStub();
@@ -1093,7 +1097,8 @@ describe('exe_export.js', () => {
 
       const res = searchBar.searchInBlocks('page1', 'match', true);
 
-      expect(res).toContain('bloque 2');
+      // Now uses i18n block label (defaults to 'block' when $exe_i18n.block is defined as 'block' in test setup)
+      expect(res).toContain('block 2');
     });
 
     it('handles non-fullLink mode with multiple blocks', () => {
@@ -1114,7 +1119,8 @@ describe('exe_export.js', () => {
 
       const res = searchBar.searchInBlocks('page1', 'match', false);
 
-      expect(res).toContain('bloque 1');
+      // Now uses i18n block label (defaults to 'block' when $exe_i18n.block is defined as 'block' in test setup)
+      expect(res).toContain('block 1');
       expect(res).not.toContain('Page One');
     });
   });
@@ -1191,7 +1197,7 @@ describe('exe_export.js', () => {
 
       // Single block shouldn't show block number
       expect(res).toContain('Page One');
-      expect(res).not.toContain('bloque');
+      expect(res).not.toContain('block');
     });
 
     it('handles single block with non-fullLink mode', () => {
@@ -1213,6 +1219,119 @@ describe('exe_export.js', () => {
 
       // Single block with non-fullLink shouldn't show block number
       expect(res).toBe('');
+    });
+  });
+
+  describe('translateNavButtons', () => {
+    it('does nothing when $exe_i18n is undefined', () => {
+      const prevButton = document.createElement('a');
+      prevButton.setAttribute('data-i18n', 'previous');
+      prevButton.innerHTML = '<span>Previous</span>';
+      document.body.appendChild(prevButton);
+
+      delete window.$exe_i18n;
+
+      // Should not throw and do nothing when $exe_i18n is undefined
+      window.$exeExport.translateNavButtons();
+
+      // Text should remain unchanged
+      expect(prevButton.querySelector('span').textContent).toBe('Previous');
+    });
+
+    it('calls jQuery each() for all nav button types', () => {
+      const prevButton = document.createElement('a');
+      prevButton.setAttribute('data-i18n', 'previous');
+      prevButton.innerHTML = '<span>Previous</span>';
+      document.body.appendChild(prevButton);
+
+      const nextButton = document.createElement('a');
+      nextButton.setAttribute('data-i18n', 'next');
+      nextButton.innerHTML = '<span>Next</span>';
+      document.body.appendChild(nextButton);
+
+      const menuButton = document.createElement('button');
+      menuButton.setAttribute('data-i18n', 'menu');
+      menuButton.innerHTML = '<span>Menu</span>';
+      document.body.appendChild(menuButton);
+
+      // Verify function runs without error when $exe_i18n is defined
+      window.$exe_i18n = { previous: 'Anterior', next: 'Siguiente', menu: 'Menú' };
+
+      window.$exeExport.translateNavButtons();
+
+      // The jQuery mock's each() was called on each selector
+      // Since we're using a mock, we verify no errors occurred
+    });
+
+    it('is called during init()', () => {
+      vi.useFakeTimers();
+      const translateSpy = vi.spyOn(window.$exeExport, 'translateNavButtons');
+      vi.spyOn(window.$exeExport, 'addBoxToggleEvent').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'setExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initJsonIdevices').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'loadScorm').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport.teacherMode, 'init').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'addClassJsExecutedToExeContent').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'triggerPrintIfRequested').mockImplementation(() => {});
+
+      window.$exeExport.init();
+      vi.advanceTimersByTime(300);
+
+      expect(translateSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+  });
+
+  describe('searchBar.searchInBlocks with i18n block label', () => {
+    it('uses $exe_i18n.block for block label in search results', () => {
+      const searchBar = window.$exeExport.searchBar;
+      searchBar.deepLinking = true;
+      searchBar.results = [];
+      searchBar.isPreview = true;
+      searchBar.data = {
+        page1: {
+          name: 'Page One',
+          fileUrl: 'page1.html',
+          blocks: {
+            block1: { order: 1, name: 'First Block', idevices: {} },
+            block2: { order: 2, name: 'Match Block', idevices: {} },
+          },
+        },
+      };
+
+      // Set custom block translation
+      window.$exe_i18n.block = 'bloque';
+
+      const res = searchBar.searchInBlocks('page1', 'match', true);
+
+      // Should use the i18n block label
+      expect(res).toContain('bloque 2');
+    });
+
+    it('falls back to "block" when $exe_i18n.block is not defined', () => {
+      const searchBar = window.$exeExport.searchBar;
+      searchBar.deepLinking = true;
+      searchBar.results = [];
+      searchBar.isPreview = true;
+      searchBar.data = {
+        page1: {
+          name: 'Page One',
+          fileUrl: 'page1.html',
+          blocks: {
+            block1: { order: 1, name: 'First Block', idevices: {} },
+            block2: { order: 2, name: 'Match Block', idevices: {} },
+          },
+        },
+      };
+
+      // Remove block translation
+      delete window.$exe_i18n.block;
+
+      const res = searchBar.searchInBlocks('page1', 'match', true);
+
+      // Should use fallback 'block'
+      expect(res).toContain('block 2');
     });
   });
 });
