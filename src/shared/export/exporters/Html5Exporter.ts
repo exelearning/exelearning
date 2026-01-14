@@ -78,11 +78,7 @@ export class Html5Exporter extends BaseExporter {
                 }
 
                 // Detect favicon in theme
-                if (themeFilesMap.has('img/favicon.ico')) {
-                    faviconInfo = { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
-                } else if (themeFilesMap.has('img/favicon.png')) {
-                    faviconInfo = { path: 'theme/img/favicon.png', type: 'image/png' };
-                }
+                faviconInfo = this.detectFavicon(themeFilesMap);
             } catch (e) {
                 // Will use fallback theme later
                 console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
@@ -429,6 +425,21 @@ export class Html5Exporter extends BaseExporter {
     }
 
     /**
+     * Detect theme-specific favicon from theme files map
+     * @param themeFilesMap - Map of theme files
+     * @returns Favicon info or null if not found
+     */
+    protected detectFavicon(themeFilesMap: Map<string, Uint8Array>): { path: string; type: string } | null {
+        if (themeFilesMap.has('img/favicon.ico')) {
+            return { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
+        }
+        if (themeFilesMap.has('img/favicon.png')) {
+            return { path: 'theme/img/favicon.png', type: 'image/png' };
+        }
+        return null;
+    }
+
+    /**
      * Get page link for HTML5 export
      */
     getPageLinkForHtml5(page: ExportPage, allPages: ExportPage[], basePath: string): string {
@@ -512,11 +523,7 @@ export class Html5Exporter extends BaseExporter {
                 }
 
                 // Detect favicon in theme
-                if (themeFilesMap.has('img/favicon.ico')) {
-                    faviconInfo = { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
-                } else if (themeFilesMap.has('img/favicon.png')) {
-                    faviconInfo = { path: 'theme/img/favicon.png', type: 'image/png' };
-                }
+                faviconInfo = this.detectFavicon(themeFilesMap);
             } catch (e) {
                 console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
                 themeRootFiles.push('style.css', 'style.js');

@@ -222,6 +222,13 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
         await fs.writeFile(path.join(exportDir, 'common_i18n.js'), '// i18n placeholder');
         await fs.writeFile(path.join(exportDir, 'common.js'), '// common.js placeholder');
         await fs.writeFile(path.join(exportDir, '_style_js.js'), '// Style JS placeholder');
+
+        // Favicon
+        const faviconSrc = path.join(getCwd(), 'public', 'favicon.ico');
+        const faviconDest = path.join(exportDir, 'favicon.ico');
+        if (await fs.pathExists(faviconSrc)) {
+            await fs.copy(faviconSrc, faviconDest);
+        }
     }
 
     /**

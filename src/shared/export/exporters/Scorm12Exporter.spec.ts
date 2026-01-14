@@ -385,6 +385,22 @@ describe('Scorm12Exporter', () => {
     });
 
     describe('Error Handling', () => {
+        it('should use theme-specific favicon when available', async () => {
+            // Mock theme having a favicon
+            resources.fetchTheme = async (name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('css'));
+                files.set('img/favicon.ico', Buffer.from('fake-ico'));
+                return files;
+            };
+
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
+        });
+
         it('should handle SCORM file fetch failure', async () => {
             resources.fetchScormFiles = async () => {
                 throw new Error('SCORM files not found');

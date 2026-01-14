@@ -204,8 +204,7 @@ ${madeWithExeHtml}
 <title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
-        const faviconHref = `${basePath}${faviconPath}`;
-        head += `\n<link rel="icon" type="${this.escapeAttr(faviconType)}" href="${this.escapeAttr(faviconHref)}">`;
+        head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
 
         // Description meta if provided
         if (description) {
@@ -780,6 +779,18 @@ ${userFooterHtml}</div></footer>`;
     }
 
     /**
+     * Render favicon link tag
+     * @param basePath - Base path for links
+     * @param faviconPath - Path to favicon file
+     * @param faviconType - MIME type of favicon
+     * @returns Link tag HTML
+     */
+    renderFavicon(basePath: string, faviconPath: string = 'libs/favicon.ico', faviconType: string = 'image/x-icon'): string {
+        const faviconHref = `${basePath}${faviconPath}`;
+        return `<link rel="icon" type="${this.escapeAttr(faviconType)}" href="${this.escapeAttr(faviconHref)}">`;
+    }
+
+    /**
      * Render a single-page HTML document with all pages
      * @param allPages - All pages in the project
      * @param options - Rendering options
@@ -795,6 +806,8 @@ ${userFooterHtml}</div></footer>`;
             usedIdevices?: string[];
             author?: string;
             license?: string;
+            faviconPath?: string;
+            faviconType?: string;
         } = {},
     ): string {
         const {
@@ -805,6 +818,8 @@ ${userFooterHtml}</div></footer>`;
             usedIdevices = [],
             author = '',
             license = 'CC-BY-SA',
+            faviconPath = 'libs/favicon.ico',
+            faviconType = 'image/x-icon',
         } = options;
 
         let contentHtml = '';
@@ -853,6 +868,7 @@ ${this.renderPageContent(page, '', projectTitle)}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
+${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 </head>
 <body class="exe-export exe-single-page" lang="${language}">
