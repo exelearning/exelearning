@@ -47,9 +47,9 @@ export async function waitForYjsSync(page: Page, timeout: number = 30000): Promi
  * - treeitem[aria-label="NodeTitle"] > button > generic
  */
 export async function waitForNodeInNav(page: Page, nodeTitle: string, timeout: number = 60000): Promise<void> {
-    // The tree uses role="treeitem" with buttons containing the node title
+    // The tree uses role="treeitem" containing .nav-element-text with the title
     // Use polling to catch rapid UI updates
-    await page.waitForSelector(`[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`, {
+    await page.waitForSelector(`[role="tree"] [role="treeitem"] .nav-element-text:has-text("${nodeTitle}")`, {
         state: 'visible',
         timeout,
     });
@@ -60,8 +60,8 @@ export async function waitForNodeInNav(page: Page, nodeTitle: string, timeout: n
  * Used to verify deletion sync between clients
  */
 export async function waitForNodeNotInNav(page: Page, nodeTitle: string, timeout: number = 60000): Promise<void> {
-    // The tree uses role="treeitem" with buttons containing the node title
-    await page.waitForSelector(`[role="tree"] [role="treeitem"] button:has-text("${nodeTitle}")`, {
+    // The tree uses role="treeitem" containing .nav-element-text with the title
+    await page.waitForSelector(`[role="tree"] [role="treeitem"] .nav-element-text:has-text("${nodeTitle}")`, {
         state: 'hidden',
         timeout,
     });
