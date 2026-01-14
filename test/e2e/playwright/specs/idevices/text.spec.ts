@@ -1764,11 +1764,9 @@ test.describe('Text iDevice', () => {
 
             // 8. Click the Browse button in the Source field to open Media Library
             // The browse button is inside a urlinput component in TinyMCE's dialog
-            const browseBtn = page.locator(
-                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
-            );
-            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
-            await browseBtn.first().click();
+            const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+            await expect(browseBtn).toBeVisible({ timeout: 5000 });
+            await browseBtn.click();
 
             // 9. Wait for Media Library modal
             await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
@@ -1909,11 +1907,9 @@ test.describe('Text iDevice', () => {
             await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 
             // 8. Click the Browse button to open Media Library
-            const browseBtn = page.locator(
-                '.tox-dialog .tox-browse-url, .tox-dialog button[title*="Browse" i], .tox-dialog button[aria-label*="Browse" i]',
-            );
-            await expect(browseBtn.first()).toBeVisible({ timeout: 5000 });
-            await browseBtn.first().click();
+            const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+            await expect(browseBtn).toBeVisible({ timeout: 5000 });
+            await browseBtn.click();
 
             // 9. Wait for Media Library modal
             await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
@@ -1982,6 +1978,227 @@ test.describe('Text iDevice', () => {
             // 15. Verify image loads (not broken)
             const naturalWidth = await previewImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
+        });
+    });
+
+    test.describe('Image Optimizer', () => {
+        test('should replace existing asset instead of creating a new one', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Image Optimizer Replace Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+            await waitForLoadingScreenHidden(page);
+
+            await page.waitForFunction(
+                () => {
+                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await addTextIdeviceFromPanel(page);
+
+            // Check if already in edit mode (TinyMCE visible) or need to click edit button
+            const tinyMceMenubar = page.locator('.tox-menubar');
+            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
+
+            if (!isTinyMceVisible) {
+                // Enter edit mode
+                const block = page.locator('#node-content article .idevice_node.text').last();
+                await block.waitFor({ timeout: 10000 });
+                const editBtn = block.locator('.btn-edit-idevice');
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.waitFor({ timeout: 10000 });
+                    await editBtn.click();
+                }
+            }
+
+            // Wait for TinyMCE to load
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            const openImageDialog = async () => {
+                // Use toolbar button instead of execCommand for reliable image dialog
+                const imageBtn = page
+                    .locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]')
+                    .first();
+                await expect(imageBtn).toBeVisible({ timeout: 10000 });
+                await imageBtn.click();
+                await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+            };
+
+            await openImageDialog();
+
+            const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+            await expect(browseBtn).toBeVisible({ timeout: 5000 });
+            await browseBtn.click();
+
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+
+            const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+            await fileInput.setInputFiles('test/fixtures/sample-2.jpg');
+
+            const imageItem = page.locator('#modalFileManager .media-library-item').first();
+            await expect(imageItem).toBeVisible({ timeout: 10000 });
+            await imageItem.click();
+
+            // Wait for sidebar content to show (confirms selection was processed)
+            const sidebarContent = page.locator('#modalFileManager .media-library-sidebar-content');
+            await expect(sidebarContent).toBeVisible({ timeout: 5000 });
+
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            await page.waitForFunction(() => {
+                const modal = document.querySelector('#modalFileManager');
+                return !modal || (!modal.classList.contains('show') && modal.getAttribute('data-open') !== 'true');
+            });
+            // Wait for source input to have a value (TinyMCE uses tox-textfield class for inputs)
+            await page.waitForFunction(
+                () => {
+                    const dialog = document.querySelector('.tox-dialog');
+                    if (!dialog) return false;
+                    // Find the source input - it's a tox-textfield inside the first form group
+                    const srcInput = dialog.querySelector(
+                        '.tox-form__group input.tox-textfield',
+                    ) as HTMLInputElement | null;
+                    return srcInput?.value && srcInput.value.length > 0;
+                },
+                { timeout: 10000 },
+            );
+
+            const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
+            await tinyMceSaveBtn.click();
+            await page.waitForSelector('.tox-dialog', { state: 'hidden', timeout: 10000 });
+
+            // Wait for image to appear in the editor
+            await page.waitForFunction(
+                () => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    const img = editor?.getBody()?.querySelector('img') as HTMLImageElement | null;
+                    return !!img?.getAttribute('src');
+                },
+                { timeout: 15000 },
+            );
+
+            // Give the editor a moment to fully render the image
+            await page.waitForTimeout(500);
+
+            const imageDimensions = await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                const img = editor?.getBody()?.querySelector('img') as HTMLImageElement | null;
+                if (!img) return null;
+                const widthAttr = parseInt(img.getAttribute('width') || '0', 10);
+                const heightAttr = parseInt(img.getAttribute('height') || '0', 10);
+                return {
+                    width: img.naturalWidth || img.width || widthAttr || 400,
+                    height: img.naturalHeight || img.height || heightAttr || 300,
+                };
+            });
+
+            const assetStateBefore = await page.evaluate(() => {
+                const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                const editor = (window as any).tinymce?.activeEditor;
+                const img = editor?.getBody()?.querySelector('img');
+                if (!assetManager || !img) return null;
+
+                const src = img.getAttribute('src') || '';
+                const assetId = img.getAttribute('data-asset-id') || assetManager.reverseBlobCache?.get(src) || null;
+                const meta = assetId ? assetManager.getAssetMetadata?.(assetId) : null;
+                const count = assetManager.getAllAssetsMetadata?.().length || 0;
+
+                return {
+                    assetId,
+                    src,
+                    count,
+                    hash: meta?.hash || null,
+                    size: meta?.size || null,
+                };
+            });
+
+            if (!assetStateBefore?.assetId || !assetStateBefore?.hash) {
+                throw new Error('Asset metadata not available for inserted image');
+            }
+
+            // Use more specific selector - the main text iframe, not the feedback one
+            await page.frameLocator('#textTextarea_ifr').locator('img').click();
+
+            await openImageDialog();
+
+            const optimizerBtn = page.locator('#openOptimizer');
+            await expect(optimizerBtn).toBeVisible({ timeout: 10000 });
+            await optimizerBtn.click();
+
+            const optimizerFrameHandle = await page.locator('iframe[src*="image-compressor"]').elementHandle();
+            const optimizerFrame = await optimizerFrameHandle?.contentFrame();
+            if (!optimizerFrame) {
+                throw new Error('Image optimizer frame not available');
+            }
+
+            await optimizerFrame.locator('#inputSize').waitFor({ timeout: 10000 });
+
+            const targetSize = Math.max(50, Math.floor((imageDimensions?.width || 400) / 2));
+            await optimizerFrame.locator('#inputSize').fill(String(targetSize));
+            await optimizerFrame.locator('#inputSize').dispatchEvent('change');
+            const qualitySelect = optimizerFrame.locator('#inputQuality');
+            if ((await qualitySelect.count()) > 0) {
+                await qualitySelect.selectOption('0.5', { force: true });
+            }
+
+            await optimizerFrame.waitForFunction(() => {
+                const img = document.getElementById('imageEditorOutputImg') as HTMLImageElement | null;
+                return img?.getAttribute('src') && img.naturalWidth > 0;
+            });
+
+            // Click Finish via jQuery to ensure handler fires in iframe context
+            await optimizerFrame.evaluate(() => {
+                const jQuery = (window as any).jQuery;
+                if (jQuery) {
+                    jQuery('#imageEditorSaveImg').trigger('click');
+                } else {
+                    document.getElementById('imageEditorSaveImg')?.click();
+                }
+            });
+
+            // Wait for asset processing, then close dialogs as fallback
+            await page.waitForTimeout(2000);
+            await page.evaluate(() => {
+                const wm = (window as any).tinymce?.activeEditor?.windowManager;
+                if (wm) {
+                    try {
+                        wm.close();
+                        setTimeout(() => wm?.close(), 100);
+                    } catch (e) {}
+                }
+            });
+
+            await page.waitForSelector('.tox-dialog', { state: 'hidden', timeout: 15000 });
+
+            // Verify image is still visible in editor
+            await page.waitForFunction(
+                () => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    const img = editor?.getBody()?.querySelector('img') as HTMLImageElement | null;
+                    return !!img?.getAttribute('src');
+                },
+                { timeout: 10000 },
+            );
+
+            // Verify optimizer replaced the original asset (no duplicates created)
+            const assetCount = await page.evaluate(() => {
+                const assetManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (!assetManager) return -1;
+                const allAssets = assetManager.getAllAssetsMetadata?.() || [];
+                return allAssets.filter((a: any) => a.mime?.startsWith('image/')).length;
+            });
+
+            expect(assetCount).toBe(1);
         });
     });
 
