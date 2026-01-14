@@ -1216,6 +1216,433 @@ describe('App utility methods', () => {
       expect(app.shortcuts).toBeDefined();
     });
   });
+
+  describe('Service Worker Preview Methods', () => {
+    let mockController;
+    let mockRegistration;
+    let originalServiceWorker;
+    let originalIsSecureContext;
+
+    beforeEach(() => {
+      mockController = {
+        postMessage: vi.fn(),
+      };
+      mockRegistration = {
+        scope: 'http://localhost/',
+        active: mockController,
+        installing: null,
+        addEventListener: vi.fn(),
+      };
+      originalServiceWorker = navigator.serviceWorker;
+      originalIsSecureContext = window.isSecureContext;
+
+      // Mock secure context (required for SW registration)
+      Object.defineProperty(window, 'isSecureContext', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock navigator.serviceWorker
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: {
+          controller: mockController,
+          ready: Promise.resolve(mockRegistration),
+          register: vi.fn().mockResolvedValue(mockRegistration),
+          getRegistration: vi.fn().mockResolvedValue(null), // No existing registration by default
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        },
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      // Restore original serviceWorker
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: originalServiceWorker,
+        writable: true,
+        configurable: true,
+      });
+      // Restore isSecureContext
+      Object.defineProperty(window, 'isSecureContext', {
+        value: originalIsSecureContext,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    describe('registerPreviewServiceWorker', () => {
+      it('returns null when Service Workers not supported', async () => {
+        // Remove serviceWorker property entirely so 'serviceWorker' in navigator returns false
+        delete navigator.serviceWorker;
+
+        const result = await appInstance.registerPreviewServiceWorker();
+
+        expect(result).toBeNull();
+
+        // Restore for other tests
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: originalServiceWorker,
+          writable: true,
+          configurable: true,
+        });
+      });
+
+      it('checks for existing registration first (eXeViewer pattern)', async () => {
+        // Uses window.location.pathname to derive basePath (jsdom default is /)
+        const getRegSpy = navigator.serviceWorker.getRegistration;
+
+        appInstance.registerPreviewServiceWorker();
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(getRegSpy).toHaveBeenCalledWith('/');
+      });
+
+      it('registers new SW when no existing registration', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+        const registerSpy = navigator.serviceWorker.register;
+        // Mock active worker with already activated state
+        mockRegistration.active = { ...mockController, state: 'activated', postMessage: vi.fn() };
+        mockRegistration.installing = null;
+        mockRegistration.waiting = null;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Path derived from window.location.pathname (/ in jsdom)
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/' });
+      });
+
+      it('reuses existing registration if SW is already active', async () => {
+        // Simulate existing registration found with active SW
+        const existingReg = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should NOT call register since existing registration is available
+        expect(registerSpy).not.toHaveBeenCalled();
+        expect(appInstance._previewSwRegistration).toBe(existingReg);
+        expect(existingReg.update).toHaveBeenCalled();
+      });
+
+      it('handles registration failure', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+        const error = new Error('Registration failed');
+        navigator.serviceWorker.register = vi.fn().mockRejectedValue(error);
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await appInstance.registerPreviewServiceWorker();
+
+        expect(errorSpy).toHaveBeenCalledWith('[Preview SW] Registration failed:', error);
+      });
+
+      it('waits for SW activation before returning (eXeViewer pattern)', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        // Track if statechange listener was added
+        let stateChangeListenerAdded = false;
+        const mockInstallingSW = {
+          state: 'installing',
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'statechange') {
+              stateChangeListenerAdded = true;
+              // Immediately trigger activation to unblock the promise
+              mockInstallingSW.state = 'activated';
+              cb();
+            }
+          }),
+          removeEventListener: vi.fn(),
+        };
+
+        const testRegistration = {
+          ...mockRegistration,
+          installing: mockInstallingSW,
+          waiting: null,
+          active: { ...mockController, postMessage: vi.fn() },
+          addEventListener: vi.fn(),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(testRegistration);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Verify statechange listener was added for activation waiting
+        expect(stateChangeListenerAdded).toBe(true);
+        expect(mockInstallingSW.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
+      });
+
+      it('handles updatefound event with new worker installation', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        const mockNewWorker = {
+          state: 'installing',
+          addEventListener: vi.fn(),
+          postMessage: vi.fn(),
+        };
+
+        // Track if updatefound listener was added and immediately trigger it
+        let updateFoundListenerAdded = false;
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              updateFoundListenerAdded = true;
+              // Simulate updatefound event by setting installing and calling callback
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Verify updatefound listener was added
+        expect(updateFoundListenerAdded).toBe(true);
+        expect(regWithActive.addEventListener).toHaveBeenCalledWith('updatefound', expect.any(Function));
+
+        // Verify statechange listener was added to new worker
+        expect(mockNewWorker.addEventListener).toHaveBeenCalledWith('statechange', expect.any(Function));
+      });
+
+      it('handles new worker state change to installed', async () => {
+        // No existing registration
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(null);
+
+        const mockNewWorker = {
+          state: 'installed',
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'statechange') {
+              // Immediately trigger the callback to simulate state change
+              cb();
+            }
+          }),
+          postMessage: vi.fn(),
+        };
+
+        // Mock registration with active SW already
+        const regWithActive = {
+          ...mockRegistration,
+          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          installing: null,
+          waiting: null,
+          addEventListener: vi.fn((event, cb) => {
+            if (event === 'updatefound') {
+              // Simulate updatefound event
+              regWithActive.installing = mockNewWorker;
+              cb();
+            }
+          }),
+        };
+        navigator.serviceWorker.register = vi.fn().mockResolvedValue(regWithActive);
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should send SKIP_WAITING when new worker is installed
+        expect(mockNewWorker.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+      });
+    });
+
+    describe('getPreviewServiceWorker', () => {
+      it('returns controller when available', () => {
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockController);
+      });
+
+      it('returns null when serviceWorker is undefined', () => {
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: undefined,
+          writable: true,
+          configurable: true,
+        });
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+
+      it('returns null when controller is not available', () => {
+        navigator.serviceWorker.controller = null;
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('waitForPreviewServiceWorker', () => {
+      it('throws when Service Workers not supported', async () => {
+        // Remove serviceWorker property entirely
+        delete navigator.serviceWorker;
+
+        await expect(appInstance.waitForPreviewServiceWorker()).rejects.toThrow('Service Workers not supported');
+
+        // Restore for other tests
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: originalServiceWorker,
+          writable: true,
+          configurable: true,
+        });
+      });
+
+      it('returns immediately when controller is available', async () => {
+        const result = await appInstance.waitForPreviewServiceWorker();
+        expect(result).toBe(mockController);
+      });
+
+      it('waits for registration promise when no controller', async () => {
+        navigator.serviceWorker.controller = null;
+
+        // Set up a registration promise with active SW (controller not required)
+        const activeSW = { ...mockController, state: 'activated' };
+        mockRegistration.active = activeSW;
+        appInstance._previewSwRegistrationPromise = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(mockRegistration);
+          }, 10);
+        });
+
+        const result = await appInstance.waitForPreviewServiceWorker();
+        // Now returns the active SW from registration, not the controller
+        expect(result).toBe(activeSW);
+      });
+
+      it('throws on timeout when registration promise never resolves', async () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistrationPromise = new Promise(() => {}); // Never resolves
+
+        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration timeout');
+      });
+
+      it('throws when registration returns null', async () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistrationPromise = Promise.resolve(null); // Registration failed
+
+        await expect(appInstance.waitForPreviewServiceWorker(100)).rejects.toThrow('Service Worker registration failed');
+      });
+
+      it('returns active SW even when controller not set after registration', async () => {
+        navigator.serviceWorker.controller = null;
+        // Registration has an active SW
+        mockRegistration.active = { postMessage: vi.fn(), state: 'activated' };
+        appInstance._previewSwRegistrationPromise = Promise.resolve(mockRegistration);
+
+        // Now returns the active SW instead of throwing
+        const result = await appInstance.waitForPreviewServiceWorker(100);
+        expect(result).toBe(mockRegistration.active);
+      });
+    });
+
+    describe('sendContentToPreviewSW', () => {
+      it('throws when SW not available', async () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        await expect(appInstance.sendContentToPreviewSW({}, {})).rejects.toThrow('Preview Service Worker not available');
+      });
+
+      it('sends content to SW and waits for READY_VERIFIED', async () => {
+        const files = {
+          'index.html': new ArrayBuffer(10),
+          'style.css': 'body {}',
+        };
+        const options = { openExternalLinksInNewWindow: true };
+
+        // Simulate CONTENT_READY then READY_VERIFIED response (two-phase handshake)
+        let messageHandler;
+        navigator.serviceWorker.addEventListener = vi.fn((event, handler) => {
+          if (event === 'message') {
+            messageHandler = handler;
+            // First: simulate CONTENT_READY response
+            setTimeout(() => {
+              handler({ data: { type: 'CONTENT_READY', fileCount: 2 } });
+              // After CONTENT_READY, the code sends VERIFY_READY
+              // Then we respond with READY_VERIFIED
+              setTimeout(() => {
+                handler({ data: { type: 'READY_VERIFIED', ready: true, fileCount: 2 } });
+              }, 5);
+            }, 10);
+          }
+        });
+
+        const result = await appInstance.sendContentToPreviewSW(files, options);
+
+        expect(result.fileCount).toBe(2);
+        expect(mockController.postMessage).toHaveBeenCalledWith(
+          {
+            type: 'SET_CONTENT',
+            data: { files, options },
+          },
+          [files['index.html']], // ArrayBuffer should be in transferables
+        );
+        expect(navigator.serviceWorker.removeEventListener).toHaveBeenCalled();
+      });
+
+      it('times out after 10 seconds', async () => {
+        vi.useFakeTimers();
+        navigator.serviceWorker.addEventListener = vi.fn();
+
+        const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
+
+        vi.advanceTimersByTime(10001);
+
+        await expect(promise).rejects.toThrow('Timeout waiting for SW content ready');
+
+        vi.useRealTimers();
+      });
+    });
+
+    describe('updatePreviewSWFiles', () => {
+      it('throws when SW not available', async () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        await expect(appInstance.updatePreviewSWFiles({})).rejects.toThrow('Preview Service Worker not available');
+      });
+
+      it('sends UPDATE_FILES message with transferables', async () => {
+        const files = {
+          'page.html': new ArrayBuffer(5),
+          'deleted.html': null, // null means delete
+        };
+
+        await appInstance.updatePreviewSWFiles(files);
+
+        expect(mockController.postMessage).toHaveBeenCalledWith(
+          {
+            type: 'UPDATE_FILES',
+            data: { files },
+          },
+          [files['page.html']], // Only ArrayBuffers in transferables
+        );
+      });
+    });
+
+    describe('clearPreviewSWContent', () => {
+      it('sends CLEAR_CONTENT message when SW available', () => {
+        appInstance.clearPreviewSWContent();
+
+        expect(mockController.postMessage).toHaveBeenCalledWith({ type: 'CLEAR_CONTENT' });
+      });
+
+      it('does nothing when SW not available', () => {
+        vi.spyOn(appInstance, 'getPreviewServiceWorker').mockReturnValue(null);
+
+        appInstance.clearPreviewSWContent();
+
+        expect(mockController.postMessage).not.toHaveBeenCalled();
+      });
+    });
+  });
 });
 
 describe('Module-level event handlers', () => {

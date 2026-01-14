@@ -159,13 +159,20 @@ const app = new Elysia()
                         const content = fs.readFileSync(publicPath);
                         const ext = path.extname(publicPath).toLowerCase();
                         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600',
-                            },
-                        });
+
+                        // Build response headers
+                        const headers: Record<string, string> = {
+                            'Content-Type': contentType,
+                            'Content-Length': stats.size.toString(),
+                            'Cache-Control': 'public, max-age=3600',
+                        };
+
+                        // Special handling for preview-sw.js - no caching and correct scope
+                        if (pathname === '/preview-sw.js') {
+                            headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+                        }
+
+                        return new Response(content, { headers });
                     }
                 } catch {
                     // Fall through to let other handlers process
@@ -267,10 +274,16 @@ const app = new Elysia()
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+                // Special handling for preview-sw.js - needs no-cache for SW updates
+                const cacheControl =
+                    versionedMatch[1] === 'preview-sw.js'
+                        ? 'no-cache, no-store, must-revalidate'
+                        : 'public, max-age=31536000, immutable';
+
                 return new Response(content, {
                     headers: {
                         'Content-Type': contentType,
-                        'Cache-Control': 'public, max-age=31536000, immutable',
+                        'Cache-Control': cacheControl,
                     },
                 });
             }
@@ -383,6 +396,21 @@ const app = new Elysia()
 
         set.status = 404;
         return 'Not Found';
+    })
+    // Serve preview-sw.js with Vary: Accept-Encoding (Firefox rejects Vary: *)
+    .get('/preview-sw.js', () => {
+        const swPath = path.join(process.cwd(), 'public', 'preview-sw.js');
+        if (!fs.existsSync(swPath)) {
+            return new Response('Not Found', { status: 404 });
+        }
+        return new Response(fs.readFileSync(swPath), {
+            headers: {
+                'Content-Type': 'application/javascript; charset=utf-8',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Vary': 'Accept-Encoding',
+                'Access-Control-Allow-Origin': '*',
+            },
+        });
     })
     // Static files from public directory (served at root, BASE_PATH handled in onRequest)
     .use(

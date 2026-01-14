@@ -371,7 +371,7 @@ test.describe('Rubric iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the rubric table is displayed
             const rubricTable = iframe.locator('.rubric .exe-table, .idevice_node.rubric .exe-table');
