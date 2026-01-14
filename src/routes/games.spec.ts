@@ -758,9 +758,10 @@ describe('Games Routes', () => {
                 getSession: () => undefined, // No session in memory
                 getDb: () => mockDb as never,
                 findProjectByUuid: async () => ({ id: 123, uuid: 'db-session-id' }) as never,
-                findSnapshotByProjectId: async () => ({
-                    snapshot_data: Buffer.from(snapshotData),
-                }) as never,
+                findSnapshotByProjectId: async () =>
+                    ({
+                        snapshot_data: Buffer.from(snapshotData),
+                    }) as never,
             });
 
             const response = await app.handle(new Request('http://localhost/api/games/db-session-id/idevices'));
@@ -785,9 +786,7 @@ describe('Games Routes', () => {
                 findSnapshotByProjectId: async () => undefined,
             });
 
-            const response = await app.handle(
-                new Request('http://localhost/api/games/unknown-project-id/idevices'),
-            );
+            const response = await app.handle(new Request('http://localhost/api/games/unknown-project-id/idevices'));
 
             expect(response.status).toBe(200);
             const data = await response.json();
