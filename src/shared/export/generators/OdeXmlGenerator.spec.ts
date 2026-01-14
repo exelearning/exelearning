@@ -58,6 +58,7 @@ describe('OdeXmlGenerator', () => {
         it('should include odeProperties section with metadata', () => {
             const meta: ExportMetadata = {
                 title: 'My Title',
+                subtitle: 'My Subtitle',
                 author: 'John Doe',
                 language: 'es',
                 description: 'A description',
@@ -71,6 +72,8 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('<odeProperties>');
             expect(xml).toContain('<key>pp_title</key>');
             expect(xml).toContain('<value>My Title</value>');
+            expect(xml).toContain('<key>pp_subtitle</key>');
+            expect(xml).toContain('<value>My Subtitle</value>');
             expect(xml).toContain('<key>pp_author</key>');
             expect(xml).toContain('<value>John Doe</value>');
             expect(xml).toContain('<key>pp_lang</key>');
