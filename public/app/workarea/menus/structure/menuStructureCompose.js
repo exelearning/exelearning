@@ -395,8 +395,10 @@ export default class MenuStructureCompose {
      * @returns {Element}
      */
     makeNodeTextElement(node) {
-        let textElement = document.createElement('button');
-        textElement.classList.add('nav-element-text');
+        let textElement = document.createElement('div');
+        textElement.classList.add('nav-element-text', 'dropdown');
+        textElement.setAttribute('role', 'button');
+        textElement.setAttribute('tabindex', '0');
         textElement.setAttribute('title', node.pageName);
         let pageIcon = document.createElement('i');
         pageIcon.setAttribute('aria-hidden', 'true');
@@ -445,13 +447,13 @@ export default class MenuStructureCompose {
         addButton.append(addTitleElement);
         textElement.append(addButton);
 
-        // Add gear button only for non-root nodes
+        // Add context menu button (three-dots) for non-root nodes
         if (node.id !== 'root') {
+            // 1. Create the Icon (Vertical Dots)
             let menuIcon = document.createElement('i');
-            menuIcon.classList.add('small-icon', 'settings-icon-green');
-            let titleElement = document.createElement('span');
-            titleElement.classList.add('visually-hidden');
-            titleElement.textContent = _('Page properties');
+            menuIcon.classList.add('small-icon', 'dots-menu-vertical-icon-green');
+            
+            // 2. Create the Trigger Button (modified existing button)
             let menuButton = document.createElement('button');
             menuButton.classList.add(
                 'btn',
@@ -461,15 +463,92 @@ export default class MenuStructureCompose {
                 'justify-content-center',
                 'align-items-center',
                 'node-menu-button',
-                'page-settings'
+                'page-settings-trigger' // Valid class for event handlers
             );
-            menuButton.setAttribute('data-menunavid', node.id);
-            menuButton.setAttribute('title', _('Page properties'));
-            menuButton.setAttribute('aria-label', _('Page properties'));
+            // Attributes for Bootstrap Dropdown
+            menuButton.setAttribute('type', 'button');
+            menuButton.setAttribute('id', `dropdownMenuButtonPage${node.id}`);
+            menuButton.setAttribute('data-bs-toggle', 'dropdown');
+            menuButton.setAttribute('data-bs-boundary', 'window'); // Try to prevent clipping
+            // menuButton.setAttribute('data-bs-display', 'static'); // Uncomment if positioning is still wrong
+            menuButton.setAttribute('aria-expanded', 'false');
+            menuButton.setAttribute('aria-label', _('Page options'));
+            menuButton.setAttribute('title', _('Page options'));
             menuButton.style.cursor = 'pointer';
+
+            // Append Icon
             menuButton.append(menuIcon);
+            // Add helper text
+            let titleElement = document.createElement('span');
+            titleElement.classList.add('visually-hidden');
+            titleElement.textContent = _('Page options');
             menuButton.append(titleElement);
+
+            // Append Button to container (textElement)
             textElement.append(menuButton);
+
+            // 3. Create the Dropdown Menu (Sibling to the button)
+            const dropdownList = document.createElement('ul');
+            dropdownList.classList.add(
+                'dropdown-menu',
+                'button-action-block',
+                'exe-advanced'
+            );
+            dropdownList.style.zIndex = '1000'; // Ensure it floats above other nav elements
+            dropdownList.setAttribute('aria-labelledby', `dropdownMenuButtonPage${node.id}`);
+
+            // --- Menu Items ---
+
+            // 1. New Page
+            const liNew = document.createElement('li');
+            const btnNew = document.createElement('button');
+            // Remove 'node-add-button' to avoid unwanted CSS (like display:none)
+            btnNew.classList.add('dropdown-item', 'button-action-block', 'page-add');
+            btnNew.setAttribute('data-parentnavid', node.id);
+            btnNew.innerHTML = `<span class="small-icon add-icon-green" aria-hidden="true"></span>${_('Add subpage')}`;
+            liNew.append(btnNew);
+            dropdownList.append(liNew);
+
+            // 2. Import Page
+            const liImport = document.createElement('li');
+            const btnImport = document.createElement('button');
+            btnImport.classList.add('dropdown-item', 'button-action-block', 'action_import_idevices');
+            btnImport.setAttribute('data-nav-id', node.id);
+            btnImport.innerHTML = `<span class="small-icon import-icon-green" aria-hidden="true"></span>${_('Import page')}`;
+            liImport.append(btnImport);
+            dropdownList.append(liImport);
+
+            // 3. Clone Page
+            const liClone = document.createElement('li');
+            const btnClone = document.createElement('button');
+            btnClone.classList.add('dropdown-item', 'button-action-block', 'action_clone');
+            btnClone.setAttribute('data-nav-id', node.id);
+            btnClone.innerHTML = `<span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone page')}`;
+            liClone.append(btnClone);
+            dropdownList.append(liClone);
+
+            // 4. Delete Page
+            const liDelete = document.createElement('li');
+            const btnDelete = document.createElement('button');
+            btnDelete.classList.add('dropdown-item', 'button-action-block', 'action_delete');
+            btnDelete.setAttribute('data-nav-id', node.id);
+            btnDelete.setAttribute('data-page-id', node.pageId || node.id);
+            btnDelete.innerHTML = `<span class="small-icon delete-icon-green" aria-hidden="true"></span>${_('Delete page')}`;
+            liDelete.append(btnDelete);
+            dropdownList.append(liDelete);
+
+            // 5. Page Properties (Original Action)
+            const liProps = document.createElement('li');
+            const btnProps = document.createElement('button');
+            // Remove 'node-menu-button' to avoid unwanted CSS
+            btnProps.classList.add('dropdown-item', 'button-action-block', 'page-settings');
+            btnProps.setAttribute('data-menunavid', node.id); // Important for existing handler logic
+            btnProps.innerHTML = `<span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('Page properties')}`;
+            liProps.append(btnProps);
+            dropdownList.append(liProps);
+
+            // Append Dropdown List to container (Sibling to button)
+            textElement.append(dropdownList);
         }
 
         // Drag over nav element
