@@ -383,6 +383,62 @@ describe('BrowserAssetProvider', () => {
                 expect(new TextDecoder().decode(asset!.data as Uint8Array)).toBe(`Content ${i}`);
             }
         });
+
+        it('should convert blob to ArrayBuffer in parallel (not sequentially)', async () => {
+            // Track when each arrayBuffer() call starts and ends
+            const callLog: { id: string; event: 'start' | 'end'; time: number }[] = [];
+            const startTime = Date.now();
+
+            // Create mock assets with delayed arrayBuffer() to detect parallel vs sequential
+            const delayMs = 20;
+            const mockAssetManagerWithDelay = {
+                projectId: 'parallel-test',
+                async getProjectAssets() {
+                    return [
+                        { id: 'p1', filename: 'a.png', mime: 'image/png' },
+                        { id: 'p2', filename: 'b.png', mime: 'image/png' },
+                        { id: 'p3', filename: 'c.png', mime: 'image/png' },
+                        { id: 'p4', filename: 'd.png', mime: 'image/png' },
+                        { id: 'p5', filename: 'e.png', mime: 'image/png' },
+                    ].map(asset => ({
+                        ...asset,
+                        blob: {
+                            async arrayBuffer() {
+                                callLog.push({ id: asset.id, event: 'start', time: Date.now() - startTime });
+                                await new Promise(resolve => setTimeout(resolve, delayMs));
+                                callLog.push({ id: asset.id, event: 'end', time: Date.now() - startTime });
+                                return new Uint8Array([1, 2, 3]).buffer;
+                            },
+                        },
+                    }));
+                },
+            };
+
+            const providerParallel = new BrowserAssetProvider(null, mockAssetManagerWithDelay as never);
+            const result = await providerParallel.getAllAssets();
+
+            expect(result.length).toBe(5);
+
+            // Verify parallel execution: all 'start' events should occur before any 'end' event
+            const startEvents = callLog.filter(e => e.event === 'start');
+            const endEvents = callLog.filter(e => e.event === 'end');
+
+            expect(startEvents.length).toBe(5);
+            expect(endEvents.length).toBe(5);
+
+            // In parallel: all starts happen before first end
+            // In sequential: start1, end1, start2, end2, ...
+            const lastStartTime = Math.max(...startEvents.map(e => e.time));
+            const firstEndTime = Math.min(...endEvents.map(e => e.time));
+
+            // All starts should happen before (or very close to) the first end
+            // Allow small margin for execution overhead
+            expect(lastStartTime).toBeLessThanOrEqual(firstEndTime + 5);
+
+            // Total time should be ~delayMs (parallel) not ~5*delayMs (sequential)
+            const totalTime = Math.max(...endEvents.map(e => e.time));
+            expect(totalTime).toBeLessThan(delayMs * 3); // Should be ~20-30ms, not 100ms+
+        });
     });
 
     describe('getProjectAssets', () => {

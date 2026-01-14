@@ -231,38 +231,44 @@ export class BrowserAssetProvider implements AssetProvider {
                     );
                 }
 
-                for (const asset of assets) {
-                    if (asset.blob) {
-                        const arrayBuffer = await asset.blob.arrayBuffer();
-                        const assetId = String(asset.id);
-                        const filename = asset.filename || `asset-${assetId}`;
+                // Convert all blobs to ArrayBuffer in parallel for better performance
+                const assetsWithBlob = assets.filter(asset => asset.blob);
+                const conversions = await Promise.all(
+                    assetsWithBlob.map(async asset => {
+                        const arrayBuffer = await asset.blob!.arrayBuffer();
+                        return { asset, arrayBuffer };
+                    }),
+                );
 
-                        // Determine originalPath based on folderPath (folder support)
-                        // Priority:
-                        // 1. If folderPath is set, use folderPath/filename
-                        // 2. If originalPath includes UUID, use it as-is
-                        // 3. Fallback to uuid/filename
-                        let originalPath: string;
-                        if (asset.folderPath) {
-                            // Use folder path for organized assets
-                            originalPath = `${asset.folderPath}/${filename}`;
-                        } else if (asset.originalPath?.includes(assetId)) {
-                            // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
-                            originalPath = asset.originalPath;
-                        } else {
-                            // Construct correct path with UUID folder
-                            originalPath = `${assetId}/${filename}`;
-                        }
+                for (const { asset, arrayBuffer } of conversions) {
+                    const assetId = String(asset.id);
+                    const filename = asset.filename || `asset-${assetId}`;
 
-                        result.push({
-                            id: assetId,
-                            filename,
-                            originalPath,
-                            folderPath: asset.folderPath || '',
-                            mime: asset.mime || 'application/octet-stream',
-                            data: new Uint8Array(arrayBuffer),
-                        });
+                    // Determine originalPath based on folderPath (folder support)
+                    // Priority:
+                    // 1. If folderPath is set, use folderPath/filename
+                    // 2. If originalPath includes UUID, use it as-is
+                    // 3. Fallback to uuid/filename
+                    let originalPath: string;
+                    if (asset.folderPath) {
+                        // Use folder path for organized assets
+                        originalPath = `${asset.folderPath}/${filename}`;
+                    } else if (asset.originalPath?.includes(assetId)) {
+                        // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
+                        originalPath = asset.originalPath;
+                    } else {
+                        // Construct correct path with UUID folder
+                        originalPath = `${assetId}/${filename}`;
                     }
+
+                    result.push({
+                        id: assetId,
+                        filename,
+                        originalPath,
+                        folderPath: asset.folderPath || '',
+                        mime: asset.mime || 'application/octet-stream',
+                        data: new Uint8Array(arrayBuffer),
+                    });
                 }
 
                 if (result.length > 0) {

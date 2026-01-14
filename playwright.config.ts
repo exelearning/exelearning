@@ -58,7 +58,11 @@ export default defineConfig({
         },
         {
             name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
+            use: {
+                ...devices['Desktop Firefox'],
+                // Explicitly enable service workers for Firefox
+                serviceWorkers: 'allow',
+            },
         },
         // {
         //     name: 'webkit',
