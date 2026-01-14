@@ -376,7 +376,7 @@ export default class NavbarFile {
         const li = document.createElement('li');
 
         // TODO Disabled the edition right now, study if we will support direct edit in the future
-        li.classList.add('disabled');
+        li.classList.add('d-none');
 
         const icon = document.createElement('span');
         icon.classList.add('small-icon', 'edit-icon-green');
