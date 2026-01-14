@@ -19,7 +19,14 @@ import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import * as fflate from 'fflate';
 
-import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent, ExportBlockProperties } from '../interfaces';
+import type {
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ExportBlock,
+    ExportComponent,
+    ExportBlockProperties,
+} from '../interfaces';
 
 // Import the correct XML parser and types
 import { parseFromString } from '../../../services/xml/xml-parser';

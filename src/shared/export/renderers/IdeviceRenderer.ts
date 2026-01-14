@@ -166,10 +166,7 @@ ${contentHtml}
         if (String(properties.visibility) === 'false') {
             classes.push('novisible');
         }
-        if (
-            String(properties.teacherOnly) === 'true' ||
-            properties.visibilityType === 'teacher'
-        ) {
+        if (String(properties.teacherOnly) === 'true' || properties.visibilityType === 'teacher') {
             classes.push('teacher-only');
         }
         if (properties.cssClass) {
@@ -199,9 +196,7 @@ ${contentHtml}
             let toggleHtml = '';
             if (String(properties.allowToggle) === 'true') {
                 const toggleClass =
-                    String(properties.minimized) === 'true'
-                        ? 'box-toggle box-toggle-off'
-                        : 'box-toggle box-toggle-on';
+                    String(properties.minimized) === 'true' ? 'box-toggle box-toggle-off' : 'box-toggle box-toggle-on';
                 toggleHtml = `<button class="${toggleClass}" title="Toggle content">
 <span>Toggle content</span>
 </button>`;

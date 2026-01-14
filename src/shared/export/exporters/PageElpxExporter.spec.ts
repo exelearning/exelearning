@@ -15,7 +15,7 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
-    ElpxExportOptions
+    ElpxExportOptions,
 } from '../interfaces';
 
 // Mock document with Tree Structure
@@ -45,14 +45,14 @@ class MockTreeDocument implements ExportDocument {
                 title: 'Home',
                 parentId: null,
                 order: 0,
-                blocks: []
+                blocks: [],
             },
             {
                 id: 'page-1',
                 title: 'Page 1',
                 parentId: 'root',
                 order: 0,
-                blocks: []
+                blocks: [],
             },
             {
                 id: 'page-2',
@@ -62,29 +62,29 @@ class MockTreeDocument implements ExportDocument {
                 blocks: [],
                 properties: {
                     titleHtml: 'Page 2 HTML Title',
-                    description: 'Page 2 Description'
-                }
+                    description: 'Page 2 Description',
+                },
             },
             {
                 id: 'page-2-1',
                 title: 'Page 2-1',
                 parentId: 'page-2',
                 order: 0,
-                blocks: []
+                blocks: [],
             },
             {
                 id: 'page-2-2',
                 title: 'Page 2-2',
                 parentId: 'page-2',
                 order: 1,
-                blocks: []
+                blocks: [],
             },
             {
                 id: 'page-3',
                 title: 'Page 3',
                 parentId: 'root',
                 order: 2,
-                blocks: []
+                blocks: [],
             },
         ];
     }
@@ -101,23 +101,44 @@ class MockTreeDocument implements ExportDocument {
 // Minimal Mocks
 class MockResourceProvider implements ResourceProvider {
     async fetchTheme(): Promise<Map<string, Uint8Array>> {
-        return new Map([['style.css', new Uint8Array()], ['style.js', new Uint8Array()]]);
+        return new Map([
+            ['style.css', new Uint8Array()],
+            ['style.js', new Uint8Array()],
+        ]);
     }
-    async fetchIdeviceResources(): Promise<Map<string, Uint8Array>> { return new Map(); }
-    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> { return new Map(); }
-    async fetchLibraryFiles(): Promise<Map<string, Uint8Array>> { return new Map(); }
-    async fetchScormFiles(): Promise<Map<string, Uint8Array>> { return new Map(); }
+    async fetchIdeviceResources(): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
+    async fetchLibraryFiles(): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
+    async fetchScormFiles(): Promise<Map<string, Uint8Array>> {
+        return new Map();
+    }
     async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         return new Map([['content/css/base.css', new Uint8Array()]]);
     }
-    async fetchExeLogo(): Promise<Uint8Array | null> { return null; }
-    normalizeIdeviceType(type: string): string { return type; }
+    async fetchExeLogo(): Promise<Uint8Array | null> {
+        return null;
+    }
+    normalizeIdeviceType(type: string): string {
+        return type;
+    }
 }
 
 class MockAssetProvider implements AssetProvider {
-    async getAsset(): Promise<null> { return null; }
-    async getAllAssets(): Promise<any[]> { return []; }
-    async getProjectAssets(): Promise<any[]> { return []; }
+    async getAsset(): Promise<null> {
+        return null;
+    }
+    async getAllAssets(): Promise<any[]> {
+        return [];
+    }
+    async getProjectAssets(): Promise<any[]> {
+        return [];
+    }
 }
 
 class CapturingZipProvider implements ZipProvider {
@@ -182,7 +203,7 @@ describe('PageElpxExporter Unit Tests', () => {
 
             const options: ElpxExportOptions = {
                 rootPageId: 'page-2',
-                filename: 'page2_export'
+                filename: 'page2_export',
             };
 
             const result = await exporter.export(options);

@@ -113,8 +113,8 @@ function createMockExportSystem(): ExportSystemDeps {
         } as any,
         FflateZipProvider: class MockZipProvider {
             createZip = () => ({
-                addFile: () => { },
-                addFiles: () => { },
+                addFile: () => {},
+                addFiles: () => {},
                 generate: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
             });
         } as any,
@@ -126,8 +126,8 @@ function createMockExportSystem(): ExportSystemDeps {
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
         PageElpxExporter: MockExporter as any,
-        YjsDocumentAdapter: class MockYjsAdapter { } as any,
-        ServerYjsDocumentWrapper: class MockServerWrapper { } as any,
+        YjsDocumentAdapter: class MockYjsAdapter {} as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper {} as any,
     };
 }
 

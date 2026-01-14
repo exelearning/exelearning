@@ -47,14 +47,14 @@ export interface AssetUploadRequest {
     identifier?: string; // Alias for resumableIdentifier
     // Batch sync fields
     metadata?:
-    | string
-    | Array<{
-        clientId: string;
-        filename: string;
-        mimeType: string;
-        contentHash?: string;
-        folderPath?: string;
-    }>;
+        | string
+        | Array<{
+              clientId: string;
+              filename: string;
+              mimeType: string;
+              contentHash?: string;
+              folderPath?: string;
+          }>;
     files?: (Blob | Buffer)[];
 }
 
