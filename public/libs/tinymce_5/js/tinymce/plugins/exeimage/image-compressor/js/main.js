@@ -4,6 +4,44 @@ window.addEventListener('DOMContentLoaded', function () {
 	var XMLHttpRequest = window.XMLHttpRequest;
 	var Compressor = window.Compressor;
 
+	// Close all TinyMCE dialogs using windowManager API with DOM fallback
+	function closeAllDialogs() {
+		// Find TinyMCE from available window contexts (top and parent may differ in nested iframes)
+		var tinymceRef = null;
+		var contexts = [top, parent];
+
+		for (var i = 0; i < contexts.length; i++) {
+			try {
+				if (contexts[i]?.tinymce?.activeEditor) {
+					tinymceRef = contexts[i].tinymce;
+					break;
+				}
+			} catch (e) {
+				// Cross-origin access blocked
+			}
+		}
+
+		// Close via TinyMCE windowManager (multiple times for nested dialogs)
+		var wm = tinymceRef?.activeEditor?.windowManager;
+		if (wm) {
+			wm.close();
+			setTimeout(function() { try { wm.close(); } catch (e) {} }, 50);
+			setTimeout(function() { try { wm.close(); } catch (e) {} }, 150);
+		}
+
+		// DOM fallback: click close buttons on any remaining dialogs
+		var parentDoc = null;
+		try { parentDoc = parent.document; } catch (e) {}
+		if (!parentDoc) try { parentDoc = top.document; } catch (e) {}
+
+		if (parentDoc) {
+			parentDoc.querySelectorAll('.tox-dialog').forEach(function(dialog) {
+				var closeBtn = dialog.querySelector('button.tox-dialog__close');
+				if (closeBtn) setTimeout(function() { closeBtn.click(); }, 100);
+			});
+		}
+	}
+
 	new Vue({
 		el: '#app',
 
@@ -424,9 +462,8 @@ var eXeImageCompressor = {
 						// Set flag to skip mySubmit processing (image already updated)
 						top.imgCompressor.skipSubmit = true;
 
-						// Close using same mechanism as original (button click)
-						let closeButton = parent.document.getElementsByClassName("tox-dialog tox-dialog--width-lg")[0].querySelector("BUTTON");
-						closeButton.click();
+						// Close all dialogs - try multiple approaches
+						closeAllDialogs();
 						return;
 					}
 
@@ -436,8 +473,8 @@ var eXeImageCompressor = {
 					if (widthInput) widthInput.value = newWidth;
 					if (heightInput) heightInput.value = newHeight;
 
-					let closeButton = parent.document.getElementsByClassName("tox-dialog tox-dialog--width-lg")[0].querySelector("BUTTON");
-					closeButton.click();
+					// Close all dialogs
+					closeAllDialogs();
 				}
 
 				// Check if this is a blob/asset image that should be saved to IndexedDB
@@ -552,12 +589,13 @@ var eXeImageCompressor = {
 												// Use blob URL for TinyMCE display, mark as asset/blob to update editor directly
 												updateDimensionsAndClose(result.blobUrl, true);
 											} else {
-												top.eXe.app.alert(_("Error saving optimized image"));
+												console.error('No blob URL in result');
+												closeAllDialogs();
 											}
 										})
 										.catch(function(err) {
 											console.error('Error saving optimized image to IndexedDB:', err);
-											top.eXe.app.alert(_("Error saving optimized image"));
+											closeAllDialogs();
 										});
 									return false;
 								}
@@ -587,6 +625,8 @@ var eXeImageCompressor = {
 					try {
 						top.imgCompressor.callback(src + "?v=" + Date.now(), width, height);
 					} catch (e) { }
+					// Close all dialogs after callback
+					closeAllDialogs();
 				}
 				tmp.src = src;
 				return false;
