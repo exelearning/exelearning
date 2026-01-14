@@ -61,10 +61,12 @@ class TaskHandler extends BaseLegacyHandler {
 
     const properties = {
       // Task info fields (new in modern format)
-      textInfoDurationInput: '', // Label (optional)
-      textInfoDurationTextInput: '', // Value
-      textInfoParticipantsInput: '', // Label (optional)
-      textInfoParticipantsTextInput: '' // Value
+      // Input: The actual value (e.g. "30 min")
+      // TextInput: The label (e.g. "Duration:")
+      textInfoDurationInput: '',
+      textInfoDurationTextInput: '',
+      textInfoParticipantsInput: '',
+      textInfoParticipantsTextInput: ''
     };
 
     // Extract Duration
@@ -73,7 +75,7 @@ class TaskHandler extends BaseLegacyHandler {
                      this.findDictStringValue(dict, 'duration');
     
     if (duration) {
-      properties.textInfoDurationTextInput = duration;
+      properties.textInfoDurationInput = duration;
     }
 
     // Extract Participants/Grouping
@@ -82,7 +84,7 @@ class TaskHandler extends BaseLegacyHandler {
                          this.findDictStringValue(dict, 'participants');
 
     if (participants) {
-      properties.textInfoParticipantsTextInput = participants;
+      properties.textInfoParticipantsInput = participants;
     }
 
     return properties;
