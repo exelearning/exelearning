@@ -362,17 +362,9 @@ var $interactivevideo = {
             );
             return;
         } else if (this.type == 'youtube') {
-            // Check if we're in a context where YouTube embeds cannot work
-            // YouTube requires HTTP/HTTPS origin - blob: and file: URLs are not supported
-            var currentOrigin = window.location.origin || '';
-            var isUnsupportedContext = currentOrigin.startsWith('blob:') ||
-                                       currentOrigin.startsWith('file:') ||
-                                       window.location.protocol === 'file:' ||
-                                       window.location.href.startsWith('blob:');
-
-            if (isUnsupportedContext) {
-                // Use HTTP wrapper iframe to load YouTube (works from blob: context)
-                $interactivevideo.loadYoutubeWrapper();
+            // For file: protocol, show fallback since YouTube requires HTTP/HTTPS
+            if (window.location.protocol === 'file:') {
+                $interactivevideo.showYoutubeFallback();
                 return;
             }
 
@@ -762,158 +754,7 @@ var $interactivevideo = {
     },
 
     /**
-     * Load YouTube via HTTP wrapper iframe (works from blob:/file: contexts)
-     *
-     * YOUTUBE EMBEDDING RESTRICTION:
-     * YouTube's IFrame Player API requires a valid HTTP/HTTPS origin to function.
-     * When the preview is loaded via blob: URL (e.g., blob:http://localhost:8080/...),
-     * YouTube rejects the embed with "Error 153: Video player configuration error"
-     * because blob: URLs have a null origin that YouTube doesn't recognize.
-     *
-     * SOLUTION:
-     * Instead of creating a YT.Player directly (which would fail in blob: context),
-     * we create an iframe that loads youtube-preview.html from the HTTP server.
-     * This wrapper has a valid HTTP origin, so YouTube works correctly inside it.
-     *
-     * COMMUNICATION:
-     * Since the YouTube player is now inside a nested iframe, we use postMessage
-     * to communicate between the interactive-video iDevice and the wrapper:
-     * - Wrapper sends: youtube-ready, youtube-time, youtube-state, youtube-error
-     * - Parent sends: youtube-play, youtube-pause, youtube-seek, youtube-stop
-     *
-     * The player object is replaced with a proxy that sends postMessage commands
-     * to maintain compatibility with existing code that calls player.playVideo(), etc.
-     *
-     * @see public/app/common/youtube-preview.html - The HTTP wrapper
-     * @see WebsitePreviewExporter.ts - Global transform for all YouTube embeds
-     */
-    loadYoutubeWrapper: function () {
-        var videoId = this.id;
-        var self = this;
-
-        // Determine the base URL for the wrapper
-        // In blob: context, we need to extract the real origin
-        var wrapperBaseUrl = '';
-        if (window.location.href.startsWith('blob:')) {
-            // Extract origin from blob URL: blob:http://localhost:8080/... -> http://localhost:8080
-            var blobUrl = window.location.href;
-            var match = blobUrl.match(/^blob:(https?:\/\/[^/]+)/);
-            if (match) {
-                wrapperBaseUrl = match[1];
-            }
-        } else if (window.location.protocol === 'file:') {
-            // For file: protocol, we can't determine the server URL
-            // Fall back to showing the fallback UI
-            this.showYoutubeFallback();
-            return;
-        }
-
-        // If we couldn't determine a valid base URL, show fallback
-        if (!wrapperBaseUrl) {
-            this.showYoutubeFallback();
-            return;
-        }
-
-        // Get basePath if set (for subdirectory installations)
-        var basePath = (typeof eXe !== 'undefined' && eXe.basePath) ? eXe.basePath : '';
-
-        // Build the wrapper URL
-        var wrapperUrl = wrapperBaseUrl + basePath + '/app/common/youtube-preview.html?v=' + encodeURIComponent(videoId);
-
-        // Create iframe for the wrapper
-        var iframe = document.createElement('iframe');
-        iframe.id = 'youtube-wrapper-iframe';
-        iframe.src = wrapperUrl;
-        iframe.width = '448';
-        iframe.height = '356';
-        iframe.frameBorder = '0';
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        iframe.allowFullscreen = true;
-        iframe.style.cssText = 'border:none;background:#000;';
-
-        // Clear player container and add iframe
-        var playerEl = document.getElementById('player');
-        playerEl.innerHTML = '';
-        playerEl.appendChild(iframe);
-
-        // Track if wrapper is ready
-        this.youtubeWrapperReady = false;
-        this._lastYoutubeTime = 0;
-
-        // Listen for messages from the wrapper
-        var messageHandler = function(event) {
-            // Validate origin
-            if (event.origin !== wrapperBaseUrl) return;
-
-            var data = event.data;
-            if (!data || typeof data.type !== 'string') return;
-
-            switch (data.type) {
-                case 'youtube-ready':
-                    self.youtubeWrapperReady = true;
-                    self.complete();
-                    break;
-
-                case 'youtube-time':
-                    self._lastYoutubeTime = data.time || 0;
-                    self.track(data.time || 0);
-                    break;
-
-                case 'youtube-state':
-                    // YT.PlayerState: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-                    if (data.state === 1) { // playing
-                        self.hasPlayed = true;
-                        self.checkSlides();
-                    }
-                    break;
-
-                case 'youtube-error':
-                    console.error('[InteractiveVideo] YouTube wrapper error:', data.message);
-                    // On error, show the static fallback
-                    self.showYoutubeFallback();
-                    break;
-            }
-        };
-
-        window.addEventListener('message', messageHandler);
-
-        // Store handler reference for cleanup
-        this._youtubeWrapperMessageHandler = messageHandler;
-
-        // Create a player-like interface for compatibility with existing code
-        this.player = {
-            getCurrentTime: function() {
-                return self._lastYoutubeTime || 0;
-            },
-            playVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-play' }, wrapperBaseUrl);
-                }
-            },
-            pauseVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-pause' }, wrapperBaseUrl);
-                }
-            },
-            seekTo: function(time) {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-seek', time: time }, wrapperBaseUrl);
-                }
-            },
-            stopVideo: function() {
-                var wrapperIframe = document.getElementById('youtube-wrapper-iframe');
-                if (wrapperIframe && wrapperIframe.contentWindow) {
-                    wrapperIframe.contentWindow.postMessage({ type: 'youtube-stop' }, wrapperBaseUrl);
-                }
-            }
-        };
-    },
-
-    /**
-     * Show fallback for YouTube when wrapper also fails (e.g., file: protocol)
+     * Show fallback for YouTube when direct embedding is not possible (e.g., file: protocol)
      * Displays a thumbnail with a link to watch on YouTube
      */
     showYoutubeFallback: function () {
@@ -1016,20 +857,13 @@ var $interactivevideo = {
 
             $interactivevideo.complete();
         } else if ($interactivevideo.type == 'youtube') {
-            // Get the origin for YouTube API (must be HTTP/HTTPS)
-            var origin = window.location.origin;
-            // If origin is not valid (blob:, file:, etc.), use the page's base URL
-            if (!origin || origin === 'null' || origin.startsWith('blob:') || origin.startsWith('file:')) {
-                origin = 'https://exelearning.net'; // Fallback origin
-            }
-
             $interactivevideo.player = new YT.Player('player', {
                 height: '356',
                 width: '448',
                 videoId: $interactivevideo.id,
                 host: 'https://www.youtube-nocookie.com', // Privacy-enhanced mode
                 playerVars: {
-                    origin: origin,
+                    origin: window.location.origin,
                     enablejsapi: 1,
                     rel: 0, // Don't show related videos at end
                     modestbranding: 1 // Minimal YouTube branding

@@ -1489,4 +1489,437 @@ describe('Html5Exporter', () => {
             expect(result.success).toBe(true);
         });
     });
+
+    describe('generateForPreview', () => {
+        it('should generate preview files as a Map', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files).toBeInstanceOf(Map);
+            expect(files.size).toBeGreaterThan(0);
+        });
+
+        it('should generate index.html', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('index.html')).toBe(true);
+            const indexHtml = files.get('index.html');
+            expect(indexHtml).toBeInstanceOf(Uint8Array);
+
+            // Decode and verify content
+            const decoder = new TextDecoder();
+            const html = decoder.decode(indexHtml as Uint8Array);
+            expect(html).toContain('<!DOCTYPE html>');
+            expect(html).toContain('Introduction');
+        });
+
+        it('should generate HTML files for other pages', async () => {
+            const files = await exporter.generateForPreview();
+
+            // Find HTML files in html/ directory
+            const htmlFiles = Array.from(files.keys()).filter(f => f.startsWith('html/'));
+            expect(htmlFiles.length).toBe(1);
+        });
+
+        it('should NOT include content.xml (not needed for preview)', async () => {
+            const files = await exporter.generateForPreview();
+
+            // Preview should not include content.xml to save space
+            expect(files.has('content.xml')).toBe(false);
+        });
+
+        it('should include base CSS', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/css/base.css')).toBe(true);
+        });
+
+        it('should include theme files', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('theme/style.css')).toBe(true);
+            expect(files.has('theme/style.js')).toBe(true);
+        });
+
+        it('should include base libraries', async () => {
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('libs/jquery/jquery.min.js')).toBe(true);
+            expect(files.has('libs/common.js')).toBe(true);
+        });
+
+        it('should return Uint8Array content for all files', async () => {
+            const files = await exporter.generateForPreview();
+
+            for (const [path, content] of files) {
+                expect(content).toBeInstanceOf(Uint8Array);
+            }
+        });
+
+        it('should handle empty pages array', async () => {
+            document = new MockDocument({}, []);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should still generate theme and library files
+            expect(files.size).toBeGreaterThan(0);
+        });
+
+        it('should handle theme fetch failure gracefully', async () => {
+            resources.fetchTheme = async () => {
+                throw new Error('Theme not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should use fallback theme
+            expect(files.has('theme/style.css')).toBe(true);
+            expect(files.has('theme/style.js')).toBe(true);
+        });
+
+        it('should use custom theme when provided in options', async () => {
+            const files = await exporter.generateForPreview({ theme: 'custom-theme' });
+
+            // Theme files should be included (from mock)
+            expect(files.has('theme/style.css')).toBe(true);
+        });
+
+        it('should generate search_index.js when addSearchBox is enabled', async () => {
+            document = new MockDocument({ addSearchBox: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('search_index.js')).toBe(true);
+        });
+
+        it('should call preRenderLatex hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (LaTeX rendered)'),
+                        hasLatex: true,
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should call preRenderMermaid hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (Mermaid rendered)'),
+                        hasMermaid: true,
+                        mermaidRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderLatex hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async () => {
+                    throw new Error('LaTeX render failed');
+                },
+            });
+
+            // Should still succeed, just without LaTeX pre-rendering
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderMermaid hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async () => {
+                    throw new Error('Mermaid render failed');
+                },
+            });
+
+            // Should still succeed, just without Mermaid pre-rendering
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should include project assets in preview files', async () => {
+            // Create asset provider with assets
+            const assetsWithFiles = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    return [
+                        {
+                            id: 'asset-1',
+                            filename: 'image.png',
+                            originalPath: 'images/image.png',
+                            folderPath: 'images',
+                            mime: 'image/png',
+                            mimeType: 'image/png',
+                            data: Buffer.from('PNG data'),
+                        },
+                    ];
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, assetsWithFiles, zip);
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/resources/images/image.png')).toBe(true);
+        });
+
+        it('should handle asset fetch failure gracefully', async () => {
+            // Create asset provider that throws
+            const failingAssets = new (class extends MockAssetProvider {
+                async getAllAssets() {
+                    throw new Error('Asset fetch failed');
+                }
+            })();
+
+            exporter = new Html5Exporter(document, resources, failingAssets, zip);
+            const files = await exporter.generateForPreview();
+
+            // Should still generate HTML and theme files
+            expect(files.has('index.html')).toBe(true);
+            expect(files.has('theme/style.css')).toBe(true);
+        });
+
+        it('should handle base CSS fetch failure gracefully', async () => {
+            resources.fetchContentCss = async () => {
+                return new Map(); // Empty map, no base.css
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still generate other files
+            expect(files.has('index.html')).toBe(true);
+            expect(files.has('theme/style.css')).toBe(true);
+            // base.css should not be present since fetch returned empty
+            expect(files.has('content/css/base.css')).toBe(false);
+        });
+
+        it('should handle base libraries fetch failure gracefully', async () => {
+            resources.fetchBaseLibraries = async () => {
+                throw new Error('Libraries not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle library files fetch failure gracefully', async () => {
+            resources.fetchLibraryFiles = async () => {
+                throw new Error('Additional libraries not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should append pre-rendered CSS to base CSS when LaTeX is rendered', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const decoder = new TextDecoder();
+            const cssText = decoder.decode(baseCss as Uint8Array);
+            expect(cssText).toContain('exe-math-rendered');
+        });
+
+        it('should append pre-rendered CSS to base CSS when Mermaid is rendered', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const decoder = new TextDecoder();
+            const cssText = decoder.decode(baseCss as Uint8Array);
+            expect(cssText).toContain('exe-mermaid-rendered');
+        });
+
+        it('should call preRenderDataGameLatex hook when provided', async () => {
+            let hookCalled = false;
+
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async (html: string) => {
+                    hookCalled = true;
+                    return {
+                        html: html.replace('Welcome', 'Welcome (DataGame LaTeX)'),
+                        hasLatex: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(hookCalled).toBe(true);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should handle preRenderDataGameLatex hook error gracefully', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderDataGameLatex: async () => {
+                    throw new Error('DataGame LaTeX failed');
+                },
+            });
+
+            // Should still succeed
+            expect(files.size).toBeGreaterThan(0);
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should create ELPX manifest when download-source-file is used', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+
+            const manifestContent = files.get('libs/elpx-manifest.js');
+            const manifestJs =
+                typeof manifestContent === 'string'
+                    ? manifestContent
+                    : new TextDecoder().decode(manifestContent as Uint8Array);
+            expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
+            expect(manifestJs).toContain('"files"');
+        });
+
+        it('should create ELPX manifest when exe-package:elp class is in content', async () => {
+            const pagesWithElpClass: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p class="exe-download-package-link">Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithElpClass);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            // Should have manifest file
+            expect(files.has('libs/elpx-manifest.js')).toBe(true);
+        });
+
+        it('should include eXeLearning logo when available', async () => {
+            resources.fetchExeLogo = async () => new Uint8Array([1, 2, 3, 4]);
+
+            const files = await exporter.generateForPreview();
+
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should handle eXeLearning logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+            // Logo should not be present
+            expect(files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle iDevice resource fetch failure gracefully', async () => {
+            resources.fetchIdeviceResources = async () => {
+                throw new Error('iDevice resources not found');
+            };
+
+            const files = await exporter.generateForPreview();
+
+            // Should still succeed
+            expect(files.has('index.html')).toBe(true);
+        });
+
+        it('should not skip LaTeX pre-rendering when addMathJax is true', async () => {
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let latexHookCalled = false;
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => {
+                    latexHookCalled = true;
+                    return { html, hasLatex: true, latexRendered: true, count: 1 };
+                },
+            });
+
+            // LaTeX hook should NOT be called when addMathJax is true
+            expect(latexHookCalled).toBe(false);
+            expect(files.has('index.html')).toBe(true);
+        });
+    });
 });

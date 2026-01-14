@@ -371,7 +371,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify gallery container exists in preview
             const previewGallery = iframe.locator('.imageGallery-IDevice');
@@ -444,9 +444,10 @@ test.describe('Image Gallery iDevice', () => {
             const galleryLink = page.locator('#node-content .imageGallery-IDevice a.imageLink').first();
             await expect(galleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href has been resolved to blob:// URL
+            // Verify the href has been resolved (blob URL or relative path)
             const href = await galleryLink.getAttribute('href');
-            expect(href).toMatch(/^blob:/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(href).toMatch(/^(blob:|content\/resources\/)/);
 
             // Click the image to open lightbox
             await galleryLink.click();
@@ -527,7 +528,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for SimpleLightbox to be available in iframe
             await page.waitForFunction(
@@ -546,10 +547,11 @@ test.describe('Image Gallery iDevice', () => {
             const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
             await expect(previewGalleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href is a blob or data URL (resolved asset)
+            // Verify the href is resolved (blob, data URL, or relative path)
             const href = await previewGalleryLink.getAttribute('href');
             console.log('Preview gallery link href:', href);
-            expect(href).toMatch(/^(blob:|data:)/);
+            // With SW-based preview, assets are served via relative paths (content/resources/...)
+            expect(href).toMatch(/^(blob:|data:|content\/resources\/)/);
 
             await previewGalleryLink.click();
 
@@ -561,10 +563,11 @@ test.describe('Image Gallery iDevice', () => {
             const lightboxImage = iframe.locator('.sl-image img');
             await lightboxImage.waitFor({ state: 'attached', timeout: 5000 });
 
-            // Verify the lightbox image element exists and has a blob src
+            // Verify the lightbox image element exists and has a valid src
             const imgSrc = await lightboxImage.getAttribute('src');
             expect(imgSrc).toBeTruthy();
-            expect(imgSrc).toMatch(/^blob:/);
+            // With SW-based preview, assets may be relative paths
+            expect(imgSrc).toMatch(/^(blob:|content\/resources\/)/);
 
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');
