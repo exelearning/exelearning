@@ -26,7 +26,6 @@ global.FpdSolvedExerciseHandler = require('./handlers/FpdSolvedExerciseHandler')
 global.WikipediaHandler = require('./handlers/WikipediaHandler');
 global.RssHandler = require('./handlers/RssHandler');
 global.NotaHandler = require('./handlers/NotaHandler');
-global.TaskHandler = require('./handlers/TaskHandler');
 global.FreeTextHandler = require('./handlers/FreeTextHandler');
 global.DefaultHandler = require('./handlers/DefaultHandler');
 
@@ -151,12 +150,6 @@ describe('LegacyHandlerRegistry', () => {
       expect(handler.constructor.name).toBe('FreeTextHandler');
     });
 
-    it('returns TaskHandler for TaskIdevice', () => {
-      const handler = LegacyHandlerRegistry.getHandler('exe.engine.taskidevice.TaskIdevice');
-      expect(handler.constructor.name).toBe('TaskHandler');
-      expect(handler.getTargetType()).toBe('text');
-    });
-
     it('returns DefaultHandler for unknown iDevice types', () => {
       const handler = LegacyHandlerRegistry.getHandler('exe.engine.unknownidevice.UnknownIdevice');
       expect(handler.constructor.name).toBe('DefaultHandler');
@@ -173,7 +166,7 @@ describe('LegacyHandlerRegistry', () => {
 
     it('includes all registered handlers', () => {
       const handlers = LegacyHandlerRegistry.getAllHandlers();
-      expect(handlers.length).toBe(20); // All handlers including TaskHandler, InteractiveVideoHandler, NotaHandler and DefaultHandler
+      expect(handlers.length).toBe(19); // All handlers including InteractiveVideoHandler, NotaHandler and DefaultHandler
     });
   });
 });

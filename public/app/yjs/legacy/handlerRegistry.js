@@ -26,7 +26,6 @@
  * - handlers/GeogebraHandler.js
  * - handlers/InteractiveVideoHandler.js
  * - handlers/NotaHandler.js
- * - handlers/TaskHandler.js
  * - handlers/DefaultHandler.js
  */
 
@@ -61,7 +60,6 @@ const LegacyHandlerRegistry = {
       new WikipediaHandler(),        // WikipediaIdevice → text (with wrapper)
       new RssHandler(),              // RssIdevice → text
       new NotaHandler(),             // NotaIdevice → text (with visibility=false block)
-      new TaskHandler(),             // TaskIdevice → text (with duration/participants)
       new FreeTextHandler(),         // FreeTextIdevice, ReflectionIdevice, GenericIdevice → text
       new DefaultHandler(),          // Fallback for unknown types (must be last)
     ];

@@ -238,17 +238,11 @@ const $exeExport = window.$exeExport = {
             let templateFilename = ideviceNode.getAttribute('data-idevice-template');
             let idevicePath = ideviceNode.getAttribute('data-idevice-path');
             // Idevice export function 1: renderView
-            // JSON iDevices that store ALL content in jsonProperties (not in htmlView) need renderView
-            // to generate the complete interface. These iDevices have empty htmlView by design.
-            // Other JSON iDevices (like text) may have pre-rendered content in htmlView.
+            // JSON iDevices (component-type="json" from config.xml) need renderView to generate
+            // the complete interface from properties. This ensures content is always generated
+            // consistently from the stored data, rather than using potentially stale htmlView.
             const isJsonIdevice = ideviceNode.getAttribute('data-idevice-component-type') === 'json';
-            // JSON-only iDevices that store ALL content in jsonProperties (not in htmlView)
-            // and need renderView to generate the complete interface.
-            // 'trueorfalse' added for legacy imports that have empty htmlView.
-            const jsonOnlyIdevices = ['casestudy', 'form', 'image-gallery', 'magnifier', 'trueorfalse'];
-            const ideviceType = ideviceNode.getAttribute('data-idevice-type');
-            const needsJsonRender = isJsonIdevice && jsonOnlyIdevices.includes(ideviceType);
-            if (needsJsonRender || ideviceNode.classList.contains('db-no-data')) {
+            if (isJsonIdevice || ideviceNode.classList.contains('db-no-data')) {
                 // Load template content if we only have filename
                 this.loadTemplateAndRender(ideviceNode, exportIdevice, jsonData, accesibility, templateFilename, idevicePath);
             } else {

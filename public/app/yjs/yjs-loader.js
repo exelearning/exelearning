@@ -76,7 +76,6 @@
       'legacy/handlers/WikipediaHandler.js',
       'legacy/handlers/RssHandler.js',
       'legacy/handlers/NotaHandler.js',
-      'legacy/handlers/TaskHandler.js',
       'legacy/handlers/FreeTextHandler.js',
       'legacy/handlers/DefaultHandler.js',
     ],

@@ -1414,10 +1414,14 @@ class LegacyXmlParser {
       // Based on Symfony OdeXmlUtil.php lines 2159-2192 and 2272-2320
       // PBL Task iDevices have structured HTML with duration, participants, and feedback
       if (idevice.htmlView && idevice.htmlView.includes('pbl-task-description')) {
-        // Type stays as 'text' but we preserve the special HTML structure
-        // and extract metadata as JSON properties for the text iDevice editor
+        // Extract metadata to properties for renderView() to generate output
         const pblTaskData = this.extractPblTaskMetadata(idevice.htmlView);
         if (pblTaskData) {
+          if (pblTaskData.cleanedHtml) {
+            // Put clean content in textTextarea for renderView() to use
+            pblTaskData.textTextarea = pblTaskData.cleanedHtml;
+            delete pblTaskData.cleanedHtml;
+          }
           idevice.properties = { ...idevice.properties, ...pblTaskData };
           Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata');
         }
@@ -1621,11 +1625,11 @@ class LegacyXmlParser {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = htmlView;
 
-      // Extract duration
+      // Extract duration (dt = label, dd = value)
       const durationLabel = tempDiv.querySelector('dt.pbl-task-duration');
       const durationValue = tempDiv.querySelector('dd.pbl-task-duration');
 
-      // Extract participants
+      // Extract participants (dt = label, dd = value)
       const participantsLabel = tempDiv.querySelector('dt.pbl-task-participants');
       const participantsValue = tempDiv.querySelector('dd.pbl-task-participants');
 
@@ -1633,31 +1637,69 @@ class LegacyXmlParser {
       const feedbackDiv = tempDiv.querySelector('.feedback.js-feedback');
       const feedbackButton = tempDiv.querySelector('.feedbackbutton');
 
-      // Build metadata object matching Symfony's structure
+      // Build metadata object matching text iDevice field names:
+      // - Input: the actual value (e.g., "30 min")
+      // - TextInput: the label (e.g., "Duration:")
       const metadata = {};
 
-      if (durationLabel) {
-        metadata.textInfoDurationInput = durationLabel.textContent?.trim() || '';
-      }
       if (durationValue) {
-        metadata.textInfoDurationTextInput = durationValue.textContent?.trim() || '';
+        metadata.textInfoDurationInput = durationValue.textContent?.trim() || '';
       }
-      if (participantsLabel) {
-        metadata.textInfoParticipantsInput = participantsLabel.textContent?.trim() || '';
+      if (durationLabel) {
+        metadata.textInfoDurationTextInput = durationLabel.textContent?.trim() || '';
       }
       if (participantsValue) {
-        metadata.textInfoParticipantsTextInput = participantsValue.textContent?.trim() || '';
+        metadata.textInfoParticipantsInput = participantsValue.textContent?.trim() || '';
+      }
+      if (participantsLabel) {
+        metadata.textInfoParticipantsTextInput = participantsLabel.textContent?.trim() || '';
       }
       if (feedbackDiv) {
-        metadata.textInfoFeedback = feedbackDiv.innerHTML?.trim() || '';
+        // Use textFeedbackTextarea to match text iDevice field name
+        metadata.textFeedbackTextarea = feedbackDiv.innerHTML?.trim() || '';
       }
       if (feedbackButton) {
-        metadata.textInfoFeedbackButton = feedbackButton.value || feedbackButton.textContent?.trim() || '';
+        // Use textFeedbackInput to match text iDevice field name
+        metadata.textFeedbackInput = feedbackButton.value || feedbackButton.textContent?.trim() || '';
       }
 
-      // Only return if we found some metadata
+      // Only return if we found some PBL metadata (not just any content)
       const hasMetadata = Object.keys(metadata).length > 0;
-      return hasMetadata ? metadata : null;
+      if (!hasMetadata) {
+        return null;
+      }
+
+      // Remove ALL <dl> elements from the DOM BEFORE extracting clean content.
+      // This prevents duplication when the <dl> is INSIDE .pbl-task-description
+      // (some legacy structures nest the info block differently than expected).
+      tempDiv.querySelectorAll('dl').forEach(dl => dl.remove());
+
+      // Also remove the old .pbl-task-info wrapper if it exists (in case it's not a <dl>)
+      tempDiv.querySelectorAll('.pbl-task-info').forEach(el => el.remove());
+
+      // Remove feedback elements from clean content (they go in separate properties)
+      const feedbackBtnEl = tempDiv.querySelector('.feedbackbutton');
+      if (feedbackBtnEl) {
+        const btnContainer = feedbackBtnEl.closest('.iDevice_buttons');
+        if (btnContainer) btnContainer.remove();
+        else feedbackBtnEl.remove();
+      }
+      if (feedbackDiv) feedbackDiv.remove();
+
+      // Extract the main content
+      const descWrapper = tempDiv.querySelector('.pbl-task-description');
+      let cleanContent = '';
+      if (descWrapper) {
+        cleanContent = descWrapper.innerHTML.trim();
+      } else {
+        cleanContent = tempDiv.innerHTML.trim();
+      }
+
+      // NOTE: We no longer generate <dl> here - it's generated at runtime by text.js renderHtmlOldIdevice()
+      // This prevents duplication issues with re-exported content
+      metadata.cleanedHtml = cleanContent;
+
+      return metadata;
     } catch (e) {
       Logger.log(`[LegacyXmlParser] Error extracting PBL Task metadata: ${e.message}`);
       return null;

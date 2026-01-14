@@ -3715,10 +3715,12 @@ describe('LegacyXmlParser', () => {
       expect(idevices.length).toBe(1);
       expect(idevices[0].type).toBe('text'); // Type stays as text
       expect(idevices[0].properties).toBeDefined();
-      expect(idevices[0].properties.textInfoDurationInput).toBe('Duración:');
-      expect(idevices[0].properties.textInfoDurationTextInput).toBe('2 sesiones');
-      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Agrupamiento:');
-      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Grupo de 4');
+      // textInfoDurationInput = value (e.g., "2 sesiones")
+      // textInfoDurationTextInput = label (e.g., "Duración:")
+      expect(idevices[0].properties.textInfoDurationInput).toBe('2 sesiones');
+      expect(idevices[0].properties.textInfoDurationTextInput).toBe('Duración:');
+      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Grupo de 4');
+      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Agrupamiento:');
     });
 
     it('should extract feedback metadata from PBL Task', () => {
@@ -3727,16 +3729,42 @@ describe('LegacyXmlParser', () => {
       const metadata = parser.extractPblTaskMetadata(html);
 
       expect(metadata).not.toBeNull();
-      expect(metadata.textInfoDurationInput).toBe('Duration:');
-      expect(metadata.textInfoDurationTextInput).toBe('1 hour');
-      expect(metadata.textInfoFeedbackButton).toBe('Show Feedback');
-      expect(metadata.textInfoFeedback).toContain('Feedback text');
+      // textInfoDurationInput = value, textInfoDurationTextInput = label
+      expect(metadata.textInfoDurationInput).toBe('1 hour');
+      expect(metadata.textInfoDurationTextInput).toBe('Duration:');
+      // Feedback uses text iDevice field names
+      expect(metadata.textFeedbackInput).toBe('Show Feedback');
+      expect(metadata.textFeedbackTextarea).toContain('Feedback text');
     });
 
     it('should return null for non-PBL content', () => {
       const html = '<p>Regular text content</p>';
       const metadata = parser.extractPblTaskMetadata(html);
       expect(metadata).toBeNull();
+    });
+
+    it('should remove ALL <dl> elements and return clean content (dl generated at runtime)', () => {
+      // Test case: <dl> is INSIDE .pbl-task-description (legacy structure variant)
+      const html = `
+        <div class="pbl-task-description">
+          <dl class="pbl-task-info">
+            <dt class="pbl-task-duration">Duration:</dt>
+            <dd class="pbl-task-duration">30 min</dd>
+          </dl>
+          <p>Main content here</p>
+        </div>
+      `;
+
+      const metadata = parser.extractPblTaskMetadata(html);
+
+      expect(metadata).not.toBeNull();
+      expect(metadata.textInfoDurationInput).toBe('30 min');
+      expect(metadata.textInfoDurationTextInput).toBe('Duration:');
+      // cleanedHtml should NOT contain any <dl> - it's generated at runtime by text.js
+      expect(metadata.cleanedHtml).not.toContain('pbl-task-info');
+      expect(metadata.cleanedHtml).not.toContain('<dl>');
+      // Should only contain the clean content
+      expect(metadata.cleanedHtml).toContain('Main content here');
     });
   });
 

@@ -106,6 +106,64 @@ class DefaultHandler extends BaseLegacyHandler {
 
     return '';
   }
+
+  /**
+   * Extract rich text content from a dictionary field
+   */
+  extractRichTextContent(dict, fieldName) {
+    const children = Array.from(dict.children);
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === fieldName) {
+        const valueEl = children[i + 1];
+        if (!valueEl) return '';
+
+        if (valueEl.tagName === 'unicode' || valueEl.tagName === 'string') {
+          return this.decodeHtmlContent(valueEl.getAttribute('value') || valueEl.textContent || '');
+        }
+
+        if (valueEl.tagName === 'instance') {
+          return this.extractTextAreaFieldContent(valueEl);
+        }
+      }
+    }
+
+    return '';
+  }
+
+  /**
+   * Extract content from any TextAreaField or TextField in the dictionary
+   */
+  extractAnyTextFieldContent(dict) {
+    // Find all instance elements that look like text fields
+    const instances = dict.querySelectorAll(':scope > instance');
+    for (const inst of instances) {
+      const className = inst.getAttribute('class') || '';
+      if (className.includes('TextAreaField') || className.includes('TextField')) {
+        const content = this.extractTextAreaFieldContent(inst);
+        if (content) {
+          return content;
+        }
+      }
+    }
+
+    // Try nested instances
+    const nestedInstances = dict.querySelectorAll('instance');
+    for (const inst of nestedInstances) {
+      const className = inst.getAttribute('class') || '';
+      if (className.includes('TextAreaField') || className.includes('TextField')) {
+        const content = this.extractTextAreaFieldContent(inst);
+        if (content) {
+          return content;
+        }
+      }
+    }
+
+    return '';
+  }
 }
 
 // Export
