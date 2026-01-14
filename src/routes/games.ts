@@ -8,8 +8,11 @@
 import { Elysia, t } from 'elysia';
 import * as Y from 'yjs';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
-import { getDb } from '../db/client';
-import { findProjectByUuid, findSnapshotByProjectId } from '../db/queries';
+import { getDb as getDbDefault } from '../db/client';
+import {
+    findProjectByUuid as findProjectByUuidDefault,
+    findSnapshotByProjectId as findSnapshotByProjectIdDefault,
+} from '../db/queries';
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -17,10 +20,16 @@ import { findProjectByUuid, findSnapshotByProjectId } from '../db/queries';
 
 export interface GamesRoutesDeps {
     getSession: (sessionId: string) => ProjectSession | undefined;
+    getDb: typeof getDbDefault;
+    findProjectByUuid: typeof findProjectByUuidDefault;
+    findSnapshotByProjectId: typeof findSnapshotByProjectIdDefault;
 }
 
 const defaultDeps: GamesRoutesDeps = {
     getSession: getSessionDefault,
+    getDb: getDbDefault,
+    findProjectByUuid: findProjectByUuidDefault,
+    findSnapshotByProjectId: findSnapshotByProjectIdDefault,
 };
 
 let deps = defaultDeps;
@@ -534,12 +543,12 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             // If no data found, try loading from Yjs snapshot in database
             if (data.length === 0) {
                 try {
-                    const db = getDb();
+                    const db = deps.getDb();
                     // The sessionId is the project UUID
-                    const project = await findProjectByUuid(db, odeSessionId);
+                    const project = await deps.findProjectByUuid(db, odeSessionId);
 
                     if (project) {
-                        const snapshot = await findSnapshotByProjectId(db, project.id);
+                        const snapshot = await deps.findSnapshotByProjectId(db, project.id);
 
                         if (snapshot?.snapshot_data) {
                             const ydoc = new Y.Doc();
@@ -574,3 +583,6 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             }),
         },
     );
+
+// Export internal functions for testing
+export { extractIdevicesFromYjsDoc };
