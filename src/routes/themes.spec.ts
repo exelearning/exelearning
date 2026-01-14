@@ -167,10 +167,7 @@ describe('Themes Routes', () => {
                     })
                     .execute();
 
-                await dbInstance
-                    .deleteFrom('app_settings')
-                    .where('key', '=', 'default_theme')
-                    .execute();
+                await dbInstance.deleteFrom('app_settings').where('key', '=', 'default_theme').execute();
 
                 await dbInstance
                     .insertInto('app_settings')
