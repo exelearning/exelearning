@@ -43,11 +43,20 @@ class MockDocument implements ExportDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
+    faviconToReturn: string | null = null;
+
     async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
         // Theme files keep their original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
         files.set('style.js', Buffer.from('// theme js'));
+
+        if (this.faviconToReturn === 'ico') {
+            files.set('img/favicon.ico', Buffer.from('ico-data'));
+        } else if (this.faviconToReturn === 'png') {
+            files.set('img/favicon.png', Buffer.from('png-data'));
+        }
+
         return files;
     }
 
@@ -426,6 +435,51 @@ describe('Html5Exporter', () => {
             const loadedZip = unzipSync(new Uint8Array(result.data!));
 
             expect(loadedZip['content.xml']).toBeDefined();
+        });
+    });
+
+    describe('Favicon Detection', () => {
+        it('should detect theme favicon.ico in export', async () => {
+            resources.faviconToReturn = 'ico';
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
+        });
+
+        it('should detect theme favicon.png in export', async () => {
+            resources.faviconToReturn = 'png';
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
+
+        it('should detect theme favicon.ico in generateForPreview', async () => {
+            resources.faviconToReturn = 'ico';
+            const files = await exporter.generateForPreview();
+
+            const indexHtmlBytes = files.get('index.html') as Uint8Array;
+            const indexHtml = new TextDecoder().decode(indexHtmlBytes);
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico">');
+        });
+
+        it('should use default favicon when theme one is missing', async () => {
+            resources.faviconToReturn = null;
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should allow overriding favicon in options', async () => {
+            await exporter.export({
+                faviconPath: 'custom/favicon.png',
+                faviconType: 'image/png',
+            } as any);
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="icon" type="image/png" href="custom/favicon.png">');
         });
     });
 

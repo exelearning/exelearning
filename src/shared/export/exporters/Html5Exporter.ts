@@ -64,6 +64,8 @@ export class Html5Exporter extends BaseExporter {
             // We need this before generating pages so they can include correct theme references
             const themeRootFiles: string[] = [];
             let themeFilesMap: Map<string, Uint8Array> | null = null;
+            let faviconInfo: { path: string; type: string } | null = null;
+
             try {
                 themeFilesMap = await this.resources.fetchTheme(themeName);
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
@@ -73,10 +75,25 @@ export class Html5Exporter extends BaseExporter {
                         themeRootFiles.push(filePath);
                     }
                 }
+
+                // Detect favicon in theme
+                if (themeFilesMap.has('img/favicon.ico')) {
+                    faviconInfo = { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
+                } else if (themeFilesMap.has('img/favicon.png')) {
+                    faviconInfo = { path: 'theme/img/favicon.png', type: 'image/png' };
+                }
             } catch (e) {
                 // Will use fallback theme later
                 console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
                 themeRootFiles.push('style.css', 'style.js');
+            }
+
+            // Override favicon if provided in options
+            if (html5Options?.faviconPath) {
+                faviconInfo = {
+                    path: html5Options.faviconPath,
+                    type: html5Options.faviconType || 'image/x-icon',
+                };
             }
 
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
@@ -86,7 +103,7 @@ export class Html5Exporter extends BaseExporter {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
+                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -349,6 +366,7 @@ export class Html5Exporter extends BaseExporter {
         isIndex: boolean,
         pageIndex?: number,
         themeFiles?: string[],
+        faviconInfo?: { path: string; type: string } | null,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -399,6 +417,9 @@ export class Html5Exporter extends BaseExporter {
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
+            // Favicon options
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
         });
     }
 
@@ -475,6 +496,8 @@ export class Html5Exporter extends BaseExporter {
             // 0. Pre-fetch theme files to get the list of CSS/JS for HTML includes
             const themeRootFiles: string[] = [];
             let themeFilesMap: Map<string, Uint8Array> | null = null;
+            let faviconInfo: { path: string; type: string } | null = null;
+
             try {
                 themeFilesMap = await this.resources.fetchTheme(themeName);
                 for (const [filePath] of themeFilesMap) {
@@ -482,9 +505,24 @@ export class Html5Exporter extends BaseExporter {
                         themeRootFiles.push(filePath);
                     }
                 }
+
+                // Detect favicon in theme
+                if (themeFilesMap.has('img/favicon.ico')) {
+                    faviconInfo = { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
+                } else if (themeFilesMap.has('img/favicon.png')) {
+                    faviconInfo = { path: 'theme/img/favicon.png', type: 'image/png' };
+                }
             } catch (e) {
                 console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
                 themeRootFiles.push('style.css', 'style.js');
+            }
+
+            // Override favicon if provided in options
+            if (options?.faviconPath) {
+                faviconInfo = {
+                    path: options.faviconPath,
+                    type: options.faviconType || 'image/x-icon',
+                };
             }
 
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
@@ -494,7 +532,7 @@ export class Html5Exporter extends BaseExporter {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
+                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 if (!meta.addMathJax) {

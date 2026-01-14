@@ -304,6 +304,12 @@ export interface ExportOptions {
     /** Theme name to use for export */
     theme?: string;
 
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
+
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
      * When provided and successful, MathJax library will NOT be included in the output.
@@ -511,6 +517,12 @@ export interface PageRenderOptions {
      * If not provided, falls back to legacy 'default.js' and 'content.css'.
      */
     themeFiles?: string[];
+
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
 }
 
 /**

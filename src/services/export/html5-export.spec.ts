@@ -95,7 +95,12 @@ ${structure.pages.map(p => `<a href="${p.id}.html">${p.title}</a>`).join('\n')}
 </nav>
 </body>
 </html>`,
-            generatePageHtml: (page: NormalizedPage, _structure: ParsedOdeStructure, _options: unknown) => `
+            generatePageHtml: (
+                page: NormalizedPage,
+                _structure: ParsedOdeStructure,
+                _options: unknown,
+                _resourcesPrefix?: string,
+            ) => `
 <!DOCTYPE html>
 <html>
 <head><title>${page.title}</title></head>
@@ -104,6 +109,7 @@ ${structure.pages.map(p => `<a href="${p.id}.html">${p.title}</a>`).join('\n')}
 ${page.components?.map(c => `<div>${c.content || ''}</div>`).join('\n') || ''}
 </body>
 </html>`,
+            sanitizeFilename: (title: string) => title.toLowerCase().replace(/ /g, '-'),
         },
         getCwd: () => TEST_EXPORT_DIR,
     };
@@ -328,17 +334,20 @@ describe('HTML5 Export Service', () => {
             expect(content).toContain('Test Document');
         });
 
-        it('should generate page HTML files', async () => {
+        it('should generate page HTML files in html/ directory', async () => {
             const result = await service.exportToHtml5('test-session', {
                 preview: true,
-                tempPath: 'page-gen-test/',
+                tempPath: 'subpage-path-test/',
             });
 
             const exportDir = result.filePath;
 
-            // Check page files exist
-            expect(await fs.pathExists(path.join(exportDir, 'page0.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'page1.html'))).toBe(true);
+            // Check page files exist in html/ directory
+            // index.html is at root, other pages are in html/
+            expect(await fs.pathExists(path.join(exportDir, 'index.html'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'html', 'chapter-1.html'))).toBe(true);
+            // Verify they are NOT at root anymore
+            expect(await fs.pathExists(path.join(exportDir, 'page1.html'))).toBe(false);
         });
 
         it('should include page content in generated HTML', async () => {
@@ -348,9 +357,68 @@ describe('HTML5 Export Service', () => {
             });
 
             const exportDir = result.filePath;
-            const pageContent = await fs.readFile(path.join(exportDir, 'page0.html'), 'utf-8');
+            const pageContent = await fs.readFile(path.join(exportDir, 'index.html'), 'utf-8');
 
             expect(pageContent).toContain('Home');
+        });
+    });
+
+    describe('Favicon Detection', () => {
+        it('should detect theme favicon.ico', async () => {
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(path.join(themeDir, 'img'));
+            await fs.writeFile(path.join(themeDir, 'img', 'favicon.ico'), 'fake-ico');
+
+            let capturedOptions: any;
+            const customDeps = createMockDeps();
+            customDeps.htmlGenerator.generateIndexHtml = (struct, opts) => {
+                capturedOptions = opts;
+                return 'index';
+            };
+
+            const customService = createHtml5ExportService(customDeps);
+            await customService.exportToHtml5('test-session', { preview: true });
+
+            expect(capturedOptions.faviconPath).toBe('theme/img/favicon.ico');
+            expect(capturedOptions.faviconType).toBe('image/x-icon');
+        });
+
+        it('should detect theme favicon.png', async () => {
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(path.join(themeDir, 'img'));
+            await fs.writeFile(path.join(themeDir, 'img', 'favicon.png'), 'fake-png');
+
+            let capturedOptions: any;
+            const customDeps = createMockDeps();
+            customDeps.htmlGenerator.generateIndexHtml = (struct, opts) => {
+                capturedOptions = opts;
+                return 'index';
+            };
+
+            const customService = createHtml5ExportService(customDeps);
+            await customService.exportToHtml5('test-session', { preview: true });
+
+            expect(capturedOptions.faviconPath).toBe('theme/img/favicon.png');
+            expect(capturedOptions.faviconType).toBe('image/png');
+        });
+
+        it('should use default favicon when theme one is missing', async () => {
+            // Ensure no theme favicon exists
+            const themeImgDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base', 'img');
+            await fs.remove(themeImgDir);
+
+            let capturedOptions: any;
+            const customDeps = createMockDeps();
+            customDeps.htmlGenerator.generateIndexHtml = (struct, opts) => {
+                capturedOptions = opts;
+                return 'index';
+            };
+
+            const customService = createHtml5ExportService(customDeps);
+            await customService.exportToHtml5('test-session', { preview: true });
+
+            // Should not be set by detectFavicon, so html-generator will use default
+            expect(capturedOptions.faviconPath).toBeUndefined();
         });
     });
 
@@ -593,9 +661,11 @@ describe('HTML5 Export Service', () => {
 
             const exportDir = result.filePath;
 
-            expect(await fs.pathExists(path.join(exportDir, 'p1.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'p2.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'p3.html'))).toBe(true);
+            // First page is index.html in root
+            expect(await fs.pathExists(path.join(exportDir, 'index.html'))).toBe(true);
+            // Other pages are in html/ directory with sanitized titles
+            expect(await fs.pathExists(path.join(exportDir, 'html', 'page-2.html'))).toBe(true);
+            expect(await fs.pathExists(path.join(exportDir, 'html', 'page-3.html'))).toBe(true);
         });
     });
 

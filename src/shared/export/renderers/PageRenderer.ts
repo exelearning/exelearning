@@ -149,7 +149,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
 </head>
 <body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -186,6 +186,8 @@ ${madeWithExeHtml}
         addSearchBox?: boolean;
         detectedLibraries?: string[];
         themeFiles?: string[];
+        faviconPath?: string;
+        faviconType?: string;
     }): string {
         const {
             pageTitle,
@@ -202,6 +204,8 @@ ${madeWithExeHtml}
             addSearchBox = false,
             detectedLibraries = [],
             themeFiles = [],
+            faviconPath = 'libs/favicon.ico',
+            faviconType = 'image/x-icon',
         } = options;
 
         // Meta tags
@@ -210,6 +214,10 @@ ${madeWithExeHtml}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="license" type="text/html" href="${licenseUrl}">
 <title>${this.escapeHtml(pageTitle)}</title>`;
+
+        // Favicon
+        const faviconHref = `${basePath}${faviconPath}`;
+        head += `\n<link rel="icon" type="${this.escapeAttr(faviconType)}" href="${this.escapeAttr(faviconHref)}">`;
 
         // Description meta if provided
         if (description) {

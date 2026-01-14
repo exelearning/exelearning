@@ -74,7 +74,7 @@ export function generatePageHtml(
     return `<!DOCTYPE html>
 <html lang="${lang}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${generateHead(page, structure, resourcesPrefix, usedIdevices)}
+${generateHead(page, structure, resourcesPrefix, usedIdevices, options)}
 </head>
 <body class="exe-export exe-web-site" lang="${lang}">
 <script>document.body.className+=" js"</script>
@@ -123,6 +123,7 @@ function generateHead(
     structure: ParsedOdeStructure,
     resourcesPrefix: string,
     usedIdevices: string[],
+    options: Html5ExportOptions,
 ): string {
     const title = escapeHtml(structure.meta.title || 'eXeLearning');
     const description = structure.meta.description || '';
@@ -177,6 +178,11 @@ function generateHead(
     head += `\n<link rel="stylesheet" href="${resourcesPrefix}content/css/base.css">`;
     head += `<script src="${resourcesPrefix}theme/default.js"> </script>`;
     head += `<link rel="stylesheet" href="${resourcesPrefix}theme/content.css">`;
+
+    const faviconPath = options.faviconPath || 'libs/favicon.ico';
+    const faviconType = options.faviconType || 'image/x-icon';
+    const faviconHref = `${resourcesPrefix}${faviconPath}`;
+    head += `<link rel="icon" type="${escapeAttr(faviconType)}" href="${escapeAttr(faviconHref)}">`;
 
     // Custom styles from meta
     const customStyles = structure.meta.customStyles;
@@ -249,7 +255,7 @@ function isParentOf(potentialParent: NormalizedPage, childId: string, allPages: 
 /**
  * Sanitize title for use as filename
  */
-function sanitizeFilename(title: string): string {
+export function sanitizeFilename(title: string): string {
     if (!title) return 'page';
     return title
         .toLowerCase()
