@@ -1787,6 +1787,43 @@ describe('ElpxImporter', () => {
       expect(JSON.parse(jsonProps)).toEqual({ key: 'value', num: 42 });
     });
 
+    it('stores text iDevice properties including task info fields', () => {
+      // createComponentYMap stores compData.properties as-is in jsonProperties
+      // This tests that properties with task info fields are preserved
+      const compData = {
+        id: 'comp-task',
+        ideviceId: 'comp-task',
+        ideviceType: 'FreeTextIdevice',
+        type: 'FreeTextIdevice',
+        order: 0,
+        createdAt: '2024-01-01T00:00:00Z',
+        htmlView: '<p>Main content</p>',
+        properties: {
+          textTextarea: '<p>Main content</p>',
+          textInfoDurationInput: '30 min',
+          textInfoDurationTextInput: 'Duration:',
+          textInfoParticipantsInput: 'Group of 4',
+          textInfoParticipantsTextInput: 'Grouping:',
+          textFeedbackInput: 'Show Answer',
+          textFeedbackTextarea: '<p>Feedback content</p>',
+        },
+        componentProps: {},
+      };
+
+      const compMap = importer.createComponentYMap(compData);
+      integrateYType(compMap);
+
+      // createComponentYMap stores properties as-is (modern format import)
+      const jsonProps = JSON.parse(compMap.get('jsonProperties'));
+      expect(jsonProps.textTextarea).toBe('<p>Main content</p>');
+      expect(jsonProps.textInfoDurationInput).toBe('30 min');
+      expect(jsonProps.textInfoDurationTextInput).toBe('Duration:');
+      expect(jsonProps.textInfoParticipantsInput).toBe('Group of 4');
+      expect(jsonProps.textInfoParticipantsTextInput).toBe('Grouping:');
+      expect(jsonProps.textFeedbackInput).toBe('Show Answer');
+      expect(jsonProps.textFeedbackTextarea).toBe('<p>Feedback content</p>');
+    });
+
     it('stores component props with prop_ prefix', () => {
       const compData = {
         id: 'comp-3',

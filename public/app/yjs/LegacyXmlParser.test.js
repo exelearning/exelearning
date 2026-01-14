@@ -3721,6 +3721,9 @@ describe('LegacyXmlParser', () => {
       expect(idevices[0].properties.textInfoDurationTextInput).toBe('Duración:');
       expect(idevices[0].properties.textInfoParticipantsInput).toBe('Grupo de 4');
       expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Agrupamiento:');
+      // cleanedHtml gets converted to textTextarea (no cleanedHtml property remains)
+      expect(idevices[0].properties.textTextarea).toBe('Task content');
+      expect(idevices[0].properties.cleanedHtml).toBeUndefined();
     });
 
     it('should extract feedback metadata from PBL Task', () => {
