@@ -86,7 +86,17 @@ window.addEventListener('DOMContentLoaded', function () {
 			},
 
 			change: function (e) {
-				this.compress(e.target.files ? e.target.files[0] : null);
+				var file = e.target.files ? e.target.files[0] : null;
+				if (file) {
+					// Reset firstImageLoaded so loadImage() can update the field
+					eXeImageCompressor.firstImageLoaded = false;
+					jQuery("#inputSize").val("");
+					jQuery("#inputMaxWidth").val(eXeImageCompressor.maxSize)[0].dispatchEvent(new Event('input'));
+					jQuery("#inputMaxHeight").val(eXeImageCompressor.maxSize)[0].dispatchEvent(new Event('input'));
+					var fileUrl = URL.createObjectURL(file);
+					eXeImageCompressor.loadImage(fileUrl);
+				}
+				this.compress(file);
 			},
 
 			dragover: function (e) {
@@ -99,8 +109,15 @@ window.addEventListener('DOMContentLoaded', function () {
 				jQuery("#inputSize").val("");
 				jQuery("#inputMaxWidth").val(eXeImageCompressor.maxSize)[0].dispatchEvent(new Event('input'));
 				jQuery("#inputMaxHeight").val(eXeImageCompressor.maxSize)[0].dispatchEvent(new Event('input'));
+				// Reset firstImageLoaded so loadImage() can update the field
+				eXeImageCompressor.firstImageLoaded = false;
 				// / eXeLearning
-				this.compress(e.dataTransfer.files ? e.dataTransfer.files[0] : null);
+				var file = e.dataTransfer.files ? e.dataTransfer.files[0] : null;
+				if (file) {
+					var fileUrl = URL.createObjectURL(file);
+					eXeImageCompressor.loadImage(fileUrl);
+				}
+				this.compress(file);
 			},
 		},
 
@@ -122,6 +139,7 @@ window.addEventListener('DOMContentLoaded', function () {
 			// var name = "exelearning.png";
 			// var url = "images/"+name;
 			var originalSrc = top.imgCompressor.originalSrc;
+			var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 
 			// Detect URL type for blob/asset handling
 			var isBlob = originalSrc.startsWith('blob:');
@@ -131,6 +149,33 @@ window.addEventListener('DOMContentLoaded', function () {
 			// Store URL type info for save handler
 			top.imgCompressor.isBlob = isBlob;
 			top.imgCompressor.isAsset = isAsset;
+			top.imgCompressor.assetId = null;
+
+			if (isAsset) {
+				if (assetManager && typeof assetManager.extractAssetId === 'function') {
+					top.imgCompressor.assetId = assetManager.extractAssetId(originalSrc);
+				} else {
+					var rawAssetId = originalSrc.replace('asset://', '').split('/')[0];
+					var dotIndex = rawAssetId.indexOf('.');
+					if (dotIndex > 0) rawAssetId = rawAssetId.substring(0, dotIndex);
+					top.imgCompressor.assetId = rawAssetId;
+				}
+			}
+
+			if (!top.imgCompressor.assetId && isBlob && assetManager && assetManager.reverseBlobCache) {
+				var cachedAssetId = assetManager.reverseBlobCache.get(originalSrc);
+				if (cachedAssetId) {
+					top.imgCompressor.assetId = cachedAssetId;
+				}
+			}
+
+			if (!top.imgCompressor.assetId) {
+				var selectedImg = top.tinymce?.activeEditor?.selection?.getNode?.();
+				var dataAssetId = selectedImg && selectedImg.getAttribute ? selectedImg.getAttribute('data-asset-id') : null;
+				if (dataAssetId) {
+					top.imgCompressor.assetId = dataAssetId;
+				}
+			}
 
 			var ext = originalSrc.split('.').pop();
 			ext = ext.toLowerCase();
@@ -167,10 +212,9 @@ window.addEventListener('DOMContentLoaded', function () {
 
 			// Handle asset:// URLs (from Yjs AssetManager)
 			if (isAsset) {
-				var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
 				if (assetManager) {
 					// Extract assetId from asset://uuid/filename
-					var assetId = originalSrc.replace('asset://', '').split('/')[0];
+					var assetId = top.imgCompressor.assetId || originalSrc.replace('asset://', '').split('/')[0];
 					assetManager.getAsset(assetId).then(function(asset) {
 						if (asset && asset.blob) {
 							var blob = asset.blob;
@@ -208,6 +252,7 @@ window.addEventListener('DOMContentLoaded', function () {
 						blob.lastModifiedDate = date;
 						blob.name = name;
 						vm.compress(blob);
+						eXeImageCompressor.loadImage(originalSrc);
 					})
 					.catch(function(err) {
 						console.error('Error loading data URL image:', err);
@@ -268,6 +313,29 @@ var eXeImageCompressor = {
 		}
 	},
 	firstImageLoaded: false,
+	closeOptimizer: function () {
+		// Close only the image optimizer dialog, leaving "Insert/Edit Image" dialog open
+		// Find TinyMCE from available window contexts
+		var tinymceRef = null;
+		var contexts = [top, parent];
+
+		for (var i = 0; i < contexts.length; i++) {
+			try {
+				if (contexts[i]?.tinymce?.activeEditor) {
+					tinymceRef = contexts[i].tinymce;
+					break;
+				}
+			} catch (e) {
+				// Cross-origin access blocked
+			}
+		}
+
+		// Close only one dialog (the topmost one, which is the optimizer)
+		var wm = tinymceRef?.activeEditor?.windowManager;
+		if (wm) {
+			wm.close();
+		}
+	},
 	setCookie: function (cvalue) {
 		var d = new Date();
 		d.setTime(d.getTime() + (30 * 24 * 60 * 60 * 1000));
@@ -293,10 +361,14 @@ var eXeImageCompressor = {
 			if (!isNaN(w) && !isNaN(h)) {
 				var v = w;
 				if (h > w) v = h;
-				// if (v > eXeImageCompressor.sizeLimit) v = eXeImageCompressor.sizeLimit;
-				if (v > eXeImageCompressor.imgMaxSize) v = eXeImageCompressor.imgMaxSize;
-				if (eXeImageCompressor.firstImageLoaded == false && v >= eXeImageCompressor.maxSize) {
-					v = eXeImageCompressor.maxSize;
+				// Limit to sizeLimit (absolute maximum)
+				if (v > eXeImageCompressor.sizeLimit) v = eXeImageCompressor.sizeLimit;
+				if (eXeImageCompressor.firstImageLoaded == false) {
+					// If image is larger than maxSize, use maxSize as default
+					if (v >= eXeImageCompressor.maxSize) {
+						v = eXeImageCompressor.maxSize;
+					}
+					// Always update the field on first load
 					jQuery("#inputSize").val(v);
 					jQuery("#inputMaxWidth").val(v)[0].dispatchEvent(new Event('input'));
 					jQuery("#inputMaxHeight").val(v)[0].dispatchEvent(new Event('input'));
@@ -310,192 +382,98 @@ var eXeImageCompressor = {
 		if (ext == "jpg" || ext == "jpeg" || url.indexOf("data:image/jpeg") == 0) jQuery("#inputQuality,label[for='inputQuality']").show();
 		else jQuery("#inputQuality,label[for='inputQuality']").hide();
 	},
-	init: function () {
-		this.i18n();
-		this.setMaxSize();
-		this.imgMaxSize = "";
-		if(parseInt(parent.document.querySelector("#width-dimension").value) >= parseInt(parent.document.querySelector("#height-dimension").value)){
-			this.imgMaxSize = document.querySelector("#inputSize").value = parent.document.querySelector("#width-dimension").value;
-		}else{
-			this.imgMaxSize = document.querySelector("#inputSize").value = parent.document.querySelector("#height-dimension").value;
-		}
+		init: function () {
+			this.i18n();
+			this.setMaxSize();
 
-		if(this.imgMaxSize > 1200){
-			this.imgMaxSize = document.querySelector("#inputSize").value = 1200;
-		}
+			// Set imgMaxSize to sizeLimit (will be used by Compressor.js options)
+			// The actual inputSize value will be set by loadImage() based on the real image dimensions
+			this.imgMaxSize = this.sizeLimit;
 
-		document.querySelector("#inputSize").max = this.imgMaxSize;
-		document.querySelector("#inputSize").title = `1 - ${this.imgMaxSize}px`;
+			// Set the max attribute to sizeLimit (absolute maximum allowed)
+			document.querySelector("#inputSize").max = this.sizeLimit;
+			document.querySelector("#inputSize").title = `1 - ${this.sizeLimit}px`;
+
+			// Update Vue's options.maxWidth and options.maxHeight (they were undefined when Vue was created)
+			jQuery("#inputMaxWidth").val(this.sizeLimit)[0].dispatchEvent(new Event('input'));
+			jQuery("#inputMaxHeight").val(this.sizeLimit)[0].dispatchEvent(new Event('input'));
+
+			// Don't set inputSize here - let loadImage() set it based on actual image dimensions
 
 		setTimeout(function () {
-			jQuery("#imageEditorOutputImg").on('load', function () {
-				eXeImageCompressor.loadImage(this.src);
-			});
+			// Note: We don't register a 'load' event on #imageEditorOutputImg here
+			// because loadImage() is called from mounted() with the ORIGINAL image URL.
+			// The compressed image may have different dimensions due to Compressor.js options.
 			jQuery("#imageEditorSaveImg").fadeIn().click(function () {
 
 				// Update the cookie
 				var v = jQuery("#inputSize").val();
-				// if (!isNaN(v) && v < eXeImageCompressor.sizeLimit) eXeImageCompressor.setCookie(v);
-				if (!isNaN(v) && v < eXeImageCompressor.imgMaxSize) eXeImageCompressor.setCookie(v);
+				if (!isNaN(v) && v < eXeImageCompressor.sizeLimit) eXeImageCompressor.setCookie(v);
 
-				var img = jQuery("#imageEditorOutputImg")
+				var img = jQuery("#imageEditorOutputImg");
 				var src = img.attr("src");
 
-				// Helper function to update dimensions and close dialog
-				function updateDimensionsAndClose(newPath, isAssetOrBlob) {
-					let newsize = document.querySelector("#inputSize").value;
-
-					// Get dimension inputs with null checks
-					let widthInput = parent.document.querySelector("#width-dimension");
-					let heightInput = parent.document.querySelector("#height-dimension");
-
-					let originalWidth = widthInput ? widthInput.value : newsize;
-					let originalHeight = heightInput ? heightInput.value : newsize;
-					let aspectRatio = originalWidth / originalHeight || 1;
-
-					// Calculate new dimensions
-					let newWidth, newHeight;
-					if (aspectRatio > 1) {
-						newWidth = newsize;
-						newHeight = (newsize / aspectRatio).toFixed();
-					} else if (aspectRatio < 1) {
-						newHeight = newsize;
-						newWidth = (newsize * aspectRatio).toFixed();
-					} else {
-						newWidth = newHeight = newsize;
-					}
-
-					// For blob/asset images, update TinyMCE editor directly and close
-					if (isAssetOrBlob) {
-						// Update the image directly in the editor
-						var editor = top.tinymce?.activeEditor;
-						if (editor) {
-							var selectedImg = editor.selection.getNode();
-							if (selectedImg && selectedImg.tagName === 'IMG') {
-								// Update the image attributes directly
-								editor.dom.setAttribs(selectedImg, {
-									'src': newPath,
-									'width': newWidth,
-									'height': newHeight
-								});
-								editor.undoManager.add();
+				// Set image data using TinyMCE dialog API and close optimizer
+				function setSourceAndClose(base64Src, imgWidth, imgHeight) {
+					// Use the TinyMCE dialog API stored in top.imgCompressor
+					var api = top.imgCompressor?.api;
+					if (api) {
+						// Update Source field
+						api.setData({ src: { value: base64Src } });
+						// Update Width and Height fields
+						api.setData({
+							dimensions: {
+								width: String(imgWidth),
+								height: String(imgHeight)
 							}
-						}
-
-						// Set flag to skip mySubmit processing (image already updated)
-						top.imgCompressor.skipSubmit = true;
-
-						// Close using same mechanism as original (button click)
-						let closeButton = parent.document.getElementsByClassName("tox-dialog tox-dialog--width-lg")[0].querySelector("BUTTON");
-						closeButton.click();
-						return;
+						});
 					}
-
-					// Original behavior for server-side images: update dialog fields and save
-					let inputPath = parent.document.querySelector("div.tox-form__group input");
-					inputPath.value = newPath;
-					if (widthInput) widthInput.value = newWidth;
-					if (heightInput) heightInput.value = newHeight;
-
-					let closeButton = parent.document.getElementsByClassName("tox-dialog tox-dialog--width-lg")[0].querySelector("BUTTON");
-					closeButton.click();
+					// Close the image optimizer dialog
+					eXeImageCompressor.closeOptimizer();
 				}
 
-				// Check if this is a blob/asset image that should be saved to IndexedDB
-				var isBlob = top.imgCompressor.isBlob;
-				var isAsset = top.imgCompressor.isAsset;
-				var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+				// Get the dimensions of the optimized image
+				var imgElement = img[0];
+				var imgWidth = imgElement.naturalWidth || imgElement.width;
+				var imgHeight = imgElement.naturalHeight || imgElement.height;
 
-				// This will upload the image before inserting it in TinyMCE
-				// You'll insert /previews/image_name.png instead of a Base64 image
-				if (eXeImageCompressor.type == "file") {
-					if (src.indexOf("data:image/") == 0) {
-						var ext = src.replace("data:image/", "");
-						ext = ext.split(";");
-						ext = ext[0];
-						if (ext != "") {
-							ext = ext.toLowerCase();
-							if (ext == "jpeg") ext = "jpg";
-							if (ext == 'png' || ext == 'gif' || ext == 'jpg') {
-
-								let base64data = document.getElementById("imageEditorOutputImg").getAttribute("src");
-
-								// If blob/asset image and AssetManager is available, save to IndexedDB
-								if ((isBlob || isAsset) && assetManager) {
-									// Convert base64 to blob and save to AssetManager
-									fetch(base64data)
-										.then(function(response) { return response.blob(); })
-										.then(function(blob) {
-											// Determine mime type
-											var mimeType = 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
-											// Create File object for AssetManager
-											var filename = top.imgCompressor.fileToSave || ('optimized.' + ext);
-											var file = new File([blob], filename, { type: mimeType });
-											return assetManager.insertImage(file);
-										})
-										.then(function(newAssetUrl) {
-											if (newAssetUrl) {
-												// Resolve asset:// URL to blob: URL for TinyMCE
-												return assetManager.resolveAssetURL(newAssetUrl).then(function(blobUrl) {
-													return { assetUrl: newAssetUrl, blobUrl: blobUrl };
-												});
-											} else {
-												throw new Error("Failed to save image");
-											}
-										})
-										.then(function(result) {
-											if (result.blobUrl) {
-												// Use blob URL for TinyMCE display, mark as asset/blob to update editor directly
-												updateDimensionsAndClose(result.blobUrl, true);
-											} else {
-												top.eXe.app.alert(_("Error saving optimized image"));
-											}
-										})
-										.catch(function(err) {
-											console.error('Error saving optimized image to IndexedDB:', err);
-											top.eXe.app.alert(_("Error saving optimized image"));
-										});
-									return false;
-								}
-
-								// Original behavior: upload to server
-								top.eXe.app.uploadFile(base64data, top.imgCompressor.fileToSave).then(response => {
-									if (response && response.savedPath && response.savedFilename) {
-										let fullPath = `${response.savedPath}${response.savedFilename}`;
-										updateDimensionsAndClose(fullPath, false);
-									} else {
-										top.eXe.app.alert(_("Error uploading image"));
-									}
-								})
-								return false;
-							}
-						}
-					}
+				// The optimized image is already in base64 format (data:image/...)
+				if (src && src.indexOf("data:image/") === 0) {
+					setSourceAndClose(src, imgWidth, imgHeight);
+				} else if (src && src.indexOf("blob:") === 0) {
+					// Convert blob URL to base64
+					fetch(src)
+						.then(function(response) { return response.blob(); })
+						.then(function(blob) {
+							var reader = new FileReader();
+							reader.onloadend = function() {
+								setSourceAndClose(reader.result, imgWidth, imgHeight);
+							};
+							reader.readAsDataURL(blob);
+						})
+						.catch(function(err) {
+							console.error('Error converting blob to base64:', err);
+							eXeImageCompressor.closeOptimizer();
+						});
+				} else {
+					// Fallback: just close
+					eXeImageCompressor.closeOptimizer();
 				}
 
-				// This will return a base64 image
-				// previewTinyMCEimageDragDrop will do the rest
-				// But it will always be a PNG image...
-				var tmp = new Image();
-				tmp.onload = function () {
-					var width = this.width || "";
-					var height = this.height || "";
-					try {
-						top.imgCompressor.callback(src + "?v=" + Date.now(), width, height);
-					} catch (e) { }
-				}
-				tmp.src = src;
 				return false;
-
 			});
-			jQuery("#inputSize").change(function () {
+			jQuery("#inputSize").on('input', function () {
 				var v = this.value;
 				v = v.replace(/\D/g, '');
-				// if (v > eXeImageCompressor.sizeLimit) v = v.slice(0, -1);
-				if(v > eXeImageCompressor.imgMaxSize) v = eXeImageCompressor.imgMaxSize;
+				// Limit to sizeLimit (absolute maximum)
+				if (v !== '' && parseInt(v, 10) > eXeImageCompressor.sizeLimit) {
+					v = eXeImageCompressor.sizeLimit;
+				}
 				this.value = v;
-				jQuery("#inputMaxWidth").val(v)[0].dispatchEvent(new Event('input'));
-				jQuery("#inputMaxHeight").val(v)[0].dispatchEvent(new Event('input'));
+				if (v !== '') {
+					jQuery("#inputMaxWidth").val(v)[0].dispatchEvent(new Event('input'));
+					jQuery("#inputMaxHeight").val(v)[0].dispatchEvent(new Event('input'));
+				}
 			});
 		}, 1000);
 	},
