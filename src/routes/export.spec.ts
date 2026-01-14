@@ -113,8 +113,8 @@ function createMockExportSystem(): ExportSystemDeps {
         } as any,
         FflateZipProvider: class MockZipProvider {
             createZip = () => ({
-                addFile: () => {},
-                addFiles: () => {},
+                addFile: () => { },
+                addFiles: () => { },
                 generate: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
             });
         } as any,
@@ -126,8 +126,8 @@ function createMockExportSystem(): ExportSystemDeps {
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
         PageElpxExporter: MockExporter as any,
-        YjsDocumentAdapter: class MockYjsAdapter {} as any,
-        ServerYjsDocumentWrapper: class MockServerWrapper {} as any,
+        YjsDocumentAdapter: class MockYjsAdapter { } as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper { } as any,
     };
 }
 
@@ -920,13 +920,17 @@ describe('convertYjsStructureToParsed', () => {
 
         const result = convertYjsStructureToParsed(yjs);
 
-        expect(result.navigation).toHaveLength(3);
-        expect(result.navigation[0].navText).toBe('Home');
-        expect(result.navigation[0].position).toBe(0);
-        expect(result.navigation[1].navText).toBe('About');
-        expect(result.navigation[1].parent_id).toBe('nav-1');
-        expect(result.navigation[2].navText).toBe('Contact');
-        expect(result.navigation[2].parent_id).toBeUndefined();
+        // navigation is an object with page property
+        const pages = Array.isArray(result.navigation.page) ? result.navigation.page : [result.navigation.page];
+        expect(pages).toHaveLength(3);
+
+        // Check properties on the page objects
+        expect(pages[0].navText).toBe('Home');
+        expect(pages[0].position).toBe(0);
+        expect(pages[1].navText).toBe('About');
+        expect((pages[1] as any).parent_id).toBe('nav-1');
+        expect(pages[2].navText).toBe('Contact');
+        expect((pages[2] as any).parent_id).toBeUndefined();
     });
 
     it('should handle empty blocks array', () => {

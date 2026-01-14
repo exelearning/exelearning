@@ -302,7 +302,7 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
     return {
         meta,
         pages: rootPages,
-        navigation: { page: [] } as any, // Cast to avoid strict structure match
+        navigation: { page: navigation } as any, // Cast to avoid strict structure match
         raw: {} as any,
     };
 }

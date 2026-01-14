@@ -15,6 +15,7 @@ import {
     type PagesFileHelperDeps,
     type PagesTemplateDeps,
     type PagesUtilsDeps,
+    type PagesSettingsDeps,
 } from './pages';
 
 // Mock data stores
@@ -129,6 +130,23 @@ function createMockUtils(): PagesUtilsDeps {
     };
 }
 
+createGravatarUrl: (email: string, _gravatarId: string | null, _fallback: string) => {
+    return `https://gravatar.com/avatar/${email}`;
+},
+    };
+}
+
+// Create mock settings
+function createMockSettings(): PagesSettingsDeps {
+    return {
+        getAuthMethods: async (_db: any, fallback: string) => {
+            const methods = (process.env.APP_AUTH_METHODS || fallback).split(',').map(m => m.trim());
+            return methods;
+        },
+        getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
+    };
+}
+
 // Create mock dependencies
 function createMockDependencies(): PagesDependencies {
     return {
@@ -138,6 +156,7 @@ function createMockDependencies(): PagesDependencies {
         fileHelper: createMockFileHelper(),
         template: createMockTemplate(),
         utils: createMockUtils(),
+        settings: createMockSettings(),
     };
 }
 
@@ -1274,7 +1293,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>Workarea: ${template}</body></html>`;
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1387,7 +1406,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1438,7 +1457,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1488,7 +1507,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1536,7 +1555,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Template rendering failed');
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1587,7 +1606,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return `<html><body>${template}</body></html>`;
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1854,7 +1873,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1903,7 +1922,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -1959,7 +1978,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -2008,7 +2027,7 @@ describe('Pages Routes', () => {
                 renderTemplate: (_template: string, _data: any) => {
                     throw new Error('Admin template failed');
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -2128,7 +2147,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -2170,7 +2189,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -2298,7 +2317,7 @@ describe('Pages Routes', () => {
                     templateData = data;
                     return '<html></html>';
                 },
-                setRenderLocale: () => {},
+                setRenderLocale: () => { },
             };
 
             const customDeps = {
@@ -2361,7 +2380,7 @@ describe('Pages Routes', () => {
                         templateData = data;
                         return `<html><body>Template: ${template}</body></html>`;
                     },
-                    setRenderLocale: () => {},
+                    setRenderLocale: () => { },
                 };
 
                 const customDeps = {
