@@ -600,10 +600,7 @@ $exeFX = {
         prevA.className = "fx-disabled-link";
         // Next
         nextLi.removeClass("fx-disabled");
-        nextA.onclick = function () {
-          $exeFX.carousel.show(gID, gID + "-1", 1);
-          return false;
-        }
+        nextA.className = "exeFXSlideLink" + gID + "_" + gID + "-1_1";
       } else {
         // Prev
         prevLi.removeClass("fx-disabled");

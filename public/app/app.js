@@ -48,6 +48,8 @@ export default class App {
      *
      */
     async init() {
+        // Register preview Service Worker (for unified preview/export rendering)
+        this.registerPreviewServiceWorker();
         // Compose and initialized toasts
         this.initializedToasts();
         // Compose and initialized modals
@@ -85,6 +87,311 @@ export default class App {
 
         // Handle exe-package:elp protocol for download-source-file iDevice
         this.initExePackageProtocolHandler();
+    }
+
+    /**
+     * Register the preview Service Worker
+     * @returns {Promise<ServiceWorkerRegistration|null>} Registration promise
+     */
+    registerPreviewServiceWorker() {
+        if (!('serviceWorker' in navigator)) {
+            this._previewSwRegistrationPromise = Promise.resolve(null);
+            return this._previewSwRegistrationPromise;
+        }
+
+        // Check secure context (required for SW)
+        const isSecureContext =
+            window.isSecureContext ||
+            location.protocol === 'https:' ||
+            location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1';
+
+        if (!isSecureContext) {
+            this._previewSwRegistrationPromise = Promise.resolve(null);
+            return this._previewSwRegistrationPromise;
+        }
+
+        // Derive paths from pathname (eXeViewer pattern)
+        const pathname = window.location.pathname;
+        const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+        const swPath = basePath + 'preview-sw.js';
+
+        this._previewSwRegistrationPromise = (async () => {
+            try {
+                // Check for existing registration
+                let registration = await navigator.serviceWorker.getRegistration(basePath);
+
+                if (registration?.active) {
+                    await registration.update();
+                    this._previewSwRegistration = registration;
+                    await this._tryClaimClients(registration);
+                    return registration;
+                }
+
+                // Register new Service Worker
+                registration = await navigator.serviceWorker.register(swPath, { scope: basePath });
+                this._previewSwRegistration = registration;
+
+                // Wait for activation
+                await this._waitForActivation(registration);
+                await this._tryClaimClients(registration);
+
+                // Handle future updates
+                registration.addEventListener('updatefound', () => {
+                    const newWorker = registration.installing;
+                    if (newWorker) {
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                            }
+                        });
+                    }
+                });
+
+                return registration;
+            } catch (error) {
+                console.error('[Preview SW] Registration failed:', error);
+                return null;
+            }
+        })();
+
+        return this._previewSwRegistrationPromise;
+    }
+
+    /**
+     * Wait for SW to activate
+     * @param {ServiceWorkerRegistration} registration
+     * @private
+     */
+    async _waitForActivation(registration) {
+        const sw = registration.installing || registration.waiting || registration.active;
+        if (!sw || sw.state === 'activated') return;
+
+        await Promise.race([
+            new Promise((resolve) => {
+                const onStateChange = () => {
+                    if (sw.state === 'activated') {
+                        sw.removeEventListener('statechange', onStateChange);
+                        resolve();
+                    }
+                };
+                sw.addEventListener('statechange', onStateChange);
+                if (sw.state === 'activated') {
+                    sw.removeEventListener('statechange', onStateChange);
+                    resolve();
+                }
+            }),
+            new Promise((resolve) => setTimeout(resolve, 5000)),
+        ]);
+    }
+
+    /**
+     * Try to claim clients (non-fatal if fails)
+     * @param {ServiceWorkerRegistration} registration
+     * @private
+     */
+    async _tryClaimClients(registration) {
+        if (navigator.serviceWorker.controller || !registration.active) return;
+
+        registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
+        try {
+            await this._waitForController(5000);
+        } catch {
+            // Non-fatal: iframe will still work via SW scope
+        }
+    }
+
+    /**
+     * Wait for Service Worker to become the controller
+     * @param {number} timeout - Maximum time to wait in ms
+     * @returns {Promise<ServiceWorker>} The controller
+     * @private
+     */
+    _waitForController(timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            if (navigator.serviceWorker.controller) {
+                resolve(navigator.serviceWorker.controller);
+                return;
+            }
+
+            const timeoutId = setTimeout(() => {
+                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+                reject(new Error('Controller timeout'));
+            }, timeout);
+
+            const onControllerChange = () => {
+                clearTimeout(timeoutId);
+                navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+                resolve(navigator.serviceWorker.controller);
+            };
+
+            navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+        });
+    }
+
+    /**
+     * Get the preview Service Worker controller
+     * @returns {ServiceWorker|null} The active service worker or null
+     */
+    getPreviewServiceWorker() {
+        return navigator.serviceWorker?.controller || null;
+    }
+
+    /**
+     * Wait for the preview Service Worker to be ready
+     * Returns the active SW - doesn't require it to be controlling the parent page
+     * The preview iframe will be controlled by the SW based on its URL
+     * @param {number} timeout - Maximum time to wait in ms (default 10000)
+     * @returns {Promise<ServiceWorker>} The active service worker
+     */
+    async waitForPreviewServiceWorker(timeout = 10000) {
+        if (!('serviceWorker' in navigator)) {
+            throw new Error('Service Workers not supported');
+        }
+
+        // If already have a controller, return it
+        if (navigator.serviceWorker.controller) {
+            return navigator.serviceWorker.controller;
+        }
+
+        // Wait for our registration to complete (it handles activation)
+        if (this._previewSwRegistrationPromise) {
+            const registration = await Promise.race([
+                this._previewSwRegistrationPromise,
+                new Promise((_, reject) =>
+                    setTimeout(
+                        () =>
+                            reject(
+                                new Error('Service Worker registration timeout')
+                            ),
+                        timeout
+                    )
+                ),
+            ]);
+
+            if (!registration) {
+                throw new Error('Service Worker registration failed');
+            }
+
+            // Return the active SW from registration (doesn't need to be controlling parent page)
+            if (registration.active) {
+                return registration.active;
+            }
+        }
+
+        // Fallback: check for controller one more time
+        if (navigator.serviceWorker.controller) {
+            return navigator.serviceWorker.controller;
+        }
+
+        // Check if we have a stored registration with active SW
+        if (this._previewSwRegistration?.active) {
+            return this._previewSwRegistration.active;
+        }
+
+        throw new Error('Service Worker not available');
+    }
+
+    /**
+     * Send content to the preview Service Worker
+     * @param {Object} files - Map of file paths to ArrayBuffer content
+     * @param {Object} options - Options for content serving
+     * @returns {Promise<{fileCount: number}>} Promise that resolves when content is ready
+     */
+    async sendContentToPreviewSW(files, options = {}) {
+        const sw = this.getPreviewServiceWorker();
+        if (!sw) {
+            throw new Error('Preview Service Worker not available');
+        }
+
+        return new Promise((resolve, reject) => {
+            // Set up message listener for response
+            const messageHandler = (event) => {
+                if (event.data?.type === 'CONTENT_READY') {
+                    // Content received by SW, now verify it can actually serve requests
+                    // This extra verification step handles Firefox's stricter event timing
+                    // between message events and fetch events in Service Workers
+                    sw.postMessage({ type: 'VERIFY_READY' });
+                } else if (event.data?.type === 'READY_VERIFIED') {
+                    navigator.serviceWorker.removeEventListener(
+                        'message',
+                        messageHandler
+                    );
+                    if (event.data.ready) {
+                        resolve({ fileCount: event.data.fileCount });
+                    } else {
+                        reject(
+                            new Error('SW content not ready after verification')
+                        );
+                    }
+                }
+            };
+            navigator.serviceWorker.addEventListener('message', messageHandler);
+
+            // Collect transferable ArrayBuffers
+            const transferables = [];
+            for (const value of Object.values(files)) {
+                if (value instanceof ArrayBuffer) {
+                    transferables.push(value);
+                }
+            }
+
+            // Send content to SW
+            sw.postMessage(
+                {
+                    type: 'SET_CONTENT',
+                    data: { files, options },
+                },
+                transferables
+            );
+
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                navigator.serviceWorker.removeEventListener(
+                    'message',
+                    messageHandler
+                );
+                reject(new Error('Timeout waiting for SW content ready'));
+            }, 10000);
+        });
+    }
+
+    /**
+     * Update specific files in the preview Service Worker
+     * @param {Object} files - Map of file paths to ArrayBuffer content (null to delete)
+     * @returns {Promise<void>}
+     */
+    async updatePreviewSWFiles(files) {
+        const sw = this.getPreviewServiceWorker();
+        if (!sw) {
+            throw new Error('Preview Service Worker not available');
+        }
+
+        // Collect transferable ArrayBuffers
+        const transferables = [];
+        for (const value of Object.values(files)) {
+            if (value instanceof ArrayBuffer) {
+                transferables.push(value);
+            }
+        }
+
+        sw.postMessage(
+            {
+                type: 'UPDATE_FILES',
+                data: { files },
+            },
+            transferables
+        );
+    }
+
+    /**
+     * Clear content from the preview Service Worker
+     */
+    clearPreviewSWContent() {
+        const sw = this.getPreviewServiceWorker();
+        if (sw) {
+            sw.postMessage({ type: 'CLEAR_CONTENT' });
+        }
     }
 
     /**

@@ -33,8 +33,6 @@ import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
-import { WebsitePreviewExporter } from '../exporters/WebsitePreviewExporter';
-import type { PreviewOptions, PreviewResult } from '../exporters/WebsitePreviewExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
@@ -381,112 +379,6 @@ export async function exportAndDownload(
 }
 
 /**
- * Generate preview HTML from Yjs document
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
- * @param options - Preview options (baseUrl, basePath, version)
- * @returns Preview result with HTML string
- */
-export async function generatePreview(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-    options?: PreviewOptions,
-): Promise<PreviewResult> {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    const exporter = new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
-
-    // Wire up LaTeX pre-renderer hooks if available in browser context
-    // LatexPreRenderer uses DOM parsing to find LaTeX expressions in text nodes
-    // and renders them individually to SVG+MathML using MathJax.
-    // preRenderDataGameLatex handles LaTeX inside encrypted game iDevice data.
-    // This allows exports to skip bundling MathJax (~1MB)
-    const latexHooks = getLatexPreRendererHooks();
-    // Wire up Mermaid pre-renderer hooks if available in browser context
-    // MermaidPreRenderer converts <pre class="mermaid"> to static SVG
-    // This allows exports to skip bundling Mermaid (~2.7MB)
-    const mermaidHooks = getMermaidPreRendererHooks();
-
-    options = {
-        ...options,
-        ...latexHooks,
-        ...mermaidHooks,
-    };
-
-    return exporter.generatePreview(options);
-}
-
-/**
- * Generate preview HTML and open in a new window
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional)
- * @param options - Preview options
- * @returns The opened window reference, or null if failed
- */
-export async function openPreviewWindow(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-    options?: PreviewOptions,
-): Promise<Window | null> {
-    const result = await generatePreview(documentManager, resourceFetcher, options);
-
-    if (!result.success || !result.html) {
-        console.error('[SharedExporters] Preview generation failed:', result.error);
-        return null;
-    }
-
-    // Resolve asset:// URLs to blob:// URLs before opening the preview
-    // The HTML contains asset:// URLs that need to be converted to blob:// for display
-    let html = result.html;
-
-    // Use global resolveAssetUrlsAsync if available (from AssetManager.js)
-    const resolveAssetUrlsAsync = (window as unknown as { resolveAssetUrlsAsync?: (html: string) => Promise<string> })
-        .resolveAssetUrlsAsync;
-    if (typeof resolveAssetUrlsAsync === 'function') {
-        try {
-            html = await resolveAssetUrlsAsync(html);
-        } catch (error) {
-            console.warn('[SharedExporters] Failed to resolve asset URLs:', error);
-        }
-    }
-
-    // Open new window and write HTML
-    const previewWindow = window.open('', '_blank');
-    if (!previewWindow) {
-        console.error('[SharedExporters] Could not open preview window (popup blocked?)');
-        return null;
-    }
-
-    previewWindow.document.open();
-    previewWindow.document.write(html);
-    previewWindow.document.close();
-
-    return previewWindow;
-}
-
-/**
- * Create a preview exporter for advanced usage
- *
- * @param documentManager - YjsDocumentManager instance
- * @param resourceFetcher - ResourceFetcher instance (optional)
- * @returns WebsitePreviewExporter instance
- */
-export function createPreviewExporter(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-): WebsitePreviewExporter {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    return new WebsitePreviewExporter(document, resources as Parameters<typeof WebsitePreviewExporter>[1]);
-}
-
-/**
  * Generate print preview HTML from Yjs document
  * Creates a single-page HTML with all pages visible for printing
  *
@@ -538,6 +430,102 @@ export function createPrintPreviewExporter(
     return new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
 }
 
+/**
+ * Preview files result for Service Worker-based preview
+ */
+export interface PreviewFilesResult {
+    success: boolean;
+    files?: Record<string, ArrayBuffer>;
+    error?: string;
+}
+
+/**
+ * Generate preview files for Service Worker-based preview
+ *
+ * Uses Html5Exporter to generate the same files as HTML export,
+ * enabling unified preview/export rendering via the eXeViewer approach.
+ *
+ * @param documentManager - YjsDocumentManager instance
+ * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param options - Export options (theme override, etc.)
+ * @returns Preview files result with file map
+ */
+export async function generatePreviewForSW(
+    documentManager: YjsDocumentManagerLike,
+    assetCache: AssetCacheManagerLike | null,
+    resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | null,
+    options?: ExportOptions,
+): Promise<PreviewFilesResult> {
+    try {
+        // Validate required dependencies
+        if (!documentManager) {
+            throw new Error('[SharedExporters] documentManager is required for preview');
+        }
+
+        // Create adapters with null-safe wrappers
+        const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+
+        // Create resource provider with null-safe fallback
+        const resources = resourceFetcher
+            ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+            : createNullResourceProvider();
+
+        // Create asset provider with null-safe fallback
+        const assets =
+            assetCache || assetManager
+                ? new BrowserAssetProvider(
+                      assetCache as Parameters<typeof BrowserAssetProvider>[0],
+                      assetManager as Parameters<typeof BrowserAssetProvider>[1],
+                  )
+                : createNullAssetProvider();
+
+        // Create a null zip provider (not needed for preview files)
+        const zip = new FflateZipProvider();
+
+        // Create Html5Exporter
+        const exporter = new Html5Exporter(document, resources, assets, zip);
+
+        // Wire up LaTeX pre-renderer hooks if available in browser context
+        const latexHooks = getLatexPreRendererHooks();
+        // Wire up Mermaid pre-renderer hooks if available in browser context
+        const mermaidHooks = getMermaidPreRendererHooks();
+        const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
+
+        // Generate preview files (Map<string, Uint8Array | string>)
+        const filesMap = await exporter.generateForPreview(exportOptions);
+
+        // Convert to plain object with ArrayBuffer values for SW transfer
+        const files: Record<string, ArrayBuffer> = {};
+        for (const [path, content] of filesMap) {
+            if (content instanceof Uint8Array) {
+                files[path] = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
+            } else if (typeof content === 'string') {
+                const encoder = new TextEncoder();
+                const encoded = encoder.encode(content);
+                files[path] = encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength);
+            } else {
+                files[path] = content as ArrayBuffer;
+            }
+        }
+
+        console.log(`[SharedExporters] Generated ${Object.keys(files).length} preview files for SW`);
+
+        return {
+            success: true,
+            files,
+        };
+    } catch (error) {
+        console.error('[SharedExporters] generatePreviewForSW failed:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
+}
+
 // Export classes for advanced usage
 export {
     // Adapters
@@ -556,7 +544,6 @@ export {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
-    WebsitePreviewExporter,
     PrintPreviewExporter,
     ComponentExporter,
     // Renderers
@@ -572,7 +559,6 @@ export {
 };
 
 // Export types for TypeScript consumers
-export type { PreviewOptions, PreviewResult };
 export type { PrintPreviewOptions, PrintPreviewResult };
 
 // Expose to window for browser use
@@ -582,10 +568,8 @@ if (typeof window !== 'undefined') {
         createExporter,
         quickExport,
         exportAndDownload,
-        // Preview functions
-        generatePreview,
-        openPreviewWindow,
-        createPreviewExporter,
+        // SW-based preview functions
+        generatePreviewForSW,
         // Print preview functions
         generatePrintPreview,
         createPrintPreviewExporter,
@@ -605,7 +589,6 @@ if (typeof window !== 'undefined') {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
-        WebsitePreviewExporter,
         PrintPreviewExporter,
         ComponentExporter,
         // Renderers

@@ -394,6 +394,7 @@ export class Html5Exporter extends BaseExporter {
             addPagination: meta.addPagination ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
+            addMathJax: meta.addMathJax ?? false,
             // Custom head content
             extraHeadContent: meta.extraHeadContent,
             // Theme files for HTML head includes
@@ -437,5 +438,268 @@ export class Html5Exporter extends BaseExporter {
         return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
 .exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
 .exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
+    }
+
+    /**
+     * Generate preview files map (for Service Worker-based preview)
+     * Returns a map of file paths to content (Uint8Array or string)
+     * Same structure as ZIP export but without creating the archive
+     *
+     * This enables unified preview/export rendering using the eXeViewer approach:
+     * - Preview uses Service Worker to serve files from memory
+     * - Files are the same as what would be in the HTML5 export
+     * - No blob:// URLs, no special preview rendering path
+     */
+    async generateForPreview(options?: Html5ExportOptions): Promise<Map<string, Uint8Array | string>> {
+        const files = new Map<string, Uint8Array | string>();
+
+        try {
+            let pages = this.buildPageList();
+            const meta = this.getMetadata();
+            // Theme priority: 1º parameter > 2º ELP metadata > 3º default
+            const themeName = options?.theme || meta.theme || 'base';
+
+            // Check for ELPX download support (looks for exe-package:elp in content)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // Pre-process pages: add filenames to asset URLs, convert internal links
+            pages = await this.preprocessPagesForExport(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                files.set(path, content);
+                if (fileList) fileList.push(path);
+            };
+
+            // 0. Pre-fetch theme files to get the list of CSS/JS for HTML includes
+            const themeRootFiles: string[] = [];
+            let themeFilesMap: Map<string, Uint8Array> | null = null;
+            try {
+                themeFilesMap = await this.resources.fetchTheme(themeName);
+                for (const [filePath] of themeFilesMap) {
+                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                        themeRootFiles.push(filePath);
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Html5Exporter] Failed to pre-fetch theme: ${themeName}`, e);
+                themeRootFiles.push('style.css', 'style.js');
+            }
+
+            // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
+            const pageHtmlMap = new Map<string, string>();
+            let latexWasRendered = false;
+            let mermaidWasRendered = false;
+
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
+
+                // Pre-render LaTeX ONLY if addMathJax is false
+                if (!meta.addMathJax) {
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(html);
+                            if (result.count > 0) {
+                                html = result.html;
+                                latexWasRendered = true;
+                            }
+                        } catch {
+                            // Continue without pre-rendering
+                        }
+                    }
+
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(html);
+                            if (result.latexRendered) {
+                                html = result.html;
+                                latexWasRendered = true;
+                            }
+                        } catch {
+                            // Continue without pre-rendering
+                        }
+                    }
+                }
+
+                // Pre-render Mermaid diagrams
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
+                            html = result.html;
+                            mermaidWasRendered = true;
+                        }
+                    } catch {
+                        // Continue without pre-rendering
+                    }
+                }
+
+                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                pageHtmlMap.set(pageFilename, html);
+            }
+
+            // 2. Add search_index.js if search box is enabled
+            if (meta.addSearchBox) {
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                addFile('search_index.js', searchIndexContent);
+            }
+
+            // 3. Skip content.xml for preview (not needed for viewing)
+            // This saves space and prevents unnecessary file generation
+
+            // 4. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
+            const contentCssFiles = await this.resources.fetchContentCss();
+            let baseCss = contentCssFiles.get('content/css/base.css');
+            if (baseCss) {
+                if (latexWasRendered || mermaidWasRendered) {
+                    const decoder = new TextDecoder();
+                    let baseCssText = decoder.decode(baseCss);
+                    if (latexWasRendered) {
+                        baseCssText += '\n' + this.getPreRenderedLatexCss();
+                    }
+                    if (mermaidWasRendered) {
+                        baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                    }
+                    const encoder = new TextEncoder();
+                    baseCss = encoder.encode(baseCssText);
+                }
+                addFile('content/css/base.css', baseCss);
+            }
+
+            // 5. Add eXeLearning logo for "Made with eXeLearning" footer
+            try {
+                const logoData = await this.resources.fetchExeLogo();
+                if (logoData) {
+                    addFile('content/img/exe_powered_logo.png', logoData);
+                }
+            } catch {
+                // Logo not available - footer will still render but without background image
+            }
+
+            // 6. Add theme files
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    addFile(`theme/${filePath}`, content);
+                }
+            } else {
+                const encoder = new TextEncoder();
+                addFile('theme/style.css', encoder.encode(this.getFallbackThemeCss()));
+                addFile('theme/style.js', encoder.encode(this.getFallbackThemeJs()));
+            }
+
+            // 7. Fetch base libraries
+            try {
+                const baseLibs = await this.resources.fetchBaseLibraries();
+                for (const [libPath, content] of baseLibs) {
+                    addFile(`libs/${libPath}`, content);
+                }
+            } catch {
+                // Base libraries not available - continue anyway
+            }
+
+            // 8. Detect and fetch additional required libraries based on content
+            const allHtmlContent = this.collectAllHtmlContent(pages);
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: latexWasRendered && !meta.addMathJax,
+                    skipMermaid: mermaidWasRendered,
+                },
+            );
+
+            try {
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
+                for (const [libPath, content] of libFiles) {
+                    const filePath = `libs/${libPath}`;
+                    if (!files.has(filePath)) {
+                        addFile(filePath, content);
+                    }
+                }
+            } catch {
+                // Additional libraries not available - continue anyway
+            }
+
+            // 9. Fetch and add iDevice assets
+            const usedIdevices = this.getUsedIdevices(pages);
+            for (const idevice of usedIdevices) {
+                try {
+                    const normalizedType = this.resources.normalizeIdeviceType(idevice);
+                    const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
+                    for (const [filePath, content] of ideviceFiles) {
+                        addFile(`idevices/${normalizedType}/${filePath}`, content);
+                    }
+                } catch {
+                    // Many iDevices don't have extra files - this is normal
+                }
+            }
+
+            // 10. Add project assets
+            await this.addAssetsToPreviewFiles(files, fileList);
+
+            // 11. Generate ELPX manifest file if download-source-file is used
+            if (needsElpxDownload && fileList) {
+                for (const [htmlFile] of pageHtmlMap) {
+                    if (!fileList.includes(htmlFile)) {
+                        fileList.push(htmlFile);
+                    }
+                }
+                const manifestJs = this.generateElpxManifestFile(fileList);
+                addFile('libs/elpx-manifest.js', manifestJs);
+            }
+
+            // 12. Add all HTML pages
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const filename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                let html = pageHtmlMap.get(filename) || '';
+
+                // Only add manifest script to pages that have download-source-file iDevice
+                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
+                    const basePath = i === 0 ? '' : '../';
+                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
+                }
+                const encoder = new TextEncoder();
+                files.set(filename, encoder.encode(html));
+            }
+
+            return files;
+        } catch (error) {
+            console.error('[Html5Exporter] generateForPreview failed:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Add project assets to preview files map
+     */
+    private async addAssetsToPreviewFiles(
+        files: Map<string, Uint8Array | string>,
+        trackingList?: string[] | null,
+    ): Promise<number> {
+        let assetsAdded = 0;
+
+        try {
+            const assets = await this.assets.getAllAssets();
+            const exportPathMap = await this.buildAssetExportPathMap();
+
+            for (const asset of assets) {
+                const exportPath = exportPathMap.get(asset.id);
+                if (!exportPath) continue;
+
+                const filePath = `content/resources/${exportPath}`;
+                files.set(filePath, asset.data);
+                if (trackingList) trackingList.push(filePath);
+                assetsAdded++;
+            }
+        } catch (e) {
+            console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
+        }
+
+        return assetsAdded;
     }
 }
