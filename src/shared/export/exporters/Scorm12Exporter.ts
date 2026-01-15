@@ -15,7 +15,7 @@
  * - content/css/ (base CSS)
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { Scorm12ManifestGenerator } from '../generators/Scorm12Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
@@ -71,20 +71,7 @@ export class Scorm12Exporter extends Html5Exporter {
             const pageFiles: Record<string, { fileUrl: string; files: string[] }> = {};
 
             // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
-            const themeRootFiles: string[] = [];
-            let themeFilesMap: Map<string, Uint8Array> | null = null;
-            try {
-                themeFilesMap = await this.resources.fetchTheme(themeName);
-                for (const [filePath] of themeFilesMap) {
-                    // Track root-level CSS/JS files (no path separator = root level)
-                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
-                        themeRootFiles.push(filePath);
-                    }
-                }
-            } catch {
-                // Will use fallback theme later
-                themeRootFiles.push('style.css', 'style.js');
-            }
+            const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1. Generate HTML pages (with SCORM support and optional LaTeX pre-rendering)
             let latexWasRendered = false;
@@ -92,7 +79,7 @@ export class Scorm12Exporter extends Html5Exporter {
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateScormPageHtml(page, pages, meta, isIndex, themeRootFiles, i);
+                let html = this.generateScormPageHtml(page, pages, meta, isIndex, themeRootFiles, i, faviconInfo);
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -265,6 +252,7 @@ export class Scorm12Exporter extends Html5Exporter {
         isIndex: boolean,
         themeFiles?: string[],
         pageIndex?: number,
+        faviconInfo?: FaviconInfo | null,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -302,6 +290,9 @@ export class Scorm12Exporter extends Html5Exporter {
             hideNavButtons: true,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
+            // Favicon options
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
         });
     }
 

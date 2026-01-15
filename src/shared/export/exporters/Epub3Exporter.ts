@@ -14,7 +14,15 @@
  * Pages are XHTML (not HTML5) with self-closing void elements.
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Epub3ExportOptions } from '../interfaces';
+import type {
+    ExportPage,
+    ExportMetadata,
+    ExportOptions,
+    ExportResult,
+    Epub3ExportOptions,
+    FaviconInfo,
+    ThemeData,
+} from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { generateI18nScript } from '../generators/I18nGenerator';
@@ -135,21 +143,8 @@ export class Epub3Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
-            // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
-            const themeRootFiles: string[] = [];
-            let themeFilesMap: Map<string, Uint8Array> | null = null;
-            try {
-                themeFilesMap = await this.resources.fetchTheme(themeName);
-                for (const [filePath] of themeFilesMap) {
-                    // Track root-level CSS/JS files (no path separator = root level)
-                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
-                        themeRootFiles.push(filePath);
-                    }
-                }
-            } catch {
-                // Will use fallback theme later
-                themeRootFiles.push('style.css', 'style.js');
-            }
+            // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes and detect favicon
+            const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1. Add mimetype file (MUST be first, uncompressed)
             // Note: The ZIP provider should handle this specially
@@ -166,7 +161,7 @@ export class Epub3Exporter extends BaseExporter {
             // 4. Generate XHTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles);
+                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles, faviconInfo);
                 const filename = i === 0 ? 'index.xhtml' : `html/${this.sanitizePageFilename(page.title)}.xhtml`;
                 this.zip.addFile(`EPUB/${filename}`, xhtml);
 
@@ -247,6 +242,23 @@ export class Epub3Exporter extends BaseExporter {
             const i18nContent = generateI18nScript(meta.language || 'en');
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
+
+            // 7.6. Always add base libraries (including favicon) - these are essential for any export
+            // This ensures libs/favicon.ico is always present regardless of library detection results
+            try {
+                const baseLibs = await this.resources.fetchBaseLibraries();
+                for (const [path, content] of baseLibs) {
+                    const zipPath = `EPUB/libs/${path}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        this.zip.addFile(zipPath, content);
+                        const ext = this.getFileExtensionFromPath(path);
+                        const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
+                        this.addManifestItem(this.generateUniqueId(`baselib-${path}`), `libs/${path}`, mimeType);
+                    }
+                }
+            } catch {
+                // Base libraries not available in this environment
+            }
 
             // 8. Fetch and add iDevice assets (skip .html templates - they're for JS rendering, not EPUB)
             const usedIdevices = this.getUsedIdevices(pages);
@@ -508,6 +520,7 @@ export class Epub3Exporter extends BaseExporter {
      * @param meta - Project metadata
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
+     * @param faviconInfo - Favicon info for theme or default
      */
     private generatePageXhtml(
         page: ExportPage,
@@ -515,6 +528,7 @@ export class Epub3Exporter extends BaseExporter {
         meta: ExportMetadata,
         isIndex: boolean,
         themeFiles?: string[],
+        faviconInfo?: FaviconInfo | null,
     ): string {
         const lang = meta.language || 'en';
         const basePath = isIndex ? '' : '../';
@@ -554,6 +568,9 @@ export class Epub3Exporter extends BaseExporter {
             bodyClass,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],
+            // Favicon options
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
         });
 
         // Convert HTML to XHTML
@@ -701,5 +718,46 @@ td, th {
   border: 1px solid #ccc;
 }
 `;
+    }
+
+    /**
+     * Detect theme-specific favicon from theme files map
+     * @param themeFilesMap - Map of theme files
+     * @returns Favicon info or null if not found
+     */
+    protected detectFavicon(themeFilesMap: Map<string, Uint8Array>): FaviconInfo | null {
+        if (themeFilesMap.has('img/favicon.ico')) {
+            return { path: 'theme/img/favicon.ico', type: 'image/x-icon' };
+        }
+        if (themeFilesMap.has('img/favicon.png')) {
+            return { path: 'theme/img/favicon.png', type: 'image/png' };
+        }
+        return null;
+    }
+
+    /**
+     * Prepare theme data for export: fetch theme files, extract root-level CSS/JS, detect favicon
+     * @param themeName - Name of the theme to fetch
+     * @returns ThemeData with files, root files list, and favicon info
+     */
+    protected async prepareThemeData(themeName: string): Promise<ThemeData> {
+        const themeRootFiles: string[] = [];
+        let themeFilesMap: Map<string, Uint8Array> | null = null;
+        let faviconInfo: FaviconInfo | null = null;
+
+        try {
+            themeFilesMap = await this.resources.fetchTheme(themeName);
+            for (const [filePath] of themeFilesMap) {
+                if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
+                    themeRootFiles.push(filePath);
+                }
+            }
+            faviconInfo = this.detectFavicon(themeFilesMap);
+        } catch (e) {
+            console.warn(`[Epub3Exporter] Failed to fetch theme: ${themeName}`, e);
+            themeRootFiles.push('style.css', 'style.js');
+        }
+
+        return { themeFilesMap, themeRootFiles, faviconInfo };
     }
 }
