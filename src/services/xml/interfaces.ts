@@ -77,7 +77,7 @@ export interface OdeXmlPage {
 /**
  * Property value types allowed in component/page properties
  */
-export type PropertyValue = string | number | boolean | null;
+export type PropertyValue = string | number | boolean | null | PropertyValue[] | { [key: string]: PropertyValue };
 
 /**
  * Component structure within a page

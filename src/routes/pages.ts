@@ -268,6 +268,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             currentUser: {
                                 id: payload.sub,
                                 email: payload.email || 'guest@guest.local',
+                                roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
                         };
@@ -305,8 +306,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: defaultEmail,
                                 password: '', // No password needed for offline
                                 roles: JSON.stringify(['ROLE_USER']),
-                                provider: 'offline-local',
-                                isActive: true,
+                                is_active: 1,
                             });
                         }
 
@@ -331,10 +331,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
                 }
 
-                const authMethods = await getAuthMethods(
-                    db,
-                    process.env.APP_AUTH_METHODS || 'password,guest',
-                );
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
 
                 // Store nonce in cookie for guest login verification

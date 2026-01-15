@@ -93,13 +93,13 @@ export interface ExportBlock {
  * Block properties
  */
 export interface ExportBlockProperties {
-    visibility?: string;
-    minimized?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    minimized?: string | boolean;
+    teacherOnly?: string | boolean;
     visibilityType?: string;
     cssClass?: string;
     identifier?: string;
-    allowToggle?: string;
+    allowToggle?: string | boolean;
 }
 
 /**

@@ -11,9 +11,17 @@ import { Elysia } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
-import { getSession as getSessionDefault } from '../services/session-manager';
+import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
-import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent, OdeXmlMeta } from '../services/xml/interfaces';
+import type {
+    ParsedOdeStructure,
+    NormalizedPage,
+    NormalizedComponent,
+    OdeXmlMeta,
+    PropertyValue,
+    OdeXmlNavigation,
+    RealOdeXmlDocument,
+} from '../services/xml/interfaces';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -256,9 +264,9 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
                     blockName: block.blockName || '',
                     blockId: block.id,
                     blockIconName: block.iconName || '',
-                    blockProperties: (block.properties || {}) as any,
+                    blockProperties: (block.properties || {}) as unknown as Record<string, PropertyValue>,
                     data: {},
-                    properties: compProperties as any,
+                    properties: compProperties as unknown as Record<string, PropertyValue>,
                 };
 
                 // Transform legacy iDevice data if needed (e.g., TrueFalse -> trueorfalse)
@@ -280,7 +288,7 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
                 ...(page.properties || {}),
                 titleHtml: (page.properties && (page.properties.titleHtml as string)) || page.pageName,
                 description: (page.properties && (page.properties.description as string)) || '',
-            } as any,
+            } as unknown as Record<string, PropertyValue>,
         };
 
         pageById.set(page.id, normalizedPage);
@@ -310,8 +318,8 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
     return {
         meta,
         pages: rootPages,
-        navigation: { page: navigation } as any, // Cast to avoid strict structure match
-        raw: {} as any,
+        navigation: { page: navigation } as unknown as OdeXmlNavigation,
+        raw: {} as unknown as RealOdeXmlDocument,
     };
 }
 
@@ -333,14 +341,15 @@ function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedC
     ) {
         // Only transform if we have legacy 'questions' structure but not modern 'questionsGame'
         if (Array.isArray(props.questions) && !props.questionsGame) {
-
             // Map questions to game format
-            const questionsGame = props.questions.map((q: any) => ({
-                question: q.question || '',
-                feedback: q.feedback || '',
-                suggestion: q.hint || '',
-                solution: q.isCorrect ? 1 : 0
-            })).filter((q: any) => q.question); // generic filter
+            const questionsGame = props.questions
+                .map((q: { question?: string; feedback?: string; hint?: string; isCorrect?: boolean }) => ({
+                    question: q.question || '',
+                    feedback: q.feedback || '',
+                    suggestion: q.hint || '',
+                    solution: q.isCorrect ? 1 : 0,
+                }))
+                .filter((q: { question?: string }) => q.question); // generic filter
 
             if (questionsGame.length > 0) {
                 // Return transformed component
@@ -399,9 +408,9 @@ function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedC
                             msgScore: 'Score',
                             msgWeight: 'Weight',
                             msgNext: 'Next',
-                            msgPrevious: 'Previous'
-                        }
-                    } as any
+                            msgPrevious: 'Previous',
+                        },
+                    },
                 };
             }
         }
@@ -422,8 +431,8 @@ function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedC
     if (type === 'MultiSelectIdevice' || type === 'MultiChoiceIdevice') {
         return {
             ...component,
-            type: 'quick-questions-multiple-choice'
-        }
+            type: 'quick-questions-multiple-choice',
+        };
     }
 
     // Default: pass through unchanged
@@ -482,7 +491,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         sessionId: string,
         exportType: string,
         options: ExportOptionsRequest = {},
-        virtualSession?: any,
+        virtualSession?: ProjectSession,
     ): Promise<ExportResult & { zipPath?: string }> {
         const session = virtualSession || getSession(sessionId);
         if (!session) {
@@ -528,20 +537,20 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                                 yjsDocWrapper.destroy();
                                 yjsDocWrapper = null;
                                 if (session.structure) {
-                                    document = new ElpDocumentAdapter(session.structure, tempDir);
+                                    document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                                 } else {
                                     return { success: false, error: 'No project structure found' };
                                 }
                             }
                         } else if (session.structure) {
                             console.log('[Export] No Yjs document in database, using session structure');
-                            document = new ElpDocumentAdapter(session.structure, tempDir);
+                            document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                         } else {
                             return { success: false, error: 'No project structure found' };
                         }
                     } else if (session.structure) {
                         console.log('[Export] Project not found in database, using session structure');
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
@@ -549,7 +558,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     // Database/Yjs lookup failed - fall back to session structure
                     console.warn('[Export] Yjs lookup failed, falling back to session structure:', yjsError);
                     if (session.structure) {
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
@@ -557,7 +566,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             } else if (session.structure) {
                 // Session structure from when ELP was opened
                 console.log('[Export] Using session structure (no odeId)');
-                document = new ElpDocumentAdapter(session.structure, tempDir);
+                document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
             } else {
                 // Fallback: Try to parse content.xml directly (for CLI exports)
                 const contentXmlPath = path.join(tempDir, 'content.xml');
@@ -751,12 +760,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     console.log('[Export] Yjs-only session detected, using structure from request body');
                     const projectTitle = options.structure.meta?.title || 'Untitled';
                     session = {
-                        // id: odeSessionId, // Removed to satisfy ProjectSession type
+                        sessionId: odeSessionId,
                         fileName: `${projectTitle}.elp`,
                         structure: convertYjsStructureToParsed(options.structure),
-                        created: new Date(),
-                        modified: new Date(),
-                    } as any; // Cast to any to avoid partial type mismatches
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    } as ProjectSession;
                 }
 
                 if (!session) {

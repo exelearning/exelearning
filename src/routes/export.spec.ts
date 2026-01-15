@@ -113,8 +113,8 @@ function createMockExportSystem(): ExportSystemDeps {
         } as any,
         FflateZipProvider: class MockZipProvider {
             createZip = () => ({
-                addFile: () => { },
-                addFiles: () => { },
+                addFile: () => {},
+                addFiles: () => {},
                 generate: async () => new Uint8Array([0x50, 0x4b, 0x03, 0x04]),
             });
         } as any,
@@ -126,8 +126,8 @@ function createMockExportSystem(): ExportSystemDeps {
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
         PageElpxExporter: MockExporter as any,
-        YjsDocumentAdapter: class MockYjsAdapter { } as any,
-        ServerYjsDocumentWrapper: class MockServerWrapper { } as any,
+        YjsDocumentAdapter: class MockYjsAdapter {} as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper {} as any,
     };
 }
 
@@ -1056,15 +1056,15 @@ describe('convertYjsStructureToParsed', () => {
                                                 question: 'Q1',
                                                 isCorrect: true,
                                                 feedback: 'F1',
-                                                hint: 'H1'
-                                            }
-                                        ]
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                }
+                                                hint: 'H1',
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
             ],
             navigation: [],
         };
@@ -1097,13 +1097,13 @@ describe('convertYjsStructureToParsed', () => {
                                     id: 'form-1',
                                     ideviceType: 'FormIdevice',
                                     properties: {
-                                        title: 'My Form'
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                }
+                                        title: 'My Form',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
             ],
             navigation: [],
         };
