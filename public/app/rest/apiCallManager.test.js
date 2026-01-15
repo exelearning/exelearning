@@ -446,6 +446,7 @@ describe('ApiCallManager', () => {
       );
       expect(result.odePagStructureSyncs[0].odePagStructureSyncProperties.visibility.value).toBe('true');
       expect(result.odePagStructureSyncs[0].odeComponentsSyncs[0].htmlView).toBe('<img src="blob://asset.png">');
+      expect(result.odePagStructureSyncs[0].odeComponentsSyncs[0].jsonProperties).toBe('{"a":1}');
     });
 
     it('should resolve root to first page when available', () => {
