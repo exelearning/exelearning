@@ -9,6 +9,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { themesRoutes, configure, resetDependencies } from './themes';
 import * as fs from 'fs';
+import * as path from 'path';
+import { getDb, resetClientCacheForTesting } from '../db/client';
+import { migrateToLatest } from '../db/migrations';
 
 describe('Themes Routes', () => {
     let app: Elysia;
@@ -158,6 +161,94 @@ describe('Themes Routes', () => {
 
             expect(body.themes).toEqual([]);
         });
+
+        it('should include site themes and mark site default', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+            const tempDir = path.join(process.cwd(), 'test', 'temp');
+            const dbPath = path.join(tempDir, `themes-route-${Date.now()}.db`);
+
+            try {
+                fs.mkdirSync(tempDir, { recursive: true });
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = dbPath;
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
+
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'site-test-theme',
+                        display_name: 'Site Test Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                await dbInstance.deleteFrom('app_settings').where('key', '=', 'default_theme').execute();
+
+                await dbInstance
+                    .insertInto('app_settings')
+                    .values({
+                        key: 'default_theme',
+                        value: JSON.stringify({ type: 'site', dirName: 'site-test-theme' }),
+                        type: 'json',
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                configure({
+                    getEnv: (key: string) => (key === 'APP_VERSION' ? 'v9.9.9' : undefined),
+                    fs: {
+                        existsSync: () => false,
+                        readFileSync: fs.readFileSync,
+                        readdirSync: fs.readdirSync,
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
+
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'site-test-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.type).toBe('site');
+                expect(siteTheme.isDefault).toBe(true);
+                expect(siteTheme.url).toBe('/v9.9.9/site-files/themes/site-test-theme');
+                expect(body.defaultTheme).toEqual({ type: 'site', dirName: 'site-test-theme' });
+            } finally {
+                await resetClientCacheForTesting();
+                if (fs.existsSync(dbPath)) {
+                    fs.rmSync(dbPath, { force: true });
+                }
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
+        });
     });
 
     describe('GET /api/themes/installed/:themeId', () => {
@@ -168,6 +259,55 @@ describe('Themes Routes', () => {
             const body = await res.json();
             expect(body.dirName).toBe('base');
             expect(body.type).toBe('base');
+        });
+
+        it('should return site theme config with custom URL prefix', async () => {
+            const themeId = 'site-theme';
+            const baseConfigPath = path.join('public/files/perm/themes/base', themeId, 'config.xml');
+            const siteThemesPath = path.join('/tmp/test-files', 'themes', 'site');
+            const siteConfigPath = path.join(siteThemesPath, themeId, 'config.xml');
+            const siteThemePath = path.join(siteThemesPath, themeId);
+            const savedEnv = {
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+                configure({
+                    getEnv: (key: string) => (key === 'APP_VERSION' ? 'v1.0.0' : undefined),
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (p === baseConfigPath) return false;
+                            if (p === siteConfigPath) return true;
+                            if (p === siteThemePath) return false;
+                            if (p.includes(`${path.sep}icons`)) return false;
+                            return fs.existsSync(p);
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (p === siteConfigPath) {
+                                return '<theme><name>Site Theme</name><version>1.0</version></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: fs.readdirSync,
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request(`http://localhost/api/themes/installed/${themeId}`));
+
+                expect(res.status).toBe(200);
+                const body = await res.json();
+                expect(body.type).toBe('site');
+                expect(body.url).toBe(`/v1.0.0/site-files/themes/${themeId}`);
+            } finally {
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
         });
 
         it('should return 404 for non-existent theme', async () => {
