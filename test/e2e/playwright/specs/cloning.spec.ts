@@ -97,26 +97,29 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     const tinyMceFrame = textIdeviceNode.locator('iframe.tox-edit-area__iframe').first();
     await tinyMceFrame.waitFor({ timeout: 15000 });
 
-    // Type content
-    const frameEl = await tinyMceFrame.elementHandle();
-    const frame = await frameEl?.contentFrame();
-    if (frame) {
-        await frame.focus('body');
-        await frame.type('body', content, { delay: 5 });
+    // Set content via TinyMCE API for deterministic updates
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            return !!editor && editor.initialized;
+        },
+        null,
+        { timeout: 15000 },
+    );
 
-        // Fire change events to ensure Yjs binding is updated
-        await frame.evaluate(() => {
-            const editor = (window.parent as any).tinymce?.activeEditor;
-            if (editor) {
-                editor.fire('change');
-                editor.fire('input');
-                editor.setDirty(true);
-            }
-        });
-    }
+    await page.evaluate(newContent => {
+        const editor = (window as any).tinymce?.activeEditor;
+        if (!editor) return;
+        editor.setContent(newContent);
+        editor.fire('change');
+        editor.fire('input');
+        editor.setDirty(true);
+    }, content);
 
-    // Wait for TinyMCE to process and sync with Yjs
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => {
+        const editor = (window as any).tinymce?.activeEditor;
+        return !!editor && editor.isDirty();
+    });
 
     // Save the iDevice
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');

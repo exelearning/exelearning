@@ -563,18 +563,24 @@ define wait_for_app
 	done
 endef
 
+.PHONY: down-e2e
+down-e2e:
+	@echo ""
+	@echo "Step 1: Cleaning up previous containers..."
+	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
+	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
+	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
+
+
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml up --build -d
+	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
@@ -599,17 +605,14 @@ test-e2e-mariadb: check-docker check-env ## Run E2E tests with MariaDB backend
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml up --build -d
+	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
@@ -634,17 +637,14 @@ test-e2e-postgres: check-docker check-env ## Run E2E tests with PostgreSQL backe
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
 	@echo "============================================================"
 	@echo ""
-	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans || true
-	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml up --build -d
+	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)

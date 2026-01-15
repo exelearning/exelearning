@@ -125,18 +125,34 @@ export class WorkareaPage {
             // Wait for editor to load
             await Promise.race([
                 block.waitFor({ state: 'attached', timeout: 12000 }),
-                this.page.waitForSelector('iframe.tox-edit-area__iframe', { timeout: 12000 }).catch(() => {}),
+                this.page.waitForSelector('.tox-menubar', { timeout: 12000 }).catch(() => {}),
             ]);
         }
 
-        // Try TinyMCE iframe first
-        const tinyMceSuccess = await this.tryEditInTinyMCE(block, text);
+        // Try TinyMCE first (primary editor for Text iDevice)
+        let tinyMceSuccess = await this.tryEditInTinyMCE(block, text);
         if (tinyMceSuccess) {
             return;
         }
 
-        // Fallback to contenteditable
-        await this.tryEditInContentEditable(block, text);
+        // Retry once in case TinyMCE was still initializing
+        const editBtn = block.locator('.btn-edit-idevice');
+        if ((await editBtn.count()) > 0) {
+            await editBtn.click().catch(() => {});
+        }
+        tinyMceSuccess = await this.tryEditInTinyMCE(block, text);
+        if (tinyMceSuccess) {
+            return;
+        }
+
+        // Fallback to contenteditable only if it exists
+        const ce = block.locator('.textIdeviceContent [contenteditable="true"]');
+        if ((await ce.count()) > 0) {
+            await this.tryEditInContentEditable(block, text);
+            return;
+        }
+
+        throw new Error('TinyMCE editor not available for Text iDevice');
     }
 
     /**
@@ -144,39 +160,21 @@ export class WorkareaPage {
      */
     private async tryEditInTinyMCE(block: Locator, text: string): Promise<boolean> {
         try {
-            const frameEl = await block
-                .locator(
-                    'iframe.tox-edit-area__iframe, iframe[title="Rich Text Area"], iframe[aria-label="Rich Text Area"]',
-                )
-                .first()
-                .elementHandle();
+            await this.waitForTinyMceEditor(30000);
+            await this.page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (!editor) return;
+                editor.setContent(content);
+                editor.fire('change');
+                editor.fire('input');
+                editor.setDirty(true);
+            }, text);
 
-            if (!frameEl) return false;
-
-            const frame = await frameEl.contentFrame();
-            if (!frame) return false;
-
-            // Wait for body and edit content
-            await frame.waitForSelector('body', { timeout: 8000 });
-            await frame.evaluate(() => {
-                document.body.focus();
-                document.body.innerHTML = '';
+            // Wait for TinyMCE to register the change before save
+            await this.page.waitForFunction(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return !!editor && editor.isDirty();
             });
-            await frame.focus('body');
-            await frame.type('body', text, { delay: 5 });
-
-            // Fire change events to ensure Yjs binding is updated
-            await frame.evaluate(() => {
-                const editor = (window.parent as any).tinymce?.activeEditor;
-                if (editor) {
-                    editor.fire('change');
-                    editor.fire('input');
-                    editor.setDirty(true);
-                }
-            });
-
-            // Wait for Yjs sync before save
-            await this.page.waitForTimeout(500);
 
             // Save
             const saveBtn = block.locator('.btn-save-idevice');
@@ -226,6 +224,20 @@ export class WorkareaPage {
                 })
                 .catch(() => {});
         }
+    }
+
+    /**
+     * Waits for TinyMCE to be fully initialized
+     */
+    private async waitForTinyMceEditor(timeout: number = 12000): Promise<void> {
+        await this.page.waitForFunction(
+            () => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return !!editor && editor.initialized;
+            },
+            null,
+            { timeout },
+        );
     }
 
     /**

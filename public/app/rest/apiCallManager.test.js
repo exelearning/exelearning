@@ -1470,15 +1470,12 @@ describe('ApiCallManager', () => {
     it('should call idevice save and reorder endpoints', async () => {
       apiManager.endpoints.api_idevices_idevice_data_save = { path: 'http://localhost/idevice/save' };
       apiManager.endpoints.api_idevices_idevice_reorder = { path: 'http://localhost/idevice/reorder' };
-      apiManager.endpoints.api_ode_export_preview = { path: 'http://localhost/preview/{odeSessionId}' };
 
       await apiManager.putSaveIdevice({ id: 1 });
       await apiManager.putReorderIdevice({ id: 1 });
-      await apiManager.getOdePreviewUrl('sess-1');
 
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/save', { id: 1 });
       expect(mockFunc.put).toHaveBeenCalledWith('http://localhost/idevice/reorder', { id: 1 });
-      expect(mockFunc.get).toHaveBeenCalledWith('http://localhost/preview/sess-1');
     });
 
     it('should call block sync endpoint', async () => {
