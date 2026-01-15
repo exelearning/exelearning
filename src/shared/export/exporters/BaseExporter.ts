@@ -520,10 +520,75 @@ export abstract class BaseExporter {
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
                     }
+                    // Also process properties for JSON iDevices (text, etc.)
+                    // Properties may contain HTML content with asset URLs (e.g., textTextarea)
+                    if (component.properties && typeof component.properties === 'object') {
+                        component.properties = await this.processPropertiesAssetUrls(
+                            component.properties,
+                            pageUrlMap,
+                            isIndex,
+                        );
+                    }
                 }
             }
         }
         return clonedPages;
+    }
+
+    /**
+     * Process asset URLs and internal links in component properties recursively
+     * Used for JSON iDevices where content is stored in properties (e.g., textTextarea)
+     *
+     * @param properties - Component properties object
+     * @param pageUrlMap - Map of page IDs to their export URLs
+     * @param isFromIndex - Whether the content is from the index page
+     * @returns Processed properties with fixed asset URLs and internal links
+     */
+    protected async processPropertiesAssetUrls(
+        properties: Record<string, unknown>,
+        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
+        isFromIndex: boolean,
+    ): Promise<Record<string, unknown>> {
+        const result: Record<string, unknown> = {};
+
+        for (const [key, value] of Object.entries(properties)) {
+            if (typeof value === 'string') {
+                // Process string properties that may contain HTML with asset URLs
+                let processed = await this.addFilenamesToAssetUrls(value);
+                processed = this.replaceInternalLinks(processed, pageUrlMap, isFromIndex);
+                result[key] = processed;
+            } else if (Array.isArray(value)) {
+                // Process arrays recursively
+                result[key] = await Promise.all(
+                    value.map(async item => {
+                        if (typeof item === 'string') {
+                            let processed = await this.addFilenamesToAssetUrls(item);
+                            processed = this.replaceInternalLinks(processed, pageUrlMap, isFromIndex);
+                            return processed;
+                        } else if (typeof item === 'object' && item !== null) {
+                            return this.processPropertiesAssetUrls(
+                                item as Record<string, unknown>,
+                                pageUrlMap,
+                                isFromIndex,
+                            );
+                        }
+                        return item;
+                    }),
+                );
+            } else if (typeof value === 'object' && value !== null) {
+                // Process nested objects recursively
+                result[key] = await this.processPropertiesAssetUrls(
+                    value as Record<string, unknown>,
+                    pageUrlMap,
+                    isFromIndex,
+                );
+            } else {
+                // Keep other values as-is
+                result[key] = value;
+            }
+        }
+
+        return result;
     }
 
     /**

@@ -113,4 +113,49 @@ describe('text iDevice export', () => {
       expect(result).toContain('feedbacktooglebutton');
     });
   });
+
+  describe('getHTMLView with mermaid content', () => {
+    beforeEach(() => {
+      // Mock eXe.app.isInExe for getHTMLView
+      global.eXe = { app: { isInExe: () => false } };
+    });
+
+    afterEach(() => {
+      delete global.eXe;
+    });
+
+    it('preserves pre.mermaid elements with original code', () => {
+      const data = {
+        textTextarea: '<p>Some text</p><pre class="mermaid">graph TD\n    A[Start] --> B{Is it?}\n    B -->|Yes| C[Great!]</pre><p>More text</p>',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+      };
+
+      const result = $text.getHTMLView(data);
+
+      // The pre.mermaid element should be preserved
+      expect(result).toContain('<pre class="mermaid">');
+      expect(result).toContain('graph TD');
+      expect(result).toContain('A[Start]');
+    });
+
+    it('preserves pre.mermaid with runtime-rendered SVG', () => {
+      // Simulate what TinyMCE saves after mermaid.run() - SVG inside pre
+      const data = {
+        textTextarea: '<p>Text</p><pre class="mermaid" data-processed="true"><svg id="mermaid-123" viewBox="0 0 100 100"><g><rect></rect><text>Start</text></g></svg></pre>',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+      };
+
+      const result = $text.getHTMLView(data);
+
+      // The pre.mermaid element should be preserved (even with SVG inside)
+      expect(result).toContain('<pre class="mermaid"');
+      expect(result).toContain('data-processed="true"');
+    });
+  });
 });

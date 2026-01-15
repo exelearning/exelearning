@@ -628,8 +628,41 @@
     }
 
     /**
+     * Process LaTeX content in a JSON properties object
+     * For JSON iDevices, LaTeX content is stored in properties like textTextarea
+     * @param {Object} jsonData - Parsed JSON properties object
+     * @returns {Promise<{updated: boolean, count: number, jsonData: Object}>}
+     */
+    async function processJsonProperties(jsonData) {
+        let updated = false;
+        let count = 0;
+
+        for (const [key, value] of Object.entries(jsonData)) {
+            // Only process string values that might contain LaTeX
+            if (typeof value !== 'string' || !HAS_LATEX_PATTERN.test(value)) {
+                continue;
+            }
+
+            // Pre-render LaTeX in this string value
+            const processedValue = await preRenderString(value);
+
+            if (processedValue !== value) {
+                jsonData[key] = processedValue;
+                updated = true;
+                // Count approximate number of replacements
+                const origMatches = value.match(HAS_LATEX_PATTERN);
+                count += origMatches ? origMatches.length : 1;
+            }
+        }
+
+        return { updated, count, jsonData };
+    }
+
+    /**
      * Pre-render LaTeX per iDevice to maintain proper equation numbering
      * Each iDevice gets its own equation numbering scope (starting from 1)
+     * Also processes LaTeX content inside data-idevice-json-data attributes
+     * for JSON iDevices (like text iDevice)
      * @param {string} html - Full HTML with multiple iDevices
      * @param {Map<string, string>} preserved - Preserved content map
      * @returns {Promise<{html: string, hasLatex: boolean, latexRendered: boolean, count: number}>}
@@ -643,7 +676,31 @@
         let totalReplaced = 0;
         let totalErrors = 0;
 
-        // Process each iDevice with its own equation numbering scope
+        // FIRST: Process LaTeX content inside data-idevice-json-data attributes
+        // This is needed for JSON iDevices where content is stored in properties, not HTML body
+        const jsonDataElements = doc.querySelectorAll('[data-idevice-json-data]');
+        for (const element of Array.from(jsonDataElements)) {
+            const jsonStr = element.getAttribute('data-idevice-json-data');
+            if (!jsonStr || !HAS_LATEX_PATTERN.test(jsonStr)) {
+                continue;
+            }
+
+            try {
+                const jsonData = JSON.parse(jsonStr);
+                const result = await processJsonProperties(jsonData);
+                if (result.updated) {
+                    // Update the attribute with pre-rendered content
+                    const newJsonStr = JSON.stringify(result.jsonData);
+                    element.setAttribute('data-idevice-json-data', newJsonStr);
+                    totalReplaced += result.count;
+                    console.log(`[LatexPreRenderer] Pre-rendered LaTeX in JSON data`);
+                }
+            } catch (err) {
+                console.warn('[LatexPreRenderer] Failed to process JSON data attribute:', err);
+            }
+        }
+
+        // SECOND: Process each iDevice DOM content with its own equation numbering scope
         for (const idevice of idevices) {
             const result = await processIdeviceWithNumbering(idevice, doc);
             totalReplaced += result.replaced;

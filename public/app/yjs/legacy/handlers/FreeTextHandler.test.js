@@ -202,7 +202,50 @@ describe('FreeTextHandler', () => {
   });
 
   describe('extractProperties', () => {
-    it('includes feedback when present', () => {
+    it('includes textTextarea with main content', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="activityTextArea"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Main content with accordion</p>')}"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const props = handler.extractProperties(dict);
+      expect(props.textTextarea).toBe('<p>Main content with accordion</p>');
+    });
+
+    it('includes both textTextarea and feedback when present', () => {
+      const dict = parseDictionary(`
+        <dictionary>
+          <string role="key" value="activityTextArea"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Main content</p>')}"></unicode>
+            </dictionary>
+          </instance>
+          <string role="key" value="feedbackTextArea"></string>
+          <instance class="exe.engine.field.TextAreaField">
+            <dictionary>
+              <string role="key" value="content_w_resourcePaths"></string>
+              <unicode value="${escapeXml('<p>Feedback</p>')}"></unicode>
+            </dictionary>
+          </instance>
+        </dictionary>
+      `);
+
+      const props = handler.extractProperties(dict);
+      expect(props.textTextarea).toBe('<p>Main content</p>');
+      expect(props.textFeedbackTextarea).toBe('<p>Feedback</p>');
+      expect(props.textFeedbackInput).toBe('Mostrar retroalimentación');
+    });
+
+    it('includes feedback when present (even without main content)', () => {
       const dict = parseDictionary(`
         <dictionary>
           <string role="key" value="feedbackTextArea"></string>
@@ -222,7 +265,7 @@ describe('FreeTextHandler', () => {
       expect(props.textFeedbackInput).toBe('Mostrar retroalimentación');
     });
 
-    it('returns empty object when no feedback', () => {
+    it('returns empty object when no content and no feedback', () => {
       const dict = parseDictionary('<dictionary></dictionary>');
       const props = handler.extractProperties(dict);
       expect(props).toEqual({});

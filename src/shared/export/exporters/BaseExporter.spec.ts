@@ -943,5 +943,109 @@ describe('BaseExporter', () => {
                 expect(result).toBe('<a href="html/about.html">About</a>');
             });
         });
+
+        describe('processPropertiesAssetUrls', () => {
+            let localExporter: TestExporter;
+            let localAssets: MockAssetProvider;
+
+            beforeEach(() => {
+                localAssets = new MockAssetProvider();
+                // Add test asset
+                localAssets.addAsset('abc123-def456-789012-345678', 'test-image.png', 'image/png', Buffer.from('PNG'));
+
+                localExporter = new TestExporter(
+                    new MockDocument(),
+                    new MockResourceProvider(),
+                    localAssets,
+                    new MockZipProvider(),
+                );
+            });
+
+            it('should process string properties containing asset URLs', async () => {
+                const properties = {
+                    textTextarea: '<img src="asset://abc123-def456-789012-345678">',
+                    feedbackText: 'No asset here',
+                };
+                const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.textTextarea).toContain('asset://abc123-def456-789012-345678/test-image.png');
+                expect(result.feedbackText).toBe('No asset here');
+            });
+
+            it('should process nested object properties', async () => {
+                const properties = {
+                    nested: {
+                        content: '<img src="asset://abc123-def456-789012-345678">',
+                    },
+                };
+                const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.nested.content).toContain('asset://abc123-def456-789012-345678/test-image.png');
+            });
+
+            it('should process array properties with strings', async () => {
+                const properties = {
+                    items: ['<img src="asset://abc123-def456-789012-345678">', 'plain text'],
+                };
+                const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.items[0]).toContain('asset://abc123-def456-789012-345678/test-image.png');
+                expect(result.items[1]).toBe('plain text');
+            });
+
+            it('should process array properties with objects', async () => {
+                const properties = {
+                    items: [{ html: '<img src="asset://abc123-def456-789012-345678">' }],
+                };
+                const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.items[0].html).toContain('asset://abc123-def456-789012-345678/test-image.png');
+            });
+
+            it('should preserve non-string values', async () => {
+                const properties = {
+                    isVisible: true,
+                    count: 42,
+                    nothing: null,
+                };
+                const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.isVisible).toBe(true);
+                expect(result.count).toBe(42);
+                expect(result.nothing).toBe(null);
+            });
+
+            it('should also process internal links in properties', async () => {
+                const properties = {
+                    textTextarea: '<a href="exe-node:page-2">Link</a>',
+                };
+                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, true);
+
+                expect(result.textTextarea).toBe('<a href="html/about.html">Link</a>');
+            });
+
+            it('should use subpage URL when not from index', async () => {
+                const properties = {
+                    textTextarea: '<a href="exe-node:page-2">Link</a>',
+                };
+                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
+
+                const result = await (localExporter as any).processPropertiesAssetUrls(properties, pageUrlMap, false);
+
+                expect(result.textTextarea).toBe('<a href="about.html">Link</a>');
+            });
+        });
     });
 });
