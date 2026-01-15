@@ -46,6 +46,25 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
         )
         .catch(() => {});
 
+    // Expand "Information and presentation" category if collapsed
+    const infoCategory = page
+        .locator('.idevice_category')
+        .filter({
+            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
+        })
+        .first();
+
+    if ((await infoCategory.count()) > 0) {
+        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
+        if (isCollapsed) {
+            const label = infoCategory.locator('.label');
+            await label.click();
+            await page.waitForTimeout(800);
+        }
+    }
+
+    await page.waitForTimeout(500);
+
     const textIdevice = page.locator('.idevice_item[id="text"]').first();
     await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
     await textIdevice.click();
