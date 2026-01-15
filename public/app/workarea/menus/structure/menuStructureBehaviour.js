@@ -262,8 +262,8 @@ export default class MenuStructureBehaviour {
                                 a.href = url;
                                 const node = this.structureEngine.getNode(nodeId);
                                 let filename = 'page_export.elpx';
-                                if (node && node.title) {
-                                    filename = node.title.replace(/[^a-z0-9\u00C0-\u00FF]/gi, '_').toLowerCase() + '.elpx';
+                                if (node && node.pageName) {
+                                    filename = node.pageName.replace(/[^a-z0-9\u00C0-\u00FF]/gi, '_').toLowerCase() + '.elpx';
                                 }
                                 a.download = filename;
                                 document.body.appendChild(a);
