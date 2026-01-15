@@ -288,6 +288,22 @@ describe('AccessNotifier', () => {
             // Wait for close attempt - should not throw
             await new Promise(resolve => setTimeout(resolve, 150));
         });
+
+        it('should handle close errors after send failure', () => {
+            const mockWs = createMockWebSocket();
+            mockWs.send.mockImplementation(() => {
+                throw new Error('Connection reset');
+            });
+            mockWs.close.mockImplementation(() => {
+                throw new Error('Already closed');
+            });
+            mockRoomManager.getConnectionsByUserId.mockReturnValue([mockWs]);
+
+            const result = notifyCollaboratorRemoved('test-uuid', 5);
+
+            expect(result).toBe(1);
+            expect(mockWs.close).toHaveBeenCalled();
+        });
     });
 
     describe('edge cases', () => {
@@ -333,6 +349,54 @@ describe('AccessNotifier', () => {
             const result = notifyVisibilityChanged('test-uuid', 1, [1, 2]);
 
             expect(result).toBe(0); // No one kicked
+        });
+    });
+
+    describe('debug logging', () => {
+        const originalDebug = process.env.APP_DEBUG;
+
+        beforeEach(() => {
+            process.env.APP_DEBUG = '1';
+        });
+
+        afterEach(() => {
+            if (originalDebug !== undefined) {
+                process.env.APP_DEBUG = originalDebug;
+            } else {
+                delete process.env.APP_DEBUG;
+            }
+        });
+
+        it('should exercise debug branches for visibility and collaborator removal', () => {
+            // No users connected
+            mockRoomManager.getConnectedUserIds.mockReturnValueOnce([]);
+            notifyVisibilityChanged('test-uuid', 1, []);
+
+            // All users authorized
+            mockRoomManager.getConnectedUserIds.mockReturnValueOnce([1]);
+            notifyVisibilityChanged('test-uuid', 1, []);
+
+            // Unauthorized user with send error
+            const failingWs = createMockWebSocket();
+            failingWs.send.mockImplementation(() => {
+                throw new Error('Connection reset');
+            });
+            mockRoomManager.getConnectedUserIds.mockReturnValueOnce([1, 2]);
+            mockRoomManager.getConnectionsByUserId.mockImplementation((_docName, userId) => {
+                if (userId === 2) return [failingWs];
+                return [];
+            });
+            notifyVisibilityChanged('test-uuid', 1, []);
+
+            // Collaborator removed - not connected
+            mockRoomManager.getConnectionsByUserId.mockReset();
+            mockRoomManager.getConnectionsByUserId.mockReturnValueOnce([]);
+            notifyCollaboratorRemoved('test-uuid', 5);
+
+            // Collaborator removed - connected
+            const connectedWs = createMockWebSocket();
+            mockRoomManager.getConnectionsByUserId.mockReturnValueOnce([connectedWs]);
+            notifyCollaboratorRemoved('test-uuid', 5);
         });
     });
 });
