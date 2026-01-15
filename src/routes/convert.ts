@@ -52,6 +52,7 @@ export interface ConvertDependencies {
     };
     publicDir?: string;
     tempDir?: string;
+    fs?: typeof fs;
 }
 
 interface JwtPayload {
@@ -115,6 +116,7 @@ const defaultDeps: ConvertDependencies = {
     },
     publicDir: path.resolve(__dirname, '../../public'),
     tempDir: process.env.FILES_DIR ? path.join(process.env.FILES_DIR, 'tmp') : '/tmp/exelearning-convert',
+    fs: fs,
 };
 
 // Get JWT secret from environment
@@ -127,8 +129,9 @@ const getJwtSecret = (): string => {
 // =============================================================================
 
 export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
-    const { db, queries, publicDir, tempDir } = { ...defaultDeps, ...deps };
+    const { db, queries, publicDir, tempDir, fs: fsHelper } = { ...defaultDeps, ...deps };
     const { findUserById } = queries;
+    const fs = fsHelper!;
 
     /**
      * Validate uploaded file

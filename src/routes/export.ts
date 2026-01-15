@@ -11,9 +11,17 @@ import { Elysia } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
-import { getSession as getSessionDefault } from '../services/session-manager';
+import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
-import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent, OdeXmlMeta } from '../services/xml/interfaces';
+import type {
+    ParsedOdeStructure,
+    NormalizedPage,
+    NormalizedComponent,
+    OdeXmlMeta,
+    PropertyValue,
+    OdeXmlNavigation,
+    RealOdeXmlDocument,
+} from '../services/xml/interfaces';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -34,6 +42,7 @@ import {
     ImsExporter as ImsExporterDefault,
     Epub3Exporter as Epub3ExporterDefault,
     ElpxExporter as ElpxExporterDefault,
+    PageElpxExporter as PageElpxExporterDefault,
     YjsDocumentAdapter as YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
     type ExportResult,
@@ -90,6 +99,7 @@ export interface ExportSystemDeps {
     ImsExporter: typeof ImsExporterDefault;
     Epub3Exporter: typeof Epub3ExporterDefault;
     ElpxExporter: typeof ElpxExporterDefault;
+    PageElpxExporter: typeof PageElpxExporterDefault;
     YjsDocumentAdapter: typeof YjsDocumentAdapterDefault;
     ServerYjsDocumentWrapper: typeof ServerYjsDocumentWrapperDefault;
 }
@@ -149,6 +159,7 @@ const defaultExportSystem: ExportSystemDeps = {
     ImsExporter: ImsExporterDefault,
     Epub3Exporter: Epub3ExporterDefault,
     ElpxExporter: ElpxExporterDefault,
+    PageElpxExporter: PageElpxExporterDefault,
     YjsDocumentAdapter: YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper: ServerYjsDocumentWrapperDefault,
 };
@@ -173,7 +184,8 @@ const EXPORT_FORMATS = [
     { id: 'scorm2004', name: 'SCORM 2004', extension: 'zip', mimeType: 'application/zip' },
     { id: 'ims', name: 'IMS Content Package', extension: 'zip', mimeType: 'application/zip' },
     { id: 'epub3', name: 'EPUB3', extension: 'epub', mimeType: 'application/epub+zip' },
-    { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/x-exelearning' },
+    { id: 'elp', name: 'eXeLearning Project', extension: 'elp', mimeType: 'application/zip' },
+    { id: 'elpx-page', name: 'eXeLearning Page Package', extension: 'elpx', mimeType: 'application/zip' },
 ];
 
 // ============================================================================
@@ -240,26 +252,43 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
 
         for (const block of page.blocks || []) {
             for (const comp of block.components || []) {
-                components.push({
+                const compProperties = (comp.properties || {}) as Record<string, unknown>;
+
+                // Define normalized component structure
+                let normalizedComponent: NormalizedComponent = {
                     id: comp.id,
                     type: comp.ideviceType || 'FreeTextIdevice',
                     order: compOrder++,
                     position: compOrder,
                     content: comp.htmlContent || '',
                     blockName: block.blockName || '',
+                    blockId: block.id,
+                    blockIconName: block.iconName || '',
+                    blockProperties: (block.properties || {}) as unknown as Record<string, PropertyValue>,
                     data: {},
-                    properties: comp.properties || {},
-                });
+                    properties: compProperties as unknown as Record<string, PropertyValue>,
+                };
+
+                // Transform legacy iDevice data if needed (e.g., TrueFalse -> trueorfalse)
+                normalizedComponent = transformLegacyIdeviceData(normalizedComponent);
+
+                components.push(normalizedComponent);
             }
         }
 
         const normalizedPage: NormalizedPage = {
             id: page.id,
             title: page.pageName,
-            parent_id: page.parentId || undefined,
+            parent_id: page.parentId || null,
             position: 0,
+            level: 0,
             children: [],
             components,
+            properties: {
+                ...(page.properties || {}),
+                titleHtml: (page.properties && (page.properties.titleHtml as string)) || page.pageName,
+                description: (page.properties && (page.properties.description as string)) || '',
+            } as unknown as Record<string, PropertyValue>,
         };
 
         pageById.set(page.id, normalizedPage);
@@ -283,14 +312,139 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
         navText: nav.navText,
         parent_id: nav.parentId || undefined,
         position: index,
+        page: [], // Satisfy OdeXmlNavigation structure (roughly)
     }));
 
     return {
         meta,
         pages: rootPages,
-        navigation,
-        raw: {} as ParsedOdeStructure['raw'], // Empty raw - not needed for export
+        navigation: { page: navigation } as unknown as OdeXmlNavigation,
+        raw: {} as unknown as RealOdeXmlDocument,
     };
+}
+
+/**
+ * Transform data from legacy iDevices to match modern renderer expectations
+ * e.g. TrueFalseIdevice (with questions array) -> trueorfalse (with questionsGame array)
+ */
+export function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedComponent {
+    const type = component.type;
+    const props = (component.properties || {}) as Record<string, unknown>;
+
+    // Handle legacy TrueFalseIdevice (and variants)
+    // Map to 'trueorfalse' type which expects game-like structure
+    if (
+        type === 'TrueFalseIdevice' ||
+        type === 'VerdaderoFalsoFPDIdevice' ||
+        type === 'true-false' ||
+        type === 'truefalse'
+    ) {
+        // Only transform if we have legacy 'questions' structure but not modern 'questionsGame'
+        if (Array.isArray(props.questions) && !props.questionsGame) {
+            // Map questions to game format
+            const questionsGame = props.questions
+                .map((q: { question?: string; feedback?: string; hint?: string; isCorrect?: boolean }) => ({
+                    question: q.question || '',
+                    feedback: q.feedback || '',
+                    suggestion: q.hint || '',
+                    solution: q.isCorrect ? 1 : 0,
+                }))
+                .filter((q: { question?: string }) => q.question); // generic filter
+
+            if (questionsGame.length > 0) {
+                // Return transformed component
+                return {
+                    ...component,
+                    type: 'trueorfalse', // Normalize type
+                    properties: {
+                        ...props,
+                        questionsGame,
+                        // Add default game field requirements
+                        typeGame: 'TrueOrFalse',
+                        questionsRandom: false,
+                        percentageQuestions: 100,
+                        isTest: false,
+                        time: 0,
+                        isScorm: 0,
+                        textButtonScorm: 'Save score',
+                        repeatActivity: true,
+                        weighted: 100,
+                        evaluation: false,
+                        showSlider: false,
+                        msgs: {
+                            msgStartGame: 'Click here to start',
+                            msgSubmit: 'Submit',
+                            msgEnterCode: 'Enter your code',
+                            msgErrorCode: 'Invalid code',
+                            msgGameOver: 'Game Over',
+                            msgIndicateCode: 'Please indicate your code',
+                            msgEndGameScore: 'Please start the game before saving your score.',
+                            msgOnlySaveScore: 'You can only save the score once!',
+                            msgOnlySave: 'You can only save once',
+                            msgYouScore: 'Your score',
+                            msgAuthor: 'Authorship',
+                            msgOnlySaveAuto: 'Your score will be saved after each question. You can only play once.',
+                            msgSaveAuto: 'Your score will be automatically saved after each question.',
+                            msgSeveralScore: 'You can save the score as many times as you want',
+                            msgYouLastScore: 'The last score saved is',
+                            msgActityComply: 'You have already done this activity.',
+                            msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+                            msgUncompletedActivity: 'Incomplete activity',
+                            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+                            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+                            msgTypeGame: 'True or false',
+                            msgFeedback: 'Feedback',
+                            msgSuggestion: 'Suggestion',
+                            msgSolution: 'Solution',
+                            msgQuestion: 'Question',
+                            msgTrue: 'True',
+                            msgFalse: 'False',
+                            msgOk: 'Correct',
+                            msgKO: 'Incorrect',
+                            msgShow: 'Show',
+                            msgHide: 'Hide',
+                            msgCheck: 'Check',
+                            msgReboot: 'Try again!',
+                            msgScore: 'Score',
+                            msgWeight: 'Weight',
+                            msgNext: 'Next',
+                            msgPrevious: 'Previous',
+                        },
+                    },
+                };
+            }
+        }
+    }
+
+    // Handle 'Form' iDevice
+    // Type mismatch: FormIdevice -> form
+    if (type === 'FormIdevice' || type === 'Form') {
+        // Form expects 'questionsData'
+        // If it exists or properties are generically mapable, safe to normalize type to 'form'
+        return {
+            ...component,
+            type: 'form',
+        };
+    }
+
+    // Handle 'MultiChoice' / 'MultiSelect'
+    if (type === 'MultiSelectIdevice' || type === 'MultiChoiceIdevice') {
+        return {
+            ...component,
+            type: 'quick-questions-multiple-choice',
+        };
+    }
+
+    // Handle 'ScormIdevice' -> 'scorm'
+    if (type === 'ScormIdevice') {
+        return {
+            ...component,
+            type: 'scorm',
+        };
+    }
+
+    // Default: pass through unchanged
+    return component;
 }
 
 // ============================================================================
@@ -326,6 +480,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         ImsExporter,
         Epub3Exporter,
         ElpxExporter,
+        PageElpxExporter,
         YjsDocumentAdapter,
         ServerYjsDocumentWrapper,
     } = exportSystem;
@@ -371,11 +526,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
             if (options.structure) {
                 // Yjs structure sent from client - convert to ParsedOdeStructure
-                console.log('[Export] Using Yjs structure from client');
-                console.log('[Export] Structure pages:', options.structure.pages?.length);
-                console.log('[Export] Structure meta theme:', options.structure.meta?.theme);
                 const parsedStructure = convertYjsStructureToParsed(options.structure);
-                console.log('[Export] Parsed theme:', parsedStructure.meta?.theme);
                 document = new ElpDocumentAdapter(parsedStructure, tempDir);
             } else if (session.odeId) {
                 // Try to load Yjs document from database
@@ -394,20 +545,20 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                                 yjsDocWrapper.destroy();
                                 yjsDocWrapper = null;
                                 if (session.structure) {
-                                    document = new ElpDocumentAdapter(session.structure, tempDir);
+                                    document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                                 } else {
                                     return { success: false, error: 'No project structure found' };
                                 }
                             }
                         } else if (session.structure) {
                             console.log('[Export] No Yjs document in database, using session structure');
-                            document = new ElpDocumentAdapter(session.structure, tempDir);
+                            document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                         } else {
                             return { success: false, error: 'No project structure found' };
                         }
                     } else if (session.structure) {
                         console.log('[Export] Project not found in database, using session structure');
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
@@ -415,7 +566,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     // Database/Yjs lookup failed - fall back to session structure
                     console.warn('[Export] Yjs lookup failed, falling back to session structure:', yjsError);
                     if (session.structure) {
-                        document = new ElpDocumentAdapter(session.structure, tempDir);
+                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
@@ -423,7 +574,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             } else if (session.structure) {
                 // Session structure from when ELP was opened
                 console.log('[Export] Using session structure (no odeId)');
-                document = new ElpDocumentAdapter(session.structure, tempDir);
+                document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
             } else {
                 // Fallback: Try to parse content.xml directly (for CLI exports)
                 const contentXmlPath = path.join(tempDir, 'content.xml');
@@ -439,6 +590,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             console.log('[Export] Using publicDir:', publicDir);
             const resources: ResourceProvider = new FileSystemResourceProvider(publicDir);
             const zip: ZipProvider = new FflateZipProvider();
+
+            // Ensure temp directory exists to prevent ENOENT errors in FileSystemAssetProvider
+            await fs.ensureDir(tempDir);
 
             // Create asset provider - combine database assets with filesystem assets
             const fsAssets = new FileSystemAssetProvider(tempDir);
@@ -486,6 +640,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 case 'elp':
                 case 'elpx':
                     exporter = new ElpxExporter(document, resources, assets, zip);
+                    break;
+                case 'elpx-page':
+                    exporter = new PageElpxExporter(document, resources, assets, zip);
                     break;
                 default:
                     return { success: false, error: `Unsupported export format: ${exportType}` };
@@ -574,9 +731,17 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // ASCII-only filename for compatibility
+                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
+                    // UTF-8 encoded filename for modern browsers (RFC 5987)
+                    const encodedFilename = encodeURIComponent(rawFilename)
+                        .replace(/['()]/g, escape)
+                        .replace(/\*/g, '%2A');
+
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-disposition'] =
+                        `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`;
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;
@@ -603,12 +768,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     console.log('[Export] Yjs-only session detected, using structure from request body');
                     const projectTitle = options.structure.meta?.title || 'Untitled';
                     session = {
-                        id: odeSessionId,
+                        sessionId: odeSessionId,
                         fileName: `${projectTitle}.elp`,
                         structure: convertYjsStructureToParsed(options.structure),
-                        created: new Date(),
-                        modified: new Date(),
-                    };
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                    } as ProjectSession;
                 }
 
                 if (!session) {
@@ -643,9 +808,17 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     const zipBuffer = await readFile(exportResult.zipPath!);
 
                     // Set headers for download
-                    const filename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // ASCII-only filename for compatibility
+                    const safeFilename = rawFilename.replace(/[^\x20-\x7E]/g, '_');
+                    // UTF-8 encoded filename for modern browsers (RFC 5987)
+                    const encodedFilename = encodeURIComponent(rawFilename)
+                        .replace(/['()]/g, escape)
+                        .replace(/\*/g, '%2A');
+
                     set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = `attachment; filename="${filename}"`;
+                    set.headers['content-disposition'] =
+                        `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodedFilename}`;
                     set.headers['content-length'] = zipBuffer.length.toString();
 
                     return zipBuffer;

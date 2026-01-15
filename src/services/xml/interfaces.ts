@@ -77,7 +77,7 @@ export interface OdeXmlPage {
 /**
  * Property value types allowed in component/page properties
  */
-export type PropertyValue = string | number | boolean | null;
+export type PropertyValue = string | number | boolean | null | PropertyValue[] | { [key: string]: PropertyValue };
 
 /**
  * Component structure within a page
@@ -102,6 +102,7 @@ export interface NormalizedPage {
     level: number;
     parent_id: string | null;
     position: number;
+    properties?: Record<string, PropertyValue>; // Page-level properties
 }
 
 export interface NormalizedComponent {
