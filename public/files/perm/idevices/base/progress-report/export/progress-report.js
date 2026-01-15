@@ -10,6 +10,7 @@
 var $eXeInforme = {
     idevicePath: '',
     options: {},
+    instances: [],
     isInExe: false,
     data: null,
     dataIDevices: [],
@@ -47,7 +48,8 @@ var $eXeInforme = {
 
         this.enable();
     },
-    loadFromContentXml: function (mOption) {
+    loadFromContentXml: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
         const isExeIndex =
             document.documentElement &&
             document.documentElement.id === 'exe-index';
@@ -57,12 +59,12 @@ var $eXeInforme = {
             .then((xmlString) => {
                 const pagesJson = this.parseOdeXmlToJson(xmlString);
                 const pagesHtml = this.generateHtmlFromJsonPages(pagesJson);
-                $eXeInforme.createTableIdevices(pagesHtml);
-                $eXeInforme.updatePages($eXeInforme.options.dataIDevices);
-                $eXeInforme.applyTypeShow(mOption.typeshow);
+                $eXeInforme.createTableIdevices(pagesHtml, idx);
+                $eXeInforme.updatePages(mOption.dataIDevices, idx);
+                $eXeInforme.applyTypeShow(mOption.typeshow, idx);
             })
             .catch(() => {
-                const $msg = $('#informeNotLocal');
+                const $msg = $(`#informeNotLocal-${idx}`);
                 if ($msg.length) {
                     $msg.show();
                 }
@@ -200,33 +202,368 @@ var $eXeInforme = {
         $eXeInforme.loadGame();
     },
 
+    /**
+     * Detect if running in preview mode (exe-preview class on body)
+     * Preview mode is when the content is shown in the preview iframe inside eXeLearning
+     */
+    isPreviewMode: function () {
+        const hasExePreview = $('body').hasClass('exe-preview');
+        const hasPreview = $('body').hasClass('preview');
+        return hasExePreview || hasPreview;
+    },
+
+    /**
+     * Extract iDevices from the DOM in preview mode
+     * The preview HTML contains all pages as <article class="spa-page"> with idevice_node articles inside
+     */
+    extractIdevicesFromDom: function () {
+        const items = [];
+        const $pages = $('article.spa-page');
+
+        $pages.each(function (pageIdx) {
+            const $page = $(this);
+            const pageId = ($page.attr('id') || '').replace('page-', '') || 'page-' + pageIdx;
+            const pageTitle = $page.attr('data-page-title') || $page.find('.page-header-spa h1').text() || 'Page ' + (pageIdx + 1);
+
+            // Find parent from navigation links
+            const $navLink = $('a[data-page-id="' + pageId + '"]');
+            const parentId = $navLink.attr('data-parent-id') || null;
+
+            // Find iDevice nodes within this page - try multiple selectors
+            let $idevices = $page.find('article.idevice_node');
+            
+            // Try alternative selectors if idevice_node not found
+            if ($idevices.length === 0) {
+                $idevices = $page.find('[data-idevice-type]');
+            }
+            if ($idevices.length === 0) {
+                $idevices = $page.find('article.box');
+            }
+
+            if ($idevices.length === 0) {
+                // Page without iDevices - still add the page
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: parentId,
+                    pageName: pageTitle,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: 'preview',
+                    ode_nav_structure_sync_order: pageIdx,
+                    navIsActive: 1,
+                    componentId: null,
+                    htmlViewer: '',
+                    jsonProperties: null,
+                    ode_idevice_id: null,
+                    odeIdeviceTypeName: null,
+                    ode_pag_structure_sync_id: null,
+                    componentSessionId: 'preview',
+                    componentPageId: pageId,
+                    ode_block_id: null,
+                    ode_components_sync_order: 0,
+                    componentIsActive: 1,
+                    blockName: '',
+                    blockOrder: 0,
+                });
+            } else {
+                $idevices.each(function (ideviceIdx) {
+                    const $idevice = $(this);
+                    const componentId = $idevice.attr('data-idevice-id') || $idevice.attr('id') || 'idevice-' + pageIdx + '-' + ideviceIdx;
+                    const ideviceType = $idevice.attr('data-idevice-type') || $idevice.attr('class').split(' ').find(c => c !== 'idevice_node' && c !== 'box') || 'unknown';
+                    
+                    // Get block name from parent article.box > header > h1
+                    const $parentBox = $idevice.closest('article.box');
+                    const blockName = $parentBox.find('.box-title').first().text() || $parentBox.find('.box-head h1').first().text() || '';
+                    
+                    const htmlViewer = $idevice.html() || '';
+                    const $block = $idevice.closest('section.block');
+                    const blockId = $block.attr('id') || 'block-' + pageIdx + '-' + ideviceIdx;
+                    const blockOrder = $block.index();
+                    
+                    // Extract evaluation data from the iDevice or its inner DataGame div
+                    // The DataGame div has data-evaluationid and data-evaluationb attributes
+                    let evaluationId = $idevice.attr('data-evaluationid') || '';
+                    let evaluationB = $idevice.attr('data-evaluationb');
+                    
+                    // If not found on idevice, look for inner DataGame div
+                    if (!evaluationId) {
+                        const $dataGame = $idevice.find('[data-evaluationid]').first();
+                        if ($dataGame.length) {
+                            evaluationId = $dataGame.attr('data-evaluationid') || '';
+                            evaluationB = $dataGame.attr('data-evaluationb');
+                        }
+                    }
+                    
+                    // Parse evaluation boolean
+                    let evaluation = false;
+                    if (evaluationB === undefined || evaluationB === null) {
+                        evaluation = !!evaluationId; // If has evaluationId but no evaluationb, assume true
+                    } else {
+                        const evalStr = String(evaluationB).toLowerCase();
+                        evaluation = evalStr === 'true' || evalStr === '1' || evalStr === 'yes' || evalStr === 'on';
+                    }
+                    
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: parentId,
+                        pageName: pageTitle,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: 'preview',
+                        ode_nav_structure_sync_order: pageIdx,
+                        navIsActive: 1,
+                        componentId: componentId,
+                        htmlViewer: htmlViewer,
+                        jsonProperties: null,
+                        ode_idevice_id: componentId,
+                        odeIdeviceTypeName: ideviceType,
+                        evaluationID: evaluationId,
+                        evaluation: evaluation,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: 'preview',
+                        componentPageId: pageId,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: ideviceIdx,
+                        componentIsActive: 1,
+                        blockName: blockName,
+                        blockOrder: blockOrder,
+                    });
+                });
+            }
+        });
+
+        return items;
+    },
+
+    /**
+     * Load iDevices from DOM in preview mode
+     * Used when the preview HTML already contains all the page structure
+     */
+    loadFromDom: function (mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
+        const data = $eXeInforme.extractIdevicesFromDom();
+        const idevices = $eXeInforme.buildNestedPages(data);
+        const pages = $eXeInforme.createPagesHtml(idevices);
+        $eXeInforme.createTableIdevices(pages, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
+        $eXeInforme.applyTypeShow(mOption.typeshow, idx);
+    },
+
     loadGame: function () {
-        $eXeInforme.options = {};
+        $eXeInforme.instances = [];
         $eXeInforme.activities.each(function (i) {
-            if (i == 0) {
-                const dl = $('.informe-DataGame', this),
-                    mOption = $eXeInforme.loadDataGame(dl);
-                $eXeInforme.options = mOption;
-                const informe = $eXeInforme.createInterfaceinforme();
-                dl.before(informe).remove();
+            const $activity = $(this);
+            const dl = $('.informe-DataGame', $activity);
+            const mOption = $eXeInforme.loadDataGame(dl);
+            
+            // Store this instance's options in the instances array
+            $eXeInforme.instances[i] = mOption;
+            $eXeInforme.options = mOption;
+            
+            const informe = $eXeInforme.createInterfaceinforme(i);
+            dl.before(informe).remove();
+            
+            // Store the container reference for this instance
+            const $container = $activity.find('#informeGameContainer-' + i);
+            mOption.$container = $container;
+            mOption.instanceIndex = i;
+            
+            if (i === 0) {
                 $eXeInforme.addEvents();
-                if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(true);
-                } else {
-                    $eXeInforme.loadFromContentXml(mOption);
-                }
+            }
+            
+            if (eXe.app.isInExe()) {
+                $eXeInforme.getIdevicesBySessionId(true, mOption, i);
+            } else if ($eXeInforme.isPreviewMode()) {
+                $eXeInforme.loadFromDom(mOption, i);
+            } else {
+                $eXeInforme.loadFromContentXml(mOption, i);
             }
         });
     },
-    async getIdevicesBySessionId(init) {
+    async getIdevicesBySessionId(init, mOption, instanceIndex) {
+        const idx = instanceIndex || 0;
         const odeSessionId = eXeLearning.app.project.odeSession;
-        const response =
-            await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
-        let idevices = $eXeInforme.buildNestedPages(response.data);
+        let data = [];
+
+        // First try to get data from local Yjs (client-side)
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (yjsBridge && yjsBridge.documentManager) {
+            try {
+                data = $eXeInforme.extractIdevicesFromYjs(yjsBridge, odeSessionId);
+            } catch (err) {
+                console.warn('[Progress Report] Failed to load from local Yjs:', err);
+            }
+        }
+
+        // Fallback to server API if no local data
+        if (data.length === 0) {
+            try {
+                const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
+                if (response && response.data) {
+                    data = response.data;
+                }
+            } catch (err) {
+                console.warn('[Progress Report] Failed to load from server API:', err);
+            }
+        }
+
+        let idevices = $eXeInforme.buildNestedPages(data);
         const pages = $eXeInforme.createPagesHtml(idevices);
-        $eXeInforme.createTableIdevices(pages);
-        $eXeInforme.updatePages($eXeInforme.options.dataIDevices);
-        $eXeInforme.applyTypeShow($eXeInforme.options.typeshow);
+        $eXeInforme.createTableIdevices(pages, idx);
+        $eXeInforme.updatePages(mOption.dataIDevices, idx);
+        $eXeInforme.applyTypeShow(mOption.typeshow, idx);
+    },
+
+    /**
+     * Extract iDevices from local Yjs document
+     * Reads navigation array -> pages -> blocks -> components structure
+     */
+    extractIdevicesFromYjs: function (yjsBridge, sessionId) {
+        const items = [];
+        const ydoc = yjsBridge.documentManager?.ydoc;
+        if (!ydoc) {
+            console.warn('[Progress Report] No ydoc available');
+            return items;
+        }
+
+        // Get navigation array (contains all pages as Y.Map)
+        const navigation = ydoc.getArray('navigation');
+        if (!navigation || navigation.length === 0) {
+            console.warn('[Progress Report] No navigation array in ydoc');
+            return items;
+        }
+
+        for (let pageIdx = 0; pageIdx < navigation.length; pageIdx++) {
+            const page = navigation.get(pageIdx);
+            if (!page || typeof page.get !== 'function') {
+                continue;
+            }
+
+            const pageId = page.get('id') || page.get('pageId') || '';
+            const pageTitle = page.get('title') || page.get('pageName') || '';
+            const parentId = page.get('parentId') || null;
+
+            // Get blocks array
+            const blocks = page.get('blocks');
+
+            if (!blocks || blocks.length === 0) {
+                // Page without blocks
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: parentId,
+                    pageName: pageTitle,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: sessionId,
+                    ode_nav_structure_sync_order: pageIdx,
+                    navIsActive: 1,
+                    componentId: null,
+                    htmlViewer: null,
+                    jsonProperties: null,
+                    ode_idevice_id: null,
+                    odeIdeviceTypeName: null,
+                    ode_pag_structure_sync_id: null,
+                    componentSessionId: null,
+                    componentPageId: null,
+                    ode_block_id: null,
+                    ode_components_sync_order: null,
+                    componentIsActive: null,
+                    blockName: null,
+                    blockOrder: null,
+                });
+                continue;
+            }
+
+            for (let blockIdx = 0; blockIdx < blocks.length; blockIdx++) {
+                const block = blocks.get(blockIdx);
+                if (!block || typeof block.get !== 'function') {
+                    continue;
+                }
+
+                const blockId = block.get('id') || block.get('blockId') || '';
+                const blockName = block.get('blockName') || block.get('name') || '';
+                const blockOrder = block.get('order') ?? blockIdx;
+
+                // Get components/idevices array
+                const components = block.get('components') || block.get('idevices');
+
+                if (!components || components.length === 0) {
+                    // Block without idevices
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: parentId,
+                        pageName: pageTitle,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: sessionId,
+                        ode_nav_structure_sync_order: pageIdx,
+                        navIsActive: 1,
+                        componentId: null,
+                        htmlViewer: null,
+                        jsonProperties: null,
+                        ode_idevice_id: null,
+                        odeIdeviceTypeName: null,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: null,
+                        componentPageId: null,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: null,
+                        componentIsActive: null,
+                        blockName: blockName,
+                        blockOrder: blockOrder,
+                    });
+                    continue;
+                }
+
+                for (let compIdx = 0; compIdx < components.length; compIdx++) {
+                    const component = components.get(compIdx);
+                    if (!component || typeof component.get !== 'function') {
+                        continue;
+                    }
+
+                    const componentId = component.get('id') || component.get('ideviceId') || '';
+                    const ideviceType = component.get('type') || component.get('ideviceType') || '';
+                    // Check multiple possible property names for HTML content
+                    const htmlView = component.get('content') || component.get('htmlContent') || component.get('htmlView') || '';
+                    const componentOrder = component.get('order') ?? compIdx;
+
+                    // Convert htmlView to string if it's a Y.Text
+                    let htmlViewStr = '';
+                    if (htmlView && typeof htmlView === 'object' && typeof htmlView.toString === 'function') {
+                        htmlViewStr = htmlView.toString();
+                    } else if (typeof htmlView === 'string') {
+                        htmlViewStr = htmlView;
+                    }
+
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: parentId,
+                        pageName: pageTitle,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: sessionId,
+                        ode_nav_structure_sync_order: pageIdx,
+                        navIsActive: 1,
+                        componentId: componentId,
+                        htmlViewer: htmlViewStr,
+                        jsonProperties: null,
+                        ode_idevice_id: componentId,
+                        odeIdeviceTypeName: ideviceType,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: sessionId,
+                        componentPageId: pageId,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: componentOrder,
+                        componentIsActive: 1,
+                        blockName: blockName,
+                        blockOrder: blockOrder,
+                    });
+                }
+            }
+        }
+
+        return items;
     },
 
     buildNestedPages: function (data) {
@@ -280,8 +617,11 @@ var $eXeInforme = {
                     row.jsonProperties
                 );
                 const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
-                const evaluationID = dataIDs.evaluationID || '';
-                const evaluation = dataIDs.evaluation || null;
+                // Use row.evaluationID as fallback if not found in htmlViewer/jsonProperties
+                const evaluationID = dataIDs.evaluationID || row.evaluationID || '';
+                // Use row.evaluation as fallback
+                const evaluation = dataIDs.evaluation !== null ? dataIDs.evaluation : (row.evaluation !== undefined ? row.evaluation : null);
+                
                 pageIndex[rawPageId].components.push({
                     ideviceID: ideviceID,
                     evaluationID: evaluationID,
@@ -434,18 +774,19 @@ var $eXeInforme = {
         return url.toString();
     },
 
-    createInterfaceinforme: function () {
+    createInterfaceinforme: function (instanceIndex) {
+        const idx = instanceIndex || 0;
         const msgs = $eXeInforme.options.msgs;
         const download = msgs.msgDownload || 'Descargar informe de progreso';
         const localmod =
             msgs.msgLocalMode ||
             'En modo local, los resultados de las actividades realizadas no se pueden mostrar en el informe';
         const html = `<div class="IFPP-MainContainer" >
-                        <p id="informeNotLocal" style="display:none">${localmod}<p>
-                        <div class="IFPP-GameContainer" id="informeGameContainer">
-                            <div id="informeData" class="IFPP-Data" ></div>
+                        <p id="informeNotLocal-${idx}" class="informeNotLocal" style="display:none">${localmod}<p>
+                        <div class="IFPP-GameContainer" id="informeGameContainer-${idx}">
+                            <div id="informeData-${idx}" class="IFPP-Data" ></div>
                         </div>
-                            <a id="informeDownloadLink" href="#" download="imagen.jpg" style="display: none;">${download}</a>
+                            <a id="informeDownloadLink-${idx}" class="informeDownloadLink" href="#" download="imagen.jpg" style="display: none;">${download}</a>
                         </div>
                     </div>`;
         return html;
@@ -639,7 +980,7 @@ var $eXeInforme = {
         acc = acc || { count: 0 };
 
         let html = isRootCall
-            ? '<ul id="informePagesContainer">'
+            ? '<ul class="IFPP-PagesContainerUl">'
             : '<ul class="IFPP-Children">';
         let firstRootPending = true;
 
@@ -754,7 +1095,9 @@ var $eXeInforme = {
         const isRootCall = !acc;
         acc = acc || { count: 0 };
 
-        let html = '<ul id="informePagesContainer">';
+        let html = isRootCall
+            ? '<ul class="IFPP-PagesContainerUl">'
+            : '<ul class="IFPP-Children">';
         let pn = true,
             pageId = '';
 
@@ -889,8 +1232,10 @@ var $eXeInforme = {
         return html;
     },
 
-    applyTypeShow: function (typeshow) {
-        const $gameContainer = $('#informePagesContainer');
+    applyTypeShow: function (typeshow, instanceIndex) {
+        const idx = instanceIndex || 0;
+        const $gameContainer = $(`#informePagesContainer-${idx}`);
+        
         if (typeshow == 1) {
             $gameContainer.find('.IFPP-ComponentItem').each(function () {
                 const isEvaluable = $(this).data('is-evaluable');
@@ -906,33 +1251,37 @@ var $eXeInforme = {
                 const isEvaluable = $(this).data('is-evaluable');
                 if (!isEvaluable) {
                     $(this).hide();
+                    $(this).attr('data-should-show', 'false');
                 } else {
                     $(this).show();
+                    $(this).attr('data-should-show', 'true');
                 }
             });
 
             function processPageItem($pageItem) {
-                let hasVisibleEvaluableComponents =
+                let hasEvaluableComponents =
                     $pageItem.find(
-                        '> ul.IFPP-Components > .IFPP-ComponentItem:visible'
+                        '> ul.IFPP-Components > .IFPP-ComponentItem[data-should-show="true"]'
                     ).length > 0;
 
                 $pageItem.find('> ul > .IFPP-PageItem').each(function () {
                     const childHasEvaluable = processPageItem($(this));
-                    hasVisibleEvaluableComponents =
-                        hasVisibleEvaluableComponents || childHasEvaluable;
+                    hasEvaluableComponents =
+                        hasEvaluableComponents || childHasEvaluable;
                 });
 
-                if (hasVisibleEvaluableComponents) {
+                if (hasEvaluableComponents) {
                     $pageItem.show();
+                    $pageItem.attr('data-should-show', 'true');
                 } else {
                     $pageItem.hide();
+                    $pageItem.attr('data-should-show', 'false');
                 }
 
-                return hasVisibleEvaluableComponents;
+                return hasEvaluableComponents;
             }
 
-            $gameContainer.children('.IFPP-PageItem').each(function () {
+            $gameContainer.find('> .IFPP-PagesContainerUl > .IFPP-PageItem').each(function () {
                 processPageItem($(this));
             });
         } else {
@@ -946,13 +1295,14 @@ var $eXeInforme = {
         return Number.isInteger(num) ? num : num.toFixed(2);
     },
 
-    updatePages: function (data) {
+    updatePages: function (data, instanceIndex) {
+        const idx = instanceIndex || 0;
         let completed = 0;
         let score = 0;
         let date = '';
         if (data) {
             data.forEach((idevice) => {
-                let $idevice = $('#informeGameContainer').find(
+                let $idevice = $(`#informeGameContainer-${idx}`).find(
                     `.IFPP-ComponentItem[data-component-id="${idevice.id}"]`
                 );
                 if ($idevice.length === 1) {
@@ -988,31 +1338,31 @@ var $eXeInforme = {
         scoretotal = $eXeInforme.formatNumber(scoretotal);
 
         let bgc = scoretotal < 5 ? '#B61E1E' : '#007F5F';
-        $('#informeTotalActivities').text(
+        $(`#informeTotalActivities-${idx}`).text(
             $eXeInforme.options.msgs.mssActivitiesNumber.replace(
                 '%s',
                 $eXeInforme.options.number
             )
         );
-        $('#informeCompletedActivities').text(
+        $(`#informeCompletedActivities-${idx}`).text(
             $eXeInforme.options.msgs.msgActivitiesCompleted.replace(
                 '%s',
                 completed
             )
         );
 
-        $('#informeTotalScore').text(
+        $(`#informeTotalScore-${idx}`).text(
             $eXeInforme.options.msgs.msgAverageScore1.replace('%s', scoretotal)
         );
-        $('#informeTotalScoreA').text(
+        $(`#informeTotalScoreA-${idx}`).text(
             $eXeInforme.options.msgs.msgAverageScoreCompleted.replace(
                 '%s',
                 scorepartial
             )
         );
 
-        $('#informeScoretTotal').text(scoretotal);
-        $('#informeScoreBar').css({ 'background-color': bgc });
+        $(`#informeScoretTotal-${idx}`).text(scoretotal);
+        $(`#informeScoreBar-${idx}`).css({ 'background-color': bgc });
     },
 
     createPagesHtml: function (idevices) {
@@ -1025,46 +1375,47 @@ var $eXeInforme = {
         return pages;
     },
 
-    createTableIdevices: function (pages) {
+    createTableIdevices: function (pages, instanceIndex) {
+        const idx = instanceIndex || 0;
         let userDisplay = $eXeInforme.options.userData ? 'flex' : 'none';
         let table = `
-            <div class="IFPP-Table" id="informeTable">
-                <div id="informeTitleProyect" class="IFPP-Title">
+            <div class="IFPP-Table" id="informeTable-${idx}">
+                <div id="informeTitleProyect-${idx}" class="IFPP-Title">
                     ${$eXeInforme.options.msgs.msgReportTitle}
                 </div>
-                <div id="informeUserData" class="IFPP-UserData" style="display:${userDisplay};">
-                    <div id="informeUserNameDiv" class="IFPP-UserName">
-                        <label for="informeUserName">${$eXeInforme.options.msgs.msgName}: </label>
-                        <input type="text" id="informeUserName">
+                <div id="informeUserData-${idx}" class="IFPP-UserData" style="display:${userDisplay};">
+                    <div id="informeUserNameDiv-${idx}" class="IFPP-UserName">
+                        <label for="informeUserName-${idx}">${$eXeInforme.options.msgs.msgName}: </label>
+                        <input type="text" id="informeUserName-${idx}" class="informeUserName">
                     </div>
-                    <div id="informeUserDateDiv" class="IFPP-UserDate">
-                        <label for="informeUserDate">${$eXeInforme.options.msgs.msgDate}: </label>
-                        <input type="text" id="informeUserDate" disabled>
+                    <div id="informeUserDateDiv-${idx}" class="IFPP-UserDate">
+                        <label for="informeUserDate-${idx}">${$eXeInforme.options.msgs.msgDate}: </label>
+                        <input type="text" id="informeUserDate-${idx}" class="informeUserDate" disabled>
                     </div>
                 </div>
                 <div class="IFPP-Header">
-                    <div id="informeTotalActivities"></div>
-                    <div id="informeCompletedActivities"></div>
-                    <div id="informeTotalScoreA"></div>
-                    <div id="informeTotalScore"></div>
+                    <div id="informeTotalActivities-${idx}" class="informeTotalActivities"></div>
+                    <div id="informeCompletedActivities-${idx}" class="informeCompletedActivities"></div>
+                    <div id="informeTotalScoreA-${idx}" class="informeTotalScoreA"></div>
+                    <div id="informeTotalScore-${idx}" class="informeTotalScore"></div>
                 </div>
-                <div id="informePlusDiv" class="IFPP-Plus">
+                <div id="informePlusDiv-${idx}" class="IFPP-Plus">
                     <div>${$eXeInforme.options.msgs.mgsSections}:</div>
-                        <div class="IFPP-PagesContainer">${pages}</div>
-                        <div id="informeScoreBar"class="IFPP-GameScore">
+                        <div class="IFPP-PagesContainer" id="informePagesContainer-${idx}">${pages}</div>
+                        <div id="informeScoreBar-${idx}" class="IFPP-GameScore">
                             <div>${$eXeInforme.options.msgs.msgAverageScore}</div>
-                            <div id="informeScoretTotal"></div>
+                            <div id="informeScoretTotal-${idx}" class="informeScoretTotal"></div>
                         </div>
                     </div>
-                    <div id="informeButtons" class="IFPP-LinksInforme" style="background-color:white; text-align:right">
-                        <button id="informeReboot" type="button" class="btn btn-primary">${$eXeInforme.options.msgs.msgReboot}</button>
-                        <button id="informeCapture" type="button" class="btn btn-primary">${$eXeInforme.options.msgs.msgSave}</button>
+                    <div id="informeButtons-${idx}" class="IFPP-LinksInforme" style="background-color:white; text-align:right">
+                        <button id="informeReboot-${idx}" class="btn btn-primary informeReboot" type="button" data-instance="${idx}">${$eXeInforme.options.msgs.msgReboot}</button>
+                        <button id="informeCapture-${idx}" class="btn btn-primary informeCapture" type="button" data-instance="${idx}">${$eXeInforme.options.msgs.msgSave}</button>
                     </div>
                 </div>`;
 
-        $('#informeData').empty();
-        $('#informeData').append(table);
-        $('#informeUserDate').val($eXeInforme.getDateNow());
+        $(`#informeData-${idx}`).empty();
+        $(`#informeData-${idx}`).append(table);
+        $(`#informeUserDate-${idx}`).val($eXeInforme.getDateNow());
     },
 
     getDataStorage: function (id) {
@@ -1077,35 +1428,55 @@ var $eXeInforme = {
             : [];
     },
 
+    // Handler for gamification-evaluation-saved event (stored as named function for removal)
+    _onGamificationSaved: function (ev) {
+        const d = ev && ev.detail ? ev.detail : null;
+        if (!d) return;
+        const targetEval = $eXeInforme?.options?.evaluationID;
+        const eventEval = d.evaluationID || d.evaluationId;
+        if (
+            !targetEval ||
+            !eventEval ||
+            String(targetEval) !== String(eventEval)
+        )
+            return;
+
+        const data = $eXeInforme.updateIdevicesData(d);
+        $eXeInforme.updatePages(data);
+    },
+
     addEvents: function () {
-        const $c = $('#informeGameContainer');
-
-        $c.on('click', '#informeLinkPlus', function (e) {
+        // Remove any previously registered handlers to avoid duplicates
+        $(document).off('click.informeReport');
+        window.removeEventListener('gamification-evaluation-saved', $eXeInforme._onGamificationSaved);
+        
+        // Use document-level delegation to handle all instances with namespace
+        $(document).on('click.informeReport', '.informeReboot', function (e) {
             e.preventDefault();
-            $('#informePlusDiv').slideToggle();
-        });
-
-        $c.on('click', '#informeReboot', function (e) {
-            e.preventDefault();
-            if (confirm($eXeInforme.options.msgs.msgDelete)) {
+            const idx = $(this).data('instance') || 0;
+            const mOption = $eXeInforme.instances[idx] || $eXeInforme.options;
+            if (confirm(mOption.msgs.msgDelete)) {
                 localStorage.removeItem(
-                    'dataEvaluation-' + $eXeInforme.options.evaluationID
+                    'dataEvaluation-' + mOption.evaluationID
                 );
-                $eXeInforme.options.dataIDevices = [];
+                mOption.dataIDevices = [];
                 if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(false);
+                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
+                } else if ($eXeInforme.isPreviewMode()) {
+                    $eXeInforme.loadFromDom(mOption, idx);
                 } else {
-                    $eXeInforme.loadFromContentXml($eXeInforme.options);
+                    $eXeInforme.loadFromContentXml(mOption, idx);
                 }
             }
         });
 
-        $c.on('click', '#informeCapture', function (e) {
+        $(document).on('click.informeReport', '.informeCapture', function (e) {
             e.preventDefault();
-            $eXeInforme.saveReport();
+            const idx = $(this).data('instance') || 0;
+            $eXeInforme.saveReport(idx);
         });
 
-        $c.on('click', '.IFPP-IdeviceLink', function (e) {
+        $(document).on('click.informeReport', '.IFPP-IdeviceLink', function (e) {
             e.preventDefault();
             const url = $(this).data('page-id');
             const idevice = $(this).data('idevice-id');
@@ -1116,21 +1487,8 @@ var $eXeInforme = {
             } catch (_) {}
         });
 
-        window.addEventListener('gamification-evaluation-saved', function (ev) {
-            const d = ev && ev.detail ? ev.detail : null;
-            if (!d) return;
-            const targetEval = $eXeInforme?.options?.evaluationID;
-            const eventEval = d.evaluationID || d.evaluationId;
-            if (
-                !targetEval ||
-                !eventEval ||
-                String(targetEval) !== String(eventEval)
-            )
-                return;
-
-            const data = $eXeInforme.updateIdevicesData(d);
-            $eXeInforme.updatePages(data);
-        });
+        // Add window event listener
+        window.addEventListener('gamification-evaluation-saved', $eXeInforme._onGamificationSaved);
     },
     updateIdevicesData: function (detail) {
         try {
@@ -1171,9 +1529,10 @@ var $eXeInforme = {
             return this.dataIDevices || [];
         }
     },
-    saveReport: function () {
+    saveReport: function (instanceIndex) {
+        const idx = instanceIndex || 0;
         if ($eXeInforme.options.userData) {
-            if ($('#informeUserName').val().trim() === '') {
+            if ($(`#informeUserName-${idx}`).val().trim() === '') {
                 var msg =
                     $eXeInforme.options.msgs.msgNotCompleted +
                     ': ' +
@@ -1182,14 +1541,14 @@ var $eXeInforme = {
                 return;
             }
         }
-        var divElement = document.getElementById('informeTable');
+        var divElement = document.getElementById(`informeTable-${idx}`);
         if (!divElement) {
             console.error(
                 'No se encontró el elemento con el ID proporcionado.'
             );
             return;
         }
-        $('#informeButtons').hide();
+        $(`#informeButtons-${idx}`).hide();
         html2canvas(divElement)
             .then(function (canvas) {
                 const imgData = canvas.toDataURL('image/png');
@@ -1292,11 +1651,11 @@ var $eXeInforme = {
                 }
             })
             .catch(function (error) {
-                $('#informeButtons').show();
+                $(`#informeButtons-${idx}`).show();
                 console.error('Error al generar la captura: ', error);
             })
             .finally(function () {
-                $('#informeButtons').show();
+                $(`#informeButtons-${idx}`).show();
             });
     },
 
