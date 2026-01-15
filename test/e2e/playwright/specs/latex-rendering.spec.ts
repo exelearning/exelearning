@@ -556,5 +556,230 @@ test.describe('LaTeX Rendering', () => {
             // rather than using pre-rendered SVG (exe-math-rendered)
             expect(mathRendered.mjxContainers + mathRendered.preRendered).toBeGreaterThan(0);
         });
+
+        test('should NOT corrupt data-latex when same LaTeX appears multiple times', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Duplicate Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Import the LaTeX fixture which contains duplicate LaTeX expressions
+            await importElpFixture(page, 'latex.elp');
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to render with pre-rendering
+            await page.waitForTimeout(5000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Critical check: Verify data-latex attributes are NOT corrupted
+            // The bug was: String.replace() only replaced first occurrence, causing
+            // subsequent replacements to corrupt data-latex by including HTML inside it
+            const dataLatexCheck = await iframe.locator('body').evaluate(body => {
+                const dataLatexElements = body.querySelectorAll('[data-latex]');
+                const results: Array<{
+                    value: string | null;
+                    isCorrupted: boolean;
+                    corruptionType: string | null;
+                }> = [];
+
+                dataLatexElements.forEach(el => {
+                    const value = el.getAttribute('data-latex');
+                    let isCorrupted = false;
+                    let corruptionType: string | null = null;
+
+                    if (value) {
+                        // Check for HTML tags inside data-latex (corruption indicator)
+                        if (value.includes('<span')) {
+                            isCorrupted = true;
+                            corruptionType = 'contains <span';
+                        } else if (value.includes('&lt;span')) {
+                            isCorrupted = true;
+                            corruptionType = 'contains &lt;span';
+                        } else if (value.includes('exe-math-rendered')) {
+                            isCorrupted = true;
+                            corruptionType = 'contains exe-math-rendered';
+                        } else if (value.includes('<mjx-')) {
+                            isCorrupted = true;
+                            corruptionType = 'contains <mjx-';
+                        }
+                    }
+
+                    results.push({
+                        value: value?.substring(0, 100) || null,
+                        isCorrupted,
+                        corruptionType,
+                    });
+                });
+
+                return {
+                    totalElements: dataLatexElements.length,
+                    corruptedCount: results.filter(r => r.isCorrupted).length,
+                    results: results.slice(0, 10), // First 10 for debugging
+                };
+            });
+
+            // Log details for debugging if there are issues
+            if (dataLatexCheck.corruptedCount > 0) {
+                console.log(
+                    'Corrupted data-latex elements found:',
+                    dataLatexCheck.results.filter(r => r.isCorrupted),
+                );
+            }
+
+            // CRITICAL: No data-latex attribute should contain HTML (corruption)
+            expect(dataLatexCheck.corruptedCount).toBe(0);
+
+            // Should have some data-latex elements (pre-rendered math)
+            expect(dataLatexCheck.totalElements).toBeGreaterThan(0);
+        });
+
+        test('should render multiple identical LaTeX expressions correctly', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Multiple Identical Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await page.waitForFunction(
+                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+                { timeout: 30000 },
+            );
+
+            // Select a page node to add iDevice
+            const pageNode = page.locator('.nav-element-text').first();
+            await pageNode.click({ force: true });
+            await page.waitForTimeout(1000);
+
+            // Add a text iDevice
+            const textIdevice = page.locator('.idevice_item[id="text"]').first();
+            if (await textIdevice.isVisible({ timeout: 5000 }).catch(() => false)) {
+                await textIdevice.click();
+            }
+
+            // Wait for text iDevice to appear
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+
+            // Wait for TinyMCE to initialize
+            await page.waitForFunction(
+                () => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    return !!editor && editor.initialized;
+                },
+                { timeout: 15000 },
+            );
+
+            // Set content with DUPLICATE LaTeX expressions (the exact scenario that caused corruption)
+            const contentWithDuplicateLatex = `
+                <p>First formula: \\(\\alpha + \\beta\\)</p>
+                <p>Second identical: \\(\\alpha + \\beta\\)</p>
+                <p>Third identical: \\(\\alpha + \\beta\\)</p>
+            `;
+
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(content);
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            }, contentWithDuplicateLatex);
+
+            // Save the iDevice
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Open Preview
+            const previewButton = page.locator('#head-bottom-preview');
+            await previewButton.click();
+
+            const previewPanel = page.locator('#previewsidenav');
+            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+
+            // Wait for preview to render
+            await page.waitForTimeout(5000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Verify all three LaTeX expressions rendered without corruption
+            const renderCheck = await iframe.locator('body').evaluate(body => {
+                const mathElements = body.querySelectorAll('.exe-math-rendered');
+                const dataLatexValues: string[] = [];
+                let corruptedCount = 0;
+
+                mathElements.forEach(el => {
+                    const dataLatex = el.getAttribute('data-latex');
+                    if (dataLatex) {
+                        dataLatexValues.push(dataLatex);
+                        if (dataLatex.includes('<span') || dataLatex.includes('exe-math-rendered')) {
+                            corruptedCount++;
+                        }
+                    }
+                });
+
+                return {
+                    totalMathElements: mathElements.length,
+                    dataLatexValues,
+                    corruptedCount,
+                };
+            });
+
+            // Should have rendered all three identical expressions
+            expect(renderCheck.totalMathElements).toBeGreaterThanOrEqual(3);
+
+            // None should be corrupted
+            expect(renderCheck.corruptedCount).toBe(0);
+
+            // All data-latex values should contain the original LaTeX
+            renderCheck.dataLatexValues.forEach(value => {
+                expect(value).toContain('alpha');
+                expect(value).not.toContain('<span');
+            });
+        });
     });
 });
