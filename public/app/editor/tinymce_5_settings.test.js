@@ -1098,6 +1098,86 @@ describe('TinyMCE 5 Settings', () => {
         expect(iframe.getAttribute('src')).toBe(mockPdfBlobUrl);
       });
     });
+
+    describe('stripBunInjectedScripts', () => {
+      it('should remove Bun dev server scripts with /_bun/ path', () => {
+        const html = '<div>content</div><script type="module" src="/_bun/client/test.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('/_bun/');
+        expect(result).toContain('content');
+      });
+
+      it('should remove scripts with data-bun-dev-server-script attribute', () => {
+        const html = '<div>content</div><script type="module" crossorigin="" src="/_bun/client/2-50-50-00000000d4f90183.js" data-bun-dev-server-script=""></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('data-bun-dev-server-script');
+        expect(result).not.toContain('/_bun/');
+      });
+
+      it('should remove Bun chunk scripts with path traversal (production pattern)', () => {
+        const html = '<div>content</div><script type="module" crossorigin="" src="/../../../../../../chunk-wnkq4dvw.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('chunk-');
+        expect(result).not.toContain('/../');
+      });
+
+      it('should remove Bun inline visibility change script', () => {
+        const html = '<div>content</div><script>((a)=>{document.addEventListener(\'visibilitychange\',globalThis[Symbol.for(\'bun:loadData\')]=()=>document.visibilityState===\'hidden\'&&navigator.sendBeacon(\'/_bun/unref\',a));})(document.querySelector(\'[data-bun-dev-server-script]\').src.slice(-11,-3))</script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('/_bun/unref');
+        expect(result).not.toContain('visibilitychange');
+      });
+
+      it('should preserve non-Bun scripts', () => {
+        const html = '<div>content</div><script src="/app/custom.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('/app/custom.js');
+      });
+
+      it('should preserve inline scripts that are not Bun-related', () => {
+        const html = '<div>content</div><script>console.log("hello");</script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('console.log');
+      });
+
+      it('should handle null or empty input', () => {
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts(null)).toBeNull();
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts('')).toBe('');
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts(undefined)).toBeUndefined();
+      });
+
+      it('should handle HTML with multiple Bun scripts', () => {
+        const html = `
+          <div class="exe-layout-2-cols">
+            <div class="exe-col-1">Content</div>
+            <div class="exe-col-2">More content</div>
+          </div>
+          <script type="module" crossorigin="" src="/_bun/client/2-50-50-00000000d4f90183.js" data-bun-dev-server-script=""></script>
+          <script>((a)=>{navigator.sendBeacon('/_bun/unref',a);})()</script>
+        `;
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('exe-layout-2-cols');
+        expect(result).toContain('Content');
+        expect(result).toContain('More content');
+        expect(result).not.toContain('/_bun/');
+        expect(result).not.toContain('data-bun-dev-server-script');
+      });
+
+      it('should handle various chunk file name patterns', () => {
+        // Test with different hash lengths
+        const patterns = [
+          '/../../chunk-abc123.js',
+          '/../../../chunk-xyz789.js',
+          '/../../../../../../chunk-wnkq4dvw.js',
+        ];
+
+        patterns.forEach((pattern) => {
+          const html = `<div>test</div><script src="${pattern}"></script>`;
+          const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+          expect(result).not.toContain('chunk-');
+        });
+      });
+    });
   });
 
   describe('$exeTinyMCEToggler', () => {
