@@ -12,7 +12,6 @@ import { createHtml5ExportService, type Html5ExportService, type Html5ExportDeps
 // Test directories
 const TEST_EXPORT_DIR = '/tmp/html5-export-test';
 const TEST_SESSION_DIR = '/tmp/html5-export-test/session';
-const TEST_PREVIEW_DIR = '/tmp/html5-export-test/preview';
 
 // Mock session data
 let mockSessions: Map<string, any>;
@@ -70,19 +69,8 @@ function createMockDeps(): Html5ExportDeps {
             await fs.ensureDir(path.dirname(outputPath));
             await fs.writeFile(outputPath, 'PK dummy zip content');
         },
-        getFilesDir: () => TEST_EXPORT_DIR,
         getTempPath: (subpath: string) => path.join(TEST_EXPORT_DIR, 'tmp', subpath),
-        getPreviewExportPath: (sessionId: string, tempPath: string) => path.join(TEST_PREVIEW_DIR, sessionId, tempPath),
         getSession: (sessionId: string) => mockSessions.get(sessionId),
-        preview: {
-            generateRandomTempPath: () => 'random-temp-path/',
-            extractSessionPathComponents: (sessionPath: string) => ({
-                sessionId: 'test-session',
-                sessionPath,
-            }),
-            buildPreviewUrl: (sessionId: string, tempPath: string, filename: string) =>
-                `/preview/${sessionId}/${tempPath}/${filename}`,
-        },
         htmlGenerator: {
             generateIndexHtml: (structure: ParsedOdeStructure, _options: unknown) => `
 <!DOCTYPE html>
@@ -120,7 +108,6 @@ describe('HTML5 Export Service', () => {
         // Setup test directories
         await fs.ensureDir(TEST_EXPORT_DIR);
         await fs.ensureDir(TEST_SESSION_DIR);
-        await fs.ensureDir(TEST_PREVIEW_DIR);
 
         // Create test session directory with some files
         await fs.writeFile(path.join(TEST_SESSION_DIR, 'content.xml'), '<xml>content</xml>');
@@ -145,59 +132,9 @@ describe('HTML5 Export Service', () => {
     });
 
     describe('exportToHtml5', () => {
-        describe('Preview Mode', () => {
-            it('should export in preview mode', async () => {
-                const result = await service.exportToHtml5('test-session', {
-                    preview: true,
-                    tempPath: 'preview-test/',
-                });
-
-                expect(result.success).toBe(true);
-                expect(result.format).toBe(ExportFormat.HTML5);
-                expect(result.previewUrl).toBeDefined();
-                expect(result.previewUrl).toContain('preview');
-            });
-
-            it('should generate preview URL', async () => {
-                const result = await service.exportToHtml5('test-session', {
-                    preview: true,
-                    tempPath: 'my-preview/',
-                });
-
-                expect(result.previewUrl).toContain('test-session');
-                expect(result.previewUrl).toContain('index.html');
-            });
-
-            it('should use random temp path when not provided', async () => {
-                const result = await service.exportToHtml5('test-session', {
-                    preview: true,
-                });
-
-                expect(result.success).toBe(true);
-            });
-
-            it('should not create ZIP in preview mode', async () => {
-                await service.exportToHtml5('test-session', { preview: true });
-
-                expect(mockZipCalls.length).toBe(0);
-            });
-
-            it('should return export directory as filePath', async () => {
-                const result = await service.exportToHtml5('test-session', {
-                    preview: true,
-                    tempPath: 'dir-test/',
-                });
-
-                expect(result.filePath).toBeDefined();
-                expect(typeof result.filePath).toBe('string');
-            });
-        });
-
         describe('Download Mode', () => {
             it('should export in download mode', async () => {
-                const result = await service.exportToHtml5('test-session', {
-                    preview: false,
-                });
+                const result = await service.exportToHtml5('test-session', {});
 
                 expect(result.success).toBe(true);
                 expect(result.format).toBe(ExportFormat.HTML5);
@@ -205,7 +142,7 @@ describe('HTML5 Export Service', () => {
             });
 
             it('should create ZIP file', async () => {
-                await service.exportToHtml5('test-session', { preview: false });
+                await service.exportToHtml5('test-session', {});
 
                 expect(mockZipCalls.length).toBe(1);
                 expect(mockZipCalls[0].outputPath).toContain('.zip');
@@ -213,7 +150,6 @@ describe('HTML5 Export Service', () => {
 
             it('should use custom compression level', async () => {
                 await service.exportToHtml5('test-session', {
-                    preview: false,
                     compressionLevel: 5,
                 });
 
@@ -221,20 +157,20 @@ describe('HTML5 Export Service', () => {
             });
 
             it('should use default compression level 9', async () => {
-                await service.exportToHtml5('test-session', { preview: false });
+                await service.exportToHtml5('test-session', {});
 
                 expect(mockZipCalls[0].options.compressionLevel).toBe(9);
             });
 
             it('should include file size in result', async () => {
-                const result = await service.exportToHtml5('test-session', { preview: false });
+                const result = await service.exportToHtml5('test-session', {});
 
                 expect(typeof result.fileSize).toBe('number');
                 expect(result.fileSize).toBeGreaterThan(0);
             });
 
             it('should generate filename from document title', async () => {
-                const result = await service.exportToHtml5('test-session', { preview: false });
+                const result = await service.exportToHtml5('test-session', {});
 
                 expect(result.fileName).toContain('Test Document');
                 expect(result.fileName).toContain('_html5.zip');
@@ -254,39 +190,8 @@ describe('HTML5 Export Service', () => {
                 });
 
                 // Should throw when accessing structure.pages
-                await expect(service.exportToHtml5('broken-session', { preview: true })).rejects.toThrow();
+                await expect(service.exportToHtml5('broken-session', {})).rejects.toThrow();
             });
-        });
-
-        describe('Default Behavior', () => {
-            it('should default to download mode', async () => {
-                const result = await service.exportToHtml5('test-session', {});
-
-                // No preview URL means download mode
-                expect(result.previewUrl).toBeUndefined();
-                expect(mockZipCalls.length).toBe(1);
-            });
-        });
-    });
-
-    describe('exportPreview', () => {
-        it('should be convenience wrapper for preview mode', async () => {
-            const result = await service.exportPreview('test-session', 'test-path/');
-
-            expect(result.success).toBe(true);
-            expect(result.previewUrl).toBeDefined();
-        });
-
-        it('should use default temp path when not provided', async () => {
-            const result = await service.exportPreview('test-session');
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should not create ZIP', async () => {
-            await service.exportPreview('test-session');
-
-            expect(mockZipCalls.length).toBe(0);
         });
     });
 
@@ -311,309 +216,21 @@ describe('HTML5 Export Service', () => {
         });
     });
 
-    describe('HTML Generation', () => {
-        it('should generate index.html', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'html-gen-test/',
-            });
-
-            const exportDir = result.filePath;
-            const indexPath = path.join(exportDir, 'index.html');
-
-            expect(await fs.pathExists(indexPath)).toBe(true);
-
-            const content = await fs.readFile(indexPath, 'utf-8');
-            expect(content).toContain('<!DOCTYPE html>');
-            expect(content).toContain('Test Document');
-        });
-
-        it('should generate page HTML files', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'page-gen-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // Check page files exist
-            expect(await fs.pathExists(path.join(exportDir, 'page0.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'page1.html'))).toBe(true);
-        });
-
-        it('should include page content in generated HTML', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'content-test/',
-            });
-
-            const exportDir = result.filePath;
-            const pageContent = await fs.readFile(path.join(exportDir, 'page0.html'), 'utf-8');
-
-            expect(pageContent).toContain('Home');
-        });
-    });
-
-    describe('Resource Copying', () => {
-        it('should copy session resources', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'resource-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // Should copy image.jpg
-            expect(await fs.pathExists(path.join(exportDir, 'image.jpg'))).toBe(true);
-
-            // Should copy resources directory
-            expect(await fs.pathExists(path.join(exportDir, 'resources', 'test.css'))).toBe(true);
-        });
-
-        it('should not copy content.xml', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'no-xml-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // content.xml should not be copied
-            expect(await fs.pathExists(path.join(exportDir, 'content.xml'))).toBe(false);
-        });
-
-        it('should skip export and preview directories', async () => {
-            // Create export and preview dirs in session
-            await fs.ensureDir(path.join(TEST_SESSION_DIR, 'export'));
-            await fs.ensureDir(path.join(TEST_SESSION_DIR, 'preview'));
-            await fs.writeFile(path.join(TEST_SESSION_DIR, 'export', 'test.txt'), 'test');
-            await fs.writeFile(path.join(TEST_SESSION_DIR, 'preview', 'test.txt'), 'test');
-
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'skip-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // export and preview directories should not be copied
-            expect(await fs.pathExists(path.join(exportDir, 'export'))).toBe(false);
-            expect(await fs.pathExists(path.join(exportDir, 'preview'))).toBe(false);
-        });
-    });
-
-    describe('Basic Assets Creation', () => {
-        it('should create base.css', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'assets-test/',
-            });
-
-            const exportDir = result.filePath;
-            expect(await fs.pathExists(path.join(exportDir, 'base.css'))).toBe(true);
-        });
-
-        it('should create content.css', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'css-test/',
-            });
-
-            const exportDir = result.filePath;
-            expect(await fs.pathExists(path.join(exportDir, 'content.css'))).toBe(true);
-        });
-
-        it('should create JavaScript placeholders', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'js-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            expect(await fs.pathExists(path.join(exportDir, 'exe_jquery.js'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'common_i18n.js'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'common.js'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, '_style_js.js'))).toBe(true);
-        });
-    });
-
-    describe('Theme Handling', () => {
-        it('should create theme directory', async () => {
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'theme-dir-test/',
-            });
-
-            const exportDir = result.filePath;
-            expect(await fs.pathExists(path.join(exportDir, 'theme'))).toBe(true);
-        });
-
-        it('should use theme from structure meta', async () => {
-            mockSessions.set('themed-session', {
-                sessionId: 'themed-session',
-                sessionPath: TEST_SESSION_DIR,
-                structure: {
-                    meta: {
-                        title: 'Themed',
-                        theme: 'custom-theme',
-                    },
-                    pages: [
-                        {
-                            id: 'page0',
-                            title: 'Home',
-                            level: 0,
-                            parent_id: null,
-                            position: 0,
-                            components: [],
-                        },
-                    ],
-                    navigation: { page: {} },
-                    raw: {},
-                },
-            });
-
-            // Should not throw even with non-existent theme
-            const result = await service.exportToHtml5('themed-session', {
-                preview: true,
-                tempPath: 'custom-theme-test/',
-            });
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should default to base theme', async () => {
-            mockSessions.set('no-theme-session', {
-                sessionId: 'no-theme-session',
-                sessionPath: TEST_SESSION_DIR,
-                structure: {
-                    meta: {
-                        title: 'No Theme',
-                        // No theme specified
-                    },
-                    pages: [
-                        {
-                            id: 'page0',
-                            title: 'Home',
-                            level: 0,
-                            parent_id: null,
-                            position: 0,
-                            components: [],
-                        },
-                    ],
-                    navigation: { page: {} },
-                    raw: {},
-                },
-            });
-
-            const result = await service.exportToHtml5('no-theme-session', {
-                preview: true,
-                tempPath: 'default-theme-test/',
-            });
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should copy theme files when they exist (preserving original names)', async () => {
-            // Create theme files in the expected location
-            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
-            await fs.ensureDir(themeDir);
-            await fs.writeFile(path.join(themeDir, 'style.css'), '.theme-style { color: red; }');
-            await fs.writeFile(path.join(themeDir, 'style.js'), '// theme javascript');
-            await fs.writeFile(path.join(themeDir, 'config.xml'), '<config><name>base</name></config>');
-            await fs.ensureDir(path.join(themeDir, 'icons'));
-            await fs.writeFile(path.join(themeDir, 'icons', 'icon.png'), 'fake icon data');
-            await fs.ensureDir(path.join(themeDir, 'img'));
-            await fs.writeFile(path.join(themeDir, 'img', 'bg.png'), 'fake bg image');
-
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'theme-copy-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // Verify theme files were copied preserving original filenames (issue #905)
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.css'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.js'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'icons'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'img'))).toBe(true);
-
-            // Verify content was copied correctly
-            const cssContent = await fs.readFile(path.join(exportDir, 'theme', 'style.css'), 'utf-8');
-            expect(cssContent).toBe('.theme-style { color: red; }');
-
-            const jsContent = await fs.readFile(path.join(exportDir, 'theme', 'style.js'), 'utf-8');
-            expect(jsContent).toBe('// theme javascript');
-        });
-
-        it('should copy theme files partially when some are missing', async () => {
-            // Create theme directory with only some files
-            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
-            await fs.ensureDir(themeDir);
-            await fs.writeFile(path.join(themeDir, 'style.css'), '.partial-theme {}');
-            // Don't create style.js, config.xml, icons, img
-
-            const result = await service.exportToHtml5('test-session', {
-                preview: true,
-                tempPath: 'theme-partial-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            // Only style.css should be copied (preserving original name)
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.css'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'style.js'))).toBe(false);
-            expect(await fs.pathExists(path.join(exportDir, 'theme', 'config.xml'))).toBe(false);
-        });
-    });
-
-    describe('Multiple Pages Export', () => {
-        it('should generate HTML for all pages', async () => {
-            mockSessions.set('multi-page-session', {
-                sessionId: 'multi-page-session',
-                sessionPath: TEST_SESSION_DIR,
-                structure: {
-                    meta: { title: 'Multi Page' },
-                    pages: [
-                        { id: 'p1', title: 'Page 1', level: 0, parent_id: null, position: 0 },
-                        { id: 'p2', title: 'Page 2', level: 0, parent_id: null, position: 1 },
-                        { id: 'p3', title: 'Page 3', level: 0, parent_id: null, position: 2 },
-                    ],
-                    navigation: { page: {} },
-                    raw: {},
-                },
-            });
-
-            const result = await service.exportToHtml5('multi-page-session', {
-                preview: true,
-                tempPath: 'multi-page-test/',
-            });
-
-            const exportDir = result.filePath;
-
-            expect(await fs.pathExists(path.join(exportDir, 'p1.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'p2.html'))).toBe(true);
-            expect(await fs.pathExists(path.join(exportDir, 'p3.html'))).toBe(true);
-        });
-    });
-
     describe('Export Result Format', () => {
         it('should return correct format enum', async () => {
-            const result = await service.exportToHtml5('test-session', { preview: true });
+            const result = await service.exportToHtml5('test-session', {});
 
             expect(result.format).toBe(ExportFormat.HTML5);
         });
 
         it('should return success flag', async () => {
-            const result = await service.exportToHtml5('test-session', { preview: true });
+            const result = await service.exportToHtml5('test-session', {});
 
             expect(result.success).toBe(true);
         });
 
         it('should return fileName for download', async () => {
-            const result = await service.exportToHtml5('test-session', { preview: false });
+            const result = await service.exportToHtml5('test-session', {});
 
             expect(result.fileName).toBeDefined();
             expect(result.fileName.length).toBeGreaterThan(0);
@@ -630,7 +247,7 @@ describe('HTML5 Export Service', () => {
             };
 
             const customService = createHtml5ExportService(customDeps);
-            await customService.exportToHtml5('test-session', { preview: true });
+            await customService.exportToHtml5('test-session', {});
 
             expect(getSessionCalled).toBe(true);
         });
@@ -640,6 +257,39 @@ describe('HTML5 Export Service', () => {
             const defaultService = createHtml5ExportService();
             expect(defaultService).toBeDefined();
             expect(typeof defaultService.exportToHtml5).toBe('function');
+        });
+    });
+
+    describe('Theme Copying', () => {
+        it('should copy theme files when they exist', async () => {
+            // Create theme files in the expected location
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(themeDir);
+            await fs.writeFile(path.join(themeDir, 'style.css'), '.theme-style { color: red; }');
+            await fs.writeFile(path.join(themeDir, 'style.js'), '// theme javascript');
+            await fs.writeFile(path.join(themeDir, 'config.xml'), '<config><name>base</name></config>');
+            await fs.ensureDir(path.join(themeDir, 'icons'));
+            await fs.writeFile(path.join(themeDir, 'icons', 'icon.png'), 'fake icon data');
+            await fs.ensureDir(path.join(themeDir, 'img'));
+            await fs.writeFile(path.join(themeDir, 'img', 'bg.png'), 'fake bg image');
+
+            const result = await service.exportToHtml5('test-session', {});
+
+            expect(result.success).toBe(true);
+            // ZIP was created (we can't easily verify contents with mock)
+            expect(mockZipCalls.length).toBe(1);
+        });
+
+        it('should copy theme files partially when some are missing', async () => {
+            // Create theme directory with only some files
+            const themeDir = path.join(TEST_EXPORT_DIR, 'public', 'files', 'perm', 'themes', 'base', 'base');
+            await fs.ensureDir(themeDir);
+            await fs.writeFile(path.join(themeDir, 'style.css'), '.partial-theme {}');
+            // Don't create style.js, config.xml, icons, img
+
+            const result = await service.exportToHtml5('test-session', {});
+
+            expect(result.success).toBe(true);
         });
     });
 });

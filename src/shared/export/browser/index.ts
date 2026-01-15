@@ -20,7 +20,6 @@ import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
 import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
-import { PreviewAssetResolver } from '../adapters/PreviewAssetResolver';
 
 // Import providers
 import { FflateZipProvider } from '../providers/FflateZipProvider';
@@ -533,7 +532,6 @@ export {
     BrowserResourceProvider,
     BrowserAssetProvider,
     ExportAssetResolver,
-    PreviewAssetResolver,
     // Providers
     FflateZipProvider,
     // Exporters
@@ -578,7 +576,6 @@ if (typeof window !== 'undefined') {
         BrowserResourceProvider,
         BrowserAssetProvider,
         ExportAssetResolver,
-        PreviewAssetResolver,
         // Providers
         FflateZipProvider,
         // Exporters
