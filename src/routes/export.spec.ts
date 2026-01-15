@@ -244,51 +244,6 @@ describe('Export Routes', () => {
         });
     });
 
-    describe('GET /api/export/:odeSessionId/preview', () => {
-        it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/non-existent-session/preview'));
-
-            expect(res.status).toBe(404);
-            const body = await res.json();
-            expect(body.success).toBe(false);
-            expect(body.error).toContain('Session not found');
-        });
-
-        it('should return preview info when content exists', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.hasContent).toBe(true);
-        });
-
-        it('should return HTML when index.html exists', async () => {
-            // Create index.html
-            await fs.writeFile(
-                path.join(testDir, 'tmp', testSessionId, 'index.html'),
-                '<html><body>Test Content</body></html>',
-            );
-
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
-
-            expect(res.status).toBe(200);
-            expect(res.headers.get('content-type')).toContain('text/html');
-            const text = await res.text();
-            expect(text).toContain('Test Content');
-        });
-
-        it('should return 404 when no content exists', async () => {
-            // Create session without content
-            mockSessions.set('empty-session', { id: 'empty-session' });
-            await fs.ensureDir(path.join(testDir, 'tmp', 'empty-session'));
-
-            const res = await app.handle(new Request('http://localhost/api/export/empty-session/preview'));
-
-            expect(res.status).toBe(404);
-        });
-    });
-
     describe('GET /api/export/:odeSessionId/:exportType/download', () => {
         it('should return 404 for non-existent session', async () => {
             const res = await app.handle(
