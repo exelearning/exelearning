@@ -6,7 +6,13 @@
  * to display a report of student progress across all evaluable activities.
  */
 import { Elysia, t } from 'elysia';
+import * as Y from 'yjs';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
+import { getDb as getDbDefault } from '../db/client';
+import {
+    findProjectByUuid as findProjectByUuidDefault,
+    findSnapshotByProjectId as findSnapshotByProjectIdDefault,
+} from '../db/queries';
 
 // ============================================================================
 // DEPENDENCY INJECTION
@@ -14,10 +20,16 @@ import { getSession as getSessionDefault, type ProjectSession } from '../service
 
 export interface GamesRoutesDeps {
     getSession: (sessionId: string) => ProjectSession | undefined;
+    getDb: typeof getDbDefault;
+    findProjectByUuid: typeof findProjectByUuidDefault;
+    findSnapshotByProjectId: typeof findSnapshotByProjectIdDefault;
 }
 
 const defaultDeps: GamesRoutesDeps = {
     getSession: getSessionDefault,
+    getDb: getDbDefault,
+    findProjectByUuid: findProjectByUuidDefault,
+    findSnapshotByProjectId: findSnapshotByProjectIdDefault,
 };
 
 let deps = defaultDeps;
@@ -361,6 +373,151 @@ function extractFromPagesArray(sessionId: string, pages: unknown[]): SessionIdev
 }
 
 /**
+ * Extract iDevices from Yjs document snapshot
+ * Reads navigation array -> pages -> blocks -> components structure
+ */
+function extractIdevicesFromYjsDoc(sessionId: string, ydoc: Y.Doc): SessionIdeviceItem[] {
+    const items: SessionIdeviceItem[] = [];
+
+    // Get navigation array (contains all pages)
+    const navigation = ydoc.getArray('navigation');
+    if (!navigation || navigation.length === 0) {
+        return items;
+    }
+
+    for (let pageIdx = 0; pageIdx < navigation.length; pageIdx++) {
+        const page = navigation.get(pageIdx) as Y.Map<unknown> | undefined;
+        if (!page || !(page instanceof Y.Map)) {
+            continue;
+        }
+
+        const pageId = (page.get('id') as string) || (page.get('pageId') as string) || '';
+        const pageTitle = (page.get('title') as string) || (page.get('pageName') as string) || '';
+        const parentId = (page.get('parentId') as string) || null;
+
+        // Get blocks array
+        const blocks = page.get('blocks') as Y.Array<unknown> | undefined;
+
+        if (!blocks || blocks.length === 0) {
+            // Page without blocks
+            items.push({
+                odePageId: pageId,
+                odeParentPageId: parentId,
+                pageName: pageTitle,
+                navId: pageId,
+                ode_nav_structure_sync_id: pageId,
+                ode_session_id: sessionId,
+                ode_nav_structure_sync_order: pageIdx,
+                navIsActive: 1,
+                componentId: null,
+                htmlViewer: null,
+                jsonProperties: null,
+                ode_idevice_id: null,
+                odeIdeviceTypeName: null,
+                ode_pag_structure_sync_id: null,
+                componentSessionId: null,
+                componentPageId: null,
+                ode_block_id: null,
+                ode_components_sync_order: null,
+                componentIsActive: null,
+                blockName: null,
+                blockOrder: null,
+            });
+            continue;
+        }
+
+        for (let blockIdx = 0; blockIdx < blocks.length; blockIdx++) {
+            const block = blocks.get(blockIdx) as Y.Map<unknown> | undefined;
+            if (!block || !(block instanceof Y.Map)) {
+                continue;
+            }
+
+            const blockId = (block.get('id') as string) || (block.get('blockId') as string) || '';
+            const blockName = (block.get('blockName') as string) || (block.get('name') as string) || '';
+            const blockOrder = (block.get('order') as number) ?? blockIdx;
+
+            // Get components/idevices array
+            const components = (block.get('components') || block.get('idevices')) as Y.Array<unknown> | undefined;
+
+            if (!components || components.length === 0) {
+                // Block without idevices
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: parentId,
+                    pageName: pageTitle,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: sessionId,
+                    ode_nav_structure_sync_order: pageIdx,
+                    navIsActive: 1,
+                    componentId: null,
+                    htmlViewer: null,
+                    jsonProperties: null,
+                    ode_idevice_id: null,
+                    odeIdeviceTypeName: null,
+                    ode_pag_structure_sync_id: blockId,
+                    componentSessionId: null,
+                    componentPageId: null,
+                    ode_block_id: blockId,
+                    ode_components_sync_order: null,
+                    componentIsActive: null,
+                    blockName: blockName,
+                    blockOrder: blockOrder,
+                });
+                continue;
+            }
+
+            for (let compIdx = 0; compIdx < components.length; compIdx++) {
+                const component = components.get(compIdx) as Y.Map<unknown> | undefined;
+                if (!component || !(component instanceof Y.Map)) {
+                    continue;
+                }
+
+                const componentId = (component.get('id') as string) || (component.get('ideviceId') as string) || '';
+                const ideviceType = (component.get('type') as string) || (component.get('ideviceType') as string) || '';
+                // Check multiple possible property names for HTML content
+                const htmlView = component.get('content') || component.get('htmlContent') || component.get('htmlView');
+                const componentOrder = (component.get('order') as number) ?? compIdx;
+
+                // Convert htmlView to string if needed
+                let htmlViewStr = '';
+                if (htmlView && typeof htmlView === 'object' && 'toString' in htmlView) {
+                    htmlViewStr = String(htmlView);
+                } else if (typeof htmlView === 'string') {
+                    htmlViewStr = htmlView;
+                }
+
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: parentId,
+                    pageName: pageTitle,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: sessionId,
+                    ode_nav_structure_sync_order: pageIdx,
+                    navIsActive: 1,
+                    componentId: componentId,
+                    htmlViewer: htmlViewStr,
+                    jsonProperties: null,
+                    ode_idevice_id: componentId,
+                    odeIdeviceTypeName: ideviceType,
+                    ode_pag_structure_sync_id: blockId,
+                    componentSessionId: sessionId,
+                    componentPageId: pageId,
+                    ode_block_id: blockId,
+                    ode_components_sync_order: componentOrder,
+                    componentIsActive: 1,
+                    blockName: blockName,
+                    blockOrder: blockOrder,
+                });
+            }
+        }
+    }
+
+    return items;
+}
+
+/**
  * Games routes - endpoints used by game iDevices
  */
 export const gamesRoutes = new Elysia({ prefix: '/api/games' })
@@ -380,20 +537,40 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             // Get session from memory (using DI)
             const session = deps.getSession(odeSessionId);
 
-            if (!session) {
-                // Session not found - return empty data (not an error)
-                // This can happen if the session expired or was never created
-                console.log(`[Games] Session not found: ${odeSessionId}`);
-                return {
-                    success: true,
-                    data: [],
-                };
+            // First try to extract from session.structure (legacy/simplified)
+            let data = session ? extractIdevicesFromStructure(odeSessionId, session.structure) : [];
+
+            // If no data found, try loading from Yjs snapshot in database
+            if (data.length === 0) {
+                try {
+                    const db = deps.getDb();
+                    // The sessionId is the project UUID
+                    const project = await deps.findProjectByUuid(db, odeSessionId);
+
+                    if (project) {
+                        const snapshot = await deps.findSnapshotByProjectId(db, project.id);
+
+                        if (snapshot?.snapshot_data) {
+                            const ydoc = new Y.Doc();
+                            Y.applyUpdate(ydoc, new Uint8Array(snapshot.snapshot_data));
+                            data = extractIdevicesFromYjsDoc(odeSessionId, ydoc);
+                            ydoc.destroy();
+                            console.log(
+                                `[Games] Loaded ${data.length} items from Yjs snapshot for session ${odeSessionId}`,
+                            );
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[Games] Failed to load from Yjs snapshot:`, error);
+                    // Fall through with empty data
+                }
             }
 
-            // Extract iDevices from session structure
-            const data = extractIdevicesFromStructure(odeSessionId, session.structure);
-
-            console.log(`[Games] Returning ${data.length} items for session ${odeSessionId}`);
+            if (data.length === 0 && !session) {
+                console.log(`[Games] Session not found: ${odeSessionId}`);
+            } else {
+                console.log(`[Games] Returning ${data.length} items for session ${odeSessionId}`);
+            }
 
             return {
                 success: true,
@@ -406,3 +583,6 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             }),
         },
     );
+
+// Export internal functions for testing
+export { extractIdevicesFromYjsDoc };

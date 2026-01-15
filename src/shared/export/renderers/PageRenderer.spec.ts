@@ -651,6 +651,38 @@ describe('PageRenderer', () => {
             // But sections should exist with proper IDs
             expect(html).toContain('id="section-child"');
         });
+
+        it('should include favicon reference', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                faviconPath: 'theme/img/favicon.png',
+                faviconType: 'image/png',
+            });
+            expect(html).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
+
+        it('should use default favicon when none provided', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages);
+            expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+    });
+
+    describe('renderFavicon', () => {
+        it('should render favicon link tag', () => {
+            const html = renderer.renderFavicon('', 'libs/favicon.ico', 'image/x-icon');
+            expect(html).toBe('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should apply basePath', () => {
+            const html = renderer.renderFavicon('../', 'libs/favicon.ico', 'image/x-icon');
+            expect(html).toBe('<link rel="icon" type="image/x-icon" href="../libs/favicon.ico">');
+        });
+
+        it('should use custom type', () => {
+            const html = renderer.renderFavicon('', 'theme/img/favicon.png', 'image/png');
+            expect(html).toBe('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
     });
 
     describe('sanitizeFilename', () => {

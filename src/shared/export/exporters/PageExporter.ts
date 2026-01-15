@@ -13,7 +13,7 @@
  * - content/css/ (base CSS)
  */
 
-import type { ExportPage, ExportMetadata, ExportOptions, ExportResult } from '../interfaces';
+import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { generateI18nScript } from '../generators/I18nGenerator';
 
@@ -49,8 +49,19 @@ export class PageExporter extends Html5Exporter {
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
 
+            // 4. Fetch and add theme
+            const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
+            if (themeFilesMap) {
+                for (const [filePath, content] of themeFilesMap) {
+                    this.zip.addFile(`theme/${filePath}`, content);
+                }
+            } else {
+                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
+                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+            }
+
             // 1. Generate single-page HTML with all content
-            const html = this.generateSinglePageHtml(pages, meta, usedIdevices);
+            const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo);
             this.zip.addFile('index.html', html);
 
             // 2. Add base CSS (fetch from content/css)
@@ -61,17 +72,6 @@ export class PageExporter extends Html5Exporter {
             }
             this.zip.addFile('content/css/base.css', baseCss);
             this.zip.addFile('content/css/single-page.css', this.getSinglePageCss());
-
-            // 4. Fetch and add theme
-            try {
-                const themeFiles = await this.resources.fetchTheme(themeName);
-                for (const [path, content] of themeFiles) {
-                    this.zip.addFile(`theme/${path}`, content);
-                }
-            } catch {
-                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
-            }
 
             // 5. Fetch and add base libraries
             try {
@@ -121,7 +121,12 @@ export class PageExporter extends Html5Exporter {
     /**
      * Generate single-page HTML with all pages
      */
-    generateSinglePageHtml(pages: ExportPage[], meta: ExportMetadata, usedIdevices: string[]): string {
+    generateSinglePageHtml(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        usedIdevices: string[],
+        faviconInfo?: FaviconInfo | null,
+    ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
             projectSubtitle: meta.subtitle || '',
@@ -130,6 +135,8 @@ export class PageExporter extends Html5Exporter {
             usedIdevices,
             author: meta.author || '',
             license: meta.license || 'CC-BY-SA',
+            faviconPath: faviconInfo?.path,
+            faviconType: faviconInfo?.type,
         });
     }
 
