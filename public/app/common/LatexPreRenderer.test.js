@@ -1398,4 +1398,100 @@ describe('LatexPreRenderer', () => {
             expect(result.count).toBe(2);
         });
     });
+
+    describe('double-processing prevention', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('skips string that already contains pre-rendered LaTeX', async () => {
+            // Simulate already pre-rendered content in JSON data
+            const alreadyRendered = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const result = await LatexPreRenderer.preRender(alreadyRendered);
+
+            // Should NOT try to process the LaTeX inside data-latex attribute
+            expect(result.html).toBe(alreadyRendered);
+            expect(result.latexRendered).toBe(false);
+        });
+
+        test('does not corrupt data-latex attribute by double-processing', async () => {
+            // This was the bug: preRenderString would match LaTeX inside data-latex attribute
+            // and try to wrap it again, corrupting the attribute value
+            const content = '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span></p>';
+
+            const result = await LatexPreRenderer.preRender(content);
+
+            // The content should be unchanged - no double processing
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
+        });
+
+        test('preRender skips JSON with already-rendered content in data-idevice-json-data', async () => {
+            // Simulate iDevice with already pre-rendered textTextarea
+            const renderedLatex = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const jsonData = JSON.stringify({ textTextarea: `<p>Text ${renderedLatex}</p>` });
+            const html = `<div class="idevice_node text" data-idevice-json-data="${jsonData.replace(/"/g, '&quot;')}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not double-process the already-rendered LaTeX
+            // The data-latex attribute should NOT contain HTML spans
+            expect(result.html).not.toMatch(/data-latex="[^"]*<span/);
+            expect(result.html).not.toMatch(/data-latex="[^"]*&lt;span/);
+        });
+
+        test('preRender skips container elements with already-rendered LaTeX children', async () => {
+            // Simulate a paragraph that already has pre-rendered LaTeX inside
+            const html = '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span> is great</p>';
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not try to process the content again
+            // Count of exe-math-rendered should remain 1, not increase
+            const matches = result.html.match(/exe-math-rendered/g) || [];
+            expect(matches.length).toBe(1);
+
+            // The data-latex should NOT be corrupted
+            expect(result.html).not.toContain('data-latex="<span');
+        });
+
+        test('preRender skips iDevice DOM with already-rendered LaTeX', async () => {
+            // Simulate iDevice structure with already-rendered content in both JSON and DOM
+            const renderedSpan = '<span class="exe-math-rendered" data-latex="\\(x\\)"><svg></svg></span>';
+            const jsonData = JSON.stringify({ textTextarea: `<p>${renderedSpan}</p>` });
+            const html = `
+                <div class="idevice_node text" data-idevice-json-data="${jsonData.replace(/"/g, '&quot;')}">
+                    <div class="exe-text"><p>${renderedSpan}</p></div>
+                </div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Count exe-math-rendered - should be 1 in the DOM content, not doubled
+            const domMatches = result.html.match(/class="exe-math-rendered"/g) || [];
+            expect(domMatches.length).toBe(1);
+
+            // Verify no corruption
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
+        });
+    });
 });

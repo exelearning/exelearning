@@ -42,37 +42,8 @@ class FreeTextHandler extends BaseLegacyHandler {
   extractHtmlView(dict, context = {}) {
     if (!dict) return '';
 
-    let content = '';
-
-    // Strategy 1: Look for activityTextArea (main content)
-    const activityTextArea = this.findDictInstance(dict, 'activityTextArea');
-    if (activityTextArea) {
-      content = this.extractTextAreaFieldContent(activityTextArea);
-    }
-
-    // Strategy 2: Look for "content" key
-    if (!content) {
-      const contentTextArea = this.findDictInstance(dict, 'content');
-      if (contentTextArea) {
-        content = this.extractTextAreaFieldContent(contentTextArea);
-      }
-    }
-
-    // Strategy 3: Look for "fields" list (JsIdevice format)
-    if (!content) {
-      const fieldsContent = this.extractFieldsContent(dict);
-      if (fieldsContent) {
-        content = fieldsContent;
-      }
-    }
-
-    // Strategy 4: Any TextAreaField in the dictionary
-    if (!content) {
-      const textAreaInst = dict.querySelector(':scope > instance[class*="TextAreaField"]');
-      if (textAreaInst) {
-        content = this.extractTextAreaFieldContent(textAreaInst);
-      }
-    }
+    // Get main content (without feedback)
+    let content = this.extractMainContent(dict);
 
     // Render feedback into htmlView (matching Symfony legacy approach)
     // This ensures feedback works in editor, preview, and export
@@ -139,16 +110,69 @@ class FreeTextHandler extends BaseLegacyHandler {
 
   /**
    * Extract properties for text iDevice
+   * For JSON iDevices, we need to include textTextarea with the main content
+   * so that renderView can regenerate the interface from properties
    */
-  extractProperties(dict) {
-    const feedback = this.extractFeedback(dict);
-    if (feedback.content) {
-      return {
-        textFeedbackTextarea: feedback.content,
-        textFeedbackInput: feedback.buttonCaption
-      };
+  extractProperties(dict, ideviceId, context = {}) {
+    const props = {};
+
+    // Extract main content for textTextarea (needed for JSON iDevice regeneration)
+    // Use the same extraction logic as extractHtmlView but without feedback
+    const mainContent = this.extractMainContent(dict);
+    if (mainContent) {
+      props.textTextarea = mainContent;
     }
-    return {};
+
+    // Extract feedback properties
+    const feedback = this.extractFeedback(dict, context);
+    if (feedback.content) {
+      props.textFeedbackTextarea = feedback.content;
+      props.textFeedbackInput = feedback.buttonCaption;
+    }
+
+    return props;
+  }
+
+  /**
+   * Extract main content (without feedback) from the dictionary
+   * Used by both extractHtmlView and extractProperties
+   */
+  extractMainContent(dict) {
+    if (!dict) return '';
+
+    let content = '';
+
+    // Strategy 1: Look for activityTextArea (main content)
+    const activityTextArea = this.findDictInstance(dict, 'activityTextArea');
+    if (activityTextArea) {
+      content = this.extractTextAreaFieldContent(activityTextArea);
+    }
+
+    // Strategy 2: Look for "content" key
+    if (!content) {
+      const contentTextArea = this.findDictInstance(dict, 'content');
+      if (contentTextArea) {
+        content = this.extractTextAreaFieldContent(contentTextArea);
+      }
+    }
+
+    // Strategy 3: Look for "fields" list (JsIdevice format)
+    if (!content) {
+      const fieldsContent = this.extractFieldsContent(dict);
+      if (fieldsContent) {
+        content = fieldsContent;
+      }
+    }
+
+    // Strategy 4: Any TextAreaField in the dictionary
+    if (!content) {
+      const textAreaInst = dict.querySelector(':scope > instance[class*="TextAreaField"]');
+      if (textAreaInst) {
+        content = this.extractTextAreaFieldContent(textAreaInst);
+      }
+    }
+
+    return content;
   }
 
   /**

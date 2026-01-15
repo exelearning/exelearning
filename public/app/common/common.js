@@ -576,8 +576,13 @@ var $exe = {
             var l = $("dl.exe-dl");
             if (l.length == 0) return false;
             var h, e, t, bg, tc, s, id;
+            var newTogglers = []; // Track newly created togglers
             l.each(function (i) {
                 e = this;
+                // Skip if already processed (has togglers already)
+                if ($("a.exe-dd-toggler", e).length > 0) {
+                    return;
+                }
                 bg = $exe.rgb2hex($(e).css("color"));
                 tc = $exe.useBlackOrWhite(bg.replace("#", ""));
                 s = " style='text-decoration:none;background:" + bg + ";color:" + tc + "'";
@@ -586,10 +591,13 @@ var $exe = {
                 $("dt", e).each(function () {
                     t = this;
                     h = $(t).html();
-                    $(t).html("<a href='#' class='exe-dd-toggler exe-dd-toggler-closed exe-dl-" + i + "-a'><span class='icon'" + s + ">+ </span>" + h + "</a>")
+                    $(t).html("<a href='#' class='exe-dd-toggler exe-dd-toggler-closed exe-dl-" + i + "-a'><span class='icon'" + s + ">+ </span>" + h + "</a>");
+                    // Track the newly created toggler
+                    newTogglers.push($("a.exe-dd-toggler", t)[0]);
                 });
             });
-            $('a.exe-dd-toggler').click(function () {
+            // Only attach click handlers to newly created togglers (not all on page)
+            $(newTogglers).click(function () {
                 var e = $(this);
                 var s = $("span.icon", this);
                 var dd = $(this).parent().next("dd");

@@ -800,4 +800,118 @@ describe('MermaidPreRenderer', () => {
             expect(MermaidPreRenderer.getOriginalCode(div)).toBe('graph TD; A["Label with <special>"]-->B');
         });
     });
+
+    describe('preRender with JSON iDevice data attributes', () => {
+        beforeEach(() => {
+            // Setup mock mermaid
+            globalThis.mermaid = {
+                initialize: vi.fn(),
+                render: vi.fn(async (id, code) => ({
+                    svg: `<svg id="${id}"><text>${code}</text></svg>`,
+                })),
+            };
+        });
+
+        afterEach(() => {
+            delete globalThis.mermaid;
+        });
+
+        test('detects mermaid in data-idevice-json-data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>Some text</p><pre class="mermaid">graph TD; A-->B</pre>',
+                otherField: 'no mermaid here',
+            };
+            // Use double quotes for attribute and escape inner quotes
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div data-idevice-json-data="${jsonStr}">empty body</div>`;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.hasMermaid).toBe(true);
+        });
+
+        test('pre-renders mermaid in JSON data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>Some text</p><pre class="mermaid">graph TD; A-->B</pre>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div data-idevice-json-data="${jsonStr}">empty body</div>`;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.count).toBe(1);
+
+            // Check the JSON data was updated with pre-rendered content
+            const parser = new globalThis.DOMParser();
+            const doc = parser.parseFromString(result.html, 'text/html');
+            const element = doc.querySelector('[data-idevice-json-data]');
+            const newJsonData = JSON.parse(element.getAttribute('data-idevice-json-data'));
+
+            expect(newJsonData.textTextarea).toContain('exe-mermaid-rendered');
+            expect(newJsonData.textTextarea).toContain('data-mermaid');
+        });
+
+        test('processes multiple JSON iDevice elements', async () => {
+            const jsonData1 = {
+                textTextarea: '<pre class="mermaid">graph TD; A-->B</pre>',
+            };
+            const jsonData2 = {
+                textTextarea: '<pre class="mermaid">flowchart LR; X-->Y</pre>',
+            };
+            const jsonStr1 = JSON.stringify(jsonData1).replace(/"/g, '&quot;');
+            const jsonStr2 = JSON.stringify(jsonData2).replace(/"/g, '&quot;');
+            const html = `
+                <div data-idevice-json-data="${jsonStr1}">empty1</div>
+                <div data-idevice-json-data="${jsonStr2}">empty2</div>
+            `;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.count).toBe(2);
+        });
+
+        test('skips JSON data without mermaid content', async () => {
+            const jsonData = {
+                textTextarea: '<p>Regular text content without diagrams</p>',
+                otherField: 'Just text',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div data-idevice-json-data="${jsonStr}">empty body</div>`;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.hasMermaid).toBe(false);
+            expect(result.mermaidRendered).toBe(false);
+        });
+
+        test('handles invalid JSON in data attribute gracefully', async () => {
+            // Invalid JSON but contains 'mermaid' text
+            const html = `<div data-idevice-json-data="invalid json with mermaid word">empty body</div>`;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            // Should not crash, but won't find mermaid
+            expect(result.hasMermaid).toBe(true); // Pattern match finds 'mermaid' in attribute
+            expect(result.mermaidRendered).toBe(false);
+        });
+
+        test('processes both JSON data and HTML body mermaid elements', async () => {
+            const jsonData = {
+                textTextarea: '<pre class="mermaid">graph TD; A-->B</pre>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `
+                <div data-idevice-json-data="${jsonStr}">
+                    <pre class="mermaid">flowchart LR; X-->Y</pre>
+                </div>
+            `;
+
+            const result = await MermaidPreRenderer.preRender(html);
+
+            expect(result.mermaidRendered).toBe(true);
+            expect(result.count).toBe(2);
+        });
+    });
 });
