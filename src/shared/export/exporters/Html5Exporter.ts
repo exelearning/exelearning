@@ -17,6 +17,7 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, Html5ExportOptions } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
+import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class Html5Exporter extends BaseExporter {
     /**
@@ -215,6 +216,10 @@ export class Html5Exporter extends BaseExporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            // 7.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
@@ -598,6 +603,10 @@ export class Html5Exporter extends BaseExporter {
             } catch {
                 // Base libraries not available - continue anyway
             }
+
+            // 7.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
             const allHtmlContent = this.collectAllHtmlContent(pages);

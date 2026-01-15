@@ -19,32 +19,6 @@ import { IdeviceRenderer } from './IdeviceRenderer';
 import { LIBRARY_PATTERNS, getLicenseClass } from '../constants';
 
 /**
- * Navigation button translations by language
- */
-const NAV_TRANSLATIONS: Record<string, { previous: string; next: string }> = {
-    es: { previous: 'Anterior', next: 'Siguiente' },
-    en: { previous: 'Previous', next: 'Next' },
-    ca: { previous: 'Anterior', next: 'Següent' },
-    eu: { previous: 'Aurrekoa', next: 'Hurrengoa' },
-    gl: { previous: 'Anterior', next: 'Seguinte' },
-    pt: { previous: 'Anterior', next: 'Próximo' },
-    fr: { previous: 'Précédent', next: 'Suivant' },
-    de: { previous: 'Zurück', next: 'Weiter' },
-    it: { previous: 'Precedente', next: 'Successivo' },
-    nl: { previous: 'Vorige', next: 'Volgende' },
-    zh: { previous: '上一页', next: '下一页' },
-    ja: { previous: '前へ', next: '次へ' },
-    ar: { previous: 'السابق', next: 'التالي' },
-};
-
-/**
- * Get navigation button translations for a language
- */
-function getNavTranslations(language: string): { previous: string; next: string } {
-    return NAV_TRANSLATIONS[language] || NAV_TRANSLATIONS.en;
-}
-
-/**
  * PageRenderer class
  * Renders complete HTML pages for export
  */
@@ -56,6 +30,20 @@ export class PageRenderer {
      */
     constructor(ideviceRenderer: IdeviceRenderer | null = null) {
         this.ideviceRenderer = ideviceRenderer || new IdeviceRenderer();
+    }
+
+    /**
+     * Check if a property value is truthy (handles both boolean and string "true")
+     */
+    private isTruthyProperty(value: unknown): boolean {
+        return value === true || value === 'true';
+    }
+
+    /**
+     * Check if a property value is falsy (handles both boolean and string "false")
+     */
+    private isFalsyProperty(value: unknown): boolean {
+        return value === false || value === 'false';
     }
 
     /**
@@ -416,8 +404,7 @@ ${madeWithExeHtml}
         }
 
         // Check this page's visibility property
-        const visibility = page.properties?.visibility;
-        if (visibility === false || visibility === 'false') {
+        if (this.isFalsyProperty(page.properties?.visibility)) {
             return false;
         }
 
@@ -447,8 +434,7 @@ ${madeWithExeHtml}
      * @returns True if page should be highlighted in navigation
      */
     isPageHighlighted(page: ExportPage): boolean {
-        const highlight = page.properties?.highlight;
-        return highlight === true || highlight === 'true';
+        return this.isTruthyProperty(page.properties?.highlight);
     }
 
     /**
@@ -457,8 +443,7 @@ ${madeWithExeHtml}
      * @returns True if page title should be hidden
      */
     shouldHidePageTitle(page: ExportPage): boolean {
-        const hideTitle = page.properties?.hidePageTitle;
-        return hideTitle === true || hideTitle === 'true';
+        return this.isTruthyProperty(page.properties?.hidePageTitle);
     }
 
     /**
@@ -469,8 +454,7 @@ ${madeWithExeHtml}
      * @returns Effective title string
      */
     getEffectivePageTitle(page: ExportPage): string {
-        const editableInPage = page.properties?.editableInPage;
-        if (editableInPage === true || editableInPage === 'true') {
+        if (this.isTruthyProperty(page.properties?.editableInPage)) {
             const titlePage = page.properties?.titlePage as string;
             if (titlePage) return titlePage;
         }
@@ -621,38 +605,46 @@ ${madeWithExeHtml}
 
     /**
      * Render navigation buttons (prev/next links)
+     * Outputs English text with data-i18n attributes for runtime translation via $exe_i18n.
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
-     * @param language - Language for button text translation
+     * @param _language - Deprecated, translation now happens at runtime via $exe_i18n
      * @returns Navigation buttons HTML
      */
-    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
+    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string, _language: string = 'en'): string {
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
-        const t = getNavTranslations(language);
-        let html = '<div class="nav-buttons">';
+        const parts: string[] = ['<div class="nav-buttons">'];
 
-        // Previous button - span if disabled, anchor if enabled
+        // Previous button - English defaults; runtime translation via data-i18n attribute
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath);
-            html += ` <a href="${link}" title="${t.previous}" class="nav-button nav-button-left"> <span>${t.previous}</span></a>`;
+            parts.push(
+                `<a href="${link}" title="Previous" class="nav-button nav-button-left" data-i18n="previous"><span>Previous</span></a>`,
+            );
         } else {
-            html += ` <span class="nav-button nav-button-left" aria-hidden="true"> <span>${t.previous}</span></span>`;
+            parts.push(
+                '<span class="nav-button nav-button-left" aria-hidden="true" data-i18n="previous"><span>Previous</span></span>',
+            );
         }
 
-        // Next button - span if disabled, anchor if enabled
+        // Next button - English defaults; runtime translation via data-i18n attribute
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath);
-            html += `<a href="${link}" title="${t.next}" class="nav-button nav-button-right"> <span>${t.next}</span></a>`;
+            parts.push(
+                `<a href="${link}" title="Next" class="nav-button nav-button-right" data-i18n="next"><span>Next</span></a>`,
+            );
         } else {
-            html += `<span class="nav-button nav-button-right" aria-hidden="true"> <span>${t.next}</span></span>`;
+            parts.push(
+                '<span class="nav-button nav-button-right" aria-hidden="true" data-i18n="next"><span>Next</span></span>',
+            );
         }
 
-        html += '\n</div>';
-        return html;
+        parts.push('</div>');
+        return parts.join('\n');
     }
 
     /**

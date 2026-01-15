@@ -902,6 +902,113 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('box-toggle');
         });
+
+        it('should render toggle button when allowToggle is undefined (default behavior)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Default Toggle Block',
+                order: 0,
+                components: [],
+                properties: {}, // allowToggle is undefined - should default to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+        });
+
+        it('should NOT render toggle button when allowToggle is false', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: false },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should NOT render toggle button when allowToggle is string "false"', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle String Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: 'false' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should render icon and toggle button even when block has no title', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: 'check',
+                properties: { allowToggle: 'true' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have icon even without title
+            expect(html).toContain('box-icon');
+            expect(html).toContain('check.png');
+            // Should have toggle button even without title
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should NOT have title h1 since name is empty
+            expect(html).not.toContain('box-title');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button even when block has no title and no icon', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: '', // No icon
+                properties: {}, // allowToggle defaults to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have toggle button even without title or icon
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should have no-icon class
+            expect(html).toContain('no-icon');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button with static English text (i18n applied at runtime)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                properties: {},
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Toggle text is always English in HTML - translated at runtime by exe_export.js
+            expect(html).toContain('title="Toggle content"');
+            expect(html).toContain('<span>Toggle content</span>');
+        });
     });
 
     describe('fixAssetUrls edge cases', () => {

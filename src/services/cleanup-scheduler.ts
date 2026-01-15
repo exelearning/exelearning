@@ -68,6 +68,7 @@ export interface CleanupSchedulerDeps {
     db: Kysely<Database>;
     queries: CleanupQueries;
     fileHelper: CleanupFileHelper;
+    runCleanup?: (deps: CleanupSchedulerDeps, config: CleanupSchedulerConfig) => Promise<CleanupResult>;
     /** Custom timer functions for testing */
     timers?: {
         setInterval: typeof setInterval;
@@ -264,6 +265,7 @@ export function startScheduler(
     }
 
     const timers = state.deps.timers || { setInterval, clearInterval };
+    const cleanupRunner = state.deps.runCleanup || runCleanup;
 
     console.log(
         `[CleanupScheduler] Starting scheduler with interval ${state.config.intervalMs}ms ` +
@@ -271,13 +273,13 @@ export function startScheduler(
     );
 
     // Run immediately on startup
-    runCleanup(state.deps, state.config).catch(err => {
+    cleanupRunner(state.deps, state.config).catch(err => {
         console.error('[CleanupScheduler] Initial cleanup failed:', err);
     });
 
     // Schedule periodic runs
     state.timer = timers.setInterval(() => {
-        runCleanup(state.deps, state.config).catch(err => {
+        cleanupRunner(state.deps, state.config).catch(err => {
             console.error('[CleanupScheduler] Scheduled cleanup failed:', err);
         });
     }, state.config.intervalMs);

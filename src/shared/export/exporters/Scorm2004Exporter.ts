@@ -20,6 +20,7 @@ import { Html5Exporter } from './Html5Exporter';
 import { Scorm2004ManifestGenerator } from '../generators/Scorm2004Manifest';
 import { LomMetadataGenerator } from '../generators/LomMetadata';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
+import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class Scorm2004Exporter extends Html5Exporter {
     protected manifestGenerator: Scorm2004ManifestGenerator | null = null;
@@ -161,6 +162,11 @@ export class Scorm2004Exporter extends Html5Exporter {
             } catch {
                 // No base libraries available
             }
+
+            // 4.5. Generate localized i18n file
+            const i18nContent = generateI18nScript(meta.language || 'en');
+            this.zip.addFile('libs/common_i18n.js', i18nContent);
+            commonFiles.push('libs/common_i18n.js');
 
             // 5. Fetch SCORM 2004 API wrapper files
             try {

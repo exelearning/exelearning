@@ -146,17 +146,28 @@ async function saveIdevice(page: Page): Promise<void> {
  * Helper to type content in the TinyMCE editor
  */
 async function typeInTinyMCE(page: Page, text: string): Promise<void> {
-    // Find the TinyMCE iframe
-    const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
-    const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            return !!editor && editor.initialized;
+        },
+        null,
+        { timeout: 15000 },
+    );
 
-    const frameEl = await tinyMceFrame.elementHandle();
-    const frame = await frameEl?.contentFrame();
+    await page.evaluate(content => {
+        const editor = (window as any).tinymce?.activeEditor;
+        if (!editor) return;
+        editor.setContent(content);
+        editor.fire('change');
+        editor.fire('input');
+        editor.setDirty(true);
+    }, text);
 
-    if (frame) {
-        await frame.focus('body');
-        await frame.type('body', text, { delay: 5 });
-    }
+    await page.waitForFunction(() => {
+        const editor = (window as any).tinymce?.activeEditor;
+        return !!editor && editor.isDirty();
+    });
 }
 
 /**

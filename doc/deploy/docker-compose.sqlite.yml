@@ -18,6 +18,7 @@ services:
       APP_DEBUG: 0
       APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForSQLiteDeployment}"
       APP_ONLINE_MODE: 1
+      ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
       XDEBUG_MODE: off
       
       # Database settings
