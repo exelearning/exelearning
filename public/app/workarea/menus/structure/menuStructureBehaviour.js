@@ -263,7 +263,8 @@ export default class MenuStructureBehaviour {
                                 const node = this.structureEngine.getNode(nodeId);
                                 let filename = 'page_export.elpx';
                                 if (node && node.pageName) {
-                                    filename = node.pageName.replace(/[^a-z0-9\u00C0-\u00FF]/gi, '_').toLowerCase() + '.elpx';
+                                    // Same behavior as sanitizeFilename in exporters.bundle.js
+                                    filename = ((node.pageName || "page").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").substring(0, 50)) + ".elpx";
                                 }
                                 a.download = filename;
                                 document.body.appendChild(a);
