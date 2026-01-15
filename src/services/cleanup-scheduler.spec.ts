@@ -1,7 +1,7 @@
 /**
  * Tests for Cleanup Scheduler Service
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import {
     runCleanup,
     startScheduler,
@@ -210,6 +210,76 @@ describe('Cleanup Scheduler', () => {
             expect(result.success).toBe(false);
         });
 
+        it('should record errors when unsaved project deletion fails', async () => {
+            const unsavedProjects = [createMockProject({ id: 10, uuid: 'unsaved-delete-fail' })];
+            const queries = {
+                findUnsavedProjectsOlderThan: async () => unsavedProjects,
+                findGuestProjectsOlderThan: async () => [],
+                deleteProjectWithRelatedData: async () => {
+                    throw new Error('Delete failed');
+                },
+            };
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper: createMockFileHelper(),
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.unsavedDeleted).toBe(0);
+            expect(result.success).toBe(false);
+            expect(result.errors[0]).toContain('Failed to delete project unsaved-delete-fail');
+        });
+
+        it('should handle guest project asset cleanup results', async () => {
+            const guestProjects = [
+                createMockProject({ id: 21, uuid: 'guest-clean-1' }),
+                createMockProject({ id: 22, uuid: 'guest-clean-2' }),
+            ];
+            const existingPaths = new Set(['/data/assets/guest-clean-1', '/data/assets/guest-clean-2']);
+            const removeErrors = new Map([['/data/assets/guest-clean-2', new Error('Permission denied')]]);
+            const fileHelper = createMockFileHelper({ filesDir: '/data', existingPaths, removeErrors });
+            const queries = createMockQueries({ guestProjects });
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper,
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.guestDeleted).toBe(2);
+            expect(result.diskCleaned).toBe(1);
+            expect(result.errors.length).toBe(1);
+            expect(result.errors[0]).toContain('Permission denied');
+        });
+
+        it('should record errors when guest project deletion fails', async () => {
+            const guestProjects = [createMockProject({ id: 30, uuid: 'guest-delete-fail' })];
+            const queries = {
+                findUnsavedProjectsOlderThan: async () => [],
+                findGuestProjectsOlderThan: async () => guestProjects,
+                deleteProjectWithRelatedData: async () => {
+                    throw new Error('Delete failed');
+                },
+            };
+
+            const deps: CleanupSchedulerDeps = {
+                db: {} as Kysely<Database>,
+                queries,
+                fileHelper: createMockFileHelper(),
+            };
+
+            const result = await runCleanup(deps, DEFAULT_CONFIG);
+
+            expect(result.guestDeleted).toBe(0);
+            expect(result.success).toBe(false);
+            expect(result.errors[0]).toContain('Failed to delete guest project guest-delete-fail');
+        });
+
         it('should handle database errors gracefully', async () => {
             const queries = {
                 findUnsavedProjectsOlderThan: async () => {
@@ -281,6 +351,35 @@ describe('Cleanup Scheduler', () => {
             expect(isSchedulerRunning()).toBe(true);
             expect(mockTimers._intervals.length).toBe(1);
             expect(mockTimers._intervals[0].interval).toBe(60000);
+        });
+
+        it('should catch errors from initial and scheduled cleanup runs', async () => {
+            const mockTimers = createMockTimers();
+            const runCleanupMock = mock(async () => {
+                throw new Error('Cleanup failed');
+            });
+
+            startScheduler(
+                { enabled: true, intervalMs: 1000 },
+                {
+                    db: {} as Kysely<Database>,
+                    queries: createMockQueries(),
+                    fileHelper: createMockFileHelper(),
+                    timers: mockTimers,
+                    runCleanup: runCleanupMock,
+                },
+            );
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            const intervalId = mockTimers._intervals[0]?.id;
+            if (intervalId) {
+                mockTimers.triggerInterval(intervalId);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            expect(runCleanupMock).toHaveBeenCalledTimes(2);
         });
 
         it('should stop previous scheduler when starting new one', () => {
