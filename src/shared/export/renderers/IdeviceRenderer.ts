@@ -15,6 +15,7 @@ import type {
     ComponentRenderOptions,
     BlockRenderOptions,
     ExportBlockProperties,
+    ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
 
@@ -55,7 +56,10 @@ export class IdeviceRenderer {
         const config = getIdeviceConfig(type);
         const ideviceId = component.id;
         const htmlContent = component.content || '';
-        const properties = component.properties || {};
+        // Structure properties (visibility, teacherOnly, cssClass, identifier)
+        const structProps: ExportComponentProperties = component.structureProperties || {};
+        // jsonProperties for iDevice-specific config
+        const jsonProps = component.properties || {};
 
         // Build CSS classes
         const classes = ['idevice_node', config.cssClass];
@@ -63,18 +67,18 @@ export class IdeviceRenderer {
             classes.push('db-no-data');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (structProps.visibility === false || structProps.visibility === 'false') {
             classes.push('novisible');
         }
         if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
-            properties.visibilityType === 'teacher'
+            structProps.teacherOnly === true ||
+            structProps.teacherOnly === 'true' ||
+            (jsonProps as Record<string, unknown>).visibilityType === 'teacher'
         ) {
             classes.push('teacher-only');
         }
-        if (properties.cssClass && typeof properties.cssClass === 'string') {
-            classes.push(properties.cssClass);
+        if (structProps.cssClass && typeof structProps.cssClass === 'string') {
+            classes.push(structProps.cssClass);
         }
 
         // Build data attributes
@@ -102,10 +106,10 @@ export class IdeviceRenderer {
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
-                // Add JSON data for iDevices with properties
+                // Add JSON data for iDevices with jsonProperties (iDevice-specific config)
                 // Transform asset URLs in properties the same way as content
-                if (Object.keys(properties).length > 0) {
-                    const transformedProps = this.transformPropertiesUrls(properties, basePath, isPreviewModeForUrls);
+                if (Object.keys(jsonProps).length > 0) {
+                    const transformedProps = this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls);
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
