@@ -761,6 +761,60 @@ export default class ApiCallManager {
         return await this.func.get(url);
     }
 
+
+    /**
+     * Download ode page export
+     *
+     * @param {string} odeSessionId
+     * @param {string} pageId
+     * @returns
+     */
+    async getOdePageExportDownload(odeSessionId, pageId) {
+        let url = this.endpoints.api_ode_export_download.path;
+        url = url.replace('{odeSessionId}', odeSessionId);
+        url = url.replace('{exportType}', 'elpx-page');
+
+        const structure = this.buildStructureFromYjs();
+        const payload = {
+            rootPageId: pageId
+        };
+        
+        if (structure) {
+            payload.structure = structure;
+        }
+
+        const authToken = eXeLearning?.app?.project?._yjsBridge?.authToken ||
+                          eXeLearning?.app?.auth?.getToken?.() ||
+                          eXeLearning?.config?.token ||
+                          localStorage.getItem('authToken');
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                 const errText = await response.text();
+                 try {
+                     const errJson = JSON.parse(errText);
+                     throw new Error(errJson.error || response.statusText);
+                 } catch (e) {
+                     throw new Error(errText || response.statusText);
+                 }
+            }
+            
+            return await response.blob();
+        } catch (error) {
+            console.error('[ApiCallManager] getOdePageExportDownload error:', error);
+            throw error;
+        }
+    }
+
     /**
      * Build ParsedOdeStructure from Yjs document for export
      * @returns {Object|null} Structure object or null if Yjs not available
@@ -831,6 +885,12 @@ export default class ApiCallManager {
                             components: [],
                         };
 
+                        // Extract block properties
+                        const blockPropsMap = blockMap.get('properties');
+                        if (blockPropsMap && typeof blockPropsMap.toJSON === 'function') {
+                            block.properties = blockPropsMap.toJSON();
+                        }
+
                         // Get components (iDevices)
                         const components = blockMap.get('components');
                         if (components) {
@@ -838,16 +898,44 @@ export default class ApiCallManager {
                                 const compMap = components.get(k);
                                 if (!compMap) continue;
 
+                                const compId = compMap.get('id') || compMap.get('ideviceId');
+                                const type = compMap.get('ideviceType') || compMap.get('type');
+
+                                // Get content from various possible keys
+                                let htmlContent = 
+                                    compMap.get('htmlContent') || 
+                                    compMap.get('content') || 
+                                    compMap.get('htmlView') || 
+                                    '';
+                                
+                                // Handle Y.Text objects
+                                if (htmlContent && typeof htmlContent.toString === 'function') {
+                                    htmlContent = htmlContent.toString();
+                                }
+
                                 const component = {
-                                    id: compMap.get('id'),
-                                    ideviceType: compMap.get('ideviceType'),
-                                    htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+                                    id: compId,
+                                    ideviceType: type,
+                                    htmlContent: htmlContent || '',
                                 };
 
                                 // Get properties if available
                                 const propsMap = compMap.get('properties');
                                 if (propsMap && typeof propsMap.toJSON === 'function') {
                                     component.properties = propsMap.toJSON();
+                                }
+
+                                // Get jsonProperties (content data) if available
+                                // This is CRITICAL for JSON-based iDevices (TrueFalse, Form, etc.)
+                                const jsonProps = compMap.get('jsonProperties');
+                                if (jsonProps) {
+                                    try {
+                                        const parsed = typeof jsonProps === 'string' ? JSON.parse(jsonProps) : jsonProps;
+                                        // Merge into properties, prioritizing content data
+                                        component.properties = { ...(component.properties || {}), ...parsed };
+                                    } catch (e) {
+                                        console.warn('[ApiCallManager] Failed to parse jsonProperties for export:', e);
+                                    }
                                 }
 
                                 block.components.push(component);
@@ -861,7 +949,6 @@ export default class ApiCallManager {
                 structure.pages.push(page);
             }
 
-            console.log('[ApiCallManager] Built structure from Yjs:', structure);
             return structure;
         } catch (error) {
             console.error('[ApiCallManager] Failed to build structure from Yjs:', error);
