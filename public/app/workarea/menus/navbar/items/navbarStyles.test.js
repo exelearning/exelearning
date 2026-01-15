@@ -724,7 +724,15 @@ describe('NavbarStyles', () => {
                 expect.objectContaining({
                     cssFiles: ['main.css', 'extra.css'],
                     js: ['script.js'],
-                    icons: { icon1: 'icons/icon1.png' },
+                    icons: {
+                        icon1: {
+                            id: 'icon1',
+                            title: 'icon1',
+                            type: 'img',
+                            value: 'icons/icon1.png',
+                            _relativePath: 'icons/icon1.png',
+                        },
+                    },
                 })
             );
         });
