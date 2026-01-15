@@ -106,7 +106,6 @@ describe('NavbarUtilities', () => {
                 api: {
                     getOdeSessionBrokenLinks: vi.fn(),
                     getOdeSessionUsedFiles: vi.fn(),
-                    getOdePreviewUrl: vi.fn(),
                 },
                 interface: null,
                 config: { basePath: '', version: 'v1' },
@@ -991,40 +990,28 @@ describe('NavbarUtilities', () => {
                 expect(mockPanel.toggle).toHaveBeenCalled();
             });
 
-            it('should fall back to server-side preview when panel not available', async () => {
-                vi.useFakeTimers();
+            it('should show error when no preview method is available', async () => {
                 eXeLearning.app.interface = null;
                 eXeLearning.app.project._yjsEnabled = false;
-                eXeLearning.app.api.getOdePreviewUrl.mockResolvedValue({
-                    responseMessage: 'OK',
-                    urlPreviewIndex: 'http://localhost/preview',
-                });
 
                 await navbarUtilities.previewEvent();
 
-                expect(eXeLearning.app.toasts.createToast).toHaveBeenCalled();
-                expect(eXeLearning.app.api.getOdePreviewUrl).toHaveBeenCalledWith('test-session-123');
-
-                // Advance timers to complete pending setTimeout callbacks
-                await vi.runAllTimersAsync();
-                vi.useRealTimers();
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                    title: 'Error',
+                    body: 'Preview is not available. Please reload the page.',
+                    contentId: 'error',
+                });
             });
 
-            it('should show error on server preview failure', async () => {
-                vi.useFakeTimers();
+            it('should try client preview when Yjs is enabled but no panel available', async () => {
                 eXeLearning.app.interface = null;
-                eXeLearning.app.project._yjsEnabled = false;
-                eXeLearning.app.api.getOdePreviewUrl.mockResolvedValue({
-                    responseMessage: 'Error',
-                });
+                eXeLearning.app.project._yjsEnabled = true;
+                eXeLearning.app.project._yjsBridge = null;
 
                 await navbarUtilities.previewEvent();
 
+                // Should show error because openClientPreview returns false when no yjsBridge
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-
-                // Advance timers to complete pending setTimeout callbacks
-                await vi.runAllTimersAsync();
-                vi.useRealTimers();
             });
         });
 
