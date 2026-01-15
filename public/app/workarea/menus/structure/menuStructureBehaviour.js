@@ -601,7 +601,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
-                        '#main .toggle-on .selected'
+                        '.toggle-on .selected'
                     );
                     if (!selectedNav) return; // robustness
                     let pageId = selectedNav.getAttribute('page-id');

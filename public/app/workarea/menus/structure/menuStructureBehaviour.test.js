@@ -745,4 +745,175 @@ describe('MenuStructureBehaviour', () => {
              expect(btnDel.disabled).toBe(true); // Should be disabled for root
          });
     });
+
+    describe('Additional Coverage Tests', () => {
+        /**
+         * Test selectNode logic
+         * It should:
+         * 1. Highlight the selected node
+         * 2. Update button states via enabledActionButtons
+         * 3. Handle root properly
+         */
+        describe('selectNode', () => {
+            it('selects a node, updates classes, and calls enabledActionButtons', async () => {
+                // Ensure existing selection is cleared
+                if (behaviour.nodeSelected) {
+                    behaviour.nodeSelected.classList.remove('selected');
+                }
+
+                const nodeToSelect = document.querySelector('.nav-element[nav-id="node-1"]');
+                const enableButtonsSpy = vi.spyOn(behaviour, 'enabledActionButtons');
+
+                await behaviour.selectNode(nodeToSelect);
+
+                expect(behaviour.nodeSelected).toBe(nodeToSelect);
+                // Class is added to the LI element (nodeToSelect)
+                expect(nodeToSelect.classList.contains('selected')).toBe(true);
+                expect(enableButtonsSpy).toHaveBeenCalled();
+            });
+
+            it('handles root selection correctly', async () => {
+                 const rootNode = document.querySelector('.nav-element[nav-id="root"]');
+                 await behaviour.selectNode(rootNode);
+
+                 expect(behaviour.nodeSelected).toBe(rootNode);
+                 expect(rootNode.classList.contains('selected')).toBe(true);
+            });
+        });
+
+        /**
+         * Test enabledActionButtons logic
+         * Crucial for Root vs Child behavior
+         */
+        describe('enabledActionButtons', () => {
+            beforeEach(() => {
+                // Ensure all buttons are present (mocked in setup)
+            });
+
+            it('disables delete, clone, move buttons for ROOT node', () => {
+                const rootNode = document.querySelector('.nav-element[nav-id="root"]');
+                behaviour.nodeSelected = rootNode;
+
+                behaviour.enabledActionButtons();
+
+                const btnAdd = document.querySelector('.button_nav_action.action_add');
+                const btnDelete = document.querySelector('.button_nav_action.action_delete');
+                const btnClone = document.querySelector('.button_nav_action.action_clone');
+                const btnMoveUp = document.querySelector('.button_nav_action.action_move_up');
+
+                expect(btnAdd.disabled).toBe(false); // Can add to root
+                expect(btnDelete.disabled).toBe(true); // Cannot delete root
+                expect(btnClone.disabled).toBe(true); // Cannot clone root
+                expect(btnMoveUp.disabled).toBe(true); // Cannot move root
+            });
+
+            it('enables actions for standard child node', () => {
+                const childNode = document.querySelector('.nav-element[nav-id="node-1"]');
+                behaviour.nodeSelected = childNode;
+
+                behaviour.enabledActionButtons();
+
+                const btnAdd = document.querySelector('.button_nav_action.action_add');
+                const btnDelete = document.querySelector('.button_nav_action.action_delete');
+
+                expect(btnAdd.disabled).toBe(false);
+                expect(btnDelete.disabled).toBe(false);
+            });
+        });
+
+        /**
+         * Test Broken Links Check
+         */
+        describe('Broken Links Checker', () => {
+            it('calls API and shows modal when broken links found', async () => {
+                const btn = document.querySelector('.button_nav_action.action_check_broken_links');
+                behaviour.addEventNavCheckOdePageBrokenLinksOnclick();
+                
+                // Helper to setup structure matching selector: .toggle-on .selected
+                const parent = document.querySelector('.nav-element[nav-id="node-1"]');
+                parent.classList.add('toggle-on');
+                
+                // Create a child to be selected
+                const child = document.createElement('li');
+                child.classList.add('nav-element', 'selected');
+                child.setAttribute('nav-id', 'node-child');
+                child.setAttribute('page-id', 'page-child');
+                // Mock structureEngine.getNode for child
+                behaviour.structureEngine.getNode = vi.fn().mockReturnValue({ id: 'node-child', pageId: 'page-child' });
+                
+                parent.appendChild(child);
+                behaviour.nodeSelected = child;
+                
+                const brokenLinksData = { links: ['bad-link'], responseMessage: null }; // Null msg = found links (logic specific)
+                eXeLearning.app.api.getOdePageBrokenLinks.mockResolvedValue(brokenLinksData);
+                
+                btn.click();
+                
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                expect(eXeLearning.app.api.getOdePageBrokenLinks).toHaveBeenCalledWith('page-child');
+                expect(eXeLearning.app.modals.odebrokenlinks.show).toHaveBeenCalledWith(brokenLinksData);
+            });
+
+            it('shows alert when NO broken links found', async () => {
+                const btn = document.querySelector('.button_nav_action.action_check_broken_links');
+                behaviour.addEventNavCheckOdePageBrokenLinksOnclick();
+                
+                /* Re-setup DOM for this test */
+                const parent = document.querySelector('.nav-element[nav-id="node-1"]');
+                parent.classList.add('toggle-on');
+                const child = document.createElement('li');
+                child.classList.add('nav-element', 'selected');
+                child.setAttribute('nav-id', 'node-child-2');
+                child.setAttribute('page-id', 'page-child-2');
+                parent.appendChild(child);
+                behaviour.nodeSelected = child;
+
+                // Logic: if response.responseMessage is present, show Alert
+                eXeLearning.app.api.getOdePageBrokenLinks.mockResolvedValue({ responseMessage: 'No broken links found' });
+
+                btn.click();
+                 
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+                const args = eXeLearning.app.modals.alert.show.mock.calls[0][0];
+                expect(args.body).toContain('No broken links found');
+            });
+        });
+
+        /**
+         * Test Double Click (Properties)
+         */
+        describe('Double Click', () => {
+             it('opens properties modal on double click', async () => {
+                 // IMPORTANT: Wiring up the click handler which contains the check logic
+                 behaviour.addEventNavElementOnclick();
+                 behaviour.addEventNavElementOnDbclick();
+                 
+                 const nodeText = document.querySelector('.nav-element[nav-id="node-1"] > .nav-element-text');
+                 const spy = vi.spyOn(behaviour, 'showModalPropertiesNode').mockImplementation(() => {});
+
+                 // 1. First click (selects)
+                 behaviour.selectNode(nodeText.parentElement);
+
+                 // 2. Double click event
+                 const dblClickEvent = new MouseEvent('dblclick', { bubbles: true });
+                 nodeText.dispatchEvent(dblClickEvent);
+                 
+                 expect(behaviour.dbclickNode).toBe(true);
+
+                 // 3. Trigger click again (which checks dbclickNode flag)
+                 // This click MUST bubble to where addEventNavElementOnclick is attached (.nav-element-text)
+                 nodeText.click();
+
+                 // Handler calls selectNode which has a setTimeout(50ms)
+                 await new Promise(resolve => setTimeout(resolve, 200));
+                 
+                 expect(spy).toHaveBeenCalled();
+                 expect(behaviour.dbclickNode).toBe(false); // Should reset
+             });
+        });
+    });
 });
+
