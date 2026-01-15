@@ -109,8 +109,6 @@ export { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
 
 // Asset Resolvers
 export { ExportAssetResolver } from './adapters/ExportAssetResolver';
-export { PreviewAssetResolver } from './adapters/PreviewAssetResolver';
-export type { AssetCacheManager } from './adapters/PreviewAssetResolver';
 
 // Providers
 export { FileSystemResourceProvider } from './providers/FileSystemResourceProvider';

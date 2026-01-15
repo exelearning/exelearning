@@ -537,46 +537,6 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             })
 
             // =====================================================
-            // Preview Export
-            // =====================================================
-
-            // GET /api/export/:odeSessionId/preview - Preview exported content
-            .get('/:odeSessionId/preview', async ({ params, set }) => {
-                const { odeSessionId } = params;
-
-                const session = getSession(odeSessionId);
-                if (!session) {
-                    set.status = 404;
-                    return { success: false, error: 'Session not found' };
-                }
-
-                // Get temp directory
-                const tempDir = getOdeSessionTempDir(odeSessionId);
-
-                // Check for index.html
-                const indexPath = path.join(tempDir, 'index.html');
-                if (await fileExists(indexPath)) {
-                    const content = await readFile(indexPath);
-                    set.headers['content-type'] = 'text/html; charset=utf-8';
-                    return content.toString('utf-8');
-                }
-
-                // Generate basic preview
-                const contentXmlPath = path.join(tempDir, 'content.xml');
-                if (await fileExists(contentXmlPath)) {
-                    return {
-                        success: true,
-                        message: 'Project loaded, preview not yet generated',
-                        sessionId: odeSessionId,
-                        hasContent: true,
-                    };
-                }
-
-                set.status = 404;
-                return { success: false, error: 'No content found for preview' };
-            })
-
-            // =====================================================
             // Download Export (GET)
             // =====================================================
 

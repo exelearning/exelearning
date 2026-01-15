@@ -870,19 +870,6 @@ export default class ApiCallManager {
     }
 
     /**
-     * Preview ode export
-     *
-     * @param {*} params
-     * @returns
-     */
-    async getOdePreviewUrl(odeSessionId) {
-        let url = this.endpoints.api_ode_export_preview.path;
-        url = url.replace('{odeSessionId}', odeSessionId);
-
-        return await this.func.get(url);
-    }
-
-    /**
      * download idevice/block content
      *
      * @param {*} params

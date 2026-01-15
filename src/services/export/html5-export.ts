@@ -1,19 +1,14 @@
 /**
  * HTML5 Export Service for Elysia
- * Exports session to HTML5 format (preview and download modes)
+ * Exports session to HTML5 format (ZIP download)
  *
  * Uses Dependency Injection pattern for testability
  */
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 import { createZip as createZipDefault } from '../zip';
-import {
-    getFilesDir as getFilesDirDefault,
-    getTempPath as getTempPathDefault,
-    getPreviewExportPath as getPreviewExportPathDefault,
-} from '../file-helper';
+import { getTempPath as getTempPathDefault } from '../file-helper';
 import { getSession as getSessionDefault } from '../session-manager';
-import * as previewModule from './preview';
 import * as htmlGeneratorModule from './html-generator';
 import { ExportResult, ExportFormat, Html5ExportOptions } from './interfaces';
 import { ParsedOdeStructure, NormalizedPage } from '../xml/interfaces';
@@ -23,15 +18,6 @@ const DEBUG = process.env.APP_DEBUG === '1';
 // ============================================================================
 // Types and Interfaces
 // ============================================================================
-
-/**
- * Preview module functions
- */
-export interface PreviewDeps {
-    generateRandomTempPath: typeof previewModule.generateRandomTempPath;
-    extractSessionPathComponents: typeof previewModule.extractSessionPathComponents;
-    buildPreviewUrl: typeof previewModule.buildPreviewUrl;
-}
 
 /**
  * HTML Generator module functions
@@ -48,11 +34,8 @@ export interface Html5ExportDeps {
     fs?: typeof fsExtra;
     path?: typeof pathModule;
     createZip?: typeof createZipDefault;
-    getFilesDir?: typeof getFilesDirDefault;
     getTempPath?: typeof getTempPathDefault;
-    getPreviewExportPath?: typeof getPreviewExportPathDefault;
     getSession?: typeof getSessionDefault;
-    preview?: PreviewDeps;
     htmlGenerator?: HtmlGeneratorDeps;
     getCwd?: () => string;
 }
@@ -62,7 +45,6 @@ export interface Html5ExportDeps {
  */
 export interface Html5ExportService {
     exportToHtml5: (odeSessionId: string, options?: Html5ExportOptions) => Promise<ExportResult>;
-    exportPreview: (sessionId: string, tempPath?: string) => Promise<ExportResult>;
     exportDownload: (sessionId: string, compressionLevel?: number) => Promise<ExportResult>;
 }
 
@@ -78,9 +60,7 @@ export function createHtml5ExportService(deps: Html5ExportDeps = {}): Html5Expor
     const path = deps.path ?? pathModule;
     const createZip = deps.createZip ?? createZipDefault;
     const getTempPath = deps.getTempPath ?? getTempPathDefault;
-    const getPreviewExportPath = deps.getPreviewExportPath ?? getPreviewExportPathDefault;
     const getSession = deps.getSession ?? getSessionDefault;
-    const preview = deps.preview ?? previewModule;
     const htmlGenerator = deps.htmlGenerator ?? htmlGeneratorModule;
     const getCwd = deps.getCwd ?? (() => process.cwd());
 
@@ -233,16 +213,12 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     // ========================================================================
 
     /**
-     * Export session to HTML5 format
-     * Supports both preview mode (direct file serving) and download mode (ZIP)
+     * Export session to HTML5 format (ZIP download)
      */
     async function exportToHtml5(odeSessionId: string, options: Html5ExportOptions = {}): Promise<ExportResult> {
         try {
-            const isPreviewMode = options.preview === true;
             if (DEBUG) {
-                console.log(
-                    `[Html5Export] Exporting session ${odeSessionId} to HTML5 (${isPreviewMode ? 'preview' : 'download'} mode)`,
-                );
+                console.log(`[Html5Export] Exporting session ${odeSessionId} to HTML5 (download mode)`);
             }
 
             // Get session
@@ -251,19 +227,9 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                 throw new Error(`Session not found: ${odeSessionId}`);
             }
 
-            // Determine export directory based on mode
-            let exportDir: string;
-
-            if (isPreviewMode) {
-                // Preview mode: use session temp directory with random subdirectory
-                const tempPath = options.tempPath || preview.generateRandomTempPath();
-                exportDir = getPreviewExportPath(odeSessionId, tempPath);
-                if (DEBUG) console.log(`[Html5Export] Preview export directory: ${exportDir}`);
-            } else {
-                // Download mode: use temp path for ZIP creation
-                exportDir = getTempPath(`html5-export-${odeSessionId}`);
-                if (DEBUG) console.log(`[Html5Export] Download export directory: ${exportDir}`);
-            }
+            // Use temp path for ZIP creation
+            const exportDir = getTempPath(`html5-export-${odeSessionId}`);
+            if (DEBUG) console.log(`[Html5Export] Download export directory: ${exportDir}`);
 
             await fs.ensureDir(exportDir);
 
@@ -271,50 +237,27 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                 // Generate HTML5 files
                 await generateHtml5Files(exportDir, session.structure, session.sessionPath, options);
 
-                if (isPreviewMode) {
-                    // Preview mode: return preview URL (no ZIP, don't delete files)
-                    const components = preview.extractSessionPathComponents(session.sessionPath);
-                    if (!components) {
-                        throw new Error('Failed to extract session path components');
-                    }
+                // Create ZIP and return download path
+                const zipPath = `${exportDir}.zip`;
+                await createZip(exportDir, zipPath, {
+                    compressionLevel: options.compressionLevel || 9,
+                });
 
-                    const previewUrl = preview.buildPreviewUrl(odeSessionId, options.tempPath || '', 'index.html');
+                // Get file size
+                const stats = await fs.stat(zipPath);
 
-                    console.log(`[Html5Export] Successfully generated preview at ${previewUrl}`);
+                console.log(`[Html5Export] Successfully exported HTML5 to ${zipPath}`);
 
-                    return {
-                        filePath: exportDir,
-                        fileName: 'index.html',
-                        fileSize: 0, // Not applicable for preview
-                        format: ExportFormat.HTML5,
-                        previewUrl,
-                        success: true,
-                    };
-                } else {
-                    // Download mode: create ZIP and return download path
-                    const zipPath = `${exportDir}.zip`;
-                    await createZip(exportDir, zipPath, {
-                        compressionLevel: options.compressionLevel || 9,
-                    });
-
-                    // Get file size
-                    const stats = await fs.stat(zipPath);
-
-                    console.log(`[Html5Export] Successfully exported HTML5 to ${zipPath}`);
-
-                    return {
-                        filePath: zipPath,
-                        fileName: `${session.structure.meta.title || 'export'}_html5.zip`,
-                        fileSize: stats.size,
-                        format: ExportFormat.HTML5,
-                        success: true,
-                    };
-                }
+                return {
+                    filePath: zipPath,
+                    fileName: `${session.structure.meta.title || 'export'}_html5.zip`,
+                    fileSize: stats.size,
+                    format: ExportFormat.HTML5,
+                    success: true,
+                };
             } finally {
-                // Only cleanup in download mode
-                if (!isPreviewMode) {
-                    await fs.remove(exportDir);
-                }
+                // Cleanup temp directory
+                await fs.remove(exportDir);
             }
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -324,21 +267,10 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     }
 
     /**
-     * Export preview - convenience wrapper
-     */
-    async function exportPreview(sessionId: string, tempPath?: string): Promise<ExportResult> {
-        return exportToHtml5(sessionId, {
-            preview: true,
-            tempPath,
-        });
-    }
-
-    /**
      * Export download - convenience wrapper
      */
     async function exportDownload(sessionId: string, compressionLevel: number = 9): Promise<ExportResult> {
         return exportToHtml5(sessionId, {
-            preview: false,
             compressionLevel,
         });
     }
@@ -349,7 +281,6 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
 
     return {
         exportToHtml5,
-        exportPreview,
         exportDownload,
     };
 }
@@ -362,5 +293,4 @@ const defaultService = createHtml5ExportService();
 
 // Export all functions from the default instance for backwards compatibility
 export const exportToHtml5 = defaultService.exportToHtml5;
-export const exportPreview = defaultService.exportPreview;
 export const exportDownload = defaultService.exportDownload;
