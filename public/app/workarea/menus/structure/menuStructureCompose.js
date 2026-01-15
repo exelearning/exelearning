@@ -527,6 +527,15 @@ export default class MenuStructureCompose {
             liClone.append(btnClone);
             dropdownList.append(liClone);
 
+            // 3.5. Export Page
+            const liExport = document.createElement('li');
+            const btnExport = document.createElement('button');
+            btnExport.classList.add('dropdown-item', 'button-action-block', 'action_export_page');
+            btnExport.setAttribute('data-nav-id', node.id);
+            btnExport.innerHTML = `<span class="small-icon download-icon-green" aria-hidden="true"></span>${_('Export page')}`;
+            liExport.append(btnExport);
+            dropdownList.append(liExport);
+
             // 4. Delete Page
             const liDelete = document.createElement('li');
             const btnDelete = document.createElement('button');

@@ -93,13 +93,13 @@ export interface ExportBlock {
  * Block properties
  */
 export interface ExportBlockProperties {
-    visibility?: string;
-    minimized?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    minimized?: string | boolean;
+    teacherOnly?: string | boolean;
     visibilityType?: string;
     cssClass?: string;
     identifier?: string;
-    allowToggle?: string;
+    allowToggle?: string | boolean;
 }
 
 /**
@@ -380,6 +380,8 @@ export interface Epub3ExportOptions extends ExportOptions {
 export interface ElpxExportOptions extends ExportOptions {
     /** Include HTML preview pages */
     includeHtmlContent?: boolean;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 // =============================================================================

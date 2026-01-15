@@ -30,7 +30,7 @@ import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import {
     getAuthMethods as getAuthMethodsFromSettings,
-    getSettingBoolean,
+    getSettingBoolean as getSettingBooleanFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -107,8 +107,13 @@ export interface PagesTemplateDeps {
 /**
  * Utils interface
  */
-export interface PagesUtilsDeps {
-    createGravatarUrl: typeof createGravatarUrlDefault;
+// ... (existing code, added new interface)
+/**
+ * Settings functions interface
+ */
+export interface PagesSettingsDeps {
+    getAuthMethods: typeof getAuthMethodsFromSettings;
+    getSettingBoolean: typeof getSettingBooleanFromSettings;
 }
 
 /**
@@ -121,6 +126,7 @@ export interface PagesDependencies {
     fileHelper?: PagesFileHelperDeps;
     template?: PagesTemplateDeps;
     utils?: PagesUtilsDeps;
+    settings?: PagesSettingsDeps;
 }
 
 // Default queries
@@ -159,6 +165,12 @@ const defaultUtils: PagesUtilsDeps = {
     createGravatarUrl: createGravatarUrlDefault,
 };
 
+// Default settings
+const defaultSettings: PagesSettingsDeps = {
+    getAuthMethods: getAuthMethodsFromSettings,
+    getSettingBoolean: getSettingBooleanFromSettings,
+};
+
 // Default dependencies
 const defaultDependencies: PagesDependencies = {
     db: dbDefault,
@@ -167,6 +179,7 @@ const defaultDependencies: PagesDependencies = {
     fileHelper: defaultFileHelper,
     template: defaultTemplate,
     utils: defaultUtils,
+    settings: defaultSettings,
 };
 
 const isOfflineMode = () => String(process.env.APP_ONLINE_MODE ?? '1') === '0';
@@ -200,6 +213,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
+    const { getAuthMethods, getSettingBoolean } = deps.settings ?? defaultSettings;
 
     /**
      * Get user's locale preference from database
@@ -254,6 +268,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             currentUser: {
                                 id: payload.sub,
                                 email: payload.email || 'guest@guest.local',
+                                roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
                         };
@@ -291,8 +306,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: defaultEmail,
                                 password: '', // No password needed for offline
                                 roles: JSON.stringify(['ROLE_USER']),
-                                provider: 'offline-local',
-                                isActive: true,
+                                is_active: 1,
                             });
                         }
 
@@ -317,10 +331,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(prefixPath('/workarea') || '/workarea', 302);
                 }
 
-                const authMethods = await getAuthMethodsFromSettings(
-                    db,
-                    process.env.APP_AUTH_METHODS || 'password,guest',
-                );
+                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 const guestLoginNonce = authMethods.includes('guest') ? randomBytes(8).toString('hex') : null;
 
                 // Store nonce in cookie for guest login verification
@@ -638,7 +649,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                 };
 
-                const appAuthMethods = await getAuthMethodsFromSettings(
+                const appAuthMethods = await getAuthMethods(
                     db,
                     process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                 );
