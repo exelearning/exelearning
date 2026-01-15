@@ -241,10 +241,6 @@ body.exe-web-site {
     min-height: 0;
 }
 
-.sr-av {
-    display: none;
-}
-
 .exe-content .package-title,
 .exe-single-page .package-header h1 {
     font-size: 1.7rem;
