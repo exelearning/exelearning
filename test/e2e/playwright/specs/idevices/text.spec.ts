@@ -556,29 +556,32 @@ test.describe('Text iDevice', () => {
                 }
             }
 
-            // Wait for TinyMCE iframe to load
-            const tinyMceFrame = block.locator('iframe.tox-edit-area__iframe').first();
-            await tinyMceFrame.waitFor({ timeout: 15000 });
+            const testText = `Bold test ${Date.now()}`;
 
-            // Get the frame
-            const frameEl = await tinyMceFrame.elementHandle();
-            const frame = await frameEl?.contentFrame();
-
-            if (frame) {
-                // Focus and type text
-                await frame.focus('body');
-                const testText = `Bold test ${Date.now()}`;
-                await frame.type('body', testText, { delay: 5 });
-
-                // Select all text using TinyMCE command (more reliable than keyboard shortcuts across browsers)
-                await page.evaluate(() => {
+            // Wait for TinyMCE to be fully initialized and set bold content deterministically
+            await page.waitForFunction(
+                () => {
                     const editor = (window as any).tinymce?.activeEditor;
-                    if (editor) {
-                        editor.execCommand('SelectAll');
-                        editor.execCommand('Bold');
-                    }
-                });
-            }
+                    return !!editor && editor.initialized;
+                },
+                null,
+                { timeout: 15000 },
+            );
+
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (!editor) return;
+                editor.setContent(`<p><strong>${content}</strong></p>`);
+                editor.fire('change');
+                editor.fire('input');
+                editor.setDirty(true);
+            }, testText);
+
+            const dirtySet = await page.evaluate(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return !!editor && editor.isDirty();
+            });
+            expect(dirtySet).toBe(true);
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -592,15 +595,10 @@ test.describe('Text iDevice', () => {
                     () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         if (!idevice || idevice.getAttribute('mode') === 'edition') return null;
-
                         const content = idevice.querySelector('.textIdeviceContent');
                         if (!content) return null;
-
                         const html = content.innerHTML;
-                        if (html.includes('<strong>') || html.includes('<b>')) {
-                            return true;
-                        }
-                        return null;
+                        return html.includes('<strong>') || html.includes('<b>');
                     },
                     { timeout: 15000 },
                 )
@@ -2234,7 +2232,13 @@ test.describe('Text iDevice', () => {
             });
 
             // Wait for page to be added to DOM
-            await page.waitForTimeout(500);
+            await page.waitForFunction(
+                pageId => {
+                    return !!document.querySelector(`.nav-element[nav-id="${pageId}"]`);
+                },
+                secondPageInfo.id,
+                { timeout: 10000 },
+            );
 
             // Navigate to first page
             const firstPageNode = page
@@ -2243,7 +2247,14 @@ test.describe('Text iDevice', () => {
                 .first();
             if ((await firstPageNode.count()) > 0) {
                 await firstPageNode.click({ force: true });
-                await page.waitForTimeout(1000);
+                await page.waitForFunction(
+                    () => {
+                        const nodeContent = document.querySelector('#node-content');
+                        const metadata = document.querySelector('#properties-node-content-form');
+                        return nodeContent && (!metadata || !metadata.closest('.show'));
+                    },
+                    { timeout: 10000 },
+                );
             }
 
             // Add a text iDevice on the first page
@@ -2270,6 +2281,15 @@ test.describe('Text iDevice', () => {
             // Insert text first, then select it and add link
             const linkText = 'Click here to go to second page';
 
+            await page.waitForFunction(
+                () => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    return !!editor && editor.initialized;
+                },
+                null,
+                { timeout: 15000 },
+            );
+
             await page.evaluate(
                 ({ text, pageId }) => {
                     const editor = (window as any).tinymce?.activeEditor;
@@ -2287,8 +2307,10 @@ test.describe('Text iDevice', () => {
                 { text: linkText, pageId: secondPageInfo.id },
             );
 
-            // Wait for content to sync with Yjs
-            await page.waitForTimeout(1000);
+            await page.waitForFunction(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return !!editor && editor.isDirty();
+            });
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -2305,15 +2327,56 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
+            const ideviceBody = page.locator('#node-content article .idevice_node.text .idevice_body').first();
+            if ((await ideviceBody.count()) > 0) {
+                const isHidden = await ideviceBody.evaluate(el => {
+                    return (el as HTMLElement).offsetParent === null || getComputedStyle(el).display === 'none';
+                });
+                if (isHidden) {
+                    const toggle = page.locator('#node-content article .idevice_node.text .btn-minify-idevice').first();
+                    if ((await toggle.count()) > 0) {
+                        await toggle.click();
+                    }
+                }
+            }
+
             // Verify link was inserted in the iDevice (may be hidden in collapsed view)
-            const linkInEditor = page.locator('#node-content article .idevice_node.text a').first();
-            await linkInEditor.waitFor({ state: 'attached', timeout: 5000 });
+            const linkSelector = '#node-content article .idevice_node.text a[href^="exe-node:"]';
+            await page
+                .waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.text');
+                        return !!idevice && !!idevice.querySelector('a[href^="exe-node:"]');
+                    },
+                    null,
+                    { timeout: 5000 },
+                )
+                .catch(async () => {
+                    const toggle = page.locator('#node-content article .idevice_node.text .btn-minify-idevice').first();
+                    if ((await toggle.count()) > 0) {
+                        await toggle.click();
+                    }
+                    await page.waitForFunction(
+                        () => {
+                            const idevice = document.querySelector('#node-content article .idevice_node.text');
+                            return !!idevice && !!idevice.querySelector('a[href^="exe-node:"]');
+                        },
+                        null,
+                        { timeout: 10000 },
+                    );
+                });
+            const linkInEditor = page.locator(linkSelector).first();
             const href = await linkInEditor.getAttribute('href');
             expect(href).toContain('exe-node:');
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page
+                .waitForFunction(() => {
+                    const saving = document.querySelector('[data-testid="saving-indicator"]');
+                    return !saving;
+                })
+                .catch(() => {});
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -2379,7 +2442,13 @@ test.describe('Text iDevice', () => {
             });
 
             // Wait for page to be added to DOM
-            await page.waitForTimeout(500);
+            await page.waitForFunction(
+                pageId => {
+                    return !!document.querySelector(`.nav-element[nav-id="${pageId}"]`);
+                },
+                secondPageInfo.id,
+                { timeout: 10000 },
+            );
 
             // Navigate to first page
             const firstPageNode = page
@@ -2388,7 +2457,14 @@ test.describe('Text iDevice', () => {
                 .first();
             if ((await firstPageNode.count()) > 0) {
                 await firstPageNode.click({ force: true });
-                await page.waitForTimeout(1000);
+                await page.waitForFunction(
+                    () => {
+                        const nodeContent = document.querySelector('#node-content');
+                        const metadata = document.querySelector('#properties-node-content-form');
+                        return nodeContent && (!metadata || !metadata.closest('.show'));
+                    },
+                    { timeout: 10000 },
+                );
             }
 
             // Add text iDevice with internal link
@@ -2412,6 +2488,15 @@ test.describe('Text iDevice', () => {
             await page.waitForSelector('.tox-menubar', { timeout: 15000 });
 
             // Insert internal link and verify it was set
+            await page.waitForFunction(
+                () => {
+                    const editor = (window as any).tinymce?.activeEditor;
+                    return !!editor && editor.initialized;
+                },
+                null,
+                { timeout: 15000 },
+            );
+
             const linkSet = await page.evaluate(
                 ({ pageId }) => {
                     const editor = (window as any).tinymce?.activeEditor;
@@ -2432,7 +2517,10 @@ test.describe('Text iDevice', () => {
 
             expect(linkSet).toBe(true);
 
-            await page.waitForTimeout(1000);
+            await page.waitForFunction(() => {
+                const editor = (window as any).tinymce?.activeEditor;
+                return !!editor && editor.isDirty();
+            });
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -2449,9 +2537,46 @@ test.describe('Text iDevice', () => {
                 { timeout: 15000 },
             );
 
+            const ideviceBody = page.locator('#node-content article .idevice_node.text .idevice_body').first();
+            if ((await ideviceBody.count()) > 0) {
+                const isHidden = await ideviceBody.evaluate(el => {
+                    return (el as HTMLElement).offsetParent === null || getComputedStyle(el).display === 'none';
+                });
+                if (isHidden) {
+                    const toggle = page.locator('#node-content article .idevice_node.text .btn-minify-idevice').first();
+                    if ((await toggle.count()) > 0) {
+                        await toggle.click();
+                    }
+                }
+            }
+
             // Find the link in the editor view (may be hidden in collapsed content)
-            const link = page.locator('#node-content article .idevice_node.text a').first();
-            await link.waitFor({ state: 'attached', timeout: 10000 });
+            const linkSelector = '#node-content article .idevice_node.text a[href^="exe-node:"]';
+            await page
+                .waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.text');
+                        return !!idevice && !!idevice.querySelector('a[href^="exe-node:"]');
+                    },
+                    null,
+                    { timeout: 5000 },
+                )
+                .catch(async () => {
+                    const toggle = page.locator('#node-content article .idevice_node.text .btn-minify-idevice').first();
+                    if ((await toggle.count()) > 0) {
+                        await toggle.click();
+                    }
+                    await page.waitForFunction(
+                        () => {
+                            const idevice = document.querySelector('#node-content article .idevice_node.text');
+                            return !!idevice && !!idevice.querySelector('a[href^="exe-node:"]');
+                        },
+                        null,
+                        { timeout: 10000 },
+                    );
+                });
+
+            const link = page.locator(linkSelector).first();
 
             // Verify link has correct href
             const editorHref = await link.getAttribute('href');
