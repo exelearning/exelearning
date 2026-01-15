@@ -912,9 +912,8 @@
             return text;
         }
 
-        let result = text;
-
-        // Process each LaTeX pattern
+        // Collect ALL matches from all patterns with their positions
+        const allMatches = [];
         for (const pattern of LATEX_PATTERNS) {
             pattern.regex.lastIndex = 0;
             const matches = [...text.matchAll(pattern.regex)];
@@ -925,17 +924,48 @@
                     continue;
                 }
 
-                const latexWithDelimiters = match[0];
-                const cleanLatex = cleanLatexFromHtml(latexWithDelimiters);
+                allMatches.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    latexWithDelimiters: match[0],
+                    display: pattern.display,
+                });
+            }
+        }
 
-                try {
-                    const { svg, mathml } = await renderLatexExpression(cleanLatex, pattern.display);
-                    const rendered = createRenderedWrapperHtml(latexWithDelimiters, cleanLatex, pattern.display, svg, mathml);
-                    result = result.replace(latexWithDelimiters, rendered);
-                } catch (error) {
-                    console.warn('[LatexPreRenderer] Failed to pre-render in game data:', cleanLatex, error);
-                    // Keep original LaTeX on error
-                }
+        if (allMatches.length === 0) {
+            return text;
+        }
+
+        // Sort by start position and remove overlapping matches
+        allMatches.sort((a, b) => a.start - b.start);
+        const filteredMatches = [];
+        let lastEnd = -1;
+        for (const m of allMatches) {
+            if (m.start >= lastEnd) {
+                filteredMatches.push(m);
+                lastEnd = m.end;
+            }
+        }
+
+        // Render all matches
+        for (const m of filteredMatches) {
+            const cleanLatex = cleanLatexFromHtml(m.latexWithDelimiters);
+            try {
+                const { svg, mathml } = await renderLatexExpression(cleanLatex, m.display);
+                m.rendered = createRenderedWrapperHtml(m.latexWithDelimiters, cleanLatex, m.display, svg, mathml);
+            } catch (error) {
+                console.warn('[LatexPreRenderer] Failed to pre-render in string:', cleanLatex, error);
+                m.rendered = null; // Keep original on error
+            }
+        }
+
+        // Build result by replacing from END to START (preserves positions)
+        let result = text;
+        for (let i = filteredMatches.length - 1; i >= 0; i--) {
+            const m = filteredMatches[i];
+            if (m.rendered) {
+                result = result.substring(0, m.start) + m.rendered + result.substring(m.end);
             }
         }
 
