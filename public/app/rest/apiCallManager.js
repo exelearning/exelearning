@@ -925,6 +925,19 @@ export default class ApiCallManager {
                                     component.properties = propsMap.toJSON();
                                 }
 
+                                // Get jsonProperties (content data) if available
+                                // This is CRITICAL for JSON-based iDevices (TrueFalse, Form, etc.)
+                                const jsonProps = compMap.get('jsonProperties');
+                                if (jsonProps) {
+                                    try {
+                                        const parsed = typeof jsonProps === 'string' ? JSON.parse(jsonProps) : jsonProps;
+                                        // Merge into properties, prioritizing content data
+                                        component.properties = { ...(component.properties || {}), ...parsed };
+                                    } catch (e) {
+                                        console.warn('[ApiCallManager] Failed to parse jsonProperties for export:', e);
+                                    }
+                                }
+
                                 block.components.push(component);
                             }
                         }

@@ -244,7 +244,10 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
 
         for (const block of page.blocks || []) {
             for (const comp of block.components || []) {
-                components.push({
+                const compProperties = (comp.properties || {}) as Record<string, unknown>;
+
+                // Define normalized component structure
+                let normalizedComponent: NormalizedComponent = {
                     id: comp.id,
                     type: comp.ideviceType || 'FreeTextIdevice',
                     order: compOrder++,
@@ -255,8 +258,13 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
                     blockIconName: block.iconName || '',
                     blockProperties: (block.properties || {}) as any,
                     data: {},
-                    properties: (comp.properties || {}) as any,
-                });
+                    properties: compProperties as any,
+                };
+
+                // Transform legacy iDevice data if needed (e.g., TrueFalse -> trueorfalse)
+                normalizedComponent = transformLegacyIdeviceData(normalizedComponent);
+
+                components.push(normalizedComponent);
             }
         }
 
@@ -305,6 +313,121 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
         navigation: { page: navigation } as any, // Cast to avoid strict structure match
         raw: {} as any,
     };
+}
+
+/**
+ * Transform data from legacy iDevices to match modern renderer expectations
+ * e.g. TrueFalseIdevice (with questions array) -> trueorfalse (with questionsGame array)
+ */
+function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedComponent {
+    const type = component.type;
+    const props = (component.properties || {}) as Record<string, unknown>;
+
+    // Handle legacy TrueFalseIdevice (and variants)
+    // Map to 'trueorfalse' type which expects game-like structure
+    if (
+        type === 'TrueFalseIdevice' ||
+        type === 'VerdaderoFalsoFPDIdevice' ||
+        type === 'true-false' ||
+        type === 'truefalse'
+    ) {
+        // Only transform if we have legacy 'questions' structure but not modern 'questionsGame'
+        if (Array.isArray(props.questions) && !props.questionsGame) {
+
+            // Map questions to game format
+            const questionsGame = props.questions.map((q: any) => ({
+                question: q.question || '',
+                feedback: q.feedback || '',
+                suggestion: q.hint || '',
+                solution: q.isCorrect ? 1 : 0
+            })).filter((q: any) => q.question); // generic filter
+
+            if (questionsGame.length > 0) {
+                // Return transformed component
+                return {
+                    ...component,
+                    type: 'trueorfalse', // Normalize type
+                    properties: {
+                        ...props,
+                        questionsGame,
+                        // Add default game field requirements
+                        typeGame: 'TrueOrFalse',
+                        questionsRandom: false,
+                        percentageQuestions: 100,
+                        isTest: false,
+                        time: 0,
+                        isScorm: 0,
+                        textButtonScorm: 'Save score',
+                        repeatActivity: true,
+                        weighted: 100,
+                        evaluation: false,
+                        showSlider: false,
+                        msgs: {
+                            msgStartGame: 'Click here to start',
+                            msgSubmit: 'Submit',
+                            msgEnterCode: 'Enter your code',
+                            msgErrorCode: 'Invalid code',
+                            msgGameOver: 'Game Over',
+                            msgIndicateCode: 'Please indicate your code',
+                            msgEndGameScore: 'Please start the game before saving your score.',
+                            msgOnlySaveScore: 'You can only save the score once!',
+                            msgOnlySave: 'You can only save once',
+                            msgYouScore: 'Your score',
+                            msgAuthor: 'Authorship',
+                            msgOnlySaveAuto: 'Your score will be saved after each question. You can only play once.',
+                            msgSaveAuto: 'Your score will be automatically saved after each question.',
+                            msgSeveralScore: 'You can save the score as many times as you want',
+                            msgYouLastScore: 'The last score saved is',
+                            msgActityComply: 'You have already done this activity.',
+                            msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+                            msgUncompletedActivity: 'Incomplete activity',
+                            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+                            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+                            msgTypeGame: 'True or false',
+                            msgFeedback: 'Feedback',
+                            msgSuggestion: 'Suggestion',
+                            msgSolution: 'Solution',
+                            msgQuestion: 'Question',
+                            msgTrue: 'True',
+                            msgFalse: 'False',
+                            msgOk: 'Correct',
+                            msgKO: 'Incorrect',
+                            msgShow: 'Show',
+                            msgHide: 'Hide',
+                            msgCheck: 'Check',
+                            msgReboot: 'Try again!',
+                            msgScore: 'Score',
+                            msgWeight: 'Weight',
+                            msgNext: 'Next',
+                            msgPrevious: 'Previous'
+                        }
+                    } as any
+                };
+            }
+        }
+    }
+
+    // Handle 'Form' iDevice
+    // Type mismatch: FormIdevice -> form
+    if (type === 'FormIdevice' || type === 'Form') {
+        // Form expects 'questionsData'
+        // If it exists or properties are generically mapable, safe to normalize type to 'form'
+        return {
+            ...component,
+            type: 'form',
+        };
+    }
+
+    // Handle 'MultiChoice' / 'MultiSelect'
+    if (type === 'MultiSelectIdevice' || type === 'MultiChoiceIdevice') {
+        return {
+            ...component,
+            type: 'quick-questions-multiple-choice'
+        }
+    }
+
+    // Default: pass through unchanged
+    return component;
 }
 
 // ============================================================================
