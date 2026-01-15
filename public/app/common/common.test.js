@@ -418,6 +418,47 @@ describe('common.js $exe helpers', () => {
       const dl = document.querySelector('dl');
       expect(dl.id).toMatch(/^exe-dl-\d+$/);
     });
+
+    it('skips exe-dl elements that already have togglers', () => {
+      // Setup: Create DOM with exe-dl that already has togglers (already processed)
+      document.body.innerHTML = `
+        <dl class="exe-dl" id="test-dl" style="color: rgb(0, 0, 0);">
+          <dt><a href="#" class="exe-dd-toggler exe-dd-toggler-closed"><span class="icon">+ </span>Term 1</a></dt>
+          <dd>Definition 1</dd>
+          <dt><a href="#" class="exe-dd-toggler exe-dd-toggler-closed"><span class="icon">+ </span>Term 2</a></dt>
+          <dd>Definition 2</dd>
+        </dl>`;
+
+      // Count icons before
+      const iconsBefore = document.querySelectorAll('span.icon').length;
+      expect(iconsBefore).toBe(2);
+
+      // Act: Call init
+      global.$exe.dl.init();
+
+      // Assert: Should still have only 2 icons (not 4)
+      const iconsAfter = document.querySelectorAll('span.icon').length;
+      expect(iconsAfter).toBe(2);
+    });
+
+    it('does not add duplicate togglers on multiple init calls', () => {
+      document.body.innerHTML = '<dl class="exe-dl" style="color: rgb(0, 0, 0);"><dt>Term</dt><dd>Definition</dd></dl>';
+
+      // First call should add togglers
+      global.$exe.dl.init();
+      expect(document.querySelectorAll('.exe-dd-toggler').length).toBe(1);
+      expect(document.querySelectorAll('span.icon').length).toBe(1);
+
+      // Second call should NOT add more togglers
+      global.$exe.dl.init();
+      expect(document.querySelectorAll('.exe-dd-toggler').length).toBe(1);
+      expect(document.querySelectorAll('span.icon').length).toBe(1);
+
+      // Third call should still NOT add more togglers
+      global.$exe.dl.init();
+      expect(document.querySelectorAll('.exe-dd-toggler').length).toBe(1);
+      expect(document.querySelectorAll('span.icon').length).toBe(1);
+    });
   });
 
   describe('$exe.hasTooltips edge cases', () => {

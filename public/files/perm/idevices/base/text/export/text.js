@@ -22,8 +22,27 @@ var $text = {
     /**
      * Engine execution order: 1
      * Get the base html of the idevice view
+     *
+     * Note: If content already exists in the DOM (rendered server-side),
+     * we preserve it to maintain processed content like code highlighting,
+     * styled icons, etc. This prevents regeneration from raw textTextarea
+     * which would lose post-processing done during export.
      */
     renderView(data, accessibility, template) {
+        // Check if content already exists in the DOM (was rendered server-side)
+        // If so, preserve it to maintain processed content (code highlighting, etc.)
+        const ideviceNode = document.getElementById(data.ideviceId);
+        if (ideviceNode) {
+            const existingContent = ideviceNode.querySelector('.' + this.ideviceClass);
+            if (existingContent && existingContent.innerHTML.trim()) {
+                // Content already exists from server-side render
+                // Return null to prevent innerHTML replacement in exe_export.js
+                // which calls: if (htmlIdevice) ideviceNode.innerHTML = htmlIdevice;
+                return null;
+            }
+        }
+
+        // Generate from JSON only when needed (empty content or db-no-data)
         const hmltdata = $text.getHTMLView(data);
         return template.replace('{content}', hmltdata);
     },
@@ -251,7 +270,82 @@ var $text = {
         return doc.body.innerHTML;
     },
 
-    init(data, accessibility) {},
+    init(data, accessibility) {
+        // Process exe-dl definition lists within this iDevice that haven't been initialized yet
+        // This ensures icons are generated for exe-dl elements that were loaded after
+        // the initial $exe.dl.init() call on page load
+        if (typeof $exe !== 'undefined' && typeof $ !== 'undefined') {
+            const $idevice = $('#' + data.ideviceId);
+            const exeDlElements = $idevice.find('dl.exe-dl');
+            exeDlElements.each(function (i) {
+                const e = this;
+                // Skip if already processed (has togglers already)
+                // This is more reliable than checking the ID, which can vary
+                // between $exe.dl.init() ('exe-dl-0') and this function
+                if ($('a.exe-dd-toggler', e).length > 0) {
+                    return;
+                }
+                // Process this uninitialized exe-dl
+                const bg = $exe.rgb2hex($(e).css('color'));
+                const tc = $exe.useBlackOrWhite(bg.replace('#', ''));
+                const s = " style='text-decoration:none;background:" + bg + ";color:" + tc + "'";
+                // Generate unique ID for this element
+                e.id = 'exe-dl-' + data.ideviceId + '-' + i;
+                $('dt', e).each(function () {
+                    const t = this;
+                    const h = $(t).html();
+                    $(t).html("<a href='#' class='exe-dd-toggler exe-dd-toggler-closed " + e.id + "-a'><span class='icon'" + s + ">+ </span>" + h + "</a>");
+                });
+                // Attach click handlers to the newly created togglers
+                $('a.exe-dd-toggler', e).click(function () {
+                    const anchor = $(this);
+                    const icon = $('span.icon', this);
+                    const dd = anchor.parent().next('dd');
+                    if (anchor.hasClass('exe-dd-toggler-closed')) {
+                        anchor.removeClass('exe-dd-toggler-closed');
+                        icon.html('- ');
+                        dd.show();
+                    } else {
+                        anchor.addClass('exe-dd-toggler-closed');
+                        icon.html('+ ');
+                        dd.hide();
+                    }
+                    return false;
+                });
+            });
+        }
+
+        // Re-initialize exe-fx effects (accordion, tabs, paginated, carousel) within this iDevice
+        // These may not have been initialized if the content was loaded after $exeFX.init() ran
+        if (typeof $exeFX !== 'undefined' && typeof $ !== 'undefined') {
+            const $idevice = $('#' + data.ideviceId);
+            const k = $exeFX.baseClass || 'exe';
+
+            // Find all exe-fx elements within this iDevice
+            const exeFxElements = $idevice.find('.' + k + '-fx');
+
+            // Get the current global index to continue numbering from
+            let globalIndex = $('.' + k + '-fx').index(exeFxElements.first());
+            if (globalIndex < 0) globalIndex = 0;
+
+            exeFxElements.each(function (localIndex) {
+                const e = this;
+                const c = e.className;
+                const i = globalIndex + localIndex;
+
+                // Initialize based on effect type
+                if (c.indexOf(' ' + k + '-accordion') !== -1) {
+                    $exeFX.accordion.init(e, i);
+                } else if (c.indexOf(' ' + k + '-tabs') !== -1) {
+                    $exeFX.tabs.init(e, i);
+                } else if (c.indexOf(' ' + k + '-paginated') !== -1) {
+                    $exeFX.paginated.init(e, i);
+                } else if (c.indexOf(' ' + k + '-carousel') !== -1) {
+                    $exeFX.carousel.init(e, i);
+                }
+            });
+        }
+    },
 
     createMainContent(content) {
         return `

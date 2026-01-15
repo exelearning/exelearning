@@ -339,6 +339,12 @@
             return { replaced: 0, errors: 0 };
         }
 
+        // Skip if content already has pre-rendered LaTeX
+        // This prevents double-processing which corrupts data-latex attributes
+        if (innerHTML.includes('exe-math-rendered')) {
+            return { replaced: 0, errors: 0 };
+        }
+
         // First pass: find ALL matches from all patterns before any replacements
         // This prevents patterns from incorrectly matching already-rendered content
         const allMatches = [];
@@ -900,6 +906,12 @@
             return text;
         }
 
+        // Skip if text already contains pre-rendered LaTeX
+        // This prevents double-processing which corrupts data-latex attributes
+        if (text.includes('exe-math-rendered')) {
+            return text;
+        }
+
         let result = text;
 
         // Process each LaTeX pattern
@@ -908,6 +920,11 @@
             const matches = [...text.matchAll(pattern.regex)];
 
             for (const match of matches) {
+                // Skip matches inside attributes (like data-latex="...")
+                if (shouldSkipPosition(text, match.index)) {
+                    continue;
+                }
+
                 const latexWithDelimiters = match[0];
                 const cleanLatex = cleanLatexFromHtml(latexWithDelimiters);
 

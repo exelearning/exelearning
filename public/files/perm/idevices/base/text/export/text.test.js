@@ -87,6 +87,127 @@ describe('text iDevice export', () => {
     it('is a function', () => {
       expect(typeof $text.renderView).toBe('function');
     });
+
+    describe('preserves existing content', () => {
+      beforeEach(() => {
+        // Mock eXe.app.isInExe for getHTMLView
+        global.eXe = { app: { isInExe: () => false } };
+      });
+
+      afterEach(() => {
+        delete global.eXe;
+        // Clean up DOM
+        document.body.innerHTML = '';
+      });
+
+      it('returns null when content already exists in DOM', () => {
+        // Create a DOM node with existing content (simulating server-side render)
+        const ideviceNode = document.createElement('div');
+        ideviceNode.id = 'test-idevice-123';
+        ideviceNode.innerHTML = `
+          <div class="textIdeviceContent">
+            <div class="exe-text-activity">
+              <div><p>Existing processed content with <span class="highlighted">highlighting</span></p></div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(ideviceNode);
+
+        const data = {
+          ideviceId: 'test-idevice-123',
+          textTextarea: '<p>Raw content from JSON</p>',
+          textInfoDurationInput: '',
+          textInfoParticipantsInput: '',
+          textFeedbackInput: '',
+          textFeedbackTextarea: '',
+        };
+
+        const result = $text.renderView(data, null, '{content}');
+
+        // Should return null to prevent innerHTML replacement
+        expect(result).toBeNull();
+      });
+
+      it('generates content when DOM node does not exist', () => {
+        // No DOM node exists
+        const data = {
+          ideviceId: 'non-existent-id',
+          textTextarea: '<p>Content from JSON</p>',
+          textInfoDurationInput: '',
+          textInfoParticipantsInput: '',
+          textFeedbackInput: '',
+          textFeedbackTextarea: '',
+        };
+
+        const result = $text.renderView(data, null, '{content}');
+
+        // Should generate content
+        expect(result).not.toBeNull();
+        expect(result).toContain('Content from JSON');
+        expect(result).toContain('textIdeviceContent');
+      });
+
+      it('generates content when DOM node exists but has no content', () => {
+        // Create a DOM node without content (db-no-data case)
+        const ideviceNode = document.createElement('div');
+        ideviceNode.id = 'empty-idevice';
+        ideviceNode.innerHTML = '';
+        document.body.appendChild(ideviceNode);
+
+        const data = {
+          ideviceId: 'empty-idevice',
+          textTextarea: '<p>Generated content</p>',
+          textInfoDurationInput: '',
+          textInfoParticipantsInput: '',
+          textFeedbackInput: '',
+          textFeedbackTextarea: '',
+        };
+
+        const result = $text.renderView(data, null, '{content}');
+
+        // Should generate content since existing is empty
+        expect(result).not.toBeNull();
+        expect(result).toContain('Generated content');
+      });
+
+      it('preserves processed content like code highlighting', () => {
+        // Create a DOM node with highlighted code (simulating server-side render)
+        const ideviceNode = document.createElement('div');
+        ideviceNode.id = 'highlighted-idevice';
+        ideviceNode.innerHTML = `
+          <div class="textIdeviceContent">
+            <div class="exe-text-activity">
+              <div>
+                <div class="highlighted-code language-latex">
+                  <pre class="language-latex"><code class="language-latex">\\[x = y\\]</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(ideviceNode);
+
+        const data = {
+          ideviceId: 'highlighted-idevice',
+          // Raw content without highlighting classes
+          textTextarea: '<div class="highlighted-code language-latex"><pre><code>\\[x = y\\]</code></pre></div>',
+          textInfoDurationInput: '',
+          textInfoParticipantsInput: '',
+          textFeedbackInput: '',
+          textFeedbackTextarea: '',
+        };
+
+        const result = $text.renderView(data, null, '{content}');
+
+        // Should return null to preserve the server-rendered highlighted content
+        expect(result).toBeNull();
+
+        // Verify original content is still in DOM (with highlighting classes)
+        const existingContent = document.querySelector('#highlighted-idevice .highlighted-code');
+        expect(existingContent).not.toBeNull();
+        expect(existingContent.querySelector('pre.language-latex')).not.toBeNull();
+      });
+    });
   });
 
   describe('getHTMLView', () => {
@@ -156,6 +277,181 @@ describe('text iDevice export', () => {
       // The pre.mermaid element should be preserved (even with SVG inside)
       expect(result).toContain('<pre class="mermaid"');
       expect(result).toContain('data-processed="true"');
+    });
+  });
+
+  describe('init - exe-dl processing', () => {
+    // Helper to create a minimal jQuery-like mock
+    function createJQueryMock() {
+      const $ = function (selector, context) {
+        let elements;
+        // Handle $('selector', contextElement) syntax
+        const searchRoot = context instanceof Element ? context : document;
+
+        if (typeof selector === 'string') {
+          if (selector.startsWith('#') && !context) {
+            const el = document.getElementById(selector.slice(1));
+            elements = el ? [el] : [];
+          } else {
+            elements = Array.from(searchRoot.querySelectorAll(selector));
+          }
+        } else if (selector instanceof Element) {
+          elements = [selector];
+        } else if (Array.isArray(selector)) {
+          elements = selector;
+        } else {
+          elements = [];
+        }
+
+        const jqObj = {
+          find: (sel) => $(Array.from(elements).flatMap(el => Array.from(el.querySelectorAll(sel)))),
+          each: (fn) => {
+            elements.forEach((el, i) => fn.call(el, i, el));
+            return jqObj;
+          },
+          first: () => $(elements.length > 0 ? [elements[0]] : []),
+          html: (content) => {
+            if (content === undefined) {
+              return elements[0]?.innerHTML || '';
+            }
+            elements.forEach(el => { el.innerHTML = content; });
+            return jqObj;
+          },
+          css: (prop) => {
+            if (elements[0]) {
+              return getComputedStyle(elements[0])[prop] || '#333333';
+            }
+            return '#333333';
+          },
+          click: (fn) => {
+            elements.forEach(el => el.addEventListener('click', fn));
+            return jqObj;
+          },
+          index: (el) => elements.indexOf(el),
+          length: elements.length,
+        };
+        return jqObj;
+      };
+
+      // Handle array input for find results
+      $.fn = $.prototype;
+      return $;
+    }
+
+    beforeEach(() => {
+      document.body.innerHTML = '';
+      // Mock jQuery
+      global.$ = createJQueryMock();
+      // Mock $exe with required functions
+      global.$exe = {
+        rgb2hex: (rgb) => '#333333',
+        useBlackOrWhite: (hex) => 'white',
+      };
+      // Mock $exeFX for exe-fx processing (accordion, tabs, etc.)
+      global.$exeFX = {
+        baseClass: 'exe',
+        accordion: { init: () => {} },
+        tabs: { init: () => {} },
+        paginated: { init: () => {} },
+        carousel: { init: () => {} },
+      };
+    });
+
+    afterEach(() => {
+      delete global.$;
+      delete global.$exe;
+      delete global.$exeFX;
+      document.body.innerHTML = '';
+    });
+
+    it('should NOT add icons if togglers already exist', () => {
+      // Setup: Create DOM with exe-dl that already has togglers (already processed)
+      document.body.innerHTML = `
+        <div id="test-idevice">
+          <dl class="exe-dl" id="exe-dl-0">
+            <dt><a href="#" class="exe-dd-toggler exe-dd-toggler-closed"><span class="icon" style="background:#333333;color:white">+ </span>Term 1</a></dt>
+            <dd>Definition 1</dd>
+            <dt><a href="#" class="exe-dd-toggler exe-dd-toggler-closed"><span class="icon" style="background:#333333;color:white">+ </span>Term 2</a></dt>
+            <dd>Definition 2</dd>
+          </dl>
+        </div>`;
+
+      // Count icons before
+      const iconsBefore = document.querySelectorAll('span.icon').length;
+      expect(iconsBefore).toBe(2);
+
+      // Act: Call init
+      $text.init({ ideviceId: 'test-idevice' }, null);
+
+      // Assert: Should still have only 2 icons (not 4)
+      const iconsAfter = document.querySelectorAll('span.icon').length;
+      expect(iconsAfter).toBe(2);
+    });
+
+    it('should add icons if exe-dl has no togglers', () => {
+      // Setup: Create DOM with exe-dl without togglers (unprocessed)
+      document.body.innerHTML = `
+        <div id="test-idevice">
+          <dl class="exe-dl">
+            <dt>Term 1</dt>
+            <dd>Definition 1</dd>
+            <dt>Term 2</dt>
+            <dd>Definition 2</dd>
+          </dl>
+        </div>`;
+
+      // Count icons before
+      const iconsBefore = document.querySelectorAll('span.icon').length;
+      expect(iconsBefore).toBe(0);
+
+      // Act: Call init
+      $text.init({ ideviceId: 'test-idevice' }, null);
+
+      // Assert: Should have exactly 2 icons (one per dt)
+      const iconsAfter = document.querySelectorAll('span.icon').length;
+      expect(iconsAfter).toBe(2);
+
+      // Should have togglers
+      const togglers = document.querySelectorAll('a.exe-dd-toggler');
+      expect(togglers.length).toBe(2);
+    });
+
+    it('should set correct ID on exe-dl elements', () => {
+      // Setup: Create DOM with unprocessed exe-dl
+      document.body.innerHTML = `
+        <div id="test-idevice">
+          <dl class="exe-dl">
+            <dt>Term</dt>
+            <dd>Definition</dd>
+          </dl>
+        </div>`;
+
+      // Act: Call init
+      $text.init({ ideviceId: 'test-idevice' }, null);
+
+      // Assert: Should set ID with idevice ID prefix
+      const dl = document.querySelector('dl.exe-dl');
+      expect(dl.id).toBe('exe-dl-test-idevice-0');
+    });
+
+    it('should not process multiple times on repeated init calls', () => {
+      // Setup: Create DOM with unprocessed exe-dl
+      document.body.innerHTML = `
+        <div id="test-idevice">
+          <dl class="exe-dl">
+            <dt>Term</dt>
+            <dd>Definition</dd>
+          </dl>
+        </div>`;
+
+      // Act: Call init multiple times
+      $text.init({ ideviceId: 'test-idevice' }, null);
+      $text.init({ ideviceId: 'test-idevice' }, null);
+      $text.init({ ideviceId: 'test-idevice' }, null);
+
+      // Assert: Should still have exactly 1 icon
+      const icons = document.querySelectorAll('span.icon');
+      expect(icons.length).toBe(1);
     });
   });
 });
