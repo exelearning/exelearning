@@ -251,12 +251,15 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
     // ========================================================================
 
     /**
-     * Export session to HTML5 format (ZIP download)
+     * Export session to HTML5 format (ZIP download or preview directory)
      */
     async function exportToHtml5(odeSessionId: string, options: Html5ExportOptions = {}): Promise<ExportResult> {
         try {
+            const isPreview = options.preview === true;
             if (DEBUG) {
-                console.log(`[Html5Export] Exporting session ${odeSessionId} to HTML5 (download mode)`);
+                console.log(
+                    `[Html5Export] Exporting session ${odeSessionId} to HTML5 (${isPreview ? 'preview' : 'download'} mode)`,
+                );
             }
 
             // Get session
@@ -265,17 +268,31 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                 throw new Error(`Session not found: ${odeSessionId}`);
             }
 
-            // Use temp path for ZIP creation
-            const exportDir = getTempPath(`html5-export-${odeSessionId}`);
-            if (DEBUG) console.log(`[Html5Export] Download export directory: ${exportDir}`);
+            // Use temp path for export - use custom tempPath if provided (for tests)
+            const exportDir = options.tempPath
+                ? getTempPath(options.tempPath)
+                : getTempPath(`html5-export-${odeSessionId}`);
+            if (DEBUG) console.log(`[Html5Export] Export directory: ${exportDir}`);
 
             await fs.ensureDir(exportDir);
 
-            try {
-                // Generate HTML5 files
-                await generateHtml5Files(exportDir, session.structure, session.sessionPath, options);
+            // Generate HTML5 files
+            await generateHtml5Files(exportDir, session.structure, session.sessionPath, options);
 
-                // Create ZIP and return download path
+            // Preview mode: return directory path without zipping
+            if (isPreview) {
+                console.log(`[Html5Export] Successfully generated HTML5 preview at ${exportDir}`);
+                return {
+                    filePath: exportDir,
+                    fileName: `${session.structure.meta.title || 'export'}_html5`,
+                    fileSize: 0,
+                    format: ExportFormat.HTML5,
+                    success: true,
+                };
+            }
+
+            // Download mode: create ZIP and cleanup
+            try {
                 const zipPath = `${exportDir}.zip`;
                 await createZip(exportDir, zipPath, {
                     compressionLevel: options.compressionLevel || 9,
@@ -294,7 +311,7 @@ body { font-family: sans-serif; margin: 0; padding: 0; }
                     success: true,
                 };
             } finally {
-                // Cleanup temp directory
+                // Cleanup temp directory (only in download mode)
                 await fs.remove(exportDir);
             }
         } catch (error: unknown) {

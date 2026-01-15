@@ -567,4 +567,94 @@ describe('Epub3Exporter', () => {
             expect(packageOpf).toContain('dcterms:modified');
         });
     });
+
+    describe('Favicon Handling', () => {
+        it('should detect theme favicon.ico and use it in pages', async () => {
+            // Override fetchTheme to include a favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.ico', Buffer.from('fake-ico-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/x-icon" href="theme/img/favicon.ico"');
+        });
+
+        it('should detect theme favicon.png and use it in pages', async () => {
+            // Override fetchTheme to include a PNG favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.png', Buffer.from('fake-png-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png"');
+        });
+
+        it('should use default libs/favicon.ico when theme has no favicon', async () => {
+            await exporter.export();
+
+            const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+            expect(indexXhtml).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico"');
+        });
+
+        it('should always include libs/favicon.ico in export regardless of theme favicon', async () => {
+            // Override fetchBaseLibraries to include favicon
+            resources.fetchBaseLibraries = async () => {
+                const files = new Map<string, Buffer>();
+                files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+                files.set('common.js', Buffer.from('// common'));
+                files.set('favicon.ico', Buffer.from('default-favicon-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // libs/favicon.ico should be in the ZIP
+            expect(zip.files.has('EPUB/libs/favicon.ico')).toBe(true);
+        });
+
+        it('should include favicon.ico in EPUB manifest', async () => {
+            // Override fetchBaseLibraries to include favicon
+            resources.fetchBaseLibraries = async () => {
+                const files = new Map<string, Buffer>();
+                files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
+                files.set('common.js', Buffer.from('// common'));
+                files.set('favicon.ico', Buffer.from('default-favicon-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('libs/favicon.ico');
+        });
+
+        it('should use correct relative path for favicon in sub-pages', async () => {
+            // Override fetchTheme to include a favicon
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('style.js', Buffer.from('// theme js'));
+                files.set('img/favicon.ico', Buffer.from('fake-ico-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // Check sub-page (chapter-1.xhtml) has correct relative path
+            const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
+            expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
+        });
+    });
 });

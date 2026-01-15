@@ -574,7 +574,6 @@ describe('HTML5 Export Service', () => {
         });
     });
 
-
     describe('Export Result Format', () => {
         it('should return correct format enum', async () => {
             const result = await service.exportToHtml5('test-session', {});
