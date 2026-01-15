@@ -1567,4 +1567,78 @@ describe('ApiCallManager', () => {
       expect(result.error).toBe('Invalid theme');
     });
   });
+
+  describe('getOdePageExportDownload', () => {
+    it('should post structure for Yjs sessions with page root', async () => {
+      apiManager.endpoints.api_ode_export_download = {
+        path: 'http://localhost/export/{odeSessionId}/{exportType}',
+      };
+      
+      const mockStructure = { pages: [] };
+      vi.spyOn(apiManager, 'buildStructureFromYjs').mockReturnValue(mockStructure);
+      
+      const mockResponse = { ok: true, blob: () => 'blob' };
+      global.fetch = vi.fn().mockResolvedValue(mockResponse);
+      localStorage.setItem('authToken', 'test-token');
+
+      const result = await apiManager.getOdePageExportDownload('yjs-123', 'page-1');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'http://localhost/export/yjs-123/elpx-page',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer test-token'
+          }),
+          body: JSON.stringify({
+            rootPageId: 'page-1',
+            structure: mockStructure
+          })
+        })
+      );
+      
+      localStorage.removeItem('authToken');
+    });
+
+    it('should handle fetch errors', async () => {
+      apiManager.endpoints.api_ode_export_download = {
+        path: 'http://localhost/export/{odeSessionId}/{exportType}',
+      };
+      global.fetch = vi.fn().mockResolvedValue({ 
+        ok: false, 
+        status: 500,
+        text: () => Promise.resolve('{"error":"fail"}') 
+      });
+
+      await expect(apiManager.getOdePageExportDownload('yjs-123', 'page-1'))
+        .rejects.toThrow('fail');
+    });
+  });
+
+  describe('extractLinksForValidation', () => {
+    it('should call func.postJson with correct params', async () => {
+      apiManager.apiUrlBase = 'http://localhost';
+      apiManager.apiUrlBasePath = '/exelearning';
+      
+      const params = { odeSessionId: 's1', idevices: [] };
+      await apiManager.extractLinksForValidation(params);
+
+      expect(mockFunc.postJson).toHaveBeenCalledWith(
+        'http://localhost/exelearning/api/ode-management/odes/session/brokenlinks/extract',
+        params
+      );
+    });
+  });
+
+  describe('getLinkValidationStreamUrl', () => {
+    it('should return correct stream url', () => {
+      apiManager.apiUrlBase = 'http://localhost';
+      apiManager.apiUrlBasePath = '/exelearning';
+      
+      const url = apiManager.getLinkValidationStreamUrl();
+      
+      expect(url).toBe('http://localhost/exelearning/api/ode-management/odes/session/brokenlinks/validate-stream');
+    });
+  });
 });
