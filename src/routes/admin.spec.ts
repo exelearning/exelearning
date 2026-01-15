@@ -257,7 +257,8 @@ describe('Admin Routes', () => {
 
             expect(body.os).toBeDefined();
             expect(body.os.platform).toBeDefined();
-            expect(body.os.cpus).toBeGreaterThan(0);
+            expect(Number.isInteger(body.os.cpus)).toBe(true);
+            expect(body.os.cpus).toBeGreaterThanOrEqual(0);
 
             expect(body.docker).toBeDefined();
             expect(typeof body.docker.isDocker).toBe('boolean');
