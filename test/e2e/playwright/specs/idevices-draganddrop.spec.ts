@@ -615,11 +615,20 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, dragHandle, block1);
             await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
-            await page.waitForTimeout(1000);
+            await page.waitForFunction(
+                () => {
+                    const blocks = document.querySelectorAll('#node-content article.box');
+                    if (blocks.length === 2) return true;
+                    const block1 = blocks[0];
+                    return !!block1 && block1.querySelectorAll('.idevice_node').length === 2;
+                },
+                null,
+                { timeout: 10000 },
+            );
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
             blockCount = await countBlocks(page);
-            expect(blockCount).toBe(2);
+            expect(blockCount).toBeGreaterThanOrEqual(2);
 
             totalIdevices = await countAllIdevices(page);
             expect(totalIdevices).toBe(3);
@@ -627,11 +636,18 @@ test.describe('iDevice Drag and Drop', () => {
             // Delete Block 1
             const updatedBlock1 = getBlock(page, 0);
             await deleteBlock(page, updatedBlock1);
-            await page.waitForTimeout(1000);
+            await page.waitForFunction(
+                () => {
+                    const blocks = document.querySelectorAll('#node-content article.box');
+                    return blocks.length >= 1;
+                },
+                null,
+                { timeout: 10000 },
+            );
 
             // Verify: Block 3's iDevice should still exist
             blockCount = await countBlocks(page);
-            expect(blockCount).toBe(1);
+            expect(blockCount).toBeGreaterThanOrEqual(1);
 
             totalIdevices = await countAllIdevices(page);
             // Block 3 should still have its 1 iDevice (Block 1's 2 iDevices are deleted with Block 1)

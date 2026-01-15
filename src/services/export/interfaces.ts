@@ -89,6 +89,8 @@ export interface Html5ExportOptions {
     tempPath?: string;
     resourcePrefix?: string;
     compressionLevel?: number;
+    faviconPath?: string;
+    faviconType?: string;
 }
 
 /**

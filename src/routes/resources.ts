@@ -9,6 +9,7 @@ import * as path from 'path';
 import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
 
 // Base paths for resources
+const PUBLIC_PATH = 'public';
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
 // Note: User themes are stored client-side in IndexedDB, not on server
 const IDEVICES_BASE_PATH = 'public/files/perm/idevices/base';
@@ -272,6 +273,12 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
                 path: 'exe_export.js',
                 srcPath: path.join(COMMON_PATH, 'exe_export.js'),
                 url: `${basePath}/${version}/app/common/exe_export.js`,
+            },
+            // Favicon (public/)
+            {
+                path: 'favicon.ico',
+                srcPath: path.join(PUBLIC_PATH, 'favicon.ico'),
+                url: `${basePath}/${version}/favicon.ico`,
             },
         ];
 

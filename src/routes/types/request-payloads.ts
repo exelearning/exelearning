@@ -134,10 +134,12 @@ export interface YjsExportStructure {
         id: string;
         pageName: string;
         parentId?: string | null;
+        properties?: Record<string, unknown>;
         blocks: Array<{
             id: string;
             blockName?: string;
             iconName?: string;
+            properties?: Record<string, unknown>;
             components: Array<{
                 id: string;
                 ideviceType: string;
@@ -160,9 +162,11 @@ export interface ExportOptionsRequest {
     baseUrl?: string;
     theme?: string;
     singlePage?: boolean;
-    format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx';
+    format?: 'html5' | 'scorm12' | 'scorm2004' | 'ims' | 'epub3' | 'elp' | 'elpx' | 'elpx-page';
     /** Structure from Yjs document (sent by client for real-time exports) */
     structure?: YjsExportStructure;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 /**

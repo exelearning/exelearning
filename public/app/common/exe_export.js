@@ -456,7 +456,8 @@ $exeExport.searchBar = {
         if (searchWrapper.length != 1) return;
         $("body").addClass('exe-search-on');
         this.isIndex = $("html").attr('id') == 'exe-index';
-        this.isPreview = window.location.href.indexOf('/file/resources?resource=/tmp/') != -1;
+        // Service Worker preview serves content at /viewer/ path
+        this.isPreview = window.location.pathname.startsWith('/viewer/');
         this.createSearchForm();
         // Try window.exeSearchData first (from search_index.js), fallback to data-pages attribute
         if (window.exeSearchData) {

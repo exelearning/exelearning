@@ -91,6 +91,7 @@ export const test = base.extend<AuthFixtures>({
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                timeout: 30000,
             });
 
             expect(response.ok()).toBeTruthy();

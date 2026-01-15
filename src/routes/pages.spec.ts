@@ -15,6 +15,7 @@ import {
     type PagesFileHelperDeps,
     type PagesTemplateDeps,
     type PagesUtilsDeps,
+    type PagesSettingsDeps,
 } from './pages';
 
 // Mock data stores
@@ -51,18 +52,18 @@ function createMockQueries(): PagesQueriesDeps {
             }
             return undefined;
         },
-        checkProjectAccess: async (_db: any, project: any, userId: number) => {
+        checkProjectAccess: async (_db: any, project: any, userId?: number) => {
             // Check owner (support both ownerId and owner_id)
-            if (project.ownerId === userId || project.owner_id === userId) {
-                return { hasAccess: true };
+            if (userId && (project.ownerId === userId || project.owner_id === userId)) {
+                return { hasAccess: true, reason: undefined };
             }
             // Check collaborators
-            if (project.collaborators?.includes(userId)) {
-                return { hasAccess: true };
+            if (userId && project.collaborators?.includes(userId)) {
+                return { hasAccess: true, reason: undefined };
             }
             // Check visibility
             if (project.visibility === 'public') {
-                return { hasAccess: true };
+                return { hasAccess: true, reason: undefined };
             }
             return { hasAccess: false, reason: 'ACCESS_DENIED' };
         },
@@ -76,6 +77,14 @@ function createMockQueries(): PagesQueriesDeps {
                 saved_once: data.saved_once ?? 0,
                 visibility: 'private',
                 status: 'active',
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                description: null,
+                language: 'en',
+                author: null,
+                license: null,
+                last_accessed_at: Date.now(),
+                platform_id: null,
             };
             mockProjects.set(uuid, project);
             return project;
@@ -129,6 +138,17 @@ function createMockUtils(): PagesUtilsDeps {
     };
 }
 
+// Create mock settings
+function createMockSettings(): PagesSettingsDeps {
+    return {
+        getAuthMethods: async (_db: any, fallback: string) => {
+            const methods = (process.env.APP_AUTH_METHODS || fallback).split(',').map(m => m.trim());
+            return methods;
+        },
+        getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
+    };
+}
+
 // Create mock dependencies
 function createMockDependencies(): PagesDependencies {
     return {
@@ -138,6 +158,7 @@ function createMockDependencies(): PagesDependencies {
         fileHelper: createMockFileHelper(),
         template: createMockTemplate(),
         utils: createMockUtils(),
+        settings: createMockSettings(),
     };
 }
 

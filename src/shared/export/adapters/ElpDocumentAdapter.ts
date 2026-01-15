@@ -19,7 +19,14 @@ import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
 import * as fflate from 'fflate';
 
-import type { ExportDocument, ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
+import type {
+    ExportDocument,
+    ExportMetadata,
+    ExportPage,
+    ExportBlock,
+    ExportComponent,
+    ExportBlockProperties,
+} from '../interfaces';
 
 // Import the correct XML parser and types
 import { parseFromString } from '../../../services/xml/xml-parser';
@@ -128,8 +135,8 @@ export class ElpDocumentAdapter implements ExportDocument {
             keywords: meta.keywords || '',
             theme: meta.theme || 'base',
             exelearningVersion: meta.exelearning_version,
-            created: meta.created || new Date().toISOString(),
-            modified: meta.modified || new Date().toISOString(),
+            createdAt: meta.created || new Date().toISOString(),
+            modifiedAt: meta.modified || new Date().toISOString(),
 
             // Export options (with defaults)
             addExeLink: extMeta.addExeLink ?? true,
@@ -185,6 +192,7 @@ export class ElpDocumentAdapter implements ExportDocument {
             parentId: page.parent_id,
             order: page.position,
             blocks,
+            properties: page.properties || {},
         };
     }
 
@@ -197,13 +205,16 @@ export class ElpDocumentAdapter implements ExportDocument {
         const blockMap = new Map<string, ExportBlock>();
 
         for (const comp of components) {
-            const blockId = comp.blockName || 'default-block';
+            // Use blockId if available (preferred), otherwise fall back to blockName or default
+            const blockId = comp.blockId || comp.blockName || 'default-block';
 
             if (!blockMap.has(blockId)) {
                 blockMap.set(blockId, {
                     id: blockId,
                     name: comp.blockName || '',
                     order: comp.position || 0,
+                    iconName: comp.blockIconName,
+                    properties: comp.blockProperties as ExportBlockProperties,
                     components: [],
                 });
             }

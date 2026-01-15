@@ -109,8 +109,6 @@ export { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
 
 // Asset Resolvers
 export { ExportAssetResolver } from './adapters/ExportAssetResolver';
-export { PreviewAssetResolver } from './adapters/PreviewAssetResolver';
-export type { AssetCacheManager } from './adapters/PreviewAssetResolver';
 
 // Providers
 export { FileSystemResourceProvider } from './providers/FileSystemResourceProvider';
@@ -137,6 +135,7 @@ export { Scorm2004Exporter } from './exporters/Scorm2004Exporter';
 export { ImsExporter } from './exporters/ImsExporter';
 export { Epub3Exporter } from './exporters/Epub3Exporter';
 export { ElpxExporter } from './exporters/ElpxExporter';
+export { PageElpxExporter } from './exporters/PageElpxExporter';
 export { PrintPreviewExporter } from './exporters/PrintPreviewExporter';
 export type { PrintPreviewOptions, PrintPreviewResult } from './exporters/PrintPreviewExporter';
 export { ComponentExporter } from './exporters/ComponentExporter';

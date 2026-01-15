@@ -550,7 +550,6 @@ const API_ROUTES = {
 
         // Export
         api_ode_export_download: { path: '/api/export/{odeSessionId}/{exportType}/download', methods: ['GET', 'POST'] },
-        api_ode_export_preview: { path: '/api/export/{odeSessionId}/preview', methods: ['GET'] },
         api_export_html5: { path: '/api/export/html5', methods: ['POST'] },
         api_export_scorm12: { path: '/api/export/scorm12', methods: ['POST'] },
         api_export_scorm2004: { path: '/api/export/scorm2004', methods: ['POST'] },

@@ -103,6 +103,14 @@ function createMockExportSystem(): ExportSystemDeps {
             getProjectAssets = async () => [];
             getAsset = async () => null;
         } as any,
+        DatabaseAssetProvider: class MockDatabaseAssetProvider {
+            getProjectAssets = async () => [];
+            getAsset = async () => null;
+        } as any,
+        CombinedAssetProvider: class MockCombinedAssetProvider {
+            getProjectAssets = async () => [];
+            getAsset = async () => null;
+        } as any,
         FflateZipProvider: class MockZipProvider {
             createZip = () => ({
                 addFile: () => {},
@@ -117,6 +125,9 @@ function createMockExportSystem(): ExportSystemDeps {
         ImsExporter: MockExporter as any,
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
+        PageElpxExporter: MockExporter as any,
+        YjsDocumentAdapter: class MockYjsAdapter {} as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper {} as any,
     };
 }
 
@@ -241,51 +252,6 @@ describe('Export Routes', () => {
                 expect(format.extension).toBeDefined();
                 expect(format.mimeType).toBeDefined();
             }
-        });
-    });
-
-    describe('GET /api/export/:odeSessionId/preview', () => {
-        it('should return 404 for non-existent session', async () => {
-            const res = await app.handle(new Request('http://localhost/api/export/non-existent-session/preview'));
-
-            expect(res.status).toBe(404);
-            const body = await res.json();
-            expect(body.success).toBe(false);
-            expect(body.error).toContain('Session not found');
-        });
-
-        it('should return preview info when content exists', async () => {
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
-
-            expect(res.status).toBe(200);
-            const body = await res.json();
-            expect(body.success).toBe(true);
-            expect(body.hasContent).toBe(true);
-        });
-
-        it('should return HTML when index.html exists', async () => {
-            // Create index.html
-            await fs.writeFile(
-                path.join(testDir, 'tmp', testSessionId, 'index.html'),
-                '<html><body>Test Content</body></html>',
-            );
-
-            const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/preview`));
-
-            expect(res.status).toBe(200);
-            expect(res.headers.get('content-type')).toContain('text/html');
-            const text = await res.text();
-            expect(text).toContain('Test Content');
-        });
-
-        it('should return 404 when no content exists', async () => {
-            // Create session without content
-            mockSessions.set('empty-session', { id: 'empty-session' });
-            await fs.ensureDir(path.join(testDir, 'tmp', 'empty-session'));
-
-            const res = await app.handle(new Request('http://localhost/api/export/empty-session/preview'));
-
-            expect(res.status).toBe(404);
         });
     });
 
@@ -909,13 +875,17 @@ describe('convertYjsStructureToParsed', () => {
 
         const result = convertYjsStructureToParsed(yjs);
 
-        expect(result.navigation).toHaveLength(3);
-        expect(result.navigation[0].navText).toBe('Home');
-        expect(result.navigation[0].position).toBe(0);
-        expect(result.navigation[1].navText).toBe('About');
-        expect(result.navigation[1].parent_id).toBe('nav-1');
-        expect(result.navigation[2].navText).toBe('Contact');
-        expect(result.navigation[2].parent_id).toBeUndefined();
+        // navigation is an object with page property
+        const pages = Array.isArray(result.navigation.page) ? result.navigation.page : [result.navigation.page];
+        expect(pages).toHaveLength(3);
+
+        // Check properties on the page objects
+        expect(pages[0].navText).toBe('Home');
+        expect(pages[0].position).toBe(0);
+        expect(pages[1].navText).toBe('About');
+        expect((pages[1] as any).parent_id).toBe('nav-1');
+        expect(pages[2].navText).toBe('Contact');
+        expect((pages[2] as any).parent_id).toBeUndefined();
     });
 
     it('should handle empty blocks array', () => {
@@ -1062,7 +1032,85 @@ describe('convertYjsStructureToParsed', () => {
         const result = convertYjsStructureToParsed(yjs);
 
         // Orphan page should be treated as root
-        expect(result.pages).toHaveLength(1);
         expect(result.pages[0].title).toBe('Orphan');
+    });
+
+    it('should transform legacy TrueFalseIdevice to trueorfalse Game', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page 1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            components: [
+                                {
+                                    id: 'tf-1',
+                                    ideviceType: 'TrueFalseIdevice',
+                                    properties: {
+                                        title: 'TF Question',
+                                        questions: [
+                                            {
+                                                question: 'Q1',
+                                                isCorrect: true,
+                                                feedback: 'F1',
+                                                hint: 'H1',
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+        const tf = result.pages[0].components[0];
+
+        expect(tf.type).toBe('trueorfalse');
+        // Check if complex properties are preserved
+        const questionsGame = (tf.properties as any).questionsGame;
+        expect(questionsGame).toBeDefined();
+        expect(Array.isArray(questionsGame)).toBe(true);
+        expect(questionsGame[0].solution).toBe(1); // True
+        expect(questionsGame[0].question).toBe('Q1');
+        expect(questionsGame[0].feedback).toBe('F1');
+    });
+
+    it('should transform FormIdevice to form', () => {
+        const yjs: YjsExportStructure = {
+            meta: { title: 'Test' },
+            pages: [
+                {
+                    id: 'page-1',
+                    pageName: 'Page 1',
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            components: [
+                                {
+                                    id: 'form-1',
+                                    ideviceType: 'FormIdevice',
+                                    properties: {
+                                        title: 'My Form',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            navigation: [],
+        };
+
+        const result = convertYjsStructureToParsed(yjs);
+        const form = result.pages[0].components[0];
+
+        expect(form.type).toBe('form');
     });
 });

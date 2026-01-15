@@ -244,6 +244,47 @@ export default class MenuStructureBehaviour {
                     }
                 }
 
+                // Export Page
+                if (target.classList.contains('action_export_page')) {
+                    e.stopPropagation();
+                    closeDropdown();
+                    if (eXeLearning.app.project.checkOpenIdevice()) return;
+                    const nodeId = target.getAttribute('data-nav-id');
+                    if (nodeId) {
+                         const urlParams = new URLSearchParams(window.location.search);
+                         const odeSessionId = urlParams.get('project') || 'default';
+                         
+                         eXeLearning.app.api.getOdePageExportDownload(odeSessionId, nodeId)
+                            .then(blob => {
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.style.display = 'none';
+                                a.href = url;
+                                const node = this.structureEngine.getNode(nodeId);
+                                let filename = 'page_export.elpx';
+                                if (node && node.pageName) {
+                                    filename = window.SharedExporters.Html5Exporter.prototype.sanitizePageFilename(node.pageName) + ".elpx";
+                                }
+                                a.download = filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                a.remove();
+                            })
+                            .catch(e => {
+                                if (eXeLearning.app.modals && eXeLearning.app.modals.alert) {
+                                    eXeLearning.app.modals.alert.show({
+                                        title: _('Error'),
+                                        body: _('Error exporting page') + ': ' + e.message
+                                    });
+                                } else {
+                                    alert(_('Error exporting page') + ': ' + e.message);
+                                }
+                            });
+                    }
+                }
+
+
                 // Delete Page
                 if (target.classList.contains('action_delete')) {
                     e.stopPropagation();
@@ -560,7 +601,7 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 if (this.nodeSelected) {
                     let selectedNav = this.menuNav.querySelector(
-                        '#main .toggle-on .selected'
+                        '.toggle-on .selected'
                     );
                     if (!selectedNav) return; // robustness
                     let pageId = selectedNav.getAttribute('page-id');

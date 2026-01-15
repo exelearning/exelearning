@@ -76,25 +76,12 @@ export class ElpxExporter extends Html5Exporter {
             // =========================================================================
 
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
-            const themeRootFiles: string[] = [];
-            let themeFilesMap: Map<string, Uint8Array> | null = null;
-            try {
-                themeFilesMap = await this.resources.fetchTheme(themeName);
-                for (const [filePath] of themeFilesMap) {
-                    // Track root-level CSS/JS files (no path separator = root level)
-                    if (!filePath.includes('/') && (filePath.endsWith('.css') || filePath.endsWith('.js'))) {
-                        themeRootFiles.push(filePath);
-                    }
-                }
-            } catch (e) {
-                console.warn(`[ElpxExporter] Failed to pre-fetch theme: ${themeName}`, e);
-                themeRootFiles.push('style.css', 'style.js');
-            }
+            const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1.1 Generate HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles);
+                const html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
                 // First page is index.html, others go in html/ directory
                 const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
                 this.zip.addFile(pageFilename, html);
