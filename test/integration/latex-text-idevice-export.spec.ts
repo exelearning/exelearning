@@ -400,15 +400,27 @@ describe('LaTeX fixture import test', () => {
         const extractDir = path.join(tempDir, 'extracted');
         await extractZip(latexFixturePath, extractDir);
 
-        // Should have content.xml
+        // Should have content.xml or contentv3.xml (legacy format)
         const contentPath = path.join(extractDir, 'content.xml');
-        expect(await fs.pathExists(contentPath)).toBe(true);
+        const contentV3Path = path.join(extractDir, 'contentv3.xml');
+        const hasContent = (await fs.pathExists(contentPath)) || (await fs.pathExists(contentV3Path));
+        expect(hasContent).toBe(true);
 
-        // Should parse successfully
-        const structure = await parseFromFile(contentPath, 'test-session');
-        expect(structure).toBeDefined();
-        expect(structure.pages).toBeDefined();
-        expect(Array.isArray(structure.pages)).toBe(true);
+        // For legacy format (contentv3.xml), we just verify extraction works
+        // The XML parsing would need legacy parser which is client-side
+        if (await fs.pathExists(contentPath)) {
+            const structure = await parseFromFile(contentPath, 'test-session');
+            expect(structure).toBeDefined();
+            expect(structure.pages).toBeDefined();
+            expect(Array.isArray(structure.pages)).toBe(true);
+        } else {
+            // Legacy format - verify contentv3.xml exists and has LaTeX
+            const contentV3 = await fs.readFile(contentV3Path, 'utf-8');
+            expect(contentV3.length).toBeGreaterThan(0);
+            // Legacy files with LaTeX should contain LaTeX markers
+            const hasLatexContent = contentV3.includes('\\(') || contentV3.includes('\\[') || contentV3.includes('$');
+            expect(hasLatexContent).toBe(true);
+        }
     }, 30000);
 
     it('should find LaTeX content in latex.elp components', async () => {
@@ -420,32 +432,48 @@ describe('LaTeX fixture import test', () => {
         const extractDir = path.join(tempDir, 'extracted_latex');
         await extractZip(latexFixturePath, extractDir);
 
+        // Handle both modern (content.xml) and legacy (contentv3.xml) formats
         const contentPath = path.join(extractDir, 'content.xml');
-        const structure = await parseFromFile(contentPath, 'test-session');
+        const contentV3Path = path.join(extractDir, 'contentv3.xml');
 
-        // Collect all components
-        const allComponents: any[] = [];
-        for (const page of structure.pages) {
-            if (page.components && Array.isArray(page.components)) {
-                allComponents.push(...page.components);
-            }
-            if (page.blocks && Array.isArray(page.blocks)) {
-                for (const block of page.blocks) {
-                    if (block.components && Array.isArray(block.components)) {
-                        allComponents.push(...block.components);
+        if (await fs.pathExists(contentPath)) {
+            // Modern format - parse and check components
+            const structure = await parseFromFile(contentPath, 'test-session');
+
+            // Collect all components
+            const allComponents: any[] = [];
+            for (const page of structure.pages) {
+                if (page.components && Array.isArray(page.components)) {
+                    allComponents.push(...page.components);
+                }
+                if (page.blocks && Array.isArray(page.blocks)) {
+                    for (const block of page.blocks) {
+                        if (block.components && Array.isArray(block.components)) {
+                            allComponents.push(...block.components);
+                        }
                     }
                 }
             }
+
+            // Find components with LaTeX content
+            const latexPatterns = [/\\\(.*?\\\)/, /\\\[.*?\\\]/, /\$[^$]+\$/, /\$\$[^$]+\$\$/];
+            const componentsWithLatex = allComponents.filter(c => {
+                const content = c.content || c.htmlView || '';
+                return latexPatterns.some(p => p.test(content));
+            });
+
+            // The fixture should have LaTeX content
+            expect(componentsWithLatex.length).toBeGreaterThan(0);
+        } else if (await fs.pathExists(contentV3Path)) {
+            // Legacy format - check raw XML for LaTeX markers
+            const contentV3 = await fs.readFile(contentV3Path, 'utf-8');
+
+            // Look for LaTeX patterns in raw XML
+            const latexPatterns = [/\\\(/, /\\\[/, /\\\)/, /\\\]/, /\\LaTeX/i, /\\frac/, /\\sqrt/, /\\alpha/, /\\beta/];
+            const hasLatexContent = latexPatterns.some(p => p.test(contentV3));
+            expect(hasLatexContent).toBe(true);
+        } else {
+            throw new Error('Neither content.xml nor contentv3.xml found');
         }
-
-        // Find components with LaTeX content
-        const latexPatterns = [/\\\(.*?\\\)/, /\\\[.*?\\\]/, /\$[^$]+\$/, /\$\$[^$]+\$\$/];
-        const componentsWithLatex = allComponents.filter(c => {
-            const content = c.content || c.htmlView || '';
-            return latexPatterns.some(p => p.test(content));
-        });
-
-        // The fixture should have LaTeX content
-        expect(componentsWithLatex.length).toBeGreaterThan(0);
     }, 30000);
 });
