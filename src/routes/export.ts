@@ -327,7 +327,7 @@ export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeS
  * Transform data from legacy iDevices to match modern renderer expectations
  * e.g. TrueFalseIdevice (with questions array) -> trueorfalse (with questionsGame array)
  */
-function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedComponent {
+export function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedComponent {
     const type = component.type;
     const props = (component.properties || {}) as Record<string, unknown>;
 
@@ -432,6 +432,14 @@ function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedC
         return {
             ...component,
             type: 'quick-questions-multiple-choice',
+        };
+    }
+
+    // Handle 'ScormIdevice' -> 'scorm'
+    if (type === 'ScormIdevice') {
+        return {
+            ...component,
+            type: 'scorm',
         };
     }
 
