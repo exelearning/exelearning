@@ -561,4 +561,189 @@ test.describe('Component Export/Import', () => {
 
         console.log(`iDevice file verified: ${fileName}`);
     });
+
+    test('should import iDevice with images and display them immediately without refresh', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies the fix for issue #953:
+         * "Importing idevice not completed until refreshing page"
+         *
+         * The issue was that when importing an iDevice with images, the images
+         * wouldn't appear (and weren't included in the file manager) until
+         * page refresh. This was caused by the asset extraction logic not
+         * recognizing UUID-style folder paths like "{uuid}/{filename}" that
+         * are used in exported .idevice files.
+         */
+        const page = authenticatedPage;
+
+        // 1. Create a new project
+        const projectUuid = await createProject(page, 'iDevice Image Import Test');
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app initialization
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        await waitForLoadingScreenHidden(page);
+
+        // 2. Select the first page
+        await selectPage(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 3. Import the test iDevice file that contains an image
+        // The file is located at test/fixtures/idevice-mkg5tfoo-i0k5qzyvx.idevice
+        // Use process.cwd() as the base since __dirname behaves differently in ESM context
+        const ideviceFilePath = path.join(process.cwd(), 'test/fixtures/idevice-mkg5tfoo-i0k5qzyvx.idevice');
+
+        // Verify the fixture file exists
+        if (!fs.existsSync(ideviceFilePath)) {
+            throw new Error(
+                `Fixture file not found at: ${ideviceFilePath}. Current working directory: ${process.cwd()}`,
+            );
+        }
+
+        // Import the iDevice
+        await importComponentViaModal(page, ideviceFilePath);
+
+        // 4. Wait for the iDevice to appear
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        // Verify the iDevice is visible
+        const importedIdevice = page.locator('#node-content article .idevice_node.text').first();
+        await expect(importedIdevice).toBeVisible({ timeout: 10000 });
+
+        console.log('iDevice imported successfully');
+
+        // 5. KEY TEST: Verify the image is visible WITHOUT refreshing the page
+        // The bug was that images wouldn't appear until refresh
+        // Wait for asset resolution to complete
+        await page.waitForTimeout(2000);
+
+        // Check for images in the iDevice content
+        const imagesInIdevice = await page.evaluate(() => {
+            const idevice = document.querySelector('#node-content article .idevice_node.text');
+            if (!idevice) return { found: false, imgCount: 0, imgDetails: [] };
+
+            const images = idevice.querySelectorAll('img');
+            const details = Array.from(images).map(img => ({
+                src: img.getAttribute('src')?.substring(0, 50) || 'no-src',
+                dataAssetUrl: img.getAttribute('data-asset-url')?.substring(0, 50) || 'no-data-url',
+                naturalWidth: img.naturalWidth,
+                complete: img.complete,
+            }));
+
+            return {
+                found: images.length > 0,
+                imgCount: images.length,
+                imgDetails: details,
+            };
+        });
+
+        console.log('Image details:', JSON.stringify(imagesInIdevice, null, 2));
+
+        // Verify that at least one image was found
+        expect(imagesInIdevice.found).toBe(true);
+        expect(imagesInIdevice.imgCount).toBeGreaterThan(0);
+
+        // 6. Verify the image has been resolved to a blob URL (not still asset://)
+        // After the fix, asset:// URLs should be resolved to blob:// URLs immediately
+        const imageResolution = await page.waitForFunction(
+            () => {
+                const idevice = document.querySelector('#node-content article .idevice_node.text');
+                if (!idevice) return null;
+
+                const img = idevice.querySelector('img');
+                if (!img) return null;
+
+                const src = img.getAttribute('src');
+                const dataAssetUrl = img.getAttribute('data-asset-url');
+
+                // Image is resolved if:
+                // 1. src is a blob:// URL, or
+                // 2. data-asset-url exists (meaning MutationObserver processed it)
+                const isResolved = src?.startsWith('blob:') || dataAssetUrl?.startsWith('asset://');
+
+                return {
+                    src: src?.substring(0, 60),
+                    dataAssetUrl: dataAssetUrl?.substring(0, 60),
+                    isResolved,
+                    isLoaded: img.complete && img.naturalWidth > 0,
+                };
+            },
+            { timeout: 10000 },
+        );
+
+        const resolution = await imageResolution.jsonValue();
+        console.log('Image resolution status:', JSON.stringify(resolution, null, 2));
+
+        // The image should be resolved
+        expect(resolution.isResolved).toBe(true);
+
+        // 7. Verify image actually loads (not broken)
+        // Wait for image to fully load
+        const imageLoaded = await page.waitForFunction(
+            () => {
+                const idevice = document.querySelector('#node-content article .idevice_node.text');
+                if (!idevice) return false;
+
+                const img = idevice.querySelector('img') as HTMLImageElement;
+                if (!img) return false;
+
+                // Image is loaded when complete and has dimensions
+                return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
+            },
+            { timeout: 15000 },
+        );
+
+        expect(await imageLoaded.jsonValue()).toBe(true);
+
+        console.log('Image loaded successfully without page refresh - issue #953 is fixed');
+
+        // 8. BONUS: Verify the asset is available in the file manager
+        // Open file manager
+        const fileManagerBtn = page.locator('[data-bs-target="#modalFileManager"], #head-bottom-filemanager');
+        if ((await fileManagerBtn.count()) > 0) {
+            await fileManagerBtn.click();
+            await page.waitForTimeout(1000);
+
+            // Check if the modal opened
+            const modal = page.locator('#modalFileManager[data-open="true"], #modalFileManager.show');
+            if (await modal.isVisible().catch(() => false)) {
+                // Wait for assets to load
+                await page.waitForTimeout(1500);
+
+                // Check for media items in the file manager
+                const mediaItems = await page.locator('#modalFileManager .media-library-item').count();
+                console.log(`Found ${mediaItems} media items in file manager`);
+
+                // Close modal
+                const closeBtn = page
+                    .locator('#modalFileManager .btn-close, #modalFileManager [data-bs-dismiss="modal"]')
+                    .first();
+                if ((await closeBtn.count()) > 0) {
+                    await closeBtn.click();
+                }
+
+                // Should have at least 1 asset (the imported image)
+                expect(mediaItems).toBeGreaterThanOrEqual(1);
+                console.log('Asset verified in file manager');
+            }
+        }
+
+        console.log('Test completed - iDevice with image imported and displayed immediately');
+    });
 });

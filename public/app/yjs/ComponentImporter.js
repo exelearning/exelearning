@@ -306,17 +306,19 @@ class ComponentImporter {
 
       // Find the new asset ID for this old UUID
       // assetMap is: originalPath -> newAssetId
-      // originalPath is like "content/resources/uuid/filename"
+      // originalPath is like "content/resources/uuid/filename" or "uuid/filename"
       for (const [originalPath, newAssetId] of this.assetMap.entries()) {
         // Check if this originalPath contains our old UUID
         if (originalPath.includes(oldUuid)) {
           // Extract filename from originalPath if suffix is empty
-          let newSuffix = suffix;
+          // suffix can be undefined when URL is just "asset://uuid" without "/filename"
+          let newSuffix = suffix || '';
           if (!newSuffix) {
             const parts = originalPath.split('/');
             newSuffix = '/' + parts[parts.length - 1];
           }
-          replacements.set(`asset://${oldUuid}${suffix}`, `asset://${newAssetId}${newSuffix}`);
+          // Use (suffix || '') to avoid "undefined" string in key
+          replacements.set(`asset://${oldUuid}${suffix || ''}`, `asset://${newAssetId}${newSuffix}`);
           break;
         }
       }
