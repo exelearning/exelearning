@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -408,7 +408,6 @@ test.describe('Magnifier iDevice', () => {
 
     test.describe('Preview Panel', () => {
         test('should display correctly in preview panel', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Preview requires blob URL resolution');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 

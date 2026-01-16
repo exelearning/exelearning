@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/collaboration.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { waitForYjsSync } from '../helpers/sync-helpers';
 
 /**
@@ -29,7 +29,6 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
 // The initial Yjs document with one page is created when the project is created,
 // preventing the race condition where multiple clients would create duplicate pages.
 test.describe('Duplicate Page Prevention', () => {
-    serverOnly(); // Requires server for multi-client sync
     test.setTimeout(120000); // 2 minutes per test
 
     test('should have exactly 1 page when second client joins unsaved public project', async ({

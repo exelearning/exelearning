@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -522,7 +522,6 @@ test.describe('Interactive Video iDevice', () => {
 
     test.describe('Editor Workflow', () => {
         test('should open editor, create cover, and save', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Interactive video editor requires server resources');
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Editor Test');
@@ -563,7 +562,6 @@ test.describe('Interactive Video iDevice', () => {
         });
 
         test('should persist editor changes after reload', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -664,7 +662,6 @@ test.describe('Interactive Video iDevice', () => {
 
     test.describe('Preview Panel', () => {
         test('should display interactive video correctly in preview', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Preview requires blob URL resolution');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 

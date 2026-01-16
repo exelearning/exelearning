@@ -15,12 +15,17 @@ export default class StructureNode {
 
     /**
      * Node properties
+     * In static mode, get from DataProvider cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odeNavStructureSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? (app?.dataProvider?.staticData?.parameters?.odeNavStructureSyncPropertiesConfig ||
+               app?.dataProvider?.cache?.parameters?.odeNavStructureSyncPropertiesConfig)
+            : app?.api?.parameters?.odeNavStructureSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params

@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { OpenProjectModalPage } from '../pages/open-project-modal.page';
 
 /**
@@ -8,7 +8,6 @@ import { OpenProjectModalPage } from '../pages/open-project-modal.page';
  * Note: These tests require server database for project listing and are skipped in static mode.
  */
 test.describe('Open Project Modal - Tabs', () => {
-    serverOnly(); // Skip in static mode - requires server database
     let openProjectModal: OpenProjectModalPage;
 
     test.beforeEach(async ({ authenticatedPage }) => {

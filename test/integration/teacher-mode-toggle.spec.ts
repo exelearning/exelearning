@@ -18,6 +18,7 @@ import type {
     ExportPage,
     ResourceProvider,
     AssetProvider,
+    ZipProvider,
     ExportComponent,
     ExportBlock,
 } from '../../src/shared/export/interfaces';
@@ -83,30 +84,43 @@ const createMockDocumentWithTeacherOnly = (): ExportDocument => ({
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () => new Map(),
-    fetchIdeviceResources: async () => new Map(),
-    fetchBaseLibraries: async () => new Map(),
-    fetchScormFiles: async () => new Map(),
+    fetchTheme: async () =>
+        new Map([
+            ['style.css', Buffer.from('/* test css */')],
+            ['style.js', Buffer.from('/* test js */')],
+        ]),
     fetchLibraryFiles: async () => new Map(),
-    fetchExeLogo: async () => null,
-    fetchContentCss: async () => new Map(),
-    normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
+    fetchExeLogo: async () => Buffer.from('logo'),
+    fetchIdeviceFiles: async () => new Map(),
 });
 
 // Mock asset provider
 const createMockAssetProvider = (): AssetProvider => ({
     getAsset: async () => null,
-    getProjectAssets: async () => [],
     getAllAssets: async () => [],
+    getProjectAssets: async () => [],
 });
 
-// Helper to extract HTML from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
-    const content = files.get(filename);
-    if (!content) return '';
-    if (typeof content === 'string') return content;
-    return new TextDecoder().decode(content);
-};
+// Create zip provider
+const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
+
+// Helper function to generate preview HTML using Html5Exporter
+async function generatePreviewHtml(document: ExportDocument): Promise<string> {
+    const resources = createMockResourceProvider();
+    const assets = createMockAssetProvider();
+    const zip = createMockZipProvider();
+
+    const exporter = new Html5Exporter(document, resources, assets, zip);
+    const files = await exporter.generateForPreview();
+
+    const indexHtml = files.get('index.html');
+    if (!indexHtml) {
+        throw new Error('No index.html generated');
+    }
+
+    return new TextDecoder().decode(indexHtml);
+}
 
 describe('Teacher Mode Toggle Integration', () => {
     beforeAll(() => {
@@ -183,18 +197,10 @@ describe('Teacher Mode Toggle Integration', () => {
         });
     });
 
-    describe('Html5Exporter header structure', () => {
+    describe('Html5Exporter preview header structure', () => {
         it('should render header elements (not divs) for exe_export.js teacherMode selectors', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
+            const html = await generatePreviewHtml(document);
 
             // exe_export.js teacherMode.init() uses:
             // $(".package-header") for single-page
@@ -204,33 +210,17 @@ describe('Teacher Mode Toggle Integration', () => {
             expect(html).toContain('class="page-header"');
         });
 
-        it('should include content CSS file reference in preview', async () => {
+        it('should include link to CSS that hides teacher-only content', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
+            const html = await generatePreviewHtml(document);
 
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
-
-            // Html5Exporter references external CSS file for styling (including teacher-only rules)
-            expect(html).toContain('content/css/base.css');
+            // CSS rule is now in external files, verify link is present
+            expect(html).toContain('href="content/css/base.css"');
         });
 
         it('should render teacher-only blocks with correct class in preview', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
+            const html = await generatePreviewHtml(document);
 
             // Block with teacherOnly=true should have teacher-only class
             expect(html).toContain('class="box teacher-only"');
@@ -238,15 +228,7 @@ describe('Teacher Mode Toggle Integration', () => {
 
         it('should render teacher-only idevices with correct class in preview', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
+            const html = await generatePreviewHtml(document);
 
             // iDevice with teacherOnly=true should have teacher-only class
             expect(html).toContain('idevice_node text teacher-only');
@@ -254,34 +236,17 @@ describe('Teacher Mode Toggle Integration', () => {
 
         it('should load exe_export.js in preview for teacherMode functionality', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
+            const html = await generatePreviewHtml(document);
 
             // exe_export.js should be loaded
             expect(html).toContain('exe_export.js');
         });
 
-        it('should reference exe_export.js script which contains init logic', async () => {
+        it('should load exe_export.js which handles teacherMode initialization', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
+            const html = await generatePreviewHtml(document);
 
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
-
-            // exe_export.js contains the teacherMode.init() logic
-            // The actual init call is in common.js or the theme's JS file
+            // exe_export.js handles initialization via DOMContentLoaded
             expect(html).toContain('exe_export.js');
         });
     });

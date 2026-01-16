@@ -32,6 +32,9 @@ describe('Locale translations', () => {
       api: {
         getTranslations: vi.fn().mockResolvedValue(translations),
       },
+      dataProvider: {
+        getTranslations: vi.fn().mockResolvedValue(translations),
+      },
     };
     locale = new Locale(mockApp);
   });
@@ -47,15 +50,16 @@ describe('Locale translations', () => {
     expect(document.querySelector('body').getAttribute('lang')).toBe('fr');
   });
 
-  it('loadTranslationsStrings populates strings via API and calls translateStaticUI', async () => {
+  it('loadTranslationsStrings populates strings via dataProvider and calls translateStaticUI', async () => {
     // Spy on translateStaticUI
     const translateSpy = vi.spyOn(locale, 'translateStaticUI').mockImplementation(() => {});
 
     await locale.setLocaleLang('es');
     await locale.loadTranslationsStrings();
 
-    expect(mockApp.api.getTranslations).toHaveBeenCalledWith('es');
-    expect(locale.strings.translations.hello).toBe('~Hola');
+    expect(mockApp.dataProvider.getTranslations).toHaveBeenCalledWith('es');
+    // The code extracts result.translations || result, so strings is directly the translations object
+    expect(locale.strings.hello).toBe('~Hola');
     expect(translateSpy).toHaveBeenCalled();
   });
 
@@ -294,18 +298,19 @@ describe('Locale translations', () => {
     expect(contentResult).toBe('file.elpx');
   });
 
-  it('loadContentTranslationsStrings stores content translations from the API', async () => {
+  it('loadContentTranslationsStrings stores content translations from dataProvider', async () => {
     const contentPayload = {
       translations: {
         notes: 'Notas',
       },
     };
-    mockApp.api.getTranslations.mockResolvedValueOnce(contentPayload);
+    mockApp.dataProvider.getTranslations.mockResolvedValueOnce(contentPayload);
 
     await locale.loadContentTranslationsStrings('en');
 
-    expect(mockApp.api.getTranslations).toHaveBeenCalledWith('en');
-    expect(locale.c_strings).toBe(contentPayload);
+    expect(mockApp.dataProvider.getTranslations).toHaveBeenCalledWith('en');
+    // The code extracts result.translations || result, so c_strings is directly the translations object
+    expect(locale.c_strings).toEqual({ notes: 'Notas' });
   });
 
   it('getContentTranslation returns sanitized fallback when missing', () => {

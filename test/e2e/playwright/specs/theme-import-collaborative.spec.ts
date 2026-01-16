@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/collaboration.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { waitForYjsSync } from '../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
 
@@ -11,8 +11,6 @@ import { waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
  */
 
 test.describe('Theme Import - Collaborative', () => {
-    serverOnly(); // Skip in static mode - requires WebSocket
-
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
 

@@ -72,9 +72,13 @@ export default class UserManager {
     }
 
     /**
-     *
+     * Delete old ode files (server mode only)
      */
     async deleteOdeFilesByDate() {
+        // Skip in static mode - no server API available
+        if (eXeLearning.app.capabilities?.storage?.remote === false) {
+            return;
+        }
         let msDate = Date.now();
         let params = { date: msDate };
         await eXeLearning.app.api.postDeleteOdeFilesByDate(params);

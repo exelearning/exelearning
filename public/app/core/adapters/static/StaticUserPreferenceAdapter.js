@@ -23,9 +23,10 @@ export class StaticUserPreferenceAdapter extends UserPreferencePort {
      */
     _getDefaultPreferences() {
         // Minimal fallback defaults to prevent crashes
+        // Note: advancedMode defaults to 'true' in static mode so all features are visible
         const FALLBACK_DEFAULTS = {
             locale: { title: 'Language', value: 'en', type: 'select' },
-            advancedMode: { title: 'Advanced Mode', value: 'false', type: 'checkbox' },
+            advancedMode: { title: 'Advanced Mode', value: 'true', type: 'checkbox' },
             versionControl: { title: 'Version Control', value: 'false', type: 'checkbox' },
         };
 

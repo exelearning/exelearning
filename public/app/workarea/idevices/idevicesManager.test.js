@@ -37,6 +37,9 @@ describe('IdeviceManager', () => {
           },
         },
       },
+      dataProvider: {
+        getInstalledIdevices: vi.fn().mockResolvedValue({ idevices: [] }),
+      },
       modals: {
         idevicemanager: {
           show: vi.fn(),

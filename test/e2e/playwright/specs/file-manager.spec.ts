@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -374,8 +374,6 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
 }
 
 test.describe('File Manager', () => {
-    serverOnly(); // Requires server for file operations
-
     test.describe('Import File Formats', () => {
         test('should show assets from new .elpx format (content.xml) with folder structure', async ({
             authenticatedPage,

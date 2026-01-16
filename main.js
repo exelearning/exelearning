@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell, protocol, net } = require('electron');
+const { app, BrowserWindow, dialog, session, ipcMain, Menu, systemPreferences, shell } = require('electron');
 const { autoUpdater } = require('electron-updater');
 
 const log = require('electron-log');
@@ -6,28 +6,15 @@ const path = require('path');
 const i18n = require('i18n');
 const fs = require('fs');
 const fflate = require('fflate');
+const http = require('http');
 const https = require('https');
-const { pathToFileURL } = require('url');
 
 const { initAutoUpdater } = require('./update-manager');
 
-// Register exe:// protocol as privileged (must be done before app ready)
-// This allows the protocol to:
-// - Be treated as secure origin (like https)
-// - Support fetch, XHR, and other web APIs
-// - Bypass CORS restrictions for local files
-protocol.registerSchemesAsPrivileged([
-    {
-        scheme: 'exe',
-        privileges: {
-            standard: true,
-            secure: true,
-            supportFetchAPI: true,
-            corsEnabled: true,
-            stream: true,
-        },
-    },
-]);
+// Embedded HTTP server for static files
+// Required for Service Worker support (SW doesn't work with custom protocols like exe://)
+let staticServer = null;
+const STATIC_PORT = 51380; // High port to avoid conflicts
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
@@ -41,6 +28,130 @@ function getStaticPath() {
     return app.isPackaged
         ? path.join(process.resourcesPath, 'static')
         : path.join(__dirname, 'dist', 'static');
+}
+
+/**
+ * MIME types for common file extensions
+ */
+const MIME_TYPES = {
+    '.html': 'text/html; charset=utf-8',
+    '.htm': 'text/html; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.js': 'application/javascript; charset=utf-8',
+    '.mjs': 'application/javascript; charset=utf-8',
+    '.json': 'application/json; charset=utf-8',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+    '.webp': 'image/webp',
+    '.avif': 'image/avif',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.otf': 'font/otf',
+    '.mp3': 'audio/mpeg',
+    '.mp4': 'video/mp4',
+    '.webm': 'video/webm',
+    '.ogg': 'audio/ogg',
+    '.ogv': 'video/ogg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
+    '.m4v': 'video/mp4',
+    '.pdf': 'application/pdf',
+    '.xml': 'application/xml',
+    '.xhtml': 'application/xhtml+xml',
+    '.txt': 'text/plain; charset=utf-8',
+    '.csv': 'text/csv; charset=utf-8',
+    '.zip': 'application/zip',
+    '.swf': 'application/x-shockwave-flash',
+    '.dtd': 'application/xml-dtd',
+};
+
+/**
+ * Start embedded HTTP server for static files
+ * Required for Service Worker support (SW doesn't work with exe:// protocol)
+ * @returns {Promise<void>}
+ */
+function startStaticServer() {
+    return new Promise((resolve, reject) => {
+        const staticDir = getStaticPath();
+
+        staticServer = http.createServer((req, res) => {
+            // Parse URL and get pathname
+            let pathname = req.url.split('?')[0];
+            if (pathname === '/') pathname = '/index.html';
+
+            // Security: prevent path traversal
+            const safePath = path.normalize(pathname).replace(/^(\.\.[/\\])+/, '');
+            const filePath = path.join(staticDir, safePath);
+
+            // Ensure file is within static directory
+            if (!filePath.startsWith(staticDir)) {
+                res.statusCode = 403;
+                res.end('Forbidden');
+                return;
+            }
+
+            // Read and serve file
+            fs.readFile(filePath, (err, data) => {
+                if (err) {
+                    // SPA fallback: serve index.html for unknown paths without extensions
+                    if (err.code === 'ENOENT' && !path.extname(pathname)) {
+                        fs.readFile(path.join(staticDir, 'index.html'), (err2, indexData) => {
+                            if (err2) {
+                                res.statusCode = 404;
+                                res.end('Not Found');
+                                return;
+                            }
+                            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+                            res.end(indexData);
+                        });
+                        return;
+                    }
+                    res.statusCode = 404;
+                    res.end('Not Found');
+                    return;
+                }
+
+                // Set content type based on extension
+                const ext = path.extname(filePath).toLowerCase();
+                res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
+
+                // Special headers for Service Worker
+                if (pathname === '/preview-sw.js') {
+                    res.setHeader('Service-Worker-Allowed', '/');
+                    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                }
+
+                res.end(data);
+            });
+        });
+
+        staticServer.listen(STATIC_PORT, '127.0.0.1', () => {
+            console.log(`[Electron] Static server running at http://127.0.0.1:${STATIC_PORT}`);
+            resolve();
+        });
+
+        staticServer.on('error', (err) => {
+            console.error('[Electron] Static server error:', err);
+            reject(err);
+        });
+    });
+}
+
+/**
+ * Stop the embedded HTTP server
+ */
+function stopStaticServer() {
+    if (staticServer) {
+        staticServer.close();
+        staticServer = null;
+        console.log('[Electron] Static server stopped');
+    }
 }
 
 // Optional: force a predictable path/name
@@ -464,7 +575,7 @@ function attachOpenHandler(win) {
     });
 }
 
-function createWindow() {
+async function createWindow() {
     initializePaths(); // Initialize paths before using them
     initializeEnv(); // Initialize environment variables afterward
     combineEnv(); // Combine the environment
@@ -476,27 +587,9 @@ function createWindow() {
     // Ensure all required directories exist and try to set permissions
     ensureAllDirectoriesWritable(env);
 
-    // Register exe:// protocol handler to serve static files
-    // This allows the app to load files with proper origin (exe://static)
-    // which enables fetch, CORS, and blob URL resolution in previews
-    const staticDir = getStaticPath();
-    protocol.handle('exe', (request) => {
-        // Parse the URL: exe://./path/to/file -> staticDir/path/to/file
-        const url = new URL(request.url);
-        // Remove leading ./ or / from pathname
-        let filePath = url.pathname.replace(/^\/+/, '');
-        const fullPath = path.join(staticDir, filePath);
-
-        // Security: ensure the path is within staticDir
-        const normalizedPath = path.normalize(fullPath);
-        if (!normalizedPath.startsWith(staticDir)) {
-            return new Response('Forbidden', { status: 403 });
-        }
-
-        // Use net.fetch to serve the file (handles MIME types automatically)
-        return net.fetch(pathToFileURL(normalizedPath).href);
-    });
-    console.log('Registered exe:// protocol handler for:', staticDir);
+    // Start embedded HTTP server for static files
+    // Required for Service Worker support (SW doesn't work with custom protocols like exe://)
+    await startStaticServer();
 
     const isDev = determineDevMode();
 
@@ -558,8 +651,9 @@ function createWindow() {
         });
     });
 
-    // Load static HTML via exe:// protocol (enables proper origin for fetch/CORS)
-    mainWindow.loadURL('exe://./index.html');
+    // Load static HTML via embedded HTTP server
+    // HTTP is required for Service Worker support (SW doesn't work with custom protocols)
+    mainWindow.loadURL(`http://127.0.0.1:${STATIC_PORT}`);
 
     // Check for updates and flush pending files
     mainWindow.webContents.on('did-finish-load', () => {
@@ -1052,7 +1146,7 @@ app.on('new-window-for-tab', () => {
     });
 
     newWindow.setMenuBarVisibility(isDev);
-    newWindow.loadURL('exe://./index.html');
+    newWindow.loadURL(`http://127.0.0.1:${STATIC_PORT}`);
 
     attachOpenHandler(newWindow);
 
@@ -1082,6 +1176,9 @@ function handleAppExit() {
     const cleanup = () => {
         if (isShuttingDown) return;
         isShuttingDown = true;
+
+        // Stop embedded HTTP server
+        stopStaticServer();
 
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.destroy();
@@ -1313,7 +1410,7 @@ function createNewProjectWindow(filePath) {
     });
 
     newWindow.setMenuBarVisibility(isDev);
-    newWindow.loadURL('exe://./index.html');
+    newWindow.loadURL(`http://127.0.0.1:${STATIC_PORT}`);
 
     // macOS: Show tab bar after window is visible
     if (process.platform === 'darwin' && typeof newWindow.toggleTabBar === 'function') {

@@ -30,10 +30,22 @@ describe('ThemeList', () => {
       }),
     };
 
+    // Mock dataProvider
+    const mockDataProvider = {
+      getInstalledThemes: vi.fn().mockResolvedValue({
+        themes: [
+          { name: 'theme-a', title: 'Theme A', valid: true, dirName: 'theme-a' },
+          { name: 'theme-c', title: 'Theme C', valid: true, dirName: 'theme-c' },
+          { name: 'theme-b', title: 'Theme B', valid: true, dirName: 'theme-b' },
+        ],
+      }),
+    };
+
     // Mock manager
     mockManager = {
       app: {
         api: mockApi,
+        dataProvider: mockDataProvider,
       },
       selected: { id: 'theme-a' },
       selectTheme: vi.fn(),
@@ -84,10 +96,10 @@ describe('ThemeList', () => {
   });
 
   describe('loadThemesInstalled', () => {
-    it('should fetch themes from API', async () => {
+    it('should fetch themes from dataProvider', async () => {
       await themeList.loadThemesInstalled();
 
-      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+      expect(mockManager.app.dataProvider.getInstalledThemes).toHaveBeenCalled();
     });
 
     it('should create Theme instances for each theme', async () => {
@@ -126,7 +138,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle null API response', async () => {
-      mockApi.getThemesInstalled.mockResolvedValue(null);
+      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue(null);
 
       await themeList.loadThemesInstalled();
 
@@ -134,7 +146,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle missing themes property', async () => {
-      mockApi.getThemesInstalled.mockResolvedValue({});
+      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue({});
 
       await themeList.loadThemesInstalled();
 
@@ -143,10 +155,10 @@ describe('ThemeList', () => {
   });
 
   describe('loadThemeInstalled', () => {
-    it('should fetch themes from API', async () => {
+    it('should fetch themes from dataProvider', async () => {
       await themeList.loadThemeInstalled('theme-b');
 
-      expect(mockApi.getThemesInstalled).toHaveBeenCalled();
+      expect(mockManager.app.dataProvider.getInstalledThemes).toHaveBeenCalled();
     });
 
     it('should load only the specified theme', async () => {
@@ -579,7 +591,7 @@ describe('ThemeList', () => {
       await themeList.load();
       expect(Object.keys(themeList.installed)).toHaveLength(3);
 
-      mockApi.getThemesInstalled.mockResolvedValue({
+      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue({
         themes: [
           { name: 'new-theme', title: 'New Theme', valid: true, dirName: 'new-theme' },
         ],

@@ -74,12 +74,17 @@ export default class IdeviceNode {
 
     /**
      * Idevice properties
+     * In static mode, get from DataProvider cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odeComponentsSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? (app?.dataProvider?.staticData?.parameters?.odeComponentsSyncPropertiesConfig ||
+               app?.dataProvider?.cache?.parameters?.odeComponentsSyncPropertiesConfig)
+            : app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params
@@ -2038,9 +2043,10 @@ export default class IdeviceNode {
         eXeLearning.app.api.postActivateCurrentOdeUsersUpdateFlag(params2);
         let params = ['odeComponentsSyncId', 'odePagStructureSyncId'];
         // Check if new block (not yet saved in the database)
-        if (
-            this.block.id == eXeLearning.app.api.parameters.generateNewItemKey
-        ) {
+        // In static mode, check if ID starts with 'new-' prefix
+        const isNewBlock = this.block.id?.toString().startsWith('new-') ||
+            this.block.id == eXeLearning.app?.api?.parameters?.generateNewItemKey;
+        if (isNewBlock) {
             params = params.concat([
                 'odeVersionId',
                 'odeSessionId',
@@ -2159,9 +2165,11 @@ export default class IdeviceNode {
             'odeIdeviceTypeName',
         ];
         // Generate new block
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         let blockData = {
             odePagStructureSyncId:
-                eXeLearning.app.api.parameters.generateNewItemKey,
+                eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey(),
             iconName: '', //this.idevice.icon.name,
             blockName: this.idevice.title,
         };

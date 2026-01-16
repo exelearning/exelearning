@@ -167,9 +167,10 @@ const app = new Elysia()
                             'Cache-Control': 'public, max-age=3600',
                         };
 
-                        // Special handling for preview-sw.js - no caching and correct scope
+                        // Special handling for preview-sw.js - no caching for SW updates
                         if (pathname === '/preview-sw.js') {
                             headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+                            headers['Service-Worker-Allowed'] = '/';
                         }
 
                         return new Response(content, { headers });
@@ -397,7 +398,9 @@ const app = new Elysia()
         set.status = 404;
         return 'Not Found';
     })
-    // Serve preview-sw.js with Vary: Accept-Encoding (Firefox rejects Vary: *)
+    // Serve preview-sw.js with correct headers for Service Worker registration
+    // Firefox rejects Vary: * so we use Vary: Accept-Encoding
+    // Service-Worker-Allowed: / allows registering SW with root scope
     .get('/preview-sw.js', () => {
         const swPath = path.join(process.cwd(), 'public', 'preview-sw.js');
         if (!fs.existsSync(swPath)) {
@@ -409,6 +412,7 @@ const app = new Elysia()
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Vary': 'Accept-Encoding',
                 'Access-Control-Allow-Origin': '*',
+                'Service-Worker-Allowed': '/',
             },
         });
     })

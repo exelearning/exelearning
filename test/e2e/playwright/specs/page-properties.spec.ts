@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
 
 /**
  * E2E Tests for Page Properties
@@ -11,8 +10,6 @@ import { serverOnly } from '../fixtures/mode.fixture';
  * - editableInPage + titlePage: Shows a different title in the page content
  */
 test.describe('Page Properties', () => {
-    serverOnly(); // Requires server for project creation
-
     test('visibility property should hide page from navigation', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
@@ -295,10 +292,10 @@ test.describe('Page Properties', () => {
         const previewPanel = page.locator('#previewsidenav');
         await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
+        const iframe = page.frameLocator('#preview-iframe');
+
         // Wait for SW to serve content
         await page.waitForTimeout(2000);
-
-        const iframe = page.frameLocator('#preview-iframe');
 
         // Wait for preview to load - multi-page HTML served by Service Worker
         // Use waitForFunction for more robust checking across frame boundary

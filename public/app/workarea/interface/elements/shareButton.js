@@ -65,16 +65,25 @@ export default class ShareProjectButton {
      * Called when a project is loaded to show the correct visibility state
      */
     async loadVisibilityFromProject() {
-        const projectId = eXeLearning.app.project?.odeId;
+        const app = eXeLearning.app;
+
+        // In static mode, sharing is not available - use private visibility
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            this.updateVisibilityPill('private');
+            return;
+        }
+
+        const projectId = app.project?.odeId;
         if (!projectId) {
             // No project loaded, use default from config
-            const defaultVisibility = eXeLearning.app.params?.defaultProjectVisibility || 'private';
+            const defaultVisibility = app.params?.defaultProjectVisibility || 'private';
             this.updateVisibilityPill(defaultVisibility);
             return;
         }
 
         try {
-            const response = await eXeLearning.app.api.getProject(projectId);
+            const response = await app.api.getProject(projectId);
             // Response format: { responseMessage: 'OK', project: { visibility: '...' } }
             if (response?.responseMessage === 'OK' && response.project?.visibility) {
                 this.updateVisibilityPill(response.project.visibility);

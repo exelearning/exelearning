@@ -22,6 +22,13 @@ describe('IdeviceList', () => {
     // Mock translation function
     window._ = vi.fn((text) => text);
 
+    // Mock dataProvider
+    const mockDataProvider = {
+      getInstalledIdevices: vi.fn().mockResolvedValue({
+        idevices: [],
+      }),
+    };
+
     // Mock manager
     mockManager = {
       symfonyURL: 'http://localhost:8080',
@@ -34,6 +41,7 @@ describe('IdeviceList', () => {
             },
           },
         },
+        dataProvider: mockDataProvider,
         project: {
           idevices: {
             loadScriptDynamically: vi.fn(),
@@ -64,7 +72,7 @@ describe('IdeviceList', () => {
 
   describe('load', () => {
     it('calls loadIdevicesInstalled', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue({
         idevices: [],
       });
 
@@ -79,7 +87,7 @@ describe('IdeviceList', () => {
 
   describe('loadIdevicesInstalled', () => {
     it('populates installed from API response', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue({
         idevices: [
           {
             name: 'text',
@@ -111,7 +119,7 @@ describe('IdeviceList', () => {
     });
 
     it('handles empty API response', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue({
         idevices: [],
       });
 
@@ -122,7 +130,7 @@ describe('IdeviceList', () => {
     });
 
     it('handles null API response', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue(null);
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue(null);
 
       const list = new IdeviceList(mockManager);
       await list.loadIdevicesInstalled();
@@ -131,7 +139,7 @@ describe('IdeviceList', () => {
     });
 
     it('handles API response without idevices property', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({});
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue({});
 
       const list = new IdeviceList(mockManager);
       await list.loadIdevicesInstalled();
@@ -140,7 +148,7 @@ describe('IdeviceList', () => {
     });
 
     it('creates Idevice instances with correct data', async () => {
-      mockManager.app.api.getIdevicesInstalled.mockResolvedValue({
+      mockManager.app.dataProvider.getInstalledIdevices.mockResolvedValue({
         idevices: [
           {
             name: 'test-idevice',

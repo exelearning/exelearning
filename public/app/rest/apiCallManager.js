@@ -8,6 +8,25 @@ export default class ApiCallManager {
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
+        this.adapters = null;
+    }
+
+    /**
+     * Set adapters for the API call manager
+     * Used by the hexagonal architecture adapter pattern
+     * @param {Object} adapters - Map of adapter instances
+     */
+    setAdapters(adapters) {
+        this.adapters = adapters;
+    }
+
+    /**
+     * Get an adapter by name
+     * @param {string} name - Adapter name
+     * @returns {Object|null} The adapter or null
+     */
+    getAdapter(name) {
+        return this.adapters?.[name] || null;
     }
 
     /**
@@ -64,9 +83,9 @@ export default class ApiCallManager {
      */
     async getThirdPartyCodeText() {
         // Use basePath + version for proper cache busting
-        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README)
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README.md)
         const version = eXeLearning?.version || 'v1.0.0';
-        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README.md';
         return await this.func.getText(url);
     }
 
@@ -645,6 +664,12 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} - { responseMessage, links, totalLinks }
      */
     async extractLinksForValidation(params) {
+        // Use adapter if available (supports static mode)
+        const adapter = this.getAdapter('linkValidation');
+        if (adapter) {
+            return adapter.extractLinks(params);
+        }
+        // Fallback to direct API call (server mode)
         const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/extract`;
         return await this.func.postJson(url, params);
     }
@@ -652,9 +677,15 @@ export default class ApiCallManager {
     /**
      * Get the URL for the link validation stream endpoint
      *
-     * @returns {string}
+     * @returns {string|null}
      */
     getLinkValidationStreamUrl() {
+        // Use adapter if available (supports static mode)
+        const adapter = this.getAdapter('linkValidation');
+        if (adapter) {
+            return adapter.getValidationStreamUrl();
+        }
+        // Fallback to direct URL (server mode)
         return `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/validate-stream`;
     }
 
@@ -717,13 +748,149 @@ export default class ApiCallManager {
 
     /**
      * Get ode used files
+     * In static mode, extracts from Yjs document
      *
      * @param {*} params
      * @returns
      */
     async getOdeSessionUsedFiles(params) {
+        // Use Yjs-based implementation in static mode
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            return this._getUsedFilesFromYjs();
+        }
+        // Server mode: use API
         let url = this.endpoints.api_odes_session_get_used_files.path;
         return await this.func.postJson(url, params);
+    }
+
+    /**
+     * Extract used files from Yjs document by scanning all content.
+     * @private
+     * @returns {Promise<{responseMessage: string, usedFiles: Array}>}
+     */
+    async _getUsedFilesFromYjs() {
+        const projectManager = this.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+        const assetManager = bridge?.assetManager;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _getUsedFilesFromYjs: No structureBinding available');
+            return { responseMessage: 'OK', usedFiles: [] };
+        }
+
+        const usedFiles = [];
+        const seenAssets = new Set();
+        const assetUsageMap = new Map();
+        const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
+
+        // Scan all content to find where each asset is used
+        const pages = structureBinding.getPages() || [];
+
+        for (const page of pages) {
+            const pageId = page.id;
+            const pageName = page.pageName || 'Page';
+            const blocks = structureBinding.getBlocks(pageId) || [];
+
+            for (const block of blocks) {
+                const blockName = block.blockName || '';
+                const components = structureBinding.getComponents(pageId, block.id) || [];
+
+                for (const component of components) {
+                    const ideviceType = component.ideviceType || '';
+                    const order = component.order || 0;
+
+                    let rawHtmlContent = '';
+                    let rawJsonProperties = '';
+
+                    if (component._ymap) {
+                        const rawHtml = component._ymap.get('htmlContent');
+                        if (rawHtml && typeof rawHtml.toString === 'function') {
+                            rawHtmlContent = rawHtml.toString();
+                        } else if (typeof rawHtml === 'string') {
+                            rawHtmlContent = rawHtml;
+                        }
+                        if (!rawHtmlContent) {
+                            const htmlView = component._ymap.get('htmlView');
+                            if (typeof htmlView === 'string') {
+                                rawHtmlContent = htmlView;
+                            }
+                        }
+                        const jsonProps = component._ymap.get('jsonProperties');
+                        if (typeof jsonProps === 'string') {
+                            rawJsonProperties = jsonProps;
+                        }
+                    }
+
+                    const contentToScan = rawHtmlContent + ' ' + rawJsonProperties;
+
+                    let match;
+                    while ((match = assetRegex.exec(contentToScan)) !== null) {
+                        const assetId = match[1];
+                        if (!assetUsageMap.has(assetId)) {
+                            assetUsageMap.set(assetId, {
+                                pageName,
+                                blockName,
+                                ideviceType: ideviceType.replace('Idevice', ''),
+                                order,
+                            });
+                        }
+                    }
+                    assetRegex.lastIndex = 0;
+                }
+            }
+        }
+
+        // Get all assets from AssetManager
+        if (assetManager) {
+            try {
+                const allAssets = assetManager.getAllAssetsMetadata?.() || [];
+
+                for (const asset of allAssets) {
+                    const assetId = asset.id || asset.uuid;
+                    if (!assetId) continue;
+
+                    const assetUrl = `asset://${assetId}`;
+                    if (seenAssets.has(assetUrl)) continue;
+                    seenAssets.add(assetUrl);
+
+                    const fileName = asset.name || asset.filename || assetId.substring(0, 8) + '...';
+                    const fileSize = asset.size ? this._formatFileSize(asset.size) : '';
+                    const usage = assetUsageMap.get(assetId);
+
+                    usedFiles.push({
+                        usedFiles: fileName,
+                        usedFilesPath: assetUrl,
+                        usedFilesSize: fileSize,
+                        pageNamesUsedFiles: usage?.pageName || '-',
+                        blockNamesUsedFiles: usage?.blockName || '-',
+                        typeComponentSyncUsedFiles: usage?.ideviceType || '-',
+                        orderComponentSyncUsedFiles: usage?.order || 0,
+                    });
+                }
+            } catch (e) {
+                console.debug('[apiCallManager] Could not get assets from AssetManager:', e);
+            }
+        }
+
+        return { responseMessage: 'OK', usedFiles };
+    }
+
+    /**
+     * Format file size in human-readable format.
+     * @private
+     */
+    _formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let unitIndex = 0;
+        let size = bytes;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`;
     }
 
     /**

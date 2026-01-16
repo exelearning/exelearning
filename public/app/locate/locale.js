@@ -28,7 +28,9 @@ export default class Locale {
     }
 
     async loadContentTranslationsStrings(lang) {
-        this.c_strings = await this.app.api.getTranslations(lang);
+        // Use DataProvider which handles both static and server modes
+        const result = await this.app.dataProvider.getTranslations(lang);
+        this.c_strings = result?.translations || result || {};
     }
 
     /**
@@ -41,10 +43,12 @@ export default class Locale {
     }
 
     /**
-     *
+     * Load translation strings from DataProvider (works in both static and server mode)
      */
     async loadTranslationsStrings() {
-        this.strings = await this.app.api.getTranslations(this.lang);
+        // Use DataProvider which handles both static and server modes
+        const result = await this.app.dataProvider.getTranslations(this.lang);
+        this.strings = result?.translations || result || {};
         // Re-translate static UI elements (menus, modals, buttons)
         this.translateStaticUI();
     }
@@ -72,7 +76,7 @@ export default class Locale {
             '#navbar-button-download-project': 'eXeLearning content (.elpx)',
             '#navbar-button-export-html5': 'Website',
             '#navbar-button-export-html5-sp': 'Single page',
-            '#navbar-button-settings': 'Settings',
+            '#navbar-button-settings': 'Project Properties',
             '#navbar-button-share': 'Share',
             '#navbar-button-open-offline': 'Open',
             '#navbar-button-save-offline': 'Save',

@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -244,7 +244,6 @@ test.describe('UDL Content iDevice', () => {
         });
 
         test('should save and persist UDL content after reload', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 

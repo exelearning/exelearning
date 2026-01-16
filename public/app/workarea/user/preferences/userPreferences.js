@@ -17,10 +17,48 @@ export default class UserPreferences {
      *
      */
     async load() {
-        this.preferences = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.userPreferencesConfig)
-        );
-        await this.apiLoadPreferences();
+        const app = eXeLearning.app;
+        const isStaticMode = app.capabilities?.storage?.remote === false;
+
+        // Get preferences config - try multiple sources
+        let preferencesConfig = null;
+
+        if (isStaticMode) {
+            // Static mode: get from DataProvider or bundled data
+            const apiParams = await app.dataProvider?.getApiParameters();
+            preferencesConfig = apiParams?.userPreferencesConfig;
+
+            // Fallback to adapter's default preferences if not in params
+            if (!preferencesConfig) {
+                const userPrefsAdapter = app.api?.getAdapter?.('userPreferences');
+                if (userPrefsAdapter?._getDefaultPreferences) {
+                    preferencesConfig = userPrefsAdapter._getDefaultPreferences();
+                }
+            }
+        } else {
+            // Server mode: use api.parameters (loaded earlier)
+            preferencesConfig = app.api?.parameters?.userPreferencesConfig;
+        }
+
+        // Final fallback to minimal defaults
+        // Note: advancedMode defaults to 'true' in static mode so all features are visible
+        if (!preferencesConfig) {
+            preferencesConfig = {
+                locale: { title: 'Language', value: 'en', type: 'select' },
+                advancedMode: { title: 'Advanced Mode', value: isStaticMode ? 'true' : 'false', type: 'checkbox' },
+                versionControl: { title: 'Version Control', value: 'false', type: 'checkbox' },
+            };
+        }
+
+        this.preferences = JSON.parse(JSON.stringify(preferencesConfig));
+
+        // Load user's saved preferences (only if server available)
+        if (!isStaticMode) {
+            await this.apiLoadPreferences();
+        } else {
+            // Static mode: load from localStorage via adapter
+            await this.loadStaticPreferences();
+        }
     }
 
     /**
@@ -58,7 +96,7 @@ export default class UserPreferences {
     }
 
     /**
-     * Get user preferences
+     * Get user preferences from server
      *
      */
     async apiLoadPreferences() {
@@ -72,6 +110,38 @@ export default class UserPreferences {
     }
 
     /**
+     * Load user preferences in static mode (from localStorage via adapter)
+     *
+     */
+    async loadStaticPreferences() {
+        const userPrefsAdapter = eXeLearning.app?.api?.getAdapter?.('userPreferences');
+        if (!userPrefsAdapter) {
+            // No adapter, use defaults from this.preferences
+            return;
+        }
+
+        try {
+            const result = await userPrefsAdapter.getPreferences();
+            if (result?.userPreferences) {
+                this.setPreferences(result.userPreferences);
+            }
+
+            // Apply preferences to UI
+            if (this.preferences.advancedMode) {
+                this.manager.reloadMode(this.preferences.advancedMode.value);
+            }
+            if (this.preferences.versionControl) {
+                this.manager.reloadVersionControl(this.preferences.versionControl.value);
+            }
+            if (this.preferences.locale) {
+                this.manager.reloadLang(this.preferences.locale.value);
+            }
+        } catch (error) {
+            console.warn('[UserPreferences] Error loading static preferences:', error);
+        }
+    }
+
+    /**
      * Save user preferences
      *
      */
@@ -80,13 +150,25 @@ export default class UserPreferences {
         for (let [key, value] of Object.entries(preferences)) {
             this.preferences[key].value = value;
         }
+
         // Generate params array
         let params = {};
         for (let [key, value] of Object.entries(preferences)) {
             params[key] = value;
         }
-        // Save in database/localStorage
-        await eXeLearning.app.api.putSaveUserPreferences(params);
+
+        // Save based on mode
+        const isStaticMode = eXeLearning.app.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            // Static mode: save via adapter (localStorage)
+            const userPrefsAdapter = eXeLearning.app?.api?.getAdapter?.('userPreferences');
+            if (userPrefsAdapter) {
+                await userPrefsAdapter.savePreferences(params);
+            }
+        } else {
+            // Server mode: save via API
+            await eXeLearning.app.api.putSaveUserPreferences(params);
+        }
 
         // Update interface advanced class
         if (preferences.advancedMode)

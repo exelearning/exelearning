@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -370,7 +370,6 @@ test.describe('A-Z Quiz Game iDevice', () => {
         });
 
         test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
@@ -445,14 +444,6 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 
-            // Capture console messages for debugging SW issues
-            const consoleLogs: string[] = [];
-            page.on('console', msg => {
-                if (msg.text().includes('[Preview SW]') || msg.text().includes('Service Worker')) {
-                    consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
-                }
-            });
-
             const projectUuid = await createProject(page, 'AZ Quiz Preview Test');
             await navigateToProject(page, projectUuid);
             await page.waitForLoadState('networkidle');
@@ -484,15 +475,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
 
-            // Wait for page to load with error logging
-            try {
-                await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
-            } catch (error) {
-                console.log('--- SW Console Logs ---');
-                consoleLogs.forEach(log => console.log(log));
-                console.log('--- End SW Console Logs ---');
-                throw error;
-            }
+            // Wait for page to load
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify rosco elements are present
             await verifyRoscoInPreview(iframe);

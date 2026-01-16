@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db: [sqlite, postgres, mariadb]
+        db: [sqlite, postgres, mariadb, static]
 
     steps:
       - name: Checkout repository

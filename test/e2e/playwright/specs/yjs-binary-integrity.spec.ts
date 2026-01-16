@@ -9,7 +9,7 @@
  * reloads, and verifies all data matches exactly.
  */
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -243,8 +243,6 @@ async function waitForAppReady(page: Page): Promise<void> {
 }
 
 test.describe('Yjs Binary Data Integrity', () => {
-    serverOnly(); // Requires server for save/reload operations
-
     test('should preserve all document data after save and reload', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 

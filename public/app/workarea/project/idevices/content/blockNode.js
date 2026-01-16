@@ -15,9 +15,11 @@ const Logger = window.AppLogger || console;
 export default class IdeviceBlockNode {
     constructor(parent, data) {
         this.engine = parent;
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         this.id = data.id
             ? data.id
-            : eXeLearning.app.api.parameters.generateNewItemKey;
+            : (eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey());
         // Use Yjs-style IDs when Yjs is enabled for consistency with Yjs structure
         const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
         this.blockId = data.blockId
@@ -52,12 +54,17 @@ export default class IdeviceBlockNode {
 
     /**
      * Idevice properties
+     * In static mode, get from DataProvider cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? (app?.dataProvider?.staticData?.parameters?.odePagStructureSyncPropertiesConfig ||
+               app?.dataProvider?.cache?.parameters?.odePagStructureSyncPropertiesConfig)
+            : app?.api?.parameters?.odePagStructureSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params

@@ -1512,7 +1512,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalAutosave(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip autosave in static mode - no server to save to
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -1521,7 +1525,7 @@ export default class projectManager {
             };
             this.intervalSaveOde = setInterval(() => {
                 this.app.api.postOdeAutosave(data);
-            }, this.app.api.parameters.autosaveIntervalTime * 1000);
+            }, (this.app.api?.parameters?.autosaveIntervalTime || 60) * 1000);
         }
     }
 
@@ -1530,7 +1534,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalSessionExpiration(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip session expiration in static mode - no server sessions
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -2393,6 +2401,10 @@ export default class projectManager {
      *
      */
     async cleanPreviousAutosaves() {
+        // Skip in static mode - no server autosaves to clean
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
         let params = { odeSessionId: this.odeSession };
         await this.app.api.postCleanAutosavesByUser(params);
     }

@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -76,8 +76,6 @@ async function importElpFixture(page: Page, fixtureName: string): Promise<void> 
 }
 
 test.describe('LaTeX Rendering', () => {
-    serverOnly(); // Requires server for ELP import operations
-
     test.describe('Editor View', () => {
         test('should render LaTeX content from fixture in editor', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

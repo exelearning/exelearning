@@ -16,14 +16,15 @@ export default class ThemeList {
     }
 
     /**
-     * Load themes from api
+     * Load themes from DataProvider (works in both static and server modes)
      *
      * @returns {Array}
      */
     async loadThemesInstalled() {
         this.installed = {};
+        // Use DataProvider which handles both static and server modes
         let installedThemesJSON =
-            await this.manager.app.api.getThemesInstalled();
+            await this.manager.app.dataProvider.getInstalledThemes();
         if (installedThemesJSON && installedThemesJSON.themes) {
             installedThemesJSON.themes.forEach((themeData) => {
                 this.loadTheme(themeData);
@@ -34,14 +35,15 @@ export default class ThemeList {
     }
 
     /**
-     * Load theme from api
+     * Load specific theme from DataProvider
      *
      * @param {*} themeId
      * @returns {Array}
      */
     async loadThemeInstalled(themeId) {
+        // Use DataProvider which handles both static and server modes
         let installedThemesJSON =
-            await this.manager.app.api.getThemesInstalled();
+            await this.manager.app.dataProvider.getInstalledThemes();
         if (installedThemesJSON && installedThemesJSON.themes) {
             installedThemesJSON.themes.forEach((themeData) => {
                 if (themeId) {

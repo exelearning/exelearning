@@ -7,13 +7,19 @@ export default class NavbarFile {
         this.button = this.menu.navbar.querySelector('#dropdownStyles');
         this.menuButton = this.menu.navbar.querySelector('#navbar-button-styles');
         this.readers = [];
+
+        // Get theme config from appropriate source (static mode vs server mode)
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const configSource = isStaticMode
+            ? (app?.dataProvider?.staticData?.parameters || app?.dataProvider?.cache?.parameters)
+            : app?.api?.parameters;
+
         this.paramsInfo = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
+            JSON.stringify(configSource?.themeInfoFieldsConfig || {})
         );
         this.paramsEdit = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.themeEditionFieldsConfig
-            )
+            JSON.stringify(configSource?.themeEditionFieldsConfig || {})
         );
         this.updateThemes();
         const exeStylesTab = document.querySelector('#exestylescontent-tab');

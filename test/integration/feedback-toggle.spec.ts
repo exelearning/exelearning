@@ -15,6 +15,7 @@ import type {
     ExportPage,
     ResourceProvider,
     AssetProvider,
+    ZipProvider,
 } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 
@@ -79,32 +80,43 @@ const createMockDocumentWithFeedback = (): ExportDocument => ({
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () => new Map(),
-    fetchIdeviceResources: async () => new Map(),
-    fetchBaseLibraries: async () => new Map(),
-    fetchScormFiles: async () => new Map(),
+    fetchTheme: async () =>
+        new Map([
+            ['style.css', Buffer.from('/* test css */')],
+            ['style.js', Buffer.from('/* test js */')],
+        ]),
     fetchLibraryFiles: async () => new Map(),
-    fetchLibraryDirectory: async () => new Map(),
-    fetchSchemas: async () => new Map(),
-    fetchContentCss: async () => new Map(),
-    normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
+    fetchExeLogo: async () => Buffer.from('logo'),
+    fetchIdeviceFiles: async () => new Map(),
 });
 
 // Mock asset provider
 const createMockAssetProvider = (): AssetProvider => ({
     getAsset: async () => null,
-    hasAsset: async () => false,
-    listAssets: async () => [],
     getAllAssets: async () => [],
+    getProjectAssets: async () => [],
 });
 
-// Helper to get HTML content from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
-    const content = files.get(filename);
-    if (!content) return '';
-    if (typeof content === 'string') return content;
-    return new TextDecoder().decode(content);
-};
+// Create zip provider
+const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
+
+// Helper function to generate preview HTML using Html5Exporter
+async function generatePreviewHtml(document: ExportDocument): Promise<string> {
+    const resources = createMockResourceProvider();
+    const assets = createMockAssetProvider();
+    const zip = createMockZipProvider();
+
+    const exporter = new Html5Exporter(document, resources, assets, zip);
+    const files = await exporter.generateForPreview();
+
+    const indexHtml = files.get('index.html');
+    if (!indexHtml) {
+        throw new Error('No index.html generated');
+    }
+
+    return new TextDecoder().decode(indexHtml);
+}
 
 describe('Feedback Toggle Integration', () => {
     beforeAll(() => {
@@ -159,35 +171,18 @@ describe('Feedback Toggle Integration', () => {
         });
     });
 
-    describe('HTML5 Export', () => {
-        it('should include js-hidden CSS rules in export', async () => {
+    describe('Website Preview', () => {
+        it('should include CSS files for js-hidden rules', async () => {
             const document = createMockDocumentWithFeedback();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
+            const html = await generatePreviewHtml(document);
 
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-            expect(html.length).toBeGreaterThan(0);
-
-            // Export must include inline CSS for js-hidden (from base_estilos.css)
-            // These CSS rules come from the theme, check for the idevice structure
-            expect(html).toContain('feedbacktooglebutton');
+            // CSS rules are now in external files, verify links are present
+            expect(html).toContain('href="content/css/base.css"');
         });
 
-        it('should include data-idevice-component-type="json" for text idevice in export', async () => {
+        it('should include data-idevice-component-type="json" for text idevice in preview', async () => {
             const document = createMockDocumentWithFeedback();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-            expect(html.length).toBeGreaterThan(0);
+            const html = await generatePreviewHtml(document);
 
             // Verify the text idevice has the component-type attribute
             expect(html).toContain('data-idevice-component-type="json"');
@@ -196,33 +191,17 @@ describe('Feedback Toggle Integration', () => {
 
         it('should add js class to body for CSS selectors to work', async () => {
             const document = createMockDocumentWithFeedback();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
+            const html = await generatePreviewHtml(document);
 
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-            expect(html.length).toBeGreaterThan(0);
-
-            // The export adds 'js' class to body via inline script
+            // The preview adds 'js' class to body via inline script
             expect(html).toContain('document.body.className+=" js"');
         });
 
         it('should preserve feedback structure in rendered content', async () => {
             const document = createMockDocumentWithFeedback();
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
+            const html = await generatePreviewHtml(document);
 
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-            expect(html.length).toBeGreaterThan(0);
-
-            // Verify feedback elements are present in export
+            // Verify feedback elements are present in preview
             expect(html).toContain('feedbacktooglebutton');
             expect(html).toContain('feedback-button');
             expect(html).toContain('js-feedback');

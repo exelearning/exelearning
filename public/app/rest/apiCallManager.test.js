@@ -95,7 +95,7 @@ describe('ApiCallManager', () => {
       await apiManager.getLicensesList();
 
       expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/exelearning/v9.9.9/libs/README'
+        'http://localhost/exelearning/v9.9.9/libs/README.md'
       );
       expect(mockFunc.getText).toHaveBeenCalledWith(
         'http://localhost/exelearning/v9.9.9/libs/LICENSES'

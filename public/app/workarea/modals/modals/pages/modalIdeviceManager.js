@@ -127,10 +127,14 @@ export default class ModalIdeviceManager extends Modal {
         // Set title
         this.titleDefault = _('iDevice manager');
         // Parameters of a idevice that we will show in the information
+        // Get config from appropriate source (static mode vs server mode)
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const configSource = isStaticMode
+            ? (app?.dataProvider?.staticData?.parameters || app?.dataProvider?.cache?.parameters)
+            : app?.api?.parameters;
         this.paramsInfo = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.ideviceInfoFieldsConfig
-            )
+            JSON.stringify(configSource?.ideviceInfoFieldsConfig || {})
         );
         // Installed idevices
         if (idevices) this.idevices = idevices;

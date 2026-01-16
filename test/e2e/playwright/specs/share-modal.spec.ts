@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { ShareModalPage } from '../pages/share-modal.page';
 
 /**
@@ -8,7 +8,6 @@ import { ShareModalPage } from '../pages/share-modal.page';
  * Note: These tests require server API for sharing functionality and are skipped in static mode.
  */
 test.describe('Share Modal', () => {
-    serverOnly(); // Skip in static mode - requires server API
     let shareModal: ShareModalPage;
 
     test.beforeEach(async ({ authenticatedPage }) => {

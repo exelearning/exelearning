@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/collaboration.fixture';
-import { serverOnly } from '../../fixtures/mode.fixture';
+
 import { waitForYjsSync } from '../../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
@@ -172,8 +172,6 @@ async function waitForYjsBridge(page: Page): Promise<void> {
 }
 
 test.describe('Collaborative File Manager', () => {
-    serverOnly(); // Skip in static mode - requires WebSocket
-
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
 

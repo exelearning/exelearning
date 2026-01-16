@@ -26,7 +26,23 @@ export default class ModalReleaseNotes extends Modal {
      *
      */
     async load() {
-        let contents = await eXeLearning.app.api.getChangelogText();
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+
+        let contents;
+        if (isStaticMode) {
+            // In static mode, load CHANGELOG.md from relative path
+            const basePath = app?.config?.basePath || '';
+            try {
+                const response = await fetch(`${basePath}/CHANGELOG.md`);
+                contents = response.ok ? await response.text() : _('Changelog not available');
+            } catch (e) {
+                contents = _('Changelog not available');
+            }
+        } else {
+            contents = await app.api.getChangelogText();
+        }
+
         let viewer = this.modalElementBody.querySelector(
             '.body-release .changelog-content'
         );

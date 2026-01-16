@@ -1,5 +1,5 @@
 import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-import { isStaticMode } from '../../fixtures/mode.fixture';
+
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -312,7 +312,6 @@ test.describe('DigCompEdu iDevice', () => {
         });
 
         test('should save iDevice and persist selection', async ({ authenticatedPage, createProject }) => {
-            test.skip(isStaticMode(), 'Persistence requires server');
             const page = authenticatedPage;
             const workarea = new WorkareaPage(page);
 

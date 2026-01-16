@@ -576,6 +576,7 @@ function generateModalsHtml(): string {
         'pages/templateselection.njk',
         'pages/modalShare.njk',
         'pages/printpreview.njk',
+        'pages/imageoptimizer.njk',
     ];
 
     let modalsHtml = '';
@@ -813,6 +814,21 @@ function buildApiParameters(): ApiParameters {
                     help: 'Always include the MathJax library for mathematical formulas.',
                     value: 'false',
                     type: 'checkbox',
+                    category: 'properties',
+                    groups: { export: GROUPS_TITLE.export },
+                },
+                pp_globalFont: {
+                    title: 'Global font',
+                    help: 'Select a font to use throughout the content.',
+                    value: 'default',
+                    type: 'select',
+                    options: {
+                        default: 'Theme default',
+                        opendyslexic: 'OpenDyslexic',
+                        andika: 'Andika',
+                        nunito: 'Nunito',
+                        'playwrite-es': 'Playwrite ES',
+                    },
                     category: 'properties',
                     groups: { export: GROUPS_TITLE.export },
                 },
@@ -1677,6 +1693,13 @@ async function buildStaticBundle() {
     if (fs.existsSync(changelogMd)) {
         fs.copyFileSync(changelogMd, path.join(outputDir, 'CHANGELOG.md'));
         console.log('  Copied CHANGELOG.md');
+    }
+
+    // Copy preview-sw.js (Service Worker for preview panel)
+    const previewSwJs = path.join(projectRoot, 'public/preview-sw.js');
+    if (fs.existsSync(previewSwJs)) {
+        fs.copyFileSync(previewSwJs, path.join(outputDir, 'preview-sw.js'));
+        console.log('  Copied preview-sw.js');
     }
 
     console.log('\n' + '='.repeat(60));

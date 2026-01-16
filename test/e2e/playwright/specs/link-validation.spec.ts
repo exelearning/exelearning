@@ -6,7 +6,6 @@
  */
 
 import { test, expect, Page } from '@playwright/test';
-import { serverOnly } from '../fixtures/mode.fixture';
 
 /**
  * Helper to add a text iDevice to the current page
@@ -82,8 +81,6 @@ async function waitForWorkarea(page: Page): Promise<void> {
 }
 
 test.describe('Link Validation', () => {
-    serverOnly(); // Requires server for link validation API
-
     test.beforeEach(async ({ page }) => {
         // Login
         await page.goto('/login');

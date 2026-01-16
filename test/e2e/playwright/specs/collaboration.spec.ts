@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/collaboration.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
@@ -13,7 +13,6 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
  */
 
 test.describe('Real-Time Collaboration', () => {
-    serverOnly(); // Skip in static mode - requires WebSocket
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(120000); // 2 minutes per test
 

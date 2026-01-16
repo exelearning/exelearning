@@ -1,5 +1,5 @@
-import { test, expect, Page } from '../fixtures/auth.fixture';
-import { serverOnly } from '../fixtures/mode.fixture';
+import { test, expect, navigateToProject, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import type { Page } from '@playwright/test';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -31,17 +31,14 @@ async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> 
 }
 
 test.describe('Preview Page Updates', () => {
-    serverOnly(); // Requires server for project creation
-
     test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Preview Title Update Test');
 
-        // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        // Navigate to the project workarea (handles static vs server mode)
+        await navigateToProject(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
         await page.waitForFunction(
@@ -52,11 +49,7 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         // Get the first page info from Yjs
         const pageInfo = await page.evaluate(() => {
@@ -116,9 +109,8 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Title Fields Test');
 
-        // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        // Navigate to the project workarea (handles static vs server mode)
+        await navigateToProject(page, projectUuid);
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -129,11 +121,7 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         // Get first page ID
         const pageId = await page.evaluate(() => {
@@ -205,9 +193,8 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Page Order Test');
 
-        // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        // Navigate to the project workarea (handles static vs server mode)
+        await navigateToProject(page, projectUuid);
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -218,11 +205,7 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         // Create multiple pages via Yjs using addPage (correct method)
         const pageNames = ['First Page', 'Second Page', 'Third Page'];
@@ -280,9 +263,8 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Page Movement Test');
 
-        // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        // Navigate to the project workarea (handles static vs server mode)
+        await navigateToProject(page, projectUuid);
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -293,11 +275,7 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         // Create pages A, B, C using correct method
         const pageIds = await page.evaluate(() => {

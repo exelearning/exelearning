@@ -30,8 +30,18 @@ export default class modalOpenUserOdeFiles extends Modal {
     /**
      * Load upload limits from server
      * This is cached to avoid repeated API calls
+     * In static mode, uses default limits (no backend API)
      */
     async loadUploadLimits() {
+        // Skip API call in static mode
+        if (eXeLearning.app?.capabilities?.storage?.remote === false) {
+            this.uploadLimits = {
+                maxFileSize: 100 * 1024 * 1024, // 100MB default
+                maxFileSizeFormatted: '100 MB',
+            };
+            return;
+        }
+
         try {
             this.uploadLimits = await eXeLearning.app.api.getUploadLimits();
         } catch (error) {

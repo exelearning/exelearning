@@ -5,9 +5,10 @@ describe('UserPreferences', () => {
   let mockManager;
 
   beforeEach(() => {
-    // Mock global eXeLearning
+    // Mock global eXeLearning for server mode (default)
     globalThis.eXeLearning = {
       app: {
+        capabilities: { storage: { remote: true } }, // Server mode
         api: {
           parameters: {
             userPreferencesConfig: {
@@ -23,12 +24,22 @@ describe('UserPreferences', () => {
               locale: { value: 'es' }
             }
           }),
-          putSaveUserPreferences: vi.fn().mockResolvedValue({ responseMessage: 'OK' })
+          putSaveUserPreferences: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+          getAdapter: vi.fn().mockReturnValue(null)
         },
         modals: {
           properties: {
             show: vi.fn()
           }
+        },
+        dataProvider: {
+          getApiParameters: vi.fn().mockResolvedValue({
+            userPreferencesConfig: {
+              advancedMode: { value: 'false' },
+              versionControl: { value: 'true' },
+              locale: { value: 'en' }
+            }
+          })
         }
       }
     };
@@ -51,14 +62,57 @@ describe('UserPreferences', () => {
     delete globalThis._;
   });
 
-  describe('load', () => {
+  describe('load (server mode)', () => {
     it('should load initial config and fetch api preferences', async () => {
       await userPreferences.load();
-      
+
       expect(userPreferences.preferences).toBeDefined();
       expect(mockManager.reloadMode).toHaveBeenCalledWith('true');
       expect(mockManager.reloadVersionControl).toHaveBeenCalledWith('false');
       expect(mockManager.reloadLang).toHaveBeenCalledWith('es');
+    });
+  });
+
+  describe('load (static mode)', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should load preferences from DataProvider in static mode', async () => {
+      await userPreferences.load();
+
+      expect(globalThis.eXeLearning.app.dataProvider.getApiParameters).toHaveBeenCalled();
+      expect(userPreferences.preferences).toBeDefined();
+      expect(userPreferences.preferences.advancedMode).toBeDefined();
+    });
+
+    it('should use fallback defaults if DataProvider has no config', async () => {
+      globalThis.eXeLearning.app.dataProvider.getApiParameters.mockResolvedValue({});
+
+      await userPreferences.load();
+
+      expect(userPreferences.preferences).toBeDefined();
+      expect(userPreferences.preferences.locale).toEqual({ title: 'Language', value: 'en', type: 'select' });
+    });
+
+    it('should load from adapter if available', async () => {
+      const mockAdapter = {
+        getPreferences: vi.fn().mockResolvedValue({
+          userPreferences: {
+            advancedMode: { value: 'true' },
+            versionControl: { value: 'false' },
+            locale: { value: 'fr' }
+          }
+        })
+      };
+      globalThis.eXeLearning.app.api.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+
+      await userPreferences.load();
+
+      expect(mockAdapter.getPreferences).toHaveBeenCalled();
+      // After setPreferences, the values should be updated
+      expect(userPreferences.preferences.advancedMode.value).toBe('true');
     });
   });
 
@@ -91,13 +145,13 @@ describe('UserPreferences', () => {
     });
   });
 
-  describe('apiSaveProperties', () => {
+  describe('apiSaveProperties (server mode)', () => {
     it('should update local preferences and call api.putSaveUserPreferences', async () => {
       userPreferences.preferences = {
         advancedMode: { value: 'false' },
         locale: { value: 'en' }
       };
-      
+
       // Mock window.location.reload
       const originalLocation = window.location;
       delete window.location;
@@ -107,7 +161,7 @@ describe('UserPreferences', () => {
         advancedMode: 'true',
         locale: 'fr'
       });
-      
+
       expect(userPreferences.preferences.advancedMode.value).toBe('true');
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
         advancedMode: 'true',
@@ -118,6 +172,46 @@ describe('UserPreferences', () => {
       expect(window.location.reload).toHaveBeenCalled();
 
       window.location = originalLocation;
+    });
+  });
+
+  describe('apiSaveProperties (static mode)', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should save preferences via adapter in static mode', async () => {
+      const mockAdapter = {
+        savePreferences: vi.fn().mockResolvedValue({ success: true })
+      };
+      globalThis.eXeLearning.app.api.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+
+      userPreferences.preferences = {
+        advancedMode: { value: 'false' },
+        versionControl: { value: 'true' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        advancedMode: 'true'
+      });
+
+      expect(mockAdapter.savePreferences).toHaveBeenCalledWith({
+        advancedMode: 'true'
+      });
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('should not call server API in static mode', async () => {
+      userPreferences.preferences = {
+        advancedMode: { value: 'false' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        advancedMode: 'true'
+      });
+
+      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
     });
   });
 });
