@@ -451,3 +451,104 @@ describe('ExeImage Plugin - TinyMCE Editor Direct Update', () => {
     expect(result).toBe(false);
   });
 });
+
+describe('ExeImage Plugin - mceUpdateImage Bookmark Restoration', () => {
+  // Simulates the mceUpdateImage handler with bookmark restoration
+  function simulateMceUpdateImageHandler(editor, bm, insertOrUpdateImageFn) {
+    // TinyMCE's command dispatch can lose selection, so restore bookmark if available
+    if (bm) {
+      editor.selection.moveToBookmark(bm);
+    }
+    editor.undoManager.transact(function () {
+      return insertOrUpdateImageFn(editor);
+    });
+  }
+
+  it('should restore bookmark before calling insertOrUpdateImage when bm exists', () => {
+    let bookmarkRestored = false;
+    let insertCalled = false;
+    let restoreCalledBeforeInsert = false;
+
+    const mockEditor = {
+      selection: {
+        moveToBookmark: () => {
+          bookmarkRestored = true;
+        },
+      },
+      undoManager: {
+        transact: (fn) => fn(),
+      },
+    };
+
+    const mockBm = { name: 'IMG', index: 0 };
+
+    simulateMceUpdateImageHandler(mockEditor, mockBm, () => {
+      insertCalled = true;
+      restoreCalledBeforeInsert = bookmarkRestored;
+    });
+
+    expect(bookmarkRestored).toBe(true);
+    expect(insertCalled).toBe(true);
+    expect(restoreCalledBeforeInsert).toBe(true);
+  });
+
+  it('should NOT call moveToBookmark when bm is null/undefined', () => {
+    let moveToBookmarkCalled = false;
+
+    const mockEditor = {
+      selection: {
+        moveToBookmark: () => {
+          moveToBookmarkCalled = true;
+        },
+      },
+      undoManager: {
+        transact: (fn) => fn(),
+      },
+    };
+
+    simulateMceUpdateImageHandler(mockEditor, null, () => {});
+    expect(moveToBookmarkCalled).toBe(false);
+
+    simulateMceUpdateImageHandler(mockEditor, undefined, () => {});
+    expect(moveToBookmarkCalled).toBe(false);
+  });
+
+  it('should still call insertOrUpdateImage even without bookmark', () => {
+    let insertCalled = false;
+
+    const mockEditor = {
+      selection: {
+        moveToBookmark: () => {},
+      },
+      undoManager: {
+        transact: (fn) => fn(),
+      },
+    };
+
+    simulateMceUpdateImageHandler(mockEditor, null, () => {
+      insertCalled = true;
+    });
+
+    expect(insertCalled).toBe(true);
+  });
+
+  it('should wrap insertOrUpdateImage in undoManager.transact', () => {
+    let transactCalled = false;
+
+    const mockEditor = {
+      selection: {
+        moveToBookmark: () => {},
+      },
+      undoManager: {
+        transact: (fn) => {
+          transactCalled = true;
+          fn();
+        },
+      },
+    };
+
+    simulateMceUpdateImageHandler(mockEditor, { name: 'IMG' }, () => {});
+
+    expect(transactCalled).toBe(true);
+  });
+});
