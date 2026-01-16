@@ -74,6 +74,7 @@
         "chmodr": "^2.0.2",
         "concurrently": "^9.2.1",
         "dotenv": "^17.2.3",
+        "electron-context-menu": "^4.1.1",
         "electron-log": "^5.4.3",
         "electron-updater": "^6.6.2",
         "elysia": "^1.4.19",
