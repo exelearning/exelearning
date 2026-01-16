@@ -284,4 +284,77 @@ test.describe('Theme Persistence Across Projects', () => {
         expect(themesLoaded.userThemesCount).toBeGreaterThan(0);
         expect(themesLoaded.userThemes).toContain('test_theme');
     });
+
+    /**
+     * Test that imported theme icons display correctly in icon selection modal
+     * This verifies the fix for GitHub issue #1010 - missing style icons
+     */
+    test('imported theme icons display correctly in icon selection modal', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // Create project
+        const projectUuid = await createProject(page, 'Theme Icons Test');
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await waitForAppReady(page);
+
+        // Upload theme with icons
+        console.log('[Test] Uploading theme with icons...');
+        await uploadTheme(page, 'test-theme-with-icons.zip');
+
+        // Verify theme was uploaded and select it
+        const themeInstalled = await page.evaluate(async () => {
+            const themeList = (window as any).eXeLearning?.app?.themes?.list;
+            const installedThemes = themeList?.installed || {};
+            const userTheme = Object.entries(installedThemes).find(
+                ([_, theme]: [string, any]) => theme?.isUserTheme && theme?.icons,
+            );
+            if (userTheme) {
+                const [name, theme] = userTheme as [string, any];
+                return {
+                    name,
+                    hasIcons: Object.keys(theme.icons || {}).length > 0,
+                    iconCount: Object.keys(theme.icons || {}).length,
+                };
+            }
+            return null;
+        });
+
+        console.log('[Test] Theme installed:', themeInstalled);
+        expect(themeInstalled).toBeDefined();
+        expect(themeInstalled?.hasIcons).toBe(true);
+        expect(themeInstalled?.iconCount).toBeGreaterThan(0);
+
+        // Select the imported theme
+        const themeName = themeInstalled?.name || 'test-theme-with-icons';
+        await page.evaluate(async (name: string) => {
+            await (window as any).eXeLearning?.app?.themes?.selectTheme(name, false, true);
+        }, themeName);
+        await page.waitForTimeout(1000);
+
+        // Verify icons have proper blob URLs after theme selection
+        const iconUrls = await page.evaluate(() => {
+            const icons = (window as any).eXeLearning?.app?.themes?.getThemeIcons() || {};
+            return Object.entries(icons).map(([id, icon]: [string, any]) => ({
+                id,
+                value: icon?.value,
+                hasValue: !!icon?.value,
+                isBlobUrl: icon?.value?.startsWith('blob:') || false,
+            }));
+        });
+
+        console.log('[Test] Icon URLs after theme selection:', iconUrls);
+
+        // All icons should have blob URLs (this is the key assertion for issue #1010)
+        expect(iconUrls.length).toBeGreaterThan(0);
+        for (const icon of iconUrls) {
+            expect(icon.hasValue).toBe(true);
+            expect(icon.value).not.toBe('undefined');
+            expect(icon.isBlobUrl).toBe(true);
+        }
+
+        console.log('[Test] Theme icons test completed successfully - icons have valid blob URLs');
+    });
 });
