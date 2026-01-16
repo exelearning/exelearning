@@ -637,5 +637,4 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         await pressRedo(page);
         expect(await getBlockIconSrc(page, 0)).toBe(iconSrc2);
     });
-
 });

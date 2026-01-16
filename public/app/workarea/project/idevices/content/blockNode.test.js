@@ -165,6 +165,76 @@ describe('IdeviceBlockNode', () => {
             const newBlock = new IdeviceBlockNode(mockEngine, {});
             expect(mockEngine.generateId).toHaveBeenCalled();
         });
+
+        describe('ID assignment in Yjs mode', () => {
+            it('sets this.id equal to this.blockId when Yjs is enabled and no data.id', () => {
+                eXeLearning.app.project._yjsEnabled = true;
+
+                const block = new IdeviceBlockNode(mockEngine, {
+                    blockId: 'block-123',
+                    // No id provided
+                });
+
+                // In Yjs mode, id should equal blockId for consistency
+                expect(block.id).toBe(block.blockId);
+                expect(block.id).toBe('block-123');
+            });
+
+            it('keeps data.id when provided even in Yjs mode', () => {
+                eXeLearning.app.project._yjsEnabled = true;
+
+                const block = new IdeviceBlockNode(mockEngine, {
+                    id: 'custom-id',
+                    blockId: 'block-456',
+                });
+
+                // Should use provided id, not blockId
+                expect(block.id).toBe('custom-id');
+                expect(block.blockId).toBe('block-456');
+            });
+
+            it('generates Yjs-style blockId when Yjs is enabled and no blockId provided', () => {
+                eXeLearning.app.project._yjsEnabled = true;
+
+                const block = new IdeviceBlockNode(mockEngine, {
+                    // No blockId provided
+                });
+
+                // BlockId should be generated with Yjs-style format (block-timestamp-random)
+                expect(block.blockId).toMatch(/^block-\d+-[a-z0-9]+$/);
+                // And id should match blockId since no data.id was provided
+                expect(block.id).toBe(block.blockId);
+            });
+
+            it('uses engine.generateId for blockId when Yjs is not enabled', () => {
+                eXeLearning.app.project._yjsEnabled = false;
+                mockEngine.generateId.mockReturnValue('engine-block-id');
+
+                const block = new IdeviceBlockNode(mockEngine, {
+                    // No blockId provided
+                });
+
+                // BlockId should use engine.generateId
+                expect(block.blockId).toBe('engine-block-id');
+                expect(mockEngine.generateId).toHaveBeenCalled();
+            });
+
+            it('keeps id and blockId independent when Yjs is disabled', () => {
+                eXeLearning.app.project._yjsEnabled = false;
+                mockEngine.generateId.mockReturnValue('engine-block-id');
+
+                const block = new IdeviceBlockNode(mockEngine, {
+                    // No id or blockId provided
+                });
+
+                // id should use the default generated key
+                expect(block.id).toBe('generated-key-123');
+                // blockId should use engine.generateId
+                expect(block.blockId).toBe('engine-block-id');
+                // They should be different
+                expect(block.id).not.toBe(block.blockId);
+            });
+        });
     });
 
     describe('setParams', () => {

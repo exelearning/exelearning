@@ -1106,7 +1106,7 @@ class YjsStructureBinding {
    * @returns {Object|null} - Block data object or null if not found
    */
   getBlock(blockId) {
-    const navigation = this.documentManager.getNavigation();
+    const navigation = this.manager.getNavigation();
     if (!navigation) return null;
 
     for (let i = 0; i < navigation.length; i++) {

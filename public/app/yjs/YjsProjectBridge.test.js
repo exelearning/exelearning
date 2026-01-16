@@ -4530,4 +4530,243 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.announceAssets()).resolves.not.toThrow();
     });
   });
+
+  describe('_syncBlockIcon', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('sets empty SVG icon when iconName is empty string', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is undefined', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, undefined, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is null', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, null, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets icon image when iconName matches theme icon key', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true, // has exe-no-icon class
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('img');
+      expect(mockIconEl.innerHTML).toContain('/icons/info.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by id when key does not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'target-icon', value: '/icons/target.png', title: 'Target' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon id instead of key
+      bridge._syncBlockIcon(mockIconEl, 'target-icon', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/target.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by value when key and id do not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'some-id', value: '/icons/myicon.png', title: 'My Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon value as iconName
+      bridge._syncBlockIcon(mockIconEl, '/icons/myicon.png', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/myicon.png');
+    });
+
+    it('does not update when icon src already matches', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '<img src="/icons/info.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false, // doesn't have exe-no-icon
+        },
+        querySelector: () => ({ getAttribute: () => '/icons/info.png' }),
+      };
+
+      const originalHtml = mockIconEl.innerHTML;
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      // Should not change since src already matches and no exe-no-icon class
+      expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('does not clear icon when already showing empty SVG', () => {
+      const mockIconEl = {
+        innerHTML: '<svg>empty</svg>',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: (className) => className === 'exe-no-icon', // has exe-no-icon
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      // Should not add exe-no-icon class again since already has it and no img
+      expect(mockIconEl.classList.add).not.toHaveBeenCalled();
+    });
+
+    it('handles missing theme icons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({}), // empty icons
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw when icon not found
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'nonexistent-icon', 'block-1');
+      }).not.toThrow();
+
+      // Should not modify innerHTML when icon not found
+      expect(mockIconEl.innerHTML).toBe('');
+    });
+
+    it('handles undefined getThemeIcons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {}, // no getThemeIcons method
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'some-icon', 'block-1');
+      }).not.toThrow();
+    });
+  });
 });
