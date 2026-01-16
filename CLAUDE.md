@@ -437,6 +437,43 @@ export const myFeatureRoutes = new Elysia({ prefix: '/api/my-feature' })
 app.use(myFeatureRoutes);
 ```
 
+## REST API v1 — External Use Only
+
+**IMPORTANT**: The `/api/v1/*` REST API is designed **exclusively for external integrations**:
+- Learning Management Systems (LMS)
+- Mobile applications
+- Automation scripts
+- Third-party tools
+
+### Internal Code Must NOT Use API v1
+
+eXeLearning's internal frontend code (`public/app/`) must **NEVER** call `/api/v1/*` endpoints. Instead, internal code should:
+
+1. **Use WebSocket/Yjs directly** for real-time collaboration and document editing
+2. **Use internal routes** (`/api/project/*`, `/api/pages/*`, etc.) for server operations
+3. **Manipulate Yjs documents client-side** via `YjsStructureBinding.js` for structure changes
+
+### Why This Separation?
+
+| Use Case | Technology | Reason |
+|----------|------------|--------|
+| **External clients** (LMS, scripts) | REST API v1 | Stateless, easy to integrate, JWT auth |
+| **Internal UI** (workarea, editor) | Yjs + WebSocket | Real-time sync, CRDT conflict resolution, collaborative editing |
+
+### Key Differences
+
+- **REST API v1**: Server loads Y.Doc, applies changes, broadcasts to WebSocket clients
+- **Internal Yjs**: Client owns Y.Doc, changes sync via WebSocket relay, server persists
+
+### Files Reference
+
+- `src/routes/api/v1/*` — External REST API (do not use internally)
+- `src/yjs/*` — Server-side Yjs operations for REST API
+- `public/app/yjs/*` — Client-side Yjs bindings (internal use)
+
+### Documentation
+
+Full API v1 documentation: `doc/development/rest-api.md`
 ### Internationalization (i18n)
 
 All user-facing strings **MUST** be translated. Never hardcode English strings in UI elements.
