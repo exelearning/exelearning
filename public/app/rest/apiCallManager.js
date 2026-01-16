@@ -9,6 +9,54 @@ export default class ApiCallManager {
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
         this.adapters = null;
+        this.staticData = null; // Internal cache for static mode data
+    }
+
+    /**
+     * Initialize API. In static mode, loads bundle.json.
+     * Must be called before using API methods in static mode.
+     */
+    async init() {
+        if (this._isStaticMode() && !this.staticData) {
+            await this._loadStaticBundle();
+        }
+    }
+
+    /**
+     * Load static bundle data from embedded or external source
+     * @private
+     */
+    async _loadStaticBundle() {
+        // Priority 1: window.__EXE_STATIC_DATA__ (injected by build)
+        if (window.__EXE_STATIC_DATA__) {
+            this.staticData = window.__EXE_STATIC_DATA__;
+            console.log('[ApiCallManager] Using window.__EXE_STATIC_DATA__');
+            return;
+        }
+
+        // Priority 2: fetch bundle.json (for dev)
+        try {
+            const basePath = this.apiUrlBasePath || '';
+            const bundleUrl = `${basePath}/data/bundle.json`.replace(/^\/+/, './');
+            console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);
+            const response = await fetch(bundleUrl);
+            if (response.ok) {
+                this.staticData = await response.json();
+                console.log('[ApiCallManager] Loaded static data from bundle.json');
+                return;
+            }
+        } catch (e) {
+            console.warn('[ApiCallManager] Error loading static bundle:', e);
+        }
+
+        // Fallback: empty defaults
+        console.warn('[ApiCallManager] No static data source found, using empty defaults');
+        this.staticData = {
+            parameters: { routes: {} },
+            translations: { en: { translations: {} } },
+            idevices: { idevices: [] },
+            themes: { themes: [] },
+        };
     }
 
     /**
@@ -43,11 +91,19 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get symfony api endpoints parameters
+     * Get API parameters (mode-aware)
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{routes: Object, userPreferencesConfig?: Object, odeProjectSyncPropertiesConfig?: Object}>}
      */
     async getApiParameters() {
+        // Check static mode - return bundled data
+        if (this._isStaticMode()) {
+            return this._getStaticData('parameters') || { routes: {} };
+        }
+
+        // Server mode - fetch from API
         let url = this.apiUrlParameters;
         return await this.func.get(url);
     }
@@ -64,14 +120,29 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get upload limits configuration
+     * Get upload limits configuration (mode-aware)
+     * In static mode, returns sensible defaults (no server-imposed limits).
+     * In server mode, fetches from API endpoint.
      *
      * Returns the effective file upload size limit considering both
      * PHP limits and application configuration.
      *
-     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details: object}>}
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details?: object}>}
      */
     async getUploadLimits() {
+        // Check static mode - return sensible defaults
+        if (this._isStaticMode()) {
+            return {
+                maxFileSize: 100 * 1024 * 1024, // 100MB default
+                maxFileSizeFormatted: '100 MB',
+                limitingFactor: 'none',
+                details: {
+                    isStatic: true,
+                },
+            };
+        }
+
+        // Server mode - fetch from API
         const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
         return await this.func.get(url);
     }
@@ -2415,15 +2486,14 @@ export default class ApiCallManager {
 
     /**
      * Get static data by key
-     * Priority: window.__EXE_STATIC_DATA__ > app.dataProvider cache
+     * Priority: window.__EXE_STATIC_DATA__ > internal cache
      * @private
      * @param {string} key - Data key ('idevices', 'themes', etc.)
      * @returns {Object|null}
      */
     _getStaticData(key) {
         return window.__EXE_STATIC_DATA__?.[key] ||
-               this.app?.dataProvider?.staticData?.[key] ||
-               this.app?.dataProvider?.cache?.[key] ||
+               this.staticData?.[key] ||
                null;
     }
 
@@ -2435,8 +2505,7 @@ export default class ApiCallManager {
      */
     _getStaticTranslations(locale) {
         const data = window.__EXE_STATIC_DATA__?.translations ||
-                     this.app?.dataProvider?.staticData?.translations ||
-                     this.app?.dataProvider?.cache?.translations;
+                     this.staticData?.translations;
 
         if (!data) {
             return { translations: {} };

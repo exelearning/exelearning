@@ -30,22 +30,10 @@ describe('ThemeList', () => {
       }),
     };
 
-    // Mock dataProvider
-    const mockDataProvider = {
-      getInstalledThemes: vi.fn().mockResolvedValue({
-        themes: [
-          { name: 'theme-a', title: 'Theme A', valid: true, dirName: 'theme-a' },
-          { name: 'theme-c', title: 'Theme C', valid: true, dirName: 'theme-c' },
-          { name: 'theme-b', title: 'Theme B', valid: true, dirName: 'theme-b' },
-        ],
-      }),
-    };
-
     // Mock manager
     mockManager = {
       app: {
         api: mockApi,
-        dataProvider: mockDataProvider,
       },
       selected: { id: 'theme-a' },
       selectTheme: vi.fn(),

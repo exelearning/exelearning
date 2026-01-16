@@ -74,14 +74,13 @@ export default class IdeviceNode {
 
     /**
      * Idevice properties
-     * In static mode, get from DataProvider cache; in server mode, use api.parameters
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
     properties = (() => {
         const app = eXeLearning.app;
         const isStaticMode = app?.capabilities?.storage?.remote === false;
         const config = isStaticMode
-            ? (app?.dataProvider?.staticData?.parameters?.odeComponentsSyncPropertiesConfig ||
-               app?.dataProvider?.cache?.parameters?.odeComponentsSyncPropertiesConfig)
+            ? app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
             : app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
         return JSON.parse(JSON.stringify(config || {}));
     })();

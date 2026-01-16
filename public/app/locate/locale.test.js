@@ -32,9 +32,6 @@ describe('Locale translations', () => {
       api: {
         getTranslations: vi.fn().mockResolvedValue(translations),
       },
-      dataProvider: {
-        getTranslations: vi.fn().mockResolvedValue(translations),
-      },
     };
     locale = new Locale(mockApp);
   });

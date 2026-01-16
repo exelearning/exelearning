@@ -18,11 +18,9 @@ import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
-import DataProvider from './core/DataProvider.js';
-// Core infrastructure - ports/adapters pattern
+// Core infrastructure - mode detection
 import { RuntimeConfig } from './core/RuntimeConfig.js';
 import { Capabilities } from './core/Capabilities.js';
-import { ProviderFactory } from './core/ProviderFactory.js';
 
 export default class App {
     constructor(eXeLearning) {
@@ -30,7 +28,7 @@ export default class App {
         this.parseExelearningConfig();
 
         // Detect and initialize static/offline mode
-        this.initializeDataProvider();
+        this.initializeModeDetection();
 
         this.api = new ApiCallManager(this);
         this.locale = new Locale(this);
@@ -57,12 +55,8 @@ export default class App {
      *
      */
     async init() {
-        // Initialize DataProvider (load static data if in static mode)
-        await this.dataProvider.init();
-
-        // Create ProviderFactory and inject adapters (Ports & Adapters pattern)
-        // This is the ONLY place where mode detection happens for adapters
-        await this.initializeAdapters();
+        // Initialize API (loads static data if in static mode)
+        await this.api.init();
 
         // Register preview Service Worker (for unified preview/export rendering)
         this.registerPreviewServiceWorker();
@@ -837,10 +831,10 @@ export default class App {
     }
 
     /**
-     * Initialize DataProvider based on detected mode (static vs server)
+     * Initialize mode detection based on runtime environment (static vs server)
      * Called during constructor, before other managers are created
      */
-    initializeDataProvider() {
+    initializeModeDetection() {
         // Use RuntimeConfig for mode detection (single source of truth)
         this.runtimeConfig = RuntimeConfig.fromEnvironment();
         this.capabilities = new Capabilities(this.runtimeConfig);
@@ -848,12 +842,6 @@ export default class App {
         // Backward compatibility: store mode flags in config
         const isStaticMode = this.runtimeConfig.isStaticMode();
         this.eXeLearning.config.isStaticMode = isStaticMode;
-
-        // Create DataProvider with detected mode
-        const mode = isStaticMode ? 'static' : 'server';
-        const basePath = this.eXeLearning.config.basePath || '';
-
-        this.dataProvider = new DataProvider(mode, { basePath });
 
         if (isStaticMode) {
             console.log('[App] Running in STATIC/OFFLINE mode');
@@ -867,37 +855,6 @@ export default class App {
             remoteStorage: this.capabilities.storage.remote,
             auth: this.capabilities.auth.required,
         });
-    }
-
-    /**
-     * Initialize adapters using ProviderFactory (Ports & Adapters pattern).
-     * This is the ONLY place where adapters are created and injected.
-     * After this, all API calls go through the appropriate adapter based on mode.
-     */
-    async initializeAdapters() {
-        try {
-            // Create factory (mode detection happens inside)
-            const factory = await ProviderFactory.create();
-
-            // Create all adapters
-            const adapters = factory.createAllAdapters();
-
-            // Inject into ApiCallManager
-            this.api.setAdapters(adapters);
-
-            // Store factory and capabilities for other components
-            this.providerFactory = factory;
-            // Update capabilities from factory (in case they differ)
-            this.capabilities = factory.getCapabilities();
-
-            console.log('[App] Adapters injected successfully:', {
-                mode: factory.getConfig().mode,
-                adaptersInjected: Object.keys(adapters).length,
-            });
-        } catch (error) {
-            console.error('[App] Failed to initialize adapters:', error);
-            // Continue without adapters - legacy fallback code will handle it
-        }
     }
 
     /**
@@ -1064,8 +1021,8 @@ export default class App {
         if (this.runtimeConfig) {
             return this.runtimeConfig.isStaticMode();
         }
-        // Fallback to DataProvider for backward compatibility
-        return this.dataProvider?.isStaticMode() ?? false;
+        // Fallback to capabilities
+        return this.capabilities?.storage?.remote === false;
     }
 
     /**

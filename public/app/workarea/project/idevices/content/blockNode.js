@@ -58,15 +58,14 @@ export default class IdeviceBlockNode {
     emptyIcon = 'block';
 
     /**
-     * Idevice properties
-     * In static mode, get from DataProvider cache; in server mode, use api.parameters
+     * Block properties
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
     properties = (() => {
         const app = eXeLearning.app;
         const isStaticMode = app?.capabilities?.storage?.remote === false;
         const config = isStaticMode
-            ? (app?.dataProvider?.staticData?.parameters?.odePagStructureSyncPropertiesConfig ||
-               app?.dataProvider?.cache?.parameters?.odePagStructureSyncPropertiesConfig)
+            ? app?.api?.staticData?.parameters?.odePagStructureSyncPropertiesConfig
             : app?.api?.parameters?.odePagStructureSyncPropertiesConfig;
         return JSON.parse(JSON.stringify(config || {}));
     })();

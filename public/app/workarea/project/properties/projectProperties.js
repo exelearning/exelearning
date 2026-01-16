@@ -24,8 +24,8 @@ export default class ProjectProperties {
         let cataloguingConfigSource;
 
         if (isStaticMode) {
-            // Static mode: get from DataProvider
-            const apiParams = await app.dataProvider?.getApiParameters();
+            // Static mode: get from API (uses internal static data cache)
+            const apiParams = await app.api.getApiParameters();
             propertiesConfigSource = apiParams?.odeProjectSyncPropertiesConfig || {};
             cataloguingConfigSource = apiParams?.odeProjectSyncCataloguingConfig || {};
         } else {

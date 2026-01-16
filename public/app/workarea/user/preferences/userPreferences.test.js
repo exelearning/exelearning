@@ -3,8 +3,21 @@ import UserPreferences from './userPreferences.js';
 describe('UserPreferences', () => {
   let userPreferences;
   let mockManager;
+  let originalLocalStorage;
 
   beforeEach(() => {
+    // Store original localStorage
+    originalLocalStorage = window.localStorage;
+
+    // Mock localStorage
+    const store = {};
+    window.localStorage = {
+      getItem: vi.fn((key) => store[key] || null),
+      setItem: vi.fn((key, value) => { store[key] = value; }),
+      removeItem: vi.fn((key) => { delete store[key]; }),
+      clear: vi.fn(() => Object.keys(store).forEach(key => delete store[key])),
+    };
+
     // Mock global eXeLearning for server mode (default)
     globalThis.eXeLearning = {
       app: {
@@ -17,6 +30,13 @@ describe('UserPreferences', () => {
               locale: { value: 'en' }
             }
           },
+          getApiParameters: vi.fn().mockResolvedValue({
+            userPreferencesConfig: {
+              advancedMode: { value: 'false' },
+              versionControl: { value: 'true' },
+              locale: { value: 'en' }
+            }
+          }),
           getUserPreferences: vi.fn().mockResolvedValue({
             userPreferences: {
               advancedMode: { value: 'true' },
@@ -24,22 +44,12 @@ describe('UserPreferences', () => {
               locale: { value: 'es' }
             }
           }),
-          putSaveUserPreferences: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
-          getAdapter: vi.fn().mockReturnValue(null)
+          putSaveUserPreferences: vi.fn().mockResolvedValue({ responseMessage: 'OK' })
         },
         modals: {
           properties: {
             show: vi.fn()
           }
-        },
-        dataProvider: {
-          getApiParameters: vi.fn().mockResolvedValue({
-            userPreferencesConfig: {
-              advancedMode: { value: 'false' },
-              versionControl: { value: 'true' },
-              locale: { value: 'en' }
-            }
-          })
         }
       }
     };
@@ -60,6 +70,7 @@ describe('UserPreferences', () => {
     vi.restoreAllMocks();
     delete globalThis.eXeLearning;
     delete globalThis._;
+    window.localStorage = originalLocalStorage;
   });
 
   describe('load (server mode)', () => {
@@ -79,16 +90,16 @@ describe('UserPreferences', () => {
       globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
     });
 
-    it('should load preferences from DataProvider in static mode', async () => {
+    it('should load preferences from API in static mode', async () => {
       await userPreferences.load();
 
-      expect(globalThis.eXeLearning.app.dataProvider.getApiParameters).toHaveBeenCalled();
+      expect(globalThis.eXeLearning.app.api.getApiParameters).toHaveBeenCalled();
       expect(userPreferences.preferences).toBeDefined();
       expect(userPreferences.preferences.advancedMode).toBeDefined();
     });
 
-    it('should use fallback defaults if DataProvider has no config', async () => {
-      globalThis.eXeLearning.app.dataProvider.getApiParameters.mockResolvedValue({});
+    it('should use fallback defaults if API has no config', async () => {
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({});
 
       await userPreferences.load();
 
@@ -96,23 +107,21 @@ describe('UserPreferences', () => {
       expect(userPreferences.preferences.locale).toEqual({ title: 'Language', value: 'en', type: 'select' });
     });
 
-    it('should load from adapter if available', async () => {
-      const mockAdapter = {
-        getPreferences: vi.fn().mockResolvedValue({
-          userPreferences: {
-            advancedMode: { value: 'true' },
-            versionControl: { value: 'false' },
-            locale: { value: 'fr' }
-          }
-        })
-      };
-      globalThis.eXeLearning.app.api.getAdapter = vi.fn().mockReturnValue(mockAdapter);
+    it('should load from localStorage if available', async () => {
+      // Pre-populate localStorage
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' },
+          locale: { value: 'fr' }
+        }
+      }));
 
       await userPreferences.load();
 
-      expect(mockAdapter.getPreferences).toHaveBeenCalled();
       // After setPreferences, the values should be updated
       expect(userPreferences.preferences.advancedMode.value).toBe('true');
+      expect(userPreferences.preferences.locale.value).toBe('fr');
     });
   });
 
@@ -121,12 +130,12 @@ describe('UserPreferences', () => {
       userPreferences.preferences = {
         testPref: { value: 'old' }
       };
-      
+
       userPreferences.setPreferences({
         testPref: { value: 'new' },
         newPref: { value: 'brand-new' }
       });
-      
+
       expect(userPreferences.preferences.testPref.value).toBe('new');
       expect(userPreferences.preferences.newPref.value).toBe('brand-new');
       expect(userPreferences.preferences.newPref.type).toBe('text'); // from template
@@ -137,7 +146,7 @@ describe('UserPreferences', () => {
     it('should call modals.properties.show', () => {
       userPreferences.preferences = { some: 'pref' };
       userPreferences.showModalPreferences();
-      
+
       expect(mockManager.app.modals.properties.show).toHaveBeenCalledWith(expect.objectContaining({
         contentId: 'preferences',
         properties: userPreferences.preferences
@@ -181,12 +190,7 @@ describe('UserPreferences', () => {
       globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
     });
 
-    it('should save preferences via adapter in static mode', async () => {
-      const mockAdapter = {
-        savePreferences: vi.fn().mockResolvedValue({ success: true })
-      };
-      globalThis.eXeLearning.app.api.getAdapter = vi.fn().mockReturnValue(mockAdapter);
-
+    it('should save preferences to localStorage in static mode', async () => {
       userPreferences.preferences = {
         advancedMode: { value: 'false' },
         versionControl: { value: 'true' }
@@ -196,9 +200,10 @@ describe('UserPreferences', () => {
         advancedMode: 'true'
       });
 
-      expect(mockAdapter.savePreferences).toHaveBeenCalledWith({
-        advancedMode: 'true'
-      });
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
     });
 

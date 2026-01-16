@@ -44,7 +44,7 @@ export default class ModalStyleManager extends Modal {
         const app = eXeLearning.app;
         const isStaticMode = app?.capabilities?.storage?.remote === false;
         const configSource = isStaticMode
-            ? (app?.dataProvider?.staticData?.parameters || app?.dataProvider?.cache?.parameters)
+            ? app?.api?.staticData?.parameters
             : app?.api?.parameters;
         this.paramInstallThemes = JSON.parse(
             JSON.stringify(configSource?.canInstallThemes || false)
