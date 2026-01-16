@@ -74,7 +74,7 @@ export function generatePageHtml(
     return `<!DOCTYPE html>
 <html lang="${lang}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${generateHead(page, structure, resourcesPrefix, usedIdevices)}
+${generateHead(page, structure, resourcesPrefix, usedIdevices, options)}
 </head>
 <body class="exe-export exe-web-site" lang="${lang}">
 <script>document.body.className+=" js"</script>
@@ -123,6 +123,7 @@ function generateHead(
     structure: ParsedOdeStructure,
     resourcesPrefix: string,
     usedIdevices: string[],
+    options: Html5ExportOptions,
 ): string {
     const title = escapeHtml(structure.meta.title || 'eXeLearning');
     const description = structure.meta.description || '';
@@ -177,6 +178,11 @@ function generateHead(
     head += `\n<link rel="stylesheet" href="${resourcesPrefix}content/css/base.css">`;
     head += `<script src="${resourcesPrefix}theme/default.js"> </script>`;
     head += `<link rel="stylesheet" href="${resourcesPrefix}theme/content.css">`;
+
+    const faviconPath = options.faviconPath || 'libs/favicon.ico';
+    const faviconType = options.faviconType || 'image/x-icon';
+    const faviconHref = `${resourcesPrefix}${faviconPath}`;
+    head += `<link rel="icon" type="${escapeAttr(faviconType)}" href="${escapeAttr(faviconHref)}">`;
 
     // Custom styles from meta
     const customStyles = structure.meta.customStyles;
@@ -249,7 +255,7 @@ function isParentOf(potentialParent: NormalizedPage, childId: string, allPages: 
 /**
  * Sanitize title for use as filename
  */
-function sanitizeFilename(title: string): string {
+export function sanitizeFilename(title: string): string {
     if (!title) return 'page';
     return title
         .toLowerCase()
@@ -375,39 +381,44 @@ function renderBlock(block: RenderBlock, resourcesPrefix: string): string {
         classes.push(String(properties.cssClass));
     }
 
-    let headerHtml = '';
-    if (hasHeader) {
-        const hasIcon = block.iconName && block.iconName.trim() !== '';
-        const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+    // Build block header - always render icon and toggle if enabled, even without title text
+    const hasIcon = block.iconName && block.iconName.trim() !== '';
+    const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
-        // Build icon HTML if iconName exists
-        let iconHtml = '';
-        if (hasIcon) {
-            const iconPath = `${resourcesPrefix}theme/icons/${block.iconName}.png`;
-            iconHtml = `<div class="box-icon exe-icon">
+    // Build icon HTML if iconName exists
+    let iconHtml = '';
+    if (hasIcon) {
+        const iconPath = `${resourcesPrefix}theme/icons/${block.iconName}.png`;
+        iconHtml = `<div class="box-icon exe-icon">
 <img src="${escapeAttr(iconPath)}" alt="">
 </div>
 `;
-        }
-
-        // Build toggle button if allowToggle is enabled
-        let toggleHtml = '';
-        if (properties.allowToggle === true || properties.allowToggle === 'true') {
-            const toggleClass =
-                properties.minimized === true || properties.minimized === 'true'
-                    ? 'box-toggle box-toggle-off'
-                    : 'box-toggle box-toggle-on';
-            toggleHtml = `<button class="${toggleClass}" title="Toggle content">
-<span>Toggle content</span>
-</button>`;
-        }
-
-        headerHtml = `<header class="${headerClass}">
-${iconHtml}<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
-${toggleHtml}</header>`;
-    } else {
-        headerHtml = '<div class="box-head"></div>';
     }
+
+    // Build toggle button if allowToggle is enabled (default: true when undefined)
+    // allowToggle defaults to true for backwards compatibility - users must explicitly disable it
+    let toggleHtml = '';
+    const shouldShowToggle = properties.allowToggle !== false && properties.allowToggle !== 'false';
+    if (shouldShowToggle) {
+        const toggleClass =
+            properties.minimized === true || properties.minimized === 'true'
+                ? 'box-toggle box-toggle-off'
+                : 'box-toggle box-toggle-on';
+        // Static text - will be translated at runtime by exe_export.js using $exe_i18n.toggleContent
+        const toggleText = 'Toggle content';
+        toggleHtml = `<button class="${toggleClass}" title="${escapeAttr(toggleText)}">
+<span>${escapeHtml(toggleText)}</span>
+</button>`;
+    }
+
+    // Build title only if blockName has text
+    const titleHtml = hasHeader
+        ? `<h1 class="box-title">${escapeHtml(block.name || '')}</h1>
+`
+        : '';
+
+    const headerHtml = `<header class="${headerClass}">
+${iconHtml}${titleHtml}${toggleHtml}</header>`;
 
     const contentHtml = block.components.map(component => renderIdevice(component, resourcesPrefix)).join('\n');
 

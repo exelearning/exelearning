@@ -540,6 +540,44 @@ describe('YjsProjectBridge', () => {
       expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
     });
 
+    it('should skip theme import when theme is marked as non-downloadable', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+      const mockShowModal = mock(() => undefined);
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // Theme not installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
+        },
+      };
+
+      bridge._showThemeImportModal = mockShowModal;
+
+      global.window.fflate = {
+        unzipSync: mock(() => ({
+          'theme/config.xml': new TextEncoder().encode('<theme><downloadable>0</downloadable></theme>'),
+        })),
+      };
+
+      const mockFile = {
+        arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))),
+      };
+
+      await bridge._checkAndImportTheme('blocked-theme', mockFile);
+
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+      expect(mockShowModal).not.toHaveBeenCalled();
+    });
+
     it('should return early if themeName is empty', async () => {
       const mockSelectTheme = mock(() => Promise.resolve());
 
@@ -2954,7 +2992,7 @@ describe('YjsProjectBridge', () => {
             'config.xml': new Uint8Array([1]),
             'style.css': new Uint8Array([1]),
           },
-          configXml: '<theme><name>My Theme</name><version>1.0</version></theme>',
+          configXml: '<theme><name>My Theme</name><version>1.0</version><downloadable>0</downloadable></theme>',
         };
 
         const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
@@ -2963,6 +3001,7 @@ describe('YjsProjectBridge', () => {
         expect(result.name).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
+        expect(result.downloadable).toBe('0');
       });
 
       it('uses default values when config.xml is missing', () => {
@@ -2979,6 +3018,7 @@ describe('YjsProjectBridge', () => {
         expect(result.name).toBe('my-theme');
         expect(result.displayName).toBe('my-theme');
         expect(result.type).toBe('user');
+        expect(result.downloadable).toBe('1');
       });
 
       it('detects CSS and JS files', () => {
@@ -2997,6 +3037,71 @@ describe('YjsProjectBridge', () => {
         expect(result.cssFiles).toContain('main.css');
         expect(result.cssFiles).toContain('extra.css');
         expect(result.js).toContain('script.js');
+      });
+
+      it('parses icons from icons/ directory as ThemeIcon objects', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'style.css': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/warning.svg': new Uint8Array([3]),
+            'icons/chrono.png': new Uint8Array([4]),
+          },
+          configXml: '<theme><name>Icon Theme</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('icon-theme', themeFilesData);
+
+        // Verify icons are parsed as ThemeIcon objects, not strings
+        expect(result.icons).toBeDefined();
+        expect(Object.keys(result.icons)).toHaveLength(3);
+
+        // Check info icon
+        expect(result.icons.info).toEqual({
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'icons/info.png',
+          _relativePath: 'icons/info.png',
+        });
+
+        // Check warning icon
+        expect(result.icons.warning).toEqual({
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'icons/warning.svg',
+          _relativePath: 'icons/warning.svg',
+        });
+
+        // Check chrono icon
+        expect(result.icons.chrono).toEqual({
+          id: 'chrono',
+          title: 'chrono',
+          type: 'img',
+          value: 'icons/chrono.png',
+          _relativePath: 'icons/chrono.png',
+        });
+      });
+
+      it('ignores non-icon files in icons/ directory', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/readme.txt': new Uint8Array([3]), // Should be ignored
+            'icons/icon.gif': new Uint8Array([4]), // Should be ignored (only .png/.svg)
+          },
+          configXml: '<theme><name>Test</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('test-theme', themeFilesData);
+
+        expect(Object.keys(result.icons)).toHaveLength(1);
+        expect(result.icons.info).toBeDefined();
+        expect(result.icons.readme).toBeUndefined();
+        expect(result.icons.icon).toBeUndefined();
       });
     });
 

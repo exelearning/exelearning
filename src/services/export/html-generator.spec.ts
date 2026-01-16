@@ -144,6 +144,36 @@ describe('HTML Generator Helper', () => {
             expect(html).toContain('src="/custom/path/libs/jquery/jquery.min.js"');
         });
 
+        it('should include favicon link with default path', () => {
+            const page = createPage();
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {});
+
+            expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should include favicon link with custom path and type', () => {
+            const page = createPage();
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {
+                faviconPath: 'theme/img/favicon.png',
+                faviconType: 'image/png',
+            });
+
+            expect(html).toContain('<link rel="icon" type="image/png" href="theme/img/favicon.png">');
+        });
+
+        it('should use resources prefix for favicon href', () => {
+            const page = createPage();
+            const structure = createMinimalStructure({ pages: [page] });
+
+            const html = generatePageHtml(page, structure, {}, '../');
+
+            expect(html).toContain('<link rel="icon" type="image/x-icon" href="../libs/favicon.ico">');
+        });
+
         it('should render components in page content', () => {
             const component = createComponent({
                 id: 'text-1',

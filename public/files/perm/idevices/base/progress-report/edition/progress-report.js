@@ -79,9 +79,33 @@ var $exeDevice = {
 
     async getIdevicesBySessionId() {
         const odeSessionId = eXeLearning.app.project.odeSession;
-        const response =
-            await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
-        let idevices = $exeDevice.buildNestedPages(response.data);
+        let data = [];
+
+        // First try to get data from local Yjs (client-side)
+        const yjsBridge = eXeLearning.app.project?._yjsBridge;
+        if (yjsBridge && yjsBridge.documentManager) {
+            try {
+                data = $exeDevice.extractIdevicesFromYjs(yjsBridge, odeSessionId);
+                console.log('[Progress Report] Loaded', data.length, 'items from local Yjs');
+            } catch (err) {
+                console.warn('[Progress Report] Failed to load from local Yjs:', err);
+            }
+        }
+
+        // Fallback to server API if no local data
+        if (data.length === 0) {
+            try {
+                const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
+                if (response && response.data) {
+                    data = response.data;
+                    console.log('[Progress Report] Loaded', data.length, 'items from server API');
+                }
+            } catch (err) {
+                console.warn('[Progress Report] Failed to load from server API:', err);
+            }
+        }
+
+        let idevices = $exeDevice.buildNestedPages(data);
 
         $exeDevice.sessionIdevices = idevices;
 
@@ -91,6 +115,159 @@ var $exeDevice = {
         $('#informeEPages').empty();
         $('#informeEPages').html(htmlContent);
         $exeDevice.showPages();
+    },
+
+    /**
+     * Extract iDevices from local Yjs document
+     * Reads navigation array -> pages -> blocks -> components structure
+     */
+    extractIdevicesFromYjs: function (yjsBridge, sessionId) {
+        const items = [];
+        const ydoc = yjsBridge.documentManager?.ydoc;
+        if (!ydoc) {
+            console.warn('[Progress Report] No ydoc available');
+            return items;
+        }
+
+        // Get navigation array (contains all pages as Y.Map)
+        const navigation = ydoc.getArray('navigation');
+        if (!navigation || navigation.length === 0) {
+            console.warn('[Progress Report] No navigation array in ydoc');
+            return items;
+        }
+
+        console.log('[Progress Report] Found', navigation.length, 'pages in navigation');
+
+        for (let pageIdx = 0; pageIdx < navigation.length; pageIdx++) {
+            const page = navigation.get(pageIdx);
+            if (!page || typeof page.get !== 'function') {
+                continue;
+            }
+
+            const pageId = page.get('id') || page.get('pageId') || '';
+            const pageTitle = page.get('title') || page.get('pageName') || '';
+            const parentId = page.get('parentId') || null;
+
+            // Get blocks array
+            const blocks = page.get('blocks');
+
+            if (!blocks || blocks.length === 0) {
+                // Page without blocks
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: parentId,
+                    pageName: pageTitle,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: sessionId,
+                    ode_nav_structure_sync_order: pageIdx,
+                    navIsActive: 1,
+                    componentId: null,
+                    htmlViewer: null,
+                    jsonProperties: null,
+                    ode_idevice_id: null,
+                    odeIdeviceTypeName: null,
+                    ode_pag_structure_sync_id: null,
+                    componentSessionId: null,
+                    componentPageId: null,
+                    ode_block_id: null,
+                    ode_components_sync_order: null,
+                    componentIsActive: null,
+                    blockName: null,
+                    blockOrder: null,
+                });
+                continue;
+            }
+
+            for (let blockIdx = 0; blockIdx < blocks.length; blockIdx++) {
+                const block = blocks.get(blockIdx);
+                if (!block || typeof block.get !== 'function') {
+                    continue;
+                }
+
+                const blockId = block.get('id') || block.get('blockId') || '';
+                const blockName = block.get('blockName') || block.get('name') || '';
+                const blockOrder = block.get('order') ?? blockIdx;
+
+                // Get components/idevices array
+                const components = block.get('components') || block.get('idevices');
+
+                if (!components || components.length === 0) {
+                    // Block without idevices
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: parentId,
+                        pageName: pageTitle,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: sessionId,
+                        ode_nav_structure_sync_order: pageIdx,
+                        navIsActive: 1,
+                        componentId: null,
+                        htmlViewer: null,
+                        jsonProperties: null,
+                        ode_idevice_id: null,
+                        odeIdeviceTypeName: null,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: null,
+                        componentPageId: null,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: null,
+                        componentIsActive: null,
+                        blockName: blockName,
+                        blockOrder: blockOrder,
+                    });
+                    continue;
+                }
+
+                for (let compIdx = 0; compIdx < components.length; compIdx++) {
+                    const component = components.get(compIdx);
+                    if (!component || typeof component.get !== 'function') {
+                        continue;
+                    }
+
+                    const componentId = component.get('id') || component.get('ideviceId') || '';
+                    const ideviceType = component.get('type') || component.get('ideviceType') || '';
+                    // Check multiple possible property names for HTML content
+                    const htmlView = component.get('content') || component.get('htmlContent') || component.get('htmlView') || '';
+                    const componentOrder = component.get('order') ?? compIdx;
+
+                    // Convert htmlView to string if it's a Y.Text
+                    let htmlViewStr = '';
+                    if (htmlView && typeof htmlView === 'object' && typeof htmlView.toString === 'function') {
+                        htmlViewStr = htmlView.toString();
+                    } else if (typeof htmlView === 'string') {
+                        htmlViewStr = htmlView;
+                    }
+
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: parentId,
+                        pageName: pageTitle,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: sessionId,
+                        ode_nav_structure_sync_order: pageIdx,
+                        navIsActive: 1,
+                        componentId: componentId,
+                        htmlViewer: htmlViewStr,
+                        jsonProperties: null,
+                        ode_idevice_id: componentId,
+                        odeIdeviceTypeName: ideviceType,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: sessionId,
+                        componentPageId: pageId,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: componentOrder,
+                        componentIsActive: 1,
+                        blockName: blockName,
+                        blockOrder: blockOrder,
+                    });
+                }
+            }
+        }
+
+        return items;
     },
 
     showPages: function () {
@@ -114,7 +291,6 @@ var $exeDevice = {
                 );
                 return;
             }
-
             const rawPageId =
                 row.odePageId != null ? String(row.odePageId).trim() : '';
             const rawParentId =
@@ -171,15 +347,11 @@ var $exeDevice = {
             }
         });
 
-        // ✅ ORDENAMIENTO CORREGIDO
         Object.values(pageIndex).forEach((p) => {
             if (Array.isArray(p.components) && p.components.length > 1) {
                 p.components.sort((a, b) => {
-                    // Ordenar primero por blockOrder
                     const orderDiff = (a.blockOrder || 0) - (b.blockOrder || 0);
                     if (orderDiff !== 0) return orderDiff;
-
-                    // Si tienen el mismo blockOrder, usar ode_components_sync_order
                     return (
                         (a.ode_components_sync_order || 0) -
                         (b.ode_components_sync_order || 0)

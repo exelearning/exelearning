@@ -31,6 +31,7 @@ class LegacyXmlParser {
     'preknowledge': 'think',      // Legacy "preknowledge" uses think.png
     'reading': 'book',            // Legacy "reading" uses book.png
     'casestudy': 'case',          // Legacy "casestudy" uses case.png
+    'question': 'interactive',    // Legacy MultichoiceIdevice/form uses question icon
   };
 
   /**

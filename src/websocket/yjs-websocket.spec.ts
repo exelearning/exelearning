@@ -171,6 +171,25 @@ describe('Yjs WebSocket Service', () => {
             expect(routes).toBeDefined();
             // Should have the /yjs/:docName route registered
         });
+
+        it('should wire websocket handlers to open/pong/message/close', async () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+
+            expect(wsRoute).toBeDefined();
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            expect(wsHook).toBeDefined();
+
+            const ws = createMockWebSocket();
+            await wsHook?.open?.(ws as any);
+
+            // Invalid docName should close the connection
+            expect(ws.close).toHaveBeenCalled();
+
+            wsHook?.pong?.(ws as any, undefined as any);
+            wsHook?.message?.(ws as any, Buffer.from([0x01]));
+            wsHook?.close?.(ws as any, 1000, 'closed');
+        });
     });
 
     describe('Connection Access Control', () => {
@@ -1399,6 +1418,41 @@ describe('Yjs WebSocket Service', () => {
 
             // Connection should still succeed
             expect(result.success).toBe(true);
+        });
+
+        it('should swallow errors while checking save status during collaboration', async () => {
+            const projectUuid = 'f4e5d6c7-b8a9-0123-def4-567890123456';
+            const docName = `project-${projectUuid}`;
+
+            const mockQueries = createMockQueries();
+            mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
+                if (uuid === projectUuid) {
+                    throw new Error('Database error');
+                }
+                return mockProjects.get(uuid);
+            };
+
+            // Add session so access check bypasses DB
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+
+            configure({
+                db: mockDb,
+                queries: mockQueries,
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            const ws2 = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            expect(result.success).toBe(true);
+
+            // Allow async collaboration check to complete
+            await new Promise(resolve => setTimeout(resolve, 10));
         });
     });
 

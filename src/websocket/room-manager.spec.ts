@@ -22,6 +22,8 @@ import {
     getConnectionsByUserId,
     getConnectedUserIds,
     getRoomByProjectUuid,
+    relayToOtherInstances,
+    initializeCrossInstanceHandler,
 } from './room-manager';
 
 // Mock WebSocket for testing
@@ -633,6 +635,102 @@ describe('Room Manager', () => {
 
             const room = getRoomByProjectUuid('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
             expect(room).toBeDefined();
+        });
+    });
+
+    describe('pubsub relay and handlers', () => {
+        it('should publish relay messages when pubsub is enabled', async () => {
+            const publish = mock(async () => {});
+            const isPubSubEnabled = mock(() => true);
+
+            configure({
+                pubSub: {
+                    publish,
+                    subscribe: mock(async () => {}),
+                    unsubscribe: mock(async () => {}),
+                    isPubSubEnabled,
+                    setMessageHandler: mock(() => {}),
+                },
+            });
+
+            await relayToOtherInstances('project-relay', 'payload', { isAsset: true, clientId: 'c1' });
+
+            expect(publish).toHaveBeenCalledWith('project-relay', 'payload', { isAsset: true, clientId: 'c1' });
+        });
+
+        it('should skip relay when pubsub is disabled', async () => {
+            const publish = mock(async () => {});
+            configure({
+                pubSub: {
+                    publish,
+                    subscribe: mock(async () => {}),
+                    unsubscribe: mock(async () => {}),
+                    isPubSubEnabled: mock(() => false),
+                    setMessageHandler: mock(() => {}),
+                },
+            });
+
+            await relayToOtherInstances('project-relay', 'payload');
+
+            expect(publish).not.toHaveBeenCalled();
+        });
+
+        it('should subscribe on first connection and unsubscribe on cleanup', async () => {
+            const subscribe = mock(async () => {});
+            const unsubscribe = mock(async () => {});
+            const cleanupProject = mock(() => {});
+
+            configure({
+                assetCoordinator: { cleanupProject },
+                cleanupDelayOverride: 10,
+                pubSub: {
+                    publish: mock(async () => {}),
+                    subscribe,
+                    unsubscribe,
+                    isPubSubEnabled: mock(() => true),
+                    setMessageHandler: mock(() => {}),
+                },
+            });
+
+            const ws = createMockWebSocket();
+            addConnection('project-sub-test', ws, 'project-uuid-sub');
+
+            expect(subscribe).toHaveBeenCalledWith('project-sub-test');
+
+            removeConnection('project-sub-test', ws);
+
+            await new Promise(resolve => setTimeout(resolve, 30));
+
+            expect(unsubscribe).toHaveBeenCalledWith('project-sub-test');
+            expect(cleanupProject).toHaveBeenCalledWith('project-uuid-sub');
+        });
+
+        it('should broadcast cross-instance messages to local room', () => {
+            const setMessageHandler = mock(() => {});
+            configure({
+                pubSub: {
+                    publish: mock(async () => {}),
+                    subscribe: mock(async () => {}),
+                    unsubscribe: mock(async () => {}),
+                    isPubSubEnabled: mock(() => true),
+                    setMessageHandler,
+                },
+            });
+
+            const ws1 = createMockWebSocket('client-1');
+            const ws2 = createMockWebSocket('client-2');
+            addConnection('project-cross', ws1);
+            addConnection('project-cross', ws2);
+
+            initializeCrossInstanceHandler();
+
+            const handler = setMessageHandler.mock.calls[0]?.[0];
+            expect(typeof handler).toBe('function');
+
+            handler('project-cross', 'cross-message', { isAsset: false });
+
+            expect(ws1.send).toHaveBeenCalledWith('cross-message');
+            expect(ws2.send).toHaveBeenCalledWith('cross-message');
         });
     });
 });

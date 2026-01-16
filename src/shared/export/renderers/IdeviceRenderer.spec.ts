@@ -120,7 +120,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Hidden</p>',
-                properties: { visibility: 'false' },
+                properties: {},
+                structureProperties: { visibility: 'false' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -134,7 +135,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher only</p>',
-                properties: { teacherOnly: 'true' },
+                properties: {},
+                structureProperties: { teacherOnly: 'true' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -142,13 +144,14 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('teacher-only');
         });
 
-        it('should add custom cssClass from properties', () => {
+        it('should add custom cssClass from structureProperties', () => {
             const component: ExportComponent = {
                 id: 'comp-1',
                 type: 'text',
                 order: 0,
                 content: '<p>Custom styled</p>',
-                properties: { cssClass: 'my-custom-class' },
+                properties: {},
+                structureProperties: { cssClass: 'my-custom-class' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -194,7 +197,8 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Hidden</p>',
-                properties: { visibility: false },
+                properties: {},
+                structureProperties: { visibility: false as unknown as string },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -208,12 +212,137 @@ describe('IdeviceRenderer', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher only</p>',
-                properties: { teacherOnly: true },
+                properties: {},
+                structureProperties: { teacherOnly: true as unknown as string },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('teacher-only');
+        });
+
+        // Test for legacy visibilityType in jsonProperties
+        it('should add teacher-only class when visibilityType is teacher (legacy format)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Teacher only via legacy</p>',
+                properties: { visibilityType: 'teacher' },
+                structureProperties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('teacher-only');
+        });
+
+        // Test when structureProperties is undefined
+        it('should render without structureProperties (undefined fallback)', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>No structure props</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('class="idevice_node text"');
+            expect(html).not.toContain('novisible');
+            expect(html).not.toContain('teacher-only');
+        });
+
+        // Test combining multiple structureProperties
+        it('should apply multiple structureProperties together', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Multiple props</p>',
+                properties: {},
+                structureProperties: {
+                    visibility: 'false',
+                    teacherOnly: 'true',
+                    cssClass: 'highlight important',
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('novisible');
+            expect(html).toContain('teacher-only');
+            expect(html).toContain('highlight');
+            expect(html).toContain('important');
+        });
+
+        // Test cssClass not being a string (should be ignored)
+        it('should ignore cssClass when not a string', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Invalid cssClass</p>',
+                properties: {},
+                structureProperties: { cssClass: 123 as unknown as string },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            // Should have basic classes but not the invalid cssClass
+            expect(html).toContain('class="idevice_node text"');
+            expect(html).not.toContain('123');
+        });
+
+        // Test visibility true should NOT add novisible class
+        it('should not add novisible class when visibility is true', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Visible content</p>',
+                properties: {},
+                structureProperties: { visibility: 'true' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('novisible');
+        });
+
+        // Test teacherOnly false should NOT add teacher-only class
+        it('should not add teacher-only class when teacherOnly is false', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Not teacher only</p>',
+                properties: {},
+                structureProperties: { teacherOnly: 'false' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('teacher-only');
+        });
+
+        // Test empty cssClass should not add extra spaces
+        it('should handle empty cssClass gracefully', () => {
+            const component: ExportComponent = {
+                id: 'comp-1',
+                type: 'text',
+                order: 0,
+                content: '<p>Empty cssClass</p>',
+                properties: {},
+                structureProperties: { cssClass: '' },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('class="idevice_node text"');
+            // Should not have trailing space or empty class
+            expect(html).not.toContain('class="idevice_node text "');
         });
     });
 
@@ -901,6 +1030,113 @@ describe('IdeviceRenderer', () => {
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
 
             expect(html).toContain('box-toggle');
+        });
+
+        it('should render toggle button when allowToggle is undefined (default behavior)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Default Toggle Block',
+                order: 0,
+                components: [],
+                properties: {}, // allowToggle is undefined - should default to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+        });
+
+        it('should NOT render toggle button when allowToggle is false', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: false },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should NOT render toggle button when allowToggle is string "false"', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'No Toggle String Block',
+                order: 0,
+                components: [],
+                properties: { allowToggle: 'false' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('box-toggle');
+        });
+
+        it('should render icon and toggle button even when block has no title', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: 'check',
+                properties: { allowToggle: 'true' as unknown as boolean },
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have icon even without title
+            expect(html).toContain('box-icon');
+            expect(html).toContain('check.png');
+            // Should have toggle button even without title
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should NOT have title h1 since name is empty
+            expect(html).not.toContain('box-title');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button even when block has no title and no icon', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: '', // No title
+                order: 0,
+                components: [],
+                iconName: '', // No icon
+                properties: {}, // allowToggle defaults to true
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+
+            // Should have toggle button even without title or icon
+            expect(html).toContain('box-toggle');
+            expect(html).toContain('box-toggle-on');
+            // Should have no-icon class
+            expect(html).toContain('no-icon');
+            // Should have no-header class
+            expect(html).toContain('no-header');
+        });
+
+        it('should render toggle button with static English text (i18n applied at runtime)', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                properties: {},
+            };
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Toggle text is always English in HTML - translated at runtime by exe_export.js
+            expect(html).toContain('title="Toggle content"');
+            expect(html).toContain('<span>Toggle content</span>');
         });
     });
 

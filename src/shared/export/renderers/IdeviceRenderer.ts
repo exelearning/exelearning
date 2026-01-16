@@ -15,6 +15,7 @@ import type {
     ComponentRenderOptions,
     BlockRenderOptions,
     ExportBlockProperties,
+    ExportComponentProperties,
 } from '../interfaces';
 import { getIdeviceConfig, getIdeviceExportFiles } from '../../../services/idevice-config';
 
@@ -55,7 +56,10 @@ export class IdeviceRenderer {
         const config = getIdeviceConfig(type);
         const ideviceId = component.id;
         const htmlContent = component.content || '';
-        const properties = component.properties || {};
+        // Structure properties (visibility, teacherOnly, cssClass, identifier)
+        const structProps: ExportComponentProperties = component.structureProperties || {};
+        // jsonProperties for iDevice-specific config
+        const jsonProps = component.properties || {};
 
         // Build CSS classes
         const classes = ['idevice_node', config.cssClass];
@@ -63,18 +67,18 @@ export class IdeviceRenderer {
             classes.push('db-no-data');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (structProps.visibility === false || structProps.visibility === 'false') {
             classes.push('novisible');
         }
         if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
-            properties.visibilityType === 'teacher'
+            structProps.teacherOnly === true ||
+            structProps.teacherOnly === 'true' ||
+            (jsonProps as Record<string, unknown>).visibilityType === 'teacher'
         ) {
             classes.push('teacher-only');
         }
-        if (properties.cssClass && typeof properties.cssClass === 'string') {
-            classes.push(properties.cssClass);
+        if (structProps.cssClass && typeof structProps.cssClass === 'string') {
+            classes.push(structProps.cssClass);
         }
 
         // Build data attributes
@@ -102,10 +106,10 @@ export class IdeviceRenderer {
             if (config.componentType === 'json') {
                 dataAttrs += ` data-idevice-component-type="json"`;
 
-                // Add JSON data for iDevices with properties
+                // Add JSON data for iDevices with jsonProperties (iDevice-specific config)
                 // Transform asset URLs in properties the same way as content
-                if (Object.keys(properties).length > 0) {
-                    const transformedProps = this.transformPropertiesUrls(properties, basePath, isPreviewModeForUrls);
+                if (Object.keys(jsonProps).length > 0) {
+                    const transformedProps = this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls);
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
@@ -160,60 +164,59 @@ ${contentHtml}
             classes.push('no-header');
         }
         // Handle both boolean and string values (Yjs stores booleans, ELP uses strings)
-        if (properties.minimized === true || properties.minimized === 'true') {
+        if (String(properties.minimized) === 'true') {
             classes.push('minimized');
         }
-        if (properties.visibility === false || properties.visibility === 'false') {
+        if (String(properties.visibility) === 'false') {
             classes.push('novisible');
         }
-        if (
-            properties.teacherOnly === true ||
-            properties.teacherOnly === 'true' ||
-            properties.visibilityType === 'teacher'
-        ) {
+        if (String(properties.teacherOnly) === 'true' || properties.visibilityType === 'teacher') {
             classes.push('teacher-only');
         }
         if (properties.cssClass) {
-            classes.push(properties.cssClass);
+            classes.push(properties.cssClass as string);
         }
 
-        // Build block header
-        let headerHtml = '';
-        if (hasHeader) {
-            const hasIcon = iconName && iconName.trim() !== '';
-            const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
+        // Build block header - always render icon and toggle if enabled, even without title text
+        const hasIcon = iconName && iconName.trim() !== '';
+        const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
-            // Build icon HTML if iconName exists
-            let iconHtml = '';
-            if (hasIcon) {
-                // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
-                const iconPath = themeIconBasePath
-                    ? `${themeIconBasePath}${iconName}.png`
-                    : `${basePath}theme/icons/${iconName}.png`;
-                iconHtml = `<div class="box-icon exe-icon">
+        // Build icon HTML if iconName exists
+        let iconHtml = '';
+        if (hasIcon) {
+            // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
+            const iconPath = themeIconBasePath
+                ? `${themeIconBasePath}${iconName}.png`
+                : `${basePath}theme/icons/${iconName}.png`;
+            iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>
 `;
-            }
-
-            // Build toggle button if allowToggle is enabled
-            let toggleHtml = '';
-            if (properties.allowToggle === true || properties.allowToggle === 'true') {
-                const toggleClass =
-                    properties.minimized === true || properties.minimized === 'true'
-                        ? 'box-toggle box-toggle-off'
-                        : 'box-toggle box-toggle-on';
-                toggleHtml = `<button class="${toggleClass}" title="Toggle content">
-<span>Toggle content</span>
-</button>`;
-            }
-
-            headerHtml = `<header class="${headerClass}">
-${iconHtml}<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
-${toggleHtml}</header>`;
-        } else {
-            headerHtml = '<div class="box-head"></div>';
         }
+
+        // Build toggle button if allowToggle is enabled (default: true when undefined)
+        // allowToggle defaults to true for backwards compatibility - users must explicitly disable it
+        let toggleHtml = '';
+        const shouldShowToggle = properties.allowToggle !== false && properties.allowToggle !== 'false';
+        if (shouldShowToggle) {
+            const toggleClass =
+                properties.minimized === true || properties.minimized === 'true'
+                    ? 'box-toggle box-toggle-off'
+                    : 'box-toggle box-toggle-on';
+            // Static text - will be translated at runtime by exe_export.js using $exe_i18n.toggleContent
+            const toggleText = 'Toggle content';
+            toggleHtml = `<button class="${toggleClass}" title="${this.escapeAttr(toggleText)}">
+<span>${this.escapeHtml(toggleText)}</span>
+</button>`;
+        }
+        // Build title only if blockName has text
+        const titleHtml = hasHeader
+            ? `<h1 class="box-title">${this.escapeHtml(blockName)}</h1>
+`
+            : '';
+
+        const headerHtml = `<header class="${headerClass}">
+${iconHtml}${titleHtml}${toggleHtml}</header>`;
 
         // Render all iDevices in the block
         let contentHtml = '';

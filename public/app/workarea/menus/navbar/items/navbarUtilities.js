@@ -513,38 +513,13 @@ export default class NavbarFile {
             if (handled) return;
         }
 
-        // Fall back to server-side preview (legacy mode)
-        let toastData = {
-            title: _('Preview'),
-            body: _('Generating preview...'),
-            icon: 'preview',
-        };
-        let toast = eXeLearning.app.toasts.createToast(toastData);
-        let odeSessionId = eXeLearning.app.project.odeSession;
-        let response = await eXeLearning.app.api.getOdePreviewUrl(odeSessionId);
-        if (response['responseMessage'] == 'OK') {
-            toast.toastBody.innerHTML = _('The preview has been generated.');
-            setTimeout(() => {
-                window.open(response['urlPreviewIndex']);
-            }, 100);
-        } else {
-            toast.toastBody.innerHTML = _(
-                'An error occurred while generating the preview.'
-            );
-            toast.toastBody.classList.add('error');
-            eXeLearning.app.modals.alert.show({
-                title: _('Error'),
-                body: response['responseMessage']
-                    ? response['responseMessage']
-                    : _('Unknown error.'),
-                contentId: 'error',
-            });
-        }
-
-        // Remove message
-        setTimeout(() => {
-            toast.remove();
-        }, 1000);
+        // No preview method available
+        console.error('[NavbarUtilities] No preview method available');
+        eXeLearning.app.modals.alert.show({
+            title: _('Error'),
+            body: _('Preview is not available. Please reload the page.'),
+            contentId: 'error',
+        });
     }
 
     /**

@@ -25,7 +25,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .ifNotExists()
         .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('email', 'varchar(180)', col => col.notNull().unique())
-        .addColumn('user_id', 'varchar(40)', col => col.notNull())
+        .addColumn('user_id', 'varchar(255)', col => col.notNull())
         .addColumn('password', 'text', col => col.notNull())
         .addColumn('roles', 'text', col => col.notNull().defaultTo('[]'))
         .addColumn('is_lopd_accepted', 'integer', col => col.notNull().defaultTo(0))

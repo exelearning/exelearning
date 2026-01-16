@@ -73,7 +73,8 @@ const createMockDocumentWithTeacherOnly = (): ExportDocument => ({
                             type: 'text',
                             order: 0,
                             content: '<p>This is visible to everyone</p>',
-                            properties: { teacherOnly: 'true' },
+                            properties: {},
+                            structureProperties: { teacherOnly: 'true' },
                         },
                     ],
                 },
@@ -140,7 +141,8 @@ describe('Teacher Mode Toggle Integration', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher content</p>',
-                properties: { teacherOnly: 'true' },
+                properties: {},
+                structureProperties: { teacherOnly: 'true' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });

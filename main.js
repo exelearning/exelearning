@@ -10,6 +10,7 @@ const http = require('http');
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
+const contextMenu = require('electron-context-menu').default;
 
 // Embedded HTTP server for static files
 // Required for Service Worker support (SW doesn't work with custom protocols like exe://)
@@ -1158,6 +1159,13 @@ app.whenReady().then(() => {
     if (process.platform === 'darwin') {
         systemPreferences.setUserDefault('AppleWindowTabbingMode', 'string', 'always');
     }
+
+    // Initialize electron-context-menu for Chrome-like right-click menus
+    contextMenu({
+        showSaveImageAs: true,
+        showCopyLink: true,
+        showInspectElement: true,
+    });
 
     createMacOSMenu();
     createWindow();

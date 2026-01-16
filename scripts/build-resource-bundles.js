@@ -52,6 +52,8 @@ const BASE_LIBS = [
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
+  // Favicon (from public/ root)
+  { src: 'favicon.ico', dest: 'favicon.ico' },
 ];
 
 /**

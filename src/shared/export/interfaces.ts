@@ -93,13 +93,13 @@ export interface ExportBlock {
  * Block properties
  */
 export interface ExportBlockProperties {
-    visibility?: string;
-    minimized?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    minimized?: string | boolean;
+    teacherOnly?: string | boolean;
     visibilityType?: string;
     cssClass?: string;
     identifier?: string;
-    allowToggle?: string;
+    allowToggle?: string | boolean;
 }
 
 /**
@@ -228,6 +228,29 @@ export interface ExportAsset {
     data: Uint8Array | Blob;
 }
 
+/**
+ * Favicon information for export
+ */
+export interface FaviconInfo {
+    /** Path relative to export root (e.g., 'theme/img/favicon.ico' or 'libs/favicon.ico') */
+    path: string;
+    /** MIME type (e.g., 'image/x-icon', 'image/png') */
+    type: string;
+}
+
+/**
+ * Theme data prepared for export
+ * Contains theme files, root-level CSS/JS files, and detected favicon
+ */
+export interface ThemeData {
+    /** Map of all theme files (path -> content) */
+    themeFilesMap: Map<string, Uint8Array> | null;
+    /** List of root-level CSS/JS filenames */
+    themeRootFiles: string[];
+    /** Detected favicon info, or null if not found in theme */
+    faviconInfo: FaviconInfo | null;
+}
+
 // =============================================================================
 // ZIP Provider Interface
 // =============================================================================
@@ -303,6 +326,12 @@ export interface ExportOptions {
 
     /** Theme name to use for export */
     theme?: string;
+
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
 
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
@@ -380,6 +409,8 @@ export interface Epub3ExportOptions extends ExportOptions {
 export interface ElpxExportOptions extends ExportOptions {
     /** Include HTML preview pages */
     includeHtmlContent?: boolean;
+    /** Root page ID for single page export */
+    rootPageId?: string;
 }
 
 // =============================================================================
@@ -511,6 +542,12 @@ export interface PageRenderOptions {
      * If not provided, falls back to legacy 'default.js' and 'content.css'.
      */
     themeFiles?: string[];
+
+    /** Path to favicon file (relative to root) */
+    faviconPath?: string;
+
+    /** MIME type of favicon (e.g. image/x-icon, image/png) */
+    faviconType?: string;
 }
 
 /**
@@ -691,7 +728,7 @@ export interface Exporter {
     getFileExtension(): string;
 
     /**
-     * Get the file suffix for this format (e.g., '_web', '_scorm12')
+     * Get the file suffix for this format (e.g., '_web', '_scorm')
      */
     getFileSuffix(): string;
 }

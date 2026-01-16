@@ -1932,6 +1932,18 @@ class YjsProjectBridge {
         return;
       }
 
+      const configXml = new TextDecoder().decode(themeConfig);
+      const getValue = (tag) => {
+        const match = configXml.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+        return match ? match[1].trim() : '';
+      };
+      const downloadable = getValue('downloadable');
+      if (downloadable === '0') {
+        Logger.log(`[YjsProjectBridge] Theme "${themeName}" marked as non-downloadable, skipping import`);
+        eXeLearning.app.themes.selectTheme(eXeLearning.config.defaultTheme, true);
+        return;
+      }
+
       // Store file reference for later extraction
       this._pendingThemeFile = file;
       this._pendingThemeZip = zip;
@@ -2099,6 +2111,7 @@ class YjsProjectBridge {
         author: '',
         license: '',
         description: '',
+        downloadable: '1',
         cssFiles: [],
         js: [],
         icons: {},
@@ -2120,6 +2133,7 @@ class YjsProjectBridge {
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
         config.description = getValue('description') || '';
+        config.downloadable = getValue('downloadable') || '1';
       }
 
       // Scan for CSS files
@@ -2139,11 +2153,18 @@ class YjsProjectBridge {
         }
       }
 
-      // Scan for icons
+      // Scan for icons - store as ThemeIcon objects with relative paths
+      // Blob URLs will be resolved when theme is selected
       for (const filePath of Object.keys(files)) {
         if (filePath.startsWith('icons/') && (filePath.endsWith('.png') || filePath.endsWith('.svg'))) {
           const iconName = filePath.replace('icons/', '').replace(/\.(png|svg)$/, '');
-          config.icons[iconName] = filePath;
+          config.icons[iconName] = {
+            id: iconName,
+            title: iconName,
+            type: 'img',
+            value: filePath, // Will be converted to blob URL on theme select
+            _relativePath: filePath, // Keep original path for blob URL resolution
+          };
         }
       }
 
