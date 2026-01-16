@@ -622,6 +622,12 @@ class ElpxImporter {
         }
       }
 
+      // *** Normalize exe-figure HTML to add IDs expected by TinyMCE exeimage plugin ***
+      // This enables editing of image Title and Recognition fields
+      if (htmlContent && typeof FigureNormalizer !== 'undefined') {
+        htmlContent = FigureNormalizer.normalize(htmlContent);
+      }
+
       compData.htmlView = (typeof htmlContent === 'string') ? htmlContent : '';
     }
 
@@ -1745,6 +1751,11 @@ class ElpxImporter {
               let transformedHtml = '';
               if (ideviceData.htmlView) {
                 transformedHtml = replaceAssetPathsWithMediaTypes(ideviceData.htmlView);
+                // Normalize exe-figure HTML to add IDs expected by TinyMCE exeimage plugin
+                // This enables editing of image Title and Recognition fields in legacy imports
+                if (typeof FigureNormalizer !== 'undefined') {
+                  transformedHtml = FigureNormalizer.normalize(transformedHtml);
+                }
                 compMap.set('htmlView', transformedHtml || '');
               }
 

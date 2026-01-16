@@ -52,9 +52,10 @@
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
-    // Group 0: Legacy iDevice handlers (must load BEFORE LegacyXmlParser)
-    // BaseLegacyHandler must load first, then handlers, then registry
+    // Group 0: Core utilities and legacy iDevice handlers (must load BEFORE LegacyXmlParser)
+    // FigureNormalizer and BaseLegacyHandler must load first, then handlers, then registry
     [
+      'FigureNormalizer.js',  // Normalizes exe-figure HTML for TinyMCE exeimage plugin
       'legacy/BaseLegacyHandler.js',  // Base class for all handlers
     ],
     // Group 0.5: Individual handlers (all depend on BaseLegacyHandler)

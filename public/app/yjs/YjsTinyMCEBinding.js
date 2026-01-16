@@ -189,6 +189,12 @@ class YjsTinyMCEBinding {
     try {
       let content = this.yText.toString();
 
+      // Normalize exe-figure HTML to add IDs expected by TinyMCE exeimage plugin
+      // This enables editing of image Title and Recognition fields
+      if (content && typeof FigureNormalizer !== 'undefined' && content.includes('exe-figure')) {
+        content = FigureNormalizer.normalize(content);
+      }
+
       // Convert asset:// URLs to blob: URLs for display in editor
       content = this.convertAssetUrlsToBlobUrls(content);
 
