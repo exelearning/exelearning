@@ -96,6 +96,24 @@ describe('FigureNormalizer', () => {
         expect(result).not.toContain('imagen_1');
       });
 
+      it('should skip figures that have any figure_ prefix ID', () => {
+        const input = `
+          <figure id="figure_custom_id" class="exe-figure">
+            <img src="test.png" />
+            <figcaption class="figcaption">
+              <span class="author">Author</span>
+            </figcaption>
+          </figure>
+        `;
+
+        const result = FigureNormalizer.normalize(input);
+
+        // Should keep existing ID
+        expect(result).toContain('id="figure_custom_id"');
+        // Should NOT add new figure ID
+        expect(result).not.toContain('figure_imagen_1');
+      });
+
       it('should return unchanged content without exe-figure', () => {
         const input = '<p>Regular paragraph</p><img src="test.png" />';
         const result = FigureNormalizer.normalize(input);
@@ -231,6 +249,80 @@ describe('FigureNormalizer', () => {
         const result = FigureNormalizer.normalize(input);
 
         expect(result).toContain('id="license_imagen_1"');
+      });
+
+      it('should handle span.license with plain text (no inner link)', () => {
+        const input = `
+          <figure class="exe-figure">
+            <img src="test.png" />
+            <figcaption class="figcaption">
+              <span class="author">Author</span>.
+              <span class="license">Public Domain</span>
+            </figcaption>
+          </figure>
+        `;
+
+        const result = FigureNormalizer.normalize(input);
+
+        // The span itself should get the ID when there's no inner link
+        expect(result).toContain('id="license_imagen_1"');
+        expect(result).toContain('class="license"');
+      });
+
+      it('should not add ID to license inner link if it already has one', () => {
+        const input = `
+          <figure class="exe-figure">
+            <img src="test.png" />
+            <figcaption class="figcaption">
+              <span class="license">(<a id="existing_license_id" href="#">CC BY</a>)</span>
+            </figcaption>
+          </figure>
+        `;
+
+        const result = FigureNormalizer.normalize(input);
+
+        // Should keep the existing ID, not overwrite it
+        expect(result).toContain('id="existing_license_id"');
+        expect(result).not.toContain('id="license_imagen_1"');
+      });
+
+      it('should handle img that already has an ID', () => {
+        const input = `
+          <figure class="exe-figure">
+            <img id="my_custom_img" src="test.png" />
+            <figcaption class="figcaption">
+              <span class="author">Author</span>
+            </figcaption>
+          </figure>
+        `;
+
+        const result = FigureNormalizer.normalize(input);
+
+        // Should keep existing img ID
+        expect(result).toContain('id="my_custom_img"');
+        expect(result).not.toContain('id="imagen_1"');
+        // But figure should still get ID
+        expect(result).toContain('id="figure_imagen_1"');
+      });
+
+      it('should handle attribution elements that already have IDs', () => {
+        const input = `
+          <figure class="exe-figure">
+            <img src="test.png" />
+            <figcaption class="figcaption">
+              <span id="custom_author" class="author">Author</span>
+              <span id="custom_title" class="title">Title</span>
+            </figcaption>
+          </figure>
+        `;
+
+        const result = FigureNormalizer.normalize(input);
+
+        // Should keep existing IDs
+        expect(result).toContain('id="custom_author"');
+        expect(result).toContain('id="custom_title"');
+        expect(result).not.toContain('id="author_imagen_1"');
+        expect(result).not.toContain('id="title_imagen_1"');
       });
     });
 
