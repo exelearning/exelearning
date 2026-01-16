@@ -116,7 +116,8 @@ export default class Shortcuts {
 
   /** Global keydown handler */
 get isOffline() {
-  return (document.body.getAttribute('installation-type') || '').toLowerCase() === 'offline';
+  const type = (document.body.getAttribute('installation-type') || '').toLowerCase();
+  return type === 'offline' || type === 'static';
 }
 
 getComboRemap() {

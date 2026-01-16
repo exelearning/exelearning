@@ -41,6 +41,7 @@ body[mode="advanced"] .exe-simplified {
 
 /* eXe Mode */
 body[installation-type="offline"] .exe-online,
+body[installation-type="static"] .exe-online,
 body[installation-type="online"] .exe-offline {
     display: none !important;
 }
