@@ -339,6 +339,12 @@
             return { replaced: 0, errors: 0 };
         }
 
+        // Skip if content already has pre-rendered LaTeX
+        // This prevents double-processing which corrupts data-latex attributes
+        if (innerHTML.includes('exe-math-rendered')) {
+            return { replaced: 0, errors: 0 };
+        }
+
         // First pass: find ALL matches from all patterns before any replacements
         // This prevents patterns from incorrectly matching already-rendered content
         const allMatches = [];
@@ -628,8 +634,41 @@
     }
 
     /**
+     * Process LaTeX content in a JSON properties object
+     * For JSON iDevices, LaTeX content is stored in properties like textTextarea
+     * @param {Object} jsonData - Parsed JSON properties object
+     * @returns {Promise<{updated: boolean, count: number, jsonData: Object}>}
+     */
+    async function processJsonProperties(jsonData) {
+        let updated = false;
+        let count = 0;
+
+        for (const [key, value] of Object.entries(jsonData)) {
+            // Only process string values that might contain LaTeX
+            if (typeof value !== 'string' || !HAS_LATEX_PATTERN.test(value)) {
+                continue;
+            }
+
+            // Pre-render LaTeX in this string value
+            const processedValue = await preRenderString(value);
+
+            if (processedValue !== value) {
+                jsonData[key] = processedValue;
+                updated = true;
+                // Count approximate number of replacements
+                const origMatches = value.match(HAS_LATEX_PATTERN);
+                count += origMatches ? origMatches.length : 1;
+            }
+        }
+
+        return { updated, count, jsonData };
+    }
+
+    /**
      * Pre-render LaTeX per iDevice to maintain proper equation numbering
      * Each iDevice gets its own equation numbering scope (starting from 1)
+     * Also processes LaTeX content inside data-idevice-json-data attributes
+     * for JSON iDevices (like text iDevice)
      * @param {string} html - Full HTML with multiple iDevices
      * @param {Map<string, string>} preserved - Preserved content map
      * @returns {Promise<{html: string, hasLatex: boolean, latexRendered: boolean, count: number}>}
@@ -643,7 +682,31 @@
         let totalReplaced = 0;
         let totalErrors = 0;
 
-        // Process each iDevice with its own equation numbering scope
+        // FIRST: Process LaTeX content inside data-idevice-json-data attributes
+        // This is needed for JSON iDevices where content is stored in properties, not HTML body
+        const jsonDataElements = doc.querySelectorAll('[data-idevice-json-data]');
+        for (const element of Array.from(jsonDataElements)) {
+            const jsonStr = element.getAttribute('data-idevice-json-data');
+            if (!jsonStr || !HAS_LATEX_PATTERN.test(jsonStr)) {
+                continue;
+            }
+
+            try {
+                const jsonData = JSON.parse(jsonStr);
+                const result = await processJsonProperties(jsonData);
+                if (result.updated) {
+                    // Update the attribute with pre-rendered content
+                    const newJsonStr = JSON.stringify(result.jsonData);
+                    element.setAttribute('data-idevice-json-data', newJsonStr);
+                    totalReplaced += result.count;
+                    console.log(`[LatexPreRenderer] Pre-rendered LaTeX in JSON data`);
+                }
+            } catch (err) {
+                console.warn('[LatexPreRenderer] Failed to process JSON data attribute:', err);
+            }
+        }
+
+        // SECOND: Process each iDevice DOM content with its own equation numbering scope
         for (const idevice of idevices) {
             const result = await processIdeviceWithNumbering(idevice, doc);
             totalReplaced += result.replaced;
@@ -843,25 +906,66 @@
             return text;
         }
 
-        let result = text;
+        // Skip if text already contains pre-rendered LaTeX
+        // This prevents double-processing which corrupts data-latex attributes
+        if (text.includes('exe-math-rendered')) {
+            return text;
+        }
 
-        // Process each LaTeX pattern
+        // Collect ALL matches from all patterns with their positions
+        const allMatches = [];
         for (const pattern of LATEX_PATTERNS) {
             pattern.regex.lastIndex = 0;
             const matches = [...text.matchAll(pattern.regex)];
 
             for (const match of matches) {
-                const latexWithDelimiters = match[0];
-                const cleanLatex = cleanLatexFromHtml(latexWithDelimiters);
-
-                try {
-                    const { svg, mathml } = await renderLatexExpression(cleanLatex, pattern.display);
-                    const rendered = createRenderedWrapperHtml(latexWithDelimiters, cleanLatex, pattern.display, svg, mathml);
-                    result = result.replace(latexWithDelimiters, rendered);
-                } catch (error) {
-                    console.warn('[LatexPreRenderer] Failed to pre-render in game data:', cleanLatex, error);
-                    // Keep original LaTeX on error
+                // Skip matches inside attributes (like data-latex="...")
+                if (shouldSkipPosition(text, match.index)) {
+                    continue;
                 }
+
+                allMatches.push({
+                    start: match.index,
+                    end: match.index + match[0].length,
+                    latexWithDelimiters: match[0],
+                    display: pattern.display,
+                });
+            }
+        }
+
+        if (allMatches.length === 0) {
+            return text;
+        }
+
+        // Sort by start position and remove overlapping matches
+        allMatches.sort((a, b) => a.start - b.start);
+        const filteredMatches = [];
+        let lastEnd = -1;
+        for (const m of allMatches) {
+            if (m.start >= lastEnd) {
+                filteredMatches.push(m);
+                lastEnd = m.end;
+            }
+        }
+
+        // Render all matches
+        for (const m of filteredMatches) {
+            const cleanLatex = cleanLatexFromHtml(m.latexWithDelimiters);
+            try {
+                const { svg, mathml } = await renderLatexExpression(cleanLatex, m.display);
+                m.rendered = createRenderedWrapperHtml(m.latexWithDelimiters, cleanLatex, m.display, svg, mathml);
+            } catch (error) {
+                console.warn('[LatexPreRenderer] Failed to pre-render in string:', cleanLatex, error);
+                m.rendered = null; // Keep original on error
+            }
+        }
+
+        // Build result by replacing from END to START (preserves positions)
+        let result = text;
+        for (let i = filteredMatches.length - 1; i >= 0; i--) {
+            const m = filteredMatches[i];
+            if (m.rendered) {
+                result = result.substring(0, m.start) + m.rendered + result.substring(m.end);
             }
         }
 
