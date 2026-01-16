@@ -1098,6 +1098,307 @@ describe('TinyMCE 5 Settings', () => {
         expect(iframe.getAttribute('src')).toBe(mockPdfBlobUrl);
       });
     });
+
+    describe('SetContent handler - Bun script stripping', () => {
+      it('removes Bun dev server scripts (/_bun/ path) from editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML = '<p>content</p><script src="/_bun/client/test.js"></script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+
+        // Get the SetContent handler
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        // Call with non-initial, non-paste event
+        setContentHandler({ initial: false, paste: false });
+
+        // Script should be removed
+        expect(body.querySelectorAll('script').length).toBe(0);
+        expect(body.textContent).toContain('content');
+      });
+
+      it('removes scripts with data-bun-dev-server-script attribute from editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML =
+          '<p>content</p><script data-bun-dev-server-script src="/test.js"></script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        setContentHandler({ initial: false, paste: false });
+
+        expect(body.querySelectorAll('script').length).toBe(0);
+      });
+
+      it('removes Bun chunk scripts (path traversal pattern) from editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML =
+          '<p>content</p><script src="/../../../../../../chunk-wnkq4dvw.js"></script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        setContentHandler({ initial: false, paste: false });
+
+        expect(body.querySelectorAll('script').length).toBe(0);
+      });
+
+      it('removes Bun inline scripts (/_bun/unref pattern) from editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML =
+          "<p>content</p><script>navigator.sendBeacon('/_bun/unref', 'data');</script>";
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        setContentHandler({ initial: false, paste: false });
+
+        expect(body.querySelectorAll('script').length).toBe(0);
+      });
+
+      it('preserves non-Bun scripts in editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML =
+          '<p>content</p><script src="/app/custom.js"></script><script>console.log("hello");</script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        setContentHandler({ initial: false, paste: false });
+
+        // Both non-Bun scripts should be preserved
+        expect(body.querySelectorAll('script').length).toBe(2);
+      });
+
+      it('skips stripping when e.initial is true', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML = '<p>content</p><script src="/_bun/client/test.js"></script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        // Call with initial: true
+        setContentHandler({ initial: true, paste: false });
+
+        // Script should NOT be removed (we skip initial loads)
+        expect(body.querySelectorAll('script').length).toBe(1);
+      });
+
+      it('skips stripping when e.paste is true', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML = '<p>content</p><script src="/_bun/client/test.js"></script>';
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        // Call with paste: true
+        setContentHandler({ initial: false, paste: true });
+
+        // Script should NOT be removed (we skip paste operations)
+        expect(body.querySelectorAll('script').length).toBe(1);
+      });
+
+      it('handles null body gracefully', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        let getBodyCalled = false;
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: function () {
+            getBodyCalled = true;
+            return null;
+          },
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        // Should not throw even with null body
+        expect(() => setContentHandler({ initial: false, paste: false })).not.toThrow();
+
+        // Verify getBody was called (meaning we entered the if block and hit the null body branch)
+        expect(getBodyCalled).toBe(true);
+      });
+
+      it('removes multiple Bun scripts of different types from editor body', () => {
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        const body = document.createElement('div');
+        body.innerHTML = `
+          <div class="exe-layout-2-cols">
+            <div class="exe-col-1">Content</div>
+          </div>
+          <script src="/_bun/client/test.js"></script>
+          <script data-bun-dev-server-script src="/something.js"></script>
+          <script src="/../../chunk-abc123.js"></script>
+          <script>navigator.sendBeacon('/_bun/unref', 'x');</script>
+          <script src="/app/custom.js"></script>
+        `;
+
+        const mockEditor = {
+          on: vi.fn(),
+          getBody: () => body,
+        };
+
+        config.setup(mockEditor);
+        const setContentCall = mockEditor.on.mock.calls.find((c) => c[0] === 'SetContent');
+        const setContentHandler = setContentCall[1];
+
+        setContentHandler({ initial: false, paste: false });
+
+        // Only the non-Bun script should remain
+        expect(body.querySelectorAll('script').length).toBe(1);
+        expect(body.querySelector('script').getAttribute('src')).toBe('/app/custom.js');
+        // Content should be preserved
+        expect(body.textContent).toContain('Content');
+      });
+    });
+
+    describe('stripBunInjectedScripts', () => {
+      it('should remove Bun dev server scripts with /_bun/ path', () => {
+        const html = '<div>content</div><script type="module" src="/_bun/client/test.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('/_bun/');
+        expect(result).toContain('content');
+      });
+
+      it('should remove scripts with data-bun-dev-server-script attribute', () => {
+        const html = '<div>content</div><script type="module" crossorigin="" src="/_bun/client/2-50-50-00000000d4f90183.js" data-bun-dev-server-script=""></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('data-bun-dev-server-script');
+        expect(result).not.toContain('/_bun/');
+      });
+
+      it('should remove Bun chunk scripts with path traversal (production pattern)', () => {
+        const html = '<div>content</div><script type="module" crossorigin="" src="/../../../../../../chunk-wnkq4dvw.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('chunk-');
+        expect(result).not.toContain('/../');
+      });
+
+      it('should remove Bun inline visibility change script', () => {
+        const html = '<div>content</div><script>((a)=>{document.addEventListener(\'visibilitychange\',globalThis[Symbol.for(\'bun:loadData\')]=()=>document.visibilityState===\'hidden\'&&navigator.sendBeacon(\'/_bun/unref\',a));})(document.querySelector(\'[data-bun-dev-server-script]\').src.slice(-11,-3))</script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).not.toContain('/_bun/unref');
+        expect(result).not.toContain('visibilitychange');
+      });
+
+      it('should preserve non-Bun scripts', () => {
+        const html = '<div>content</div><script src="/app/custom.js"></script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('/app/custom.js');
+      });
+
+      it('should preserve inline scripts that are not Bun-related', () => {
+        const html = '<div>content</div><script>console.log("hello");</script>';
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('console.log');
+      });
+
+      it('should handle null or empty input', () => {
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts(null)).toBeNull();
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts('')).toBe('');
+        expect(globalThis.$exeTinyMCE.stripBunInjectedScripts(undefined)).toBeUndefined();
+      });
+
+      it('should handle HTML with multiple Bun scripts', () => {
+        const html = `
+          <div class="exe-layout-2-cols">
+            <div class="exe-col-1">Content</div>
+            <div class="exe-col-2">More content</div>
+          </div>
+          <script type="module" crossorigin="" src="/_bun/client/2-50-50-00000000d4f90183.js" data-bun-dev-server-script=""></script>
+          <script>((a)=>{navigator.sendBeacon('/_bun/unref',a);})()</script>
+        `;
+        const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+        expect(result).toContain('exe-layout-2-cols');
+        expect(result).toContain('Content');
+        expect(result).toContain('More content');
+        expect(result).not.toContain('/_bun/');
+        expect(result).not.toContain('data-bun-dev-server-script');
+      });
+
+      it('should handle various chunk file name patterns', () => {
+        // Test with different hash lengths
+        const patterns = [
+          '/../../chunk-abc123.js',
+          '/../../../chunk-xyz789.js',
+          '/../../../../../../chunk-wnkq4dvw.js',
+        ];
+
+        patterns.forEach((pattern) => {
+          const html = `<div>test</div><script src="${pattern}"></script>`;
+          const result = globalThis.$exeTinyMCE.stripBunInjectedScripts(html);
+          expect(result).not.toContain('chunk-');
+        });
+      });
+    });
   });
 
   describe('$exeTinyMCEToggler', () => {
