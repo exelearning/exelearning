@@ -890,6 +890,88 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('getBlock', () => {
+    it('returns null for non-existent block', () => {
+      const block = binding.getBlock('non-existent');
+      expect(block).toBeNull();
+    });
+
+    it('returns null when navigation is empty', () => {
+      const block = binding.getBlock('block-1');
+      expect(block).toBeNull();
+    });
+
+    it('finds block by id across all pages', () => {
+      // Create page 1 with block 1
+      const page1 = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Page 1',
+      });
+      const blocks1 = createYArray();
+      const block1 = createYMap({
+        id: 'block-1',
+        blockId: 'block-1',
+        blockName: 'Block 1',
+        iconName: 'info',
+        order: 0,
+      });
+      block1.set('components', createYArray());
+      blocks1.push([block1]);
+      page1.set('blocks', blocks1);
+
+      // Create page 2 with block 2
+      const page2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Page 2',
+      });
+      const blocks2 = createYArray();
+      const block2 = createYMap({
+        id: 'block-2',
+        blockId: 'block-2',
+        blockName: 'Block 2',
+        iconName: 'alert',
+        order: 0,
+      });
+      block2.set('components', createYArray());
+      blocks2.push([block2]);
+      page2.set('blocks', blocks2);
+
+      mockDocManager.getNavigation().push([page1]);
+      mockDocManager.getNavigation().push([page2]);
+
+      // Find block from page 2
+      const foundBlock = binding.getBlock('block-2');
+      expect(foundBlock).not.toBeNull();
+      expect(foundBlock.id).toBe('block-2');
+      expect(foundBlock.blockName).toBe('Block 2');
+      expect(foundBlock.iconName).toBe('alert');
+    });
+
+    it('finds block by blockId when id is different', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Test Page',
+      });
+      const blocksArray = createYArray();
+      const block = createYMap({
+        blockId: 'my-block-id',  // Only blockId, no id
+        blockName: 'Test Block',
+        order: 0,
+      });
+      block.set('components', createYArray());
+      blocksArray.push([block]);
+      pageMap.set('blocks', blocksArray);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const foundBlock = binding.getBlock('my-block-id');
+      expect(foundBlock).not.toBeNull();
+      expect(foundBlock.blockName).toBe('Test Block');
+    });
+  });
+
   describe('createBlock', () => {
     beforeEach(() => {
       const pageMap = createYMap({
