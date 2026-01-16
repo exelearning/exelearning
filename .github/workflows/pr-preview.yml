@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Setup Bun
         if: github.event.action != 'closed'
@@ -35,8 +35,9 @@ jobs:
         if: github.event.action != 'closed'
         run: bun run build:static
 
-      - name: Deploy preview
-        id: deploy
+      # GitHub Pages preview (temporary, will be deleted when PR is closed)
+      - name: Deploy to GitHub Pages (temporary preview)
+        id: deploy-gh
         uses: rossjrw/pr-preview-action@v1
         with:
           source-dir: ./dist/static/
@@ -45,9 +46,94 @@ jobs:
           action: auto
           qr-code: true
 
-      - name: Add preview URL to summary
+      # Cloudflare Pages preview (persistent until manually deleted)
+      - name: Deploy to Cloudflare Pages
+        if: github.event.action != 'closed'
+        id: deploy-cf
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./dist/static/ --project-name=exelearning-preview --branch=pr-${{ github.event.number }}
+
+      - name: Add preview URLs to summary
         if: github.event.action != 'closed'
         run: |
           echo "## 🚀 PR Preview Deployed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Preview URL:** ${{ steps.deploy.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "### GitHub Pages (temporary)" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ This preview will be automatically deleted when the PR is closed." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.deploy-gh.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Cloudflare Pages (persistent)" >> $GITHUB_STEP_SUMMARY
+          echo "This preview will remain available until manually deleted." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.deploy-cf.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR with preview URLs
+        if: github.event.action != 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ghUrl = '${{ steps.deploy-gh.outputs.deployment-url }}';
+            const cfUrl = '${{ steps.deploy-cf.outputs.deployment-url }}';
+            
+            const body = `## 🚀 Preview Deployed
+            
+            | Environment | URL | Status |
+            |-------------|-----|--------|
+            | GitHub Pages | ${ghUrl} | ⚠️ Temporary (deleted on PR close) |
+            | Cloudflare Pages | ${cfUrl} | ✅ Persistent |
+            
+            ---
+            <sub>Last updated: ${new Date().toISOString()}</sub>`;
+            
+            // Find existing comment from this workflow
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && 
+              comment.body.includes('🚀 Preview Deployed')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Comment on PR when preview is deleted
+        if: github.event.action == 'closed'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const cfUrl = 'https://pr-${{ github.event.number }}.exelearning-preview.pages.dev';
+            
+            const body = `## 🗑️ GitHub Pages Preview Deleted
+            
+            The temporary GitHub Pages preview has been removed.
+            
+            The Cloudflare Pages preview remains available at:
+            ${cfUrl}`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });

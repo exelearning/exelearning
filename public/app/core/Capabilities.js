@@ -13,7 +13,6 @@ export class Capabilities {
     constructor(config) {
         const isServer = config.mode === 'server';
         const isStatic = config.mode === 'static';
-        const isElectron = config.mode === 'electron';
 
         /**
          * Collaboration features (presence, real-time sync)
@@ -60,7 +59,7 @@ export class Capabilities {
             /** Whether authentication is required */
             required: isServer,
             /** Whether guest/anonymous access is allowed */
-            guest: isStatic || isElectron,
+            guest: isStatic,
             /** Whether login/logout is available */
             loginAvailable: isServer,
         });
@@ -72,7 +71,7 @@ export class Capabilities {
             /** Whether project list is fetched from server */
             remoteList: isServer,
             /** Whether projects are stored in IndexedDB */
-            localList: isStatic || isElectron,
+            localList: isStatic,
             /** Whether "Recent Projects" uses server API */
             recentFromServer: isServer,
             /** Whether "Open from server" is available */
@@ -102,7 +101,7 @@ export class Capabilities {
             /** Whether file manager uses server API */
             serverBacked: isServer,
             /** Whether files are stored locally */
-            localBacked: isStatic || isElectron,
+            localBacked: isStatic,
         });
 
         Object.freeze(this);

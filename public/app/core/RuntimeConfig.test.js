@@ -58,13 +58,14 @@ describe('RuntimeConfig', () => {
             expect(config.staticDataPath).toBe('./data/bundle.json');
         });
 
-        it('should detect Electron mode', () => {
+        it('should detect Electron as static mode', () => {
             delete window.__EXE_STATIC_MODE__;
             window.electronAPI = { test: true };
 
             const config = RuntimeConfig.fromEnvironment();
 
-            expect(config.mode).toBe('electron');
+            // Electron is treated as static mode (same capabilities)
+            expect(config.mode).toBe('static');
             expect(config.wsUrl).toBe(null);
         });
 
@@ -101,21 +102,6 @@ describe('RuntimeConfig', () => {
         it('should return false for static mode', () => {
             const config = new RuntimeConfig({ mode: 'static', baseUrl: '.', wsUrl: null, staticDataPath: null });
             expect(config.isServerMode()).toBe(false);
-        });
-    });
-
-    describe('isElectronMode', () => {
-        it('should return true for Electron mode', () => {
-            const config = new RuntimeConfig({ mode: 'electron', baseUrl: 'http://localhost', wsUrl: null, staticDataPath: null });
-            expect(config.isElectronMode()).toBe(true);
-        });
-
-        it('should return false for other modes', () => {
-            const serverConfig = new RuntimeConfig({ mode: 'server', baseUrl: 'http://localhost', wsUrl: 'ws://localhost', staticDataPath: null });
-            const staticConfig = new RuntimeConfig({ mode: 'static', baseUrl: '.', wsUrl: null, staticDataPath: null });
-
-            expect(serverConfig.isElectronMode()).toBe(false);
-            expect(staticConfig.isElectronMode()).toBe(false);
         });
     });
 });

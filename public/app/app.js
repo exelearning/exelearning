@@ -1362,8 +1362,8 @@ export default class App {
             'eXeLearning %s is a development version. It is not for production use.'
         );
 
-        // Disable offline versions after DEMO_EXPIRATION_DATE
-        if ($('body').attr('installation-type') == 'offline') {
+        // Disable static versions after DEMO_EXPIRATION_DATE
+        if ($('body').attr('installation-type') == 'static') {
             msg = _('This is just a demo version. Not for real projects.');
             var expires = eXeLearning.expires;
             if (expires.length == 8) {

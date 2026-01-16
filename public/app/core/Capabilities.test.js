@@ -64,7 +64,7 @@ describe('Capabilities', () => {
         });
     });
 
-    describe('static mode', () => {
+    describe('static mode (includes Electron)', () => {
         const config = new RuntimeConfig({
             mode: 'static',
             baseUrl: '.',
@@ -116,35 +116,6 @@ describe('Capabilities', () => {
             expect(capabilities.fileManager.enabled).toBe(true);
             expect(capabilities.fileManager.serverBacked).toBe(false);
             expect(capabilities.fileManager.localBacked).toBe(true);
-        });
-    });
-
-    describe('electron mode', () => {
-        const config = new RuntimeConfig({
-            mode: 'electron',
-            baseUrl: 'http://localhost',
-            wsUrl: null,
-            staticDataPath: null,
-        });
-        const capabilities = new Capabilities(config);
-
-        it('should disable collaboration (no WebSocket)', () => {
-            expect(capabilities.collaboration.enabled).toBe(false);
-        });
-
-        it('should allow guest access', () => {
-            expect(capabilities.auth.required).toBe(false);
-            expect(capabilities.auth.guest).toBe(true);
-        });
-
-        it('should use local project storage', () => {
-            expect(capabilities.projects.localList).toBe(true);
-            expect(capabilities.projects.remoteList).toBe(false);
-        });
-
-        it('should use local-backed file manager', () => {
-            expect(capabilities.fileManager.localBacked).toBe(true);
-            expect(capabilities.fileManager.serverBacked).toBe(false);
         });
     });
 });

@@ -6,7 +6,7 @@
 export class RuntimeConfig {
     /**
      * @param {Object} options
-     * @param {'server'|'static'|'electron'} options.mode - Runtime mode
+     * @param {'server'|'static'} options.mode - Runtime mode
      * @param {string} options.baseUrl - Base URL for API calls
      * @param {string|null} options.wsUrl - WebSocket URL (null in static mode)
      * @param {string|null} options.staticDataPath - Path to bundle.json (null in server mode)
@@ -35,10 +35,11 @@ export class RuntimeConfig {
             });
         }
 
-        // Check for Electron mode
+        // Check for Electron mode - treat as static mode
+        // Electron apps use the same local-only capabilities as static builds
         if (window.electronAPI) {
             return new RuntimeConfig({
-                mode: 'electron',
+                mode: 'static',
                 baseUrl: window.location.origin,
                 wsUrl: null, // Electron doesn't use WebSocket collaboration
                 staticDataPath: null,
@@ -57,6 +58,7 @@ export class RuntimeConfig {
 
     /**
      * Check if running in static mode (no server).
+     * This includes both static builds and Electron apps.
      * Prefer using capabilities instead of this method.
      * @returns {boolean}
      */
@@ -70,14 +72,6 @@ export class RuntimeConfig {
      */
     isServerMode() {
         return this.mode === 'server';
-    }
-
-    /**
-     * Check if running in Electron mode.
-     * @returns {boolean}
-     */
-    isElectronMode() {
-        return this.mode === 'electron';
     }
 }
 

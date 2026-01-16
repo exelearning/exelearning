@@ -231,10 +231,10 @@ describe('App utility methods', () => {
       expect(document.getElementById('eXeBetaWarning')).toBeNull();
     });
 
-    it('shows expiry message for expired offline demo', async () => {
+    it('shows expiry message for expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       window.eXeLearning.expires = '20200101'; // Past date
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
@@ -242,11 +242,11 @@ describe('App utility methods', () => {
       expect(document.querySelector('.expired')).not.toBeNull();
     });
 
-    it('shows days remaining for non-expired offline demo', async () => {
+    it('shows days remaining for non-expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       // Set expiry to far future
       window.eXeLearning.expires = '20991231';
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
