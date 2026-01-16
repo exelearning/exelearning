@@ -105,6 +105,10 @@ export default class Theme {
         });
         // Load css theme
         await this.loadCss();
+        // Resolve icon blob URLs for user themes
+        if (this.isUserTheme) {
+            await this.resolveIconBlobUrls();
+        }
         // Reload page
         if (eXeLearning.app.project.structure.nodeSelected) {
             if (
@@ -347,5 +351,84 @@ export default class Theme {
         style.innerHTML = cssText;
         document.querySelector('head').append(style);
         return style;
+    }
+
+    /**
+     * Resolve icon blob URLs for user themes
+     * Converts relative icon paths to blob URLs using theme files from ResourceFetcher
+     * @private
+     */
+    async resolveIconBlobUrls() {
+        // Only process user themes with icons that have relative paths
+        if (!this.isUserTheme || !this.icons || Object.keys(this.icons).length === 0) {
+            return;
+        }
+
+        const resourceFetcher = eXeLearning.app.resourceFetcher;
+        if (!resourceFetcher) {
+            console.warn('[Theme] ResourceFetcher not available for icon resolution');
+            return;
+        }
+
+        // Get theme files (async to support IndexedDB fallback)
+        let themeFiles = resourceFetcher.getUserTheme(this.id);
+        if (!themeFiles && resourceFetcher.getUserThemeAsync) {
+            themeFiles = await resourceFetcher.getUserThemeAsync(this.id);
+        }
+
+        if (!themeFiles) {
+            console.warn(`[Theme] Theme files not found for icon resolution: ${this.id}`);
+            return;
+        }
+
+        // Track blob URLs for cleanup
+        if (!this._iconBlobUrls) {
+            this._iconBlobUrls = [];
+        }
+
+        // Resolve each icon's blob URL
+        for (const [iconId, icon] of Object.entries(this.icons)) {
+            // Skip if not a proper icon object or already a blob URL
+            if (typeof icon !== 'object' || !icon._relativePath) {
+                continue;
+            }
+
+            // Skip if already resolved to blob URL
+            if (icon.value && icon.value.startsWith('blob:')) {
+                continue;
+            }
+
+            const iconPath = icon._relativePath;
+            const iconBlob = themeFiles.get(iconPath);
+
+            if (iconBlob) {
+                const blobUrl = URL.createObjectURL(iconBlob);
+                icon.value = blobUrl;
+                this._iconBlobUrls.push(blobUrl);
+            } else {
+                console.warn(`[Theme] Icon file not found: ${iconPath}`);
+            }
+        }
+    }
+
+    /**
+     * Revoke icon blob URLs to prevent memory leaks
+     * Called when theme is deselected
+     * @private
+     */
+    revokeIconBlobUrls() {
+        if (this._iconBlobUrls && this._iconBlobUrls.length > 0) {
+            for (const blobUrl of this._iconBlobUrls) {
+                URL.revokeObjectURL(blobUrl);
+            }
+            this._iconBlobUrls = [];
+
+            // Reset icon values to relative paths for potential re-selection
+            for (const icon of Object.values(this.icons)) {
+                if (typeof icon === 'object' && icon._relativePath) {
+                    icon.value = icon._relativePath;
+                }
+            }
+        }
     }
 }
