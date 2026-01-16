@@ -1,12 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 16.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
-<title>icon-bold</title>
-<desc>Created with Sketch.</desc>
-<path d="M18.24,4.783H5.761c-1.092,0-1.979,0.858-1.979,1.919v10.597c0,1.061,0.886,1.918,1.979,1.918H18.24
-	c1.092,0,1.977-0.857,1.977-1.918V6.702C20.217,5.642,19.332,4.783,18.24,4.783z M11.426,16.074l-1.414,1.414l-4.848-4.848
-	L10.2,7.606l1.414,1.414l-3.621,3.621L11.426,16.074z M14.371,17.488l-1.414-1.414l3.434-3.434L12.77,9.02l1.414-1.414l5.035,5.035
-	L14.371,17.488z"/>
-</svg>
+<svg enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m18.24 4.783h-12.479c-1.092 0-1.979.858-1.979 1.919v10.597c0 1.061.886 1.918 1.979 1.918h12.479c1.092 0 1.977-.857 1.977-1.918v-10.597c0-1.06-.885-1.919-1.977-1.919zm-6.814 11.291-1.414 1.414-4.848-4.848 5.036-5.034 1.414 1.414-3.621 3.621zm2.945 1.414-1.414-1.414 3.434-3.434-3.621-3.62 1.414-1.414 5.035 5.035z"/></svg>
