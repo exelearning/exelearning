@@ -382,8 +382,10 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                 }
 
                 // Notify the client that content is ready
-                if (event.source) {
-                    event.source.postMessage({
+                // Use MessageChannel port if available (required for incognito mode)
+                const responseTarget = (event.ports && event.ports[0]) ? event.ports[0] : event.source;
+                if (responseTarget) {
+                    responseTarget.postMessage({
                         type: 'CONTENT_READY',
                         fileCount: contentFiles.size,
                     });
@@ -427,24 +429,29 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                 // eslint-disable-next-line no-console
                 console.log('[Preview SW] Content cleared');
 
-                if (event.source) {
-                    event.source.postMessage({
+                // Use MessageChannel port if available (required for incognito mode)
+                const clearResponseTarget = (event.ports && event.ports[0]) ? event.ports[0] : event.source;
+                if (clearResponseTarget) {
+                    clearResponseTarget.postMessage({
                         type: 'CONTENT_CLEARED',
                     });
                 }
                 break;
 
-            case 'VERIFY_READY':
+            case 'VERIFY_READY': {
                 // Explicit verification that content is ready to be served
                 // This handles Firefox's stricter event timing between messages and fetch
-                if (event.source) {
-                    event.source.postMessage({
+                // Use MessageChannel port if available (required for incognito mode)
+                const verifyResponseTarget = (event.ports && event.ports[0]) ? event.ports[0] : event.source;
+                if (verifyResponseTarget) {
+                    verifyResponseTarget.postMessage({
                         type: 'READY_VERIFIED',
                         ready: contentReady && contentFiles.size > 0,
                         fileCount: contentFiles.size,
                     });
                 }
                 break;
+            }
 
             case 'GET_STATUS': {
                 // Return the current status
