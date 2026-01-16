@@ -384,6 +384,117 @@ describe('ImsExporter', () => {
             // Should succeed with fallback
             expect(result.success).toBe(true);
         });
+
+        it('should fail when base.css is not available', async () => {
+            // Override fetchContentCss to return empty map
+            resources.fetchContentCss = async () => {
+                return new Map(); // No base.css
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Failed to fetch content/css/base.css');
+        });
+
+        it('should handle base library fetch failure gracefully', async () => {
+            // Override fetchBaseLibraries to throw
+            resources.fetchBaseLibraries = async () => {
+                throw new Error('Libraries not found');
+            };
+
+            const result = await exporter.export();
+
+            // Should still succeed
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle iDevice resource fetch failure gracefully', async () => {
+            // Override fetchIdeviceResources to throw
+            resources.fetchIdeviceResources = async () => {
+                throw new Error('iDevice resources not found');
+            };
+
+            const result = await exporter.export();
+
+            // Should still succeed - many iDevices don't have extra files
+            expect(result.success).toBe(true);
+        });
+
+        it('should catch and return errors from export', async () => {
+            // Create a failing zip provider
+            const failingZip: ZipProvider = {
+                addFile: () => {},
+                hasFile: () => false,
+                getFilePaths: () => [],
+                generateAsync: async () => {
+                    throw new Error('ZIP generation failed');
+                },
+            };
+            exporter = new ImsExporter(document, resources, assets, failingZip);
+
+            const result = await exporter.export();
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('ZIP generation failed');
+        });
+    });
+
+    describe('LaTeX Pre-Rendering', () => {
+        it('should pre-render LaTeX when addMathJax is false and preRenderLatex is provided', async () => {
+            // Create document without MathJax
+            document = new MockDocument({ addMathJax: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            // Export with preRenderLatex option
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    return {
+                        html: html.replace(/\\\\frac/g, '<span class="frac-rendered">FRACTION</span>'),
+                        latexRendered: true,
+                        count: 1,
+                    };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            // Base CSS should contain pre-rendered LaTeX CSS
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+        });
+
+        it('should NOT pre-render LaTeX when addMathJax is true', async () => {
+            // Create document with MathJax enabled
+            document = new MockDocument({ addMathJax: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            let preRenderCalled = false;
+            const result = await exporter.export({
+                preRenderLatex: async (html: string) => {
+                    preRenderCalled = true;
+                    return { html, latexRendered: false, count: 0 };
+                },
+            });
+
+            expect(result.success).toBe(true);
+            // preRenderLatex should not be called when MathJax is enabled
+            expect(preRenderCalled).toBe(false);
+        });
+
+        it('should handle preRenderLatex failure gracefully', async () => {
+            // Create document without MathJax
+            document = new MockDocument({ addMathJax: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            // Export with failing preRenderLatex
+            const result = await exporter.export({
+                preRenderLatex: async () => {
+                    throw new Error('LaTeX rendering failed');
+                },
+            });
+
+            // Should still succeed - LaTeX failure is logged but doesn't stop export
+            expect(result.success).toBe(true);
+        });
     });
 
     describe('Filename Generation', () => {
