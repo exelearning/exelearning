@@ -3038,6 +3038,71 @@ describe('YjsProjectBridge', () => {
         expect(result.cssFiles).toContain('extra.css');
         expect(result.js).toContain('script.js');
       });
+
+      it('parses icons from icons/ directory as ThemeIcon objects', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'style.css': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/warning.svg': new Uint8Array([3]),
+            'icons/chrono.png': new Uint8Array([4]),
+          },
+          configXml: '<theme><name>Icon Theme</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('icon-theme', themeFilesData);
+
+        // Verify icons are parsed as ThemeIcon objects, not strings
+        expect(result.icons).toBeDefined();
+        expect(Object.keys(result.icons)).toHaveLength(3);
+
+        // Check info icon
+        expect(result.icons.info).toEqual({
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'icons/info.png',
+          _relativePath: 'icons/info.png',
+        });
+
+        // Check warning icon
+        expect(result.icons.warning).toEqual({
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'icons/warning.svg',
+          _relativePath: 'icons/warning.svg',
+        });
+
+        // Check chrono icon
+        expect(result.icons.chrono).toEqual({
+          id: 'chrono',
+          title: 'chrono',
+          type: 'img',
+          value: 'icons/chrono.png',
+          _relativePath: 'icons/chrono.png',
+        });
+      });
+
+      it('ignores non-icon files in icons/ directory', () => {
+        const themeFilesData = {
+          files: {
+            'config.xml': new Uint8Array([1]),
+            'icons/info.png': new Uint8Array([2]),
+            'icons/readme.txt': new Uint8Array([3]), // Should be ignored
+            'icons/icon.gif': new Uint8Array([4]), // Should be ignored (only .png/.svg)
+          },
+          configXml: '<theme><name>Test</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('test-theme', themeFilesData);
+
+        expect(Object.keys(result.icons)).toHaveLength(1);
+        expect(result.icons.info).toBeDefined();
+        expect(result.icons.readme).toBeUndefined();
+        expect(result.icons.icon).toBeUndefined();
+      });
     });
 
     describe('_compressThemeFiles', () => {

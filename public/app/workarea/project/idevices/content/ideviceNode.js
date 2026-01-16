@@ -897,6 +897,34 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
+                            // Expand iDevice if minimized before entering edit mode
+                            // Check the minify icon class to determine collapsed state
+                            // (more reliable than jQuery's :hidden selector)
+                            const minifyIcon =
+                                this.ideviceButtons.querySelector(
+                                    '#minifyIdevice' +
+                                        this.odeIdeviceId +
+                                        'icon'
+                                );
+                            if (
+                                minifyIcon &&
+                                minifyIcon.classList.contains(
+                                    'chevron-up-icon-green'
+                                )
+                            ) {
+                                const iDeviceBody = $(
+                                    "div.idevice_body[idevice-id='" +
+                                        this.odeIdeviceId +
+                                        "']"
+                                );
+                                iDeviceBody.show();
+                                minifyIcon.classList.remove(
+                                    'chevron-up-icon-green'
+                                );
+                                minifyIcon.classList.add(
+                                    'chevron-down-icon-green'
+                                );
+                            }
                             this.edition();
                         }
                     });
