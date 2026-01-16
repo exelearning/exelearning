@@ -28,8 +28,8 @@ export default class Locale {
     }
 
     async loadContentTranslationsStrings(lang) {
-        // Use DataProvider which handles both static and server modes
-        const result = await this.app.dataProvider.getTranslations(lang);
+        // Use ApiCallManager which handles both static and server modes internally
+        const result = await this.app.api.getTranslations(lang);
         this.c_strings = result?.translations || result || {};
     }
 
@@ -43,11 +43,11 @@ export default class Locale {
     }
 
     /**
-     * Load translation strings from DataProvider (works in both static and server mode)
+     * Load translation strings from API (works in both static and server mode)
      */
     async loadTranslationsStrings() {
-        // Use DataProvider which handles both static and server modes
-        const result = await this.app.dataProvider.getTranslations(this.lang);
+        // Use ApiCallManager which handles both static and server modes internally
+        const result = await this.app.api.getTranslations(this.lang);
         this.strings = result?.translations || result || {};
         // Re-translate static UI elements (menus, modals, buttons)
         this.translateStaticUI();

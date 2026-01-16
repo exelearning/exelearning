@@ -103,21 +103,37 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get idevices installed
+     * Get idevices installed (mode-aware)
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{idevices: Array}>}
      */
     async getIdevicesInstalled() {
+        // Check static mode - return bundled data
+        if (this._isStaticMode()) {
+            return this._getStaticData('idevices') || { idevices: [] };
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_idevices_installed.path;
         return await this.func.get(url);
     }
 
     /**
-     * Get themes installed
+     * Get themes installed (mode-aware)
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{themes: Array}>}
      */
     async getThemesInstalled() {
+        // Check static mode - return bundled data
+        if (this._isStaticMode()) {
+            return this._getStaticData('themes') || { themes: [] };
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_themes_installed.path;
         return await this.func.get(url);
     }
@@ -1287,14 +1303,24 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get translations
+     * Get translations (mode-aware)
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @param {*} locale
-     * @returns
+     * @param {string} locale - Language code (e.g., 'en', 'es')
+     * @returns {Promise<{translations: Object}>}
      */
     async getTranslations(locale) {
+        const safeLocale = locale || 'en';
+
+        // Check static mode - return bundled data
+        if (this._isStaticMode()) {
+            return this._getStaticTranslations(safeLocale);
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_translations_list_by_locale.path;
-        url = url.replace('{locale}', locale);
+        url = url.replace('{locale}', safeLocale);
         return await this.func.get(url);
     }
 
@@ -2370,5 +2396,54 @@ export default class ApiCallManager {
             console.error('[API] transferProjectOwnership error:', error);
             return { responseMessage: 'ERROR', detail: error.message };
         }
+    }
+
+    /*******************************************************************************
+     * STATIC MODE HELPERS
+     * These methods enable ApiCallManager to work in both server and static modes.
+     * Consumer code uses the same api.X() calls regardless of mode.
+     *******************************************************************************/
+
+    /**
+     * Check if running in static (offline) mode
+     * @private
+     * @returns {boolean}
+     */
+    _isStaticMode() {
+        return this.app?.capabilities?.storage?.remote === false;
+    }
+
+    /**
+     * Get static data by key
+     * Priority: window.__EXE_STATIC_DATA__ > app.dataProvider cache
+     * @private
+     * @param {string} key - Data key ('idevices', 'themes', etc.)
+     * @returns {Object|null}
+     */
+    _getStaticData(key) {
+        return window.__EXE_STATIC_DATA__?.[key] ||
+               this.app?.dataProvider?.staticData?.[key] ||
+               this.app?.dataProvider?.cache?.[key] ||
+               null;
+    }
+
+    /**
+     * Get translations from static data
+     * @private
+     * @param {string} locale - Language code
+     * @returns {{translations: Object}}
+     */
+    _getStaticTranslations(locale) {
+        const data = window.__EXE_STATIC_DATA__?.translations ||
+                     this.app?.dataProvider?.staticData?.translations ||
+                     this.app?.dataProvider?.cache?.translations;
+
+        if (!data) {
+            return { translations: {} };
+        }
+
+        // Try exact locale, then base language, then 'en'
+        const baseLocale = locale.split('-')[0];
+        return data[locale] || data[baseLocale] || data.en || { translations: {} };
     }
 }

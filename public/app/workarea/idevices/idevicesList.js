@@ -14,12 +14,12 @@ export default class IdeviceList {
     }
 
     /**
-     * Load installed iDevices from DataProvider (works in both static and server modes)
+     * Load installed iDevices from API (works in both static and server modes)
      */
     async loadIdevicesInstalled() {
-        // Use DataProvider which handles both static and server modes
+        // Use ApiCallManager which handles both static and server modes internally
         let installedIdevicesJSON =
-            await this.manager.app.dataProvider.getInstalledIdevices();
+            await this.manager.app.api.getIdevicesInstalled();
         if (installedIdevicesJSON && installedIdevicesJSON.idevices) {
             installedIdevicesJSON.idevices.forEach((ideviceData) => {
                 let idevice = new Idevice(this.manager, ideviceData);

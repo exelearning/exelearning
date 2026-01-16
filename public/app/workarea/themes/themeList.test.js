@@ -96,10 +96,10 @@ describe('ThemeList', () => {
   });
 
   describe('loadThemesInstalled', () => {
-    it('should fetch themes from dataProvider', async () => {
+    it('should fetch themes from api', async () => {
       await themeList.loadThemesInstalled();
 
-      expect(mockManager.app.dataProvider.getInstalledThemes).toHaveBeenCalled();
+      expect(mockManager.app.api.getThemesInstalled).toHaveBeenCalled();
     });
 
     it('should create Theme instances for each theme', async () => {
@@ -138,7 +138,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle null API response', async () => {
-      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue(null);
+      mockManager.app.api.getThemesInstalled.mockResolvedValue(null);
 
       await themeList.loadThemesInstalled();
 
@@ -146,7 +146,7 @@ describe('ThemeList', () => {
     });
 
     it('should handle missing themes property', async () => {
-      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue({});
+      mockManager.app.api.getThemesInstalled.mockResolvedValue({});
 
       await themeList.loadThemesInstalled();
 
@@ -155,10 +155,10 @@ describe('ThemeList', () => {
   });
 
   describe('loadThemeInstalled', () => {
-    it('should fetch themes from dataProvider', async () => {
+    it('should fetch themes from api', async () => {
       await themeList.loadThemeInstalled('theme-b');
 
-      expect(mockManager.app.dataProvider.getInstalledThemes).toHaveBeenCalled();
+      expect(mockManager.app.api.getThemesInstalled).toHaveBeenCalled();
     });
 
     it('should load only the specified theme', async () => {
@@ -591,7 +591,7 @@ describe('ThemeList', () => {
       await themeList.load();
       expect(Object.keys(themeList.installed)).toHaveLength(3);
 
-      mockManager.app.dataProvider.getInstalledThemes.mockResolvedValue({
+      mockManager.app.api.getThemesInstalled.mockResolvedValue({
         themes: [
           { name: 'new-theme', title: 'New Theme', valid: true, dirName: 'new-theme' },
         ],
