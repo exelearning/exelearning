@@ -1022,6 +1022,9 @@ describe('YjsProjectBridge', () => {
         undo: mock(() => {}),
         redo: mock(() => {}),
       };
+      // Mock document.querySelectorAll for forceBlockTitlesSync calls
+      global.document.querySelectorAll = mock(() => []);
+      global.document.querySelector = mock(() => null);
     });
 
     it('undo with empty stack does nothing', () => {
@@ -1642,6 +1645,8 @@ describe('YjsProjectBridge', () => {
         if (selector === '#exe-title > .exe-title.content') return headerTitle;
         return null;
       });
+      // Mock document.querySelectorAll for forceBlockTitlesSync
+      global.document.querySelectorAll = mock(() => []);
 
       const mockMetadata = {
         get: (key) => key === 'title' ? 'Test Title' : null,
@@ -2444,6 +2449,849 @@ describe('YjsProjectBridge', () => {
       bridge.forceAllFormInputsSync();
 
       expect(mockInput.value).toBe('unchanged');
+    });
+  });
+
+  describe('forceBlockTitlesSync', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns early when no navigation', () => {
+      bridge.documentManager = null;
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+    });
+
+    it('updates block title when blockName differs', () => {
+      // Create mock header element with block-id
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      // Mock document.querySelectorAll for block headers
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Create mock navigation with block data
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockTitleEl.textContent).toBe('New Title');
+    });
+
+    it('does not update when blockName matches current title', () => {
+      const mockTitleEl = { textContent: 'Same Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Same Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged
+      expect(mockTitleEl.textContent).toBe('Same Title');
+    });
+
+    it('updates block icon when iconName differs', () => {
+      const mockImgEl = { getAttribute: () => '/old-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/old-icon.png" alt="old">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Mock theme icons
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              'new-icon': { id: 'new-icon', value: '/new-icon.png', title: 'New Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return 'new-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockIconEl.innerHTML).toContain('/new-icon.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('clears icon when iconName is empty', () => {
+      const mockImgEl = { getAttribute: () => '/some-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/some-icon.png" alt="icon">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({}),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('handles missing title element gracefully', () => {
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: () => null, // No .box-title or .box-icon element
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Test Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+    });
+
+    it('handles block not found in navigation', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-not-found' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123'; // Different ID
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged since block was not found
+      expect(mockTitleEl.textContent).toBe('Old Title');
+    });
+
+    it('handles pages without blocks', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Page without blocks
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? null : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // Title should remain unchanged
+      expect(mockTitleEl.textContent).toBe('Old Title');
+    });
+
+    it('is called by forceTitleSync', () => {
+      // Mock methods
+      const originalForceBlockTitlesSync = bridge.forceBlockTitlesSync;
+      bridge.forceBlockTitlesSync = mock(() => {});
+
+      // Mock metadata
+      const mockMetadata = {
+        get: () => 'Test',
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      // Mock document.querySelector
+      global.document.querySelector = mock(() => null);
+
+      bridge.forceTitleSync();
+
+      expect(bridge.forceBlockTitlesSync).toHaveBeenCalled();
+
+      // Restore
+      bridge.forceBlockTitlesSync = originalForceBlockTitlesSync;
+    });
+
+    it('updates blockNode.blockName when Yjs blockName differs', () => {
+      const mockBlockNode = {
+        blockName: 'Old BlockNode Title',
+        iconName: 'old-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Yjs Title';
+          if (key === 'iconName') return 'old-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // DOM should be updated
+      expect(mockTitleEl.textContent).toBe('New Yjs Title');
+      // blockNode instance property should also be updated
+      expect(mockBlockNode.blockName).toBe('New Yjs Title');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+
+    it('updates blockNode.iconName when Yjs iconName differs', () => {
+      const mockBlockNode = {
+        blockName: 'Title',
+        iconName: 'old-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockImgEl = { getAttribute: () => '/old-icon.png' };
+      const mockIconEl = {
+        innerHTML: '<img src="/old-icon.png" alt="old">',
+        classList: {
+          contains: () => false,
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+        querySelector: () => mockImgEl,
+      };
+      const mockTitleEl = { textContent: 'Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return mockIconEl;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      // Mock theme icons
+      global.window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              'new-icon': { id: 'new-icon', value: '/new-icon.png', title: 'New Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Title';
+          if (key === 'iconName') return 'new-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // blockNode instance property should be updated
+      expect(mockBlockNode.iconName).toBe('new-icon');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+
+    it('does not update blockNode properties when they already match Yjs', () => {
+      const mockBlockNode = {
+        blockName: 'Same Title',
+        iconName: 'same-icon',
+      };
+
+      // Mock idevices with getBlockById
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Same Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'Same Title';
+          if (key === 'iconName') return 'same-icon';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      // blockNode should still have the same values (not modified)
+      expect(mockBlockNode.blockName).toBe('Same Title');
+      expect(mockBlockNode.iconName).toBe('same-icon');
+    });
+
+    it('handles missing idevices gracefully', () => {
+      // No idevices available
+      bridge.app = {
+        project: {},
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // DOM should still be updated
+      expect(mockTitleEl.textContent).toBe('New Title');
+    });
+
+    it('handles getBlockById returning null gracefully', () => {
+      // getBlockById returns null (block not found in instance registry)
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => null),
+          },
+        },
+      };
+
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forceBlockTitlesSync();
+
+      // DOM should still be updated
+      expect(mockTitleEl.textContent).toBe('New Title');
+      expect(bridge.app.project.idevices.getBlockById).toHaveBeenCalledWith('block-123');
+    });
+  });
+
+  describe('forcePageTitlesSync', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('returns early when no navigation', () => {
+      bridge.documentManager = null;
+      // Should not throw
+      bridge.forcePageTitlesSync();
+    });
+
+    it('updates navigation tree element when pageName differs', () => {
+      const mockTextSpan = { textContent: 'Old Name' };
+      const mockNavElement = {
+        querySelector: (selector) => selector === 'span:not(.small-icon)' ? mockTextSpan : null,
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '.nav-element[nav-id="page-123"] > .nav-element-text') return mockNavElement;
+        return null;
+      });
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'New Name';
+          if (key === 'properties') return null;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockTextSpan.textContent).toBe('New Name');
+    });
+
+    it('updates page content title for selected page', () => {
+      const mockTextSpan = { textContent: 'Page Name' };
+      const mockNavElement = {
+        querySelector: () => mockTextSpan,
+      };
+      const mockPageTitleEl = {
+        innerText: 'Old Title',
+        classList: {
+          add: mock(() => {}),
+          toggle: mock(() => {}),
+        },
+      };
+
+      // Mock selected page
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: () => 'page-123',
+              },
+            },
+          },
+        },
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '.nav-element[nav-id="page-123"] > .nav-element-text') return mockNavElement;
+        if (selector === '#page-title-node-content') return mockPageTitleEl;
+        return null;
+      });
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'Page Name';
+          if (key === 'properties') return null;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockPageTitleEl.innerText).toBe('Page Name');
+    });
+
+    it('handles pages without IDs gracefully', () => {
+      global.document.querySelector = mock(() => null);
+
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return null;
+          if (key === 'pageName') return 'Test';
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      // Should not throw
+      bridge.forcePageTitlesSync();
+    });
+
+    it('respects hidePageTitle property', () => {
+      const mockPageTitleEl = {
+        innerText: 'Some Title',
+        classList: {
+          add: mock(() => {}),
+          toggle: mock(() => {}),
+        },
+      };
+
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: () => 'page-123',
+              },
+            },
+          },
+        },
+      };
+
+      global.document.querySelector = mock((selector) => {
+        if (selector === '#page-title-node-content') return mockPageTitleEl;
+        return null;
+      });
+
+      const mockPropsMap = {
+        get: (key) => {
+          if (key === 'hidePageTitle') return true;
+          return undefined;
+        },
+      };
+      const mockPageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-123';
+          if (key === 'pageName') return 'Page Name';
+          if (key === 'properties') return mockPropsMap;
+          return undefined;
+        },
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forcePageTitlesSync();
+
+      expect(mockPageTitleEl.innerText).toBe('');
+      expect(mockPageTitleEl.classList.add).toHaveBeenCalledWith('hidden');
+    });
+
+    it('is called by forceTitleSync', () => {
+      const originalForcePageTitlesSync = bridge.forcePageTitlesSync;
+      bridge.forcePageTitlesSync = mock(() => {});
+      bridge.forceBlockTitlesSync = mock(() => {});
+
+      const mockMetadata = {
+        get: () => 'Test',
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+      global.document.querySelector = mock(() => null);
+      global.document.querySelectorAll = mock(() => []);
+
+      bridge.forceTitleSync();
+
+      expect(bridge.forcePageTitlesSync).toHaveBeenCalled();
+
+      bridge.forcePageTitlesSync = originalForcePageTitlesSync;
     });
   });
 
@@ -3680,6 +4528,245 @@ describe('YjsProjectBridge', () => {
 
       // Should not throw
       await expect(bridge.announceAssets()).resolves.not.toThrow();
+    });
+  });
+
+  describe('_syncBlockIcon', () => {
+    let bridge;
+
+    beforeEach(async () => {
+      bridge = new YjsProjectBridge(mockApp);
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('sets empty SVG icon when iconName is empty string', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is undefined', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, undefined, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets empty SVG icon when iconName is null', () => {
+      const mockIconEl = {
+        innerHTML: '<img src="old.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => ({ getAttribute: () => 'old.png' }),
+      };
+
+      bridge._syncBlockIcon(mockIconEl, null, 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('svg');
+      expect(mockIconEl.classList.add).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('sets icon image when iconName matches theme icon key', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true, // has exe-no-icon class
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('img');
+      expect(mockIconEl.innerHTML).toContain('/icons/info.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by id when key does not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'target-icon', value: '/icons/target.png', title: 'Target' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon id instead of key
+      bridge._syncBlockIcon(mockIconEl, 'target-icon', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/target.png');
+      expect(mockIconEl.classList.remove).toHaveBeenCalledWith('exe-no-icon');
+    });
+
+    it('finds icon by value when key and id do not match', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              someKey: { id: 'some-id', value: '/icons/myicon.png', title: 'My Icon' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => true,
+        },
+        querySelector: () => null,
+      };
+
+      // Using icon value as iconName
+      bridge._syncBlockIcon(mockIconEl, '/icons/myicon.png', 'block-1');
+
+      expect(mockIconEl.innerHTML).toContain('/icons/myicon.png');
+    });
+
+    it('does not update when icon src already matches', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({
+              info: { id: '1', value: '/icons/info.png', title: 'Info' },
+            }),
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '<img src="/icons/info.png">',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false, // doesn't have exe-no-icon
+        },
+        querySelector: () => ({ getAttribute: () => '/icons/info.png' }),
+      };
+
+      const originalHtml = mockIconEl.innerHTML;
+      bridge._syncBlockIcon(mockIconEl, 'info', 'block-1');
+
+      // Should not change since src already matches and no exe-no-icon class
+      expect(mockIconEl.innerHTML).toBe(originalHtml);
+    });
+
+    it('does not clear icon when already showing empty SVG', () => {
+      const mockIconEl = {
+        innerHTML: '<svg>empty</svg>',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: (className) => className === 'exe-no-icon', // has exe-no-icon
+        },
+        querySelector: () => null, // no img element
+      };
+
+      bridge._syncBlockIcon(mockIconEl, '', 'block-1');
+
+      // Should not add exe-no-icon class again since already has it and no img
+      expect(mockIconEl.classList.add).not.toHaveBeenCalled();
+    });
+
+    it('handles missing theme icons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {
+            getThemeIcons: () => ({}), // empty icons
+          },
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw when icon not found
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'nonexistent-icon', 'block-1');
+      }).not.toThrow();
+
+      // Should not modify innerHTML when icon not found
+      expect(mockIconEl.innerHTML).toBe('');
+    });
+
+    it('handles undefined getThemeIcons gracefully', () => {
+      window.eXeLearning = {
+        app: {
+          themes: {}, // no getThemeIcons method
+        },
+      };
+
+      const mockIconEl = {
+        innerHTML: '',
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+          contains: () => false,
+        },
+        querySelector: () => null,
+      };
+
+      // Should not throw
+      expect(() => {
+        bridge._syncBlockIcon(mockIconEl, 'some-icon', 'block-1');
+      }).not.toThrow();
     });
   });
 });
