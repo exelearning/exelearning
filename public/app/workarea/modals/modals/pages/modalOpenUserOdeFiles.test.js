@@ -1468,6 +1468,12 @@ describe('modalOpenUserOdeFiles', () => {
     });
 
     it('should import idevice via ComponentImporter', async () => {
+      const preloadAllAssetsMock = vi.fn().mockResolvedValue(1);
+      window.eXeLearning.app.project._yjsBridge = {
+        authToken: 'token-1',
+        getDocumentManager: vi.fn(() => ({})),
+        assetManager: { preloadAllAssets: preloadAllAssetsMock },
+      };
       window.ComponentImporter = class {
         constructor() {}
         async importComponent() {
@@ -1476,6 +1482,31 @@ describe('modalOpenUserOdeFiles', () => {
       };
       const file = new File(['x'], 'sample.idevice', { type: 'application/octet-stream' });
       await modal.largeFilesUpload(file, true);
+      expect(window.eXeLearning.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+    });
+
+    it('should call preloadAllAssets after successful component import (issue #953 fix)', async () => {
+      // Setup: Mock preloadAllAssets to verify it's called
+      const preloadAllAssetsMock = vi.fn().mockResolvedValue(1);
+      window.eXeLearning.app.project._yjsBridge = {
+        authToken: 'token-1',
+        getDocumentManager: vi.fn(() => ({})),
+        assetManager: { preloadAllAssets: preloadAllAssetsMock },
+      };
+      window.ComponentImporter = class {
+        constructor() {}
+        async importComponent() {
+          return { success: true, blockId: 'block-1' };
+        }
+      };
+      const file = new File(['x'], 'sample.idevice', { type: 'application/octet-stream' });
+
+      // Execute import
+      await modal.largeFilesUpload(file, true);
+
+      // Verify preloadAllAssets was called BEFORE loadApiIdevicesInPage
+      // This ensures images display immediately without needing page refresh
+      expect(preloadAllAssetsMock).toHaveBeenCalled();
       expect(window.eXeLearning.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
     });
 
