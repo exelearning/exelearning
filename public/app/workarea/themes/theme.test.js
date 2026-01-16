@@ -862,5 +862,264 @@ describe('Theme', () => {
 
       expect(window.eXeLearning.app.project.idevices.cleanNodeAndLoadPage).not.toHaveBeenCalled();
     });
+
+    it('should call resolveIconBlobUrls for user themes', async () => {
+      theme.isUserTheme = true;
+      const spy = vi.spyOn(theme, 'resolveIconBlobUrls').mockResolvedValue();
+
+      await theme.select(false);
+
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should not call resolveIconBlobUrls for non-user themes', async () => {
+      theme.isUserTheme = false;
+      const spy = vi.spyOn(theme, 'resolveIconBlobUrls').mockResolvedValue();
+
+      await theme.select(false);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resolveIconBlobUrls', () => {
+    let mockResourceFetcher;
+    let mockThemeFiles;
+
+    beforeEach(() => {
+      // Create mock blob
+      const mockBlob = new Blob(['icon data'], { type: 'image/png' });
+      mockThemeFiles = new Map([
+        ['icons/info.png', mockBlob],
+        ['icons/warning.png', mockBlob],
+      ]);
+
+      mockResourceFetcher = {
+        getUserTheme: vi.fn().mockReturnValue(mockThemeFiles),
+        getUserThemeAsync: vi.fn().mockResolvedValue(mockThemeFiles),
+      };
+
+      window.eXeLearning.app.resourceFetcher = mockResourceFetcher;
+
+      // Setup theme as user theme with icons
+      theme.isUserTheme = true;
+      theme.icons = {
+        info: {
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'icons/info.png',
+          _relativePath: 'icons/info.png',
+        },
+        warning: {
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'icons/warning.png',
+          _relativePath: 'icons/warning.png',
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete window.eXeLearning.app.resourceFetcher;
+    });
+
+    it('should skip non-user themes', async () => {
+      theme.isUserTheme = false;
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should skip themes without icons', async () => {
+      theme.icons = {};
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should skip when icons is null', async () => {
+      theme.icons = null;
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).not.toHaveBeenCalled();
+    });
+
+    it('should return early when resourceFetcher not available', async () => {
+      delete window.eXeLearning.app.resourceFetcher;
+
+      await theme.resolveIconBlobUrls();
+
+      // Should not throw
+      expect(theme.icons.info.value).toBe('icons/info.png');
+    });
+
+    it('should get theme files from resourceFetcher', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserTheme).toHaveBeenCalledWith('test-theme');
+    });
+
+    it('should use async fallback when sync method returns null', async () => {
+      mockResourceFetcher.getUserTheme.mockReturnValue(null);
+
+      await theme.resolveIconBlobUrls();
+
+      expect(mockResourceFetcher.getUserThemeAsync).toHaveBeenCalledWith('test-theme');
+    });
+
+    it('should return early when theme files not found', async () => {
+      mockResourceFetcher.getUserTheme.mockReturnValue(null);
+      mockResourceFetcher.getUserThemeAsync.mockResolvedValue(null);
+
+      await theme.resolveIconBlobUrls();
+
+      // Value should remain unchanged
+      expect(theme.icons.info.value).toBe('icons/info.png');
+    });
+
+    it('should convert icon paths to blob URLs', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toMatch(/^blob:/);
+      expect(theme.icons.warning.value).toMatch(/^blob:/);
+    });
+
+    it('should track blob URLs for cleanup', async () => {
+      await theme.resolveIconBlobUrls();
+
+      expect(theme._iconBlobUrls).toBeDefined();
+      expect(theme._iconBlobUrls.length).toBe(2);
+    });
+
+    it('should skip icons without _relativePath', async () => {
+      theme.icons.legacy = {
+        id: 'legacy',
+        value: 'some-url',
+        // No _relativePath
+      };
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.legacy.value).toBe('some-url');
+    });
+
+    it('should skip non-object icons', async () => {
+      theme.icons.stringIcon = 'icons/old-format.png';
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.stringIcon).toBe('icons/old-format.png');
+    });
+
+    it('should skip icons already resolved to blob URLs', async () => {
+      theme.icons.info.value = 'blob:http://localhost/already-resolved';
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toBe('blob:http://localhost/already-resolved');
+    });
+
+    it('should handle missing icon files gracefully', async () => {
+      mockThemeFiles.delete('icons/warning.png');
+
+      await theme.resolveIconBlobUrls();
+
+      expect(theme.icons.info.value).toMatch(/^blob:/);
+      expect(theme.icons.warning.value).toBe('icons/warning.png');
+    });
+  });
+
+  describe('revokeIconBlobUrls', () => {
+    let revokeObjectURLSpy;
+
+    beforeEach(() => {
+      revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+
+      theme.icons = {
+        info: {
+          id: 'info',
+          title: 'info',
+          type: 'img',
+          value: 'blob:http://localhost/icon1',
+          _relativePath: 'icons/info.png',
+        },
+        warning: {
+          id: 'warning',
+          title: 'warning',
+          type: 'img',
+          value: 'blob:http://localhost/icon2',
+          _relativePath: 'icons/warning.png',
+        },
+      };
+      theme._iconBlobUrls = [
+        'blob:http://localhost/icon1',
+        'blob:http://localhost/icon2',
+      ];
+    });
+
+    afterEach(() => {
+      revokeObjectURLSpy.mockRestore();
+    });
+
+    it('should revoke all tracked blob URLs', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).toHaveBeenCalledTimes(2);
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/icon1');
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:http://localhost/icon2');
+    });
+
+    it('should clear the _iconBlobUrls array', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(theme._iconBlobUrls).toEqual([]);
+    });
+
+    it('should reset icon values to relative paths', () => {
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.info.value).toBe('icons/info.png');
+      expect(theme.icons.warning.value).toBe('icons/warning.png');
+    });
+
+    it('should do nothing when _iconBlobUrls is empty', () => {
+      theme._iconBlobUrls = [];
+
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when _iconBlobUrls is undefined', () => {
+      delete theme._iconBlobUrls;
+
+      theme.revokeIconBlobUrls();
+
+      expect(revokeObjectURLSpy).not.toHaveBeenCalled();
+    });
+
+    it('should skip non-object icons during reset', () => {
+      theme.icons.stringIcon = 'some-string';
+
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.stringIcon).toBe('some-string');
+    });
+
+    it('should skip icons without _relativePath during reset', () => {
+      theme.icons.noPath = {
+        id: 'noPath',
+        value: 'blob:http://localhost/icon3',
+      };
+
+      theme.revokeIconBlobUrls();
+
+      expect(theme.icons.noPath.value).toBe('blob:http://localhost/icon3');
+    });
   });
 });
