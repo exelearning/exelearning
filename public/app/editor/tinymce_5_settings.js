@@ -120,6 +120,48 @@ var $exeTinyMCE = {
         return assetUrl + url;
     },
 
+    /**
+     * Removes Bun-injected scripts from HTML content.
+     * Bun injects scripts when serving HTML files for HMR (dev) and bundling (prod).
+     *
+     * Patterns to filter:
+     * - Dev: <script src="/_bun/client/..."> or <script data-bun-dev-server-script>
+     * - Prod: <script src="/../../...chunk-*.js"> (relative path traversal to chunk files)
+     * - Both: Inline scripts with Bun's visibilitychange/sendBeacon patterns
+     *
+     * @param {string} html - The HTML content to clean
+     * @returns {string} - The cleaned HTML content
+     */
+    stripBunInjectedScripts: function (html) {
+        if (!html) return html;
+
+        // Create a temporary DOM element to parse the HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+
+        // Find and remove Bun-injected scripts
+        const scripts = temp.querySelectorAll('script');
+        scripts.forEach(function (script) {
+            const src = script.getAttribute('src') || '';
+            const hasBunAttr = script.hasAttribute('data-bun-dev-server-script');
+
+            // Pattern 1: Bun dev server scripts (/_bun/ path or data-bun-dev-server-script attr)
+            const isBunDevScript = src.includes('/_bun/') || hasBunAttr;
+
+            // Pattern 2: Bun bundler chunks (relative path traversal to chunk-*.js)
+            const isBunChunkScript = /^\/(\.\.\/)+(chunk-[a-z0-9]+\.js)$/i.test(src);
+
+            // Pattern 3: Bun's inline visibilitychange/unref script (no src, contains sendBeacon + /_bun/unref)
+            const isBunInlineScript = !src && script.textContent && script.textContent.includes('/_bun/unref');
+
+            if (isBunDevScript || isBunChunkScript || isBunInlineScript) {
+                script.remove();
+            }
+        });
+
+        return temp.innerHTML;
+    },
+
     // Get classes from base.css and style.css
     getAvailableClasses: function () {
         var sheets = document.styleSheets;
@@ -496,7 +538,28 @@ var $exeTinyMCE = {
             setup: function (ed) {
                 // Register SetContent handler BEFORE content is loaded
                 // This is critical for resolving asset:// URLs in the initial content
-                ed.on('SetContent', function() {
+                ed.on('SetContent', function(e) {
+                    // Strip Bun-injected scripts from template content
+                    // This handles both dev (/_bun/client/) and prod (/../../chunk-) patterns
+                    // Only process non-initial content to avoid processing on editor load
+                    if (!e.initial && !e.paste) {
+                        const body = ed.getBody();
+                        if (body) {
+                            const scripts = body.querySelectorAll('script');
+                            scripts.forEach(function (script) {
+                                const src = script.getAttribute('src') || '';
+                                const hasBunAttr = script.hasAttribute('data-bun-dev-server-script');
+                                const isBunDevScript = src.includes('/_bun/') || hasBunAttr;
+                                const isBunChunkScript = /^\/(\.\.\/)+(chunk-[a-z0-9]+\.js)$/i.test(src);
+                                const isBunInlineScript = !src && script.textContent && script.textContent.includes('/_bun/unref');
+
+                                if (isBunDevScript || isBunChunkScript || isBunInlineScript) {
+                                    script.remove();
+                                }
+                            });
+                        }
+                    }
+
                     $exeTinyMCE.resolveAssetUrlsInEditor(ed);
                 });
             },

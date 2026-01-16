@@ -11,6 +11,7 @@ const http = require('http'); // Import the http module to check server availabi
 const https = require('https');
 
 const { initAutoUpdater } = require('./update-manager');
+const contextMenu = require('electron-context-menu').default;
 
 // Determine the base path depending on whether the app is packaged when we enable "asar" packaging
 const basePath = app.isPackaged ? process.resourcesPath : app.getAppPath();
@@ -1113,6 +1114,13 @@ app.whenReady().then(() => {
     if (process.platform === 'darwin') {
         systemPreferences.setUserDefault('AppleWindowTabbingMode', 'string', 'always');
     }
+
+    // Initialize electron-context-menu for Chrome-like right-click menus
+    contextMenu({
+        showSaveImageAs: true,
+        showCopyLink: true,
+        showInspectElement: true,
+    });
 
     createMacOSMenu();
     createWindow();
