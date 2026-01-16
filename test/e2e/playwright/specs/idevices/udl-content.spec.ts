@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -147,28 +146,17 @@ async function saveIdevice(page: Page): Promise<void> {
  * Helper to type content in the TinyMCE editor
  */
 async function typeInTinyMCE(page: Page, text: string): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const editor = (window as any).tinymce?.activeEditor;
-            return !!editor && editor.initialized;
-        },
-        null,
-        { timeout: 15000 },
-    );
+    // Find the TinyMCE iframe
+    const idevice = page.locator('#node-content article .idevice_node.udl-content').first();
+    const tinyMceFrame = idevice.locator('iframe.tox-edit-area__iframe').first();
 
-    await page.evaluate(content => {
-        const editor = (window as any).tinymce?.activeEditor;
-        if (!editor) return;
-        editor.setContent(content);
-        editor.fire('change');
-        editor.fire('input');
-        editor.setDirty(true);
-    }, text);
+    const frameEl = await tinyMceFrame.elementHandle();
+    const frame = await frameEl?.contentFrame();
 
-    await page.waitForFunction(() => {
-        const editor = (window as any).tinymce?.activeEditor;
-        return !!editor && editor.isDirty();
-    });
+    if (frame) {
+        await frame.focus('body');
+        await frame.type('body', text, { delay: 5 });
+    }
 }
 
 /**
@@ -204,7 +192,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'UDL Content Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -259,7 +247,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Content Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -325,7 +313,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Types Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -360,7 +348,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Multiple Blocks Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -420,7 +408,7 @@ test.describe('UDL Content iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'UDL Alt Content Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -458,7 +446,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -494,7 +482,7 @@ test.describe('UDL Content iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify UDL container has correct type class
             const udlContainer = iframe.locator('.exe-udlContent');
@@ -525,7 +513,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Audio Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -576,7 +564,7 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
@@ -624,7 +612,7 @@ test.describe('UDL Content iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL MEJS Double Init Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -675,7 +663,7 @@ test.describe('UDL Content iDevice', () => {
             const previewIframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Click the button to reveal content
             const button = previewIframe.locator('.udl-btn, .udl-character').first();

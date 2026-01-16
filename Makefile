@@ -553,14 +553,6 @@ test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
 	bunx playwright test --project=firefox
 
-.PHONY: test-e2e-static
-test-e2e-static: check-env ## Run Playwright E2E tests with static bundle (no server)
-	PLAYWRIGHT_PROJECT=chromium-static bunx playwright test --project=chromium-static
-
-.PHONY: test-e2e-all
-test-e2e-all: test-e2e test-e2e-static ## Run E2E tests for both server and static modes
-
-
 # =============================================================================
 # DATABASE-SPECIFIC E2E TESTS
 # =============================================================================
@@ -870,8 +862,6 @@ help:
 	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
 	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
 	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
-	@echo "  make test-e2e-static    Run E2E tests with static bundle (no server)"
-	@echo "  make test-e2e-all       Run E2E tests for both server and static modes"
 	@echo ""
 	@echo "Legacy (Core2 Duo / No Bun):"
 	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"

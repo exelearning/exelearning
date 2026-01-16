@@ -9,16 +9,13 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
-import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
-import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
+import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
 import { IdeviceRenderer } from '../../src/shared/export/renderers/IdeviceRenderer';
 import type {
     ExportDocument,
     ExportMetadata,
     ExportPage,
     ResourceProvider,
-    AssetProvider,
-    ZipProvider,
     ExportComponent,
     ExportBlock,
 } from '../../src/shared/export/interfaces';
@@ -73,8 +70,7 @@ const createMockDocumentWithTeacherOnly = (): ExportDocument => ({
                             type: 'text',
                             order: 0,
                             content: '<p>This is visible to everyone</p>',
-                            properties: {},
-                            structureProperties: { teacherOnly: 'true' },
+                            properties: { teacherOnly: 'true' },
                         },
                     ],
                 },
@@ -85,43 +81,13 @@ const createMockDocumentWithTeacherOnly = (): ExportDocument => ({
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () =>
-        new Map([
-            ['style.css', Buffer.from('/* test css */')],
-            ['style.js', Buffer.from('/* test js */')],
-        ]),
-    fetchLibraryFiles: async () => new Map(),
-    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
-    fetchExeLogo: async () => Buffer.from('logo'),
-    fetchIdeviceFiles: async () => new Map(),
+    getThemeFiles: async () => [],
+    getThemeFile: async () => null,
+    getIdeviceFiles: async () => [],
+    getIdeviceFile: async () => null,
+    getLibraryFiles: async () => [],
+    getLibraryFile: async () => null,
 });
-
-// Mock asset provider
-const createMockAssetProvider = (): AssetProvider => ({
-    getAsset: async () => null,
-    getAllAssets: async () => [],
-    getProjectAssets: async () => [],
-});
-
-// Create zip provider
-const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
-
-// Helper function to generate preview HTML using Html5Exporter
-async function generatePreviewHtml(document: ExportDocument): Promise<string> {
-    const resources = createMockResourceProvider();
-    const assets = createMockAssetProvider();
-    const zip = createMockZipProvider();
-
-    const exporter = new Html5Exporter(document, resources, assets, zip);
-    const files = await exporter.generateForPreview();
-
-    const indexHtml = files.get('index.html');
-    if (!indexHtml) {
-        throw new Error('No index.html generated');
-    }
-
-    return new TextDecoder().decode(indexHtml);
-}
 
 describe('Teacher Mode Toggle Integration', () => {
     beforeAll(() => {
@@ -141,8 +107,7 @@ describe('Teacher Mode Toggle Integration', () => {
                 type: 'text',
                 order: 0,
                 content: '<p>Teacher content</p>',
-                properties: {},
-                structureProperties: { teacherOnly: 'true' },
+                properties: { teacherOnly: 'true' },
             };
 
             const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
@@ -199,57 +164,88 @@ describe('Teacher Mode Toggle Integration', () => {
         });
     });
 
-    describe('Html5Exporter preview header structure', () => {
+    describe('WebsitePreviewExporter header structure', () => {
         it('should render header elements (not divs) for exe_export.js teacherMode selectors', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // exe_export.js teacherMode.init() uses:
             // $(".package-header") for single-page
             // $(".page-header") for multi-page
             // Note: These are now <div> elements inside <header class="main-header">
-            expect(html).toContain('class="package-header');
-            expect(html).toContain('class="page-header"');
+            expect(result.html).toContain('class="package-header');
+            expect(result.html).toContain('class="page-header"');
         });
 
-        it('should include link to CSS that hides teacher-only content', async () => {
+        it('should include teacher-only CSS rule in preview', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // CSS rule is now in external files, verify link is present
-            expect(html).toContain('href="content/css/base.css"');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+
+            // CSS rule that hides teacher-only content by default
+            expect(result.html).toContain('html:not(.mode-teacher) .js .teacher-only');
+            expect(result.html).toContain('display: none !important');
         });
 
         it('should render teacher-only blocks with correct class in preview', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // Block with teacherOnly=true should have teacher-only class
-            expect(html).toContain('class="box teacher-only"');
+            expect(result.html).toContain('class="box teacher-only"');
         });
 
         it('should render teacher-only idevices with correct class in preview', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // iDevice with teacherOnly=true should have teacher-only class
-            expect(html).toContain('idevice_node text teacher-only');
+            expect(result.html).toContain('idevice_node text teacher-only');
         });
 
         it('should load exe_export.js in preview for teacherMode functionality', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // exe_export.js should be loaded
-            expect(html).toContain('exe_export.js');
+            expect(result.html).toContain('exe_export.js');
         });
 
-        it('should load exe_export.js which handles teacherMode initialization', async () => {
+        it('should call $exeExport.init() which triggers teacherMode.init()', async () => {
             const document = createMockDocumentWithTeacherOnly();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // exe_export.js handles initialization via DOMContentLoaded
-            expect(html).toContain('exe_export.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+
+            // Init call should be present
+            expect(result.html).toContain('$exeExport.init()');
         });
     });
 

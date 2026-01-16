@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures/collaboration.fixture';
-
 import { waitForYjsSync, waitForTextInContent } from '../../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
@@ -9,8 +8,6 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that text iDevice content (including images) syncs
  * in real-time between multiple users connected to the same project.
- *
- * Note: These tests require a server with WebSocket support and are skipped in static mode.
  */
 
 /**

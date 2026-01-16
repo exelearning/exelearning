@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -162,7 +161,7 @@ test.describe('DigCompEdu iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'DigCompEdu Add Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -200,7 +199,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Selection Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -228,7 +227,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Filter Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -270,7 +269,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -316,7 +315,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Save Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -386,7 +385,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Granularity Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -427,7 +426,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Panel Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -462,7 +461,7 @@ test.describe('DigCompEdu iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the DigCompEdu content is displayed
             const digcompeduContent = iframe.locator('.digcompeduIdeviceContent').first();
@@ -486,7 +485,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Summary Mode Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -526,7 +525,7 @@ test.describe('DigCompEdu iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the DigCompEdu content is displayed
             const digcompeduContent = iframe.locator('.digcompeduIdeviceContent').first();
@@ -548,7 +547,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Reset Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -584,7 +583,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Search Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

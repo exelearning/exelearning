@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -362,7 +361,7 @@ test.describe('Form iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Form Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -391,7 +390,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TrueFalse Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -424,7 +423,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Selection Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -457,7 +456,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Multiple Questions Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -503,7 +502,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -536,7 +535,7 @@ test.describe('Form iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -554,7 +553,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Buttons Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -581,7 +580,7 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -604,7 +603,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TF Interaction Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -631,7 +630,7 @@ test.describe('Form iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -659,7 +658,7 @@ test.describe('Form iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

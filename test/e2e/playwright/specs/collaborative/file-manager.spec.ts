@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures/collaboration.fixture';
-
 import { waitForYjsSync } from '../../helpers/sync-helpers';
 import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
@@ -9,8 +8,6 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that File Manager operations sync in real-time
  * between multiple clients connected to the same project via WebSocket.
- *
- * Note: These tests require a server with WebSocket support and are skipped in static mode.
  */
 
 /**
@@ -144,31 +141,11 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
 async function selectFirstFile(page: Page): Promise<void> {
     const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
     await fileItem.waitFor({ state: 'visible', timeout: 10000 });
-    await fileItem.click({ force: true });
+    await fileItem.click();
 
     await page.waitForSelector('#modalFileManager .media-library-sidebar-content:not([style*="display: none"])', {
         timeout: 5000,
     });
-
-    await page.waitForFunction(
-        () => {
-            const item = document.querySelector('#modalFileManager .media-library-item:not(.media-library-folder)');
-            return !!item && item.classList.contains('selected');
-        },
-        null,
-        { timeout: 10000 },
-    );
-
-    await page.waitForFunction(
-        () => {
-            const renameBtn = document.querySelector(
-                '#modalFileManager .media-library-rename-btn',
-            ) as HTMLButtonElement;
-            return !!renameBtn && !renameBtn.disabled;
-        },
-        null,
-        { timeout: 10000 },
-    );
 }
 
 /**

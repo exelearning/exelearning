@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/collaboration.fixture';
-
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
@@ -8,8 +7,6 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
  * Real-Time Collaboration Tests
  * These tests verify that multiple clients can work on the same project simultaneously
  * with changes syncing in real-time via Yjs WebSocket
- *
- * Note: These tests require a server with WebSocket support and are skipped in static mode.
  */
 
 test.describe('Real-Time Collaboration', () => {

@@ -7,16 +7,8 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
-import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
-import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-} from '../../src/shared/export/interfaces';
+import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 
 // Path to real iDevices
@@ -80,43 +72,13 @@ const createMockDocumentWithFeedback = (): ExportDocument => ({
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () =>
-        new Map([
-            ['style.css', Buffer.from('/* test css */')],
-            ['style.js', Buffer.from('/* test js */')],
-        ]),
-    fetchLibraryFiles: async () => new Map(),
-    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
-    fetchExeLogo: async () => Buffer.from('logo'),
-    fetchIdeviceFiles: async () => new Map(),
+    getThemeFiles: async () => [],
+    getThemeFile: async () => null,
+    getIdeviceFiles: async () => [],
+    getIdeviceFile: async () => null,
+    getLibraryFiles: async () => [],
+    getLibraryFile: async () => null,
 });
-
-// Mock asset provider
-const createMockAssetProvider = (): AssetProvider => ({
-    getAsset: async () => null,
-    getAllAssets: async () => [],
-    getProjectAssets: async () => [],
-});
-
-// Create zip provider
-const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
-
-// Helper function to generate preview HTML using Html5Exporter
-async function generatePreviewHtml(document: ExportDocument): Promise<string> {
-    const resources = createMockResourceProvider();
-    const assets = createMockAssetProvider();
-    const zip = createMockZipProvider();
-
-    const exporter = new Html5Exporter(document, resources, assets, zip);
-    const files = await exporter.generateForPreview();
-
-    const indexHtml = files.get('index.html');
-    if (!indexHtml) {
-        throw new Error('No index.html generated');
-    }
-
-    return new TextDecoder().decode(indexHtml);
-}
 
 describe('Feedback Toggle Integration', () => {
     beforeAll(() => {
@@ -172,40 +134,62 @@ describe('Feedback Toggle Integration', () => {
     });
 
     describe('Website Preview', () => {
-        it('should include CSS files for js-hidden rules', async () => {
+        it('should include js-hidden CSS rules in preview', async () => {
             const document = createMockDocumentWithFeedback();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // CSS rules are now in external files, verify links are present
-            expect(html).toContain('href="content/css/base.css"');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toBeDefined();
+
+            // Preview must include inline CSS for js-hidden
+            expect(result.html).toContain('.js-hidden { display: none; }');
+            expect(result.html).toContain('.js .js-required { display: block; }');
         });
 
         it('should include data-idevice-component-type="json" for text idevice in preview', async () => {
             const document = createMockDocumentWithFeedback();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // Verify the text idevice has the component-type attribute
-            expect(html).toContain('data-idevice-component-type="json"');
-            expect(html).toContain('data-idevice-type="text"');
+            expect(result.html).toContain('data-idevice-component-type="json"');
+            expect(result.html).toContain('data-idevice-type="text"');
         });
 
         it('should add js class to body for CSS selectors to work', async () => {
             const document = createMockDocumentWithFeedback();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // The preview adds 'js' class to body via inline script
-            expect(html).toContain('document.body.className+=" js"');
+            expect(result.html).toContain('document.body.className+=" js"');
         });
 
         it('should preserve feedback structure in rendered content', async () => {
             const document = createMockDocumentWithFeedback();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // Verify feedback elements are present in preview
-            expect(html).toContain('feedbacktooglebutton');
-            expect(html).toContain('feedback-button');
-            expect(html).toContain('js-feedback');
-            expect(html).toContain('js-hidden');
+            expect(result.html).toContain('feedbacktooglebutton');
+            expect(result.html).toContain('feedback-button');
+            expect(result.html).toContain('js-feedback');
+            expect(result.html).toContain('js-hidden');
         });
     });
 

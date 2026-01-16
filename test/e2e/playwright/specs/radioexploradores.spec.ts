@@ -10,70 +10,45 @@
  * - Edit button should be enabled
  */
 import { test, expect } from '../fixtures/auth.fixture';
-
 import * as path from 'path';
 import type { Page } from '@playwright/test';
 
 const ELP_FIXTURE = 'radioexploradores.elp';
 
 /**
- * Open the ELP fixture via File menu -> Open
- * This opens the file as a new project (replacing the current one)
+ * Import the ELP fixture via File menu
  */
-async function openElpFixture(page: Page): Promise<void> {
+async function importElpFixture(page: Page): Promise<void> {
     const fixturePath = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
 
     // Open File menu
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Open option (not Import)
-    const openOption = page.locator('#navbar-button-openuserodefiles');
-    await expect(openOption).toBeVisible({ timeout: 5000 });
-    await openOption.click();
+    // Click Import ELP option
+    const importOption = page.locator('#navbar-button-import-elp');
+    await expect(importOption).toBeVisible({ timeout: 5000 });
+    await importOption.click();
 
-    // Wait for the Open modal to appear
-    const openModal = page.locator('#modalOpenUserOdeFiles');
-    await expect(openModal).toBeVisible({ timeout: 10000 });
+    // Click Continue in confirmation dialog (supports both English and Spanish)
+    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
+    await expect(continueButton).toBeVisible({ timeout: 5000 });
 
-    // Setup file chooser BEFORE clicking the upload button
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-
-    // Click "Select a file from your device" button in the modal
-    const uploadButton = openModal.locator('.ode-files-button-upload');
-    await expect(uploadButton).toBeVisible({ timeout: 5000 });
-    await uploadButton.click();
+    await continueButton.click();
 
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
-    // Handle "Open without saving" confirmation dialog - it appears when opening a file
-    // while another project is already open
-    const sessionLogoutModal = page.locator('#modalSessionLogout');
-    try {
-        await sessionLogoutModal.waitFor({ state: 'visible', timeout: 5000 });
-        const openWithoutSavingBtn = sessionLogoutModal.locator('button.session-logout-without-save');
-        await openWithoutSavingBtn.click();
-    } catch {
-        // Modal didn't appear - that's fine, continue
-    }
-
-    // Wait for file to be processed - Yjs navigation has pages
+    // Wait for import to complete by checking Yjs navigation has pages
     await page.waitForFunction(
         () => {
-            try {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                if (!bridge) return false;
-                const docManager = bridge.getDocumentManager();
-                if (!docManager || !docManager.initialized) return false;
-                const yDoc = docManager.getDoc();
-                if (!yDoc) return false;
-                const navigation = yDoc.getArray('navigation');
-                return navigation && navigation.length >= 1;
-            } catch {
-                // Document may be reinitializing, wait and retry
-                return false;
-            }
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            if (!bridge) return false;
+            const yDoc = bridge.getDocumentManager()?.getDoc();
+            if (!yDoc) return false;
+            const navigation = yDoc.getArray('navigation');
+            return navigation && navigation.length >= 1;
         },
         { timeout: 90000 },
     );
@@ -83,9 +58,6 @@ async function openElpFixture(page: Page): Promise<void> {
         () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
         { timeout: 30000 },
     );
-
-    // Wait for import progress overlay to disappear (if present)
-    await page.waitForFunction(() => !document.querySelector('#import-progress-overlay'), { timeout: 30000 });
 
     // Additional wait for all handlers to complete
     await page.waitForTimeout(3000);
@@ -199,8 +171,8 @@ test.describe('radioexploradores.elp Import Tests', () => {
                 { timeout: 30000 },
             );
 
-            // Open ELP
-            await openElpFixture(page);
+            // Import ELP
+            await importElpFixture(page);
 
             // Get relate data directly from Yjs
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
@@ -239,8 +211,8 @@ test.describe('radioexploradores.elp Import Tests', () => {
                 { timeout: 30000 },
             );
 
-            // Open ELP
-            await openElpFixture(page);
+            // Import ELP
+            await importElpFixture(page);
 
             // Find which page contains the relate iDevice
             const pageWithRelate = await page.evaluate(() => {
@@ -345,8 +317,8 @@ test.describe('radioexploradores.elp Import Tests', () => {
                 { timeout: 30000 },
             );
 
-            // Open ELP
-            await openElpFixture(page);
+            // Import ELP
+            await importElpFixture(page);
 
             // Wait for processing
             await page.waitForTimeout(3000);

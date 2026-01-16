@@ -1,12 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
-
 import { OpenProjectModalPage } from '../pages/open-project-modal.page';
 
-/**
- * Open Project Modal - Tabs Tests
- *
- * Note: These tests require server database for project listing and are skipped in static mode.
- */
 test.describe('Open Project Modal - Tabs', () => {
     let openProjectModal: OpenProjectModalPage;
 

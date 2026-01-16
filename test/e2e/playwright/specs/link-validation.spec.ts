@@ -276,7 +276,7 @@ test.describe('Link Validation', () => {
         await modal.waitFor({ state: 'visible', timeout: 5000 });
 
         // Should show "No links found" message
-        await expect(modal.locator('text=No links found in content')).toBeVisible({ timeout: 10000 });
+        await expect(modal.locator('text=No links found')).toBeVisible({ timeout: 10000 });
     });
 
     test('should disable CSV button while validating', async ({ page }) => {

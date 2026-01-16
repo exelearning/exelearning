@@ -1,4 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -121,7 +121,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -161,7 +161,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -237,7 +237,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -272,7 +272,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -322,7 +322,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -371,7 +371,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify gallery container exists in preview
             const previewGallery = iframe.locator('.imageGallery-IDevice');
@@ -396,7 +396,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -444,10 +444,9 @@ test.describe('Image Gallery iDevice', () => {
             const galleryLink = page.locator('#node-content .imageGallery-IDevice a.imageLink').first();
             await expect(galleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href has been resolved (blob URL or relative path)
+            // Verify the href has been resolved to blob:// URL
             const href = await galleryLink.getAttribute('href');
-            // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(href).toMatch(/^(blob:|content\/resources\/)/);
+            expect(href).toMatch(/^blob:/);
 
             // Click the image to open lightbox
             await galleryLink.click();
@@ -479,7 +478,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -528,7 +527,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for SimpleLightbox to be available in iframe
             await page.waitForFunction(
@@ -547,11 +546,10 @@ test.describe('Image Gallery iDevice', () => {
             const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
             await expect(previewGalleryLink).toBeVisible({ timeout: 5000 });
 
-            // Verify the href is resolved (blob, data URL, or relative path)
+            // Verify the href is a blob or data URL (resolved asset)
             const href = await previewGalleryLink.getAttribute('href');
             console.log('Preview gallery link href:', href);
-            // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(href).toMatch(/^(blob:|data:|content\/resources\/)/);
+            expect(href).toMatch(/^(blob:|data:)/);
 
             await previewGalleryLink.click();
 
@@ -563,11 +561,10 @@ test.describe('Image Gallery iDevice', () => {
             const lightboxImage = iframe.locator('.sl-image img');
             await lightboxImage.waitFor({ state: 'attached', timeout: 5000 });
 
-            // Verify the lightbox image element exists and has a valid src
+            // Verify the lightbox image element exists and has a blob src
             const imgSrc = await lightboxImage.getAttribute('src');
             expect(imgSrc).toBeTruthy();
-            // With SW-based preview, assets may be relative paths
-            expect(imgSrc).toMatch(/^(blob:|content\/resources\/)/);
+            expect(imgSrc).toMatch(/^blob:/);
 
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');

@@ -1,12 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
-
 import { ShareModalPage } from '../pages/share-modal.page';
 
-/**
- * Share Modal Tests
- *
- * Note: These tests require server API for sharing functionality and are skipped in static mode.
- */
 test.describe('Share Modal', () => {
     let shareModal: ShareModalPage;
 

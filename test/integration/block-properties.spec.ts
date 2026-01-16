@@ -6,16 +6,13 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
-import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
-import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
+import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
 import { IdeviceRenderer } from '../../src/shared/export/renderers/IdeviceRenderer';
 import type {
     ExportDocument,
     ExportMetadata,
     ExportPage,
     ResourceProvider,
-    AssetProvider,
-    ZipProvider,
     ExportBlock,
 } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
@@ -141,49 +138,13 @@ const createMockDocumentWithMultipleBlocks = (): ExportDocument => ({
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () =>
-        new Map([
-            ['style.css', Buffer.from('/* test css */')],
-            ['style.js', Buffer.from('/* test js */')],
-        ]),
-    fetchLibraryFiles: async () => new Map(),
-    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
-    fetchExeLogo: async () => Buffer.from('logo'),
-    fetchIdeviceFiles: async () => new Map(),
+    getThemeFiles: async () => [],
+    getThemeFile: async () => null,
+    getIdeviceFiles: async () => [],
+    getIdeviceFile: async () => null,
+    getLibraryFiles: async () => [],
+    getLibraryFile: async () => null,
 });
-
-// Mock asset provider
-const createMockAssetProvider = (): AssetProvider => ({
-    getAsset: async () => null,
-    getAllAssets: async () => [],
-    getProjectAssets: async () => [],
-});
-
-// Mock zip provider
-const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
-
-// Helper to generate preview files using Html5Exporter
-async function generatePreviewFiles(
-    document: ExportDocument,
-): Promise<{ html: string; files: Map<string, Uint8Array | string> }> {
-    const resources = createMockResourceProvider();
-    const assets = createMockAssetProvider();
-    const zip = createMockZipProvider();
-    const exporter = new Html5Exporter(document, resources, assets, zip);
-    const files = await exporter.generateForPreview();
-    const indexHtml = files.get('index.html');
-    if (!indexHtml) throw new Error('No index.html generated');
-    return {
-        html: new TextDecoder().decode(indexHtml),
-        files,
-    };
-}
-
-// Backwards-compatible helper
-async function generatePreviewHtml(document: ExportDocument): Promise<string> {
-    const result = await generatePreviewFiles(document);
-    return result.html;
-}
 
 describe('Block Properties Integration', () => {
     beforeAll(() => {
@@ -213,17 +174,24 @@ describe('Block Properties Integration', () => {
 
         it('should render block with teacher-only class in preview', async () => {
             const document = createMockDocumentWithBlockProperties({ teacherOnly: 'true' });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('teacher-only');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('teacher-only');
         });
 
-        it('should include link to CSS file that hides teacher-only content', async () => {
+        it('should include CSS to hide teacher-only content by default', async () => {
             const document = createMockDocumentWithBlockProperties({ teacherOnly: 'true' });
-            const { html } = await generatePreviewFiles(document);
+            const resources = createMockResourceProvider();
 
-            // The CSS is now in external files, verify link is present
-            expect(html).toContain('href="content/css/base.css"');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('html:not(.mode-teacher) .js .teacher-only');
         });
     });
 
@@ -246,9 +214,13 @@ describe('Block Properties Integration', () => {
 
         it('should render block with novisible class in preview', async () => {
             const document = createMockDocumentWithBlockProperties({ visibility: 'false' });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('novisible');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('novisible');
         });
     });
 
@@ -271,9 +243,13 @@ describe('Block Properties Integration', () => {
 
         it('should render block with minimized class in preview', async () => {
             const document = createMockDocumentWithBlockProperties({ minimized: 'true' });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('minimized');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('minimized');
         });
     });
 
@@ -296,9 +272,13 @@ describe('Block Properties Integration', () => {
 
         it('should render block with identifier attribute in preview', async () => {
             const document = createMockDocumentWithBlockProperties({ identifier: 'preview-block-id' });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('identifier="preview-block-id"');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('identifier="preview-block-id"');
         });
 
         it('should not add identifier attribute when empty', () => {
@@ -338,10 +318,14 @@ describe('Block Properties Integration', () => {
 
         it('should render block with custom CSS classes in preview', async () => {
             const document = createMockDocumentWithBlockProperties({ cssClass: 'custom-style important' });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('custom-style');
-            expect(html).toContain('important');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('custom-style');
+            expect(result.html).toContain('important');
         });
     });
 
@@ -372,19 +356,24 @@ describe('Block Properties Integration', () => {
 
         it('should render multiple blocks with different properties in preview', async () => {
             const document = createMockDocumentWithMultipleBlocks();
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // Teacher block
-            expect(html).toContain('teacher-only');
+            expect(result.html).toContain('teacher-only');
 
             // Hidden block
-            expect(html).toContain('novisible');
+            expect(result.html).toContain('novisible');
 
             // Custom block
-            expect(html).toContain('identifier="my-custom-block"');
-            expect(html).toContain('highlight');
-            expect(html).toContain('featured');
-            expect(html).toContain('minimized');
+            expect(result.html).toContain('identifier="my-custom-block"');
+            expect(result.html).toContain('highlight');
+            expect(result.html).toContain('featured');
+            expect(result.html).toContain('minimized');
         });
 
         it('should preserve all properties through export pipeline', async () => {
@@ -395,14 +384,19 @@ describe('Block Properties Integration', () => {
                 identifier: 'test-id',
                 cssClass: 'test-class',
             });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
+
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
 
             // All properties should be present
-            expect(html).toContain('novisible');
-            expect(html).toContain('teacher-only');
-            expect(html).toContain('minimized');
-            expect(html).toContain('identifier="test-id"');
-            expect(html).toContain('test-class');
+            expect(result.html).toContain('novisible');
+            expect(result.html).toContain('teacher-only');
+            expect(result.html).toContain('minimized');
+            expect(result.html).toContain('identifier="test-id"');
+            expect(result.html).toContain('test-class');
         });
     });
 
@@ -438,8 +432,7 @@ describe('Block Properties Integration', () => {
                                         type: 'text',
                                         order: 0,
                                         content: '<p>Teacher only iDevice</p>',
-                                        properties: {},
-                                        structureProperties: { teacherOnly: 'true' },
+                                        properties: { teacherOnly: 'true' },
                                     },
                                 ],
                             },
@@ -447,9 +440,13 @@ describe('Block Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('idevice_node text teacher-only');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('idevice_node text teacher-only');
         });
 
         it('should render iDevice with novisible class', async () => {
@@ -483,8 +480,7 @@ describe('Block Properties Integration', () => {
                                         type: 'text',
                                         order: 0,
                                         content: '<p>Hidden iDevice</p>',
-                                        properties: {},
-                                        structureProperties: { visibility: 'false' },
+                                        properties: { visibility: 'false' },
                                     },
                                 ],
                             },
@@ -492,9 +488,13 @@ describe('Block Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('novisible');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('novisible');
         });
     });
 
@@ -533,16 +533,24 @@ describe('Block Properties Integration', () => {
 
         it('should render block with novisible class in preview when visibility=false (boolean)', async () => {
             const document = createMockDocumentWithBlockProperties({ visibility: false as unknown as string });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('novisible');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('novisible');
         });
 
         it('should render block with teacher-only class in preview when teacherOnly=true (boolean)', async () => {
             const document = createMockDocumentWithBlockProperties({ teacherOnly: true as unknown as string });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('teacher-only');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('teacher-only');
         });
 
         it('should render iDevice with novisible class when visibility=false (boolean)', async () => {
@@ -576,8 +584,7 @@ describe('Block Properties Integration', () => {
                                         type: 'text',
                                         order: 0,
                                         content: '<p>Hidden iDevice</p>',
-                                        properties: {},
-                                        structureProperties: { visibility: false as unknown as string },
+                                        properties: { visibility: false },
                                     },
                                 ],
                             },
@@ -585,9 +592,13 @@ describe('Block Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('novisible');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('novisible');
         });
 
         it('should render iDevice with teacher-only class when teacherOnly=true (boolean)', async () => {
@@ -621,8 +632,7 @@ describe('Block Properties Integration', () => {
                                         type: 'text',
                                         order: 0,
                                         content: '<p>Teacher only</p>',
-                                        properties: {},
-                                        structureProperties: { teacherOnly: true as unknown as string },
+                                        properties: { teacherOnly: true },
                                     },
                                 ],
                             },
@@ -630,9 +640,13 @@ describe('Block Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('teacher-only');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('teacher-only');
         });
 
         it('should combine boolean and string properties correctly in preview', async () => {
@@ -680,12 +694,16 @@ describe('Block Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('teacher-only');
-            expect(html).toContain('minimized');
-            expect(html).toContain('identifier="my-block"');
-            expect(html).toContain('custom-style');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('teacher-only');
+            expect(result.html).toContain('minimized');
+            expect(result.html).toContain('identifier="my-block"');
+            expect(result.html).toContain('custom-style');
         });
     });
 });

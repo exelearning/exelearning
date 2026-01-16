@@ -1,5 +1,4 @@
-import { test, expect, navigateToProject, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -11,25 +10,6 @@ import type { Page } from '@playwright/test';
  *    must be updated (ELPX imports set both, but rename only updated pageName)
  * 2. Page reorder: Pages must be sorted by hierarchical 'order' field
  */
-
-/**
- * Helper function to wait for Service Worker to be ready
- * Firefox takes longer to register and activate the SW
- */
-async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            // Check if SW registration promise exists and has completed
-            return (
-                app?._previewSwRegistration?.active?.state === 'activated' ||
-                navigator.serviceWorker?.controller !== null
-            );
-        },
-        { timeout },
-    );
-}
-
 test.describe('Preview Page Updates', () => {
     test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -37,8 +17,9 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Preview Title Update Test');
 
-        // Navigate to the project workarea (handles static vs server mode)
-        await navigateToProject(page, projectUuid);
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
 
         // Wait for app to fully initialize including Yjs
         await page.waitForFunction(
@@ -49,7 +30,11 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        await waitForLoadingScreenHidden(page);
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
 
         // Get the first page info from Yjs
         const pageInfo = await page.evaluate(() => {
@@ -77,9 +62,6 @@ test.describe('Preview Page Updates', () => {
 
         // Wait for Yjs to process
         await page.waitForTimeout(500);
-
-        // Wait for Service Worker to be ready (Firefox takes longer)
-        await waitForServiceWorker(page);
 
         // Open Preview panel via the preview button
         const previewButton = page.locator('#head-bottom-preview');
@@ -109,8 +91,9 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Title Fields Test');
 
-        // Navigate to the project workarea (handles static vs server mode)
-        await navigateToProject(page, projectUuid);
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -121,7 +104,11 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        await waitForLoadingScreenHidden(page);
+        // Wait for loading screen
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
 
         // Get first page ID
         const pageId = await page.evaluate(() => {
@@ -193,8 +180,9 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Page Order Test');
 
-        // Navigate to the project workarea (handles static vs server mode)
-        await navigateToProject(page, projectUuid);
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -205,7 +193,11 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        await waitForLoadingScreenHidden(page);
+        // Wait for loading screen
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
 
         // Create multiple pages via Yjs using addPage (correct method)
         const pageNames = ['First Page', 'Second Page', 'Third Page'];
@@ -228,9 +220,6 @@ test.describe('Preview Page Updates', () => {
 
         // Wait for pages to be created in Yjs
         await page.waitForTimeout(500);
-
-        // Wait for Service Worker to be ready (Firefox takes longer)
-        await waitForServiceWorker(page);
 
         // Open Preview
         const previewButton = page.locator('#head-bottom-preview');
@@ -263,8 +252,9 @@ test.describe('Preview Page Updates', () => {
         // Create a new project
         const projectUuid = await createProject(page, 'Page Movement Test');
 
-        // Navigate to the project workarea (handles static vs server mode)
-        await navigateToProject(page, projectUuid);
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
 
         // Wait for app to fully initialize
         await page.waitForFunction(
@@ -275,7 +265,11 @@ test.describe('Preview Page Updates', () => {
             { timeout: 30000 },
         );
 
-        await waitForLoadingScreenHidden(page);
+        // Wait for loading screen
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
 
         // Create pages A, B, C using correct method
         const pageIds = await page.evaluate(() => {
@@ -326,9 +320,6 @@ test.describe('Preview Page Updates', () => {
 
         // Wait for move operation to complete
         await page.waitForTimeout(500);
-
-        // Wait for Service Worker to be ready (Firefox takes longer)
-        await waitForServiceWorker(page);
 
         // Open Preview
         const previewButton = page.locator('#head-bottom-preview');

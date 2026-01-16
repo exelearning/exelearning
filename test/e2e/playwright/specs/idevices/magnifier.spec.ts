@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -153,7 +152,7 @@ test.describe('Magnifier iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Magnifier Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -189,7 +188,7 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Custom Image Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -272,7 +271,7 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Image Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -341,7 +340,7 @@ test.describe('Magnifier iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Magnifier Hover Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -412,7 +411,7 @@ test.describe('Magnifier iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -458,7 +457,7 @@ test.describe('Magnifier iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify magnifier container exists in preview
             const previewMagnifierContainer = iframe.locator('.MNF-MainContainer, .ImageMagnifierIdevice');

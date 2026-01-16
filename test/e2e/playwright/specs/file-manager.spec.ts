@@ -1,5 +1,4 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
 

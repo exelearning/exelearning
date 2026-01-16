@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -183,7 +182,7 @@ test.describe('Rubric iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Rubric Add Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -224,7 +223,7 @@ test.describe('Rubric iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Rubric Edit Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -271,7 +270,7 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -338,7 +337,7 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -372,7 +371,7 @@ test.describe('Rubric iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the rubric table is displayed
             const rubricTable = iframe.locator('.rubric .exe-table, .idevice_node.rubric .exe-table');

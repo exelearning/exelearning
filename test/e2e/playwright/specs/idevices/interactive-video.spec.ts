@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -454,7 +453,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Add Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -485,7 +484,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Upload Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -525,7 +524,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Editor Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -566,7 +565,7 @@ test.describe('Interactive Video iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Persist Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -666,7 +665,7 @@ test.describe('Interactive Video iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -703,7 +702,7 @@ test.describe('Interactive Video iDevice', () => {
 
             // Access preview iframe
             const previewIframe = page.frameLocator('#preview-iframe');
-            await previewIframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await previewIframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the interactive video container is visible in preview
             const videoContainer = previewIframe.locator('.exe-interactive-video').first();
@@ -719,7 +718,7 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Symfony Shim Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

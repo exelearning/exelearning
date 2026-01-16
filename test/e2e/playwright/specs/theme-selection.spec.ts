@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures/auth.fixture';
-
 import * as path from 'path';
 
 test.describe('Theme Selection on ELP Import', () => {

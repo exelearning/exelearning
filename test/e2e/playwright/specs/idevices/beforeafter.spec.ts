@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -229,7 +228,7 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     // If the bug is present, opacity will be 0
     expect(opacity).toBeGreaterThan(0);
 
-    // Verify images have src set (relative paths served by Service Worker)
+    // Verify images have src set (blob: URLs from asset resolution)
     const beforeImg = iframe.locator('.BFAFP-ImageBefore').first();
     const afterImg = iframe.locator('[id^="bfafpImageAfter-"]').first();
 
@@ -239,10 +238,9 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     expect(beforeSrc).toBeTruthy();
     expect(afterSrc).toBeTruthy();
 
-    // With SW-based preview, assets are served via relative paths (content/resources/...)
-    // rather than blob URLs. Both approaches are valid for asset resolution.
-    expect(beforeSrc).toMatch(/^(blob:|content\/resources\/)/);
-    expect(afterSrc).toMatch(/^(blob:|content\/resources\/)/);
+    // Should be blob URLs (asset resolution)
+    expect(beforeSrc).toMatch(/^blob:/);
+    expect(afterSrc).toMatch(/^blob:/);
 }
 
 test.describe('BeforeAfter iDevice', () => {
@@ -252,7 +250,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'BeforeAfter Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             // Wait for app initialization
@@ -284,7 +282,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Multiple Pairs Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -341,7 +339,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Preview First Image Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -380,7 +378,7 @@ test.describe('BeforeAfter iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load in iframe
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);
@@ -402,7 +400,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Navigation Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -443,7 +441,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);
@@ -485,7 +483,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Slider Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -518,7 +516,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);
@@ -543,7 +541,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

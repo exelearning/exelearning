@@ -1,5 +1,4 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-
 import type { Page } from '@playwright/test';
 
 /**
@@ -60,24 +59,19 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
         await quickTextButton.click();
     } else {
-        // Expand "Information and presentation" category if collapsed
+        // Expand "Information and presentation" category
         const infoCategory = page
-            .locator('.idevice_category')
-            .filter({
-                has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-            })
-            .first();
+            .locator('#menu_idevices .accordion-item')
+            .filter({ hasText: /Information|Información/i })
+            .locator('.accordion-button');
 
         if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
+            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
             if (isCollapsed) {
-                const label = infoCategory.locator('.label');
-                await label.click();
-                await page.waitForTimeout(800);
+                await infoCategory.first().click();
+                await page.waitForTimeout(500);
             }
         }
-
-        await page.waitForTimeout(500);
 
         const textIdevice = page.locator('.idevice_item[id="text"]').first();
         await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
@@ -103,29 +97,26 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
     const tinyMceFrame = textIdeviceNode.locator('iframe.tox-edit-area__iframe').first();
     await tinyMceFrame.waitFor({ timeout: 15000 });
 
-    // Set content via TinyMCE API for deterministic updates
-    await page.waitForFunction(
-        () => {
-            const editor = (window as any).tinymce?.activeEditor;
-            return !!editor && editor.initialized;
-        },
-        null,
-        { timeout: 15000 },
-    );
+    // Type content
+    const frameEl = await tinyMceFrame.elementHandle();
+    const frame = await frameEl?.contentFrame();
+    if (frame) {
+        await frame.focus('body');
+        await frame.type('body', content, { delay: 5 });
 
-    await page.evaluate(newContent => {
-        const editor = (window as any).tinymce?.activeEditor;
-        if (!editor) return;
-        editor.setContent(newContent);
-        editor.fire('change');
-        editor.fire('input');
-        editor.setDirty(true);
-    }, content);
+        // Fire change events to ensure Yjs binding is updated
+        await frame.evaluate(() => {
+            const editor = (window.parent as any).tinymce?.activeEditor;
+            if (editor) {
+                editor.fire('change');
+                editor.fire('input');
+                editor.setDirty(true);
+            }
+        });
+    }
 
-    await page.waitForFunction(() => {
-        const editor = (window as any).tinymce?.activeEditor;
-        return !!editor && editor.isDirty();
-    });
+    // Wait for TinyMCE to process and sync with Yjs
+    await page.waitForTimeout(500);
 
     // Save the iDevice
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');
@@ -413,29 +404,19 @@ test.describe('Cloning Functionality', () => {
             // Clone the iDevice
             await cloneIdevice(page);
 
-            // Wait for cloned iDevice to appear and content to sync
-            await page.waitForTimeout(2000);
+            // Wait for cloned iDevice to appear
+            await page.waitForTimeout(1000);
 
             // Verify there are now 2 iDevices with the same content
             const idevices = page.locator('#node-content article .idevice_node.text');
             await expect(idevices).toHaveCount(2, { timeout: 10000 });
 
-            // The clone operation successfully creates a second iDevice in the DOM.
-            // Verify basic clone success - original iDevice still has content
+            // Verify both contain the content
             const firstIdevice = idevices.first();
-            await expect(firstIdevice).toBeVisible();
-
-            // Verify cloned iDevice exists and is visible
             const secondIdevice = idevices.last();
-            await expect(secondIdevice).toBeVisible();
 
-            // Verify original content is preserved in first iDevice
-            await expect(firstIdevice).toContainText(uniqueContent, { timeout: 5000 });
-
-            // Note: Content preservation in cloned iDevice depends on async Yjs sync
-            // which may not complete immediately. The clone structure is verified.
-            // Full content preservation verification would require waiting for Yjs
-            // to fully sync and re-render the cloned component.
+            await expect(firstIdevice).toContainText(uniqueContent);
+            await expect(secondIdevice).toContainText(uniqueContent);
         });
     });
 
@@ -480,15 +461,12 @@ test.describe('Cloning Functionality', () => {
             // Should have at least 2 blocks now (original + clone)
             expect(blockCount).toBeGreaterThanOrEqual(2);
 
-            // Verify the original block still has the content
-            const firstBlock = blocks.first();
-            await expect(firstBlock).toBeVisible();
-
-            // Verify original content is preserved in first block
-            await expect(firstBlock).toContainText(uniqueContent, { timeout: 5000 });
-
-            // Note: Content preservation in cloned block depends on async Yjs sync
-            // which may not complete immediately. The clone structure is verified.
+            // Verify the cloned block contains the content
+            const allContent = await page.locator('#node-content').textContent();
+            // The content should appear at least twice (once in each block)
+            const contentOccurrences = (allContent?.match(new RegExp(uniqueContent.substring(0, 20), 'g')) || [])
+                .length;
+            expect(contentOccurrences).toBeGreaterThanOrEqual(2);
         });
     });
 

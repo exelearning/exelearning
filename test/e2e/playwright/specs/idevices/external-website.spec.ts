@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -228,7 +227,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Add Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -265,7 +264,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website URL Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -302,7 +301,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Persist Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -375,7 +374,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Small Height Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -408,7 +407,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Large Height Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -441,7 +440,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website SuperSize Height Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -476,7 +475,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Empty URL Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -512,7 +511,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website Invalid URL Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -551,7 +550,7 @@ test.describe('External Website iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'External Website HTTPS URL Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -588,7 +587,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -617,7 +616,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe container is visible in preview
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl);
@@ -628,7 +627,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Height Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -658,7 +657,7 @@ test.describe('External Website iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the iframe has correct height (500px for large)
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl, 500);
@@ -671,7 +670,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Edit Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -718,7 +717,7 @@ test.describe('External Website iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Update Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

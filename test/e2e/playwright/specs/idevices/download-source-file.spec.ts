@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -270,7 +269,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Add Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -308,7 +307,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Save Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -337,7 +336,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Persist Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -408,7 +407,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Text Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -440,7 +439,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Color Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -472,7 +471,7 @@ test.describe('Download Source File iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Download Source File Font Size Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -507,7 +506,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Preview Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -537,7 +536,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the download link in preview
             await verifyDownloadLinkInPreview(iframe, TEST_DATA.customButtonText, TEST_DATA.customBgColor);
@@ -551,7 +550,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Manifest Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -579,25 +578,22 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
-            // Check that preview has downloadElpx function available
-            // With SW-based preview, we use manifest-based download approach
+            // Check that preview uses postMessage-based downloadElpx function
+            // In preview mode, we use postMessage to parent app instead of embedding manifest
             const downloadInfo = await iframe.locator('html').evaluate(() => {
                 const win = window as any;
-                const fnSource = win.downloadElpx?.toString() || '';
                 return {
                     hasDownloadElpx: typeof win.downloadElpx === 'function',
-                    // SW preview uses manifest-based approach (checks for __ELPX_MANIFEST__)
-                    hasManifestLogic: fnSource.includes('__ELPX_MANIFEST__'),
-                    // Legacy blob preview uses postMessage approach
-                    hasPostMessageLogic: fnSource.includes('postMessage') && fnSource.includes('exe-download-elpx'),
+                    hasPostMessageLogic:
+                        win.downloadElpx?.toString().includes('postMessage') &&
+                        win.downloadElpx?.toString().includes('exe-download-elpx'),
                 };
             });
 
             expect(downloadInfo.hasDownloadElpx).toBe(true);
-            // Either manifest-based (SW preview) or postMessage-based (legacy) is valid
-            expect(downloadInfo.hasManifestLogic || downloadInfo.hasPostMessageLogic).toBe(true);
+            expect(downloadInfo.hasPostMessageLogic).toBe(true);
 
             // Verify onclick handler is present (indicates proper export with ELPX download support)
             const downloadLink = iframe.locator('.exe-download-package-link a').first();
@@ -612,7 +608,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Info Table Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -640,7 +636,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 10000 });
 
             // Verify the project info table is present
             const infoTable = iframe.locator('.exe-download-package-instructions .exe-package-info').first();
@@ -659,7 +655,7 @@ test.describe('Download Source File iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Edit Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(

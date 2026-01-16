@@ -6,17 +6,9 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import * as path from 'path';
-import { Html5Exporter } from '../../src/shared/export/exporters/Html5Exporter';
-import { FflateZipProvider } from '../../src/shared/export/providers/FflateZipProvider';
+import { WebsitePreviewExporter } from '../../src/shared/export/exporters/WebsitePreviewExporter';
 import { PageRenderer } from '../../src/shared/export/renderers/PageRenderer';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-} from '../../src/shared/export/interfaces';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../../src/shared/export/interfaces';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../src/services/idevice-config';
 
 // Path to real iDevices
@@ -112,43 +104,13 @@ const createMockDocumentWithMultiplePages = (
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    fetchTheme: async () =>
-        new Map([
-            ['style.css', Buffer.from('/* test css */')],
-            ['style.js', Buffer.from('/* test js */')],
-        ]),
-    fetchLibraryFiles: async () => new Map(),
-    fetchContentCss: async () => new Map([['base.css', Buffer.from('/* base css */')]]),
-    fetchExeLogo: async () => Buffer.from('logo'),
-    fetchIdeviceFiles: async () => new Map(),
+    getThemeFiles: async () => [],
+    getThemeFile: async () => null,
+    getIdeviceFiles: async () => [],
+    getIdeviceFile: async () => null,
+    getLibraryFiles: async () => [],
+    getLibraryFile: async () => null,
 });
-
-// Mock asset provider
-const createMockAssetProvider = (): AssetProvider => ({
-    getAsset: async () => null,
-    getAllAssets: async () => [],
-    getProjectAssets: async () => [],
-});
-
-// Create zip provider
-const createMockZipProvider = (): ZipProvider => new FflateZipProvider();
-
-// Helper function to generate preview HTML using Html5Exporter
-async function generatePreviewHtml(document: ExportDocument): Promise<string> {
-    const resources = createMockResourceProvider();
-    const assets = createMockAssetProvider();
-    const zip = createMockZipProvider();
-
-    const exporter = new Html5Exporter(document, resources, assets, zip);
-    const files = await exporter.generateForPreview();
-
-    const indexHtml = files.get('index.html');
-    if (!indexHtml) {
-        throw new Error('No index.html generated');
-    }
-
-    return new TextDecoder().decode(indexHtml);
-}
 
 describe('Page Properties Integration', () => {
     beforeAll(() => {
@@ -225,10 +187,14 @@ describe('Page Properties Integration', () => {
 
         it('should hide page title in full preview when hidePageTitle=true', async () => {
             const document = createMockDocumentWithPageProperties({ hidePageTitle: true });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('page-header');
-            expect(html).toContain('style="display:none"');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('page-header');
+            expect(result.html).toContain('style="display:none"');
         });
     });
 
@@ -334,9 +300,13 @@ describe('Page Properties Integration', () => {
                 editableInPage: true,
                 titlePage: 'Custom Preview Title',
             });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('Custom Preview Title');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('Custom Preview Title');
         });
     });
 
@@ -450,13 +420,17 @@ describe('Page Properties Integration', () => {
                 { id: 'p2', title: 'Hidden Page', parentId: null, properties: { visibility: false } },
                 { id: 'p3', title: 'Visible Page 3', parentId: null },
             ]);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
             // Navigation should contain visible pages
-            expect(html).toContain('Visible Page 1');
-            expect(html).toContain('Visible Page 3');
+            expect(result.html).toContain('Visible Page 1');
+            expect(result.html).toContain('Visible Page 3');
             // Hidden page should not be in navigation
-            const navMatch = html.match(/<nav[^>]*id="siteNav"[^>]*>[\s\S]*?<\/nav>/);
+            const navMatch = result.html.match(/<nav[^>]*id="siteNav"[^>]*>[\s\S]*?<\/nav>/);
             expect(navMatch).toBeTruthy();
             if (navMatch) {
                 expect(navMatch[0]).not.toContain('Hidden Page');
@@ -530,9 +504,13 @@ describe('Page Properties Integration', () => {
                 { id: 'p1', title: 'Normal Page', parentId: null },
                 { id: 'p2', title: 'Important Page', parentId: null, properties: { highlight: true } },
             ]);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('highlighted-link');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('highlighted-link');
         });
     });
 
@@ -622,12 +600,16 @@ describe('Page Properties Integration', () => {
                 titleNode: 'Original',
                 highlight: true,
             });
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
             // Title should use custom titlePage
-            expect(html).toContain('Full Property Test');
+            expect(result.html).toContain('Full Property Test');
             // Title should be hidden
-            expect(html).toContain('style="display:none"');
+            expect(result.html).toContain('style="display:none"');
         });
     });
 
@@ -950,24 +932,36 @@ describe('Page Properties Integration', () => {
 
         it('should include MathJax script in preview when addMathJax=true', async () => {
             const document = createMockDocumentWithMathJax(true);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).toContain('tex-mml-svg.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('tex-mml-svg.js');
         });
 
-        it('should include MathJax configuration for SPA preview', async () => {
+        it('should configure MathJax with typeset:false for SPA preview', async () => {
             const document = createMockDocumentWithMathJax(true);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // MathJax is included via script tag
-            expect(html).toContain('tex-mml-svg.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('typeset: false');
+            expect(result.html).toContain('pageReady');
         });
 
         it('should not include MathJax when addMathJax=false and no math content', async () => {
             const document = createMockDocumentWithMathJax(false);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            expect(html).not.toContain('tex-mml-svg.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).not.toContain('tex-mml-svg.js');
         });
 
         it('should include MathJax when content has LaTeX even without addMathJax option', async () => {
@@ -980,7 +974,7 @@ describe('Page Properties Integration', () => {
                     license: 'CC-BY-SA',
                     keywords: '',
                     theme: 'base',
-                    addMathJax: true, // Explicitly enable for test
+                    // addMathJax not set
                 }),
                 getNavigation: (): ExportPage[] => [
                     {
@@ -1007,18 +1001,28 @@ describe('Page Properties Integration', () => {
                     },
                 ],
             };
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // MathJax should be included when addMathJax is true
-            expect(html).toContain('tex-mml-svg.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+            // MathJax should be detected from content
+            expect(result.html).toContain('tex-mml-svg.js');
         });
 
         it('should preserve addMathJax in metadata through export pipeline', async () => {
             const document = createMockDocumentWithMathJax(true);
-            const html = await generatePreviewHtml(document);
+            const resources = createMockResourceProvider();
 
-            // Verify MathJax script is included
-            expect(html).toContain('tex-mml-svg.js');
+            const exporter = new WebsitePreviewExporter(document, resources);
+            const result = await exporter.generatePreview();
+
+            expect(result.success).toBe(true);
+
+            // Verify MathJax config includes pageReady for SPA
+            expect(result.html).toContain('window.MathJax');
+            expect(result.html).toContain('.spa-page.active');
         });
     });
 });

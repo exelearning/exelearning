@@ -1,5 +1,4 @@
-import { test, expect, waitForLoadingScreenHidden, navigateToProject } from '../../fixtures/auth.fixture';
-
+import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -266,7 +265,7 @@ test.describe('Relate iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Basic Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -298,7 +297,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Multiple Pairs Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -348,7 +347,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Canvas Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -379,7 +378,7 @@ test.describe('Relate iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for game to initialize
             await page.waitForTimeout(2000);
@@ -394,7 +393,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Display Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -424,7 +423,7 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -449,7 +448,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Images Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -479,20 +478,19 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(3000);
 
-            // Verify images are loaded (have valid src)
+            // Verify images are loaded (have blob: src)
             const images = iframe.locator('.RLCP-Image');
             const imageCount = await images.count();
             expect(imageCount).toBeGreaterThanOrEqual(2);
 
-            // Check first image has a valid src (blob URL or relative path)
+            // Check first image has a valid src
             const firstImageSrc = await images.first().getAttribute('src');
             expect(firstImageSrc).toBeTruthy();
-            // With SW-based preview, assets are served via relative paths (content/resources/...)
-            expect(firstImageSrc).toMatch(/^(blob:|content\/resources\/)/);
+            expect(firstImageSrc).toMatch(/^blob:/);
         });
     });
 
@@ -502,7 +500,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Connection Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
@@ -532,7 +530,7 @@ test.describe('Relate iDevice', () => {
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
 
             await page.waitForTimeout(2000);
 
@@ -560,7 +558,7 @@ test.describe('Relate iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Persistence Test');
-            await navigateToProject(page, projectUuid);
+            await page.goto(`/workarea?project=${projectUuid}`);
             await page.waitForLoadState('networkidle');
 
             await page.waitForFunction(
