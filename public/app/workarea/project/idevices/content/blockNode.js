@@ -1284,7 +1284,7 @@ export default class IdeviceBlockNode {
         }
         // Generate params array
         let params = {
-            odePagStructureSyncId: this.id,
+            odePagStructureSyncId: this.blockId,
         };
         if (inherit) params.updateChildsProperties = 'true';
         for (let [key, value] of Object.entries(this.properties)) {
