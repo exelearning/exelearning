@@ -418,7 +418,7 @@ export default class PreviewPanelManager {
             await this.refreshWithServiceWorker();
 
             // Build the viewer URL
-            const basePath = eXeLearning?.app?.config?.basePath || '';
+            const basePath = eXeLearning?.app?.getBasePath?.() || '';
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
 
             // Open in new tab
