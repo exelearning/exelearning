@@ -32,8 +32,6 @@ import { Scorm2004Exporter } from '../exporters/Scorm2004Exporter';
 import { ImsExporter } from '../exporters/ImsExporter';
 import { Epub3Exporter } from '../exporters/Epub3Exporter';
 import { ElpxExporter } from '../exporters/ElpxExporter';
-// WebsitePreviewExporter removed - preview now uses Service Worker approach via generatePreviewForSW()
-// Legacy generatePreview(), openPreviewWindow(), createPreviewExporter() functions removed
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
@@ -380,69 +378,6 @@ export async function exportAndDownload(
 }
 
 /**
- * Legacy generatePreview function for backward compatibility
- * Wraps generatePreviewForSW and converts result to HTML string
- *
- * Note: This function accepts the OLD signature used by previewPanel.js:
- *   generatePreview(documentManager, resourceFetcher, options)
- *
- * @deprecated Use generatePreviewForSW for SW-based preview instead
- */
-export async function generatePreview(
-    documentManager: YjsDocumentManagerLike,
-    resourceFetcher: ResourceFetcherLike | null,
-    options?: ExportOptions & { userThemeCss?: string; userThemeJs?: string },
-): Promise<{ success: boolean; html?: string; error?: string }> {
-    try {
-        // Call generatePreviewForSW with correct parameter order
-        // assetCache is null, assetManager is null (we don't have them in legacy call)
-        const result = await generatePreviewForSW(
-            documentManager,
-            null, // assetCache
-            resourceFetcher,
-            null, // assetManager
-            options,
-        );
-
-        if (!result.success || !result.files) {
-            return { success: false, error: result.error || 'Preview generation failed' };
-        }
-
-        // Get index.html content
-        const indexBuffer = result.files['index.html'];
-        if (!indexBuffer) {
-            return { success: false, error: 'index.html not found in preview files' };
-        }
-
-        const decoder = new TextDecoder('utf-8');
-        let html = decoder.decode(new Uint8Array(indexBuffer));
-
-        // Inject user theme CSS/JS if provided (for user themes from ELPX)
-        if (options?.userThemeCss || options?.userThemeJs) {
-            const headClose = html.lastIndexOf('</head>');
-            if (headClose !== -1) {
-                let inject = '';
-                if (options.userThemeCss) {
-                    inject += `<style id="user-theme-css">${options.userThemeCss}</style>`;
-                }
-                if (options.userThemeJs) {
-                    inject += `<script id="user-theme-js">${options.userThemeJs}</script>`;
-                }
-                html = html.slice(0, headClose) + inject + html.slice(headClose);
-            }
-        }
-
-        return { success: true, html };
-    } catch (error) {
-        console.error('[SharedExporters] generatePreview failed:', error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : String(error),
-        };
-    }
-}
-
-/**
  * Generate print preview HTML from Yjs document
  * Creates a single-page HTML with all pages visible for printing
  *
@@ -495,9 +430,9 @@ export function createPrintPreviewExporter(
 }
 
 /**
- * Result type for generatePreviewForSW
+ * Preview files result for Service Worker-based preview
  */
-interface PreviewFilesResult {
+export interface PreviewFilesResult {
     success: boolean;
     files?: Record<string, ArrayBuffer>;
     error?: string;
@@ -505,18 +440,15 @@ interface PreviewFilesResult {
 
 /**
  * Generate preview files for Service Worker-based preview
- * Returns file map that can be sent to preview SW for serving
  *
- * This enables unified preview/export rendering using the eXeViewer approach:
- * - Preview uses Service Worker to serve files from memory
- * - Files are the same as what would be in the HTML5 export
- * - No blob:// URLs, no special preview rendering path
+ * Uses Html5Exporter to generate the same files as HTML export,
+ * enabling unified preview/export rendering via the eXeViewer approach.
  *
  * @param documentManager - YjsDocumentManager instance
  * @param assetCache - AssetCacheManager instance (legacy, optional)
- * @param resourceFetcher - ResourceFetcher instance (optional, but required for themes)
- * @param assetManager - AssetManager instance (new, preferred for exports with assets)
- * @param options - Export options
+ * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param options - Export options (theme override, etc.)
  * @returns Preview files result with file map
  */
 export async function generatePreviewForSW(
@@ -625,7 +557,6 @@ export {
 };
 
 // Export types for TypeScript consumers
-// Note: PreviewOptions, PreviewResult types removed with WebsitePreviewExporter
 export type { PrintPreviewOptions, PrintPreviewResult };
 
 // Expose to window for browser use
@@ -635,9 +566,8 @@ if (typeof window !== 'undefined') {
         createExporter,
         quickExport,
         exportAndDownload,
-        // Preview functions
+        // SW-based preview functions
         generatePreviewForSW,
-        generatePreview, // Legacy compatibility - wraps generatePreviewForSW
         // Print preview functions
         generatePrintPreview,
         createPrintPreviewExporter,
