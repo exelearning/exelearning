@@ -31,9 +31,17 @@ jobs:
         if: github.event.action != 'closed'
         run: bun install
 
+      - name: Generate version string
+        if: github.event.action != 'closed'
+        id: version
+        run: |
+          DATE=$(date +%Y%m%d%H%M%S)
+          VERSION="v0.0.0-pr${{ github.event.number }}-${DATE}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Build static distribution
         if: github.event.action != 'closed'
-        run: bun run build:static
+        run: VERSION=${{ steps.version.outputs.version }} bun run build:static
 
       # GitHub Pages preview (temporary, will be deleted when PR is closed)
       - name: Deploy to GitHub Pages (temporary preview)
@@ -50,6 +58,7 @@ jobs:
       - name: Deploy to Cloudflare Pages
         if: github.event.action != 'closed'
         id: deploy-cf
+        continue-on-error: true
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -61,15 +70,22 @@ jobs:
         run: |
           echo "## 🚀 PR Preview Deployed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### GitHub Pages (temporary)" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ This preview will be automatically deleted when the PR is closed." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** ${{ steps.deploy-gh.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Cloudflare Pages (persistent)" >> $GITHUB_STEP_SUMMARY
-          echo "This preview will remain available until manually deleted." >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** ${{ steps.deploy-cf.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.deploy-cf.outcome }}" == "success" ]; then
+            echo "### Cloudflare Pages (persistent)" >> $GITHUB_STEP_SUMMARY
+            echo "This preview will remain available until manually deleted." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** ${{ steps.deploy-cf.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Cloudflare deployment skipped (not configured or failed)." >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Comment on PR with preview URLs
         if: github.event.action != 'closed'
@@ -78,29 +94,40 @@ jobs:
           script: |
             const ghUrl = '${{ steps.deploy-gh.outputs.deployment-url }}';
             const cfUrl = '${{ steps.deploy-cf.outputs.deployment-url }}';
-            
+            const cfOutcome = '${{ steps.deploy-cf.outcome }}';
+            const version = '${{ steps.version.outputs.version }}';
+
+            let cfSection;
+            if (cfOutcome === 'success' && cfUrl) {
+              cfSection = `| Cloudflare Pages | ${cfUrl} | ✅ Persistent |`;
+            } else {
+              cfSection = `| Cloudflare Pages | N/A | ⚠️ Not configured |`;
+            }
+
             const body = `## 🚀 Preview Deployed
-            
+
+            **Version:** \`${version}\`
+
             | Environment | URL | Status |
             |-------------|-----|--------|
             | GitHub Pages | ${ghUrl} | ⚠️ Temporary (deleted on PR close) |
-            | Cloudflare Pages | ${cfUrl} | ✅ Persistent |
-            
+            ${cfSection}
+
             ---
             <sub>Last updated: ${new Date().toISOString()}</sub>`;
-            
+
             // Find existing comment from this workflow
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
             });
-            
-            const botComment = comments.find(comment => 
-              comment.user.type === 'Bot' && 
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
               comment.body.includes('🚀 Preview Deployed')
             );
-            
+
             if (botComment) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
@@ -123,14 +150,14 @@ jobs:
         with:
           script: |
             const cfUrl = 'https://pr-${{ github.event.number }}.exelearning-preview.pages.dev';
-            
+
             const body = `## 🗑️ GitHub Pages Preview Deleted
-            
+
             The temporary GitHub Pages preview has been removed.
-            
-            The Cloudflare Pages preview remains available at:
+
+            If Cloudflare was configured, the preview may still be available at:
             ${cfUrl}`;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

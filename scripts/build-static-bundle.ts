@@ -29,9 +29,9 @@ import { XMLParser } from 'fast-xml-parser';
 const projectRoot = path.resolve(import.meta.dir, '..');
 const outputDir = path.join(projectRoot, 'dist/static');
 
-// Read version from package.json
+// Read version from environment variable or package.json
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const buildVersion = `v${packageJson.version}`;
+const buildVersion = process.env.VERSION || `v${packageJson.version}`;
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
