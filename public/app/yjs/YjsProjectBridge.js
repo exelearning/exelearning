@@ -2148,11 +2148,18 @@ class YjsProjectBridge {
         }
       }
 
-      // Scan for icons
+      // Scan for icons - store as ThemeIcon objects with relative paths
+      // Blob URLs will be resolved when theme is selected
       for (const filePath of Object.keys(files)) {
         if (filePath.startsWith('icons/') && (filePath.endsWith('.png') || filePath.endsWith('.svg'))) {
           const iconName = filePath.replace('icons/', '').replace(/\.(png|svg)$/, '');
-          config.icons[iconName] = filePath;
+          config.icons[iconName] = {
+            id: iconName,
+            title: iconName,
+            type: 'img',
+            value: filePath, // Will be converted to blob URL on theme select
+            _relativePath: filePath, // Keep original path for blob URL resolution
+          };
         }
       }
 
