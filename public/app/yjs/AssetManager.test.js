@@ -2605,6 +2605,54 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('content/resources/20251009090601DKVACR/colegio.mp3')).toBe(true);
       expect(assetMap.has('content/resources/20251009090601ROYVYO/sq01.jpg')).toBe(true);
     });
+
+    it('extracts assets from UUID-style folder paths (component exports)', async () => {
+      // This test verifies that .idevice/.block file formats are properly handled
+      // These files store assets in {uuid}/{filename} format at the root level
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        '75bf895e-13f6-74b8-c4c9-b219bc1d2eb6/imatge.1.png': new Uint8Array([1, 2, 3]),
+        'a1b2c3d4-e5f6-7890-abcd-ef1234567890/document.pdf': new Uint8Array([4, 5, 6]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(2);
+      expect(assetMap.has('75bf895e-13f6-74b8-c4c9-b219bc1d2eb6/imatge.1.png')).toBe(true);
+      expect(assetMap.has('a1b2c3d4-e5f6-7890-abcd-ef1234567890/document.pdf')).toBe(true);
+    });
+
+    it('extracts assets from custom ID folder paths (component exports)', async () => {
+      // This test verifies that custom ID formats like idevice-xxx-yyy are also detected
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'idevice-abc123-xyz789/image.jpg': new Uint8Array([1, 2, 3]),
+        'block-def456-uvw012/audio.mp3': new Uint8Array([4, 5, 6]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(2);
+      expect(assetMap.has('idevice-abc123-xyz789/image.jpg')).toBe(true);
+      expect(assetMap.has('block-def456-uvw012/audio.mp3')).toBe(true);
+    });
+
+    it('does not extract non-UUID folder paths in new format', async () => {
+      // Regular folder names should not be extracted unless in resources/
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'myfolder/image.png': new Uint8Array([1, 2, 3]),
+        'random-folder/document.pdf': new Uint8Array([4, 5, 6]),
+        'resources/valid-asset.jpg': new Uint8Array([7, 8, 9]),
+      };
+
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+
+      expect(assetMap.size).toBe(1);
+      expect(assetMap.has('resources/valid-asset.jpg')).toBe(true);
+      expect(assetMap.has('myfolder/image.png')).toBe(false);
+      expect(assetMap.has('random-folder/document.pdf')).toBe(false);
+    });
   });
 });
 
