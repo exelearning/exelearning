@@ -373,6 +373,59 @@ describe('PageExporter', () => {
             // Should succeed with fallback
             expect(result.success).toBe(true);
         });
+
+        it('should fail when base.css is not available', async () => {
+            // Override fetchContentCss to return empty map
+            resources.fetchContentCss = async () => {
+                return new Map(); // No base.css
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Failed to fetch content/css/base.css');
+        });
+
+        it('should handle base library fetch failure gracefully', async () => {
+            // Override fetchBaseLibraries to throw
+            resources.fetchBaseLibraries = async () => {
+                throw new Error('Libraries not found');
+            };
+
+            const result = await exporter.export();
+
+            // Should still succeed
+            expect(result.success).toBe(true);
+        });
+
+        it('should handle iDevice resource fetch failure gracefully', async () => {
+            // Override fetchIdeviceResources to throw
+            resources.fetchIdeviceResources = async () => {
+                throw new Error('iDevice resources not found');
+            };
+
+            const result = await exporter.export();
+
+            // Should still succeed - many iDevices don't have extra files
+            expect(result.success).toBe(true);
+        });
+
+        it('should catch and return errors from export', async () => {
+            // Create a failing zip provider
+            const failingZip: ZipProvider = {
+                addFile: () => {},
+                hasFile: () => false,
+                getFilePaths: () => [],
+                generateAsync: async () => {
+                    throw new Error('ZIP generation failed');
+                },
+            };
+            exporter = new PageExporter(document, resources, assets, failingZip);
+
+            const result = await exporter.export();
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('ZIP generation failed');
+        });
     });
 
     describe('Internal Link Handling (Single Page)', () => {

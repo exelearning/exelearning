@@ -1399,6 +1399,152 @@ describe('LatexPreRenderer', () => {
         });
     });
 
+    describe('JSON iDevice data attribute processing', () => {
+        let originalMathJax;
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            globalThis.MathJax = {
+                tex2svg: vi.fn(() => ({
+                    querySelector: (sel) => {
+                        if (sel === 'svg') return { outerHTML: '<svg></svg>' };
+                        if (sel === 'mjx-assistive-mml math') return { outerHTML: '<math></math>' };
+                        return null;
+                    },
+                })),
+                texReset: vi.fn(),
+            };
+        });
+
+        afterEach(() => {
+            if (originalMathJax !== undefined) {
+                globalThis.MathJax = originalMathJax;
+            } else {
+                delete globalThis.MathJax;
+            }
+        });
+
+        test('detects LaTeX in data-idevice-json-data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>Some text \\(x^2\\)</p>',
+                otherField: 'no latex here',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.hasLatex).toBe(true);
+        });
+
+        test('pre-renders LaTeX in JSON data attribute', async () => {
+            const jsonData = {
+                textTextarea: '<p>The formula \\(x^2\\) is simple</p>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThan(0);
+
+            // Check the JSON data was updated with pre-rendered content
+            const parser = new globalThis.DOMParser();
+            const doc = parser.parseFromString(result.html, 'text/html');
+            const element = doc.querySelector('[data-idevice-json-data]');
+            const newJsonData = JSON.parse(element.getAttribute('data-idevice-json-data'));
+
+            expect(newJsonData.textTextarea).toContain('exe-math-rendered');
+        });
+
+        test('processes multiple JSON iDevice elements', async () => {
+            const jsonData1 = {
+                textTextarea: '<p>\\(a^2\\)</p>',
+            };
+            const jsonData2 = {
+                textTextarea: '<p>\\(b^2\\)</p>',
+            };
+            const jsonStr1 = JSON.stringify(jsonData1).replace(/"/g, '&quot;');
+            const jsonStr2 = JSON.stringify(jsonData2).replace(/"/g, '&quot;');
+            const html = `
+                <div class="idevice_node" data-idevice-json-data="${jsonStr1}"></div>
+                <div class="idevice_node" data-idevice-json-data="${jsonStr2}"></div>
+            `;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(2);
+        });
+
+        test('skips JSON data without LaTeX content', async () => {
+            const jsonData = {
+                textTextarea: '<p>Regular text content without math</p>',
+                otherField: 'Just text',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.hasLatex).toBe(false);
+            expect(result.latexRendered).toBe(false);
+        });
+
+        test('handles invalid JSON in data attribute gracefully', async () => {
+            // Invalid JSON but contains LaTeX pattern
+            const html = `<div class="idevice_node" data-idevice-json-data="invalid json with \\(x\\)"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should not crash
+            expect(result.hasLatex).toBe(true);
+        });
+
+        test('processes both JSON data and HTML body LaTeX', async () => {
+            const jsonData = {
+                textTextarea: '<p>\\(formula\\)</p>',
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `
+                <div class="idevice_node" data-idevice-json-data="${jsonStr}">
+                    <p>\\(another\\)</p>
+                </div>
+            `;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(2);
+        });
+
+        test('skips JSON properties that do not contain LaTeX', async () => {
+            const jsonData = {
+                textTextarea: '<p>\\(x^2\\)</p>',
+                plainText: 'No LaTeX here',
+                number: 42,
+                boolVal: true,
+            };
+            const jsonStr = JSON.stringify(jsonData).replace(/"/g, '&quot;');
+            const html = `<div class="idevice_node" data-idevice-json-data="${jsonStr}"></div>`;
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            // Should only process textTextarea, not other properties
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1);
+
+            // Non-string properties should be preserved
+            const parser = new globalThis.DOMParser();
+            const doc = parser.parseFromString(result.html, 'text/html');
+            const element = doc.querySelector('[data-idevice-json-data]');
+            const newJsonData = JSON.parse(element.getAttribute('data-idevice-json-data'));
+
+            expect(newJsonData.plainText).toBe('No LaTeX here');
+        });
+    });
+
     describe('double-processing prevention', () => {
         let originalMathJax;
 
