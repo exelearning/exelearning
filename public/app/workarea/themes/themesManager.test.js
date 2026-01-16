@@ -403,6 +403,48 @@ describe('ThemesManager', () => {
 
       expect(mockTheme.select).toHaveBeenCalled();
     });
+
+    it('should call revokeIconBlobUrls on previous theme when switching themes', async () => {
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockPrevTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+      themesManager.list.installed['prev-theme'] = mockPrevTheme;
+      themesManager.selected = mockPrevTheme;
+
+      await themesManager.selectTheme('test-theme');
+
+      expect(mockRevokeIconBlobUrls).toHaveBeenCalled();
+      expect(themesManager.selected).toBe(mockTheme);
+    });
+
+    it('should not call revokeIconBlobUrls when selecting same theme', async () => {
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+      themesManager.selected = mockTheme;
+      mockTheme.select.mockClear();
+
+      await themesManager.selectTheme('test-theme', false, false);
+
+      expect(mockRevokeIconBlobUrls).not.toHaveBeenCalled();
+    });
+
+    it('should not throw if previous theme has no revokeIconBlobUrls method', async () => {
+      themesManager.list.installed['prev-theme'] = mockPrevTheme;
+      themesManager.selected = mockPrevTheme;
+      // mockPrevTheme does not have revokeIconBlobUrls
+
+      await expect(themesManager.selectTheme('test-theme')).resolves.not.toThrow();
+      expect(themesManager.selected).toBe(mockTheme);
+    });
+
+    it('should not call revokeIconBlobUrls when no previous theme', async () => {
+      themesManager.selected = null;
+      const mockRevokeIconBlobUrls = vi.fn();
+      mockTheme.revokeIconBlobUrls = mockRevokeIconBlobUrls;
+
+      await themesManager.selectTheme('test-theme');
+
+      expect(mockRevokeIconBlobUrls).not.toHaveBeenCalled();
+    });
   });
 
   describe('getThemeIcons', () => {
