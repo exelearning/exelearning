@@ -228,7 +228,7 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     // If the bug is present, opacity will be 0
     expect(opacity).toBeGreaterThan(0);
 
-    // Verify images have src set (blob: URLs from asset resolution)
+    // Verify images have src set (relative paths served by Service Worker)
     const beforeImg = iframe.locator('.BFAFP-ImageBefore').first();
     const afterImg = iframe.locator('[id^="bfafpImageAfter-"]').first();
 
@@ -238,9 +238,10 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
     expect(beforeSrc).toBeTruthy();
     expect(afterSrc).toBeTruthy();
 
-    // Should be blob URLs (asset resolution)
-    expect(beforeSrc).toMatch(/^blob:/);
-    expect(afterSrc).toMatch(/^blob:/);
+    // With SW-based preview, assets are served via relative paths (content/resources/...)
+    // rather than blob URLs. Both approaches are valid for asset resolution.
+    expect(beforeSrc).toMatch(/^(blob:|content\/resources\/)/);
+    expect(afterSrc).toMatch(/^(blob:|content\/resources\/)/);
 }
 
 test.describe('BeforeAfter iDevice', () => {
@@ -378,7 +379,7 @@ test.describe('BeforeAfter iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
 
             // Wait for page to load in iframe
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);
@@ -441,7 +442,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);
@@ -516,7 +517,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Access preview iframe
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
             await page.waitForTimeout(2000);

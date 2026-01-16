@@ -509,10 +509,20 @@ describe('Really Simple Export Tests', () => {
 import {
     ElpDocumentAdapter,
     FileSystemResourceProvider,
-    WebsitePreviewExporter,
     unzipSync as fflateUnzipSync,
 } from '../../../src/shared/export';
+import { Html5Exporter } from '../../../src/shared/export/exporters/Html5Exporter';
+import { FflateZipProvider } from '../../../src/shared/export/providers/FflateZipProvider';
+import { FileSystemAssetProvider } from '../../../src/shared/export/providers/FileSystemAssetProvider';
 import { parseFromString } from '../../../src/services/xml/xml-parser';
+
+// Helper to get HTML from preview files
+const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
+    const content = files.get(filename);
+    if (!content) return '';
+    if (typeof content === 'string') return content;
+    return new TextDecoder().decode(content);
+};
 
 describe('Really Simple Preview Tests', () => {
     const publicDir = path.join(__dirname, '../../../public');
@@ -547,13 +557,15 @@ describe('Really Simple Preview Tests', () => {
         try {
             const document = new ElpDocumentAdapter(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
-            const exporter = new WebsitePreviewExporter(document, resources);
+            const assets = new FileSystemAssetProvider(tempDir);
+            const zip = new FflateZipProvider();
+            const exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
 
-            expect(result.success).toBe(true);
-            expect(result.html).toBeDefined();
-            expect(typeof result.html).toBe('string');
+            expect(html.length).toBeGreaterThan(0);
+            expect(typeof html).toBe('string');
         } finally {
             await fs.remove(tempDir);
         }
@@ -567,11 +579,14 @@ describe('Really Simple Preview Tests', () => {
         try {
             const document = new ElpDocumentAdapter(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
-            const exporter = new WebsitePreviewExporter(document, resources);
+            const assets = new FileSystemAssetProvider(tempDir);
+            const zip = new FflateZipProvider();
+            const exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
 
-            expect(result.html).toContain('Really Simple Test Project');
+            expect(html).toContain('Really Simple Test Project');
         } finally {
             await fs.remove(tempDir);
         }
@@ -585,39 +600,52 @@ describe('Really Simple Preview Tests', () => {
         try {
             const document = new ElpDocumentAdapter(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
-            const exporter = new WebsitePreviewExporter(document, resources);
+            const assets = new FileSystemAssetProvider(tempDir);
+            const zip = new FflateZipProvider();
+            const exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
 
             // All page titles should be present
-            expect(result.html).toContain('Page 1');
-            expect(result.html).toContain('Page 1 - 1');
-            expect(result.html).toContain('Page 1 - 1 -1');
-            expect(result.html).toContain('Page 1 - 2');
-            expect(result.html).toContain('Page 2');
-            expect(result.html).toContain('Page 2 - 1');
+            expect(html).toContain('Page 1');
+            expect(html).toContain('Page 1 - 1');
+            expect(html).toContain('Page 1 - 1 -1');
+            expect(html).toContain('Page 1 - 2');
+            expect(html).toContain('Page 2');
+            expect(html).toContain('Page 2 - 1');
         } finally {
             await fs.remove(tempDir);
         }
     });
 
     // Use ElpDocumentAdapter.fromElpFile() to properly load iDevice HTML content
-    it('should include all distinctive bold words in preview', async () => {
+    it('should include all distinctive bold words across all preview pages', async () => {
         // Use fromElpFile which properly extracts and parses the ELP with all content
         const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
         const resources = new FileSystemResourceProvider(publicDir);
-        const exporter = new WebsitePreviewExporter(document, resources);
+        const extractDir = document.extractedPath || '';
+        const assets = new FileSystemAssetProvider(extractDir);
+        const zip = new FflateZipProvider();
+        const exporter = new Html5Exporter(document, resources, assets, zip);
 
         try {
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
 
-            // All distinctive bold words should be present
+            // Collect all HTML content from all pages (multi-page export)
+            let allHtml = '';
+            for (const [filename, content] of files) {
+                if (filename.endsWith('.html')) {
+                    allHtml += getHtmlFromPreviewFiles(files, filename);
+                }
+            }
+
+            // All distinctive bold words should be present across all pages
             for (const word of ALL_BOLD_WORDS) {
-                expect(result.html).toContain(`<strong>${word}`);
+                expect(allHtml).toContain(`<strong>${word}`);
             }
         } finally {
             // Clean up the temp extraction directory created by fromElpFile
-            const extractDir = document.extractedPath;
             if (extractDir?.includes('/tmp/')) {
                 await fs.remove(extractDir);
             }
@@ -632,21 +660,24 @@ describe('Really Simple Preview Tests', () => {
         try {
             const document = new ElpDocumentAdapter(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
-            const exporter = new WebsitePreviewExporter(document, resources);
+            const assets = new FileSystemAssetProvider(tempDir);
+            const zip = new FflateZipProvider();
+            const exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
+            const html = getHtmlFromPreviewFiles(files, 'index.html');
 
-            expect(result.html).toContain('<!DOCTYPE html>');
-            expect(result.html).toContain('<html');
-            expect(result.html).toContain('</html>');
-            expect(result.html).toContain('<head>');
-            expect(result.html).toContain('<body');
+            expect(html).toContain('<!DOCTYPE html>');
+            expect(html).toContain('<html');
+            expect(html).toContain('</html>');
+            expect(html).toContain('<head>');
+            expect(html).toContain('<body');
         } finally {
             await fs.remove(tempDir);
         }
     });
 
-    it('should include article elements for each page in preview', async () => {
+    it('should include article elements across all preview pages', async () => {
         const structure = await loadFixtureStructure();
         const tempDir = path.join(__dirname, '../../temp/preview-test-' + Date.now());
         await fs.ensureDir(tempDir);
@@ -654,13 +685,24 @@ describe('Really Simple Preview Tests', () => {
         try {
             const document = new ElpDocumentAdapter(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
-            const exporter = new WebsitePreviewExporter(document, resources);
+            const assets = new FileSystemAssetProvider(tempDir);
+            const zip = new FflateZipProvider();
+            const exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const result = await exporter.generatePreview();
+            const files = await exporter.generateForPreview();
 
-            // Preview should have article elements for navigation
-            const articleCount = (result.html.match(/<article/g) || []).length;
-            expect(articleCount).toBeGreaterThanOrEqual(6); // At least 6 articles for 6 iDevices
+            // Count articles across all HTML files (multi-page export)
+            let totalArticleCount = 0;
+            for (const [filename] of files) {
+                if (filename.endsWith('.html')) {
+                    const html = getHtmlFromPreviewFiles(files, filename);
+                    const articleCount = (html.match(/<article/g) || []).length;
+                    totalArticleCount += articleCount;
+                }
+            }
+
+            // Preview should have article elements across all pages (at least 6 for 6 iDevices)
+            expect(totalArticleCount).toBeGreaterThanOrEqual(6);
         } finally {
             await fs.remove(tempDir);
         }

@@ -141,11 +141,31 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
 async function selectFirstFile(page: Page): Promise<void> {
     const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
     await fileItem.waitFor({ state: 'visible', timeout: 10000 });
-    await fileItem.click();
+    await fileItem.click({ force: true });
 
     await page.waitForSelector('#modalFileManager .media-library-sidebar-content:not([style*="display: none"])', {
         timeout: 5000,
     });
+
+    await page.waitForFunction(
+        () => {
+            const item = document.querySelector('#modalFileManager .media-library-item:not(.media-library-folder)');
+            return !!item && item.classList.contains('selected');
+        },
+        null,
+        { timeout: 10000 },
+    );
+
+    await page.waitForFunction(
+        () => {
+            const renameBtn = document.querySelector(
+                '#modalFileManager .media-library-rename-btn',
+            ) as HTMLButtonElement;
+            return !!renameBtn && !renameBtn.disabled;
+        },
+        null,
+        { timeout: 10000 },
+    );
 }
 
 /**

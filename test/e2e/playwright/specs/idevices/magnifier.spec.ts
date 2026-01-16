@@ -457,7 +457,7 @@ test.describe('Magnifier iDevice', () => {
 
             // Wait for iframe to load
             const iframe = page.frameLocator('#preview-iframe');
-            await iframe.locator('article.spa-page.active').waitFor({ state: 'attached', timeout: 15000 });
+            await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Verify magnifier container exists in preview
             const previewMagnifierContainer = iframe.locator('.MNF-MainContainer, .ImageMagnifierIdevice');
