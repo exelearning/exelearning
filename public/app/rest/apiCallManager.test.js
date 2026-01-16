@@ -930,11 +930,17 @@ describe('ApiCallManager', () => {
   });
 
   describe('putSaveBlock', () => {
-    it('should update block via Yjs when enabled', async () => {
+    it('should update block via Yjs when enabled and values changed', async () => {
       const updateBlock = vi.fn();
+      // Mock getBlock to return old values (different from new values)
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Old Title',
+        iconName: 'Old Icon',
+        order: 0,
+      });
       mockApp.project = {
         _yjsEnabled: true,
-        _yjsBridge: { structureBinding: { updateBlock } },
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
       };
 
       const result = await apiManager.putSaveBlock({
@@ -944,11 +950,38 @@ describe('ApiCallManager', () => {
         order: 2,
       });
 
+      expect(getBlock).toHaveBeenCalledWith('block-1');
       expect(updateBlock).toHaveBeenCalledWith('block-1', {
         blockName: 'Title',
         iconName: 'Icon',
         order: 2,
       });
+      expect(result.responseMessage).toBe('OK');
+    });
+
+    it('should skip Yjs update when values are unchanged', async () => {
+      const updateBlock = vi.fn();
+      // Mock getBlock to return same values as the save params
+      const getBlock = vi.fn().mockReturnValue({
+        blockName: 'Title',
+        iconName: 'Icon',
+        order: 2,
+      });
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding: { updateBlock, getBlock } },
+      };
+
+      const result = await apiManager.putSaveBlock({
+        odePagStructureSyncId: 'block-1',
+        blockName: 'Title',
+        iconName: 'Icon',
+        order: 2,
+      });
+
+      expect(getBlock).toHaveBeenCalledWith('block-1');
+      // updateBlock should NOT be called since values are the same
+      expect(updateBlock).not.toHaveBeenCalled();
       expect(result.responseMessage).toBe('OK');
     });
   });
