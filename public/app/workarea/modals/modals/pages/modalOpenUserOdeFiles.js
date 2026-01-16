@@ -1298,6 +1298,9 @@ export default class modalOpenUserOdeFiles extends Modal {
 
                 if (result.success) {
                     Logger.log(`[ComponentImport] Import successful, block ID: ${result.blockId}`);
+                    // Preload assets into cache so they're available for sync resolution
+                    // This ensures images display immediately without needing page refresh
+                    await assetManager.preloadAllAssets();
                     // Refresh only the page content (blocks/idevices) - stays on current page
                     await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
                 } else {
