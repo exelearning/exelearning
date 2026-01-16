@@ -3874,6 +3874,60 @@ describe('IdeviceNode', () => {
             const editBtn = idevice.ideviceButtons.querySelector('#editIdeviceidevice-123');
             expect(editBtn).not.toBeNull();
         });
+
+        it('expands minimized iDevice before entering edit mode', async () => {
+            // Set up iDevice with minify button and icon (collapsed state)
+            idevice.ideviceButtons.innerHTML = `
+                <button id="editIdeviceidevice-123">Edit</button>
+                <button id="minifyIdeviceidevice-123">
+                    <span id="minifyIdeviceidevice-123icon" class="chevron-up-icon-green"></span>
+                </button>
+            `;
+
+            // Create iDevice body element and add to DOM (hidden = minimized)
+            const ideviceBody = document.createElement('div');
+            ideviceBody.className = 'idevice_body';
+            ideviceBody.setAttribute('idevice-id', 'idevice-123');
+            ideviceBody.style.display = 'none'; // Hidden via inline style (minimized)
+            document.body.appendChild(ideviceBody);
+
+            // Verify initial state: element has display:none
+            expect(ideviceBody.style.display).toBe('none');
+
+            // Set up required mocks
+            idevice.isLockedByOtherUser = vi.fn(() => false);
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            idevice.edition = vi.fn();
+            idevice.odeNavStructureSyncId = 'nav-123';
+            idevice.blockId = 'block-123';
+            idevice.block = { pageId: 'page-123' };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'OK' });
+
+            // Add behavior and click the edit button
+            idevice.addBehaviourEditionIdeviceButton();
+            const editBtn = idevice.ideviceButtons.querySelector('#editIdeviceidevice-123');
+            editBtn.click();
+
+            // Wait for async operations
+            await vi.waitFor(() => {
+                expect(idevice.edition).toHaveBeenCalled();
+            });
+
+            // Verify: iDevice body should be visible (jQuery.show() removes display:none)
+            expect(ideviceBody.style.display).not.toBe('none');
+
+            // Verify: icon should change from chevron-up to chevron-down
+            const minifyIcon = idevice.ideviceButtons.querySelector(
+                '#minifyIdeviceidevice-123icon'
+            );
+            expect(minifyIcon.classList.contains('chevron-down-icon-green')).toBe(true);
+            expect(minifyIcon.classList.contains('chevron-up-icon-green')).toBe(false);
+
+            // Clean up
+            document.body.removeChild(ideviceBody);
+        });
     });
 
     describe('addBehaviourEditionIdeviceDoubleClick', () => {
