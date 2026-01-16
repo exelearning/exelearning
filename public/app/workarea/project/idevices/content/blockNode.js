@@ -25,6 +25,11 @@ export default class IdeviceBlockNode {
             : yjsEnabled
                 ? `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
                 : this.engine.generateId();
+        // In Yjs mode, ensure this.id matches this.blockId for consistency
+        // This is important because putSaveBlock uses this.id, but Yjs stores blocks by blockId
+        if (yjsEnabled && !data.id) {
+            this.id = this.blockId;
+        }
         // Set api params
         this.setParams(data);
         // Idevices
@@ -1064,11 +1069,8 @@ export default class IdeviceBlockNode {
         if (iconValue == '0' || iconValue == this.emptyIcon) {
             iconValue = '';
         }
-        // Sync to Yjs for persistence across page changes and collaboration
-        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-        if (binding) {
-            binding.updateBlock(this.blockId, { iconName: iconValue });
-        }
+        // Note: Yjs sync is handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
+        // Do not sync here to avoid duplicate undo entries
         this.apiUpdateIcon(iconValue);
     }
 
@@ -1138,21 +1140,13 @@ export default class IdeviceBlockNode {
             '#change-block-icon-modal-content .option-block-icon'
         );
         iconsElements.forEach((icon) => {
-            // One click to select and sync via Yjs
+            // One click to select (visual only, no Yjs sync yet)
+            // The actual Yjs sync happens in saveIconAction() when modal is confirmed
             icon.addEventListener('click', (event) => {
                 iconsElements.forEach((option) => {
                     option.setAttribute('selected', 'false');
                 });
                 icon.setAttribute('selected', true);
-
-                // Sync icon in real-time via Yjs
-                const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-                if (binding) {
-                    let iconId = icon.getAttribute('icon-id');
-                    // Handle empty icon (id=0)
-                    const iconName = (iconId === '0' || iconId === this.emptyIcon) ? '' : iconId;
-                    binding.updateBlock(this.blockId, { iconName });
-                }
             });
             // Double click to select and save
             icon.addEventListener('dblclick', (event) => {
@@ -1260,11 +1254,8 @@ export default class IdeviceBlockNode {
         // Save new title text
         this.blockName = title;
         this.blockNameElementText.innerHTML = title;
-        // Sync to Yjs for persistence across page changes and collaboration
-        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
-        if (binding) {
-            binding.updateBlock(this.blockId, { blockName: title });
-        }
+        // Note: Yjs sync is handled by putSaveBlock -> apiCallManager
+        // Do not sync here to avoid duplicate undo entries
         // If block exist save in bbdd
         if (this.id) {
             this.apiSendDataService('putSaveBlock', params);

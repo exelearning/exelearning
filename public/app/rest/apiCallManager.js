@@ -1690,13 +1690,29 @@ export default class ApiCallManager {
             console.log('[apiCallManager] putSaveBlock: Saving block in Yjs', params);
             try {
                 const blockId = params.odePagStructureSyncId;
+                const binding = projectManager._yjsBridge.structureBinding;
+
+                // Get current block data from Yjs to compare
+                // This prevents duplicate undo entries when real-time sync already updated the value
+                const currentBlock = binding.getBlock(blockId);
+
                 const updates = {};
-                if (params.blockName !== undefined) updates.blockName = params.blockName;
-                if (params.iconName !== undefined) updates.iconName = params.iconName;
-                if (params.order !== undefined) updates.order = params.order;
+                // Only include values that have actually changed from Yjs
+                if (params.blockName !== undefined && params.blockName !== currentBlock?.blockName) {
+                    updates.blockName = params.blockName;
+                }
+                if (params.iconName !== undefined && params.iconName !== currentBlock?.iconName) {
+                    updates.iconName = params.iconName;
+                }
+                if (params.order !== undefined && params.order !== currentBlock?.order) {
+                    updates.order = params.order;
+                }
 
                 if (Object.keys(updates).length > 0) {
-                    projectManager._yjsBridge.structureBinding.updateBlock(blockId, updates);
+                    console.log('[apiCallManager] putSaveBlock: Syncing changed values to Yjs', updates);
+                    binding.updateBlock(blockId, updates);
+                } else {
+                    console.log('[apiCallManager] putSaveBlock: No changes to sync (values already in Yjs)');
                 }
                 return {
                     responseMessage: 'OK',
@@ -1748,11 +1764,16 @@ export default class ApiCallManager {
                 }
 
                 // Also sync top-level block attributes if present
+                // Each attribute change is a separate undo entry
                 if (params.blockName !== undefined) {
                     projectManager._yjsBridge.structureBinding.updateBlock(blockId, { blockName: params.blockName });
+                    // Stop capturing to ensure this is a separate undo entry
+                    projectManager._yjsBridge.documentManager?.stopCapturing();
                 }
                 if (params.iconName !== undefined) {
                     projectManager._yjsBridge.structureBinding.updateBlock(blockId, { iconName: params.iconName });
+                    // Stop capturing to ensure this is a separate undo entry
+                    projectManager._yjsBridge.documentManager?.stopCapturing();
                 }
 
                 return {

@@ -627,7 +627,9 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockNameElementText.innerHTML).toBe('New Title');
         });
 
-        it('syncs to Yjs when bridge available', () => {
+        it('does not sync to Yjs directly (handled by apiCallManager)', () => {
+            // Yjs sync is now handled by putSaveBlock -> apiCallManager
+            // to avoid duplicate undo entries
             const mockUpdateBlock = vi.fn();
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
@@ -635,9 +637,8 @@ describe('IdeviceBlockNode', () => {
                 },
             };
             block.apiUpdateTitle('New Title');
-            expect(mockUpdateBlock).toHaveBeenCalledWith('block-id-1', {
-                blockName: 'New Title',
-            });
+            // Should NOT be called here - apiCallManager handles it
+            expect(mockUpdateBlock).not.toHaveBeenCalled();
         });
     });
 
@@ -850,7 +851,9 @@ describe('IdeviceBlockNode', () => {
             expect(block.apiUpdateIcon).toHaveBeenCalledWith('');
         });
 
-        it('syncs to Yjs when binding available', () => {
+        it('does not sync to Yjs directly (handled by apiCallManager)', () => {
+            // Yjs sync is now handled by apiUpdateIcon -> putSaveBlock -> apiCallManager
+            // to avoid duplicate undo entries
             const mockUpdateBlock = vi.fn();
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: { updateBlock: mockUpdateBlock },
@@ -858,7 +861,8 @@ describe('IdeviceBlockNode', () => {
 
             block.saveIconAction();
 
-            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { iconName: 'test-icon' });
+            // Should NOT be called here - apiCallManager handles it
+            expect(mockUpdateBlock).not.toHaveBeenCalled();
         });
     });
 
@@ -1228,7 +1232,9 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockNameElementText.innerHTML).toBe('New Title');
         });
 
-        it('syncs to Yjs when binding available', () => {
+        it('does not sync to Yjs directly (handled by apiCallManager)', () => {
+            // Yjs sync is now handled by putSaveBlock -> apiCallManager
+            // to avoid duplicate undo entries
             const mockUpdateBlock = vi.fn();
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: { updateBlock: mockUpdateBlock },
@@ -1236,7 +1242,8 @@ describe('IdeviceBlockNode', () => {
 
             block.apiUpdateTitle('New Title');
 
-            expect(mockUpdateBlock).toHaveBeenCalledWith(block.blockId, { blockName: 'New Title' });
+            // Should NOT be called here - apiCallManager handles it
+            expect(mockUpdateBlock).not.toHaveBeenCalled();
         });
 
         it('calls apiSendDataService when id exists', () => {
