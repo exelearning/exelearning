@@ -573,6 +573,70 @@ Sample ELP files and XML content available in:
 - `test/fixtures/` - General test fixtures
 - `test/fixtures/xml/` - Sample content.xml files for testing
 
+### E2E Helper Functions (`test/e2e/playwright/helpers/workarea-helpers.ts`)
+
+Import and use these helpers for consistent UI interactions:
+
+```typescript
+import {
+    waitForAppReady,
+    openElpFile,
+    saveProject,
+    openPreviewPanel,
+    closePreviewPanel,
+    getPreviewFrame,
+    navigateToPageByTitle,
+    navigateToIdevicePage,
+    selectNavNode,
+    selectFirstPage,
+    addIdevice,
+    editIdevice,
+    saveIdevice,
+    deleteIdevice,
+    waitForIdeviceEditionEnd,
+    verifyIdeviceInEditor,
+    verifyInPreview,
+    getIdeviceFromYjs,
+    handleCloseWithoutSavingModal,
+    expandIdeviceCategory,
+} from '../helpers/workarea-helpers';
+```
+
+**App Initialization:**
+- `waitForAppReady(page)` - Wait for Yjs bridge and loading screen
+- `waitForLoadingScreen(page)` - Wait for loading screen to hide
+
+**File Operations:**
+- `openElpFile(page, path, minPages?)` - Open ELP via File menu (handles modals)
+- `handleCloseWithoutSavingModal(page)` - Dismiss "close without saving" dialog
+- `saveProject(page)` - Click save button
+
+**Navigation:**
+- `navigateToPageByTitle(page, title)` - Click page in nav tree by title
+- `navigateToIdevicePage(page, id, type)` - Find page containing iDevice
+- `selectNavNode(page, nodeId)` - Select by node ID
+- `selectFirstPage(page)` - Select first non-root page
+
+**Preview:**
+- `openPreviewPanel(page)` - Open preview side panel
+- `closePreviewPanel(page)` - Close preview
+- `waitForPreviewContent(page)` - Wait for iframe to load
+- `getPreviewFrame(page)` - Get iframe FrameLocator
+- `navigateInPreview(page, linkText)` - Click navigation link in preview
+
+**iDevices:**
+- `addIdevice(page, type)` - Add iDevice from panel
+- `editIdevice(page, id)` - Enter edit mode
+- `saveIdevice(page, id)` - Save and exit edit mode
+- `deleteIdevice(page, id)` - Delete with confirmation
+- `waitForIdeviceEditionEnd(page, id)` - Wait for edition mode to end
+- `expandIdeviceCategory(page, pattern)` - Expand iDevice category by name regex
+
+**Verification:**
+- `verifyIdeviceInEditor(page, type, checks)` - Check iDevice DOM
+- `verifyInPreview(page, selectors)` - Check preview content
+- `getIdeviceFromYjs(page, type)` - Get iDevice data from Yjs
+
 ### UI Element Selectors
 
 **Login Form:**
@@ -839,11 +903,44 @@ Search data is injected as `window.exeSearchData` object with structure:
 }
 ```
 
-### E2E Best Practices
+### E2E Test Design Principles
+
+#### Test Design Goals
+- Prefer many fast assertions over a single "it works" check
+- Assertions must be meaningful and cover behavior, not just presence of elements
+- Every test should validate both:
+  - **UI state**: visible results, navigation, rendered content
+  - **System behavior**: data changes, API effects, Yjs metadata updates
+
+#### Assertion Quality (Be Exhaustive)
+
+For each user flow, add assertions that validate:
+
+**URL/Navigation:**
+- Correct URL/route changes and query params when relevant
+- Page title / key headings / primary CTA visibility
+
+**Form Validation:**
+- Client-side validation messages
+- Server-side error responses show correct UI feedback
+
+**Data Integrity:**
+- Created/updated/deleted entities appear correctly
+- Values rendered match what was submitted
+- Yjs metadata changes are persisted
+
+**Security/Permissions:**
+- Unauthorized users are blocked
+- Forbidden actions are not possible via UI
+
+**Content Rendering:**
+- Dynamic content (LaTeX, Mermaid, etc.) renders correctly
+- Preview matches export output
+- Assets load with correct URLs
+
+### Speed and Stability (No Fixed Timeouts)
 
 **NEVER use `waitForTimeout()` for async operations** - it causes race conditions with multiple workers.
-
-Use `waitForFunction()` with polling instead:
 
 ```javascript
 // BAD - Race condition with multiple workers
@@ -861,7 +958,6 @@ const result = await frame.waitForFunction(
         if (!el) return null;
         const src = el.getAttribute('src');
         const dataSrc = el.getAttribute('data-asset-src');
-        // Return result only when both conditions are met
         if (src?.startsWith('blob:') && dataSrc === expectedValue) {
             return { src, dataSrc };
         }
@@ -874,14 +970,192 @@ const result = await frame.waitForFunction(
 expect(result.src).toContain('blob:'); // Always works!
 ```
 
-**When to use `waitForFunction()`:**
-- Waiting for async DOM mutations (MutationObserver, asset URL resolution)
-- Waiting for dynamic content to load
-- Any operation where timing is unpredictable
+**Use Playwright auto-waiting and deterministic waits:**
+- `expect(locator).toBeVisible()`, `toHaveText()`, `toHaveValue()`, `toHaveURL()`
+- `page.waitForResponse()` / `page.waitForRequest()` with strict predicates
+- `waitForFunction()` for async DOM mutations or dynamic content
 
 **Acceptable uses of `waitForTimeout()`:**
 - Brief pauses after UI interactions for animations (200-500ms)
 - Debounce waits where no observable state change exists
+
+### Test Structure Best Practices
+
+**Clear Test Names:**
+```javascript
+// Good - describes user intent and expected outcome
+test('should render LaTeX in project title and show it in Open dialog after save', ...)
+test('should preserve LaTeX title after reload', ...)
+
+// Bad - vague
+test('latex works', ...)
+```
+
+**Test Isolation:**
+- No reliance on previous tests
+- Each test creates its own project via `createProject()` helper
+- Clean up created data when required
+
+**Use Fixtures/Helpers for Repeated Steps:**
+```javascript
+// Good - reusable helper
+async function enableMathJaxViaUI(page: Page): Promise<void> {
+    const propertiesButton = page.locator('#head-top-settings-button');
+    await propertiesButton.click();
+    // ... expand section, click toggle, verify metadata
+}
+
+// Use in tests
+await enableMathJaxViaUI(page);
+```
+
+**Stable Selectors (avoid brittle CSS):**
+```javascript
+// Good - stable selectors
+page.getByRole('button', { name: /Export options/i })
+page.locator('input[property="pp_addMathJax"]')
+page.locator('#head-top-settings-button')
+
+// Bad - brittle selectors tied to layout
+page.locator('div > div > button:nth-child(2)')
+```
+
+### Debugging E2E Test Failures
+
+**Add Comprehensive Debug Output:**
+```javascript
+// Collect debug info before assertions
+const debugInfo = await iframe.locator('body').evaluate(body => {
+    return {
+        elementCount: body.querySelectorAll('.target-class').length,
+        hasExpectedContent: body.textContent?.includes('expected'),
+        htmlSnippet: body.innerHTML.substring(0, 500),
+    };
+});
+console.log('[Test Name] Debug info:', JSON.stringify(debugInfo, null, 2));
+```
+
+**Capture Console Errors:**
+```javascript
+const consoleMessages: string[] = [];
+page.on('console', msg => {
+    if (msg.type() === 'error') {
+        consoleMessages.push(`[${msg.type()}] ${msg.text()}`);
+    }
+});
+// ... run test
+console.log('Console errors:', consoleMessages);
+```
+
+**Verify Metadata/State Before Actions:**
+```javascript
+// Verify state before opening preview
+const stateCheck = await page.evaluate(() => {
+    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+    const metadata = bridge?.documentManager?.getMetadata();
+    return {
+        addMathJax: metadata?.get('addMathJax'),
+        title: metadata?.get('title'),
+    };
+});
+console.log('State before action:', stateCheck);
+```
+
+### Common Patterns for This Codebase
+
+**Waiting for Yjs Bridge Initialization:**
+```javascript
+await page.waitForFunction(() => {
+    const app = window.eXeLearning?.app;
+    return app?.project?._yjsBridge !== undefined;
+}, { timeout: 30000 });
+```
+
+**Waiting for Loading Screen:**
+```javascript
+await page.waitForFunction(() => {
+    const loadScreen = document.querySelector('#load-screen-main');
+    return !loadScreen || loadScreen.getAttribute('data-visible') === 'false';
+}, { timeout: 15000 });
+```
+
+**Checking Yjs Metadata:**
+```javascript
+const metadataCheck = await page.evaluate(() => {
+    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+    const metadata = bridge?.documentManager?.getMetadata();
+    return metadata?.get('propertyName');
+});
+expect(metadataCheck).toBe(expectedValue);
+```
+
+**Working with Preview Iframe (Service Worker):**
+```javascript
+const iframe = page.frameLocator('#preview-iframe');
+await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
+
+// Poll for dynamic content inside iframe
+const result = await iframe.locator('body').evaluate(async body => {
+    // Polling loop for async content
+    const maxWait = 10000;
+    let elapsed = 0;
+    while (elapsed < maxWait) {
+        const element = body.querySelector('.dynamic-element');
+        if (element) {
+            return { found: true, content: element.textContent };
+        }
+        await new Promise(r => setTimeout(r, 200));
+        elapsed += 200;
+    }
+    return { found: false };
+});
+```
+
+**Enabling UI Options via Toggle:**
+```javascript
+async function enableOptionViaUI(page: Page, optionProperty: string): Promise<void> {
+    // Open properties panel
+    await page.locator('#head-top-settings-button').click();
+    await page.waitForTimeout(500); // Animation
+
+    // Find and expand section if needed
+    const section = page.getByRole('button', { name: /Section Name/i });
+    const isExpanded = await section.getAttribute('aria-expanded') === 'true';
+    if (!isExpanded) {
+        await section.click();
+        await page.waitForTimeout(300);
+    }
+
+    // Toggle the option
+    const toggle = page.locator(`input[property="${optionProperty}"]`);
+    if (!(await toggle.isChecked())) {
+        await toggle.click({ force: true });
+    }
+
+    // Verify metadata was updated
+    const updated = await page.evaluate((prop) => {
+        const metadata = (window as any).eXeLearning?.app?.project?._yjsBridge
+            ?.documentManager?.getMetadata();
+        return metadata?.get(prop);
+    }, optionProperty.replace('pp_', ''));
+    expect(updated === true || updated === 'true').toBe(true);
+}
+```
+
+### Library/Resource Loading in Preview
+
+The preview uses a Service Worker that serves files from memory. Library loading behavior depends on the export option:
+
+**MathJax (`addMathJax` option):**
+- **When enabled (`addMathJax: true`)**: The script tag uses an absolute URL (`/app/common/exe_math/tex-mml-svg.js`) that bypasses the Service Worker and loads directly from the server. MathJax renders LaTeX at runtime.
+- **When disabled (`addMathJax: false`)**: LaTeX is pre-rendered to SVG using the global MathJax loaded in the editor. No MathJax library is needed in the preview.
+
+**Other libraries** (accessibility toolbar, effects, etc.):
+1. Detected by `LibraryDetector` based on content or explicit options
+2. Fetched by `ResourceFetcher` from the server
+3. Included in the preview files map served by Service Worker
+
+**Tests should NOT accept 404 errors** - all library loading must work correctly. If you see 404 errors for library files in tests, it indicates a bug that needs to be fixed.
 
 ## External Resources
 
