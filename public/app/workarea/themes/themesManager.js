@@ -177,6 +177,14 @@ export default class ThemesManager {
         // Select the theme and apply it
         if (themeSelected) {
             let prevThemeSelected = this.selected;
+
+            // Clean up previous theme's icon blob URLs to prevent memory leaks
+            if (prevThemeSelected && prevThemeSelected !== themeSelected) {
+                if (prevThemeSelected.revokeIconBlobUrls) {
+                    prevThemeSelected.revokeIconBlobUrls();
+                }
+            }
+
             this.selected = themeSelected;
             if (
                 !prevThemeSelected ||
