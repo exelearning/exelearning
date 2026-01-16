@@ -32,108 +32,115 @@ interface DocumentSnapshot {
 }
 
 /**
- * Import the ELP fixture via File menu
+ * Open the ELP fixture via File menu -> Open
+ * This opens the file as a new project (replacing the current one)
  */
-async function importElpFixture(page: Page, fixtureName: string): Promise<void> {
+async function openElpFixture(page: Page, fixtureName: string): Promise<void> {
     const fixturePath = path.resolve(__dirname, `../../../fixtures/${fixtureName}`);
 
     // Open File menu
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
+    // Click Open option (not Import)
+    const openOption = page.locator('#navbar-button-openuserodefiles');
+    await expect(openOption).toBeVisible({ timeout: 5000 });
+    await openOption.click();
 
-    // Click Continue in confirmation dialog
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    // Wait for the Open modal to appear
+    const openModal = page.locator('#modalOpenUserOdeFiles');
+    await expect(openModal).toBeVisible({ timeout: 10000 });
 
+    // Setup file chooser BEFORE clicking the upload button
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
+
+    // Click "Select a file from your device" button in the modal
+    const uploadButton = openModal.locator('.ode-files-button-upload');
+    await expect(uploadButton).toBeVisible({ timeout: 5000 });
+    await uploadButton.click();
 
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
-    // Wait for upload progress modal to appear and then hide
-    // The modal shows during import and hides when complete
-    await page.waitForFunction(
-        () => {
-            const modal = document.querySelector('#uploadProgressModal');
-            // First wait for modal to appear, then wait for it to hide
-            const win = window as any;
-            if (!win.__modalSeen) {
-                if (modal?.classList.contains('show')) {
-                    win.__modalSeen = true;
-                }
-                return false;
-            }
-            // Modal was shown, now wait for it to hide
-            return !modal || !modal.classList.contains('show');
-        },
-        { timeout: 120000, polling: 500 },
-    );
-
-    // Clean up modal tracking
-    await page.evaluate(() => {
-        delete (window as any).__modalSeen;
-    });
+    // Handle "Open without saving" confirmation dialog - it appears when opening a file
+    // while another project is already open
+    const sessionLogoutModal = page.locator('#modalSessionLogout');
+    try {
+        await sessionLogoutModal.waitFor({ state: 'visible', timeout: 5000 });
+        const openWithoutSavingBtn = sessionLogoutModal.locator('button.session-logout-without-save');
+        await openWithoutSavingBtn.click();
+    } catch {
+        // Modal didn't appear - that's fine, continue
+    }
 
     // Wait for navigation to be populated
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const docManager = bridge.getDocumentManager();
+                if (!docManager || !docManager.initialized) return false;
+                const yDoc = docManager.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                return navigation && navigation.length >= 1;
+            } catch {
+                // Document may be reinitializing, wait and retry
+                return false;
+            }
         },
-        { timeout: 30000 },
+        { timeout: 90000 },
     );
 
     // Wait for page count to stabilize (no changes for 3 seconds)
     // This is critical for Firefox which may be slower to process large ELPs
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            if (!navigation) return false;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const docManager = bridge.getDocumentManager();
+                if (!docManager || !docManager.initialized) return false;
+                const yDoc = docManager.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return false;
 
-            // Recursive count of all pages
-            const countPages = (pages: any): number => {
-                let count = 0;
-                if (!pages) return count;
-                for (let i = 0; i < pages.length; i++) {
-                    count++;
-                    const pageMap = pages.get(i);
-                    const children = pageMap?.get('children');
-                    if (children) count += countPages(children);
+                // Recursive count of all pages
+                const countPages = (pages: any): number => {
+                    let count = 0;
+                    if (!pages) return count;
+                    for (let i = 0; i < pages.length; i++) {
+                        count++;
+                        const pageMap = pages.get(i);
+                        const children = pageMap?.get('children');
+                        if (children) count += countPages(children);
+                    }
+                    return count;
+                };
+                const currentCount = countPages(navigation);
+
+                // Store/check the page count to detect stabilization
+                const win = window as any;
+                if (!win.__importPageCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
                 }
-                return count;
-            };
-            const currentCount = countPages(navigation);
 
-            // Store/check the page count to detect stabilization
-            const win = window as any;
-            if (!win.__importPageCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
+                if (win.__importPageCount !== currentCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                // Page count stable for 3 seconds = import complete (increased for Firefox)
+                return Date.now() - win.__importStableTime >= 3000;
+            } catch {
+                // Document may be reinitializing, wait and retry
                 return false;
             }
-
-            if (win.__importPageCount !== currentCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
-                return false;
-            }
-
-            // Page count stable for 3 seconds = import complete (increased for Firefox)
-            return Date.now() - win.__importStableTime >= 3000;
         },
         { timeout: 120000, polling: 500 },
     );
@@ -144,6 +151,15 @@ async function importElpFixture(page: Page, fixtureName: string): Promise<void> 
         delete win.__importPageCount;
         delete win.__importStableTime;
     });
+
+    // Wait for loading screen to hide
+    await page.waitForFunction(
+        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+        { timeout: 30000 },
+    );
+
+    // Wait for import progress overlay to disappear (if present)
+    await page.waitForFunction(() => !document.querySelector('#import-progress-overlay'), { timeout: 30000 });
 
     // Additional wait for all handlers to complete
     await page.waitForTimeout(2000);
@@ -253,8 +269,8 @@ test.describe('Yjs Binary Data Integrity', () => {
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFixture(page, ELP_FIXTURE);
 
         // Take snapshot BEFORE save
         const beforeSave = await getDocumentSnapshot(page);
@@ -309,8 +325,8 @@ test.describe('Yjs Binary Data Integrity', () => {
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFixture(page, ELP_FIXTURE);
 
         // Take initial snapshot
         const initialSnapshot = await getDocumentSnapshot(page);
@@ -350,8 +366,8 @@ test.describe('Yjs Binary Data Integrity', () => {
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
 
-        // Import a more complex ELP - old_manual has many pages
-        await importElpFixture(page, 'old_manual_exe29_compressed.elp');
+        // Open a more complex ELP - old_manual has many pages
+        await openElpFixture(page, 'old_manual_exe29_compressed.elp');
 
         // Take snapshot BEFORE save
         const beforeSave = await getDocumentSnapshot(page);
@@ -396,8 +412,8 @@ test.describe('Yjs Binary Data Integrity', () => {
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
 
-        // Import ELP fixture
-        await importElpFixture(page, ELP_FIXTURE);
+        // Open ELP fixture
+        await openElpFixture(page, ELP_FIXTURE);
 
         // Get Yjs document binary size before save
         const beforeSaveSize = await page.evaluate(() => {
