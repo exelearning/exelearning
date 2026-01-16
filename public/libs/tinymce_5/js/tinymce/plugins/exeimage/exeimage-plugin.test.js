@@ -190,6 +190,186 @@ describe('ExeImage Plugin - Image Type Detection for Blob/Asset', () => {
   });
 });
 
+describe('ExeImage Plugin - getSelectedImage with exe-figure', () => {
+  // Simulates the getSelectedImage logic with exe-figure support
+  function simulateGetSelectedImage(editor) {
+    const imgElm = editor.selection.getNode();
+    // Check for both TinyMCE's figure.image AND eXeLearning's figure.exe-figure
+    const figureElm = editor.dom.getParent(imgElm, 'figure.image, figure.exe-figure');
+    if (figureElm) {
+      return editor.dom.select('img', figureElm)[0];
+    }
+    // Also handle case where imgElm IS a figure without expected classes
+    if (imgElm && imgElm.nodeName === 'FIGURE') {
+      const imgInFigure = editor.dom.select('img', imgElm)[0];
+      const isPlaceholder = imgInFigure && imgInFigure.src && imgInFigure.src.includes('placeholder');
+      if (imgInFigure && !isPlaceholder) {
+        return imgInFigure;
+      }
+    }
+    const isPlaceholderImg = imgElm && imgElm.src && imgElm.src.includes('placeholder');
+    if (imgElm && (imgElm.nodeName !== 'IMG' || isPlaceholderImg)) {
+      return null;
+    }
+    return imgElm;
+  }
+
+  it('should find IMG inside figure.exe-figure when figure is selected', () => {
+    const imgEl = { nodeName: 'IMG', src: 'test.jpg' };
+    const figureEl = { nodeName: 'FIGURE', className: 'exe-figure exe-image' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => figureEl,
+      },
+      dom: {
+        getParent: (node, selector) => {
+          // Simulate finding exe-figure via CSS selector
+          if (selector.includes('exe-figure') && node === figureEl) {
+            return figureEl;
+          }
+          return null;
+        },
+        select: (selector, parent) => {
+          if (selector === 'img' && parent === figureEl) {
+            return [imgEl];
+          }
+          return [];
+        },
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(imgEl);
+  });
+
+  it('should find IMG inside figure.image (standard TinyMCE figure)', () => {
+    const imgEl = { nodeName: 'IMG', src: 'test.jpg' };
+    const figureEl = { nodeName: 'FIGURE', className: 'image' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => figureEl,
+      },
+      dom: {
+        getParent: (node, selector) => {
+          if (selector.includes('figure.image') && node === figureEl) {
+            return figureEl;
+          }
+          return null;
+        },
+        select: (selector, parent) => {
+          if (selector === 'img' && parent === figureEl) {
+            return [imgEl];
+          }
+          return [];
+        },
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(imgEl);
+  });
+
+  it('should find IMG when clicking directly on IMG inside exe-figure', () => {
+    const imgEl = { nodeName: 'IMG', src: 'test.jpg' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => imgEl,
+      },
+      dom: {
+        getParent: () => null, // No figure parent found (direct IMG click)
+        select: () => [],
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(imgEl);
+  });
+
+  it('should handle figure without exe-figure or image class', () => {
+    const imgEl = { nodeName: 'IMG', src: 'test.jpg' };
+    const figureEl = { nodeName: 'FIGURE', className: 'custom-figure' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => figureEl,
+      },
+      dom: {
+        getParent: () => null, // No matching figure found by selector
+        select: (selector, parent) => {
+          if (selector === 'img' && parent === figureEl) {
+            return [imgEl];
+          }
+          return [];
+        },
+      },
+    };
+
+    // Should still find IMG via the fallback FIGURE handling
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(imgEl);
+  });
+
+  it('should return null for FIGURE with only placeholder image', () => {
+    const placeholderImg = { nodeName: 'IMG', src: 'data:image/gif;base64,placeholder...' };
+    const figureEl = { nodeName: 'FIGURE', className: 'custom-figure' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => figureEl,
+      },
+      dom: {
+        getParent: () => null,
+        select: (selector, parent) => {
+          if (selector === 'img' && parent === figureEl) {
+            return [placeholderImg];
+          }
+          return [];
+        },
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(null);
+  });
+
+  it('should return null for empty FIGURE (no IMG inside)', () => {
+    const figureEl = { nodeName: 'FIGURE', className: 'exe-figure' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => figureEl,
+      },
+      dom: {
+        getParent: () => null,
+        select: () => [], // No images found
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(null);
+  });
+
+  it('should return null for non-IMG elements outside figures', () => {
+    const divEl = { nodeName: 'DIV' };
+
+    const mockEditor = {
+      selection: {
+        getNode: () => divEl,
+      },
+      dom: {
+        getParent: () => null,
+        select: () => [],
+      },
+    };
+
+    const result = simulateGetSelectedImage(mockEditor);
+    expect(result).toBe(null);
+  });
+});
+
 describe('ExeImage Plugin - TinyMCE Editor Direct Update', () => {
   let mockEditor;
   let selectedNode;
