@@ -478,6 +478,25 @@ function processNjkTemplate(filePath: string): string {
     // Matches both single and double quotes
     content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*asset\s*\}\}/g, './$1');
 
+    // Replace {{ app_version }} with the actual build version
+    content = content.replace(/\{\{\s*app_version\s*\}\}/g, buildVersion);
+
+    // Handle {% if '-' in app_version %}...{% endif %} conditional
+    // Keep content if version contains '-', remove otherwise
+    if (buildVersion.includes('-')) {
+        // Keep the content, just remove the conditional tags
+        content = content.replace(
+            /\{%\s*if\s+'-'\s+in\s+app_version\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
+            '$1'
+        );
+    } else {
+        // Remove the entire conditional block
+        content = content.replace(
+            /\{%\s*if\s+'-'\s+in\s+app_version\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
+            ''
+        );
+    }
+
     // Replace other simple {{ variable }} patterns (remove them for static)
     content = content.replace(/\{\{[^}]+\}\}/g, '');
 
