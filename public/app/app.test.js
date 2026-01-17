@@ -1569,22 +1569,17 @@ describe('App utility methods', () => {
 
         // Track MessageChannel instances created
         const messageChannels = [];
-        const mockPort1 = {
-          onmessage: null,
-          close: vi.fn(),
-        };
-        const mockPort2 = { name: 'port2' };
 
-        // Mock MessageChannel for SW communication
-        const MockMessageChannel = vi.fn(() => {
+        // Mock MessageChannel for SW communication - must be a proper constructor
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
           const channel = {
             port1: { onmessage: null, close: vi.fn() },
             port2: { name: `port2-${messageChannels.length}` },
           };
           messageChannels.push(channel);
           return channel;
-        });
-        vi.stubGlobal('MessageChannel', MockMessageChannel);
+        };
 
         // Capture the postMessage calls to trigger responses
         mockController.postMessage = vi.fn((msg, transferables) => {
@@ -1617,7 +1612,7 @@ describe('App utility methods', () => {
         );
         expect(messageChannels[0].port1.close).toHaveBeenCalled();
 
-        vi.unstubAllGlobals();
+        globalThis.MessageChannel = OriginalMessageChannel;
       });
 
       it('times out after 10 seconds', async () => {
@@ -1625,10 +1620,10 @@ describe('App utility methods', () => {
 
         const mockPort1 = { onmessage: null, close: vi.fn() };
         const mockPort2 = {};
-        vi.stubGlobal(
-          'MessageChannel',
-          vi.fn(() => ({ port1: mockPort1, port2: mockPort2 })),
-        );
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
+          return { port1: mockPort1, port2: mockPort2 };
+        };
 
         const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
 
@@ -1638,7 +1633,7 @@ describe('App utility methods', () => {
         expect(mockPort1.close).toHaveBeenCalled();
 
         vi.useRealTimers();
-        vi.unstubAllGlobals();
+        globalThis.MessageChannel = OriginalMessageChannel;
       });
     });
 
