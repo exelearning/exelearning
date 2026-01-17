@@ -527,14 +527,55 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Build a map of page IDs to unique filenames
+     * Handles collisions by appending numbers (1, 2, 3... up to 20)
+     * First page is always index.html, others are {sanitized-title}.html
+     *
+     * This follows the same algorithm as symfony_legacy (OdeExportService.php:1740-1764)
+     */
+    protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
+        const filenameMap = new Map<string, string>();
+        const usedFilenames = new Set<string>();
+        const maxAttempts = 20;
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+
+            if (i === 0) {
+                // First page is always index.html
+                filenameMap.set(page.id, 'index.html');
+                usedFilenames.add('index.html');
+                continue;
+            }
+
+            const baseFilename = this.sanitizePageFilename(page.title);
+            let filename = `${baseFilename}.html`;
+            let counter = 1;
+
+            // If collision, append number
+            while (usedFilenames.has(filename) && counter <= maxAttempts) {
+                filename = `${baseFilename}${counter}.html`;
+                counter++;
+            }
+
+            usedFilenames.add(filename);
+            filenameMap.set(page.id, filename);
+        }
+
+        return filenameMap;
+    }
+
+    /**
      * Build a map of page IDs to their export URLs
      * Used for internal link (exe-node:) conversion
      */
     protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
         const map = new Map<string, { url: string; urlFromSubpage: string }>();
+        const filenameMap = this.buildPageFilenameMap(pages);
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
+            const filename = filenameMap.get(page.id) || 'page.html';
             const isFirstPage = i === 0;
 
             if (isFirstPage) {
@@ -545,10 +586,9 @@ export abstract class BaseExporter {
                 });
             } else {
                 // Other pages are in html/ directory
-                const filename = this.sanitizePageFilename(page.title);
                 map.set(page.id, {
-                    url: `html/${filename}.html`,
-                    urlFromSubpage: `${filename}.html`,
+                    url: `html/${filename}`,
+                    urlFromSubpage: filename,
                 });
             }
         }
