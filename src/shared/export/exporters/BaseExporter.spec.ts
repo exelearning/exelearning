@@ -160,6 +160,10 @@ class TestExporter extends BaseExporter {
     testGenerateElpxManifestFile(fileList: string[]): string {
         return this.generateElpxManifestFile(fileList);
     }
+
+    testBuildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
+        return this.buildPageFilenameMap(pages);
+    }
 }
 
 describe('BaseExporter', () => {
@@ -942,6 +946,205 @@ describe('BaseExporter', () => {
 
                 expect(result).toBe('<a href="html/about.html">About</a>');
             });
+        });
+    });
+
+    describe('buildPageFilenameMap', () => {
+        it('should map first page to index.html', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'About', parentId: null, order: 1, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+        });
+
+        it('should generate unique filenames for pages with same title', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Nueva página', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Nueva página', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Nueva página', parentId: null, order: 3, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('nueva-pagina.html');
+            expect(map.get('page-3')).toBe('nueva-pagina-2.html');
+            expect(map.get('page-4')).toBe('nueva-pagina-3.html');
+        });
+
+        it('should append numbers in order (-2, -3, -4...)', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-0', title: 'Index', parentId: null, order: 0, blocks: [] },
+                { id: 'page-1', title: 'Test', parentId: null, order: 1, blocks: [] },
+                { id: 'page-2', title: 'Test', parentId: null, order: 2, blocks: [] },
+                { id: 'page-3', title: 'Test', parentId: null, order: 3, blocks: [] },
+                { id: 'page-4', title: 'Test', parentId: null, order: 4, blocks: [] },
+                { id: 'page-5', title: 'Test', parentId: null, order: 5, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('test.html');
+            expect(map.get('page-2')).toBe('test-2.html');
+            expect(map.get('page-3')).toBe('test-3.html');
+            expect(map.get('page-4')).toBe('test-4.html');
+            expect(map.get('page-5')).toBe('test-5.html');
+        });
+
+        it('should handle mixed titles (some duplicates, some unique)', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Chapter 1', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Activity', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Chapter 2', parentId: null, order: 3, blocks: [] },
+                { id: 'page-5', title: 'Activity', parentId: null, order: 4, blocks: [] },
+                { id: 'page-6', title: 'Activity', parentId: null, order: 5, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('chapter-1.html');
+            expect(map.get('page-3')).toBe('activity.html');
+            expect(map.get('page-4')).toBe('chapter-2.html');
+            expect(map.get('page-5')).toBe('activity-2.html');
+            expect(map.get('page-6')).toBe('activity-3.html');
+        });
+
+        it('should use "page" for empty titles', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: '', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: '', parentId: null, order: 2, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('page.html');
+            expect(map.get('page-3')).toBe('page-2.html');
+        });
+
+        it('should normalize special characters in titles', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Capítulo 1: Introducción', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Capítulo 1: Introducción', parentId: null, order: 2, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-2')).toBe('capitulo-1-introduccion.html');
+            expect(map.get('page-3')).toBe('capitulo-1-introduccion-2.html');
+        });
+
+        it('should handle case where first page has duplicate title', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Nueva página', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Nueva página', parentId: null, order: 1, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            // First page is always index.html regardless of title
+            expect(map.get('page-1')).toBe('index.html');
+            // Second page gets the normal filename
+            expect(map.get('page-2')).toBe('nueva-pagina.html');
+        });
+
+        it('should work correctly with buildPageUrlMap integration', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Test', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Test', parentId: null, order: 2, blocks: [] },
+            ];
+
+            // buildPageUrlMap internally uses buildPageFilenameMap
+            const urlMap = (exporter as any).buildPageUrlMap(pages);
+
+            expect(urlMap.get('page-1')).toEqual({
+                url: 'index.html',
+                urlFromSubpage: '../index.html',
+            });
+            expect(urlMap.get('page-2')).toEqual({
+                url: 'html/test.html',
+                urlFromSubpage: 'test.html',
+            });
+            expect(urlMap.get('page-3')).toEqual({
+                url: 'html/test-2.html',
+                urlFromSubpage: 'test-2.html',
+            });
+        });
+
+        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
+            // Create 23 pages: 1 index + 22 pages all titled "Test"
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+
+            for (let i = 1; i <= 22; i++) {
+                pages.push({
+                    id: `page-${i}`,
+                    title: 'Test',
+                    parentId: null,
+                    order: i,
+                    blocks: [],
+                });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            // First page is index.html
+            expect(map.get('page-0')).toBe('index.html');
+
+            // First "Test" page gets test.html (no suffix)
+            expect(map.get('page-1')).toBe('test.html');
+
+            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
+            for (let i = 2; i <= 21; i++) {
+                expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
+            }
+
+            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
+            // This is intentional - after 20 attempts, the algorithm gives up
+            expect(map.get('page-22')).toBe('test-21.html');
+        });
+
+        it('should increment trailing numbers in filename on collision', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'New page 1', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'New page 1', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'New page 1', parentId: null, order: 3, blocks: [] },
+                { id: 'page-5', title: 'New page 1', parentId: null, order: 4, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('new-page-1.html');
+            expect(map.get('page-3')).toBe('new-page-2.html'); // Increment, not "new-page-11"
+            expect(map.get('page-4')).toBe('new-page-3.html');
+            expect(map.get('page-5')).toBe('new-page-4.html');
+        });
+
+        it('should handle titles ending with numbers without hyphen', () => {
+            const pages: ExportPage[] = [
+                { id: 'page-1', title: 'Home', parentId: null, order: 0, blocks: [] },
+                { id: 'page-2', title: 'Chapter5', parentId: null, order: 1, blocks: [] },
+                { id: 'page-3', title: 'Chapter5', parentId: null, order: 2, blocks: [] },
+                { id: 'page-4', title: 'Chapter5', parentId: null, order: 3, blocks: [] },
+            ];
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            expect(map.get('page-1')).toBe('index.html');
+            expect(map.get('page-2')).toBe('chapter5.html');
+            expect(map.get('page-3')).toBe('chapter-6.html'); // Increment from 5
+            expect(map.get('page-4')).toBe('chapter-7.html');
         });
     });
 });

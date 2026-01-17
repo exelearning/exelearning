@@ -478,14 +478,30 @@ describe('PreviewPanelManager', () => {
       });
     });
 
-    it('returns falsy when no controller', () => {
+    it('returns falsy when getPreviewServiceWorker returns null', () => {
       Object.defineProperty(navigator, 'serviceWorker', {
         value: { controller: null },
         writable: true,
         configurable: true,
       });
+      // Mock getPreviewServiceWorker to return null (no SW available)
+      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(null);
 
       expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
+    });
+
+    it('returns truthy when controller is null but getPreviewServiceWorker returns registration.active', () => {
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { controller: null },
+        writable: true,
+        configurable: true,
+      });
+      // Mock getPreviewServiceWorker to return registration.active (fallback for BASE_PATH)
+      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({ state: 'activated' });
+      window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
+      window.SharedExporters.generatePreviewForSW = vi.fn();
+
+      expect(manager.isServiceWorkerPreviewAvailable()).toBeTruthy();
     });
 
     it('returns falsy when sendContentToPreviewSW not available', () => {
@@ -494,6 +510,7 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
+      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
       window.eXeLearning.app.sendContentToPreviewSW = undefined;
 
       expect(manager.isServiceWorkerPreviewAvailable()).toBeFalsy();
@@ -505,6 +522,7 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
+      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
       window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
       window.SharedExporters.generatePreviewForSW = undefined;
 
@@ -517,6 +535,8 @@ describe('PreviewPanelManager', () => {
         writable: true,
         configurable: true,
       });
+      // Mock getPreviewServiceWorker to return a truthy value (used by isServiceWorkerPreviewAvailable)
+      window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue({});
       window.eXeLearning.app.sendContentToPreviewSW = vi.fn();
       window.SharedExporters.generatePreviewForSW = vi.fn();
 

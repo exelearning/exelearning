@@ -527,14 +527,74 @@ export abstract class BaseExporter {
     }
 
     /**
+     * Build a map of page IDs to unique filenames
+     * Handles collisions by incrementing trailing numbers or appending -1, -2, etc.
+     * First page is always index.html, others are {sanitized-title}.html
+     *
+     * For filenames ending with a number (e.g., "new-page-1"), collisions increment
+     * that number (e.g., "new-page-2", "new-page-3") instead of appending another number.
+     */
+    protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
+        const filenameMap = new Map<string, string>();
+        const usedFilenames = new Set<string>();
+        const maxAttempts = 20;
+
+        for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+
+            if (i === 0) {
+                // First page is always index.html
+                filenameMap.set(page.id, 'index.html');
+                usedFilenames.add('index.html');
+                continue;
+            }
+
+            const baseFilename = this.sanitizePageFilename(page.title);
+            let filename = `${baseFilename}.html`;
+
+            if (usedFilenames.has(filename)) {
+                // Check if filename ends with a number pattern (e.g., "page-1" or "page1")
+                const match = baseFilename.match(/^(.*?)-?(\d+)$/);
+
+                if (match) {
+                    // Has trailing number: increment from that number
+                    const base = match[1] ? `${match[1]}-` : '';
+                    const startNum = parseInt(match[2], 10);
+                    let counter = startNum + 1;
+
+                    while (counter <= startNum + maxAttempts) {
+                        filename = `${base}${counter}.html`;
+                        if (!usedFilenames.has(filename)) break;
+                        counter++;
+                    }
+                } else {
+                    // No trailing number: append -2, -3, etc. (first page is implicitly "1")
+                    let counter = 2;
+                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
+                        filename = `${baseFilename}-${counter}.html`;
+                        counter++;
+                    }
+                }
+            }
+
+            usedFilenames.add(filename);
+            filenameMap.set(page.id, filename);
+        }
+
+        return filenameMap;
+    }
+
+    /**
      * Build a map of page IDs to their export URLs
      * Used for internal link (exe-node:) conversion
      */
     protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
         const map = new Map<string, { url: string; urlFromSubpage: string }>();
+        const filenameMap = this.buildPageFilenameMap(pages);
 
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
+            const filename = filenameMap.get(page.id) || 'page.html';
             const isFirstPage = i === 0;
 
             if (isFirstPage) {
@@ -545,10 +605,9 @@ export abstract class BaseExporter {
                 });
             } else {
                 // Other pages are in html/ directory
-                const filename = this.sanitizePageFilename(page.title);
                 map.set(page.id, {
-                    url: `html/${filename}.html`,
-                    urlFromSubpage: `${filename}.html`,
+                    url: `html/${filename}`,
+                    urlFromSubpage: filename,
                 });
             }
         }

@@ -128,11 +128,16 @@ export class PageRenderer {
         // Build "Made with eXeLearning" link (only if enabled)
         const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe() : '';
 
+        // Extract page filename map for navigation links (handles title collisions)
+        const pageFilenameMap = options.pageFilenameMap;
+
         // Build navigation HTML (hidden for SCORM/IMS - LMS handles navigation)
-        const navHtml = hideNavigation ? '' : this.renderNavigation(allPages, page.id, basePath);
+        const navHtml = hideNavigation ? '' : this.renderNavigation(allPages, page.id, basePath, pageFilenameMap);
 
         // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
-        const navButtonsHtml = hideNavButtons ? '' : this.renderNavButtons(page, allPages, basePath, language);
+        const navButtonsHtml = hideNavButtons
+            ? ''
+            : this.renderNavButtons(page, allPages, basePath, language, pageFilenameMap);
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
@@ -319,12 +324,17 @@ ${madeWithExeHtml}
      * @param basePath - Base path for links
      * @returns Navigation HTML
      */
-    renderNavigation(allPages: ExportPage[], currentPageId: string, basePath: string): string {
+    renderNavigation(
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const rootPages = allPages.filter(p => !p.parentId);
 
         let html = '<nav id="siteNav">\n<ul>\n';
         for (const page of rootPages) {
-            html += this.renderNavItem(page, allPages, currentPageId, basePath);
+            html += this.renderNavItem(page, allPages, currentPageId, basePath, pageFilenameMap);
         }
         html += '</ul>\n</nav>';
 
@@ -337,9 +347,16 @@ ${madeWithExeHtml}
      * @param allPages - All pages
      * @param currentPageId - Current page ID
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional)
      * @returns Navigation item HTML
      */
-    renderNavItem(page: ExportPage, allPages: ExportPage[], currentPageId: string, basePath: string): string {
+    renderNavItem(
+        page: ExportPage,
+        allPages: ExportPage[],
+        currentPageId: string,
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         // Skip hidden pages (except we check at parent level to preserve hierarchy)
         if (!this.isPageVisible(page, allPages)) {
             return '';
@@ -354,7 +371,7 @@ ${madeWithExeHtml}
 
         // Build li class attribute
         const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : '';
-        const link = this.getPageLink(page, allPages, basePath);
+        const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
 
         // Build link classes: main-node for first page, daddy/no-ch for children, active if current
         const linkClasses: string[] = [];
@@ -373,7 +390,7 @@ ${madeWithExeHtml}
         if (hasChildren) {
             html += '<ul class="other-section">\n';
             for (const child of children) {
-                html += this.renderNavItem(child, allPages, currentPageId, basePath);
+                html += this.renderNavItem(child, allPages, currentPageId, basePath, pageFilenameMap);
             }
             html += '</ul>\n';
         }
@@ -473,15 +490,24 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param allPages - All pages
      * @param basePath - Base path
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns Link URL
      */
-    getPageLink(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+    getPageLink(
+        page: ExportPage,
+        allPages: ExportPage[],
+        basePath: string,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const isFirstPage = page.id === allPages[0]?.id;
         if (isFirstPage) {
             return basePath ? `${basePath}index.html` : 'index.html';
         }
-        const filename = this.sanitizeFilename(page.title);
-        return `${basePath}html/${filename}.html`;
+        // Use unique filename from map if available (already includes .html),
+        // otherwise generate from title (need to add .html)
+        const mapFilename = pageFilenameMap?.get(page.id);
+        const filename = mapFilename || `${this.sanitizeFilename(page.title)}.html`;
+        return `${basePath}html/${filename}`;
     }
 
     /**
@@ -619,7 +645,13 @@ ${madeWithExeHtml}
      * @param _language - Deprecated, translation now happens at runtime via $exe_i18n
      * @returns Navigation buttons HTML
      */
-    renderNavButtons(page: ExportPage, allPages: ExportPage[], basePath: string, _language: string = 'en'): string {
+    renderNavButtons(
+        page: ExportPage,
+        allPages: ExportPage[],
+        basePath: string,
+        _language: string = 'en',
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
@@ -628,7 +660,7 @@ ${madeWithExeHtml}
 
         // Previous button - English defaults; runtime translation via data-i18n attribute
         if (prevPage) {
-            const link = this.getPageLink(prevPage, allPages, basePath);
+            const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
             parts.push(
                 `<a href="${link}" title="Previous" class="nav-button nav-button-left" data-i18n="previous"><span>Previous</span></a>`,
             );
@@ -640,7 +672,7 @@ ${madeWithExeHtml}
 
         // Next button - English defaults; runtime translation via data-i18n attribute
         if (nextPage) {
-            const link = this.getPageLink(nextPage, allPages, basePath);
+            const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
             parts.push(
                 `<a href="${link}" title="Next" class="nav-button nav-button-right" data-i18n="next"><span>Next</span></a>`,
             );
@@ -720,10 +752,11 @@ ${userFooterHtml}</div></footer>`;
     /**
      * Generate search data JSON for client-side search functionality
      * @param allPages - All pages in the project
-     * @param basePath - Base path for URLs
+     * @param _basePath - Base path for URLs (unused but kept for API compatibility)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JSON string with page structure
      */
-    generateSearchData(allPages: ExportPage[], _basePath: string): string {
+    generateSearchData(allPages: ExportPage[], _basePath: string, pageFilenameMap?: Map<string, string>): string {
         const pagesData: Record<string, unknown> = {};
 
         for (let i = 0; i < allPages.length; i++) {
@@ -732,7 +765,9 @@ ${userFooterHtml}</div></footer>`;
             const prevPage = i > 0 ? allPages[i - 1] : null;
             const nextPage = i < allPages.length - 1 ? allPages[i + 1] : null;
 
-            const fileName = isIndex ? 'index.html' : `${this.sanitizeFilename(page.title)}.html`;
+            // Use unique filename from map if available, otherwise generate from title
+            const mapFilename = pageFilenameMap?.get(page.id);
+            const fileName = isIndex ? 'index.html' : mapFilename || `${this.sanitizeFilename(page.title)}.html`;
             const fileUrl = isIndex ? 'index.html' : `html/${fileName}`;
 
             const blocksData: Record<string, unknown> = {};
@@ -771,10 +806,11 @@ ${userFooterHtml}</div></footer>`;
      * Generate the content for search_index.js file
      * @param allPages - All pages in the project
      * @param basePath - Base path for URLs
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      * @returns JavaScript file content with window.exeSearchData assignment
      */
-    generateSearchIndexFile(allPages: ExportPage[], basePath: string): string {
-        const searchDataJson = this.generateSearchData(allPages, basePath);
+    generateSearchIndexFile(allPages: ExportPage[], basePath: string, pageFilenameMap?: Map<string, string>): string {
+        const searchDataJson = this.generateSearchData(allPages, basePath, pageFilenameMap);
         return `window.exeSearchData = ${searchDataJson};`;
     }
 

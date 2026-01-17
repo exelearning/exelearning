@@ -71,6 +71,9 @@ export class ElpxExporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
             // =========================================================================
             // SECTION 1: Generate HTML5 content (same as Html5Exporter)
             // =========================================================================
@@ -81,15 +84,25 @@ export class ElpxExporter extends Html5Exporter {
             // 1.1 Generate HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
-                // First page is index.html, others go in html/ directory
-                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const html = this.generatePageHtml(
+                    page,
+                    pages,
+                    meta,
+                    i === 0,
+                    i,
+                    themeRootFiles,
+                    faviconInfo,
+                    pageFilenameMap,
+                );
+                // Use unique filename from the map (handles title collisions)
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 this.zip.addFile(pageFilename, html);
             }
 
             // 1.2 Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 this.zip.addFile('search_index.js', searchIndexContent);
             }
 

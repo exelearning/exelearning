@@ -143,6 +143,9 @@ export class Epub3Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
             // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes and detect favicon
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
@@ -153,8 +156,8 @@ export class Epub3Exporter extends BaseExporter {
             // 2. Add container.xml
             this.zip.addFile('META-INF/container.xml', this.generateContainerXml());
 
-            // 3. Generate navigation document
-            const navXhtml = this.generateNavXhtml(pages, meta);
+            // 3. Generate navigation document (pass filename map for collision handling)
+            const navXhtml = this.generateNavXhtml(pages, meta, pageFilenameMap);
             this.zip.addFile('EPUB/nav.xhtml', navXhtml);
             this.addManifestItem('nav', 'nav.xhtml', 'application/xhtml+xml', 'nav');
 
@@ -162,7 +165,11 @@ export class Epub3Exporter extends BaseExporter {
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles, faviconInfo);
-                const filename = i === 0 ? 'index.xhtml' : `html/${this.sanitizePageFilename(page.title)}.xhtml`;
+                // Use unique filename from the map (handles title collisions)
+                // EPUB uses .xhtml extension instead of .html
+                const mapFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const xhtmlFilename = mapFilename.replace(/\.html$/, '.xhtml');
+                const filename = i === 0 ? 'index.xhtml' : `html/${xhtmlFilename}`;
                 this.zip.addFile(`EPUB/${filename}`, xhtml);
 
                 const pageId = this.generateUniqueId(`page-${i}`);
@@ -444,8 +451,11 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Generate nav.xhtml (EPUB3 navigation document)
+     * @param pages - All pages
+     * @param meta - Export metadata
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    private generateNavXhtml(pages: ExportPage[], meta: ExportMetadata): string {
+    private generateNavXhtml(pages: ExportPage[], meta: ExportMetadata, pageFilenameMap?: Map<string, string>): string {
         const lang = meta.language || 'en';
 
         let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -462,7 +472,7 @@ export class Epub3Exporter extends BaseExporter {
     <ol>`;
 
         // Build hierarchical navigation
-        xml += this.buildNavList(pages, pages);
+        xml += this.buildNavList(pages, pages, null, pageFilenameMap);
 
         xml += `
     </ol>
@@ -475,8 +485,17 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Build navigation list recursively
+     * @param pages - All pages
+     * @param allPages - All pages (for first page detection)
+     * @param parentId - Parent page ID (null for root)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    private buildNavList(pages: ExportPage[], allPages: ExportPage[], parentId: string | null = null): string {
+    private buildNavList(
+        pages: ExportPage[],
+        allPages: ExportPage[],
+        parentId: string | null = null,
+        pageFilenameMap?: Map<string, string>,
+    ): string {
         const children =
             parentId === null ? pages.filter(p => !p.parentId) : pages.filter(p => p.parentId === parentId);
 
@@ -484,7 +503,7 @@ export class Epub3Exporter extends BaseExporter {
 
         let html = '';
         for (const page of children) {
-            const filename = this.getPageFilename(page, allPages);
+            const filename = this.getPageFilename(page, allPages, pageFilenameMap);
             const grandchildren = pages.filter(p => p.parentId === page.id);
 
             html += `
@@ -492,7 +511,7 @@ export class Epub3Exporter extends BaseExporter {
 
             if (grandchildren.length > 0) {
                 html += `
-        <ol>${this.buildNavList(pages, allPages, page.id)}
+        <ol>${this.buildNavList(pages, allPages, page.id, pageFilenameMap)}
         </ol>`;
             }
 
@@ -504,11 +523,19 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Get page filename for navigation
+     * @param page - Page data
+     * @param allPages - All pages (for first page detection)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
-    private getPageFilename(page: ExportPage, allPages: ExportPage[]): string {
+    private getPageFilename(page: ExportPage, allPages: ExportPage[], pageFilenameMap?: Map<string, string>): string {
         const isFirst = page.id === allPages[0]?.id;
         if (isFirst) {
             return 'index.xhtml';
+        }
+        // Use unique filename from map if available (convert .html to .xhtml)
+        const mapFilename = pageFilenameMap?.get(page.id);
+        if (mapFilename) {
+            return `html/${mapFilename.replace(/\.html$/, '.xhtml')}`;
         }
         return `html/${this.sanitizePageFilename(page.title)}.xhtml`;
     }
