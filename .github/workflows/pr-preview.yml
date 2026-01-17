@@ -43,7 +43,7 @@ jobs:
           umbrella-dir: pr-preview
           action: auto
           qr-code: false
-          pages-base-url: exelearning.pages.dev/pr-preview-action/
+          pages-base-url: exelearning.pages.dev
           wait-for-pages-deployment: true
 
       - name: Add preview URL to summary
