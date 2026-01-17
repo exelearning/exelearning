@@ -361,6 +361,62 @@ describe('BASE_PATH Integration', () => {
     });
 });
 
+describe('BASE_PATH with resourcesRoutes', () => {
+    /**
+     * Tests that /api/resources/* endpoints are accessible with BASE_PATH
+     * This was a bug where resourcesRoutes was not included in the BASE_PATH group
+     */
+    it('should serve /api/resources/content-css at BASE_PATH', async () => {
+        // Import the actual resources routes
+        const { resourcesRoutes } = await import('../../../src/routes/resources');
+
+        // Create a test app with the actual resources routes
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+
+        // Test at BASE_PATH
+        const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/content-css`);
+        expect(response.status).toBe(200);
+
+        const body = await parseJsonResponse<Array<{ path: string; url: string }>>(response);
+        expect(Array.isArray(body)).toBe(true);
+        // Should include base.css
+        const baseCss = body.find(f => f.path === 'content/css/base.css');
+        expect(baseCss).toBeDefined();
+    });
+
+    it('should serve /api/resources/theme/:name at BASE_PATH', async () => {
+        const { resourcesRoutes } = await import('../../../src/routes/resources');
+
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+
+        // Test at BASE_PATH - 'base' theme should exist
+        const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/theme/base`);
+        expect(response.status).toBe(200);
+
+        const body = await parseJsonResponse<Array<{ path: string; url: string }>>(response);
+        expect(Array.isArray(body)).toBe(true);
+        // Should include style.css for the theme
+        const styleCss = body.find(f => f.path === 'style.css');
+        expect(styleCss).toBeDefined();
+    });
+
+    it('should serve /api/resources/libs/base at BASE_PATH', async () => {
+        const { resourcesRoutes } = await import('../../../src/routes/resources');
+
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+
+        // Test at BASE_PATH
+        const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/libs/base`);
+        expect(response.status).toBe(200);
+
+        const body = await parseJsonResponse<Array<{ path: string; url: string }>>(response);
+        expect(Array.isArray(body)).toBe(true);
+        // Should include common.js
+        const commonJs = body.find(f => f.path.includes('common.js'));
+        expect(commonJs).toBeDefined();
+    });
+});
+
 describe('BASE_PATH utility functions', () => {
     // These tests verify the basepath.util.ts functions
     // Note: prefixPath() uses getBasePath() internally which reads from process.env.BASE_PATH
