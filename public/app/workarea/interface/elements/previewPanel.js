@@ -421,7 +421,11 @@ export default class PreviewPanelManager {
             await this.refreshWithServiceWorker();
 
             // Build the viewer URL
-            const basePath = eXeLearning?.app?.getBasePath?.() || '';
+            let basePath = eXeLearning?.app?.getBasePath?.() || '';
+            // Don't include '.' in absolute URLs - it's only for relative paths in static mode
+            if (basePath === '.') {
+                basePath = '';
+            }
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
 
             // Open in new tab

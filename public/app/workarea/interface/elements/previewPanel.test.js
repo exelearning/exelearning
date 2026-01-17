@@ -242,6 +242,34 @@ describe('PreviewPanelManager', () => {
       // Should not open a new tab when SW is not available
       expect(mockOpen).not.toHaveBeenCalled();
     });
+
+    it('should handle dot basePath correctly in static mode', async () => {
+      // Mock SW availability
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      // Mock getBasePath returning '.' for static mode
+      global.eXeLearning = {
+        app: {
+          getBasePath: () => '.',
+        },
+      };
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      // Should NOT include '.' in the URL - it would create invalid URL like 'http://localhost./viewer/...'
+      expect(mockOpen).toHaveBeenCalledWith(
+        expect.stringMatching(/^http:\/\/[^.]+\/viewer\/index\.html$/),
+        '_blank'
+      );
+      // Verify the URL doesn't contain '.' before /viewer
+      const calledUrl = mockOpen.mock.calls[0][0];
+      expect(calledUrl).not.toContain('./');
+      expect(calledUrl).toContain('/viewer/index.html');
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
