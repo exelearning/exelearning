@@ -270,9 +270,12 @@ export default class PreviewPanelManager {
      */
     isServiceWorkerPreviewAvailable() {
         const app = eXeLearning?.app;
+        // Use app.getPreviewServiceWorker() which handles BASE_PATH correctly
+        // by falling back to registration.active when controller is null
+        const hasSW = typeof app?.getPreviewServiceWorker === 'function' && app.getPreviewServiceWorker() !== null;
         return (
             'serviceWorker' in navigator &&
-            navigator.serviceWorker?.controller &&
+            hasSW &&
             typeof app?.sendContentToPreviewSW === 'function' &&
             typeof window.SharedExporters?.generatePreviewForSW === 'function'
         );
