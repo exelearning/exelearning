@@ -38,9 +38,8 @@ jobs:
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
       
       - name: Build static distribution
-        run: VERSION=${{ steps.version.outputs.version }} bun run build:static
         if: github.event.action != 'closed'
-        run: bun run build:static
+        run: VERSION=${{ steps.version.outputs.version }} bun run build:static
 
       - name: Deploy preview
         uses: rossjrw/pr-preview-action@v1
