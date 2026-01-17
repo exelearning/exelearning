@@ -424,9 +424,11 @@ describe('TinyMCE 5 Settings', () => {
 
       // Should use blob URL directly (not convert to data:URL)
       // CRITICAL: Must include data-asset-id for reliable blob→asset conversion
+      // alt is empty by default - user should provide their own description
+      // (exeimage plugin shows warning if alt is empty when saving)
       expect(cb).toHaveBeenCalledWith('blob://file', {
         title: 'file.png',
-        alt: 'file.png',
+        alt: '',
         'data-asset-id': 'abc123', // CRITICAL: Used by convertBlobURLsToAssetRefs
       });
 
@@ -460,9 +462,10 @@ describe('TinyMCE 5 Settings', () => {
 
       // Should still work with blob URL even without AssetManager
       // data-asset-id is always included for reliable conversion
+      // alt is empty by default - exeimage plugin warns if empty when saving
       expect(cb).toHaveBeenCalledWith('blob://file', {
         title: 'file.png',
-        alt: 'file.png',
+        alt: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -537,9 +540,10 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Videos should also use blob URL directly with data-asset-id
+      // alt is empty by default (videos don't require alt text, only images do)
       expect(cb).toHaveBeenCalledWith('blob:http://localhost:8081/video-blob', {
         title: 'video.mp4',
-        alt: 'video.mp4',
+        alt: '',
         'data-asset-id': assetUUID, // CRITICAL: Used by convertBlobURLsToAssetRefs
       });
       // And should register UUID (not asset:// URL) in cache
