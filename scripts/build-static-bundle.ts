@@ -1001,7 +1001,7 @@ function generateStaticHtml(bundleData: object): string {
                 isOfflineInstallation: true,
                 isStaticMode: true,
                 locale: getSavedLocale(),
-                basePath: '.',
+                basePath: '',
                 baseURL: '.',
                 fullURL: '.',
                 yjsEnabled: true,
