@@ -8,7 +8,15 @@
  */
  -->
 
-<script type="text/javascript" src="../../../../../jquery/jquery.min.js"></script>
+<script>
+    (function() {
+        var basePath = '';
+        try {
+            basePath = (parent && parent.eXeLearning && parent.eXeLearning.config && parent.eXeLearning.config.basePath) || '';
+        } catch(e) {}
+        document.write('<script src="' + basePath + '/libs/jquery/jquery.min.js"><\/script>');
+    })();
+</script>
 <script type="text/javascript" src="includes/codemirror/codemirror.js"></script>
 <script type="text/javascript" src="includes/batched_scripts.js"></script>
 <script type="text/javascript" src="includes/i18n.js"></script>
