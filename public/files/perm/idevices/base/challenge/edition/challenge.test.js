@@ -107,13 +107,37 @@ describe('challenge iDevice', () => {
       expect(typeof id).toBe('number');
     });
 
-    it('returns different IDs on consecutive calls', async () => {
+    it('returns different IDs when time or random changes', () => {
+      // Mock Date and Math.random for deterministic testing
+      const originalDate = global.Date;
+      const originalRandom = Math.random;
+
+      // First call: timestamp 1000, random 0.5
+      global.Date = class extends originalDate {
+        getTime() {
+          return 1000;
+        }
+      };
+      Math.random = () => 0.5;
       const id1 = $exeDevice.getId();
-      // Wait 1ms to ensure different timestamp
-      await new Promise(resolve => setTimeout(resolve, 1));
+      expect(id1).toBe(Math.round(1000 + 0.5 * 100)); // 1050
+
+      // Second call: different timestamp
+      global.Date = class extends originalDate {
+        getTime() {
+          return 2000;
+        }
+      };
+      Math.random = () => 0.5;
       const id2 = $exeDevice.getId();
-      // Due to time-based component, should be different after waiting
+      expect(id2).toBe(Math.round(2000 + 0.5 * 100)); // 2050
+
+      // IDs should be different
       expect(id1).not.toBe(id2);
+
+      // Restore originals
+      global.Date = originalDate;
+      Math.random = originalRandom;
     });
 
     it('returns a positive number', () => {

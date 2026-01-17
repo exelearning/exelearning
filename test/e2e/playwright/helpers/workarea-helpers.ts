@@ -758,3 +758,72 @@ export async function expandIdeviceCategory(page: Page, categoryPattern: RegExp)
     // Wait for content to be visible after expansion
     await page.waitForTimeout(500);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEARCH & EXPORT OPTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Enable search box option in project export settings
+ * Uses the Project Properties button in the top bar to show properties inline
+ */
+export async function enableSearchOption(page: Page): Promise<void> {
+    // Click Project Properties button to show project properties inline
+    const propertiesButton = page.locator('#head-top-settings-button');
+    await propertiesButton.waitFor({ state: 'visible', timeout: 10000 });
+    await propertiesButton.click();
+
+    // Wait for properties to appear in the content area
+    await page.waitForTimeout(1000);
+
+    // Wait for the "Export options" section to be present in DOM
+    const exportSection = page.getByRole('button', { name: /Export options|Opciones de exportación/i }).first();
+
+    // Scroll the export section into view if needed
+    await exportSection.scrollIntoViewIfNeeded({ timeout: 10000 });
+
+    // Check if the export options section is expanded
+    const isExpanded = (await exportSection.getAttribute('aria-expanded')) === 'true';
+    if (!isExpanded) {
+        await exportSection.click();
+        await page.waitForTimeout(500);
+    }
+
+    // Find the search toggle in the export options section
+    const searchToggle = page.locator('input[property="pp_addSearchBox"]');
+
+    // Scroll to and wait for the toggle to be visible
+    await searchToggle.scrollIntoViewIfNeeded({ timeout: 10000 });
+
+    const isChecked = await searchToggle.isChecked();
+    if (!isChecked) {
+        // Click the toggle container to enable
+        const toggleItem = page.locator('.toggle-item').filter({ has: searchToggle }).first();
+        if ((await toggleItem.count()) > 0) {
+            await toggleItem.click();
+        } else {
+            await searchToggle.click({ force: true });
+        }
+        await page.waitForTimeout(500);
+    }
+
+    // Verify metadata was updated via Yjs binding
+    await page.waitForFunction(
+        () => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const metadata = bridge?.documentManager?.getMetadata();
+            const value = metadata?.get('addSearchBox');
+            return value === true || value === 'true';
+        },
+        { timeout: 5000 },
+    );
+}
+
+/**
+ * Clone the currently selected page in the navigation tree
+ */
+export async function cloneCurrentPage(page: Page): Promise<void> {
+    const cloneBtn = page.locator('.button_nav_action.action_clone');
+    await cloneBtn.click();
+    await page.waitForTimeout(2000);
+}

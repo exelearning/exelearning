@@ -1101,6 +1101,31 @@ class YjsStructureBinding {
   }
 
   /**
+   * Get a block by blockId (searches all pages)
+   * @param {string} blockId
+   * @returns {Object|null} - Block data object or null if not found
+   */
+  getBlock(blockId) {
+    const navigation = this.manager.getNavigation();
+    if (!navigation) return null;
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const blocks = pageMap.get('blocks');
+      if (!blocks) continue;
+
+      for (let j = 0; j < blocks.length; j++) {
+        const blockMap = blocks.get(j);
+        const bId = blockMap.get('id') || blockMap.get('blockId');
+        if (bId === blockId) {
+          return this.mapToBlock(blockMap, j);
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * Create a new block in a page
    * @param {string} pageId
    * @param {string} blockName

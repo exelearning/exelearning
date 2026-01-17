@@ -1133,6 +1133,12 @@ class YjsProjectBridge {
     if (propertiesForm || document.querySelector('.property-value')) {
       this.forceAllFormInputsSync();
     }
+
+    // Sync iDevice block titles
+    this.forceBlockTitlesSync();
+
+    // Sync page titles (navigation tree and content area)
+    this.forcePageTitlesSync();
   }
 
   /**
@@ -1190,6 +1196,196 @@ class YjsProjectBridge {
   }
 
   /**
+   * Force synchronization of all visible iDevice block titles and icons from Yjs
+   * Updates .box-title and .box-icon elements with current blockName/iconName from Yjs navigation
+   * This is called after undo/redo to ensure visual state matches Yjs data
+   */
+  forceBlockTitlesSync() {
+    const navigation = this.documentManager?.getNavigation();
+    if (!navigation) return;
+
+    // Get idevices to access blockNode instances
+    const idevices = this.app?.project?.idevices;
+
+    // Find all block headers with block-id attribute
+    const blockHeaders = document.querySelectorAll('header[block-id]');
+
+    blockHeaders.forEach(header => {
+      const blockId = header.getAttribute('block-id');
+      if (!blockId) return;
+
+      // Find the title and icon elements inside this header
+      const titleEl = header.querySelector('.box-title');
+      const iconEl = header.querySelector('.box-icon');
+
+      // Search for this block in navigation to get current blockName and iconName
+      for (let i = 0; i < navigation.length; i++) {
+        const pageMap = navigation.get(i);
+        const blocks = pageMap.get('blocks');
+        if (!blocks) continue;
+
+        for (let j = 0; j < blocks.length; j++) {
+          const blockMap = blocks.get(j);
+          // Check both 'id' and 'blockId' to match how blocks are stored/searched elsewhere
+          if (blockMap.get('id') === blockId || blockMap.get('blockId') === blockId) {
+            // Sync title
+            const blockName = blockMap.get('blockName');
+            if (titleEl && blockName !== undefined && titleEl.textContent !== blockName) {
+              titleEl.textContent = blockName;
+              Logger.log(`[YjsProjectBridge] Synced block title: ${blockId} -> ${blockName}`);
+            }
+
+            // Sync icon - update both DOM and blockNode state
+            const iconName = blockMap.get('iconName');
+
+            // Update DOM directly using _syncBlockIcon (handles icon.id vs key mismatch)
+            if (iconEl) {
+              this._syncBlockIcon(iconEl, iconName, blockId);
+            }
+
+            // Also update blockNode instance properties so internal state matches Yjs
+            const blockNode = idevices?.getBlockById(blockId);
+            if (blockNode) {
+              // Update blockNode.blockName if needed
+              if (blockName !== undefined && blockNode.blockName !== blockName) {
+                blockNode.blockName = blockName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.blockName: ${blockId} -> ${blockName}`);
+              }
+
+              // Update blockNode.iconName to match Yjs
+              if (iconName !== undefined && blockNode.iconName !== iconName) {
+                blockNode.iconName = iconName;
+                Logger.log(`[YjsProjectBridge] Synced blockNode.iconName: ${blockId} -> '${iconName}'`);
+              }
+
+              // Update blockNode.iconElement reference if needed
+              if (iconEl && blockNode.iconElement !== iconEl) {
+                blockNode.iconElement = iconEl;
+              }
+            }
+
+            return; // Found the block, exit search
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Sync a block's icon element with the current iconName from Yjs
+   * @param {HTMLElement} iconEl - The .box-icon button element
+   * @param {string} iconName - The icon name/id from Yjs
+   * @param {string} blockId - The block ID for logging
+   */
+  _syncBlockIcon(iconEl, iconName, blockId) {
+    const imgEl = iconEl.querySelector('img');
+    const currentIconSrc = imgEl?.getAttribute('src') || '';
+
+    // Get theme icons to find the icon URL
+    const themeIcons = window.eXeLearning?.app?.themes?.getThemeIcons?.() || {};
+
+    if (!iconName || iconName === '') {
+      // No icon - check if we need to clear it
+      // Only clear if there's currently an img (not already showing empty SVG)
+      if (imgEl || !iconEl.classList.contains('exe-no-icon')) {
+        // Set empty icon SVG
+        iconEl.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="0.5" y="0.5" width="39" height="39" rx="5.5" stroke="#9ca3af" stroke-dasharray="5 5"/>
+</svg>`;
+        iconEl.classList.add('exe-no-icon');
+        Logger.log(`[YjsProjectBridge] Synced block icon to empty: ${blockId}`);
+      }
+    } else {
+      // Has icon - find it in theme icons
+      // First try direct lookup (iconName is the key in themeIcons)
+      let iconData = themeIcons[iconName];
+
+      // If not found, search by icon.id or icon.value
+      if (!iconData) {
+        for (const [, icon] of Object.entries(themeIcons)) {
+          if (icon.id === iconName || icon.value === iconName) {
+            iconData = icon;
+            break;
+          }
+        }
+      }
+
+      if (iconData && iconData.value) {
+        // Always set the icon if we have valid icon data
+        // Check if we actually need to change (avoid unnecessary DOM updates)
+        if (currentIconSrc !== iconData.value || iconEl.classList.contains('exe-no-icon')) {
+          iconEl.innerHTML = `<img src="${iconData.value}" alt="${iconData.title || iconName}">`;
+          iconEl.classList.remove('exe-no-icon');
+          Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${iconName}`);
+        }
+      } else {
+        Logger.log(`[YjsProjectBridge] Icon data not found for: ${iconName}`);
+      }
+    }
+  }
+
+  /**
+   * Force synchronization of all page titles from Yjs
+   * Updates:
+   * - #page-title-node-content (the currently selected page's content title)
+   * - .nav-element-text in navigation tree (page names in sidebar)
+   * This is called after undo/redo to ensure visual state matches Yjs data
+   */
+  forcePageTitlesSync() {
+    const navigation = this.documentManager?.getNavigation();
+    if (!navigation) return;
+
+    // Get currently selected page ID
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+
+    // Sync all page names in navigation tree
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id');
+      const pageName = pageMap.get('pageName');
+
+      if (!pageId || pageName === undefined) continue;
+
+      // Update navigation tree element
+      const navElement = document.querySelector(`.nav-element[nav-id="${pageId}"] > .nav-element-text`);
+      if (navElement) {
+        // The nav-element-text contains a span with the actual text
+        const textSpan = navElement.querySelector('span:not(.small-icon)');
+        if (textSpan && textSpan.textContent !== pageName) {
+          textSpan.textContent = pageName;
+          Logger.log(`[YjsProjectBridge] Synced nav tree page: ${pageId} -> ${pageName}`);
+        }
+      }
+
+      // If this is the currently selected page, also update the content area title
+      if (pageId === currentPageId) {
+        const pageTitleEl = document.querySelector('#page-title-node-content');
+        if (pageTitleEl) {
+          // Get page properties to determine which title to show
+          const props = pageMap.get('properties');
+          const hidePageTitle = props?.get?.('hidePageTitle') === true || props?.get?.('hidePageTitle') === 'true';
+
+          if (hidePageTitle) {
+            pageTitleEl.innerText = '';
+            pageTitleEl.classList.add('hidden');
+          } else {
+            const editableInPage = props?.get?.('editableInPage') === true || props?.get?.('editableInPage') === 'true';
+            const titlePage = props?.get?.('titlePage') || '';
+            const titleNode = props?.get?.('titleNode') || pageName || '';
+            const title = editableInPage ? titlePage : titleNode;
+
+            if (pageTitleEl.innerText !== title) {
+              pageTitleEl.innerText = title;
+              pageTitleEl.classList.toggle('hidden', !title);
+              Logger.log(`[YjsProjectBridge] Synced page content title: ${pageId} -> ${title}`);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
    * Undo last action
    */
   undo() {
@@ -1217,8 +1413,10 @@ class YjsProjectBridge {
 
       this.updateUndoRedoButtons();
 
-      // Force sync all UI elements (title header, form inputs) from Yjs
+      // Force sync all UI elements from Yjs (title header, form inputs, page titles, block titles/icons)
       this.forceTitleSync();
+      this.forcePageTitlesSync();
+      this.forceBlockTitlesSync();
 
       Logger.log('[YjsProjectBridge] Undo performed');
     } finally {
@@ -1245,8 +1443,10 @@ class YjsProjectBridge {
       this.documentManager.undoManager.redo();
       this.updateUndoRedoButtons();
 
-      // Force sync all UI elements (title header, form inputs) from Yjs
+      // Force sync all UI elements from Yjs (title header, form inputs, page titles, block titles/icons)
       this.forceTitleSync();
+      this.forcePageTitlesSync();
+      this.forceBlockTitlesSync();
 
       Logger.log('[YjsProjectBridge] Redo performed');
     } finally {

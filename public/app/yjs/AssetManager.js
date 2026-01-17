@@ -2419,6 +2419,10 @@ class AssetManager {
 
       let shouldInclude = false;
 
+      // UUID pattern for detecting asset folders (standard UUID or custom IDs like block-xxx-xxx)
+      const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+      const customIdPattern = /^(idevice|block|page)-[a-z0-9]+-[a-z0-9]+$/i;
+
       if (isLegacyFormat) {
         // Legacy format: Assets are at root level (e.g., "image.jpg", "document.pdf")
         // Include files that are NOT in any subfolder (no "/" in path)
@@ -2434,6 +2438,22 @@ class AssetManager {
                               relativePath.includes('/resources/');
         if (isResourceFile) {
           shouldInclude = true;
+        }
+
+        // Also detect UUID-style folder paths: "{uuid}/{filename}"
+        // This handles component exports (.idevice/.block files) that store assets
+        // in folders named by their asset UUID
+        if (!shouldInclude) {
+          const pathParts = relativePath.split('/');
+          if (pathParts.length >= 2) {
+            const firstFolder = pathParts[0];
+            // Check if first folder looks like a UUID or custom ID
+            const isUuidFolder = uuidPattern.test(firstFolder) || customIdPattern.test(firstFolder);
+            if (isUuidFolder) {
+              shouldInclude = true;
+              Logger.log(`[AssetManager] Detected UUID-style asset path: ${relativePath}`);
+            }
+          }
         }
       }
 

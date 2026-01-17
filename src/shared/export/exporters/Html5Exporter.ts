@@ -62,6 +62,9 @@ export class Html5Exporter extends BaseExporter {
             // Note: exe-package:elp transformation now happens in PageRenderer.renderPageContent()
             pages = await this.preprocessPagesForExport(pages);
 
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
             // File tracking for ELPX manifest (only when download-source-file is used)
             const fileList: string[] | null = needsElpxDownload ? [] : null;
             const addFile = (path: string, content: Uint8Array | string) => {
@@ -91,7 +94,16 @@ export class Html5Exporter extends BaseExporter {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+                let html = this.generatePageHtml(
+                    page,
+                    pages,
+                    meta,
+                    i === 0,
+                    i,
+                    themeRootFiles,
+                    faviconInfo,
+                    pageFilenameMap,
+                );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -151,14 +163,15 @@ export class Html5Exporter extends BaseExporter {
                     }
                 }
 
-                // First page is index.html, others go in html/ directory
-                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                // First page is index.html, others go in html/ directory using unique filenames
+                const filename = pageFilenameMap.get(page.id) || 'page.html';
+                const pageFilename = i === 0 ? 'index.html' : `html/${filename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
 
             // 2. Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
             }
 
@@ -312,7 +325,8 @@ export class Html5Exporter extends BaseExporter {
             // 12. Add all HTML pages to ZIP (with manifest script only on pages with download-source-file)
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const filename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const pageFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = i === 0 ? 'index.html' : `html/${pageFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
 
                 // Only add manifest script to pages that have download-source-file iDevice or exe-package:elp link
@@ -350,6 +364,8 @@ export class Html5Exporter extends BaseExporter {
      * @param isIndex - Whether this is the index page
      * @param pageIndex - Page index for page counter
      * @param themeFiles - List of root-level theme CSS/JS files
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
     generatePageHtml(
         page: ExportPage,
@@ -359,6 +375,7 @@ export class Html5Exporter extends BaseExporter {
         pageIndex?: number,
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
+        pageFilenameMap?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -412,6 +429,8 @@ export class Html5Exporter extends BaseExporter {
             // Favicon options
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
+            // Page filename map for navigation links (handles title collisions)
+            pageFilenameMap,
         });
     }
 
@@ -519,6 +538,9 @@ export class Html5Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
 
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
             // File tracking for ELPX manifest (only when download-source-file is used)
             const fileList: string[] | null = needsElpxDownload ? [] : null;
             const addFile = (path: string, content: Uint8Array | string) => {
@@ -545,7 +567,16 @@ export class Html5Exporter extends BaseExporter {
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                let html = this.generatePageHtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+                let html = this.generatePageHtml(
+                    page,
+                    pages,
+                    meta,
+                    i === 0,
+                    i,
+                    themeRootFiles,
+                    faviconInfo,
+                    pageFilenameMap,
+                );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 if (!meta.addMathJax) {
@@ -587,13 +618,15 @@ export class Html5Exporter extends BaseExporter {
                     }
                 }
 
-                const pageFilename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                // Use unique filenames from the map (handles collisions)
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
 
             // 2. Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
-                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '');
+                const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
             }
 
@@ -709,7 +742,8 @@ export class Html5Exporter extends BaseExporter {
             // 12. Add all HTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const filename = i === 0 ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
 
                 // Only add manifest script to pages that have download-source-file iDevice
