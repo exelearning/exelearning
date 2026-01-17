@@ -2492,18 +2492,12 @@ export default class IdeviceNode {
                 // Create asset using AssetManager
                 const assetUrl = await assetManager.insertImage(fileObj);
 
-                // Parse the asset URL: asset://uuid/filename
-                const assetMatch = assetUrl.match(/^asset:\/\/([^/]+)\/(.+)$/);
-                if (assetMatch) {
-                    const assetId = assetMatch[1];
-                    const assetFilename = assetMatch[2];
-
-                    // Update response to use asset:// URLs
-                    // savedPath ends with / so savedPath + savedFilename = asset://uuid/filename
-                    response.savedPath = `asset://${assetId}/`;
-                    response.savedFilename = assetFilename;
-                    // Use same asset for thumbnail (full image works as thumbnail)
-                    response.savedThumbnailName = assetFilename;
+                // insertImage() always returns asset://uuid.ext format
+                // No need to parse - just use the URL directly
+                if (assetUrl && assetUrl.startsWith('asset://')) {
+                    response.savedPath = '';
+                    response.savedFilename = assetUrl;
+                    response.savedThumbnailName = assetUrl;
 
                     // Provide a blob URL for preview in dialogs (audio/video players can't use asset:// directly)
                     const blobUrl = await assetManager.resolveAssetURL(assetUrl);
