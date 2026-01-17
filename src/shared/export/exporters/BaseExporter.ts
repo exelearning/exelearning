@@ -568,9 +568,9 @@ export abstract class BaseExporter {
                         counter++;
                     }
                 } else {
-                    // No trailing number: append -1, -2, etc.
-                    let counter = 1;
-                    while (usedFilenames.has(filename) && counter <= maxAttempts) {
+                    // No trailing number: append -2, -3, etc. (first page is implicitly "1")
+                    let counter = 2;
+                    while (usedFilenames.has(filename) && counter <= maxAttempts + 1) {
                         filename = `${baseFilename}-${counter}.html`;
                         counter++;
                     }

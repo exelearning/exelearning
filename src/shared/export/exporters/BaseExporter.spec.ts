@@ -973,11 +973,11 @@ describe('BaseExporter', () => {
 
             expect(map.get('page-1')).toBe('index.html');
             expect(map.get('page-2')).toBe('nueva-pagina.html');
-            expect(map.get('page-3')).toBe('nueva-pagina-1.html');
-            expect(map.get('page-4')).toBe('nueva-pagina-2.html');
+            expect(map.get('page-3')).toBe('nueva-pagina-2.html');
+            expect(map.get('page-4')).toBe('nueva-pagina-3.html');
         });
 
-        it('should append numbers in order (-1, -2, -3...)', () => {
+        it('should append numbers in order (-2, -3, -4...)', () => {
             const pages: ExportPage[] = [
                 { id: 'page-0', title: 'Index', parentId: null, order: 0, blocks: [] },
                 { id: 'page-1', title: 'Test', parentId: null, order: 1, blocks: [] },
@@ -990,10 +990,10 @@ describe('BaseExporter', () => {
             const map = exporter.testBuildPageFilenameMap(pages);
 
             expect(map.get('page-1')).toBe('test.html');
-            expect(map.get('page-2')).toBe('test-1.html');
-            expect(map.get('page-3')).toBe('test-2.html');
-            expect(map.get('page-4')).toBe('test-3.html');
-            expect(map.get('page-5')).toBe('test-4.html');
+            expect(map.get('page-2')).toBe('test-2.html');
+            expect(map.get('page-3')).toBe('test-3.html');
+            expect(map.get('page-4')).toBe('test-4.html');
+            expect(map.get('page-5')).toBe('test-5.html');
         });
 
         it('should handle mixed titles (some duplicates, some unique)', () => {
@@ -1012,8 +1012,8 @@ describe('BaseExporter', () => {
             expect(map.get('page-2')).toBe('chapter-1.html');
             expect(map.get('page-3')).toBe('activity.html');
             expect(map.get('page-4')).toBe('chapter-2.html');
-            expect(map.get('page-5')).toBe('activity-1.html');
-            expect(map.get('page-6')).toBe('activity-2.html');
+            expect(map.get('page-5')).toBe('activity-2.html');
+            expect(map.get('page-6')).toBe('activity-3.html');
         });
 
         it('should use "page" for empty titles', () => {
@@ -1027,7 +1027,7 @@ describe('BaseExporter', () => {
 
             expect(map.get('page-1')).toBe('index.html');
             expect(map.get('page-2')).toBe('page.html');
-            expect(map.get('page-3')).toBe('page-1.html');
+            expect(map.get('page-3')).toBe('page-2.html');
         });
 
         it('should normalize special characters in titles', () => {
@@ -1040,7 +1040,7 @@ describe('BaseExporter', () => {
             const map = exporter.testBuildPageFilenameMap(pages);
 
             expect(map.get('page-2')).toBe('capitulo-1-introduccion.html');
-            expect(map.get('page-3')).toBe('capitulo-1-introduccion-1.html');
+            expect(map.get('page-3')).toBe('capitulo-1-introduccion-2.html');
         });
 
         it('should handle case where first page has duplicate title', () => {
@@ -1076,8 +1076,8 @@ describe('BaseExporter', () => {
                 urlFromSubpage: 'test.html',
             });
             expect(urlMap.get('page-3')).toEqual({
-                url: 'html/test-1.html',
-                urlFromSubpage: 'test-1.html',
+                url: 'html/test-2.html',
+                urlFromSubpage: 'test-2.html',
             });
         });
 
@@ -1103,17 +1103,14 @@ describe('BaseExporter', () => {
             // First "Test" page gets test.html (no suffix)
             expect(map.get('page-1')).toBe('test.html');
 
-            // Pages 2-20 get test-1.html through test-19.html
-            for (let i = 2; i <= 20; i++) {
-                expect(map.get(`page-${i}`)).toBe(`test-${i - 1}.html`);
+            // Pages 2-21 get test-2.html through test-21.html (collisions start at 2)
+            for (let i = 2; i <= 21; i++) {
+                expect(map.get(`page-${i}`)).toBe(`test-${i}.html`);
             }
 
-            // Page 21 gets test-20.html (the 20th collision)
-            expect(map.get('page-21')).toBe('test-20.html');
-
-            // Pages beyond maxAttempts (21+) still get added but may collide
-            // The algorithm stops incrementing after 20 attempts
-            expect(map.get('page-22')).toBeDefined();
+            // Page 22 exceeds maxAttempts (20), falls back to last attempted filename
+            // This is intentional - after 20 attempts, the algorithm gives up
+            expect(map.get('page-22')).toBe('test-21.html');
         });
 
         it('should increment trailing numbers in filename on collision', () => {
