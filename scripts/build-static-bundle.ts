@@ -1382,14 +1382,30 @@ function generateStaticHtml(bundleData: object): string {
     <!-- Main Application Bundle -->
     <script src="./app/app.bundle.js"></script>
 
-    <!-- Register Service Worker for PWA -->
+    <!-- Register Service Worker for PWA (only when installed as standalone app) -->
     <script>
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(reg => console.log('[PWA] Service worker registered'))
-                    .catch(err => console.log('[PWA] Service worker registration failed:', err));
-            });
+            // Only register SW when installed as PWA (standalone mode)
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches
+                       || window.navigator.standalone === true;  // iOS Safari
+
+            if (isPWA) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./service-worker.js')
+                        .then(reg => console.log('[PWA] Service worker registered'))
+                        .catch(err => console.log('[PWA] Service worker registration failed:', err));
+                });
+            } else {
+                // Unregister any existing SW when not in PWA mode
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    regs.forEach(reg => {
+                        if (reg.active?.scriptURL.includes('service-worker.js')) {
+                            reg.unregister();
+                            console.log('[Static] Service worker unregistered (not in PWA mode)');
+                        }
+                    });
+                });
+            }
         }
     </script>
 </body>
@@ -1514,34 +1530,36 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch: Cache-first strategy
+// Fetch: Network-first strategy (always online when possible)
 self.addEventListener('fetch', (event) => {
     // Skip non-GET requests
     if (event.request.method !== 'GET') return;
 
     event.respondWith(
-        caches.match(event.request)
-            .then(cached => {
-                if (cached) {
-                    return cached;
+        fetch(event.request)
+            .then(response => {
+                // Network succeeded - update cache and return
+                if (response.ok) {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then(cache => {
+                        cache.put(event.request, clone);
+                    });
                 }
-
-                return fetch(event.request).then(response => {
-                    // Cache successful responses
-                    if (response.ok) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => {
-                            cache.put(event.request, clone);
-                        });
-                    }
-                    return response;
-                });
+                return response;
             })
             .catch(() => {
-                // Offline fallback for navigation
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./index.html');
-                }
+                // Network failed - try cache (offline fallback)
+                return caches.match(event.request).then(cached => {
+                    if (cached) {
+                        console.log('[SW] Serving from cache (offline):', event.request.url);
+                        return cached;
+                    }
+                    // Navigation fallback
+                    if (event.request.mode === 'navigate') {
+                        return caches.match('./index.html');
+                    }
+                    return new Response('Offline', { status: 503 });
+                });
             })
     );
 });
