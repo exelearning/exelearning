@@ -129,18 +129,30 @@ export default class App {
 
         this._previewSwRegistrationPromise = (async () => {
             try {
-                // Check for existing registration
+                // Check for existing preview SW registration
+                // Note: In static mode, PWA SW (service-worker.js) may share the same scope
+                // We need to verify the registration is specifically for preview-sw.js
                 let registration = await navigator.serviceWorker.getRegistration(basePath);
 
-                if (registration?.active) {
+                // Check if existing registration is for preview-sw.js (not PWA SW)
+                const isPreviewSw =
+                    registration?.active?.scriptURL?.endsWith('preview-sw.js') ||
+                    registration?.installing?.scriptURL?.endsWith('preview-sw.js') ||
+                    registration?.waiting?.scriptURL?.endsWith('preview-sw.js');
+
+                if (registration?.active && isPreviewSw) {
                     await registration.update();
                     this._previewSwRegistration = registration;
                     await this._tryClaimClients(registration);
                     return registration;
                 }
 
-                // Register new Service Worker
-                registration = await navigator.serviceWorker.register(swPath, { scope: basePath });
+                // Register preview SW (will create a new registration or update existing)
+                // Use a unique scope suffix to avoid conflicts with PWA SW
+                const previewScope = basePath + 'viewer/';
+                registration = await navigator.serviceWorker.register(swPath, {
+                    scope: previewScope,
+                });
                 this._previewSwRegistration = registration;
 
                 // Wait for activation
@@ -247,15 +259,18 @@ export default class App {
      * @returns {ServiceWorker|null} The active service worker or null
      */
     getPreviewServiceWorker() {
-        // First try the controller (current page is controlled by SW)
-        if (navigator.serviceWorker?.controller) {
-            return navigator.serviceWorker.controller;
-        }
-        // Fallback to our stored registration's active worker
-        // This handles cases where page loaded before SW claimed it
+        // First check our stored registration - this is the authoritative source
+        // for the preview SW, especially in static mode where PWA SW may be the controller
         if (this._previewSwRegistration?.active) {
             return this._previewSwRegistration.active;
         }
+
+        // Fallback: check if controller is the preview SW (not PWA SW)
+        const controller = navigator.serviceWorker?.controller;
+        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
+            return controller;
+        }
+
         return null;
     }
 
@@ -271,9 +286,10 @@ export default class App {
             throw new Error('Service Workers not supported');
         }
 
-        // If already have a controller, return it
-        if (navigator.serviceWorker.controller) {
-            return navigator.serviceWorker.controller;
+        // If already have the preview SW as controller (check it's not PWA SW)
+        const controller = navigator.serviceWorker.controller;
+        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
+            return controller;
         }
 
         // Wait for our registration to complete (it handles activation)

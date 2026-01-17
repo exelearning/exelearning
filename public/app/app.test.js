@@ -1265,6 +1265,10 @@ describe('App utility methods', () => {
         writable: true,
         configurable: true,
       });
+
+      // Set up the preview SW registration on the app instance
+      // (getPreviewServiceWorker checks this first in static mode)
+      appInstance._previewSwRegistration = mockRegistration;
     });
 
     afterEach(() => {
@@ -1280,6 +1284,9 @@ describe('App utility methods', () => {
         writable: true,
         configurable: true,
       });
+      // Clean up app instance
+      appInstance._previewSwRegistration = null;
+      appInstance._previewSwRegistrationPromise = null;
     });
 
     describe('registerPreviewServiceWorker', () => {
@@ -1321,14 +1328,21 @@ describe('App utility methods', () => {
         await appInstance.registerPreviewServiceWorker();
 
         // Path derived from window.location.pathname (/ in jsdom)
-        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/' });
+        // Uses /viewer/ scope to avoid conflicts with PWA SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
       });
 
-      it('reuses existing registration if SW is already active', async () => {
-        // Simulate existing registration found with active SW
+      it('reuses existing registration if preview SW is already active', async () => {
+        // Simulate existing registration found with active PREVIEW SW
+        // (must have scriptURL ending with 'preview-sw.js' to be recognized)
         const existingReg = {
           ...mockRegistration,
-          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/preview-sw.js',
+          },
           update: vi.fn().mockResolvedValue(undefined),
         };
         navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
@@ -1336,10 +1350,31 @@ describe('App utility methods', () => {
 
         await appInstance.registerPreviewServiceWorker();
 
-        // Should NOT call register since existing registration is available
+        // Should NOT call register since existing preview SW registration is available
         expect(registerSpy).not.toHaveBeenCalled();
         expect(appInstance._previewSwRegistration).toBe(existingReg);
         expect(existingReg.update).toHaveBeenCalled();
+      });
+
+      it('registers new SW when existing registration is for PWA SW not preview SW', async () => {
+        // Simulate existing registration found but for PWA SW (service-worker.js), not preview SW
+        const existingPwaReg = {
+          ...mockRegistration,
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/service-worker.js', // PWA SW, not preview SW
+          },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingPwaReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should call register because existing registration is for PWA SW, not preview SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
       });
 
       it('handles registration failure', async () => {
@@ -1471,22 +1506,33 @@ describe('App utility methods', () => {
         expect(result).toBe(mockController);
       });
 
-      it('returns null when serviceWorker is undefined', () => {
+      it('returns null when serviceWorker is undefined and no registration', () => {
         Object.defineProperty(navigator, 'serviceWorker', {
           value: undefined,
           writable: true,
           configurable: true,
         });
+        appInstance._previewSwRegistration = null;
 
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBeNull();
       });
 
-      it('returns null when controller is not available', () => {
+      it('returns null when no registration and controller is not preview SW', () => {
         navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistration = null;
 
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBeNull();
+      });
+
+      it('returns registration.active even when controller is PWA SW', () => {
+        // Simulate PWA SW as controller (no preview-sw.js in scriptURL)
+        navigator.serviceWorker.controller = { postMessage: vi.fn() }; // No scriptURL
+
+        // But we have the preview SW registration
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockController); // Returns from _previewSwRegistration.active
       });
     });
 
