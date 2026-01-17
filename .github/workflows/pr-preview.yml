@@ -81,7 +81,7 @@ jobs:
             echo "### Cloudflare Pages (persistent)" >> $GITHUB_STEP_SUMMARY
             echo "This preview will remain available until manually deleted." >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**URL:** ${{ steps.deploy-cf.outputs.deployment-url }}" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** https://pr-${{ github.event.number }}.exelearning-preview.pages.dev" >> $GITHUB_STEP_SUMMARY
           else
             echo "### Cloudflare Pages" >> $GITHUB_STEP_SUMMARY
             echo "⚠️ Cloudflare deployment skipped (not configured or failed)." >> $GITHUB_STEP_SUMMARY
@@ -93,7 +93,7 @@ jobs:
         with:
           script: |
             const ghUrl = '${{ steps.deploy-gh.outputs.deployment-url }}';
-            const cfUrl = '${{ steps.deploy-cf.outputs.deployment-url }}';
+            const cfUrl = 'https://pr-${{ github.event.number }}.exelearning-preview.pages.dev';
             const cfOutcome = '${{ steps.deploy-cf.outcome }}';
             const version = '${{ steps.version.outputs.version }}';
 
