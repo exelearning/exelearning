@@ -1080,5 +1080,40 @@ describe('BaseExporter', () => {
                 urlFromSubpage: 'test1.html',
             });
         });
+
+        it('should handle more than 20 pages with same title (maxAttempts limit)', () => {
+            // Create 23 pages: 1 index + 22 pages all titled "Test"
+            const pages: ExportPage[] = [{ id: 'page-0', title: 'Home', parentId: null, order: 0, blocks: [] }];
+
+            for (let i = 1; i <= 22; i++) {
+                pages.push({
+                    id: `page-${i}`,
+                    title: 'Test',
+                    parentId: null,
+                    order: i,
+                    blocks: [],
+                });
+            }
+
+            const map = exporter.testBuildPageFilenameMap(pages);
+
+            // First page is index.html
+            expect(map.get('page-0')).toBe('index.html');
+
+            // First "Test" page gets test.html (no suffix)
+            expect(map.get('page-1')).toBe('test.html');
+
+            // Pages 2-20 get test1.html through test19.html
+            for (let i = 2; i <= 20; i++) {
+                expect(map.get(`page-${i}`)).toBe(`test${i - 1}.html`);
+            }
+
+            // Page 21 gets test20.html (the 20th collision)
+            expect(map.get('page-21')).toBe('test20.html');
+
+            // Pages beyond maxAttempts (21+) still get added but may collide
+            // The algorithm stops incrementing after 20 attempts
+            expect(map.get('page-22')).toBeDefined();
+        });
     });
 });
