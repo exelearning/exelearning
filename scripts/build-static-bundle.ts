@@ -408,9 +408,9 @@ function buildThemesList(): { themes: Theme[] } {
 
             const themeName = dir.name;
             const themePath = path.join(themesDir, dir.name);
-            // Use URL starting with / to work with basePath concatenation (basePath + /files/... = ./files/...)
-            // This is consistent with iDevice URLs which also start with /
-            const themeUrl = `/files/perm/themes/base/${themeName}`;
+            // Use relative URL for static mode - ensures icons and resources load correctly
+            // when deployed to a subdirectory (e.g., https://example.com/pr-preview/pr-20/)
+            const themeUrl = `./files/perm/themes/base/${themeName}`;
 
             // Parse more data from config.xml if available
             let title = themeName.charAt(0).toUpperCase() + themeName.slice(1);

@@ -168,10 +168,13 @@ const app = new Elysia()
                             'Cache-Control': 'public, max-age=3600',
                         };
 
-                        // Special handling for preview-sw.js - no caching for SW updates
+                        // Special handling for preview-sw.js - complete headers for SW registration
                         if (pathname === '/preview-sw.js') {
+                            headers['Content-Type'] = 'application/javascript; charset=utf-8';
                             headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
                             headers['Service-Worker-Allowed'] = '/';
+                            headers['Vary'] = 'Accept-Encoding';
+                            headers['Access-Control-Allow-Origin'] = '*';
                         }
 
                         return new Response(content, { headers });
@@ -481,9 +484,13 @@ if (routePrefix) {
             .use(convertRoutes)
             .use(configRoutes)
             .use(idevicesRoutes)
+            .use(gamesRoutes)
             .use(themesRoutes)
+            .use(resourcesRoutes)
             .use(userRoutes)
             .use(adminRoutes)
+            .use(adminThemesRoutes)
+            .use(adminTemplatesRoutes)
             .use(yjsRoutes)
             .use(apiV1Routes)
             .use(createWebSocketRoutes())
