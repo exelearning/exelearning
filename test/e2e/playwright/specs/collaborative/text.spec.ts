@@ -166,6 +166,17 @@ async function insertImageViaTinyMCE(page: Page, fixturePath: string): Promise<v
     if ((await tinyMceSaveBtn.count()) > 0) {
         await tinyMceSaveBtn.click();
     }
+
+    // Handle accessibility warning dialog that appears when no alt text is provided
+    // The dialog asks: "Are you sure you want to continue without including an Image Description?"
+    const accessibilityConfirmBtn = page.locator('.tox-dialog button:has-text("Yes")');
+    try {
+        await accessibilityConfirmBtn.waitFor({ state: 'visible', timeout: 3000 });
+        await accessibilityConfirmBtn.click();
+    } catch {
+        // Dialog may not appear if alt text was provided
+    }
+
     await page.waitForTimeout(1000);
 }
 
