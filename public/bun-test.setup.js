@@ -144,6 +144,28 @@ global._ = mock((key, ...args) => {
 });
 
 // ============================================================================
+// Mock eXe Global Object (legacy iDevice API)
+// ============================================================================
+
+global.eXe = {
+  app: {
+    _alertHistory: [],
+    alert: mock(function(message) {
+      this._alertHistory.push(message);
+    }),
+    getLastAlert: function() {
+      return this._alertHistory[this._alertHistory.length - 1] || '';
+    },
+    clearHistory: function() {
+      this._alertHistory = [];
+    },
+  },
+};
+
+// Also expose on window
+window.eXe = global.eXe;
+
+// ============================================================================
 // Mock eXeLearning Global Object
 // ============================================================================
 

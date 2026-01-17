@@ -3715,10 +3715,11 @@ describe('LegacyXmlParser', () => {
       expect(idevices.length).toBe(1);
       expect(idevices[0].type).toBe('text'); // Type stays as text
       expect(idevices[0].properties).toBeDefined();
-      expect(idevices[0].properties.textInfoDurationInput).toBe('Duración:');
-      expect(idevices[0].properties.textInfoDurationTextInput).toBe('2 sesiones');
-      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Agrupamiento:');
-      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Grupo de 4');
+      // TextInput = label (dt), Input = value (dd)
+      expect(idevices[0].properties.textInfoDurationTextInput).toBe('Duración:');
+      expect(idevices[0].properties.textInfoDurationInput).toBe('2 sesiones');
+      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Agrupamiento:');
+      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Grupo de 4');
     });
 
     it('should extract feedback metadata from PBL Task', () => {
@@ -3727,16 +3728,24 @@ describe('LegacyXmlParser', () => {
       const metadata = parser.extractPblTaskMetadata(html);
 
       expect(metadata).not.toBeNull();
-      expect(metadata.textInfoDurationInput).toBe('Duration:');
-      expect(metadata.textInfoDurationTextInput).toBe('1 hour');
-      expect(metadata.textInfoFeedbackButton).toBe('Show Feedback');
-      expect(metadata.textInfoFeedback).toContain('Feedback text');
+      // TextInput = label (dt), Input = value (dd)
+      expect(metadata.textInfoDurationTextInput).toBe('Duration:');
+      expect(metadata.textInfoDurationInput).toBe('1 hour');
+      expect(metadata.textFeedbackInput).toBe('Show Feedback');
+      expect(metadata.textFeedbackTextarea).toContain('Feedback text');
+      // Check rebuilt htmlView structure
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
+      expect(metadata.rebuiltHtmlView).toContain('Duration:');
+      expect(metadata.rebuiltHtmlView).toContain('1 hour');
+      expect(metadata.rebuiltHtmlView).toContain('feedbacktooglebutton');
     });
 
-    it('should return null for non-PBL content', () => {
+    it('should return metadata with empty values for non-PBL content', () => {
       const html = '<p>Regular text content</p>';
       const metadata = parser.extractPblTaskMetadata(html);
-      expect(metadata).toBeNull();
+      // Now always returns metadata with rebuiltHtmlView, even if no PBL elements found
+      expect(metadata).not.toBeNull();
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
     });
   });
 

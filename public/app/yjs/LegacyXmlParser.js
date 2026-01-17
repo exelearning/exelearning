@@ -1415,12 +1415,17 @@ class LegacyXmlParser {
       // Based on Symfony OdeXmlUtil.php lines 2159-2192 and 2272-2320
       // PBL Task iDevices have structured HTML with duration, participants, and feedback
       if (idevice.htmlView && idevice.htmlView.includes('pbl-task-description')) {
-        // Type stays as 'text' but we preserve the special HTML structure
-        // and extract metadata as JSON properties for the text iDevice editor
+        // Type stays as 'text' but we extract metadata as JSON properties
+        // and rebuild the htmlView in the correct format for preview
         const pblTaskData = this.extractPblTaskMetadata(idevice.htmlView);
         if (pblTaskData) {
+          // Apply rebuilt htmlView (with proper exe-text-activity structure)
+          if (pblTaskData.rebuiltHtmlView) {
+            idevice.htmlView = pblTaskData.rebuiltHtmlView;
+            delete pblTaskData.rebuiltHtmlView; // Don't store in properties
+          }
           idevice.properties = { ...idevice.properties, ...pblTaskData };
-          Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata');
+          Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata and rebuilt htmlView');
         }
       }
 
@@ -1602,7 +1607,7 @@ class LegacyXmlParser {
   }
 
   /**
-   * Extract PBL Task metadata from HTML content
+   * Extract PBL Task metadata from HTML content and rebuild htmlView
    * Based on Symfony OdeXmlUtil.php searchTaskIdeviceElementsOldElp()
    *
    * PBL Task iDevices have structured HTML:
@@ -1612,7 +1617,7 @@ class LegacyXmlParser {
    * - input.feedbackbutton with button text
    *
    * @param {string} htmlView - HTML content of the iDevice
-   * @returns {Object|null} Extracted metadata or null if extraction fails
+   * @returns {Object|null} Extracted metadata with rebuilt htmlView or null if extraction fails
    */
   extractPblTaskMetadata(htmlView) {
     if (!htmlView) return null;
@@ -1622,11 +1627,11 @@ class LegacyXmlParser {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = htmlView;
 
-      // Extract duration
+      // Extract duration (dt = label, dd = value)
       const durationLabel = tempDiv.querySelector('dt.pbl-task-duration');
       const durationValue = tempDiv.querySelector('dd.pbl-task-duration');
 
-      // Extract participants
+      // Extract participants (dt = label, dd = value)
       const participantsLabel = tempDiv.querySelector('dt.pbl-task-participants');
       const participantsValue = tempDiv.querySelector('dd.pbl-task-participants');
 
@@ -1634,35 +1639,93 @@ class LegacyXmlParser {
       const feedbackDiv = tempDiv.querySelector('.feedback.js-feedback');
       const feedbackButton = tempDiv.querySelector('.feedbackbutton');
 
+      // Extract main task content
+      const taskDescriptionDiv = tempDiv.querySelector('.pbl-task-description');
+
       // Build metadata object matching Symfony's structure
-      const metadata = {};
+      // TextInput = label (dt), Input = value (dd)
+      const taskDurationInput = durationLabel?.textContent?.trim() || '';
+      const taskDuration = durationValue?.textContent?.trim() || '';
+      const taskParticipantsInput = participantsLabel?.textContent?.trim() || '';
+      const taskParticipants = participantsValue?.textContent?.trim() || '';
+      const textButtonFeedback = feedbackButton?.value || feedbackButton?.textContent?.trim() || '';
+      const textFeedback = feedbackDiv?.innerHTML?.trim() || '';
+      const taskContent = taskDescriptionDiv?.innerHTML?.trim() || '';
 
-      if (durationLabel) {
-        metadata.textInfoDurationInput = durationLabel.textContent?.trim() || '';
-      }
-      if (durationValue) {
-        metadata.textInfoDurationTextInput = durationValue.textContent?.trim() || '';
-      }
-      if (participantsLabel) {
-        metadata.textInfoParticipantsInput = participantsLabel.textContent?.trim() || '';
-      }
-      if (participantsValue) {
-        metadata.textInfoParticipantsTextInput = participantsValue.textContent?.trim() || '';
-      }
-      if (feedbackDiv) {
-        metadata.textInfoFeedback = feedbackDiv.innerHTML?.trim() || '';
-      }
-      if (feedbackButton) {
-        metadata.textInfoFeedbackButton = feedbackButton.value || feedbackButton.textContent?.trim() || '';
+      // Build metadata for jsonProperties
+      const metadata = {
+        textInfoDurationTextInput: taskDurationInput,
+        textInfoDurationInput: taskDuration,
+        textInfoParticipantsTextInput: taskParticipantsInput,
+        textInfoParticipantsInput: taskParticipants,
+        textFeedbackInput: textButtonFeedback,
+        textFeedbackTextarea: textFeedback
+      };
+
+      // Rebuild htmlView matching Symfony format (OdeXmlUtil.php)
+      // Format: <div class="exe-text-activity"><dl>...</dl>{content}{feedback}</div>
+      let rebuiltHtmlView = '';
+
+      // Only add duration/participants dl if we have values
+      if (taskDuration || taskParticipants) {
+        rebuiltHtmlView += '<dl>';
+        rebuiltHtmlView += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(taskDurationInput)}">${this.escapeHtml(taskDurationInput)}</span></dt>`;
+        rebuiltHtmlView += `<dd>${this.escapeHtml(taskDuration)}</dd></div>`;
+        rebuiltHtmlView += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(taskParticipantsInput)}">${this.escapeHtml(taskParticipantsInput)}</span></dt>`;
+        rebuiltHtmlView += `<dd>${this.escapeHtml(taskParticipants)}</dd></div>`;
+        rebuiltHtmlView += '</dl>';
       }
 
-      // Only return if we found some metadata
-      const hasMetadata = Object.keys(metadata).length > 0;
-      return hasMetadata ? metadata : null;
+      // Add main task content
+      rebuiltHtmlView += taskContent;
+
+      // Add feedback button and content if present
+      if (textButtonFeedback) {
+        rebuiltHtmlView += '<div class="iDevice_buttons feedback-button js-required">';
+        rebuiltHtmlView += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(textButtonFeedback)}" `;
+        rebuiltHtmlView += `data-text-a="${this.escapeHtmlAttr(textButtonFeedback)}" data-text-b="${this.escapeHtmlAttr(textButtonFeedback)}">`;
+        rebuiltHtmlView += '</div>';
+        rebuiltHtmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${textFeedback}</div>`;
+      }
+
+      // Wrap in exe-text-activity container
+      rebuiltHtmlView = `<div class="exe-text-activity">${rebuiltHtmlView}</div>`;
+
+      metadata.rebuiltHtmlView = rebuiltHtmlView;
+
+      return metadata;
     } catch (e) {
       Logger.log(`[LegacyXmlParser] Error extracting PBL Task metadata: ${e.message}`);
       return null;
     }
+  }
+
+  /**
+   * Escape HTML special characters for safe text content
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string
+   */
+  escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  /**
+   * Escape HTML special characters for attribute values
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string safe for HTML attributes
+   */
+  escapeHtmlAttr(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**
