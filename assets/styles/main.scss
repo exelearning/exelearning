@@ -39,7 +39,7 @@ body[mode="advanced"] .exe-simplified {
     display: none !important;
 }
 
-/* eXe Mode */
+/* eXe Mode - Installation type visibility */
 body[installation-type="static"] .exe-online,
 body[installation-type="online"] .exe-offline {
     display: none !important;
