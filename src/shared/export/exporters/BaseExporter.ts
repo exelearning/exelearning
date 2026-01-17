@@ -528,10 +528,11 @@ export abstract class BaseExporter {
 
     /**
      * Build a map of page IDs to unique filenames
-     * Handles collisions by appending numbers (1, 2, 3... up to 20)
+     * Handles collisions by incrementing trailing numbers or appending -1, -2, etc.
      * First page is always index.html, others are {sanitized-title}.html
      *
-     * This follows the same algorithm as symfony_legacy (OdeExportService.php:1740-1764)
+     * For filenames ending with a number (e.g., "new-page-1"), collisions increment
+     * that number (e.g., "new-page-2", "new-page-3") instead of appending another number.
      */
     protected buildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
         const filenameMap = new Map<string, string>();
@@ -550,12 +551,30 @@ export abstract class BaseExporter {
 
             const baseFilename = this.sanitizePageFilename(page.title);
             let filename = `${baseFilename}.html`;
-            let counter = 1;
 
-            // If collision, append number
-            while (usedFilenames.has(filename) && counter <= maxAttempts) {
-                filename = `${baseFilename}${counter}.html`;
-                counter++;
+            if (usedFilenames.has(filename)) {
+                // Check if filename ends with a number pattern (e.g., "page-1" or "page1")
+                const match = baseFilename.match(/^(.*?)-?(\d+)$/);
+
+                if (match) {
+                    // Has trailing number: increment from that number
+                    const base = match[1] ? `${match[1]}-` : '';
+                    const startNum = parseInt(match[2], 10);
+                    let counter = startNum + 1;
+
+                    while (counter <= startNum + maxAttempts) {
+                        filename = `${base}${counter}.html`;
+                        if (!usedFilenames.has(filename)) break;
+                        counter++;
+                    }
+                } else {
+                    // No trailing number: append -1, -2, etc.
+                    let counter = 1;
+                    while (usedFilenames.has(filename) && counter <= maxAttempts) {
+                        filename = `${baseFilename}-${counter}.html`;
+                        counter++;
+                    }
+                }
             }
 
             usedFilenames.add(filename);
