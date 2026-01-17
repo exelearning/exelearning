@@ -243,32 +243,83 @@ describe('PreviewPanelManager', () => {
       expect(mockOpen).not.toHaveBeenCalled();
     });
 
-    it('should handle dot basePath correctly in static mode', async () => {
+    it('should derive basePath from pathname for subdirectory deployments', async () => {
       // Mock SW availability
       manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
       manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
-      // Mock getBasePath returning '.' for static mode
-      global.eXeLearning = {
-        app: {
-          getBasePath: () => '.',
-        },
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      // Mock pathname for subdirectory deployment
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/pr-preview/pr-20/workarea',
       };
+
+      await manager.extractToNewTab();
+
+      // Should derive base path from pathname and construct correct URL
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        '_blank'
+      );
+
+      // Restore location
+      window.location = originalLocation;
+    });
+
+    it('should handle workarea.html pathname correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
 
       const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
       global.open = mockOpen;
 
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/app/workarea.html',
+      };
+
       await manager.extractToNewTab();
 
-      // Should NOT include '.' in the URL - it would create invalid URL like 'http://localhost./viewer/...'
       expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringMatching(/^http:\/\/[^.]+\/viewer\/index\.html$/),
+        'https://example.com/app/viewer/index.html',
         '_blank'
       );
-      // Verify the URL doesn't contain '.' before /viewer
-      const calledUrl = mockOpen.mock.calls[0][0];
-      expect(calledUrl).not.toContain('./');
-      expect(calledUrl).toContain('/viewer/index.html');
+
+      window.location = originalLocation;
+    });
+
+    it('should handle root workarea path correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'http://localhost:8080',
+        pathname: '/workarea',
+      };
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        'http://localhost:8080/viewer/index.html',
+        '_blank'
+      );
+
+      window.location = originalLocation;
     });
   });
 
