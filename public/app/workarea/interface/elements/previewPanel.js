@@ -422,8 +422,9 @@ export default class PreviewPanelManager {
 
             // Build the viewer URL - derive base path from current URL for subdirectory deployments
             const pathname = window.location.pathname;
-            // Remove trailing 'workarea' or 'workarea.html' to get base directory
-            const basePath = pathname.replace(/\/workarea(\.html)?$/, '');
+            // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
+            // Also remove any trailing slash to avoid double slashes
+            const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
 
             // Open in new tab

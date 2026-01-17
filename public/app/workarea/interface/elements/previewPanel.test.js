@@ -321,6 +321,32 @@ describe('PreviewPanelManager', () => {
 
       window.location = originalLocation;
     });
+
+    it('should handle pathname with trailing slash correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/pr-preview/pr-20/workarea/',
+      };
+
+      await manager.extractToNewTab();
+
+      // Should NOT produce double slashes
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        '_blank'
+      );
+
+      window.location = originalLocation;
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
