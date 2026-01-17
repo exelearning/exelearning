@@ -758,3 +758,66 @@ export async function expandIdeviceCategory(page: Page, categoryPattern: RegExp)
     // Wait for content to be visible after expansion
     await page.waitForTimeout(500);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SEARCH & EXPORT OPTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Enable search box option in project export settings
+ */
+export async function enableSearchOption(page: Page): Promise<void> {
+    // Click on root node to show project properties
+    const rootNode = page.locator('.nav-element[nav-id="root"] > .nav-element-text');
+    await rootNode.click();
+    await page.waitForTimeout(1000);
+
+    // Expand "Export options" section
+    const exportSection = page
+        .getByRole('button', {
+            name: /Export options|Opciones de exportación/i,
+        })
+        .first();
+
+    try {
+        const isExpanded = (await exportSection.getAttribute('aria-expanded')) === 'true';
+        if (!isExpanded) {
+            await exportSection.click();
+            await page.waitForTimeout(500);
+        }
+    } catch {
+        // Section might already be expanded
+    }
+
+    // Toggle search checkbox
+    const searchToggle = page.locator('input[property="pp_addSearchBox"]');
+    const isChecked = await searchToggle.isChecked().catch(() => false);
+    if (!isChecked) {
+        const toggleItem = page.locator('.toggle-item').filter({ has: searchToggle }).first();
+        if ((await toggleItem.count()) > 0) {
+            await toggleItem.click();
+        } else {
+            await searchToggle.click({ force: true });
+        }
+    }
+
+    // Verify metadata was updated
+    await page.waitForFunction(
+        () => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const metadata = bridge?.documentManager?.getMetadata();
+            const value = metadata?.get('addSearchBox');
+            return value === true || value === 'true';
+        },
+        { timeout: 5000 },
+    );
+}
+
+/**
+ * Clone the currently selected page in the navigation tree
+ */
+export async function cloneCurrentPage(page: Page): Promise<void> {
+    const cloneBtn = page.locator('.button_nav_action.action_clone');
+    await cloneBtn.click();
+    await page.waitForTimeout(2000);
+}
