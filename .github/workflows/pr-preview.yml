@@ -51,7 +51,7 @@ jobs:
           action: auto
           qr-code: true
           pages-base-url: exelearning.pages.dev
-          wait-for-pages-deployment: true
+          # wait-for-pages-deployment: true
 
       - name: Add preview URL to summary
         if: github.event.action != 'closed'
