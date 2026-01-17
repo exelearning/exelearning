@@ -33,7 +33,7 @@ jobs:
       - name: Generate version string
         id: version
         run: |
-          VERSION="v0.0.0-pr${{ github.event.number }}-$(date +%Y%m%d%H%M%S)"
+          VERSION="v0.0.0-pr${{ github.event.number }}-$(date +%Y%m%d%H%M)"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build static distribution
@@ -127,7 +127,7 @@ jobs:
             ${cfRow}
 
             ---
-            <sub>Updated: ${new Date().toISOString()}</sub>`;
+            <sub>Updated: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}</sub>`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
