@@ -371,9 +371,7 @@ describe('BASE_PATH with resourcesRoutes', () => {
         const { resourcesRoutes } = await import('../../../src/routes/resources');
 
         // Create a test app with the actual resources routes
-        const app = new Elysia()
-            .use(resourcesRoutes)
-            .group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
 
         // Test at BASE_PATH
         const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/content-css`);
@@ -389,9 +387,7 @@ describe('BASE_PATH with resourcesRoutes', () => {
     it('should serve /api/resources/theme/:name at BASE_PATH', async () => {
         const { resourcesRoutes } = await import('../../../src/routes/resources');
 
-        const app = new Elysia()
-            .use(resourcesRoutes)
-            .group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
 
         // Test at BASE_PATH - 'base' theme should exist
         const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/theme/base`);
@@ -407,9 +403,7 @@ describe('BASE_PATH with resourcesRoutes', () => {
     it('should serve /api/resources/libs/base at BASE_PATH', async () => {
         const { resourcesRoutes } = await import('../../../src/routes/resources');
 
-        const app = new Elysia()
-            .use(resourcesRoutes)
-            .group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
+        const app = new Elysia().use(resourcesRoutes).group(TEST_BASE_PATH, group => group.use(resourcesRoutes));
 
         // Test at BASE_PATH
         const response = await testRequest(app, `${TEST_BASE_PATH}/api/resources/libs/base`);
