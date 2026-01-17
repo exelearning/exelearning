@@ -321,24 +321,49 @@ export default class App {
      * @returns {Promise<{fileCount: number}>} Promise that resolves when content is ready
      */
     async sendContentToPreviewSW(files, options = {}) {
+        // Wait for SW registration to complete if needed
+        if (this._previewSwRegistrationPromise) {
+            await this._previewSwRegistrationPromise;
+        }
+
         const sw = this.getPreviewServiceWorker();
         if (!sw) {
             throw new Error('Preview Service Worker not available');
         }
 
         return new Promise((resolve, reject) => {
-            // Set up message listener for response
-            const messageHandler = (event) => {
+            // Use MessageChannel for bi-directional communication
+            // This works even when SW is not the controller of the current page
+            const messageChannel = new MessageChannel();
+            let timeoutId;
+
+            // Listen for response on the channel
+            messageChannel.port1.onmessage = (event) => {
                 if (event.data?.type === 'CONTENT_READY') {
-                    // Content received by SW, now verify it can actually serve requests
+                    // Content received by SW, now verify it can serve requests
                     // This extra verification step handles Firefox's stricter event timing
-                    // between message events and fetch events in Service Workers
-                    sw.postMessage({ type: 'VERIFY_READY' });
+                    const verifyChannel = new MessageChannel();
+                    verifyChannel.port1.onmessage = (verifyEvent) => {
+                        clearTimeout(timeoutId);
+                        messageChannel.port1.close();
+                        verifyChannel.port1.close();
+                        if (verifyEvent.data?.ready) {
+                            resolve({ fileCount: verifyEvent.data.fileCount });
+                        } else {
+                            reject(
+                                new Error(
+                                    'SW content not ready after verification'
+                                )
+                            );
+                        }
+                    };
+                    sw.postMessage({ type: 'VERIFY_READY' }, [
+                        verifyChannel.port2,
+                    ]);
                 } else if (event.data?.type === 'READY_VERIFIED') {
-                    navigator.serviceWorker.removeEventListener(
-                        'message',
-                        messageHandler
-                    );
+                    // Direct response (when SW responds on same channel)
+                    clearTimeout(timeoutId);
+                    messageChannel.port1.close();
                     if (event.data.ready) {
                         resolve({ fileCount: event.data.fileCount });
                     } else {
@@ -348,17 +373,16 @@ export default class App {
                     }
                 }
             };
-            navigator.serviceWorker.addEventListener('message', messageHandler);
 
             // Collect transferable ArrayBuffers
-            const transferables = [];
+            const transferables = [messageChannel.port2];
             for (const value of Object.values(files)) {
                 if (value instanceof ArrayBuffer) {
                     transferables.push(value);
                 }
             }
 
-            // Send content to SW
+            // Send content to SW with MessageChannel port
             sw.postMessage(
                 {
                     type: 'SET_CONTENT',
@@ -368,11 +392,8 @@ export default class App {
             );
 
             // Timeout after 10 seconds
-            setTimeout(() => {
-                navigator.serviceWorker.removeEventListener(
-                    'message',
-                    messageHandler
-                );
+            timeoutId = setTimeout(() => {
+                messageChannel.port1.close();
                 reject(new Error('Timeout waiting for SW content ready'));
             }, 10000);
         });

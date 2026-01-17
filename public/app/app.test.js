@@ -1567,20 +1567,41 @@ describe('App utility methods', () => {
         };
         const options = { openExternalLinksInNewWindow: true };
 
-        // Simulate CONTENT_READY then READY_VERIFIED response (two-phase handshake)
-        let messageHandler;
-        navigator.serviceWorker.addEventListener = vi.fn((event, handler) => {
-          if (event === 'message') {
-            messageHandler = handler;
-            // First: simulate CONTENT_READY response
+        // Track MessageChannel instances created
+        const messageChannels = [];
+        const mockPort1 = {
+          onmessage: null,
+          close: vi.fn(),
+        };
+        const mockPort2 = { name: 'port2' };
+
+        // Mock MessageChannel for SW communication
+        const MockMessageChannel = vi.fn(() => {
+          const channel = {
+            port1: { onmessage: null, close: vi.fn() },
+            port2: { name: `port2-${messageChannels.length}` },
+          };
+          messageChannels.push(channel);
+          return channel;
+        });
+        vi.stubGlobal('MessageChannel', MockMessageChannel);
+
+        // Capture the postMessage calls to trigger responses
+        mockController.postMessage = vi.fn((msg, transferables) => {
+          if (msg.type === 'SET_CONTENT') {
+            // Simulate CONTENT_READY response on first channel
             setTimeout(() => {
-              handler({ data: { type: 'CONTENT_READY', fileCount: 2 } });
-              // After CONTENT_READY, the code sends VERIFY_READY
-              // Then we respond with READY_VERIFIED
-              setTimeout(() => {
-                handler({ data: { type: 'READY_VERIFIED', ready: true, fileCount: 2 } });
-              }, 5);
+              messageChannels[0].port1.onmessage({
+                data: { type: 'CONTENT_READY', fileCount: 2 },
+              });
             }, 10);
+          } else if (msg.type === 'VERIFY_READY') {
+            // Simulate READY_VERIFIED response on verify channel (second channel)
+            setTimeout(() => {
+              messageChannels[1].port1.onmessage({
+                data: { ready: true, fileCount: 2 },
+              });
+            }, 5);
           }
         });
 
@@ -1592,22 +1613,32 @@ describe('App utility methods', () => {
             type: 'SET_CONTENT',
             data: { files, options },
           },
-          [files['index.html']], // ArrayBuffer should be in transferables
+          expect.arrayContaining([messageChannels[0].port2, files['index.html']]),
         );
-        expect(navigator.serviceWorker.removeEventListener).toHaveBeenCalled();
+        expect(messageChannels[0].port1.close).toHaveBeenCalled();
+
+        vi.unstubAllGlobals();
       });
 
       it('times out after 10 seconds', async () => {
         vi.useFakeTimers();
-        navigator.serviceWorker.addEventListener = vi.fn();
+
+        const mockPort1 = { onmessage: null, close: vi.fn() };
+        const mockPort2 = {};
+        vi.stubGlobal(
+          'MessageChannel',
+          vi.fn(() => ({ port1: mockPort1, port2: mockPort2 })),
+        );
 
         const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
 
         vi.advanceTimersByTime(10001);
 
         await expect(promise).rejects.toThrow('Timeout waiting for SW content ready');
+        expect(mockPort1.close).toHaveBeenCalled();
 
         vi.useRealTimers();
+        vi.unstubAllGlobals();
       });
     });
 
