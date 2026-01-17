@@ -552,7 +552,21 @@ $exeExport.searchBar = {
         this.checkBlockLinks();
     },
     getLink : function(lnk){
-        if (this.isPreview) return lnk;
+        if (this.isPreview) {
+            // Check if we're on a subpage (/viewer/html/*)
+            var currentPath = window.location.pathname;
+            var isOnSubpage = currentPath.indexOf('/html/') !== -1;
+
+            if (isOnSubpage) {
+                // From /viewer/html/current.html, need to go up one level
+                // html/page.html → ../html/page.html
+                // index.html → ../index.html
+                if (lnk.indexOf('../') !== 0 && lnk.indexOf('/') !== 0) {
+                    return '../' + lnk;
+                }
+            }
+            return lnk;
+        }
         if (!this.isIndex) {
             lnk = lnk.replace('html/','');
             if (lnk == 'index.html') lnk = '../' + lnk;

@@ -548,6 +548,14 @@ export interface PageRenderOptions {
 
     /** MIME type of favicon (e.g. image/x-icon, image/png) */
     faviconType?: string;
+
+    /**
+     * Map of page IDs to unique filenames (for handling title collisions).
+     * When multiple pages have the same title, this map ensures each page
+     * gets a unique filename (e.g., "page.html", "page1.html", "page2.html").
+     * If not provided, filenames are generated directly from titles.
+     */
+    pageFilenameMap?: Map<string, string>;
 }
 
 /**

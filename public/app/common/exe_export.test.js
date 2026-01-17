@@ -1026,9 +1026,59 @@ describe('exe_export.js', () => {
   });
 
   describe('searchBar.getLink', () => {
-    it('returns link as-is for preview', () => {
+    it('returns link as-is for preview on index page', () => {
       window.$exeExport.searchBar.isPreview = true;
+      // Mock being on the index page (/viewer/index.html)
+      Object.defineProperty(window, 'location', {
+        value: { pathname: '/viewer/index.html' },
+        writable: true,
+      });
       expect(window.$exeExport.searchBar.getLink('html/page.html')).toBe('html/page.html');
+    });
+
+    it('adjusts html/ links when preview is on subpage', () => {
+      window.$exeExport.searchBar.isPreview = true;
+      // Mock being on a subpage
+      Object.defineProperty(window, 'location', {
+        value: { pathname: '/viewer/html/current-page.html' },
+        writable: true,
+      });
+
+      expect(window.$exeExport.searchBar.getLink('html/other-page.html')).toBe(
+        '../html/other-page.html'
+      );
+    });
+
+    it('adjusts index.html link when preview is on subpage', () => {
+      window.$exeExport.searchBar.isPreview = true;
+      Object.defineProperty(window, 'location', {
+        value: { pathname: '/viewer/html/current-page.html' },
+        writable: true,
+      });
+
+      expect(window.$exeExport.searchBar.getLink('index.html')).toBe('../index.html');
+    });
+
+    it('does not double-adjust already relative links', () => {
+      window.$exeExport.searchBar.isPreview = true;
+      Object.defineProperty(window, 'location', {
+        value: { pathname: '/viewer/html/current-page.html' },
+        writable: true,
+      });
+
+      expect(window.$exeExport.searchBar.getLink('../html/page.html')).toBe('../html/page.html');
+    });
+
+    it('keeps absolute links unchanged when on subpage', () => {
+      window.$exeExport.searchBar.isPreview = true;
+      Object.defineProperty(window, 'location', {
+        value: { pathname: '/viewer/html/current-page.html' },
+        writable: true,
+      });
+
+      expect(window.$exeExport.searchBar.getLink('/viewer/html/page.html')).toBe(
+        '/viewer/html/page.html'
+      );
     });
 
     it('removes html/ prefix for non-index pages', () => {
