@@ -49,7 +49,7 @@ jobs:
           preview-branch: gh-pages
           umbrella-dir: pr-preview
           action: auto
-          qr-code: false
+          qr-code: true
           pages-base-url: exelearning.pages.dev
           wait-for-pages-deployment: true
 
