@@ -31,7 +31,14 @@ jobs:
         if: github.event.action != 'closed'
         run: bun install
 
+      - name: Generate version string
+        id: version
+        run: |
+          VERSION="v0.0.0-pr${{ github.event.number }}-$(date +%Y%m%d%H%M)"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+      
       - name: Build static distribution
+        run: VERSION=${{ steps.version.outputs.version }} bun run build:static
         if: github.event.action != 'closed'
         run: bun run build:static
 
