@@ -253,7 +253,7 @@ tmp-cleanup: check-bun
 translations: check-bun
 	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
 
-# Update license information in public/libs/README
+# Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]
 .PHONY: update-licenses
 update-licenses: check-bun

@@ -167,7 +167,7 @@ ${colors.cyan('Maintenance:')}
   translations [--locale=en]                  Extract/clean translations
   projects:purge --yes                        Delete all projects and assets
   projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
-  update-licenses [--dry-run]                Update license info in public/libs/README
+  update-licenses [--dry-run]                Update license info in public/libs/README.md
 
 ${colors.cyan('ELPX Processing:')}
   elp:convert <input> <output>               Convert ELP v2.x to v3.0 (elpx)
