@@ -20,6 +20,8 @@ import {
     LOM_NAMESPACES,
     IDEVICE_TYPE_MAP,
     normalizeIdeviceType,
+    formatLicenseText,
+    getLicenseClass,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -368,6 +370,75 @@ describe('Constants', () => {
             it('should return original (normalized) for unknown types', () => {
                 expect(normalizeIdeviceType('custom-idevice-type')).toBe('custom-idevice-type');
                 expect(normalizeIdeviceType('my-special-widget')).toBe('my-special-widget');
+            });
+        });
+    });
+
+    describe('License Functions', () => {
+        describe('formatLicenseText', () => {
+            it('should convert short codes to full display text', () => {
+                expect(formatLicenseText('CC-BY-SA')).toBe('creative commons: attribution - share alike 4.0');
+                expect(formatLicenseText('CC-BY')).toBe('creative commons: attribution 4.0');
+                expect(formatLicenseText('CC-BY-NC')).toBe('creative commons: attribution - non commercial 4.0');
+                expect(formatLicenseText('CC-BY-ND')).toBe('creative commons: attribution - non derived work 4.0');
+                expect(formatLicenseText('CC-BY-NC-SA')).toBe(
+                    'creative commons: attribution - non commercial - share alike 4.0',
+                );
+                expect(formatLicenseText('CC-BY-NC-ND')).toBe(
+                    'creative commons: attribution - non derived work - non commercial 4.0',
+                );
+            });
+
+            it('should handle case insensitivity', () => {
+                expect(formatLicenseText('cc-by-sa')).toBe('creative commons: attribution - share alike 4.0');
+                expect(formatLicenseText('CC-BY-SA')).toBe('creative commons: attribution - share alike 4.0');
+                expect(formatLicenseText('Cc-By-Sa')).toBe('creative commons: attribution - share alike 4.0');
+            });
+
+            it('should pass through already full names', () => {
+                expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
+                    'creative commons: attribution - share alike 4.0',
+                );
+                expect(formatLicenseText('public domain')).toBe('public domain');
+                expect(formatLicenseText('propietary license')).toBe('propietary license');
+            });
+
+            it('should handle CC0 / public domain', () => {
+                expect(formatLicenseText('CC0')).toBe('public domain');
+                expect(formatLicenseText('cc-0')).toBe('public domain');
+                expect(formatLicenseText('public domain')).toBe('public domain');
+            });
+
+            it('should return default for empty input', () => {
+                expect(formatLicenseText('')).toBe('creative commons: attribution - share alike 4.0');
+            });
+
+            it('should trim whitespace', () => {
+                expect(formatLicenseText('  CC-BY-SA  ')).toBe('creative commons: attribution - share alike 4.0');
+            });
+        });
+
+        describe('getLicenseClass', () => {
+            it('should return correct CSS classes for licenses', () => {
+                expect(getLicenseClass('CC-BY-SA')).toBe('cc cc-by-sa');
+                expect(getLicenseClass('CC-BY')).toBe('cc');
+                expect(getLicenseClass('CC-BY-NC')).toBe('cc cc-by-nc');
+                expect(getLicenseClass('CC-BY-ND')).toBe('cc cc-by-nd');
+                expect(getLicenseClass('CC-BY-NC-SA')).toBe('cc cc-by-nc-sa');
+                expect(getLicenseClass('CC-BY-NC-ND')).toBe('cc cc-by-nc-nd');
+            });
+
+            it('should return correct class for public domain', () => {
+                expect(getLicenseClass('public domain')).toBe('cc cc-0');
+                expect(getLicenseClass('CC0')).toBe('cc cc-0');
+            });
+
+            it('should return correct class for proprietary', () => {
+                expect(getLicenseClass('propietary license')).toBe('propietary');
+            });
+
+            it('should return default for empty input', () => {
+                expect(getLicenseClass('')).toBe('cc cc-by-sa');
             });
         });
     });
