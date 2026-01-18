@@ -1473,8 +1473,26 @@ describe('App utility methods', () => {
         expect(result).toBeNull();
       });
 
-      it('returns null when controller is not available', () => {
+      it('returns registration.active when controller is null but registration has active SW', () => {
         navigator.serviceWorker.controller = null;
+        const mockActiveSW = { postMessage: vi.fn(), state: 'activated' };
+        appInstance._previewSwRegistration = { active: mockActiveSW };
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockActiveSW);
+      });
+
+      it('returns null when both controller and registration.active are not available', () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistration = null;
+
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBeNull();
+      });
+
+      it('returns null when controller is null and registration exists but has no active SW', () => {
+        navigator.serviceWorker.controller = null;
+        appInstance._previewSwRegistration = { active: null };
 
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBeNull();

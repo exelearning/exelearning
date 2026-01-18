@@ -234,7 +234,14 @@ export default class App {
      * @returns {ServiceWorker|null} The active service worker or null
      */
     getPreviewServiceWorker() {
-        return navigator.serviceWorker?.controller || null;
+        // First try the controller (for pages being controlled)
+        if (navigator.serviceWorker?.controller) {
+            return navigator.serviceWorker.controller;
+        }
+        // Fallback to registration.active (works even when page isn't controlled yet)
+        // This is needed when BASE_PATH is configured and clients.claim() hasn't
+        // made the page controlled yet
+        return this._previewSwRegistration?.active || null;
     }
 
     /**

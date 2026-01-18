@@ -49,6 +49,9 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Build unique filename map for all pages (handles collisions)
+            const pageFilenameMap = this.buildPageFilenameMap(pages);
+
             // Initialize generators
             this.manifestGenerator = new Scorm2004ManifestGenerator(projectId, pages, {
                 title: meta.title || 'eXeLearning',
@@ -79,7 +82,16 @@ export class Scorm2004Exporter extends Html5Exporter {
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const isIndex = i === 0;
-                let html = this.generateScorm2004PageHtml(page, pages, meta, isIndex, themeRootFiles, i, faviconInfo);
+                let html = this.generateScorm2004PageHtml(
+                    page,
+                    pages,
+                    meta,
+                    isIndex,
+                    themeRootFiles,
+                    i,
+                    faviconInfo,
+                    pageFilenameMap,
+                );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
@@ -98,7 +110,9 @@ export class Scorm2004Exporter extends Html5Exporter {
                     }
                 }
 
-                const pageFilename = isIndex ? 'index.html' : `html/${this.sanitizePageFilename(page.title)}.html`;
+                // Use unique filename from the map (handles title collisions)
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
                 this.zip.addFile(pageFilename, html);
 
                 pageFiles[page.id] = {
@@ -244,6 +258,8 @@ export class Scorm2004Exporter extends Html5Exporter {
      * @param isIndex - Whether this is the index page
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param pageIndex - Index of the current page (for page counter)
+     * @param faviconInfo - Favicon info (optional)
+     * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
      */
     generateScorm2004PageHtml(
         page: ExportPage,
@@ -253,6 +269,7 @@ export class Scorm2004Exporter extends Html5Exporter {
         themeFiles?: string[],
         pageIndex?: number,
         faviconInfo?: FaviconInfo | null,
+        pageFilenameMap?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -293,6 +310,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             // Favicon options
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
+            // Page filename map for navigation links (handles title collisions)
+            pageFilenameMap,
         });
     }
 
