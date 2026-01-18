@@ -164,7 +164,7 @@ export class Epub3Exporter extends BaseExporter {
             // 4. Generate XHTML pages
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, themeRootFiles, faviconInfo);
+                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
                 // Use unique filename from the map (handles title collisions)
                 // EPUB uses .xhtml extension instead of .html
                 const mapFilename = pageFilenameMap.get(page.id) || 'page.html';
@@ -554,6 +554,7 @@ export class Epub3Exporter extends BaseExporter {
         allPages: ExportPage[],
         meta: ExportMetadata,
         isIndex: boolean,
+        pageIndex: number,
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
     ): string {
@@ -598,6 +599,14 @@ export class Epub3Exporter extends BaseExporter {
             // Favicon options
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
+            // Hide navigation - EPUB uses nav.xhtml for TOC, not embedded nav
+            hideNavigation: true,
+            // Hide nav buttons - EPUB reader handles navigation
+            hideNavButtons: true,
+            // Page counter (only if user has the option enabled)
+            addPagination: meta.addPagination === true,
+            totalPages: allPages.length,
+            currentPageIndex: pageIndex,
         });
 
         // Convert HTML to XHTML

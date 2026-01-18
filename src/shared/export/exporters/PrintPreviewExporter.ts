@@ -239,7 +239,7 @@ export class PrintPreviewExporter {
         const bodyContent = `<div class="exe-content exe-export pre-js">
 ${this.renderSinglePageNav(pages)}
 <main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
+<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
 ${sectionsHtml}
 </main>
 ${this.renderFooterSection({ license, userFooterContent })}
@@ -303,7 +303,7 @@ ${madeWithExeHtml}`;
 <head>
 ${this.generateHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
-<body class="exe-web-site exe-export exe-single-page exe-preview" lang="${lang}">
+<body class="exe-web-site exe-export exe-single-page exe-preview">
 <script>document.body.className+=" js"</script>
 ${finalBodyContent}
 ${this.generateScripts(themeName, usedIdevices, options, addAccessibilityToolbar, detectedLibraries)}

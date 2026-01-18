@@ -489,6 +489,42 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
         }
     });
 
+    // Track if we've already requested content refresh (to avoid spamming)
+    let contentRefreshRequested = false;
+    let contentRefreshRequestTime = 0;
+    const CONTENT_REFRESH_DEBOUNCE = 2000; // 2 seconds
+
+    /**
+     * Notify clients that content is needed
+     * This is called when a viewer request comes in but content is not loaded
+     */
+    async function requestContentRefresh() {
+        const now = Date.now();
+        // Debounce content refresh requests
+        if (contentRefreshRequested && (now - contentRefreshRequestTime) < CONTENT_REFRESH_DEBOUNCE) {
+            return;
+        }
+
+        contentRefreshRequested = true;
+        contentRefreshRequestTime = now;
+
+        try {
+            const clients = await self.clients.matchAll({ type: 'window' });
+            // eslint-disable-next-line no-console
+            console.log(`[Preview SW] Requesting content refresh from ${clients.length} client(s)`);
+
+            for (const client of clients) {
+                client.postMessage({
+                    type: 'CONTENT_NEEDED',
+                    reason: 'Service Worker restarted or content lost',
+                });
+            }
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('[Preview SW] Failed to request content refresh:', err);
+        }
+    }
+
     /**
      * Handle requests to the viewer path
      * @param {string} pathname - The request pathname
@@ -502,8 +538,13 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
         if (!contentReady || contentFiles.size === 0) {
             // eslint-disable-next-line no-console
             console.warn('[Preview SW] Content not ready yet');
+            // Request content refresh from clients
+            requestContentRefresh();
             return createNotReadyResponse();
         }
+
+        // Reset refresh request flag since we have content
+        contentRefreshRequested = false;
 
         // Look for the file in our content map
         const fileData = findFileInContent(contentFiles, filePath);

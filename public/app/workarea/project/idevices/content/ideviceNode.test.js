@@ -3394,27 +3394,28 @@ describe('IdeviceNode', () => {
             });
         });
 
-        it('creates asset and returns asset:// URLs with previewUrl when AssetManager is available', async () => {
+        it('creates asset and returns correct URLs', async () => {
+            // insertImage() returns asset://uuid.ext format
             const mockBlobUrl = 'blob:http://localhost:8080/mock-blob-id';
             const mockAssetManager = {
-                insertImage: vi.fn().mockResolvedValue('asset://test-uuid-1234/test.png'),
+                insertImage: vi.fn().mockResolvedValue('asset://abc123-def4-5678-90ab-cdef12345678.webm'),
                 resolveAssetURL: vi.fn().mockResolvedValue(mockBlobUrl),
             };
             eXeLearning.app.project._yjsBridge = { assetManager: mockAssetManager };
             eXeLearning.app.api.postUploadFileResource = vi.fn().mockResolvedValue({
                 savedPath: '/v1/files/perm/assets/project123',
-                savedFilename: 'test.png',
-                savedThumbnailName: 'thumb_test.png',
+                savedFilename: 'recording.webm',
+                savedThumbnailName: 'thumb_recording.webm',
             });
             idevice.odeIdeviceId = 'idevice-123';
 
-            const result = await idevice.apiUploadFile(base64Image, 'test.png');
+            const result = await idevice.apiUploadFile(base64Image, 'recording.webm');
 
             expect(mockAssetManager.insertImage).toHaveBeenCalled();
-            expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://test-uuid-1234/test.png');
-            expect(result.savedPath).toBe('asset://test-uuid-1234/');
-            expect(result.savedFilename).toBe('test.png');
-            expect(result.savedThumbnailName).toBe('test.png');
+            expect(mockAssetManager.resolveAssetURL).toHaveBeenCalledWith('asset://abc123-def4-5678-90ab-cdef12345678.webm');
+            expect(result.savedPath).toBe('');
+            expect(result.savedFilename).toBe('asset://abc123-def4-5678-90ab-cdef12345678.webm');
+            expect(result.savedThumbnailName).toBe('asset://abc123-def4-5678-90ab-cdef12345678.webm');
             expect(result.previewUrl).toBe(mockBlobUrl);
         });
 
