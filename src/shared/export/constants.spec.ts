@@ -381,7 +381,9 @@ describe('Constants', () => {
 
             it('should return default URL for empty license', () => {
                 expect(getLicenseUrl('')).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
-                expect(getLicenseUrl(null as unknown as string)).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+                expect(getLicenseUrl(null as unknown as string)).toBe(
+                    'https://creativecommons.org/licenses/by-sa/4.0/',
+                );
             });
 
             it('should return correct URL for CC BY-SA license', () => {
@@ -439,7 +441,9 @@ describe('Constants', () => {
                 expect(getLicenseUrl('some license with share alike')).toBe(
                     'https://creativecommons.org/licenses/by-sa/4.0/',
                 );
-                expect(getLicenseUrl('license with by-nc-nd')).toBe('https://creativecommons.org/licenses/by-nc-nd/4.0/');
+                expect(getLicenseUrl('license with by-nc-nd')).toBe(
+                    'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+                );
             });
         });
 
