@@ -31,10 +31,10 @@ export interface TranslationsResult {
  * Files/directories to exclude from translation scanning
  */
 const EXCLUDE_FILE_PATTERNS = [
-    /\.spec\.ts$/,              // Backend test files
-    /\.test\.ts$/,              // Backend test files
-    /\.test\.js$/,              // Frontend test files
-    /[\\/]+exe_math[\\/]+/,     // MathJax directory (has its own t() calls)
+    /\.spec\.ts$/, // Backend test files
+    /\.test\.ts$/, // Backend test files
+    /\.test\.js$/, // Frontend test files
+    /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
 ];
 
