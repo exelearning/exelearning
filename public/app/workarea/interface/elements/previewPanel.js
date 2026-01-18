@@ -8,6 +8,9 @@
 const Logger = window.AppLogger || console;
 
 export default class PreviewPanelManager {
+    /** Timeout for Service Worker status check (ms) */
+    static SW_STATUS_TIMEOUT = 2000;
+
     constructor() {
         // DOM Elements - Slide-out panel
         this.panel = document.getElementById('previewsidenav');
@@ -45,7 +48,99 @@ export default class PreviewPanelManager {
         this.bindEvents();
         this.subscribeToChanges();
         this.restorePinnedState();
+        this._setupVisibilityHandler();
         Logger.log('[PreviewPanel] Initialized');
+    }
+
+    /**
+     * Setup visibility change handler for tab switch recovery
+     * When the tab becomes visible after being hidden, the Service Worker
+     * may have lost its in-memory content (SW can be terminated by browser).
+     * This handler detects visibility changes and recovers the preview.
+     */
+    _setupVisibilityHandler() {
+        if (typeof document === 'undefined') return;
+
+        this._visibilityChangeHandler = async () => {
+            if (document.visibilityState === 'visible') {
+                Logger.log('[PreviewPanel] Tab became visible, checking preview state...');
+                await this._checkAndRecoverPreview();
+            }
+        };
+
+        document.addEventListener('visibilitychange', this._visibilityChangeHandler);
+        Logger.log('[PreviewPanel] Visibility handler installed');
+    }
+
+    /**
+     * Check if preview is currently visible (open or pinned)
+     * @returns {boolean}
+     */
+    _isPreviewVisible() {
+        return this.isOpen || this.isPinned;
+    }
+
+    /**
+     * Check if preview needs recovery and recover it if needed
+     * Called when tab becomes visible after being hidden
+     */
+    async _checkAndRecoverPreview() {
+        if (!this._isPreviewVisible()) {
+            Logger.log('[PreviewPanel] Preview not open, skipping recovery');
+            return;
+        }
+
+        // Check if Service Worker has content
+        const hasContent = await this._checkServiceWorkerContent();
+        if (hasContent) {
+            Logger.log('[PreviewPanel] Service Worker has content, no recovery needed');
+            return;
+        }
+
+        Logger.log('[PreviewPanel] Service Worker lost content, recovering preview...');
+        await this.refresh();
+    }
+
+    /**
+     * Check if Service Worker has content loaded
+     * @returns {Promise<boolean>} True if SW has content
+     */
+    async _checkServiceWorkerContent() {
+        try {
+            const sw = eXeLearning?.app?.getPreviewServiceWorker?.();
+            if (!sw) {
+                Logger.log('[PreviewPanel] No Service Worker available');
+                return false;
+            }
+            return await this._querySWStatus(sw);
+        } catch (error) {
+            Logger.error('[PreviewPanel] Error checking SW content:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Query Service Worker for content status via MessageChannel
+     * @param {ServiceWorker} sw - The Service Worker to query
+     * @returns {Promise<boolean>} True if SW has content loaded
+     */
+    _querySWStatus(sw) {
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            const timeout = setTimeout(() => {
+                Logger.log('[PreviewPanel] SW status check timed out');
+                resolve(false);
+            }, PreviewPanelManager.SW_STATUS_TIMEOUT);
+
+            channel.port1.onmessage = (event) => {
+                clearTimeout(timeout);
+                const { ready, fileCount } = event.data || {};
+                Logger.log(`[PreviewPanel] SW status: ready=${ready}, fileCount=${fileCount}`);
+                resolve(ready && fileCount > 0);
+            };
+
+            sw.postMessage({ type: 'GET_STATUS' }, [channel.port2]);
+        });
     }
 
     /**
@@ -85,7 +180,7 @@ export default class PreviewPanelManager {
             }
         });
 
-        // Listen for postMessage from preview iframe
+        // Listen for postMessage from preview iframe and Service Worker
         // NOTE: Legacy PDF blob and HTML link handlers removed in Phase 4 cleanup
         // (Service Worker serves content via HTTP, eliminating blob:// context issues)
         window.addEventListener('message', async (event) => {
@@ -103,6 +198,23 @@ export default class PreviewPanelManager {
                 } catch (err) {
                     Logger.error('[PreviewPanel] ELPX export failed:', err);
                     alert(_('Error generating ELPX file:') + ' ' + err.message);
+                }
+                return;
+            }
+
+            // Handle CONTENT_NEEDED requests from Service Worker
+            // This happens when the SW terminates and restarts without content
+            if (event.data?.type === 'CONTENT_NEEDED') {
+                Logger.log('[PreviewPanel] Service Worker requested content refresh:', event.data.reason);
+                if (this._isPreviewVisible()) {
+                    // Debounce to avoid multiple refreshes from multiple requests
+                    if (this._contentNeededRefreshTimer) {
+                        clearTimeout(this._contentNeededRefreshTimer);
+                    }
+                    this._contentNeededRefreshTimer = setTimeout(() => {
+                        this._contentNeededRefreshTimer = null;
+                        this.refresh();
+                    }, 100);
                 }
                 return;
             }
@@ -126,7 +238,7 @@ export default class PreviewPanelManager {
 
         // 1. Subscribe to structure changes (pages, blocks, components add/remove)
         this._unsubscribeStructure = bridge.onStructureChange(() => {
-            if (this.isOpen || this.isPinned) {
+            if (this._isPreviewVisible()) {
                 this.scheduleRefresh();
             }
         });
@@ -136,7 +248,7 @@ export default class PreviewPanelManager {
         if (documentManager?.ydoc) {
             this._onYdocUpdate = (update, origin) => {
                 // Only refresh if panel is visible
-                if (!this.isOpen && !this.isPinned) return;
+                if (!this._isPreviewVisible()) return;
 
                 // Skip system-originated updates (initial sync, etc.)
                 if (origin === 'system' || origin === 'initial') return;
@@ -629,9 +741,21 @@ export default class PreviewPanelManager {
             this._onYdocUpdate = null;
         }
 
+        // Remove visibility change handler
+        if (this._visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
+            this._visibilityChangeHandler = null;
+        }
+
         if (this.refreshDebounceTimer) {
             clearTimeout(this.refreshDebounceTimer);
             this.refreshDebounceTimer = null;
+        }
+
+        // Clear content needed refresh timer
+        if (this._contentNeededRefreshTimer) {
+            clearTimeout(this._contentNeededRefreshTimer);
+            this._contentNeededRefreshTimer = null;
         }
 
         // Revoke blob URLs
