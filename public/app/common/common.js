@@ -274,10 +274,7 @@ var $exe = {
             if (typeof window.mermaid === 'undefined') {
                 const script = document.createElement("script");
                 // Load Mermaid from the right path
-                if (document.body.hasAttribute('installation-type') && document.getElementById('workarea') && typeof(eXeLearning) == 'object') {
-                    this.engine = window.eXeLearning.config.basePath + '/' + eXeLearning.version + this.engine;
-                }
-                script.src = this.engine;
+                script.src = (document.body.hasAttribute('installation-type') && document.getElementById('workarea') && typeof(eXeLearning) == 'object') ? window.eXeLearning.config.basePath + '/' + eXeLearning.version + this.engine : this.engine;
                 script.async = true;
                 script.onload = function () {
                     mermaid = window.mermaid;
