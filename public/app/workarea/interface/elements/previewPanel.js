@@ -8,6 +8,9 @@
 const Logger = window.AppLogger || console;
 
 export default class PreviewPanelManager {
+    /** Timeout for Service Worker status check (ms) */
+    static SW_STATUS_TIMEOUT = 2000;
+
     constructor() {
         // DOM Elements - Slide-out panel
         this.panel = document.getElementById('previewsidenav');
@@ -70,12 +73,19 @@ export default class PreviewPanelManager {
     }
 
     /**
+     * Check if preview is currently visible (open or pinned)
+     * @returns {boolean}
+     */
+    _isPreviewVisible() {
+        return this.isOpen || this.isPinned;
+    }
+
+    /**
      * Check if preview needs recovery and recover it if needed
      * Called when tab becomes visible after being hidden
      */
     async _checkAndRecoverPreview() {
-        // Only recover if preview is open
-        if (!this.isOpen && !this.isPinned) {
+        if (!this._isPreviewVisible()) {
             Logger.log('[PreviewPanel] Preview not open, skipping recovery');
             return;
         }
@@ -97,34 +107,40 @@ export default class PreviewPanelManager {
      */
     async _checkServiceWorkerContent() {
         try {
-            const app = eXeLearning?.app;
-            const sw = app?.getPreviewServiceWorker?.();
+            const sw = eXeLearning?.app?.getPreviewServiceWorker?.();
             if (!sw) {
                 Logger.log('[PreviewPanel] No Service Worker available');
                 return false;
             }
-
-            // Create a MessageChannel for the response
-            return new Promise((resolve) => {
-                const channel = new MessageChannel();
-                const timeout = setTimeout(() => {
-                    Logger.log('[PreviewPanel] SW status check timed out');
-                    resolve(false);
-                }, 2000);
-
-                channel.port1.onmessage = (event) => {
-                    clearTimeout(timeout);
-                    const { ready, fileCount } = event.data || {};
-                    Logger.log(`[PreviewPanel] SW status: ready=${ready}, fileCount=${fileCount}`);
-                    resolve(ready && fileCount > 0);
-                };
-
-                sw.postMessage({ type: 'GET_STATUS' }, [channel.port2]);
-            });
+            return await this._querySWStatus(sw);
         } catch (error) {
             Logger.error('[PreviewPanel] Error checking SW content:', error);
             return false;
         }
+    }
+
+    /**
+     * Query Service Worker for content status via MessageChannel
+     * @param {ServiceWorker} sw - The Service Worker to query
+     * @returns {Promise<boolean>} True if SW has content loaded
+     */
+    _querySWStatus(sw) {
+        return new Promise((resolve) => {
+            const channel = new MessageChannel();
+            const timeout = setTimeout(() => {
+                Logger.log('[PreviewPanel] SW status check timed out');
+                resolve(false);
+            }, PreviewPanelManager.SW_STATUS_TIMEOUT);
+
+            channel.port1.onmessage = (event) => {
+                clearTimeout(timeout);
+                const { ready, fileCount } = event.data || {};
+                Logger.log(`[PreviewPanel] SW status: ready=${ready}, fileCount=${fileCount}`);
+                resolve(ready && fileCount > 0);
+            };
+
+            sw.postMessage({ type: 'GET_STATUS' }, [channel.port2]);
+        });
     }
 
     /**
@@ -190,8 +206,7 @@ export default class PreviewPanelManager {
             // This happens when the SW terminates and restarts without content
             if (event.data?.type === 'CONTENT_NEEDED') {
                 Logger.log('[PreviewPanel] Service Worker requested content refresh:', event.data.reason);
-                // Only refresh if preview is open
-                if (this.isOpen || this.isPinned) {
+                if (this._isPreviewVisible()) {
                     // Debounce to avoid multiple refreshes from multiple requests
                     if (this._contentNeededRefreshTimer) {
                         clearTimeout(this._contentNeededRefreshTimer);
@@ -223,7 +238,7 @@ export default class PreviewPanelManager {
 
         // 1. Subscribe to structure changes (pages, blocks, components add/remove)
         this._unsubscribeStructure = bridge.onStructureChange(() => {
-            if (this.isOpen || this.isPinned) {
+            if (this._isPreviewVisible()) {
                 this.scheduleRefresh();
             }
         });
@@ -233,7 +248,7 @@ export default class PreviewPanelManager {
         if (documentManager?.ydoc) {
             this._onYdocUpdate = (update, origin) => {
                 // Only refresh if panel is visible
-                if (!this.isOpen && !this.isPinned) return;
+                if (!this._isPreviewVisible()) return;
 
                 // Skip system-originated updates (initial sync, etc.)
                 if (origin === 'system' || origin === 'initial') return;

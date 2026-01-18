@@ -1173,16 +1173,13 @@ class YjsDocumentManager {
    */
   _handleVisibilityChange() {
     if (document.visibilityState !== 'visible') return;
+    if (!this.wsProvider) return;
 
-    Logger.log('[YjsDocumentManager] Tab became visible, checking connection...');
-
-    // Check if WebSocket is disconnected and needs reconnection
-    if (this.wsProvider && !this.wsProvider.wsconnected) {
-      Logger.log('[YjsDocumentManager] WebSocket disconnected, forcing immediate reconnect...');
+    // Only take action and log when reconnection is needed
+    if (!this.wsProvider.wsconnected) {
+      Logger.log('[YjsDocumentManager] Tab visible, reconnecting WebSocket...');
       this.wsProvider.connect();
       this.emit('connectionChange', { connected: false, reconnecting: true });
-    } else if (this.wsProvider?.wsconnected) {
-      Logger.log('[YjsDocumentManager] WebSocket still connected');
     }
   }
 

@@ -1,5 +1,45 @@
 import PreviewPanelManager from './previewPanel.js';
 
+/**
+ * Create a mock MessageChannel that captures port1.onmessage
+ * @param {Function} onPostMessage - Callback when postMessage is called, receives (message, triggerResponse)
+ * @returns {{ restore: Function }} Object with restore function for cleanup
+ */
+function mockMessageChannel(onPostMessage) {
+  let capturedHandler = null;
+  const mockPort1 = {
+    set onmessage(handler) { capturedHandler = handler; },
+    get onmessage() { return capturedHandler; },
+  };
+  const mockPort2 = {};
+  const originalMessageChannel = globalThis.MessageChannel;
+
+  globalThis.MessageChannel = function() {
+    this.port1 = mockPort1;
+    this.port2 = mockPort2;
+  };
+
+  const triggerResponse = (data) => {
+    setTimeout(() => {
+      if (capturedHandler) {
+        capturedHandler({ data });
+      }
+    }, 0);
+  };
+
+  // Call onPostMessage with triggerResponse if provided
+  if (onPostMessage) {
+    onPostMessage(triggerResponse);
+  }
+
+  return {
+    triggerResponse,
+    restore: () => {
+      globalThis.MessageChannel = originalMessageChannel;
+    },
+  };
+}
+
 describe('PreviewPanelManager', () => {
   let manager;
   let mockElements;
@@ -116,6 +156,36 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('visibility handler for tab switch recovery', () => {
+    describe('_isPreviewVisible', () => {
+      it('should return true when open', () => {
+        manager.isOpen = true;
+        manager.isPinned = false;
+
+        expect(manager._isPreviewVisible()).toBe(true);
+      });
+
+      it('should return true when pinned', () => {
+        manager.isOpen = false;
+        manager.isPinned = true;
+
+        expect(manager._isPreviewVisible()).toBe(true);
+      });
+
+      it('should return true when both open and pinned', () => {
+        manager.isOpen = true;
+        manager.isPinned = true;
+
+        expect(manager._isPreviewVisible()).toBe(true);
+      });
+
+      it('should return false when neither open nor pinned', () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+
+        expect(manager._isPreviewVisible()).toBe(false);
+      });
+    });
+
     describe('_setupVisibilityHandler', () => {
       it('should add visibilitychange event listener', () => {
         const addEventSpy = vi.spyOn(document, 'addEventListener');
@@ -194,28 +264,10 @@ describe('PreviewPanelManager', () => {
       });
 
       it('should return true when SW reports ready with files', async () => {
-        // Mock MessageChannel to capture port1's onmessage handler
-        let capturedPort1Handler = null;
-        const mockPort1 = {
-          set onmessage(handler) { capturedPort1Handler = handler; },
-          get onmessage() { return capturedPort1Handler; },
-        };
-        const mockPort2 = {};
-        const originalMessageChannel = globalThis.MessageChannel;
-        globalThis.MessageChannel = function() {
-          this.port1 = mockPort1;
-          this.port2 = mockPort2;
-        };
-
+        const channelMock = mockMessageChannel();
         const mockSW = {
-          postMessage: vi.fn((msg, ports) => {
-            // Simulate SW responding via the port
-            // The SW would call ports[0].postMessage() which triggers port1.onmessage
-            setTimeout(() => {
-              if (capturedPort1Handler) {
-                capturedPort1Handler({ data: { ready: true, fileCount: 5 } });
-              }
-            }, 0);
+          postMessage: vi.fn(() => {
+            channelMock.triggerResponse({ ready: true, fileCount: 5 });
           }),
         };
         window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
@@ -223,29 +275,14 @@ describe('PreviewPanelManager', () => {
         const result = await manager._checkServiceWorkerContent();
 
         expect(result).toBe(true);
-        globalThis.MessageChannel = originalMessageChannel;
+        channelMock.restore();
       });
 
       it('should return false when SW reports not ready', async () => {
-        let capturedPort1Handler = null;
-        const mockPort1 = {
-          set onmessage(handler) { capturedPort1Handler = handler; },
-          get onmessage() { return capturedPort1Handler; },
-        };
-        const mockPort2 = {};
-        const originalMessageChannel = globalThis.MessageChannel;
-        globalThis.MessageChannel = function() {
-          this.port1 = mockPort1;
-          this.port2 = mockPort2;
-        };
-
+        const channelMock = mockMessageChannel();
         const mockSW = {
-          postMessage: vi.fn((msg, ports) => {
-            setTimeout(() => {
-              if (capturedPort1Handler) {
-                capturedPort1Handler({ data: { ready: false, fileCount: 0 } });
-              }
-            }, 0);
+          postMessage: vi.fn(() => {
+            channelMock.triggerResponse({ ready: false, fileCount: 0 });
           }),
         };
         window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
@@ -253,7 +290,7 @@ describe('PreviewPanelManager', () => {
         const result = await manager._checkServiceWorkerContent();
 
         expect(result).toBe(false);
-        globalThis.MessageChannel = originalMessageChannel;
+        channelMock.restore();
       });
 
       it('should return false on timeout', async () => {
@@ -265,7 +302,8 @@ describe('PreviewPanelManager', () => {
 
         const resultPromise = manager._checkServiceWorkerContent();
 
-        vi.advanceTimersByTime(2100); // Exceed 2000ms timeout
+        // Exceed the static timeout constant
+        vi.advanceTimersByTime(PreviewPanelManager.SW_STATUS_TIMEOUT + 100);
 
         const result = await resultPromise;
         expect(result).toBe(false);
