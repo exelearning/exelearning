@@ -77,6 +77,8 @@ class YjsDocumentManager {
     this._beforeUnloadHandler = this._handleBeforeUnload.bind(this);
     // Bind unload handler (always fires, even if beforeunload is cancelled)
     this._unloadHandler = () => this._clearAwarenessOnUnload();
+    // Bind visibility change handler for tab switch recovery
+    this._visibilityChangeHandler = this._handleVisibilityChange.bind(this);
   }
 
   /**
@@ -223,6 +225,8 @@ class YjsDocumentManager {
     window.addEventListener('beforeunload', this._beforeUnloadHandler);
     // Setup unload handler to clear awareness (always fires, even if beforeunload cancelled)
     window.addEventListener('unload', this._unloadHandler);
+    // Setup visibility change handler for tab switch recovery
+    document.addEventListener('visibilitychange', this._visibilityChangeHandler);
 
     this.initialized = true;
     this.emit('sync', { synced: true });
@@ -1162,6 +1166,27 @@ class YjsDocumentManager {
   }
 
   /**
+   * Handle visibility change event - reconnect WebSocket when tab becomes visible
+   * When a browser tab is hidden for an extended period (~50+ seconds),
+   * the browser may terminate the WebSocket connection to save resources.
+   * This handler forces immediate reconnection when the tab becomes visible again.
+   */
+  _handleVisibilityChange() {
+    if (document.visibilityState !== 'visible') return;
+
+    Logger.log('[YjsDocumentManager] Tab became visible, checking connection...');
+
+    // Check if WebSocket is disconnected and needs reconnection
+    if (this.wsProvider && !this.wsProvider.wsconnected) {
+      Logger.log('[YjsDocumentManager] WebSocket disconnected, forcing immediate reconnect...');
+      this.wsProvider.connect();
+      this.emit('connectionChange', { connected: false, reconnecting: true });
+    } else if (this.wsProvider?.wsconnected) {
+      Logger.log('[YjsDocumentManager] WebSocket still connected');
+    }
+  }
+
+  /**
    * Clear awareness state on page unload
    * This notifies other clients immediately that this user has disconnected
    */
@@ -1300,9 +1325,10 @@ class YjsDocumentManager {
   async destroy(options = {}) {
     const { saveBeforeDestroy = false } = options;
 
-    // Remove beforeunload and unload handlers
+    // Remove beforeunload, unload, and visibility change handlers
     window.removeEventListener('beforeunload', this._beforeUnloadHandler);
     window.removeEventListener('unload', this._unloadHandler);
+    document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
 
     // Save if requested and dirty
     if (saveBeforeDestroy && this.isDirty && !this.config.offline) {

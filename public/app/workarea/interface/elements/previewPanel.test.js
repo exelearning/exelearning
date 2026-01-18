@@ -104,12 +104,242 @@ describe('PreviewPanelManager', () => {
       const bindSpy = vi.spyOn(manager, 'bindEvents');
       const subscribeSpy = vi.spyOn(manager, 'subscribeToChanges');
       const restoreSpy = vi.spyOn(manager, 'restorePinnedState').mockImplementation(() => Promise.resolve());
+      const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler').mockImplementation(() => {});
 
       manager.init();
 
       expect(bindSpy).toHaveBeenCalled();
       expect(subscribeSpy).toHaveBeenCalled();
       expect(restoreSpy).toHaveBeenCalled();
+      expect(visibilitySpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('visibility handler for tab switch recovery', () => {
+    describe('_setupVisibilityHandler', () => {
+      it('should add visibilitychange event listener', () => {
+        const addEventSpy = vi.spyOn(document, 'addEventListener');
+        manager._setupVisibilityHandler();
+
+        expect(addEventSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+        expect(manager._visibilityChangeHandler).toBeDefined();
+      });
+
+      it('should call _checkAndRecoverPreview when tab becomes visible', async () => {
+        const checkRecoverSpy = vi.spyOn(manager, '_checkAndRecoverPreview').mockResolvedValue();
+        manager._setupVisibilityHandler();
+
+        // Simulate tab becoming visible
+        Object.defineProperty(document, 'visibilityState', {
+          value: 'visible',
+          writable: true,
+        });
+
+        await manager._visibilityChangeHandler();
+
+        expect(checkRecoverSpy).toHaveBeenCalled();
+      });
+    });
+
+    describe('_checkAndRecoverPreview', () => {
+      it('should not recover when preview is not open', async () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+        const checkSWSpy = vi.spyOn(manager, '_checkServiceWorkerContent');
+
+        await manager._checkAndRecoverPreview();
+
+        expect(checkSWSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not recover when SW has content', async () => {
+        manager.isOpen = true;
+        vi.spyOn(manager, '_checkServiceWorkerContent').mockResolvedValue(true);
+        const refreshSpy = vi.spyOn(manager, 'refresh');
+
+        await manager._checkAndRecoverPreview();
+
+        expect(refreshSpy).not.toHaveBeenCalled();
+      });
+
+      it('should refresh when SW has lost content', async () => {
+        manager.isOpen = true;
+        vi.spyOn(manager, '_checkServiceWorkerContent').mockResolvedValue(false);
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        await manager._checkAndRecoverPreview();
+
+        expect(refreshSpy).toHaveBeenCalled();
+      });
+
+      it('should recover when pinned', async () => {
+        manager.isOpen = false;
+        manager.isPinned = true;
+        vi.spyOn(manager, '_checkServiceWorkerContent').mockResolvedValue(false);
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        await manager._checkAndRecoverPreview();
+
+        expect(refreshSpy).toHaveBeenCalled();
+      });
+    });
+
+    describe('_checkServiceWorkerContent', () => {
+      it('should return false when no SW available', async () => {
+        window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(null);
+
+        const result = await manager._checkServiceWorkerContent();
+
+        expect(result).toBe(false);
+      });
+
+      it('should return true when SW reports ready with files', async () => {
+        // Mock MessageChannel to capture port1's onmessage handler
+        let capturedPort1Handler = null;
+        const mockPort1 = {
+          set onmessage(handler) { capturedPort1Handler = handler; },
+          get onmessage() { return capturedPort1Handler; },
+        };
+        const mockPort2 = {};
+        const originalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function() {
+          this.port1 = mockPort1;
+          this.port2 = mockPort2;
+        };
+
+        const mockSW = {
+          postMessage: vi.fn((msg, ports) => {
+            // Simulate SW responding via the port
+            // The SW would call ports[0].postMessage() which triggers port1.onmessage
+            setTimeout(() => {
+              if (capturedPort1Handler) {
+                capturedPort1Handler({ data: { ready: true, fileCount: 5 } });
+              }
+            }, 0);
+          }),
+        };
+        window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
+
+        const result = await manager._checkServiceWorkerContent();
+
+        expect(result).toBe(true);
+        globalThis.MessageChannel = originalMessageChannel;
+      });
+
+      it('should return false when SW reports not ready', async () => {
+        let capturedPort1Handler = null;
+        const mockPort1 = {
+          set onmessage(handler) { capturedPort1Handler = handler; },
+          get onmessage() { return capturedPort1Handler; },
+        };
+        const mockPort2 = {};
+        const originalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function() {
+          this.port1 = mockPort1;
+          this.port2 = mockPort2;
+        };
+
+        const mockSW = {
+          postMessage: vi.fn((msg, ports) => {
+            setTimeout(() => {
+              if (capturedPort1Handler) {
+                capturedPort1Handler({ data: { ready: false, fileCount: 0 } });
+              }
+            }, 0);
+          }),
+        };
+        window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
+
+        const result = await manager._checkServiceWorkerContent();
+
+        expect(result).toBe(false);
+        globalThis.MessageChannel = originalMessageChannel;
+      });
+
+      it('should return false on timeout', async () => {
+        vi.useFakeTimers();
+        const mockSW = {
+          postMessage: vi.fn(), // Never calls callback
+        };
+        window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockReturnValue(mockSW);
+
+        const resultPromise = manager._checkServiceWorkerContent();
+
+        vi.advanceTimersByTime(2100); // Exceed 2000ms timeout
+
+        const result = await resultPromise;
+        expect(result).toBe(false);
+
+        vi.useRealTimers();
+      });
+
+      it('should return false on error', async () => {
+        window.eXeLearning.app.getPreviewServiceWorker = vi.fn().mockImplementation(() => {
+          throw new Error('SW error');
+        });
+
+        const result = await manager._checkServiceWorkerContent();
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('CONTENT_NEEDED message handling', () => {
+      it('should refresh when CONTENT_NEEDED received and preview is open', async () => {
+        vi.useFakeTimers();
+        manager.bindEvents();
+        manager.isOpen = true;
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        const event = new MessageEvent('message', {
+          data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
+        });
+        window.dispatchEvent(event);
+
+        vi.advanceTimersByTime(150); // Debounce timeout
+
+        expect(refreshSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+
+      it('should not refresh when CONTENT_NEEDED received but preview is closed', async () => {
+        vi.useFakeTimers();
+        manager.bindEvents();
+        manager.isOpen = false;
+        manager.isPinned = false;
+        const refreshSpy = vi.spyOn(manager, 'refresh');
+
+        const event = new MessageEvent('message', {
+          data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
+        });
+        window.dispatchEvent(event);
+
+        vi.advanceTimersByTime(150);
+
+        expect(refreshSpy).not.toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+
+      it('should debounce multiple CONTENT_NEEDED messages', async () => {
+        vi.useFakeTimers();
+        manager.bindEvents();
+        manager.isPinned = true;
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        // Send multiple messages rapidly
+        for (let i = 0; i < 5; i++) {
+          const event = new MessageEvent('message', {
+            data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
+          });
+          window.dispatchEvent(event);
+        }
+
+        vi.advanceTimersByTime(150);
+
+        // Should only refresh once due to debouncing
+        expect(refreshSpy).toHaveBeenCalledTimes(1);
+        vi.useRealTimers();
+      });
     });
   });
 
@@ -307,6 +537,26 @@ describe('PreviewPanelManager', () => {
       expect(unsubscribeSpy).toHaveBeenCalled();
       expect(mockYdoc.off).toHaveBeenCalledWith('update', expect.any(Function));
       expect(global.URL.revokeObjectURL).toHaveBeenCalledTimes(2);
+    });
+
+    it('should remove visibility change handler', () => {
+      const removeEventSpy = vi.spyOn(document, 'removeEventListener');
+      manager._visibilityChangeHandler = vi.fn();
+
+      manager.destroy();
+
+      expect(removeEventSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function));
+      expect(manager._visibilityChangeHandler).toBeNull();
+    });
+
+    it('should clear content needed refresh timer', () => {
+      vi.useFakeTimers();
+      manager._contentNeededRefreshTimer = setTimeout(() => {}, 1000);
+
+      manager.destroy();
+
+      expect(manager._contentNeededRefreshTimer).toBeNull();
+      vi.useRealTimers();
     });
   });
 
