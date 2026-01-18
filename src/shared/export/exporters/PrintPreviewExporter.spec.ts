@@ -147,7 +147,8 @@ describe('PrintPreviewExporter', () => {
 
         it('should include package header with project title', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('class="package-header package-node"');
+            expect(result.html).toContain('class="package-header"');
+            expect(result.html).not.toContain('package-node');
             expect(result.html).toContain('class="package-title">Test Project</h1>');
         });
 

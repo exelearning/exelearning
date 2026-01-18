@@ -262,7 +262,7 @@ export class ImsExporter extends Html5Exporter {
             addPagination: true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
-            bodyClass: 'exe-export exe-web-site exe-ims',
+            bodyClass: 'exe-export exe-ims',
             // Hide navigation elements - LMS handles navigation in IMS
             hideNavigation: true,
             hideNavButtons: true,
