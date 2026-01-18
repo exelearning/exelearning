@@ -1553,7 +1553,7 @@ export default class NavbarFile {
             fileInput = document.createElement('input');
             fileInput.type = 'file';
             fileInput.id = 'static-open-file-input';
-            fileInput.accept = '.elpx,.elp';
+            fileInput.accept = '.elpx,.elp,.zip';
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 

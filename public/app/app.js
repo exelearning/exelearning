@@ -58,6 +58,11 @@ export default class App {
         // Initialize API (loads static data if in static mode)
         await this.api.init();
 
+        // Register static mode adapters if needed
+        if (this.runtimeConfig?.isStaticMode()) {
+            await this._registerStaticModeAdapters();
+        }
+
         // Register preview Service Worker (for unified preview/export rendering)
         this.registerPreviewServiceWorker();
 
@@ -577,6 +582,26 @@ export default class App {
             remoteStorage: this.capabilities.storage.remote,
             auth: this.capabilities.auth.required,
         });
+    }
+
+    /**
+     * Register adapters for static/offline mode
+     * These adapters provide client-side implementations for features
+     * that normally require server API calls
+     * @private
+     */
+    async _registerStaticModeAdapters() {
+        try {
+            const { default: LinkValidationAdapter } = await import(
+                './adapters/LinkValidationAdapter.js'
+            );
+            this.api.setAdapters({
+                linkValidation: new LinkValidationAdapter(),
+            });
+            console.log('[App] Registered static mode adapters');
+        } catch (error) {
+            console.error('[App] Failed to register static mode adapters:', error);
+        }
     }
 
     /**
