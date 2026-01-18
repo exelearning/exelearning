@@ -544,6 +544,22 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         // Press Ctrl+Z to undo
         await pressUndo(page);
 
+        // Wait for icon to revert (poll for the change - should no longer have an img, should have svg)
+        await page.waitForFunction(
+            () => {
+                const block = document.querySelector('#node-content article.box');
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                if (!iconBtn) return false;
+                // After undo, the icon should be empty (no img, has exe-no-icon class or svg)
+                const hasImg = iconBtn.querySelector('img') !== null;
+                const hasEmptyClass = iconBtn.classList.contains('exe-no-icon');
+                const hasSvg = iconBtn.querySelector('svg') !== null;
+                return !hasImg && (hasEmptyClass || hasSvg);
+            },
+            { timeout: 10000 },
+        );
+
         // Verify icon reverted visually (should be empty again)
         const hasEmptyIconAfterUndo = await blockHasEmptyIcon(page, 0);
         expect(hasEmptyIconAfterUndo).toBe(true);
