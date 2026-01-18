@@ -12,7 +12,7 @@
     (function() {
         var basePath = '';
         try {
-            basePath = (parent && parent.eXeLearning && parent.eXeLearning.symfony && parent.eXeLearning.symfony.basePath) || '';
+            basePath = (parent && parent.eXeLearning && parent.eXeLearning.config && parent.eXeLearning.config.basePath) || '';
         } catch(e) {}
         document.write('<script src="' + basePath + '/libs/jquery/jquery.min.js"><\/script>');
     })();
