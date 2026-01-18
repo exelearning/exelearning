@@ -499,7 +499,20 @@ class ResourceFetcher {
       }
     }
 
-    // 3. Try to load from iDevices bundle (all iDevices in one ZIP)
+    // 3. In static mode, fetch from local iDevices bundle
+    if (this.isStaticMode) {
+      console.log(`[ResourceFetcher] 📁 Static mode: Loading iDevice '${ideviceType}' from local bundle`);
+      const ideviceFiles = await this.fetchIdeviceStatic(ideviceType);
+      if (ideviceFiles.size > 0) {
+        this.cache.set(cacheKey, ideviceFiles);
+        return ideviceFiles;
+      }
+      // In static mode, return empty Map if not found in bundle
+      this.cache.set(cacheKey, ideviceFiles);
+      return ideviceFiles;
+    }
+
+    // 4. Try to load from iDevices bundle (all iDevices in one ZIP) - server mode
     if (this.bundlesAvailable && !this.cache.has('idevices:all')) {
       await this.loadIdevicesBundle();
     }
@@ -509,7 +522,7 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
-    // 4. Fallback to individual file fetches
+    // 5. Fallback to individual file fetches (server mode only)
     Logger.log(`[ResourceFetcher] Fetching iDevice '${ideviceType}' from server...`);
     const ideviceFiles = await this.fetchIdeviceFallback(ideviceType);
 
@@ -613,6 +626,55 @@ class ResourceFetcher {
     }
 
     return ideviceFiles;
+  }
+
+  /**
+   * Static mode: Fetch iDevice files from local static bundle ZIP
+   * In static mode, all iDevices are in ${basePath}/bundles/idevices.zip
+   * @param {string} ideviceType
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchIdeviceStatic(ideviceType) {
+    // Load the full iDevices bundle if not already loaded
+    if (!this.cache.has('idevices:all')) {
+      const bundleUrl = `${this.basePath}/bundles/idevices.zip`;
+      console.log('[ResourceFetcher] 📦 Static mode: Loading iDevices from bundle:', bundleUrl);
+
+      const allFiles = await this.fetchBundle(bundleUrl);
+
+      if (!allFiles || allFiles.size === 0) {
+        this.cache.set('idevices:all', new Map());
+        console.warn('[ResourceFetcher] Static iDevices bundle not found or empty');
+      } else {
+        // Distribute files to individual iDevice caches
+        const ideviceFilesMap = new Map();
+
+        for (const [filePath, blob] of allFiles) {
+          const parts = filePath.split('/');
+          if (parts.length < 2) continue;
+
+          const ideviceName = parts[0];
+          const relativePath = parts.slice(1).join('/');
+
+          if (!ideviceFilesMap.has(ideviceName)) {
+            ideviceFilesMap.set(ideviceName, new Map());
+          }
+          ideviceFilesMap.get(ideviceName).set(relativePath, blob);
+        }
+
+        // Store in memory cache
+        for (const [ideviceName, files] of ideviceFilesMap) {
+          this.cache.set(`idevice:${ideviceName}`, files);
+        }
+
+        this.cache.set('idevices:all', ideviceFilesMap);
+        Logger.log(`[ResourceFetcher] Static iDevices loaded from bundle (${ideviceFilesMap.size} iDevices)`);
+      }
+    }
+
+    // Return the specific iDevice from cache
+    const cacheKey = `idevice:${ideviceType}`;
+    return this.cache.get(cacheKey) || new Map();
   }
 
   /**
@@ -986,6 +1048,35 @@ class ResourceFetcher {
     if (this.cache.has(cacheKey)) {
       Logger.log(`[ResourceFetcher] Library '${libraryName}' loaded from cache`);
       return this.cache.get(cacheKey);
+    }
+
+    // Static mode: Load from common.zip bundle which contains directory-based libraries
+    if (this.isStaticMode) {
+      console.log(`[ResourceFetcher] 📁 Static mode: Loading library '${libraryName}' from common bundle`);
+
+      // Ensure common bundle is loaded
+      if (!this.cache.has('common:all')) {
+        const bundleUrl = `${this.basePath}/bundles/common.zip`;
+        console.log('[ResourceFetcher] 📦 Static mode: Loading common bundle:', bundleUrl);
+        const commonFiles = await this.fetchBundle(bundleUrl);
+        this.cache.set('common:all', commonFiles || new Map());
+      }
+
+      // Extract files for this library from the common bundle
+      const commonFiles = this.cache.get('common:all');
+      const libFiles = new Map();
+      const prefix = `${libraryName}/`;
+
+      for (const [filePath, blob] of commonFiles) {
+        if (filePath.startsWith(prefix)) {
+          // Store with full path (e.g., 'exe_lightbox/exe_lightbox.js')
+          libFiles.set(filePath, blob);
+        }
+      }
+
+      this.cache.set(cacheKey, libFiles);
+      Logger.log(`[ResourceFetcher] Static library '${libraryName}' loaded (${libFiles.size} files)`);
+      return libFiles;
     }
 
     Logger.log(`[ResourceFetcher] Fetching library directory '${libraryName}' from server...`);
