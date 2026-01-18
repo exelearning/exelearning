@@ -16,7 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass } from '../constants';
+import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
 
 /**
  * PageRenderer class
@@ -707,7 +707,9 @@ ${madeWithExeHtml}
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+        const licenseText = formatLicenseText(license);
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${licenseText}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -841,9 +843,11 @@ ${userFooterHtml}</div></footer>`;
             usedIdevices?: string[];
             author?: string;
             license?: string;
+            licenseUrl?: string;
             faviconPath?: string;
             faviconType?: string;
             addExeLink?: boolean;
+            userFooterContent?: string;
         } = {},
     ): string {
         const {
@@ -852,11 +856,12 @@ ${userFooterHtml}</div></footer>`;
             language = 'en',
             customStyles = '',
             usedIdevices = [],
-            author = '',
-            license = 'CC-BY-SA',
+            license = 'creative commons: attribution - share alike 4.0',
+            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
+            userFooterContent = '',
         } = options;
 
         let contentHtml = '';
@@ -918,7 +923,7 @@ ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 <header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderLicense({ author, license })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
 ${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>

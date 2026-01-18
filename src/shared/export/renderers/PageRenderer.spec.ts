@@ -533,7 +533,7 @@ describe('PageRenderer', () => {
     describe('renderFooterSection', () => {
         it('should render footer with license', () => {
             const html = renderer.renderFooterSection({
-                license: 'Creative Commons',
+                license: 'CC-BY-SA',
                 licenseUrl: 'https://example.com/license',
             });
 
@@ -541,7 +541,8 @@ describe('PageRenderer', () => {
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            expect(html).toContain('class="license">Creative Commons</a>');
+            // formatLicenseText converts CC-BY-SA to full display text
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
             expect(html).toContain('href="https://example.com/license"');
         });
 
