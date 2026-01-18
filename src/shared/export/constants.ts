@@ -429,9 +429,6 @@ export function getLicenseClass(licenseName: string): string {
         return 'cc cc-by-nc';
     }
     if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
-        return 'cc cc-by-nc'; // Wait, this logic is flawed. 'non derived' alone is by-nd
-    }
-    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
         return 'cc cc-by-nd';
     }
     if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
@@ -440,11 +437,86 @@ export function getLicenseClass(licenseName: string): string {
     if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
         return 'cc cc-0';
     }
-    if (cleanName.includes('creative commons') || cleanName.includes('attribution')) {
+    // CC-BY (attribution only) or full names containing these keywords
+    if (cleanName.includes('creative commons') || cleanName.includes('attribution') || cleanName === 'cc-by') {
         return 'cc';
     }
 
     return 'cc cc-by-sa';
+}
+
+/**
+ * Map of short license codes to full display text
+ * This normalizes various license codes to the canonical display format
+ */
+const LICENSE_DISPLAY_MAP: Record<string, string> = {
+    // Short codes
+    'cc-by': 'creative commons: attribution 4.0',
+    'cc-by-sa': 'creative commons: attribution - share alike 4.0',
+    'cc-by-nd': 'creative commons: attribution - non derived work 4.0',
+    'cc-by-nc': 'creative commons: attribution - non commercial 4.0',
+    'cc-by-nc-sa': 'creative commons: attribution - non commercial - share alike 4.0',
+    'cc-by-nc-nd': 'creative commons: attribution - non derived work - non commercial 4.0',
+    'cc0': 'public domain',
+    'cc-0': 'public domain',
+    // Already full names (for case normalization)
+    'creative commons: attribution 4.0': 'creative commons: attribution 4.0',
+    'creative commons: attribution - share alike 4.0': 'creative commons: attribution - share alike 4.0',
+    'creative commons: attribution - non derived work 4.0': 'creative commons: attribution - non derived work 4.0',
+    'creative commons: attribution - non commercial 4.0': 'creative commons: attribution - non commercial 4.0',
+    'creative commons: attribution - non commercial - share alike 4.0':
+        'creative commons: attribution - non commercial - share alike 4.0',
+    'creative commons: attribution - non derived work - non commercial 4.0':
+        'creative commons: attribution - non derived work - non commercial 4.0',
+    'public domain': 'public domain',
+    'propietary license': 'propietary license',
+};
+
+/**
+ * Format license text for display in footer
+ * Converts short license codes (e.g., "CC-BY-SA") to full display text
+ * (e.g., "creative commons: attribution - share alike 4.0")
+ * @param licenseName - The license name from metadata (can be short code or full name)
+ * @returns Formatted license text for display
+ */
+export function formatLicenseText(licenseName: string): string {
+    if (!licenseName) return 'creative commons: attribution - share alike 4.0';
+
+    const cleaned = licenseName.toLowerCase().trim();
+
+    // Direct lookup in display map
+    if (LICENSE_DISPLAY_MAP[cleaned]) {
+        return LICENSE_DISPLAY_MAP[cleaned];
+    }
+
+    // Fallback: try to match by keywords for partial matches
+    if (cleaned.includes('by-nc-nd') || (cleaned.includes('non derived') && cleaned.includes('non commercial'))) {
+        return 'creative commons: attribution - non derived work - non commercial 4.0';
+    }
+    if (cleaned.includes('by-nc-sa') || (cleaned.includes('non commercial') && cleaned.includes('share alike'))) {
+        return 'creative commons: attribution - non commercial - share alike 4.0';
+    }
+    if (cleaned.includes('by-nc') || cleaned.includes('non commercial')) {
+        return 'creative commons: attribution - non commercial 4.0';
+    }
+    if (cleaned.includes('by-nd') || cleaned.includes('non derived')) {
+        return 'creative commons: attribution - non derived work 4.0';
+    }
+    if (cleaned.includes('by-sa') || cleaned.includes('share alike')) {
+        return 'creative commons: attribution - share alike 4.0';
+    }
+    if (cleaned.includes('public domain') || cleaned.includes('cc0') || cleaned.includes('cc-0')) {
+        return 'public domain';
+    }
+    if (cleaned.includes('propietary')) {
+        return 'propietary license';
+    }
+    if (cleaned.includes('creative commons') || cleaned.includes('attribution') || cleaned.includes('cc-by')) {
+        return 'creative commons: attribution 4.0';
+    }
+
+    // Default fallback
+    return 'creative commons: attribution - share alike 4.0';
 }
 
 // =============================================================================

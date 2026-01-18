@@ -296,11 +296,11 @@ describe('ImsExporter', () => {
             expect(html).not.toContain('unloadPage');
         });
 
-        it('should have exe-ims class', () => {
+        it('should have exe-ims class (but not exe-web-site)', () => {
             const html = exporter.generateImsPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
 
-            expect(html).toContain('exe-web-site');
             expect(html).toContain('exe-ims');
+            expect(html).not.toContain('exe-web-site');
         });
 
         it('should include page content', () => {
