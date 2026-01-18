@@ -237,10 +237,10 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('exe-web-site');
         });
 
-        it('should have lang attribute on body', async () => {
+        it('should have lang attribute on html element', async () => {
             if (!exportedIndexHtml) return;
 
-            expect(exportedIndexHtml).toMatch(/<body[^>]*lang="/);
+            expect(exportedIndexHtml).toMatch(/<html[^>]*lang="/);
         });
     });
 
