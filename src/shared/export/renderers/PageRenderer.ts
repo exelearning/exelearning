@@ -16,7 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass } from '../constants';
+import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
 
 /**
  * PageRenderer class
@@ -144,7 +144,7 @@ export class PageRenderer {
 <head>
 ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
 </head>
-<body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
+<body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
@@ -370,7 +370,7 @@ ${madeWithExeHtml}
         const isFirstPage = page.id === allPages[0]?.id;
 
         // Build li class attribute
-        const liClass = isCurrent ? ' id="active" class="active"' : isAncestor ? ' class="current-page-parent"' : '';
+        const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
         const link = this.getPageLink(page, allPages, basePath, pageFilenameMap);
 
         // Build link classes: main-node for first page, daddy/no-ch for children, active if current
@@ -561,8 +561,9 @@ ${madeWithExeHtml}
 
         // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
-        return `${pageCounterHtml}<header class="main-header">
-<div class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
+        // Note: page-counter is inside main-header for CSS compatibility with legacy themes
+        return `<header class="main-header">${pageCounterHtml}
+<div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
 <div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
@@ -658,28 +659,22 @@ ${madeWithExeHtml}
 
         const parts: string[] = ['<div class="nav-buttons">'];
 
-        // Previous button - English defaults; runtime translation via data-i18n attribute
+        // Previous button
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
             parts.push(
-                `<a href="${link}" title="Previous" class="nav-button nav-button-left" data-i18n="previous"><span>Previous</span></a>`,
+                `<a href="${link}" title="Previous" class="nav-button nav-button-left"><span>Previous</span></a>`,
             );
         } else {
-            parts.push(
-                '<span class="nav-button nav-button-left" aria-hidden="true" data-i18n="previous"><span>Previous</span></span>',
-            );
+            parts.push('<span class="nav-button nav-button-left" aria-hidden="true"><span>Previous</span></span>');
         }
 
-        // Next button - English defaults; runtime translation via data-i18n attribute
+        // Next button
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
-            parts.push(
-                `<a href="${link}" title="Next" class="nav-button nav-button-right" data-i18n="next"><span>Next</span></a>`,
-            );
+            parts.push(`<a href="${link}" title="Next" class="nav-button nav-button-right"><span>Next</span></a>`);
         } else {
-            parts.push(
-                '<span class="nav-button nav-button-right" aria-hidden="true" data-i18n="next"><span>Next</span></span>',
-            );
+            parts.push('<span class="nav-button nav-button-right" aria-hidden="true"><span>Next</span></span>');
         }
 
         parts.push('</div>');
@@ -712,7 +707,9 @@ ${madeWithExeHtml}
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
+        const licenseText = formatLicenseText(license);
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${licenseText}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -846,8 +843,11 @@ ${userFooterHtml}</div></footer>`;
             usedIdevices?: string[];
             author?: string;
             license?: string;
+            licenseUrl?: string;
             faviconPath?: string;
             faviconType?: string;
+            addExeLink?: boolean;
+            userFooterContent?: string;
         } = {},
     ): string {
         const {
@@ -856,10 +856,12 @@ ${userFooterHtml}</div></footer>`;
             language = 'en',
             customStyles = '',
             usedIdevices = [],
-            author = '',
-            license = 'CC-BY-SA',
+            license = 'creative commons: attribution - share alike 4.0',
+            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
+            addExeLink = true,
+            userFooterContent = '',
         } = options;
 
         let contentHtml = '';
@@ -869,9 +871,12 @@ ${userFooterHtml}</div></footer>`;
             const effectiveTitle = this.getEffectivePageTitle(page);
             const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
 
-            contentHtml += `<section id="section-${page.id}" class="single-page-section">
-<header class="page-header"${pageHeaderStyle}>
-<h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
+            // Single-page sections use main-header > page-header structure for CSS compatibility
+            contentHtml += `<section>
+<header class="main-header">
+<div class="page-header"${pageHeaderStyle}>
+<h1 class="page-title">${this.escapeHtml(effectiveTitle)}</h1>
+</div>
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '', projectTitle)}
@@ -911,15 +916,16 @@ ${this.renderPageContent(page, '', projectTitle)}
 ${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 </head>
-<body class="exe-export exe-single-page" lang="${language}">
+<body class="exe-export exe-single-page">
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
-<main class="single-page-content">
-<header class="package-header package-node"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
+<main class="page">
+<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
-${this.renderLicense({ author, license })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
 </div>
+${addExeLink ? this.renderMadeWithEXe() : ''}
 </body>
 </html>`;
     }
