@@ -31,10 +31,9 @@ export default class ModalReleaseNotes extends Modal {
 
         let contents;
         if (isStaticMode) {
-            // In static mode, load CHANGELOG.md from relative path
-            const basePath = app?.config?.basePath || '';
+            // In static mode, load CHANGELOG.md using composeUrl for correct base path
             try {
-                const response = await fetch(`${basePath}/CHANGELOG.md`);
+                const response = await fetch(app.composeUrl('/CHANGELOG.md'));
                 contents = response.ok ? await response.text() : _('Changelog not available');
             } catch (e) {
                 contents = _('Changelog not available');

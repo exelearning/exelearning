@@ -105,13 +105,12 @@ export default class ModalLegalNotes extends Modal {
     async load() {
         const app = eXeLearning.app;
         const isStaticMode = app?.capabilities?.storage?.remote === false;
-        const basePath = app?.config?.basePath || '';
 
         // Third party code
         let contents;
         if (isStaticMode) {
             try {
-                const response = await fetch(`${basePath}/libs/README.md`);
+                const response = await fetch(app.composeUrl('/libs/README.md'));
                 contents = response.ok ? await response.text() : _('Information not available');
             } catch (e) {
                 contents = _('Information not available');
@@ -127,7 +126,7 @@ export default class ModalLegalNotes extends Modal {
         // Licenses
         if (isStaticMode) {
             try {
-                const response = await fetch(`${basePath}/libs/LICENSES`);
+                const response = await fetch(app.composeUrl('/libs/LICENSES'));
                 contents = response.ok ? await response.text() : _('Information not available');
             } catch (e) {
                 contents = _('Information not available');
