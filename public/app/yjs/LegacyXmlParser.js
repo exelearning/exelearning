@@ -1014,7 +1014,6 @@ class LegacyXmlParser {
       'OrientacionesalumnadofpdIdevice',  // Student guidelines
       'ParasabermasfpdIdevice',  // To learn more / Step ahead
       'RecomendacionfpdIdevice', // Recommendation
-      'EjercicioresueltofpdIdevice', // Solved exercises
       // External content iDevices (no modern equivalent, fallback to text)
       'WikipediaIdevice',
       'RssIdevice',
@@ -1055,6 +1054,7 @@ class LegacyXmlParser {
       'GalleryIdevice': 'image-gallery',
       // Case study
       'CasestudyIdevice': 'casestudy',
+      'EjercicioresueltofpdIdevice': 'casestudy', // Solved exercises FPD -> case study
       // Note: FileAttachIdevice moved to textBasedIdevices (converts to 'text' for editability)
       // External URL / website
       'ExternalUrlIdevice': 'external-website',
