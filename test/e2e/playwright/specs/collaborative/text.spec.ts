@@ -161,11 +161,22 @@ async function insertImageViaTinyMCE(page: Page, fixturePath: string): Promise<v
     // Wait for modal to close and URL to be set
     await page.waitForTimeout(1000);
 
+    // Fill in alt text to avoid accessibility warning dialog
+    // The dialog "Are you sure you want to continue without including an Image Description?" appears if alt is empty
+    const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+    if ((await altTextInput.count()) > 0) {
+        const currentAlt = await altTextInput.inputValue().catch(() => '');
+        if (!currentAlt) {
+            await altTextInput.fill('alt');
+        }
+    }
+
     // Close TinyMCE dialog by clicking Save button
     const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save")');
     if ((await tinyMceSaveBtn.count()) > 0) {
         await tinyMceSaveBtn.click();
     }
+
     await page.waitForTimeout(1000);
 }
 
