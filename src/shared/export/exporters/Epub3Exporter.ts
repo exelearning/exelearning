@@ -598,6 +598,8 @@ export class Epub3Exporter extends BaseExporter {
             // Favicon options
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
+            // Hide navigation - EPUB uses nav.xhtml for TOC, not embedded nav
+            hideNavigation: true,
         });
 
         // Convert HTML to XHTML
