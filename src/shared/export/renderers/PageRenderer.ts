@@ -144,7 +144,7 @@ export class PageRenderer {
 <head>
 ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
 </head>
-<body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
+<body class="${bodyClassStr}" lang="${language}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden"> ${navHtml}<main id="${page.id}" class="page"> ${searchBoxHtml}
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
@@ -916,7 +916,7 @@ ${this.renderPageContent(page, '', projectTitle)}
 ${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 </head>
-<body class="exe-export exe-single-page">
+<body class="exe-export exe-single-page" lang="${language}">
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="page">

@@ -303,7 +303,7 @@ ${madeWithExeHtml}`;
 <head>
 ${this.generateHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
 </head>
-<body class="exe-web-site exe-export exe-single-page exe-preview">
+<body class="exe-web-site exe-export exe-single-page exe-preview" lang="${lang}">
 <script>document.body.className+=" js"</script>
 ${finalBodyContent}
 ${this.generateScripts(themeName, usedIdevices, options, addAccessibilityToolbar, detectedLibraries)}
