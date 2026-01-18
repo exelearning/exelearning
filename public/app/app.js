@@ -574,6 +574,23 @@ export default class App {
             console.log('[App] Running in STATIC/OFFLINE mode');
             // Ensure offline-related flags are set
             this.eXeLearning.config.isOfflineInstallation = true;
+
+            // In static mode, detect basePath from current URL if not set
+            // This allows static builds to work when deployed in subdirectories
+            // (e.g., https://exelearning.pages.dev/pr-preview/pr-20/)
+            if (!this.eXeLearning.config.basePath) {
+                const pathname = window.location.pathname;
+                // Remove index.html and trailing slashes to get the base directory
+                const detectedBase = pathname
+                    .replace(/\/index\.html$/i, '')
+                    .replace(/\/+$/, '');
+                this.eXeLearning.config.basePath = detectedBase;
+
+                // Also update the symfony compatibility shim with detected basePath
+                if (window.eXeLearning.symfony) {
+                    window.eXeLearning.symfony.basePath = detectedBase;
+                }
+            }
         }
 
         // Log capabilities for debugging

@@ -189,6 +189,103 @@ describe('App utility methods', () => {
 
       window.location = originalLocation;
     });
+
+  });
+
+  describe('initializeModeDetection - basePath detection', () => {
+    it('detects basePath from URL in static mode when basePath is empty', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      // First parse the config, then detect mode
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+      // Also verify symfony shim gets the detected basePath
+      expect(window.eXeLearning.symfony.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects basePath from URL in static mode with trailing slash', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/app');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not override existing basePath in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":"/existing"}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/different/path/', protocol: 'https:', pathname: '/different/path/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/existing');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not detect basePath in non-static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"basePath":""}';
+      delete window.__EXE_STATIC_MODE__;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // basePath should remain empty in non-static mode
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+    });
+
+    it('detects empty basePath for root deployment in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/index.html', protocol: 'https:', pathname: '/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // Root deployment should result in empty basePath
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
   });
 
   describe('showProvisionalDemoWarning', () => {
