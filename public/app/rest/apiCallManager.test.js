@@ -98,7 +98,7 @@ describe('ApiCallManager', () => {
         'http://localhost/exelearning/v9.9.9/libs/README.md'
       );
       expect(mockFunc.getText).toHaveBeenCalledWith(
-        'http://localhost/exelearning/v9.9.9/libs/LICENSES'
+        'http://localhost/exelearning/v9.9.9/libs/LICENSES.md'
       );
     });
   });

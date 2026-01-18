@@ -126,7 +126,7 @@ export default class ModalLegalNotes extends Modal {
         // Licenses
         if (isStaticMode) {
             try {
-                const response = await fetch(app.composeUrl('/libs/LICENSES'));
+                const response = await fetch(app.composeUrl('/libs/LICENSES.md'));
                 contents = response.ok ? await response.text() : _('Information not available');
             } catch (e) {
                 contents = _('Information not available');
