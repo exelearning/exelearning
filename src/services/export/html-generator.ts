@@ -294,7 +294,7 @@ function generatePageHeader(
 
     // Use separate header elements so theme CSS selectors work correctly
     // exe_export.js uses $("header.package-header") and $("header.page-header") selectors
-    return `${pageCounterHtml}<header class="package-header package-node"><h1 class="package-title">${escapeHtml(projectTitle)}</h1></header>
+    return `${pageCounterHtml}<header class="package-header"><h1 class="package-title">${escapeHtml(projectTitle)}</h1></header>
 <header class="page-header"${pageHeaderStyle}><h2 class="page-title">${escapeHtml(page.title)}</h2></header>`;
 }
 

@@ -586,12 +586,6 @@
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
     *   License: LGPL-2.1
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exeimage/image-compressor/js/compressor.min.js
-    *   Copyright: Fengyuan Chen
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exeimage/image-compressor/js/vue.min.js
-    *   Copyright: Evan You
-    *   License: MIT
 *   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor (cropper.js, jquery-cropper.js and CSS)
     *   Copyright: Chen Fengyuan
     *   License: MIT

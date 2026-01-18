@@ -313,7 +313,8 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavigation(pages, 'page-2', '');
 
-            expect(html).toContain('id="active"');
+            // No id="active", only class="active" (matches legacy PHP)
+            expect(html).not.toContain('id="active"');
             expect(html).toContain('class="active"');
         });
 
@@ -343,7 +344,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons with data-i18n attributes', () => {
+        it('should render prev/next nav buttons', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -355,12 +356,10 @@ describe('PageRenderer', () => {
             expect(html).toContain('class="nav-buttons"');
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            // English text defaults (translated at runtime via $exe_i18n)
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
-            // data-i18n attributes for runtime translation
-            expect(html).toContain('data-i18n="previous"');
-            expect(html).toContain('data-i18n="next"');
+            // No data-i18n attributes (matches legacy PHP)
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -371,14 +370,13 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            // First page: disabled prev (span), enabled next (anchor)
+            // First page: disabled prev (span with aria-hidden), enabled next (anchor)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-left"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
             expect(html).toContain('<a href=');
-            // data-i18n attributes present on both disabled and enabled buttons
-            expect(html).toContain('data-i18n="previous"');
-            expect(html).toContain('data-i18n="next"');
+            // No data-i18n attributes
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should render disabled next button for last page', () => {
@@ -389,14 +387,13 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[1], pages, '');
 
-            // Last page: enabled prev (anchor), disabled next (span)
+            // Last page: enabled prev (anchor), disabled next (span with aria-hidden)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
             expect(html).toContain('<a href=');
-            // data-i18n attributes present on both
-            expect(html).toContain('data-i18n="previous"');
-            expect(html).toContain('data-i18n="next"');
+            // No data-i18n attributes
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should render both buttons disabled for single page', () => {
@@ -404,14 +401,13 @@ describe('PageRenderer', () => {
 
             const html = renderer.renderNavButtons(pages[0], pages, '');
 
-            // Single page: both buttons disabled (spans)
+            // Single page: both buttons disabled (spans with aria-hidden)
             expect(html).toContain('nav-buttons');
-            expect(html).toContain('<span class="nav-button nav-button-left"');
-            expect(html).toContain('<span class="nav-button nav-button-right"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
             expect(html).not.toContain('<a href=');
-            // data-i18n attributes present on disabled buttons too
-            expect(html).toContain('data-i18n="previous"');
-            expect(html).toContain('data-i18n="next"');
+            // No data-i18n attributes
+            expect(html).not.toContain('data-i18n');
         });
 
         it('should always output English text regardless of language param (deprecated)', () => {
@@ -537,7 +533,7 @@ describe('PageRenderer', () => {
     describe('renderFooterSection', () => {
         it('should render footer with license', () => {
             const html = renderer.renderFooterSection({
-                license: 'Creative Commons',
+                license: 'CC-BY-SA',
                 licenseUrl: 'https://example.com/license',
             });
 
@@ -545,7 +541,8 @@ describe('PageRenderer', () => {
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            expect(html).toContain('class="license">Creative Commons</a>');
+            // formatLicenseText converts CC-BY-SA to full display text
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
             expect(html).toContain('href="https://example.com/license"');
         });
 
@@ -619,8 +616,8 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            expect(html).toContain('section-page-1');
-            expect(html).toContain('section-page-2');
+            // Sections don't have IDs in single-page export (matches legacy PHP)
+            expect(html).toContain('<section>');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -648,8 +645,9 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // But sections should exist with proper IDs
-            expect(html).toContain('id="section-child"');
+            // Sections exist without IDs (matches legacy PHP)
+            expect(html).toContain('<section>');
+            expect(html).toContain('class="page-title">Child</h1>');
         });
 
         it('should include favicon reference', () => {
