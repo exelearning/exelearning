@@ -435,5 +435,8 @@ tinymce.addI18n('all',{
 "Extended Latin": _("Extended Latin"),
 "Symbols": _("Symbols"),
 "Arrows": _("Arrows"),
-
+// Mermaid diagram
+"Mermaid diagram": _("Mermaid diagram"),
+"Mermaid code": _("Mermaid code"),
+"Need help? Visit %s": _("Need help? Visit %s"),
 });

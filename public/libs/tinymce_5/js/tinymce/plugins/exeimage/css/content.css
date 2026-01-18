@@ -1,9 +1,9 @@
 /* The New eXeLearning */
-.exe-figure{margin:1.5em 0}
+.exe-figure{margin:1.5em 0;max-width:100%}
 .position-center{margin:1.5em auto}
 .position-right{margin:1.5em 0 1.5em auto}
 .float-left{float:left;margin:.5em 1.5em 1em 0}
 .float-right{float:right;margin:.5em 0 1em 1.5em}
-.figcaption{padding-top:.2em}
+.figcaption{padding-top:.2em;line-height:1em}
 .figcaption.header{padding-top:0;padding-bottom:.2em}
 /* /The New eXeLearning */
