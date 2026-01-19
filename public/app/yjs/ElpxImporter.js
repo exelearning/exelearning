@@ -1758,6 +1758,7 @@ class ElpxImporter {
                 const feedbackTextarea = ideviceData.properties?.textFeedbackTextarea || ideviceData.feedbackHtml || '';
 
                 const jsonProps = {
+                  ideviceId: compId,
                   textTextarea: transformedHtml || '',
                   textFeedbackInput: feedbackInput,
                   textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : ''
@@ -1769,6 +1770,7 @@ class ElpxImporter {
                 // CaseStudyHandler extracts all content into properties, htmlView is empty
                 if (ideviceType === 'casestudy') {
                   const jsonProps = {
+                    ideviceId: compId,
                     history: '',
                     activities: [],
                     // Task info fields (new in modern format, default to empty for legacy imports)
@@ -1785,11 +1787,15 @@ class ElpxImporter {
                   const transformedProps = transformPropertiesAssets(jsonProps, replaceAssetPathsWithMediaTypes);
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
-                  // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
+                  // For other iDevices (form, image-gallery, etc.), use properties from LegacyXmlParser if available
+                  // Ensure ideviceId is included in jsonProperties - required by iDevice JS code
+                  // (e.g., image-gallery.js line 107 expects data.ideviceId)
                   const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPathsWithMediaTypes);
+                  transformedProps.ideviceId = compId;
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else {
-                  compMap.set('jsonProperties', '{}');
+                  // Even for empty properties, include ideviceId for iDevice JS code
+                  compMap.set('jsonProperties', JSON.stringify({ ideviceId: compId }));
                 }
               }
 

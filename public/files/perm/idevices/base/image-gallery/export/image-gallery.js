@@ -20,12 +20,6 @@ var $imagegallery = {
      * @returns {String}
      */
     renderView: function (data, accesibility, template) {
-        // In export context, the HTML is already rendered correctly server-side
-        // Don't re-generate to preserve correct paths (changeDirectory would break them)
-        if (document.body.classList.contains('exe-export')) {
-            return null; // Return null to prevent innerHTML replacement in exe_export.js
-        }
-
         // Generate html content from data values
         let htmlContent = $imagegallery.getStringGallery(data);
         // Insert the html content inside the template
@@ -47,12 +41,8 @@ var $imagegallery = {
      */
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
-            isInExe = eXe.app.isInExe(),
-            isExport = document.body.classList.contains('exe-export');
-
-        // Only re-render gallery in preview panel (not in export, which already has correct HTML)
-        // Export HTML is generated server-side with correct paths; re-rendering would break them
-        if (!isInExe && !isExport && $node.length == 1) {
+            isInExe = eXe.app.isInExe();
+        if (!isInExe && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery);
         }
@@ -94,8 +84,8 @@ var $imagegallery = {
         if (isInExe || $node.length == 0) return file;
 
         const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + data.ideviceId + '/'
-            : '../content/resources/' + data.ideviceId + '/';
+            ? 'content/resources/' + '/'
+            : '../content/resources/' + '/';
 
         const parts = file.split(/[/\\]/),
             name = parts.pop(),

@@ -3191,4 +3191,142 @@ describe('ElpxImporter', () => {
     });
   });
 
+  describe('importLegacyFormat - ideviceId in jsonProperties', () => {
+    // Test that ideviceId is always included in jsonProperties during legacy import
+    // This is required because iDevice JS code (e.g., image-gallery.js line 107) expects data.ideviceId
+
+    // Reuse the LEGACY_XML_WITH_INTERNAL_LINKS format which has a working FreeTextIdevice
+    const LEGACY_XML_WITH_TEXT = `<?xml version="1.0"?>
+      <instance class="exe.engine.package.Package">
+        <dictionary>
+          <string role="key" value="_title"/>
+          <unicode value="Text iDevice Test"/>
+          <string role="key" value="_nodeIdDict"/>
+          <dictionary/>
+          <string role="key" value="_root"/>
+          <instance class="exe.engine.node.Node" reference="0">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root"/>
+              <string role="key" value="_children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="1">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Page With Text"/>
+                    <string role="key" value="parent"/>
+                    <reference key="0"/>
+                    <string role="key" value="_children"/>
+                    <list/>
+                    <string role="key" value="idevices"/>
+                    <list>
+                      <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="100">
+                        <dictionary>
+                          <string role="key" value="_title"/>
+                          <unicode value="Text iDevice"/>
+                          <string role="key" value="content"/>
+                          <instance class="exe.engine.field.TextAreaField">
+                            <dictionary>
+                              <string role="key" value="content_w_resourcePaths"/>
+                              <unicode value="&lt;p&gt;Hello World&lt;/p&gt;"/>
+                            </dictionary>
+                          </instance>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </dictionary>
+      </instance>`;
+
+    beforeEach(() => {
+      global.window.LegacyXmlParser = LegacyXmlParser;
+    });
+
+    it('should include ideviceId in jsonProperties for FreeTextIdevice (text)', async () => {
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_TEXT);
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('text.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      // Find the text iDevice and verify ideviceId is in jsonProperties
+      let foundTextIdevice = false;
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const ideviceType = comp.get('ideviceType');
+
+                // FreeTextIdevice should have jsonProperties with ideviceId
+                if ((ideviceType === 'FreeTextIdevice' || ideviceType === 'text') && jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // The fix: jsonProperties should contain ideviceId
+                  expect(jsonProps.ideviceId).toBeDefined();
+                  expect(jsonProps.ideviceId).toMatch(/^idevice-/);
+                  foundTextIdevice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Text iDevices should always be created with jsonProperties
+      expect(foundTextIdevice).toBe(true);
+    });
+
+    it('should ensure ideviceId is a new generated ID, not from legacy XML', async () => {
+      // The ideviceId should be newly generated, not copied from the legacy XML
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_TEXT);
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('text.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const compId = comp.get('id');
+
+                if (jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // Verify ideviceId matches the component's id
+                  // This confirms we're using the newly generated ID
+                  expect(jsonProps.ideviceId).toBe(compId);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+  });
+
 });
