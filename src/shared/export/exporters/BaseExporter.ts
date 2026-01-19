@@ -462,34 +462,30 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Add export paths to asset:// URLs without changing the protocol
-     * Transforms asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-     * Uses folderPath-based export paths for cleaner structure
+     * Convert asset:// URLs directly to {{context_path}}/content/resources/ format
+     * for XML export. This is the single transformation step.
      *
      * Supported input formats:
-     * - asset://uuid (simple UUID)
      * - asset://uuid.ext (new format with extension)
-     * - asset://uuid/oldPath (legacy format with old path, which gets replaced)
+     * - asset://uuid (simple UUID without extension)
+     *
+     * Output: {{context_path}}/content/resources/{exportPath}
      */
     async addFilenamesToAssetUrls(content: string): Promise<string> {
         if (!content) return '';
 
         const assetMap = await this.buildAssetExportPathMap();
-        if (assetMap.size === 0) {
-            return content;
-        }
 
-        // Transform asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-        // The pattern matches:
-        // - asset://uuid (36-char UUID)
-        // - asset://uuid.ext (UUID with extension)
-        // - asset://uuid/path (UUID with old path, to be replaced)
-        return content.replace(/asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+|\/[^"'\s)]+)?/gi, (match, uuid) => {
+        // Transform asset://uuid or asset://uuid.ext to {{context_path}}/content/resources/path
+        // Pattern matches: asset:// + 36-char UUID + optional extension
+        return content.replace(/asset:\/\/([a-f0-9-]{36})(\.[a-z0-9]+)?/gi, (_match, uuid, ext) => {
             const exportPath = assetMap.get(uuid);
             if (exportPath) {
-                return `asset://${uuid}/${exportPath}`;
+                // Resolved: use the proper export path from metadata
+                return `{{context_path}}/content/resources/${exportPath}`;
             }
-            return match;
+            // Unresolved: preserve UUID as filename for debugging
+            return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
     }
 

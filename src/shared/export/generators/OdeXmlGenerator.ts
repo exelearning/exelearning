@@ -256,22 +256,15 @@ function generatePagStructurePropertyEntry(key: string, value: string): string {
 }
 
 /**
- * Transform asset:// URLs to content/resources/ paths for XML export.
- * Handles format: asset://uuid/path → content/resources/path
- * The UUID is skipped, only the path after it is used.
+ * Transform asset:// URLs to {{context_path}}/content/resources/ format.
  *
- * @param content - Content string that may contain asset:// URLs
- * @returns Content with asset:// URLs converted to content/resources/ paths
+ * Note: In the current architecture, all asset URLs are converted by
+ * BaseExporter.addFilenamesToAssetUrls() during preprocessing.
+ * This function is kept for backward compatibility but should not
+ * find any asset:// URLs to transform.
  */
 export function transformAssetUrlsForXml(content: string): string {
-    if (!content) return '';
-
-    // Transform asset://uuid/path to {{context_path}}/content/resources/path
-    // UUID is 36 chars (8-4-4-4-12 with hyphens), path is everything after the first slash
-    // The {{context_path}} prefix is used by the importer to recognize and convert back to asset:// URLs
-    return content.replace(/asset:\/\/[a-f0-9-]{36}\/([^"'\s)]+)/gi, (_match, exportPath) => {
-        return `{{context_path}}/content/resources/${exportPath}`;
-    });
+    return content || '';
 }
 
 /**

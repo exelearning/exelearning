@@ -485,59 +485,36 @@ describe('OdeXmlGenerator', () => {
     });
 
     describe('transformAssetUrlsForXml', () => {
-        it('should transform asset:// URLs with path to {{context_path}}/content/resources/', () => {
-            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg">';
+        it('should return content unchanged (all URLs already converted by BaseExporter)', () => {
+            const content = '<img src="{{context_path}}/content/resources/images/photo.jpg">';
             const result = transformAssetUrlsForXml(content);
 
-            expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
-        });
-
-        it('should handle multiple asset:// URLs in single content', () => {
-            const content =
-                '<img src="asset://11111111-1111-1111-1111-111111111111/a.jpg"><a href="asset://22222222-2222-2222-2222-222222222222/doc.pdf">PDF</a>';
-            const result = transformAssetUrlsForXml(content);
-
-            expect(result).toContain('{{context_path}}/content/resources/a.jpg');
-            expect(result).toContain('{{context_path}}/content/resources/doc.pdf');
-            expect(result).not.toContain('asset://');
-        });
-
-        it('should preserve other URL protocols (https, data)', () => {
-            const content = '<a href="https://example.com">Link</a><img src="data:image/gif;base64,R0lGOD">';
-            const result = transformAssetUrlsForXml(content);
-
-            expect(result).toContain('https://example.com');
-            expect(result).toContain('data:image/gif;base64');
-        });
-
-        it('should handle nested folder paths', () => {
-            const content = '<img src="asset://12345678-1234-1234-1234-123456789012/docs/reports/2024/chart.png">';
-            const result = transformAssetUrlsForXml(content);
-
-            expect(result).toBe('<img src="{{context_path}}/content/resources/docs/reports/2024/chart.png">');
-        });
-
-        it('should not transform asset:// URLs without path (unresolved)', () => {
-            // URLs that couldn't be resolved keep their format
-            const content = '<img src="asset://12345678-1234-1234-1234-123456789012.jpg">';
-            const result = transformAssetUrlsForXml(content);
-
-            // Unresolved assets keep their format (will show as broken in export)
-            expect(result).toContain('asset://12345678-1234-1234-1234-123456789012.jpg');
+            expect(result).toBe(content);
         });
 
         it('should handle empty string', () => {
             expect(transformAssetUrlsForXml('')).toBe('');
         });
 
-        it('should handle content without asset URLs', () => {
+        it('should handle null as empty string', () => {
+            expect(transformAssetUrlsForXml(null as any)).toBe('');
+        });
+
+        it('should preserve content with other URL protocols', () => {
+            const content = '<a href="https://example.com">Link</a><img src="data:image/gif;base64,R0lGOD">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toBe(content);
+        });
+
+        it('should preserve content without asset URLs', () => {
             const content = '<p>Normal content without assets</p>';
             expect(transformAssetUrlsForXml(content)).toBe(content);
         });
     });
 
-    describe('asset URL transformation in content.xml', () => {
-        it('should transform asset:// URLs to {{context_path}}/content/resources/ in htmlView', () => {
+    describe('asset URL handling in content.xml (URLs pre-converted by BaseExporter)', () => {
+        it('should preserve {{context_path}}/content/resources/ URLs in htmlView', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -555,8 +532,8 @@ describe('OdeXmlGenerator', () => {
                                     id: 'comp-1',
                                     type: 'text',
                                     order: 0,
-                                    content:
-                                        '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg">',
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
+                                    content: '<img src="{{context_path}}/content/resources/images/photo.jpg">',
                                     properties: {},
                                 },
                             ],
@@ -568,10 +545,9 @@ describe('OdeXmlGenerator', () => {
             const xml = generateOdeXml(meta, pages);
 
             expect(xml).toContain('{{context_path}}/content/resources/images/photo.jpg');
-            expect(xml).not.toContain('asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/');
         });
 
-        it('should transform asset:// URLs in jsonProperties', () => {
+        it('should preserve {{context_path}} URLs in jsonProperties', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -590,10 +566,11 @@ describe('OdeXmlGenerator', () => {
                                     type: 'image-gallery',
                                     order: 0,
                                     content: '',
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
                                     properties: {
                                         images: [
-                                            { img: 'asset://11111111-2222-3333-4444-555555555555/gallery/img1.jpg' },
-                                            { img: 'asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/gallery/img2.png' },
+                                            { img: '{{context_path}}/content/resources/gallery/img1.jpg' },
+                                            { img: '{{context_path}}/content/resources/gallery/img2.png' },
                                         ],
                                     },
                                 },
@@ -607,11 +584,9 @@ describe('OdeXmlGenerator', () => {
 
             expect(xml).toContain('{{context_path}}/content/resources/gallery/img1.jpg');
             expect(xml).toContain('{{context_path}}/content/resources/gallery/img2.png');
-            expect(xml).not.toContain('asset://11111111-2222-3333-4444-555555555555');
-            expect(xml).not.toContain('asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
         });
 
-        it('should handle multiple asset:// URLs in single component', () => {
+        it('should handle multiple {{context_path}} URLs in single component', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -629,8 +604,9 @@ describe('OdeXmlGenerator', () => {
                                     id: 'comp-1',
                                     type: 'text',
                                     order: 0,
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
                                     content:
-                                        '<img src="asset://11111111-1111-1111-1111-111111111111/a.jpg"><a href="asset://22222222-2222-2222-2222-222222222222/doc.pdf">PDF</a>',
+                                        '<img src="{{context_path}}/content/resources/a.jpg"><a href="{{context_path}}/content/resources/doc.pdf">PDF</a>',
                                     properties: {},
                                 },
                             ],
@@ -643,8 +619,6 @@ describe('OdeXmlGenerator', () => {
 
             expect(xml).toContain('{{context_path}}/content/resources/a.jpg');
             expect(xml).toContain('{{context_path}}/content/resources/doc.pdf');
-            expect(xml).not.toContain('asset://11111111');
-            expect(xml).not.toContain('asset://22222222');
         });
 
         it('should preserve other URL protocols in content.xml', () => {
@@ -679,7 +653,7 @@ describe('OdeXmlGenerator', () => {
             expect(xml).toContain('https://example.com');
         });
 
-        it('should handle nested folder paths in content.xml', () => {
+        it('should handle nested folder paths in {{context_path}} URLs', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -697,8 +671,9 @@ describe('OdeXmlGenerator', () => {
                                     id: 'comp-1',
                                     type: 'text',
                                     order: 0,
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
                                     content:
-                                        '<img src="asset://12345678-1234-1234-1234-123456789012/docs/reports/2024/chart.png">',
+                                        '<img src="{{context_path}}/content/resources/docs/reports/2024/chart.png">',
                                     properties: {},
                                 },
                             ],
@@ -710,10 +685,9 @@ describe('OdeXmlGenerator', () => {
             const xml = generateOdeXml(meta, pages);
 
             expect(xml).toContain('{{context_path}}/content/resources/docs/reports/2024/chart.png');
-            expect(xml).not.toContain('asset://');
         });
 
-        it('should not transform asset:// URLs without path (unresolved)', () => {
+        it('should preserve unresolved asset UUIDs in {{context_path}} format', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -731,8 +705,9 @@ describe('OdeXmlGenerator', () => {
                                     id: 'comp-1',
                                     type: 'text',
                                     order: 0,
-                                    // This format (without path after UUID) means asset wasn't found in map
-                                    content: '<img src="asset://12345678-1234-1234-1234-123456789012.jpg">',
+                                    // Unresolved assets are converted to {{context_path}}/content/resources/UUID.ext
+                                    content:
+                                        '<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg">',
                                     properties: {},
                                 },
                             ],
@@ -743,8 +718,8 @@ describe('OdeXmlGenerator', () => {
 
             const xml = generateOdeXml(meta, pages);
 
-            // Unresolved assets keep their format (will show as broken in export)
-            expect(xml).toContain('asset://12345678-1234-1234-1234-123456789012.jpg');
+            // Unresolved assets use UUID as filename
+            expect(xml).toContain('{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg');
         });
     });
 });
