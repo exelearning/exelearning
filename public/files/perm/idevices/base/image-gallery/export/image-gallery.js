@@ -83,14 +83,27 @@ var $imagegallery = {
 
         if (isInExe || $node.length == 0) return file;
 
-        const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + '/'
-            : '../content/resources/' + '/';
+        // Determine base path based on page location
+        const basePath = $('html').is('#exe-index') ? '' : '../';
 
-        const parts = file.split(/[/\\]/),
-            name = parts.pop(),
-            dir = pathMedia.replace(/[/\\]+$/, '');
-        return dir + '/' + name;
+        // If path already starts with content/resources/, handle it
+        if (file && file.startsWith('content/resources/')) {
+            const parts = file.split('/');
+            const filename = parts.pop();
+            const possibleFolder = parts[parts.length - 1];
+
+            // Check for malformed path: filename duplicated as folder
+            // e.g., content/resources/image.png/image.png -> content/resources/image.png
+            if (possibleFolder === filename) {
+                parts.pop(); // Remove the duplicated folder
+                return basePath + parts.join('/') + '/' + filename;
+            }
+
+            // Valid path with folder structure - preserve it
+            return basePath + file;
+        }
+
+        return file;
     },
 
     getStringGallery: function (data) {

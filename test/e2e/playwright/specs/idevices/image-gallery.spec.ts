@@ -1,6 +1,7 @@
 import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
+import { getPreviewFrame, waitForPreviewContent } from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -572,6 +573,206 @@ test.describe('Image Gallery iDevice', () => {
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');
             await expect(closeBtn).toBeVisible({ timeout: 5000 });
+        });
+    });
+
+    test.describe('Folder Path Support', () => {
+        /**
+         * Helper to open file manager from image gallery "Add images" button
+         */
+        async function openFileManagerFromGallery(page: Page): Promise<void> {
+            // Click the "Add images" button which opens file manager
+            await page.click('#addImageButton');
+            // Wait for file manager modal to open
+            await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                timeout: 10000,
+            });
+            // Wait for the grid to be ready
+            await page.waitForTimeout(500);
+        }
+
+        /**
+         * Helper to create a folder in file manager
+         */
+        async function createFolderInFileManager(page: Page, folderName: string): Promise<void> {
+            // Handle the prompt dialog that appears
+            page.once('dialog', async dialog => {
+                await dialog.accept(folderName);
+            });
+
+            // Click new folder button
+            await page.click('.media-library-newfolder-btn');
+
+            // Wait for folder to appear in grid
+            await page.waitForSelector(`.media-library-folder[data-folder-name="${folderName}"]`, { timeout: 5000 });
+        }
+
+        /**
+         * Helper to navigate into a folder by double-clicking
+         */
+        async function navigateToFolder(page: Page, folderName: string): Promise<void> {
+            const folderItem = page.locator(`.media-library-folder[data-folder-name="${folderName}"]`);
+            await folderItem.dblclick();
+            // Wait for navigation to complete
+            await page.waitForTimeout(500);
+        }
+
+        /**
+         * Helper to upload an image and select it
+         */
+        async function uploadAndSelectImage(page: Page, fixturePath: string): Promise<void> {
+            // Find the upload input
+            const fileInput = page.locator('#modalFileManager input[type="file"]').first();
+            await fileInput.setInputFiles(fixturePath);
+
+            // Wait for upload to complete and item to appear
+            await page.waitForSelector('#modalFileManager .media-library-item:not(.media-library-folder)', {
+                timeout: 15000,
+            });
+
+            // Wait a bit for the UI to update
+            await page.waitForTimeout(500);
+
+            // Select the newly uploaded item (last item in grid that's not a folder)
+            const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
+            await newItem.click();
+            await page.waitForTimeout(300);
+
+            // Click insert button
+            await page.click('#modalFileManager .media-library-insert-btn');
+            await page.waitForTimeout(500);
+        }
+
+        /**
+         * Helper to navigate to a specific breadcrumb path
+         */
+        async function navigateToBreadcrumbRoot(page: Page): Promise<void> {
+            // Click on the root breadcrumb item to go back to root
+            const rootBreadcrumb = page.locator(
+                '.media-library-breadcrumbs .breadcrumb-item[data-path=""], .media-library-breadcrumbs .breadcrumb-root',
+            );
+            if ((await rootBreadcrumb.count()) > 0) {
+                await rootBreadcrumb.first().click();
+                await page.waitForTimeout(500);
+            }
+        }
+
+        test('should load images from different folder depths in preview', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            const projectUuid = await createProject(page, 'Image Gallery Folder Depth Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            // Wait for app initialization
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+            await waitForLoadingScreenHidden(page);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // 1. Add image from ROOT level via file manager
+            await openFileManagerFromGallery(page);
+            await uploadAndSelectImage(page, 'test/fixtures/sample-2.jpg');
+
+            // Verify first image was added
+            const imageContainers = page.locator('.imgSelectContainer');
+            await expect(imageContainers).toHaveCount(1, { timeout: 10000 });
+
+            // 2. Add image from ONE LEVEL folder
+            await openFileManagerFromGallery(page);
+            await createFolderInFileManager(page, 'photos');
+            await navigateToFolder(page, 'photos');
+            await uploadAndSelectImage(page, 'test/fixtures/sample-3.jpg');
+
+            // Verify second image was added
+            await expect(imageContainers).toHaveCount(2, { timeout: 10000 });
+
+            // 3. Add image from NESTED folders (2 levels: photos/vacation)
+            await openFileManagerFromGallery(page);
+            await navigateToFolder(page, 'photos');
+            await createFolderInFileManager(page, 'vacation');
+            await navigateToFolder(page, 'vacation');
+            // Reuse sample-2.jpg - we're testing path handling, not unique images
+            await uploadAndSelectImage(page, 'test/fixtures/sample-2.jpg');
+
+            // Verify third image was added
+            await expect(imageContainers).toHaveCount(3, { timeout: 15000 });
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+
+            // Open preview panel using helper (handles Service Worker check)
+            const previewLoaded = await waitForPreviewContent(page, 30000);
+            expect(previewLoaded).toBe(true);
+
+            // Get iframe reference
+            const iframe = getPreviewFrame(page);
+
+            // Verify gallery exists in preview
+            const previewGallery = iframe.locator('.imageGallery-IDevice');
+            await expect(previewGallery).toBeVisible({ timeout: 10000 });
+
+            // Verify ALL 3 images exist in preview
+            const previewImages = iframe.locator('.imageGallery-IDevice img');
+            await expect(previewImages).toHaveCount(3, { timeout: 10000 });
+
+            // Check each image loads with naturalWidth > 0
+            for (let i = 0; i < 3; i++) {
+                const img = previewImages.nth(i);
+                await img.waitFor({ state: 'attached', timeout: 10000 });
+
+                // Wait for image to load and check naturalWidth
+                const result = await iframe.locator('body').evaluate(async (_, idx: number) => {
+                    const images = document.querySelectorAll('.imageGallery-IDevice img');
+                    const img = images[idx] as HTMLImageElement;
+                    if (!img) return { loaded: false, src: '', naturalWidth: 0 };
+
+                    // Wait for load if not already loaded
+                    if (!img.complete) {
+                        await new Promise((resolve, reject) => {
+                            img.onload = resolve;
+                            img.onerror = reject;
+                            setTimeout(reject, 5000);
+                        }).catch(() => {});
+                    }
+
+                    return {
+                        loaded: img.complete && img.naturalWidth > 0,
+                        src: img.getAttribute('src'),
+                        naturalWidth: img.naturalWidth,
+                    };
+                }, i as number);
+
+                console.log(`Image ${i + 1}:`, result);
+                expect(result.loaded).toBe(true);
+                expect(result.naturalWidth).toBeGreaterThan(0);
+            }
         });
     });
 });
