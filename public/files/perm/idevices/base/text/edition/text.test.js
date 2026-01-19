@@ -224,8 +224,8 @@ describe('text iDevice', () => {
   describe('checkFormValues', () => {
     it('returns false and shows alert when text is empty string', () => {
       $exeDevice.init(mockElement, {});
-      // checkFormValues checks this.text property
-      $exeDevice.text = '';
+      // checkFormValues checks this[this.textareaId] property (textTextarea)
+      $exeDevice.textTextarea = '';
 
       const result = $exeDevice.checkFormValues();
 
@@ -234,9 +234,9 @@ describe('text iDevice', () => {
       expect(eXe.app.getLastAlert()).toContain('write some text');
     });
 
-    it('returns true when text property has content', () => {
+    it('returns true when textTextarea property has content', () => {
       $exeDevice.init(mockElement, {});
-      $exeDevice.text = '<p>Some content</p>';
+      $exeDevice.textTextarea = '<p>Some content</p>';
 
       const result = $exeDevice.checkFormValues();
 
@@ -245,17 +245,17 @@ describe('text iDevice', () => {
 
     it('tracks multiple validation failures in alert history', () => {
       $exeDevice.init(mockElement, {});
-      $exeDevice.text = '';
+      $exeDevice.textTextarea = '';
 
       $exeDevice.checkFormValues();
       $exeDevice.checkFormValues();
-
+ 
       expect(eXe.app._alertHistory.length).toBe(2);
     });
 
-    it('returns true when text is not empty', () => {
+    it('returns true when textTextarea is not empty', () => {
       $exeDevice.init(mockElement, {});
-      $exeDevice.text = 'Some text';
+      $exeDevice.textTextarea = 'Some text';
 
       const result = $exeDevice.checkFormValues();
 
