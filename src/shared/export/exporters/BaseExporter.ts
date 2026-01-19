@@ -771,10 +771,13 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
     /**
      * Generate content.xml from document structure
      * Uses unified OdeXmlGenerator for consistent output across all exporters
+     *
+     * @param preprocessedPages - Optional preprocessed pages (with asset URLs already transformed).
+     *                            If not provided, uses raw navigation from document.
      */
-    generateContentXml(): string {
+    generateContentXml(preprocessedPages?: ExportPage[]): string {
         const metadata = this.getMetadata();
-        const pages = this.getNavigation();
+        const pages = preprocessedPages || this.getNavigation();
         return generateOdeXml(metadata, pages);
     }
 
