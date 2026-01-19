@@ -353,6 +353,27 @@ function normalizePagesFromNavigation(navigation: OdeXmlNavigation): NormalizedP
 }
 
 /**
+ * Extract string content from CDATA wrapper
+ * fast-xml-parser with cdataPropName: '__cdata' wraps CDATA content in an object
+ * This helper extracts the actual string content from either format.
+ *
+ * @param value - Can be a plain string, an object with __cdata, or undefined
+ * @returns The extracted string content or empty string
+ */
+function extractCdataContent(value: unknown): string {
+    if (value === undefined || value === null) {
+        return '';
+    }
+    if (typeof value === 'string') {
+        return value;
+    }
+    if (typeof value === 'object' && '__cdata' in (value as Record<string, unknown>)) {
+        return String((value as Record<string, unknown>).__cdata || '');
+    }
+    return '';
+}
+
+/**
  * Parse block-level properties from odePagStructureProperties
  */
 function parseBlockProperties(props?: {
@@ -426,14 +447,18 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                         const type = comp.odeIdeviceTypeName || 'unknown';
                         const isJson = isJsonIdevice(type);
 
+                        // Extract CDATA content (handles both plain strings and __cdata wrapper objects)
+                        const htmlContent = extractCdataContent(comp.htmlView);
+                        const jsonPropsStr = extractCdataContent(comp.jsonProperties);
+
                         components.push({
                             id: comp.odeIdeviceId || generateId(),
                             type,
                             order: comp.odeComponentsOrder || 0,
                             // Always use htmlView for content - it contains pre-rendered HTML
                             // JSON iDevices also have htmlView populated with their rendered output
-                            content: comp.htmlView || '',
-                            data: isJson && comp.jsonProperties ? JSON.parse(comp.jsonProperties) : {},
+                            content: htmlContent,
+                            data: isJson && jsonPropsStr ? JSON.parse(jsonPropsStr) : {},
                             // Include blockName from parent pagStructure for proper block grouping
                             blockName: pag.blockName || '',
                             // Include block icon name for export rendering
