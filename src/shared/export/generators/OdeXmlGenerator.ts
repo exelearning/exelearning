@@ -266,10 +266,11 @@ function generatePagStructurePropertyEntry(key: string, value: string): string {
 export function transformAssetUrlsForXml(content: string): string {
     if (!content) return '';
 
-    // Transform asset://uuid/path to content/resources/path
+    // Transform asset://uuid/path to {{context_path}}/content/resources/path
     // UUID is 36 chars (8-4-4-4-12 with hyphens), path is everything after the first slash
+    // The {{context_path}} prefix is used by the importer to recognize and convert back to asset:// URLs
     return content.replace(/asset:\/\/[a-f0-9-]{36}\/([^"'\s)]+)/gi, (_match, exportPath) => {
-        return `content/resources/${exportPath}`;
+        return `{{context_path}}/content/resources/${exportPath}`;
     });
 }
 

@@ -485,11 +485,11 @@ describe('OdeXmlGenerator', () => {
     });
 
     describe('transformAssetUrlsForXml', () => {
-        it('should transform asset:// URLs with path to content/resources/', () => {
+        it('should transform asset:// URLs with path to {{context_path}}/content/resources/', () => {
             const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg">';
             const result = transformAssetUrlsForXml(content);
 
-            expect(result).toBe('<img src="content/resources/images/photo.jpg">');
+            expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
         });
 
         it('should handle multiple asset:// URLs in single content', () => {
@@ -497,8 +497,8 @@ describe('OdeXmlGenerator', () => {
                 '<img src="asset://11111111-1111-1111-1111-111111111111/a.jpg"><a href="asset://22222222-2222-2222-2222-222222222222/doc.pdf">PDF</a>';
             const result = transformAssetUrlsForXml(content);
 
-            expect(result).toContain('content/resources/a.jpg');
-            expect(result).toContain('content/resources/doc.pdf');
+            expect(result).toContain('{{context_path}}/content/resources/a.jpg');
+            expect(result).toContain('{{context_path}}/content/resources/doc.pdf');
             expect(result).not.toContain('asset://');
         });
 
@@ -514,7 +514,7 @@ describe('OdeXmlGenerator', () => {
             const content = '<img src="asset://12345678-1234-1234-1234-123456789012/docs/reports/2024/chart.png">';
             const result = transformAssetUrlsForXml(content);
 
-            expect(result).toBe('<img src="content/resources/docs/reports/2024/chart.png">');
+            expect(result).toBe('<img src="{{context_path}}/content/resources/docs/reports/2024/chart.png">');
         });
 
         it('should not transform asset:// URLs without path (unresolved)', () => {
@@ -537,7 +537,7 @@ describe('OdeXmlGenerator', () => {
     });
 
     describe('asset URL transformation in content.xml', () => {
-        it('should transform asset:// URLs to content/resources/ in htmlView', () => {
+        it('should transform asset:// URLs to {{context_path}}/content/resources/ in htmlView', () => {
             const meta: ExportMetadata = { title: 'Test' };
             const pages: ExportPage[] = [
                 {
@@ -567,7 +567,7 @@ describe('OdeXmlGenerator', () => {
 
             const xml = generateOdeXml(meta, pages);
 
-            expect(xml).toContain('content/resources/images/photo.jpg');
+            expect(xml).toContain('{{context_path}}/content/resources/images/photo.jpg');
             expect(xml).not.toContain('asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/');
         });
 
@@ -605,8 +605,8 @@ describe('OdeXmlGenerator', () => {
 
             const xml = generateOdeXml(meta, pages);
 
-            expect(xml).toContain('content/resources/gallery/img1.jpg');
-            expect(xml).toContain('content/resources/gallery/img2.png');
+            expect(xml).toContain('{{context_path}}/content/resources/gallery/img1.jpg');
+            expect(xml).toContain('{{context_path}}/content/resources/gallery/img2.png');
             expect(xml).not.toContain('asset://11111111-2222-3333-4444-555555555555');
             expect(xml).not.toContain('asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
         });
@@ -641,8 +641,8 @@ describe('OdeXmlGenerator', () => {
 
             const xml = generateOdeXml(meta, pages);
 
-            expect(xml).toContain('content/resources/a.jpg');
-            expect(xml).toContain('content/resources/doc.pdf');
+            expect(xml).toContain('{{context_path}}/content/resources/a.jpg');
+            expect(xml).toContain('{{context_path}}/content/resources/doc.pdf');
             expect(xml).not.toContain('asset://11111111');
             expect(xml).not.toContain('asset://22222222');
         });
@@ -709,7 +709,7 @@ describe('OdeXmlGenerator', () => {
 
             const xml = generateOdeXml(meta, pages);
 
-            expect(xml).toContain('content/resources/docs/reports/2024/chart.png');
+            expect(xml).toContain('{{context_path}}/content/resources/docs/reports/2024/chart.png');
             expect(xml).not.toContain('asset://');
         });
 
