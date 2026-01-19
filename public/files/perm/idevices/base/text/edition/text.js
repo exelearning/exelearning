@@ -291,7 +291,7 @@ var $exeDevice = {
      * @returns {Boolean}
      */
     checkFormValues: function () {
-        if (this[this.textareaId] == '') {
+        if (this.text == '') {
             eXe.app.alert(_('Please write some text.'));
             return false;
         }
