@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { generateOdeXml, generateOdeId, escapeXml, escapeCdata } from './OdeXmlGenerator';
+import { generateOdeXml, generateOdeId, escapeXml, escapeCdata, transformAssetUrlsForXml } from './OdeXmlGenerator';
 import type { ExportMetadata, ExportPage } from '../interfaces';
 
 describe('OdeXmlGenerator', () => {
@@ -481,6 +481,270 @@ describe('OdeXmlGenerator', () => {
         it('should handle null and undefined', () => {
             expect(escapeCdata(null)).toBe('');
             expect(escapeCdata(undefined)).toBe('');
+        });
+    });
+
+    describe('transformAssetUrlsForXml', () => {
+        it('should transform asset:// URLs with path to content/resources/', () => {
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toBe('<img src="content/resources/images/photo.jpg">');
+        });
+
+        it('should handle multiple asset:// URLs in single content', () => {
+            const content =
+                '<img src="asset://11111111-1111-1111-1111-111111111111/a.jpg"><a href="asset://22222222-2222-2222-2222-222222222222/doc.pdf">PDF</a>';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toContain('content/resources/a.jpg');
+            expect(result).toContain('content/resources/doc.pdf');
+            expect(result).not.toContain('asset://');
+        });
+
+        it('should preserve other URL protocols (https, data)', () => {
+            const content = '<a href="https://example.com">Link</a><img src="data:image/gif;base64,R0lGOD">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toContain('https://example.com');
+            expect(result).toContain('data:image/gif;base64');
+        });
+
+        it('should handle nested folder paths', () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012/docs/reports/2024/chart.png">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toBe('<img src="content/resources/docs/reports/2024/chart.png">');
+        });
+
+        it('should not transform asset:// URLs without path (unresolved)', () => {
+            // URLs that couldn't be resolved keep their format
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012.jpg">';
+            const result = transformAssetUrlsForXml(content);
+
+            // Unresolved assets keep their format (will show as broken in export)
+            expect(result).toContain('asset://12345678-1234-1234-1234-123456789012.jpg');
+        });
+
+        it('should handle empty string', () => {
+            expect(transformAssetUrlsForXml('')).toBe('');
+        });
+
+        it('should handle content without asset URLs', () => {
+            const content = '<p>Normal content without assets</p>';
+            expect(transformAssetUrlsForXml(content)).toBe(content);
+        });
+    });
+
+    describe('asset URL transformation in content.xml', () => {
+        it('should transform asset:// URLs to content/resources/ in htmlView', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content:
+                                        '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/images/photo.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('content/resources/images/photo.jpg');
+            expect(xml).not.toContain('asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/');
+        });
+
+        it('should transform asset:// URLs in jsonProperties', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'image-gallery',
+                                    order: 0,
+                                    content: '',
+                                    properties: {
+                                        images: [
+                                            { img: 'asset://11111111-2222-3333-4444-555555555555/gallery/img1.jpg' },
+                                            { img: 'asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/gallery/img2.png' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('content/resources/gallery/img1.jpg');
+            expect(xml).toContain('content/resources/gallery/img2.png');
+            expect(xml).not.toContain('asset://11111111-2222-3333-4444-555555555555');
+            expect(xml).not.toContain('asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee');
+        });
+
+        it('should handle multiple asset:// URLs in single component', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content:
+                                        '<img src="asset://11111111-1111-1111-1111-111111111111/a.jpg"><a href="asset://22222222-2222-2222-2222-222222222222/doc.pdf">PDF</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('content/resources/a.jpg');
+            expect(xml).toContain('content/resources/doc.pdf');
+            expect(xml).not.toContain('asset://11111111');
+            expect(xml).not.toContain('asset://22222222');
+        });
+
+        it('should preserve other URL protocols in content.xml', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<a href="https://example.com">Link</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('https://example.com');
+        });
+
+        it('should handle nested folder paths in content.xml', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content:
+                                        '<img src="asset://12345678-1234-1234-1234-123456789012/docs/reports/2024/chart.png">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('content/resources/docs/reports/2024/chart.png');
+            expect(xml).not.toContain('asset://');
+        });
+
+        it('should not transform asset:// URLs without path (unresolved)', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    // This format (without path after UUID) means asset wasn't found in map
+                                    content: '<img src="asset://12345678-1234-1234-1234-123456789012.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // Unresolved assets keep their format (will show as broken in export)
+            expect(xml).toContain('asset://12345678-1234-1234-1234-123456789012.jpg');
         });
     });
 });

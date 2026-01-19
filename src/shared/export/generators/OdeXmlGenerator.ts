@@ -256,6 +256,24 @@ function generatePagStructurePropertyEntry(key: string, value: string): string {
 }
 
 /**
+ * Transform asset:// URLs to content/resources/ paths for XML export.
+ * Handles format: asset://uuid/path → content/resources/path
+ * The UUID is skipped, only the path after it is used.
+ *
+ * @param content - Content string that may contain asset:// URLs
+ * @returns Content with asset:// URLs converted to content/resources/ paths
+ */
+export function transformAssetUrlsForXml(content: string): string {
+    if (!content) return '';
+
+    // Transform asset://uuid/path to content/resources/path
+    // UUID is 36 chars (8-4-4-4-12 with hyphens), path is everything after the first slash
+    return content.replace(/asset:\/\/[a-f0-9-]{36}\/([^"'\s)]+)/gi, (_match, exportPath) => {
+        return `content/resources/${exportPath}`;
+    });
+}
+
+/**
  * Generate odeComponent for an iDevice
  */
 function generateOdeComponentXml(component: ExportComponent, pageId: string, blockId: string, order: number): string {
@@ -268,13 +286,13 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     xml += `          <odeIdeviceId>${escapeXml(componentId)}</odeIdeviceId>\n`;
     xml += `          <odeIdeviceTypeName>${escapeXml(ideviceType)}</odeIdeviceTypeName>\n`;
 
-    // HTML content (wrapped in CDATA)
-    const htmlContent = component.content || '';
+    // HTML content - transform asset:// URLs to content/resources/ (wrapped in CDATA)
+    const htmlContent = transformAssetUrlsForXml(component.content || '');
     xml += `          <htmlView><![CDATA[${escapeCdata(htmlContent)}]]></htmlView>\n`;
 
-    // JSON properties (wrapped in CDATA)
+    // JSON properties - transform asset:// URLs to content/resources/ (wrapped in CDATA)
     if (component.properties && Object.keys(component.properties).length > 0) {
-        const jsonStr = JSON.stringify(component.properties);
+        const jsonStr = transformAssetUrlsForXml(JSON.stringify(component.properties));
         xml += `          <jsonProperties><![CDATA[${escapeCdata(jsonStr)}]]></jsonProperties>\n`;
     } else {
         xml += `          <jsonProperties></jsonProperties>\n`;

@@ -515,10 +515,16 @@ export abstract class BaseExporter {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        // Add filenames to asset URLs
+                        // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
+                    }
+                    // Also process properties (jsonProperties may contain asset URLs)
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
                     }
                 }
             }
