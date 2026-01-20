@@ -495,7 +495,7 @@ var $exeDevice = {
         $('#slcmEURLAudioOK').val(phrase.audioHit);
         $('#slcmEURLAudioKO').val(phrase.audioError);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     initPhrases: function () {
@@ -1631,8 +1631,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },

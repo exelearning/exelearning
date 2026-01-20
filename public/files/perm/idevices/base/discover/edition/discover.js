@@ -963,7 +963,7 @@ var $exeDevice = {
         q.msgHit = $('#descubreEMessageOK').val();
         q.msgError = $('#descubreEMessageKO').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let num_cards = 2;
         if (gameMode == 1) {
@@ -1843,8 +1843,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1887,7 +1886,7 @@ var $exeDevice = {
 
             $exeDevice.showImage('', 0, 0, _('No image'), i);
         }
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     addQuestion: function () {

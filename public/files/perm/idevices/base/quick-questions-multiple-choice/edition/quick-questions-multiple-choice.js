@@ -981,9 +981,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type !== 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#seleccionaEURLAudio').val(p.audio);
@@ -2077,7 +2077,7 @@ var $exeDevice = {
             return false;
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         $exeDevice.stopVideoIntro();
 
@@ -2172,7 +2172,7 @@ var $exeDevice = {
         p.msgHit = $('#seleccionaEMessageOK').val();
         p.msgError = $('#seleccionaEMessageKO').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type == 2) {
@@ -3030,8 +3030,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#seleccionaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3042,8 +3041,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

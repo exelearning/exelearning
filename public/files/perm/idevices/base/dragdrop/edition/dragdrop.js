@@ -465,7 +465,7 @@ var $exeDevice = {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $('#dadEURLImage').val(p.url);
         $('#dadEAuthor').val(p.author);
         $('#dadEAlt').val(p.alt);
@@ -475,7 +475,7 @@ var $exeDevice = {
         $('#dadENumCards').text($exeDevice.cardsGame.length);
 
         if (p.audio.length > 3) {
-            $exeDevice.playSound(p.audio);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
         }
         $exeDevice.showImage(p.url);
     },
@@ -1233,8 +1233,7 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevice.stopSound();
-            $exeDevice.playSound(url);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 

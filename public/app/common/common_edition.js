@@ -1147,6 +1147,91 @@ var $exeDevicesEdition = {
                     },
                 },
             },
+            helpers: {
+                playerAudio: null,
+                currentAudioUrl: null,
+
+                /**
+                 * Play an audio file, supporting both regular URLs and asset:// URLs
+                 * If the same audio is already playing, it will stop it (toggle behavior)
+                 * @param {string} audio - URL of the audio file (can be asset:// or regular URL)
+                 */
+                playSound: async function (audio) {
+                    if (!audio || typeof audio !== 'string') {
+                        console.error('playSound: Invalid audio URL');
+                        return;
+                    }
+
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        this.playerAudio &&
+                        this.currentAudioUrl === audio &&
+                        !this.playerAudio.paused
+                    ) {
+                        this.stopSound();
+                        return;
+                    }
+
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound();
+
+                    let audioUrl = audio;
+
+                    // Check if it's an asset:// URL and resolve it
+                    if (audio.startsWith('asset://')) {
+                        // Use the global AssetResolver to convert asset:// to blob://
+                        if (
+                            window.eXeLearningAssetResolver &&
+                            typeof window.eXeLearningAssetResolver.resolve === 'function'
+                        ) {
+                            try {
+                                const resolvedUrl =
+                                    await window.eXeLearningAssetResolver.resolve(audio);
+                                if (resolvedUrl) {
+                                    audioUrl = resolvedUrl;
+                                } else {
+                                    console.error('playSound: Could not resolve asset URL');
+                                    return;
+                                }
+                            } catch (error) {
+                                console.error('playSound: Error resolving asset URL:', error);
+                                return;
+                            }
+                        } else {
+                            console.error('playSound: AssetResolver not available');
+                            return;
+                        }
+                    }
+
+                    // Extract URL from Google Drive if applicable
+                    if (
+                        typeof $exeDevices !== 'undefined' &&
+                        $exeDevices.iDevice?.gamification?.media?.extractURLGD
+                    ) {
+                        audioUrl = $exeDevices.iDevice.gamification.media.extractURLGD(audioUrl);
+                    }
+
+                    // Store the original URL for comparison
+                    this.currentAudioUrl = audio;
+
+                    // Create and play the audio
+                    this.playerAudio = new Audio(audioUrl);
+                    this.playerAudio
+                        .play()
+                        .catch((error) => console.error('playSound: Error playing audio:', error));
+                },
+
+                /**
+                 * Stop the currently playing audio
+                 */
+                stopSound: function () {
+                    if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
+                        this.playerAudio.pause();
+                        this.playerAudio = null;
+                    }
+                    this.currentAudioUrl = null;
+                }
+            }
         },
         // / Gamification
         filePicker: {

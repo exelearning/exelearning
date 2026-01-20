@@ -1116,7 +1116,7 @@ var $exeDevice = {
         });
 
         $exeDevice.changeIcon(p.iconType, p.x, p.y);
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#mapaURLAudio').val(p.audio);
         $('#mapaNumberPoint').val(i + 1);
@@ -2147,7 +2147,7 @@ var $exeDevice = {
 
         if (p.fVideo <= p.iVideo) p.fVideo = 36000;
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         if (url.length < 4) {
             $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
@@ -3613,7 +3613,7 @@ var $exeDevice = {
             $('#mapaFooter').val($('#mapaPFooter').val());
             $('#mapaURLYoutube').val($('#mapaPURLYoutube').val());
             $exeDevice.stopVideo();
-            $exeDevice.stopSound();
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
             $('#mapaPContainer').fadeOut();
             $('#mapaCubierta').hide();
         });
@@ -3678,8 +3678,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#mapaURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3691,8 +3690,7 @@ var $exeDevice = {
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevice.stopSound();
-                    $exeDevice.playSound(selectedFile);
+                      $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });
@@ -3701,8 +3699,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#mapaURLAudioIdentify').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -3714,8 +3711,8 @@ var $exeDevice = {
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevice.stopSound();
-                    $exeDevice.playSound(selectedFile);
+                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });
@@ -3882,7 +3879,7 @@ var $exeDevice = {
         $('#mapaCubierta').css('display', 'flex');
         $('#mapaCubierta').show();
         $('#mapaTContainer').show();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
     },
 
@@ -3903,7 +3900,7 @@ var $exeDevice = {
             $('#mapaSURLImage').val(),
             $('#mapaSAltImage').val()
         );
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
     },
 
@@ -5560,7 +5557,7 @@ var $exeDevice = {
             $('#mapaCloseDetail').show();
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
     },
 
