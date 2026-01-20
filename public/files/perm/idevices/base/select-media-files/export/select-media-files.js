@@ -255,11 +255,8 @@ var $eXeSeleccionaMedias = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions
-            );
-        mOptions.phrasesGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame
+                mOptions.percentajeQuestions,
+                true
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.fullscreen = false;

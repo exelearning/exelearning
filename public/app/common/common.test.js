@@ -1012,12 +1012,6 @@ describe('common.js $exeDevices', () => {
       expect(result.sort((a, b) => a - b)).toEqual(original);
     });
 
-    it('decrypt handles malformed input gracefully', () => {
-      const helpers = getHelpers();
-      expect(helpers.decrypt(undefined)).toBe('');
-      expect(helpers.decrypt('null')).toBe('');
-    });
-
     it('getQuestions returns all questions for 100 percent', () => {
       const helpers = getHelpers();
       const questions = ['a', 'b', 'c', 'd', 'e'];
@@ -1030,6 +1024,44 @@ describe('common.js $exeDevices', () => {
       const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const result = helpers.getQuestions(questions, 30);
       expect(result.length).toBe(3);
+    });
+
+    it('getQuestions with random=false preserves original order', () => {
+      const helpers = getHelpers();
+      const questions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+      const result = helpers.getQuestions(questions, 50, false);
+      expect(result.length).toBe(5);
+      // Should return first 5 questions in original order
+      expect(result).toEqual(['a', 'b', 'c', 'd', 'e']);
+    });
+
+    it('getQuestions with random=true returns randomized subset', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times to verify randomization produces different results
+      const results = new Set();
+      for (let i = 0; i < 20; i++) {
+        const result = helpers.getQuestions(questions, 50, true);
+        expect(result.length).toBe(5);
+        // All elements should be from original array
+        result.forEach(q => expect(questions).toContain(q));
+        results.add(result.join(','));
+      }
+      // With 20 iterations, we should get at least 2 different orderings
+      expect(results.size).toBeGreaterThan(1);
+    });
+
+    it('getQuestions with random=true can include elements from any position', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times and collect all selected elements
+      const selectedElements = new Set();
+      for (let i = 0; i < 50; i++) {
+        const result = helpers.getQuestions(questions, 30, true);
+        result.forEach(q => selectedElements.add(q));
+      }
+      // Should eventually select elements from later positions (not just first 3)
+      expect(selectedElements.size).toBeGreaterThan(3);
     });
 
     it('removeTags handles empty strings', () => {

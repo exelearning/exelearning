@@ -251,14 +251,9 @@ var $eXePuzzle = {
         mOptions.puzzlesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.puzzlesGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.randomPuzzles
             );
-
-        if (mOptions.randomPuzzles)
-            mOptions.puzzlesGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.puzzlesGame
-                );
 
         mOptions.numberQuestions = mOptions.puzzlesGame.length;
 

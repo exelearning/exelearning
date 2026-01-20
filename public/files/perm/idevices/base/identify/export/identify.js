@@ -380,17 +380,12 @@ var $eXeIdentifica = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.questionsRamdon
             );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             mOptions.scoreTotal += 1;
         }
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.questionsGame
-        );
-        mOptions.questionsGame = mOptions.questionsRamdon
-            ? al
-            : mOptions.questionsGame;
         mOptions.numberQuestions = mOptions.questionsGame.length;
         return mOptions;
     },

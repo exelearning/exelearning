@@ -437,11 +437,12 @@ var $quickquestionsmultiplechoice = {
             mOptions.order = mOptions.optionsRamdon ? 1 : 0;
         }
 
-        if (mOptions.order != 2 && mOptions.percentajeQuestions < 100) {
+        if (mOptions.order != 2) {
             mOptions.selectsGame =
                 $exeDevices.iDevice.gamification.helpers.getQuestions(
                     mOptions.selectsGame,
-                    mOptions.percentajeQuestions
+                    mOptions.percentajeQuestions,
+                    mOptions.order == 1
                 );
         }
 
@@ -452,13 +453,6 @@ var $quickquestionsmultiplechoice = {
                 mOptions.selectsGame[i].customScore = 1;
                 mOptions.scoreTotal += mOptions.selectsGame[i].customScore;
             }
-        }
-
-        if (mOptions.order == 1) {
-            mOptions.selectsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.selectsGame
-                );
         }
         mOptions.numberQuestions = mOptions.selectsGame.length;
         return mOptions;

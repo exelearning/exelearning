@@ -1994,22 +1994,21 @@ var $exeDevices = {
                     return `${formattedMinutes}:${formattedSeconds}`;
                 },
 
-                getQuestions: function (questions, percentage) {
+                getQuestions: function (questions, percentage, random) {
                     const totalQuestions = questions.length;
 
-                    if (percentage >= 100) return questions;
+                    if (percentage >= 100 && !random) return questions;
 
                     const num = Math.max(1, Math.round((percentage * totalQuestions) / 100));
 
                     if (num >= totalQuestions) return questions;
 
                     const indices = Array.from({ length: totalQuestions }, (_, i) => i);
-                    $exeDevices.iDevice.gamification.helpers.shuffleAds(indices);
+                    if (random) {
+                        $exeDevices.iDevice.gamification.helpers.shuffleAds(indices);
+                    }
 
-                    const selectedIndices = indices.slice(0, num).sort((a, b) => a - b),
-                        selectedQuestions = selectedIndices.map(index => questions[index]);
-
-                    return selectedQuestions;
+                    return indices.slice(0, num).map(index => questions[index]);
                 },
                 removeTags: (str) => {
                     const wrapper = $("<div></div>").html(str);

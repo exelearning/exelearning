@@ -304,14 +304,9 @@ var $guess = {
         mOptions.wordsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.wordsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
             );
-        mOptions.wordsGame =
-            mOptions.optionsRamdon && mOptions.percentajeQuestions === 100
-                ? $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                      mOptions.wordsGame
-                  )
-                : mOptions.wordsGame;
         mOptions.numberQuestions = mOptions.wordsGame.length;
 
         return mOptions;

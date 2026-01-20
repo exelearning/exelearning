@@ -358,19 +358,11 @@ var $eXeHiddenImage = {
             }
         });
         mOptions.questionsGame =
-            mOptions.percentajeQuestions < 100
-                ? $exeDevices.iDevice.gamification.helpers.getQuestions(
-                      mOptions.questionsGame,
-                      mOptions.percentajeQuestions
-                  )
-                : mOptions.questionsGame;
-
-        if (mOptions.optionsRamdon) {
-            mOptions.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.questionsGame
-                );
-        }
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                mOptions.questionsGame,
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
+            );
 
         mOptions.numberQuestions = mOptions.questionsGame.length;
 

@@ -240,12 +240,9 @@ var $eXeFlipCards = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame
-        );
-        mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
         mOptions.numberCards = mOptions.cardsGame.length;
         mOptions.realNumberCards = mOptions.numberCards;
 
@@ -269,7 +266,6 @@ var $eXeFlipCards = {
                 $eXeFlipCards.hasLATEX = true;
             }
         }
-
         mOptions.fullscreen = false;
         return mOptions;
     },
@@ -862,11 +858,13 @@ var $eXeFlipCards = {
     showActivity: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
         mOptions.active = 0;
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame
-        );
-        mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
-
+    
+        if(mOptions.randomCards){
+            mOptions.cardsGame =
+            $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                mOptions.cardsGame
+            );
+        }
         if (mOptions.type === 2)
             mOptions.cardsGame = $eXeFlipCards.activeGameMode(instance);
         else if (mOptions.type === 3)
@@ -1348,8 +1346,10 @@ var $eXeFlipCards = {
     addCardsMemory: function (instance, cardsGame) {
         const mOptions = $eXeFlipCards.options[instance];
         let cards = '';
-        cardsGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(cardsGame);
+        if (mOptions.randomCards === true) {
+            cardsGame =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(cardsGame);
+        }
         $('#flcdsMultimedia-' + instance)
             .find('.FLCDSP-CardContainerMemory')
             .remove();

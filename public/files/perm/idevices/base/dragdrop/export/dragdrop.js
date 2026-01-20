@@ -137,7 +137,8 @@ var $eXeDragDrop = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;

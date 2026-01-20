@@ -467,12 +467,11 @@ var $quickquestions = {
             }
         });
         mOptions.questionsGame =
-            mOptions.percentajeQuestions < 100
-                ? $exeDevices.iDevice.gamification.helpers.getQuestions(
-                      mOptions.questionsGame,
-                      mOptions.percentajeQuestions
-                  )
-                : mOptions.questionsGame;
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                mOptions.questionsGame,
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
+            );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             const question = mOptions.questionsGame[i];
             if (mOptions.customScore) {
@@ -481,13 +480,6 @@ var $quickquestions = {
                 question.customScore = 1;
                 mOptions.scoreTotal += question.customScore;
             }
-        }
-
-        if (mOptions.optionsRamdon) {
-            mOptions.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.questionsGame
-                );
         }
 
         mOptions.numberQuestions = mOptions.questionsGame.length;
