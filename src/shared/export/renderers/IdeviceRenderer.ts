@@ -50,7 +50,7 @@ export class IdeviceRenderer {
         component: ExportComponent,
         options: ComponentRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true } = options;
+        const { basePath = '', includeDataAttributes = true, assetExportPathMap } = options;
 
         const type = component.type || 'text';
         const config = getIdeviceConfig(type);
@@ -109,7 +109,12 @@ export class IdeviceRenderer {
                 // Add JSON data for iDevices with jsonProperties (iDevice-specific config)
                 // Transform asset URLs in properties the same way as content
                 if (Object.keys(jsonProps).length > 0) {
-                    const transformedProps = this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls);
+                    const transformedProps = this.transformPropertiesUrls(
+                        jsonProps,
+                        basePath,
+                        isPreviewModeForUrls,
+                        assetExportPathMap,
+                    );
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
@@ -122,7 +127,7 @@ export class IdeviceRenderer {
 
         // Fix asset URLs in content (uses same mode detection as properties)
         const isPreviewMode = basePath.startsWith('/') || basePath.includes('://');
-        const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode);
+        const fixedContent = this.fixAssetUrls(htmlContent, basePath, isPreviewMode, assetExportPathMap);
 
         // Escape HTML entities inside <pre><code> blocks to display code examples correctly
         const escapedContent = this.escapePreCodeContent(fixedContent);
@@ -148,7 +153,7 @@ ${contentHtml}
         block: ExportBlock,
         options: BlockRenderOptions = { basePath: '', includeDataAttributes: true },
     ): string {
-        const { basePath = '', includeDataAttributes = true, themeIconBasePath } = options;
+        const { basePath = '', includeDataAttributes = true, themeIconBasePath, assetExportPathMap } = options;
 
         const blockId = block.id;
         const blockName = block.name || '';
@@ -221,7 +226,7 @@ ${iconHtml}${titleHtml}${toggleHtml}</header>`;
         // Render all iDevices in the block
         let contentHtml = '';
         for (const component of components) {
-            contentHtml += this.render(component, { basePath, includeDataAttributes });
+            contentHtml += this.render(component, { basePath, includeDataAttributes, assetExportPathMap });
         }
 
         // Build additional attributes (identifier support)

@@ -87,6 +87,9 @@ export class Html5Exporter extends BaseExporter {
                 ? { path: html5Options.faviconPath, type: html5Options.faviconType || 'image/x-icon' }
                 : detectedFavicon;
 
+            // Build asset export path map for URL transformation
+            const assetExportPathMap = await this.buildAssetExportPathMap();
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -103,6 +106,7 @@ export class Html5Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    assetExportPathMap,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -366,6 +370,7 @@ export class Html5Exporter extends BaseExporter {
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param faviconInfo - Favicon info (optional)
      * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      */
     generatePageHtml(
         page: ExportPage,
@@ -376,6 +381,7 @@ export class Html5Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
+        assetExportPathMap?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -431,6 +437,8 @@ export class Html5Exporter extends BaseExporter {
             faviconType: faviconInfo?.type,
             // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
+            // Asset URL transformation map
+            assetExportPathMap,
         });
     }
 
@@ -560,6 +568,9 @@ export class Html5Exporter extends BaseExporter {
                 ? { path: options.faviconPath, type: options.faviconType || 'image/x-icon' }
                 : detectedFavicon;
 
+            // Build asset export path map for URL transformation
+            const assetExportPathMap = await this.buildAssetExportPathMap();
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -576,6 +587,7 @@ export class Html5Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    assetExportPathMap,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false

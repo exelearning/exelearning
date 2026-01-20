@@ -556,6 +556,12 @@ export interface PageRenderOptions {
      * If not provided, filenames are generated directly from titles.
      */
     pageFilenameMap?: Map<string, string>;
+
+    /**
+     * Map of asset UUID to export path for URL transformation (new format asset://uuid.ext).
+     * Used to convert asset:// URLs to content/resources/ paths in export output.
+     */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -564,6 +570,8 @@ export interface PageRenderOptions {
 export interface ComponentRenderOptions {
     basePath: string;
     includeDataAttributes: boolean;
+    /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**

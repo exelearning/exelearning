@@ -171,6 +171,13 @@ var $exeDevice = {
             let imageURL = this.ideviceBody
                 .querySelector(`#${element}`)
                 .getAttribute('origin');
+
+            // FIX: Blob URLs are ephemeral and won't work after page reload.
+            // If thumbnail is a blob URL, use the persistent asset URL instead.
+            if (thumbnailURL && thumbnailURL.startsWith('blob:')) {
+                thumbnailURL = imageURL;
+            }
+
             let imageTitle,
                 imageLinkTitle,
                 imageAuthor,
@@ -300,10 +307,11 @@ var $exeDevice = {
             // Editing existing image
             let img = this.ideviceBody.querySelector(`#img_${this.editionId}`);
             img.setAttribute('origin', assetUrl);
-            img.setAttribute('src', assetUrl);
+            // Use blobUrl for display (browsers can render blob: URLs), keep assetUrl in 'origin' for persistence
+            img.setAttribute('src', blobUrl || assetUrl);
         } else {
-            // Adding new image
-            this.addImageHTML(this.idImage, assetUrl, assetUrl);
+            // Adding new image - use blobUrl for thumbnail display
+            this.addImageHTML(this.idImage, assetUrl, blobUrl || assetUrl);
             // Add sortable behaviour to the new image
             let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
             this.addSortableBehaviour(images[images.length - 1]);
