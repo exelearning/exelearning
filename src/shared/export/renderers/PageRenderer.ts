@@ -88,6 +88,8 @@ export class PageRenderer {
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
             hideNavigation = false,
             hideNavButtons = false,
+            // Asset URL transformation map
+            assetExportPathMap,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -98,7 +100,7 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -573,15 +575,22 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param basePath - Base path
      * @param projectTitle - Project title (for exe-package:elp transformation)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      * @returns Content HTML
      */
-    renderPageContent(page: ExportPage, basePath: string, projectTitle?: string): string {
+    renderPageContent(
+        page: ExportPage,
+        basePath: string,
+        projectTitle?: string,
+        assetExportPathMap?: Map<string, string>,
+    ): string {
         let html = '';
 
         for (const block of page.blocks || []) {
             html += this.ideviceRenderer.renderBlock(block, {
                 basePath,
                 includeDataAttributes: true,
+                assetExportPathMap,
             });
         }
 
