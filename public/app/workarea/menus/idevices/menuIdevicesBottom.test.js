@@ -130,6 +130,9 @@ describe('MenuIdevicesBottom', () => {
         onerror: null,
       })),
     };
+    if (typeof window !== 'undefined') {
+        window.indexedDB = global.indexedDB;
+    }
 
     // Mock ResizeObserver
     global.ResizeObserver = vi.fn(function (callback) {
@@ -145,11 +148,11 @@ describe('MenuIdevicesBottom', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete global._;
-    delete window.bootstrap;
-    delete window.eXeLearning;
-    delete global.indexedDB;
-    delete global.ResizeObserver;
+    // delete global._;
+    // delete window.bootstrap;
+    // delete window.eXeLearning;
+    // delete global.indexedDB;
+    // delete global.ResizeObserver;
   });
 
   describe('constructor', () => {
@@ -603,29 +606,32 @@ describe('MenuIdevicesBottom', () => {
     });
   });
 
-  describe('saveIdevices', () => {
-    it('should save idevices to IndexedDB', async () => {
-      vi.spyOn(menuIdevicesBottom, 'openDB').mockResolvedValue(mockDB);
+    it('should save idevices to Backend via API', async () => {
+      const idevices = ['text', 'form'];
+      await menuIdevicesBottom.saveIdevices(idevices);
 
-      await menuIdevicesBottom.saveIdevices(['text', 'form']);
-
-      expect(mockDB.transaction).toHaveBeenCalledWith('idevicesSettings', 'readwrite');
-      expect(mockStore.put).toHaveBeenCalledWith({
-        id: 'testuser',
-        value: ['text', 'form'],
+      expect(window.eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith({
+        idevices_selected: JSON.stringify(idevices)
       });
     });
 
-    it('should use user name as key', async () => {
-      vi.spyOn(menuIdevicesBottom, 'openDB').mockResolvedValue(mockDB);
-      window.eXeLearning.app.user.name = 'different-user';
+    it('should update local user preferences cache on save', async () => {
+      const idevices = ['text', 'form'];
+      const mockResponse = { some: 'response' };
+      window.eXeLearning.app.api.putSaveUserPreferences.mockResolvedValue(mockResponse);
 
-      await menuIdevicesBottom.saveIdevices(['text']);
+      await menuIdevicesBottom.saveIdevices(idevices);
 
-      expect(mockStore.put).toHaveBeenCalledWith({
-        id: 'different-user',
-        value: ['text'],
-      });
+      expect(window.eXeLearning.app.user.preferences.setPreferences).toHaveBeenCalledWith(mockResponse);
+    });
+
+    it('should handle save error', async () => {
+      const error = new Error('Save failed');
+      window.eXeLearning.app.api.putSaveUserPreferences.mockRejectedValue(error);
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(menuIdevicesBottom.saveIdevices(['text'])).rejects.toThrow('Save failed');
+      consoleSpy.mockRestore();
     });
   });
 
