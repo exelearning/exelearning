@@ -111,9 +111,9 @@ describe('Translations Command', () => {
 <xliff version="1.2">
   <file>
     <body>
-      <trans-unit id="1" resname="test.key">
-        <source>test.key</source>
-        <target>__test.key</target>
+      <trans-unit id="1" resname="some.translation.key">
+        <source>some.translation.key</source>
+        <target>__some.translation.key</target>
       </trans-unit>
     </body>
   </file>
@@ -125,7 +125,7 @@ describe('Translations Command', () => {
 
             const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
             expect(content).toContain('<target></target>');
-            expect(content).not.toContain('<target>__test.key</target>');
+            expect(content).not.toContain('<target>__some.translation.key</target>');
         });
 
         it('should remove trans-units with backslash source', async () => {
@@ -190,13 +190,13 @@ describe('Translations Command', () => {
             // Create a source file with translation keys
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
-            await fs.writeFile(path.join(srcDir, 'test.ts'), `const msg = trans('new.key.from.source');`);
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('feature.button.label');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
 
             const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
-            expect(content).toContain('new.key.from.source');
+            expect(content).toContain('feature.button.label');
         });
 
         it('should skip existing keys', async () => {
@@ -226,11 +226,11 @@ describe('Translations Command', () => {
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
             await fs.writeFile(
-                path.join(srcDir, 'patterns.ts'),
+                path.join(srcDir, 'multi-patterns.ts'),
                 `
-                    const a = trans('pattern.trans');
-                    const b = __('pattern.underscore');
-                    const c = t('pattern.t');
+                    const a = trans('dialog.title.save');
+                    const b = __('dialog.button.cancel');
+                    const c = t('dialog.message.error');
                 `,
             );
 
@@ -238,9 +238,9 @@ describe('Translations Command', () => {
             await execute([], { locale: 'es', 'extract-only': true });
 
             const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
-            expect(content).toContain('pattern.trans');
-            expect(content).toContain('pattern.underscore');
-            expect(content).toContain('pattern.t');
+            expect(content).toContain('dialog.title.save');
+            expect(content).toContain('dialog.button.cancel');
+            expect(content).toContain('dialog.message.error');
         });
 
         it('should skip template expressions', async () => {
@@ -294,7 +294,7 @@ describe('Translations Command', () => {
             // Create source file with translation keys so extraction is attempted
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
-            await fs.writeFile(path.join(srcDir, 'no-body.ts'), `const msg = trans('new.key.for.no.body');`);
+            await fs.writeFile(path.join(srcDir, 'no-body.ts'), `const msg = trans('feature.missing.body');`);
 
             // Create XLF without </body> tag
             const invalidXlf = `<?xml version="1.0"?>
@@ -325,6 +325,144 @@ describe('Translations Command', () => {
             expect(content).toContain('&lt;');
             expect(content).toContain('&gt;');
             expect(content).toContain('&amp;');
+        });
+    });
+
+    describe('file exclusions', () => {
+        it('should exclude .spec.ts files from scanning', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            // Create a spec file with a translation key
+            await fs.writeFile(path.join(srcDir, 'feature.spec.ts'), `const msg = trans('spec.file.translation');`);
+            // Create a regular file with a translation key
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('regular.file.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // Regular file key should be present
+            expect(content).toContain('regular.file.translation');
+            // Spec file key should NOT be present
+            expect(content).not.toContain('spec.file.translation');
+        });
+
+        it('should exclude .test.js files from scanning', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            // Create a test file with a translation key
+            await fs.writeFile(path.join(appDir, 'component.test.js'), `const msg = t('testjs.file.translation');`);
+            // Create a regular file with a translation key
+            await fs.writeFile(path.join(appDir, 'component.js'), `const msg = t('regular.js.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // Regular file key should be present
+            expect(content).toContain('regular.js.translation');
+            // Test file key should NOT be present
+            expect(content).not.toContain('testjs.file.translation');
+        });
+
+        it('should exclude exe_math directory', async () => {
+            const exeMathDir = path.join(testDir, 'public', 'app', 'common', 'exe_math');
+            await fs.ensureDir(exeMathDir);
+            // Create a file in exe_math with t() calls (like MathJax has)
+            await fs.writeFile(path.join(exeMathDir, 'mathjax.js'), `function x(t){return t('mathfontexe');}`);
+            // Create a regular file outside exe_math
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.writeFile(path.join(appDir, 'regular.js'), `const msg = t('regular.app.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // Regular file key should be present
+            expect(content).toContain('regular.app.translation');
+            // MathJax-like key should NOT be present
+            expect(content).not.toContain('mathfontexe');
+        });
+    });
+
+    describe('invalid key filtering', () => {
+        it('should exclude keys starting with test.', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(
+                path.join(srcDir, 'source.ts'),
+                `
+                    const a = trans('test.something');
+                    const b = trans('valid.translation');
+                `,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('valid.translation');
+            expect(content).not.toContain('test.something');
+        });
+
+        it('should exclude keys starting with pattern.', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(
+                path.join(srcDir, 'source.ts'),
+                `
+                    const a = trans('pattern.trans');
+                    const b = trans('menu.pattern.option');
+                `,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // "menu.pattern.option" is valid (doesn't START with pattern.)
+            expect(content).toContain('menu.pattern.option');
+            // "pattern.trans" starts with pattern. and should be excluded
+            expect(content).not.toContain('resname="pattern.trans"');
+        });
+
+        it('should exclude keys starting with nonexistent.', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(
+                path.join(srcDir, 'source.ts'),
+                `
+                    const a = trans('nonexistent.translation.key');
+                    const b = trans('real.translation.key');
+                `,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('real.translation.key');
+            expect(content).not.toContain('nonexistent.translation.key');
+        });
+
+        it('should exclude the literal key "key"', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(
+                path.join(srcDir, 'source.ts'),
+                `
+                    const a = trans('key');
+                    const b = trans('valid.key.name');
+                `,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('valid.key.name');
+            // Should not add just "key" as a translation
+            expect(content).not.toMatch(/resname="key"/);
         });
     });
 });

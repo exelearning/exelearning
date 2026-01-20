@@ -20,6 +20,7 @@ import * as elpExport from './commands/elp-export';
 import * as checkQuota from './commands/check-quota';
 import * as projectsPurge from './commands/projects-purge';
 import * as projectsCleanup from './commands/projects-cleanup';
+import * as updateLicenses from './commands/update-licenses';
 
 // Command registry
 interface CommandModule {
@@ -42,6 +43,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'check-quota': checkQuota,
     'projects:purge': projectsPurge,
     'projects:cleanup': projectsCleanup,
+    'update-licenses': updateLicenses,
 };
 
 // Command aliases
@@ -165,6 +167,7 @@ ${colors.cyan('Maintenance:')}
   translations [--locale=en]                  Extract/clean translations
   projects:purge --yes                        Delete all projects and assets
   projects:cleanup [--unsaved-age=24]        Clean unsaved/guest projects
+  update-licenses [--dry-run]                Update license info in public/libs/README.md
 
 ${colors.cyan('ELPX Processing:')}
   elp:convert <input> <output>               Convert ELP v2.x to v3.0 (elpx)
@@ -191,6 +194,7 @@ ${colors.cyan('Examples:')}
   bun cli projects:purge --dry-run
   bun cli projects:cleanup --dry-run
   bun cli projects:cleanup --unsaved-age 48 --guest-age 14 --yes
+  bun cli update-licenses --dry-run
 
 ${colors.cyan('Help:')}
   bun cli <command> --help   Show help for specific command

@@ -64,9 +64,9 @@ export default class ApiCallManager {
      */
     async getThirdPartyCodeText() {
         // Use basePath + version for proper cache busting
-        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README)
+        // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README.md)
         const version = eXeLearning?.version || 'v1.0.0';
-        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README';
+        let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README.md';
         return await this.func.getText(url);
     }
 
