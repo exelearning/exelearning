@@ -7,9 +7,6 @@ test.describe('Favorite iDevices Persistence', () => {
     }) => {
         const page = authenticatedPage;
 
-        // Pipe browser console logs to stdout for debugging
-        page.on('console', msg => console.log(`[Browser Console] ${msg.text()}`));
-
         // 1. Create and open a project to ensure the UI is fully loaded for editing
         const projectUuid = await createProject(page, 'Favorite iDevices Test');
         await page.goto(`/workarea?project=${projectUuid}`);
@@ -18,36 +15,6 @@ test.describe('Favorite iDevices Persistence', () => {
 
         // 2. Open "iDevice Manager" (Settings)
         const settingsBtn = page.locator('#setting-menuIdevices');
-
-        // DEBUG: Check for edition mode which hides the bottom menu
-        const nodeContent = page.locator('#node-content');
-        await expect(nodeContent).toBeVisible();
-        const mode = await nodeContent.getAttribute('mode');
-        console.log(`[Test Debug] #node-content mode: '${mode}'`);
-
-        // If in edition mode, we might need to verify that first
-        if (mode === 'edition') {
-            console.log('[Test Debug] In edition mode. Attempting to accept/cancel to exit...');
-            // Try to find a save/done button if exists, or simple log for now so we know
-        }
-
-        // DEBUG: Inspect #idevices-bottom
-        const bottomMenu = page.locator('#idevices-bottom');
-        const bottomContent = await bottomMenu.innerHTML();
-        console.log(`[Test Debug] #idevices-bottom innerHTML length: ${bottomContent.length}`);
-        console.log(`[Test Debug] #idevices-bottom innerHTML: ${bottomContent.substring(0, 200)}...`);
-
-        const isVisible = await bottomMenu.isVisible();
-        console.log(`[Test Debug] #idevices-bottom isVisible: ${isVisible}`);
-
-        await bottomMenu.evaluate(el => {
-            const style = window.getComputedStyle(el);
-            console.log(
-                `[Browser Debug] #idevices-bottom Computed Style - Display: ${style.display}, Visibility: ${style.visibility}, Opacity: ${style.opacity}, Z-Index: ${style.zIndex}, Position: ${style.position}, Bottom: ${style.bottom}`,
-            );
-            console.log(`[Browser Debug] #idevices-bottom Classes: ${el.className}`);
-            console.log(`[Browser Debug] #idevices-bottom Rect: ${JSON.stringify(el.getBoundingClientRect())}`);
-        });
 
         await expect(settingsBtn).toBeVisible({ timeout: 10000 });
         await settingsBtn.click();
