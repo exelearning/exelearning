@@ -108,13 +108,19 @@ export class IdeviceRenderer {
 
                 // Add JSON data for iDevices with jsonProperties (iDevice-specific config)
                 // Transform asset URLs in properties the same way as content
-                if (Object.keys(jsonProps).length > 0) {
-                    const transformedProps = this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls);
+                // Text idevices only need ideviceId, not full properties (hide jsondata)
+                const isTextType = normalizedType === 'text';
+
+                if (isTextType || Object.keys(jsonProps).length > 0) {
+                    // For text idevices, use object with only ideviceId; for others, transform URLs in properties
+                    const transformedProps = isTextType
+                        ? { ideviceId }
+                        : this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls);
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }
-                // Always add template for JSON components (including text)
-                if (config.template) {
+                // Always add template for JSON components (except text which doesn't need it)
+                if (config.template && !isTextType) {
                     dataAttrs += ` data-idevice-template="${this.escapeAttr(config.template)}"`;
                 }
             }

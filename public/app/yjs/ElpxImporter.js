@@ -1750,7 +1750,7 @@ class ElpxImporter {
 
               // Convert htmlView to jsonProperties for JSON-type iDevices (FreeTextIdevice/TextIdevice)
               // These iDevices expect content in jsonProperties.textTextarea format
-              // Also include feedback content if present (from FreeTextHandler.extractProperties)
+              // Also include feedback content and PBL Task metadata (duration/participants)
               if (ideviceType === 'FreeTextIdevice' || ideviceType.toLowerCase().includes('text')) {
                 // Get feedback from handler properties (FreeTextHandler.extractProperties puts them in ideviceData.properties)
                 // Fall back to ideviceData.feedbackButton/feedbackHtml for backwards compatibility
@@ -1758,6 +1758,14 @@ class ElpxImporter {
                 const feedbackTextarea = ideviceData.properties?.textFeedbackTextarea || ideviceData.feedbackHtml || '';
 
                 const jsonProps = {
+                  // Default values for duration/participants info (PBL Task metadata)
+                  textInfoDurationInput: '',
+                  textInfoDurationTextInput: '',
+                  textInfoParticipantsInput: '',
+                  textInfoParticipantsTextInput: '',
+                  // Spread any additional properties from LegacyXmlParser (e.g., PBL Task metadata)
+                  ...(ideviceData.properties || {}),
+                  // Core content fields (override any from properties to ensure correct values)
                   textTextarea: transformedHtml || '',
                   textFeedbackInput: feedbackInput,
                   textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : ''

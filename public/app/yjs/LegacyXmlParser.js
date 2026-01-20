@@ -58,6 +58,344 @@ class LegacyXmlParser {
   };
 
   /**
+   * IDEVICE TITLE TRANSLATIONS
+   * Static translations for common iDevice titles.
+   * Used to translate English titles to project language during legacy import.
+   */
+  static IDEVICE_TITLE_TRANSLATIONS = {
+    'Case Study': {
+      es: 'Caso práctico',
+      en: 'Case Study',
+      ca: 'Cas pràctic',
+      va: 'Cas pràctic',
+      eu: 'Kasu praktikoa',
+      gl: 'Caso práctico',
+      pt: 'Caso prático',
+      fr: 'Étude de cas',
+      de: 'Fallstudie',
+      it: 'Caso di studio',
+      nl: 'Casestudy',
+      pl: 'Studium przypadku',
+      ru: 'Тематическое исследование',
+      zh: '案例研究',
+      ja: 'ケーススタディ',
+      ar: 'دراسة حالة',
+    },
+    'Activity': {
+      es: 'Actividad',
+      en: 'Activity',
+      ca: 'Activitat',
+      va: 'Activitat',
+      eu: 'Jarduera',
+      gl: 'Actividade',
+      pt: 'Atividade',
+      fr: 'Activité',
+      de: 'Aktivität',
+      it: 'Attività',
+    },
+    'Reading Activity': {
+      es: 'Actividad de lectura',
+      en: 'Reading Activity',
+      ca: 'Activitat de lectura',
+      va: 'Activitat de lectura',
+      eu: 'Irakurketa jarduera',
+      gl: 'Actividade de lectura',
+      pt: 'Atividade de leitura',
+      fr: 'Activité de lecture',
+      de: 'Leseaktivität',
+      it: 'Attività di lettura',
+    },
+    'Preknowledge': {
+      es: 'Conocimiento previo',
+      en: 'Preknowledge',
+      ca: 'Coneixement previ',
+      va: 'Coneixement previ',
+      eu: 'Aurretiko ezagutza',
+      gl: 'Coñecemento previo',
+      pt: 'Conhecimento prévio',
+      fr: 'Prérequis',
+      de: 'Vorwissen',
+      it: 'Conoscenze pregresse',
+    },
+    'Objectives': {
+      es: 'Objetivos',
+      en: 'Objectives',
+      ca: 'Objectius',
+      va: 'Objectius',
+      eu: 'Helburuak',
+      gl: 'Obxectivos',
+      pt: 'Objetivos',
+      fr: 'Objectifs',
+      de: 'Ziele',
+      it: 'Obiettivi',
+    },
+    'Task': {
+      es: 'Tarea',
+      en: 'Task',
+      ca: 'Tasca',
+      va: 'Tasca',
+      eu: 'Zeregina',
+      gl: 'Tarefa',
+      pt: 'Tarefa',
+      fr: 'Tâche',
+      de: 'Aufgabe',
+      it: 'Compito',
+    },
+    'Quotation': {
+      es: 'Cita',
+      en: 'Quotation',
+      ca: 'Citació',
+      va: 'Citació',
+      eu: 'Aipua',
+      gl: 'Cita',
+      pt: 'Citação',
+      fr: 'Citation',
+      de: 'Zitat',
+      it: 'Citazione',
+    },
+    'Reflection': {
+      es: 'Reflexión',
+      en: 'Reflection',
+      ca: 'Reflexió',
+      va: 'Reflexió',
+      eu: 'Hausnarketa',
+      gl: 'Reflexión',
+      pt: 'Reflexão',
+      fr: 'Réflexion',
+      de: 'Reflexion',
+      it: 'Riflessione',
+    },
+    'Free Text': {
+      es: 'Texto libre',
+      en: 'Free Text',
+      ca: 'Text lliure',
+      va: 'Text lliure',
+      eu: 'Testu librea',
+      gl: 'Texto libre',
+      pt: 'Texto livre',
+      fr: 'Texte libre',
+      de: 'Freier Text',
+      it: 'Testo libero',
+    },
+    'FPD - Free Text': {
+      es: 'FPD - Texto libre',
+      en: 'FPD - Free Text',
+      ca: 'FPD - Text lliure',
+      va: 'FPD - Text lliure',
+      eu: 'FPD - Testu librea',
+      gl: 'FPD - Texto libre',
+      pt: 'FPD - Texto livre',
+      fr: 'FPD - Texte libre',
+      de: 'FPD - Freier Text',
+      it: 'FPD - Testo libero',
+    },
+    'A Piece of Advice': {
+      es: 'Consejo',
+      en: 'A Piece of Advice',
+      ca: 'Consell',
+      va: 'Consell',
+      eu: 'Aholkua',
+      gl: 'Consello',
+      pt: 'Conselho',
+      fr: 'Conseil',
+      de: 'Ratschlag',
+      it: 'Consiglio',
+    },
+    'A Step Ahead': {
+      es: 'Para saber más',
+      en: 'A Step Ahead',
+      ca: 'Per saber més',
+      va: 'Per a saber més',
+      eu: 'Gehiago jakiteko',
+      gl: 'Para saber máis',
+      pt: 'Para saber mais',
+      fr: 'Pour en savoir plus',
+      de: 'Einen Schritt voraus',
+      it: 'Per saperne di più',
+    },
+    'Guidelines for the Teacher': {
+      es: 'Orientaciones para el profesorado',
+      en: 'Guidelines for the Teacher',
+      ca: 'Orientacions per al professorat',
+      va: 'Orientacions per al professorat',
+      eu: 'Irakasleentzako orientabideak',
+      gl: 'Orientacións para o profesorado',
+      pt: 'Orientações para o professor',
+      fr: 'Conseils pour l\'enseignant',
+      de: 'Leitlinien für die Lehrkraft',
+      it: 'Linee guida per l\'insegnante',
+    },
+    'Guidelines for Students': {
+      es: 'Orientaciones para el alumnado',
+      en: 'Guidelines for Students',
+      ca: 'Orientacions per a l\'alumnat',
+      va: 'Orientacions per a l\'alumnat',
+      eu: 'Ikasleentzako orientabideak',
+      gl: 'Orientacións para o alumnado',
+      pt: 'Orientações para o aluno',
+      fr: 'Conseils pour les élèves',
+      de: 'Leitlinien für Schüler',
+      it: 'Linee guida per gli studenti',
+    },
+    'FPD - Highlighted': {
+      es: 'Destacado',
+      en: 'FPD - Highlighted',
+      ca: 'Destacat',
+      va: 'Destacat',
+      eu: 'Nabarmendua',
+      gl: 'Destacado',
+      pt: 'Destacado',
+      fr: 'Mis en évidence',
+      de: 'Hervorgehoben',
+      it: 'Evidenziato',
+    },
+    'You Should Know': {
+      es: 'Debes conocer',
+      en: 'You Should Know',
+      ca: 'Has de conèixer',
+      va: 'Has de conéixer',
+      eu: 'Jakin behar duzu',
+      gl: 'Debes coñecer',
+      pt: 'Você deve saber',
+      fr: 'Vous devez savoir',
+      de: 'Das sollten Sie wissen',
+      it: 'Dovresti sapere',
+    },
+    'Download source file': {
+      es: 'Descargar archivo fuente',
+      en: 'Download source file',
+      ca: 'Descarregar fitxer font',
+      va: 'Descarregar fitxer font',
+      eu: 'Deskargatu iturburu fitxategia',
+      gl: 'Descargar ficheiro fonte',
+      pt: 'Baixar arquivo fonte',
+      fr: 'Télécharger le fichier source',
+      de: 'Quelldatei herunterladen',
+      it: 'Scarica file sorgente',
+    },
+    'True-False Question': {
+      es: 'Pregunta verdadero-falso',
+      en: 'True-False Question',
+      ca: 'Pregunta vertader-fals',
+      va: 'Pregunta vertader-fals',
+      eu: 'Egia-gezurra galdera',
+      gl: 'Pregunta verdadeiro-falso',
+      pt: 'Pergunta verdadeiro-falso',
+      fr: 'Question vrai-faux',
+      de: 'Wahr-Falsch-Frage',
+      it: 'Domanda vero-falso',
+    },
+    'Multi-select': {
+      es: 'Selección múltiple',
+      en: 'Multi-select',
+      ca: 'Selecció múltiple',
+      va: 'Selecció múltiple',
+      eu: 'Hautapen anitza',
+      gl: 'Selección múltiple',
+      pt: 'Seleção múltipla',
+      fr: 'Sélection multiple',
+      de: 'Mehrfachauswahl',
+      it: 'Selezione multipla',
+    },
+    'Multi-choice': {
+      es: 'Elección múltiple',
+      en: 'Multi-choice',
+      ca: 'Elecció múltiple',
+      va: 'Elecció múltiple',
+      eu: 'Aukera anitza',
+      gl: 'Elección múltiple',
+      pt: 'Escolha múltipla',
+      fr: 'Choix multiple',
+      de: 'Multiple Choice',
+      it: 'Scelta multipla',
+    },
+    'Scrambled List': {
+      es: 'Lista desordenada',
+      en: 'Scrambled List',
+      ca: 'Llista desordenada',
+      va: 'Llista desordenada',
+      eu: 'Zerrenda nahasia',
+      gl: 'Lista desordenada',
+      pt: 'Lista embaralhada',
+      fr: 'Liste mélangée',
+      de: 'Gemischte Liste',
+      it: 'Lista mescolata',
+    },
+    'SCORM Quiz': {
+      es: 'Cuestionario SCORM',
+      en: 'SCORM Quiz',
+      ca: 'Qüestionari SCORM',
+      va: 'Qüestionari SCORM',
+      eu: 'SCORM galdetegia',
+      gl: 'Cuestionario SCORM',
+      pt: 'Questionário SCORM',
+      fr: 'Quiz SCORM',
+      de: 'SCORM-Quiz',
+      it: 'Quiz SCORM',
+    },
+    'DropDown Activity': {
+      es: 'Actividad desplegable',
+      en: 'DropDown Activity',
+      ca: 'Activitat desplegable',
+      va: 'Activitat desplegable',
+      eu: 'Goitibehera jarduera',
+      gl: 'Actividade despregable',
+      pt: 'Atividade suspensa',
+      fr: 'Activité déroulante',
+      de: 'Dropdown-Aktivität',
+      it: 'Attività a discesa',
+    },
+    'Cloze Activity': {
+      es: 'Actividad de rellenar huecos',
+      en: 'Cloze Activity',
+      ca: 'Activitat d\'omplir buits',
+      va: 'Activitat d\'omplir buits',
+      eu: 'Hutsuneak betetzeko jarduera',
+      gl: 'Actividade de encher ocos',
+      pt: 'Atividade de preencher lacunas',
+      fr: 'Activité à trous',
+      de: 'Lückentext-Aktivität',
+      it: 'Attività cloze',
+    },
+    'Now it\'s your turn': {
+      es: 'Ahora te toca a ti',
+      en: 'Now it\'s your turn',
+      ca: 'Ara et toca a tu',
+      va: 'Ara et toca a tu',
+      eu: 'Orain zure txanda da',
+      gl: 'Agora tócache a ti',
+      pt: 'Agora é a sua vez',
+      fr: 'À vous de jouer',
+      de: 'Jetzt sind Sie dran',
+      it: 'Ora tocca a te',
+    },
+    'Image Gallery': {
+      es: 'Galería de imágenes',
+      en: 'Image Gallery',
+      ca: 'Galeria d\'imatges',
+      va: 'Galeria d\'imatges',
+      eu: 'Irudi galeria',
+      gl: 'Galería de imaxes',
+      pt: 'Galeria de imagens',
+      fr: 'Galerie d\'images',
+      de: 'Bildergalerie',
+      it: 'Galleria di immagini',
+    },
+    'File Attachments': {
+      es: 'Archivos adjuntos',
+      en: 'File Attachments',
+      ca: 'Fitxers adjunts',
+      va: 'Fitxers adjunts',
+      eu: 'Eranskinak',
+      gl: 'Ficheiros adxuntos',
+      pt: 'Anexos de arquivo',
+      fr: 'Pièces jointes',
+      de: 'Dateianhänge',
+      it: 'File allegati',
+    },
+  };
+
+  /**
    * Get localized "Show Feedback" text based on language code
    * @param {string} langCode - Language code (e.g., 'es', 'en')
    * @returns {string} Localized feedback button text
@@ -66,6 +404,30 @@ class LegacyXmlParser {
     const lang = (langCode || '').split('-')[0].toLowerCase();
     return LegacyXmlParser.FEEDBACK_TRANSLATIONS[lang] ||
            LegacyXmlParser.FEEDBACK_TRANSLATIONS.es; // Default to Spanish for legacy files
+  }
+
+  /**
+   * Get localized "Case Study" title based on language code
+   * Used to fix legacy EjercicioresueltofpdIdevice imports with incorrect "Translation" title.
+   * @param {string} langCode - Language code (e.g., 'es', 'en')
+   * @returns {string} Localized case study title
+   */
+  getLocalizedCaseStudyTitle(langCode) {
+    return this.getLocalizedIdeviceTitle('Case Study', langCode) || 'Caso práctico';
+  }
+
+  /**
+   * Get localized iDevice title based on English title and language code
+   * Used to translate common English iDevice titles to project language.
+   * @param {string} englishTitle - English title (e.g., 'Activity', 'Reflection')
+   * @param {string} langCode - Language code (e.g., 'es', 'en')
+   * @returns {string|null} Localized title or null if not found
+   */
+  getLocalizedIdeviceTitle(englishTitle, langCode) {
+    const translations = LegacyXmlParser.IDEVICE_TITLE_TRANSLATIONS[englishTitle];
+    if (!translations) return null;
+    const lang = (langCode || '').split('-')[0].toLowerCase();
+    return translations[lang] || translations.es || englishTitle;
   }
 
   /**
@@ -1014,7 +1376,6 @@ class LegacyXmlParser {
       'OrientacionesalumnadofpdIdevice',  // Student guidelines
       'ParasabermasfpdIdevice',  // To learn more / Step ahead
       'RecomendacionfpdIdevice', // Recommendation
-      'EjercicioresueltofpdIdevice', // Solved exercises
       // External content iDevices (no modern equivalent, fallback to text)
       'WikipediaIdevice',
       'RssIdevice',
@@ -1055,6 +1416,7 @@ class LegacyXmlParser {
       'GalleryIdevice': 'image-gallery',
       // Case study
       'CasestudyIdevice': 'casestudy',
+      'EjercicioresueltofpdIdevice': 'casestudy', // Solved exercises FPD -> case study
       // Note: FileAttachIdevice moved to textBasedIdevices (converts to 'text' for editability)
       // External URL / website
       'ExternalUrlIdevice': 'external-website',
@@ -1219,7 +1581,28 @@ class LegacyXmlParser {
 
       // LEGACY V2.X IDEVICE BOX SPLITTING CONVENTION
       // Extract the iDevice title to use as the block name
-      const title = this.extractIdeviceTitle(inst);
+      let title = this.extractIdeviceTitle(inst);
+
+      // FIX: EjercicioresueltofpdIdevice has incorrect "Translation" title in legacy files
+      // Replace with localized "Case Study" title based on project language
+      if (className.toLowerCase().includes('ejercicioresueltofpdidevice') && title === 'Translation') {
+        title = this.getLocalizedCaseStudyTitle(this.projectLanguage);
+        Logger.log(`[LegacyXmlParser] Fixed EjercicioresueltofpdIdevice title: "Translation" -> "${title}"`);
+      }
+
+      // FIX: CasestudyIdevice has English "Case Study" title - translate to project language
+      if (className.toLowerCase().includes('casestudyidevice') && title === 'Case Study') {
+        title = this.getLocalizedCaseStudyTitle(this.projectLanguage);
+        Logger.log(`[LegacyXmlParser] Fixed CasestudyIdevice title: "Case Study" -> "${title}"`);
+      }
+
+      // FIX: Translate common English iDevice titles to project language
+      // This handles Activity, Reading Activity, Preknowledge, Objectives, Task, Quotation, Reflection
+      const localizedTitle = this.getLocalizedIdeviceTitle(title, this.projectLanguage);
+      if (localizedTitle && localizedTitle !== title) {
+        Logger.log(`[LegacyXmlParser] Translated iDevice title: "${title}" -> "${localizedTitle}"`);
+        title = localizedTitle;
+      }
 
       // LEGACY ICON EXTRACTION CONVENTION
       // Extract icon name from the iDevice dictionary and map to theme icon
@@ -1415,12 +1798,17 @@ class LegacyXmlParser {
       // Based on Symfony OdeXmlUtil.php lines 2159-2192 and 2272-2320
       // PBL Task iDevices have structured HTML with duration, participants, and feedback
       if (idevice.htmlView && idevice.htmlView.includes('pbl-task-description')) {
-        // Type stays as 'text' but we preserve the special HTML structure
-        // and extract metadata as JSON properties for the text iDevice editor
+        // Type stays as 'text' but we extract metadata as JSON properties
+        // and rebuild the htmlView in the correct format for preview
         const pblTaskData = this.extractPblTaskMetadata(idevice.htmlView);
         if (pblTaskData) {
+          // Apply rebuilt htmlView (with proper exe-text-activity structure)
+          if (pblTaskData.rebuiltHtmlView) {
+            idevice.htmlView = pblTaskData.rebuiltHtmlView;
+            delete pblTaskData.rebuiltHtmlView; // Don't store in properties
+          }
           idevice.properties = { ...idevice.properties, ...pblTaskData };
-          Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata');
+          Logger.log('[LegacyXmlParser] Detected PBL Task iDevice, extracted metadata and rebuilt htmlView');
         }
       }
 
@@ -1602,7 +1990,7 @@ class LegacyXmlParser {
   }
 
   /**
-   * Extract PBL Task metadata from HTML content
+   * Extract PBL Task metadata from HTML content and rebuild htmlView
    * Based on Symfony OdeXmlUtil.php searchTaskIdeviceElementsOldElp()
    *
    * PBL Task iDevices have structured HTML:
@@ -1612,7 +2000,7 @@ class LegacyXmlParser {
    * - input.feedbackbutton with button text
    *
    * @param {string} htmlView - HTML content of the iDevice
-   * @returns {Object|null} Extracted metadata or null if extraction fails
+   * @returns {Object|null} Extracted metadata with rebuilt htmlView or null if extraction fails
    */
   extractPblTaskMetadata(htmlView) {
     if (!htmlView) return null;
@@ -1622,11 +2010,11 @@ class LegacyXmlParser {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = htmlView;
 
-      // Extract duration
+      // Extract duration (dt = label, dd = value)
       const durationLabel = tempDiv.querySelector('dt.pbl-task-duration');
       const durationValue = tempDiv.querySelector('dd.pbl-task-duration');
 
-      // Extract participants
+      // Extract participants (dt = label, dd = value)
       const participantsLabel = tempDiv.querySelector('dt.pbl-task-participants');
       const participantsValue = tempDiv.querySelector('dd.pbl-task-participants');
 
@@ -1634,35 +2022,93 @@ class LegacyXmlParser {
       const feedbackDiv = tempDiv.querySelector('.feedback.js-feedback');
       const feedbackButton = tempDiv.querySelector('.feedbackbutton');
 
+      // Extract main task content
+      const taskDescriptionDiv = tempDiv.querySelector('.pbl-task-description');
+
       // Build metadata object matching Symfony's structure
-      const metadata = {};
+      // TextInput = label (dt), Input = value (dd)
+      const taskDurationInput = durationLabel?.textContent?.trim() || '';
+      const taskDuration = durationValue?.textContent?.trim() || '';
+      const taskParticipantsInput = participantsLabel?.textContent?.trim() || '';
+      const taskParticipants = participantsValue?.textContent?.trim() || '';
+      const textButtonFeedback = feedbackButton?.value || feedbackButton?.textContent?.trim() || '';
+      const textFeedback = feedbackDiv?.innerHTML?.trim() || '';
+      const taskContent = taskDescriptionDiv?.innerHTML?.trim() || '';
 
-      if (durationLabel) {
-        metadata.textInfoDurationInput = durationLabel.textContent?.trim() || '';
-      }
-      if (durationValue) {
-        metadata.textInfoDurationTextInput = durationValue.textContent?.trim() || '';
-      }
-      if (participantsLabel) {
-        metadata.textInfoParticipantsInput = participantsLabel.textContent?.trim() || '';
-      }
-      if (participantsValue) {
-        metadata.textInfoParticipantsTextInput = participantsValue.textContent?.trim() || '';
-      }
-      if (feedbackDiv) {
-        metadata.textInfoFeedback = feedbackDiv.innerHTML?.trim() || '';
-      }
-      if (feedbackButton) {
-        metadata.textInfoFeedbackButton = feedbackButton.value || feedbackButton.textContent?.trim() || '';
+      // Build metadata for jsonProperties
+      const metadata = {
+        textInfoDurationTextInput: taskDurationInput,
+        textInfoDurationInput: taskDuration,
+        textInfoParticipantsTextInput: taskParticipantsInput,
+        textInfoParticipantsInput: taskParticipants,
+        textFeedbackInput: textButtonFeedback,
+        textFeedbackTextarea: textFeedback
+      };
+
+      // Rebuild htmlView matching Symfony format (OdeXmlUtil.php)
+      // Format: <div class="exe-text-activity"><dl>...</dl>{content}{feedback}</div>
+      let rebuiltHtmlView = '';
+
+      // Only add duration/participants dl if we have values
+      if (taskDuration || taskParticipants) {
+        rebuiltHtmlView += '<dl>';
+        rebuiltHtmlView += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(taskDurationInput)}">${this.escapeHtml(taskDurationInput)}</span></dt>`;
+        rebuiltHtmlView += `<dd>${this.escapeHtml(taskDuration)}</dd></div>`;
+        rebuiltHtmlView += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(taskParticipantsInput)}">${this.escapeHtml(taskParticipantsInput)}</span></dt>`;
+        rebuiltHtmlView += `<dd>${this.escapeHtml(taskParticipants)}</dd></div>`;
+        rebuiltHtmlView += '</dl>';
       }
 
-      // Only return if we found some metadata
-      const hasMetadata = Object.keys(metadata).length > 0;
-      return hasMetadata ? metadata : null;
+      // Add main task content
+      rebuiltHtmlView += taskContent;
+
+      // Add feedback button and content if present
+      if (textButtonFeedback) {
+        rebuiltHtmlView += '<div class="iDevice_buttons feedback-button js-required">';
+        rebuiltHtmlView += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(textButtonFeedback)}" `;
+        rebuiltHtmlView += `data-text-a="${this.escapeHtmlAttr(textButtonFeedback)}" data-text-b="${this.escapeHtmlAttr(textButtonFeedback)}">`;
+        rebuiltHtmlView += '</div>';
+        rebuiltHtmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${textFeedback}</div>`;
+      }
+
+      // Wrap in exe-text-activity container
+      rebuiltHtmlView = `<div class="exe-text-activity">${rebuiltHtmlView}</div>`;
+
+      metadata.rebuiltHtmlView = rebuiltHtmlView;
+
+      return metadata;
     } catch (e) {
       Logger.log(`[LegacyXmlParser] Error extracting PBL Task metadata: ${e.message}`);
       return null;
     }
+  }
+
+  /**
+   * Escape HTML special characters for safe text content
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string
+   */
+  escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  /**
+   * Escape HTML special characters for attribute values
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string safe for HTML attributes
+   */
+  escapeHtmlAttr(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /**
