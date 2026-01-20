@@ -1455,6 +1455,7 @@ describe('LegacyXmlParser', () => {
      */
 
     it('should create one block per iDevice', () => {
+      // Use custom titles that are NOT in IDEVICE_TITLE_TRANSLATIONS to avoid translation
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
         <root>
           <instance class="exe.engine.node.Node" reference="node-1">
@@ -1468,19 +1469,19 @@ describe('LegacyXmlParser', () => {
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Introduction"/>
+                    <unicode value="Introducción"/>
                   </dictionary>
                 </instance>
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev2">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Objectives"/>
+                    <unicode value="Mis objetivos"/>
                   </dictionary>
                 </instance>
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev3">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Activity"/>
+                    <unicode value="Primera actividad"/>
                   </dictionary>
                 </instance>
               </list>
@@ -1501,10 +1502,10 @@ describe('LegacyXmlParser', () => {
         expect(block.idevices).toHaveLength(1);
       });
 
-      // Block names should match iDevice titles
-      expect(page.blocks[0].name).toBe('Introduction');
-      expect(page.blocks[1].name).toBe('Objectives');
-      expect(page.blocks[2].name).toBe('Activity');
+      // Block names should match iDevice titles (custom titles not in translation map)
+      expect(page.blocks[0].name).toBe('Introducción');
+      expect(page.blocks[1].name).toBe('Mis objetivos');
+      expect(page.blocks[2].name).toBe('Primera actividad');
     });
 
     it('should use iDevice title as block name', () => {
@@ -3715,10 +3716,11 @@ describe('LegacyXmlParser', () => {
       expect(idevices.length).toBe(1);
       expect(idevices[0].type).toBe('text'); // Type stays as text
       expect(idevices[0].properties).toBeDefined();
-      expect(idevices[0].properties.textInfoDurationInput).toBe('Duración:');
-      expect(idevices[0].properties.textInfoDurationTextInput).toBe('2 sesiones');
-      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Agrupamiento:');
-      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Grupo de 4');
+      // TextInput = label (dt), Input = value (dd)
+      expect(idevices[0].properties.textInfoDurationTextInput).toBe('Duración:');
+      expect(idevices[0].properties.textInfoDurationInput).toBe('2 sesiones');
+      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Agrupamiento:');
+      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Grupo de 4');
     });
 
     it('should extract feedback metadata from PBL Task', () => {
@@ -3727,16 +3729,24 @@ describe('LegacyXmlParser', () => {
       const metadata = parser.extractPblTaskMetadata(html);
 
       expect(metadata).not.toBeNull();
-      expect(metadata.textInfoDurationInput).toBe('Duration:');
-      expect(metadata.textInfoDurationTextInput).toBe('1 hour');
-      expect(metadata.textInfoFeedbackButton).toBe('Show Feedback');
-      expect(metadata.textInfoFeedback).toContain('Feedback text');
+      // TextInput = label (dt), Input = value (dd)
+      expect(metadata.textInfoDurationTextInput).toBe('Duration:');
+      expect(metadata.textInfoDurationInput).toBe('1 hour');
+      expect(metadata.textFeedbackInput).toBe('Show Feedback');
+      expect(metadata.textFeedbackTextarea).toContain('Feedback text');
+      // Check rebuilt htmlView structure
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
+      expect(metadata.rebuiltHtmlView).toContain('Duration:');
+      expect(metadata.rebuiltHtmlView).toContain('1 hour');
+      expect(metadata.rebuiltHtmlView).toContain('feedbacktooglebutton');
     });
 
-    it('should return null for non-PBL content', () => {
+    it('should return metadata with empty values for non-PBL content', () => {
       const html = '<p>Regular text content</p>';
       const metadata = parser.extractPblTaskMetadata(html);
-      expect(metadata).toBeNull();
+      // Now always returns metadata with rebuiltHtmlView, even if no PBL elements found
+      expect(metadata).not.toBeNull();
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
     });
   });
 
@@ -4088,6 +4098,165 @@ describe('LegacyXmlParser', () => {
         const result = parser.extractIDevicesWithTitles(list);
         expect(result[0].type).toBe('text');
       });
+    });
+
+    describe('iDevice title translations', () => {
+      it('should translate "Translation" title to localized Case Study for EjercicioresueltofpdIdevice', () => {
+        parser.projectLanguage = 'es';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.ejercicioresueltofpdidevice.EjercicioresueltofpdIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Translation"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Caso práctico');
+      });
+
+      it('should translate "Case Study" title to localized version for CasestudyIdevice', () => {
+        parser.projectLanguage = 'ca';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.casestudyidevice.CasestudyIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Case Study"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Cas pràctic');
+      });
+
+      it('should translate common English iDevice titles to project language', () => {
+        parser.projectLanguage = 'es';
+        const testCases = [
+          { english: 'Activity', expected: 'Actividad' },
+          { english: 'Reading Activity', expected: 'Actividad de lectura' },
+          { english: 'Preknowledge', expected: 'Conocimiento previo' },
+          { english: 'Objectives', expected: 'Objetivos' },
+          { english: 'Task', expected: 'Tarea' },
+          { english: 'Quotation', expected: 'Cita' },
+          { english: 'Reflection', expected: 'Reflexión' },
+        ];
+
+        for (const { english, expected } of testCases) {
+          const xml = `<?xml version="1.0"?>
+            <list>
+              <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="${english}"/>
+                  <string role="key" value="_iDeviceDir"/>
+                  <unicode value="text"/>
+                </dictionary>
+              </instance>
+            </list>`;
+          const doc = new DOMParser().parseFromString(xml, 'application/xml');
+          const list = doc.querySelector('list');
+          const result = parser.extractIDevicesWithTitles(list);
+          expect(result[0].title).toBe(expected);
+        }
+      });
+
+      it('should preserve custom titles that do not match common English titles', () => {
+        parser.projectLanguage = 'es';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Mi actividad personalizada"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Mi actividad personalizada');
+      });
+
+      it('should use Spanish (default) translation when project language has no translation', () => {
+        parser.projectLanguage = 'xx'; // Unknown language - defaults to Spanish
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Activity"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Actividad'); // Falls back to Spanish
+      });
+    });
+  });
+
+  describe('getLocalizedIdeviceTitle', () => {
+    it('returns Spanish translation for Case Study', () => {
+      const result = parser.getLocalizedIdeviceTitle('Case Study', 'es');
+      expect(result).toBe('Caso práctico');
+    });
+
+    it('returns Catalan translation for Activity', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'ca');
+      expect(result).toBe('Activitat');
+    });
+
+    it('returns French translation for Reflection', () => {
+      const result = parser.getLocalizedIdeviceTitle('Reflection', 'fr');
+      expect(result).toBe('Réflexion');
+    });
+
+    it('returns null for unknown English title', () => {
+      const result = parser.getLocalizedIdeviceTitle('Unknown Title', 'es');
+      expect(result).toBeNull();
+    });
+
+    it('returns Spanish (default) translation for unknown language code', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'xx');
+      expect(result).toBe('Actividad'); // Falls back to Spanish
+    });
+
+    it('returns English translation when language is en', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'en');
+      expect(result).toBe('Activity');
+    });
+
+    it('handles language codes with country suffix', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'es-ES');
+      expect(result).toBe('Actividad');
+    });
+  });
+
+  describe('getLocalizedCaseStudyTitle', () => {
+    it('returns Spanish case study title', () => {
+      const result = parser.getLocalizedCaseStudyTitle('es');
+      expect(result).toBe('Caso práctico');
+    });
+
+    it('returns Basque case study title', () => {
+      const result = parser.getLocalizedCaseStudyTitle('eu');
+      expect(result).toBe('Kasu praktikoa');
+    });
+
+    it('returns default Caso práctico for unknown language', () => {
+      const result = parser.getLocalizedCaseStudyTitle('xx');
+      expect(result).toBe('Caso práctico');
     });
   });
 });

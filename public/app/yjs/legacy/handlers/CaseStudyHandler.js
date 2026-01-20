@@ -1,11 +1,16 @@
 /**
  * CaseStudyHandler
  *
- * Handles legacy CaseStudyIdevice.
+ * Handles legacy CaseStudyIdevice and EjercicioresueltofpdIdevice.
  * Converts to modern 'casestudy' iDevice.
  *
  * Legacy XML structure:
  * - exe.engine.casestudyidevice.CaseStudyIdevice
+ * - exe.engine.ejercicioresueltofpdidevice.EjercicioresueltofpdIdevice (Solved Exercises FPD)
+ *
+ * Both share the same structure:
+ * - storyTextArea: main content (history)
+ * - questions: list of Question instances with questionTextArea + feedbackTextArea
  *
  * Extracts:
  * - history (storyTextArea) - main content
@@ -16,10 +21,12 @@
 class CaseStudyHandler extends BaseLegacyHandler {
   /**
    * Check if this handler can process the given legacy class
-   * Case-insensitive match: legacy files may have 'CasestudyIdevice' or 'CaseStudyIdevice'
+   * Case-insensitive match for CasestudyIdevice and EjercicioresueltofpdIdevice
    */
   canHandle(className) {
-    return className.toLowerCase().includes('casestudyidevice');
+    const lowerName = className.toLowerCase();
+    return lowerName.includes('casestudyidevice') ||
+           lowerName.includes('ejercicioresueltofpdidevice');
   }
 
   /**
