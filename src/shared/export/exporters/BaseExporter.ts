@@ -435,8 +435,20 @@ export abstract class BaseExporter {
             const assets = await this.assets.getAllAssets();
 
             for (const asset of assets) {
-                const folderPath = asset.folderPath || '';
+                let folderPath = asset.folderPath || '';
                 const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+
+                // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
+                // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
+                // This can happen from corrupted ELPX files or bugs in asset saving
+                if (folderPath === filename) {
+                    // folderPath equals filename - remove the duplication
+                    folderPath = '';
+                } else if (folderPath.endsWith(`/${filename}`)) {
+                    // folderPath ends with /filename - remove the trailing duplicate
+                    folderPath = folderPath.slice(0, -(filename.length + 1));
+                }
+
                 const basePath = folderPath ? `${folderPath}/${filename}` : filename;
 
                 // Handle filename collisions (case-insensitive for Windows compatibility)
@@ -470,6 +482,9 @@ export abstract class BaseExporter {
      * - asset://uuid (simple UUID without extension)
      *
      * Output: {{context_path}}/content/resources/{exportPath}
+     *
+     * Also fixes duplicated filename patterns that may exist in content
+     * (e.g., content/resources/file.pdf/file.pdf → content/resources/file.pdf)
      */
     async addFilenamesToAssetUrls(content: string): Promise<string> {
         if (!content) return '';
@@ -478,7 +493,7 @@ export abstract class BaseExporter {
 
         // Transform asset://uuid or asset://uuid.ext to {{context_path}}/content/resources/path
         // Pattern matches: asset:// + 36-char UUID + optional extension
-        return content.replace(/asset:\/\/([a-f0-9-]{36})(\.[a-z0-9]+)?/gi, (_match, uuid, ext) => {
+        let result = content.replace(/asset:\/\/([a-f0-9-]{36})(\.[a-z0-9]+)?/gi, (_match, uuid, ext) => {
             const exportPath = assetMap.get(uuid);
             if (exportPath) {
                 // Resolved: use the proper export path from metadata
@@ -487,6 +502,13 @@ export abstract class BaseExporter {
             // Unresolved: preserve UUID as filename for debugging
             return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
+
+        // Fix duplicated filename patterns in existing content
+        // Pattern: content/resources/{filename}/{filename} where both filenames are identical
+        // This handles cases where the duplication is already in the source content.xml
+        result = result.replace(/content\/resources\/([^/"]+)\/\1(?=["'\s>])/g, 'content/resources/$1');
+
+        return result;
     }
 
     /**

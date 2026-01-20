@@ -725,6 +725,107 @@ describe('BaseExporter', () => {
 
             expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
         });
+
+        describe('asset path duplication fix', () => {
+            it('should fix folderPath that equals filename (file.pdf → root)', async () => {
+                // This simulates corrupted ELPX where folderPath was set to the filename
+                // e.g., content/resources/contrato.pdf/contrato.pdf → content/resources/contrato.pdf
+                assets.addAsset(
+                    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                    'contrato.pdf',
+                    'application/pdf',
+                    Buffer.from(''),
+                    'contrato.pdf', // folderPath incorrectly set to filename
+                );
+
+                const content = '<a href="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/contrato.pdf/contrato.pdf
+                expect(result).not.toContain('contrato.pdf/contrato.pdf');
+                // Should produce content/resources/contrato.pdf
+                expect(result).toBe('<a href="{{context_path}}/content/resources/contrato.pdf">Download</a>');
+            });
+
+            it('should fix folderPath that ends with /filename', async () => {
+                // This simulates a path like images/photo.jpg/photo.jpg
+                assets.addAsset(
+                    'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images/photo.jpg', // folderPath incorrectly includes the filename
+                );
+
+                const content = '<img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/images/photo.jpg/photo.jpg
+                expect(result).not.toContain('photo.jpg/photo.jpg');
+                // Should produce content/resources/images/photo.jpg
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should fix existing duplicated paths in content', async () => {
+                // Content already has duplicated paths (from corrupted ELPX content.xml)
+                const content =
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf/contrato-de-trabajo.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should fix the duplicated path
+                expect(result).not.toContain('contrato-de-trabajo.pdf/contrato-de-trabajo.pdf');
+                expect(result).toBe(
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf">Download</a>',
+                );
+            });
+
+            it('should fix multiple duplicated paths in same content', async () => {
+                const content = `
+                    <a href="{{context_path}}/content/resources/file1.pdf/file1.pdf">Download 1</a>
+                    <img src="{{context_path}}/content/resources/image.jpg/image.jpg">
+                    <a href="{{context_path}}/content/resources/doc.docx/doc.docx">Download 2</a>
+                `;
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).not.toContain('file1.pdf/file1.pdf');
+                expect(result).not.toContain('image.jpg/image.jpg');
+                expect(result).not.toContain('doc.docx/doc.docx');
+                expect(result).toContain('content/resources/file1.pdf"');
+                expect(result).toContain('content/resources/image.jpg"');
+                expect(result).toContain('content/resources/doc.docx"');
+            });
+
+            it('should not affect valid nested paths', async () => {
+                // Valid path: content/resources/images/photo.jpg (images ≠ photo.jpg)
+                assets.addAsset(
+                    'c3d4e5f6-a7b8-9012-cdef-123456789012',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images', // Valid folderPath
+                );
+
+                const content = '<img src="asset://c3d4e5f6-a7b8-9012-cdef-123456789012.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should handle root-level assets correctly (empty folderPath)', async () => {
+                assets.addAsset(
+                    'd4e5f6a7-b8c9-0123-def0-123456789012',
+                    'readme.txt',
+                    'text/plain',
+                    Buffer.from(''),
+                    '', // Empty folderPath - asset at root of content/resources
+                );
+
+                const content = '<a href="asset://d4e5f6a7-b8c9-0123-def0-123456789012.txt">Read</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<a href="{{context_path}}/content/resources/readme.txt">Read</a>');
+            });
+        });
     });
 
     describe('Fallback Styles', () => {
