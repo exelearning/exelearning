@@ -267,13 +267,21 @@ var $exe = {
     // Mermaid options
     mermaid: {
         // Mermaid script path
-        engine: $("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js",
+        engine: (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) 
+            ? window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js' 
+            : ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js"),
         reload_pending: false,
         initialized: false,
         loadMermaid: function () {
+            // Dynamic path resolution
+            var enginePath = this.engine;
+            if (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) {
+                enginePath = window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            }
+
             if (typeof window.mermaid === 'undefined') {
                 const script = document.createElement("script");
-                script.src = this.engine;
+                script.src = enginePath;
                 script.async = true;
                 script.onload = function () {
                     mermaid = window.mermaid;

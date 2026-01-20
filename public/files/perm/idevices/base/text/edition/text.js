@@ -51,6 +51,167 @@ var $exeDevice = {
     dataIds: [],
 
     /**
+     * Extract task information (duration, participants, feedback) from HTML content
+     * Used when loading legacy PBL Task content that has embedded task info
+     * Also handles simple feedback format without exe-text-activity wrapper
+     *
+     * @param {string} html - HTML content that may contain exe-text-activity structure or simple feedback
+     * @returns {Object} Extracted values or null if no task info/feedback found
+     */
+    extractTaskInfoFromHtml: function (html) {
+        if (!html) {
+            return null;
+        }
+
+        // Check if we have exe-text-activity structure OR simple feedback structure
+        const hasActivityStructure = html.includes('exe-text-activity');
+        const hasSimpleFeedback = html.includes('feedback') && html.includes('feedbacktooglebutton');
+
+        if (!hasActivityStructure && !hasSimpleFeedback) {
+            return null;
+        }
+
+        const result = {};
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // Extract from dl structure (only in exe-text-activity format)
+        if (hasActivityStructure) {
+            const dlElement = tempDiv.querySelector('dl');
+            if (dlElement) {
+                const inlineDivs = dlElement.querySelectorAll('div.inline');
+                if (inlineDivs.length >= 1) {
+                    // First inline div: duration
+                    const dt1 = inlineDivs[0].querySelector('dt');
+                    const dd1 = inlineDivs[0].querySelector('dd');
+                    if (dt1) result[this.infoInputDurationTextId] = dt1.textContent?.trim() || '';
+                    if (dd1) result[this.infoInputDurationId] = dd1.textContent?.trim() || '';
+                }
+                if (inlineDivs.length >= 2) {
+                    // Second inline div: participants
+                    const dt2 = inlineDivs[1].querySelector('dt');
+                    const dd2 = inlineDivs[1].querySelector('dd');
+                    if (dt2) result[this.infoInputParticipantsTextId] = dt2.textContent?.trim() || '';
+                    if (dd2) result[this.infoInputParticipantsId] = dd2.textContent?.trim() || '';
+                }
+            }
+        }
+
+        // Extract feedback button text
+        const feedbackButton = tempDiv.querySelector('.feedbacktooglebutton');
+        if (feedbackButton) {
+            result[this.feedbakInputId] = feedbackButton.value || feedbackButton.getAttribute('value') || '';
+        }
+
+        // Extract feedback content - try multiple selectors for different formats
+        let feedbackDiv = tempDiv.querySelector('.feedback.js-feedback');
+        if (!feedbackDiv) {
+            // Try just .feedback class
+            feedbackDiv = tempDiv.querySelector('div.feedback');
+        }
+        if (feedbackDiv) {
+            result[this.feedbackTextareaId] = feedbackDiv.innerHTML?.trim() || '';
+        }
+
+        // Extract main content (everything except dl and feedback)
+        if (hasActivityStructure) {
+            // Clone and remove dl and feedback elements from exe-text-activity
+            const contentDiv = tempDiv.querySelector('.exe-text-activity');
+            if (contentDiv) {
+                const clone = contentDiv.cloneNode(true);
+                const toRemove = clone.querySelectorAll('dl, .iDevice_buttons, .feedback');
+                toRemove.forEach(el => el.remove());
+                result[this.textareaId] = clone.innerHTML?.trim() || '';
+            }
+        } else if (hasSimpleFeedback) {
+            // For simple feedback format, clone tempDiv and remove feedback elements
+            const clone = tempDiv.cloneNode(true);
+            const toRemove = clone.querySelectorAll('.iDevice_buttons, .feedback');
+            toRemove.forEach(el => el.remove());
+            result[this.textareaId] = clone.innerHTML?.trim() || '';
+        }
+
+        return Object.keys(result).length > 0 ? result : null;
+    },
+
+    /**
+     * Build HTML content with task information structure
+     * Reconstructs the exe-text-activity structure for saving
+     *
+     * @returns {string} HTML with task info structure or just content if no task info
+     */
+    buildTextareaHtml: function () {
+        const durationValue = this[this.infoInputDurationId] || '';
+        const durationLabel = this[this.infoInputDurationTextId] || '';
+        const participantsValue = this[this.infoInputParticipantsId] || '';
+        const participantsLabel = this[this.infoInputParticipantsTextId] || '';
+        const feedbackButton = this[this.feedbakInputId] || '';
+        const feedbackContent = this[this.feedbackTextareaId] || '';
+        const mainContent = this[this.textareaId] || '';
+
+        // Check if we have any task info to include
+        const hasTaskInfo = durationValue || participantsValue;
+        const hasFeedback = feedbackButton && feedbackContent;
+
+        // If no task info and no feedback, return just the content
+        if (!hasTaskInfo && !hasFeedback) {
+            return mainContent;
+        }
+
+        // Build the exe-text-activity structure
+        let html = '';
+
+        // Add duration/participants dl if we have values
+        if (hasTaskInfo) {
+            html += '<dl>';
+            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(durationLabel)}">${this.escapeHtml(durationLabel)}</span></dt>`;
+            html += `<dd>${this.escapeHtml(durationValue)}</dd></div>`;
+            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(participantsLabel)}">${this.escapeHtml(participantsLabel)}</span></dt>`;
+            html += `<dd>${this.escapeHtml(participantsValue)}</dd></div>`;
+            html += '</dl>';
+        }
+
+        // Add main content
+        html += mainContent;
+
+        // Add feedback if present
+        if (hasFeedback) {
+            html += '<div class="iDevice_buttons feedback-button js-required">';
+            html += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(feedbackButton)}" `;
+            html += `data-text-a="${this.escapeHtmlAttr(feedbackButton)}" data-text-b="${this.escapeHtmlAttr(feedbackButton)}">`;
+            html += '</div>';
+            html += `<div class="feedback js-feedback js-hidden" style="display: none;">${feedbackContent}</div>`;
+        }
+
+        // Wrap in exe-text-activity container
+        return `<div class="exe-text-activity">${html}</div>`;
+    },
+
+    /**
+     * Escape HTML special characters for safe text content
+     */
+    escapeHtml: function (str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    },
+
+    /**
+     * Escape HTML special characters for attribute values
+     */
+    escapeHtmlAttr: function (str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    /**
      * eXe idevice engine
      * Idevice api function
      *
@@ -97,6 +258,8 @@ var $exeDevice = {
                 ).value;
             }
         });
+
+        this[this.textareaId] = this.buildTextareaHtml();
 
         // Check if the values are valid
         if (this.checkFormValues()) {
@@ -165,7 +328,20 @@ var $exeDevice = {
             return;
         }
 
-        const data = this.idevicePreviousData;
+        let data = { ...this.idevicePreviousData };
+
+        // Check for embedded task info or simple feedback in textTextarea
+        // extractTaskInfoFromHtml handles both exe-text-activity and simple feedback formats
+        const textContent = data[this.textareaId];
+        if (textContent && (textContent.includes('exe-text-activity') || 
+            (textContent.includes('feedback') && textContent.includes('feedbacktooglebutton')))) {
+            const extractedInfo = this.extractTaskInfoFromHtml(textContent);
+            if (extractedInfo) {
+                // Merge extracted info into data (extracted values take precedence)
+                data = { ...data, ...extractedInfo };
+            }
+        }
+
         const defaults = {
             [this.infoInputDurationId]: this.infoDurationInputValue,
             [this.infoInputDurationTextId]: this.infoDurationTextInputValue,

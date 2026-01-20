@@ -1,7 +1,29 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-import type { Page, Download } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { unzipSync } from '../../../../src/shared/export';
+import {
+    waitForAppReady,
+    openElpFile,
+    navigateToPageByTitle,
+    getPreviewFrame,
+    waitForPreviewContent,
+    selectPageByIndex,
+    addPage,
+    exportBlock,
+    exportIdevice,
+    importComponent,
+    getFirstBlockAndIdeviceIds,
+    getBlockAndIdeviceIdsByIndex,
+    addTextIdevice,
+    editTextIdevice,
+    getBlockIconSrc,
+    blockHasEmptyIcon,
+    changeBlockIcon,
+    getBlockIconName,
+    getBlockId,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Component Export/Import
@@ -12,328 +34,6 @@ import * as path from 'path';
  * - Import .block files into different pages
  * - Import .idevice files into different pages
  */
-
-/**
- * Helper to select a page in the navigation tree
- */
-async function selectPage(page: Page, pageIndex: number = 0): Promise<void> {
-    // Get all page nodes (excluding root)
-    const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
-    const count = await pageNodes.count();
-
-    if (count === 0) {
-        throw new Error('No pages found in navigation tree');
-    }
-
-    const targetIndex = Math.min(pageIndex, count - 1);
-    const targetNode = pageNodes.nth(targetIndex);
-
-    await targetNode.scrollIntoViewIfNeeded();
-    await targetNode.click({ force: true });
-    await page.waitForTimeout(1000);
-
-    // Wait for page content area to be ready
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-}
-
-/**
- * Helper to add a text iDevice to the current page
- */
-async function addTextIdevice(page: Page): Promise<void> {
-    // Expand "Information and presentation" category
-    const infoCategory = page
-        .locator('.idevice_category')
-        .filter({
-            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-        })
-        .first();
-
-    if ((await infoCategory.count()) > 0) {
-        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-        if (isCollapsed) {
-            await infoCategory.locator('.label').click();
-            await page.waitForTimeout(800);
-        }
-    }
-
-    // Click text iDevice
-    const textIdevice = page.locator('.idevice_item[id="text"]').first();
-    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await textIdevice.click();
-
-    // Wait for iDevice to appear
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
-/**
- * Helper to edit and save a text iDevice
- */
-async function editTextIdevice(page: Page, content: string): Promise<void> {
-    const block = page.locator('#node-content article .idevice_node.text').last();
-    await block.waitFor({ timeout: 10000 });
-
-    // Check if already in edition mode (TinyMCE visible or mode attribute)
-    const isEdition = await block.evaluate(el => {
-        const hasMode = el.getAttribute('mode') === 'edition';
-        const hasTinyMCE = el.querySelector('.tox-tinymce') !== null;
-        return hasMode || hasTinyMCE;
-    });
-
-    if (!isEdition) {
-        // Enter edit mode
-        const editBtn = block.locator('.btn-edit-idevice');
-        await editBtn.waitFor({ timeout: 10000 });
-        await editBtn.click();
-        await page.waitForTimeout(500);
-    }
-
-    // Wait for TinyMCE editor to load
-    await page.waitForSelector('.tox-edit-area__iframe', { timeout: 15000 });
-
-    // Find the TinyMCE iframe and type content
-    const frameEl = await block
-        .locator('iframe.tox-edit-area__iframe, iframe[title="Rich Text Area"]')
-        .first()
-        .elementHandle();
-
-    if (frameEl) {
-        const frame = await frameEl.contentFrame();
-        if (frame) {
-            await frame.waitForSelector('body', { timeout: 8000 });
-            await frame.evaluate(() => {
-                document.body.innerHTML = '';
-            });
-            await frame.focus('body');
-            await frame.type('body', content, { delay: 5 });
-        }
-    }
-
-    // Wait a bit before saving to ensure content is synced
-    await page.waitForTimeout(500);
-
-    // Save the iDevice
-    const saveBtn = block.locator('.btn-save-idevice');
-    await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await saveBtn.click();
-
-    // Wait for TinyMCE to be removed (indicates edit mode ended)
-    await page.waitForFunction(
-        () => {
-            const idevice = document.querySelector('#node-content article .idevice_node.text');
-            if (!idevice) return false;
-            // TinyMCE editor should be gone after save
-            const hasTinyMCE = idevice.querySelector('.tox-tinymce') !== null;
-            const isEditionMode = idevice.getAttribute('mode') === 'edition';
-            return !hasTinyMCE && !isEditionMode;
-        },
-        { timeout: 15000 },
-    );
-
-    // Wait a bit more for DOM to stabilize
-    await page.waitForTimeout(500);
-}
-
-/**
- * Helper to get block and iDevice IDs from the page
- * Uses the dropdown button IDs as the source of truth, similar to cloning test
- */
-async function getBlockAndIdeviceIds(page: Page): Promise<{ blockId: string; ideviceId: string }> {
-    // Find the block - it's article.box in #node-content
-    const blockNode = page.locator('#node-content article.box').first();
-    await blockNode.waitFor({ state: 'visible', timeout: 15000 });
-
-    // Get block ID from the element's 'id' attribute
-    const blockId = await blockNode.getAttribute('id');
-    if (!blockId) {
-        // Debug: check what's in node-content
-        const html = await page.evaluate(() => document.querySelector('#node-content')?.innerHTML.substring(0, 1000));
-        console.log('Node content HTML:', html);
-        throw new Error('Block does not have an id attribute');
-    }
-
-    // Find the iDevice inside the block
-    // The iDevice dropdown button has id="dropdownMenuButtonIdevice{ideviceId}"
-    const ideviceDropdown = blockNode.locator('[id^="dropdownMenuButtonIdevice"]').first();
-    await ideviceDropdown.waitFor({ state: 'attached', timeout: 10000 });
-
-    const dropdownId = await ideviceDropdown.getAttribute('id');
-    const ideviceId = dropdownId?.replace('dropdownMenuButtonIdevice', '') || '';
-
-    if (!ideviceId) {
-        // Try alternative: get ID from idevice_node article
-        const ideviceNode = blockNode.locator('article.idevice_node').first();
-        const altId = await ideviceNode.getAttribute('id').catch(() => null);
-        if (altId) {
-            return { blockId, ideviceId: altId };
-        }
-        throw new Error('Could not find iDevice ID');
-    }
-
-    return { blockId, ideviceId };
-}
-
-/**
- * Helper to export a block as .block file
- */
-async function exportBlock(page: Page, blockId: string): Promise<Download> {
-    // Click on the block's actions dropdown button (three dots)
-    const dropdownBtn = page.locator(`#dropdownMenuButton${blockId}`);
-    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
-
-    // Wait for download event and click export button
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#dropdownBlockMore-button-export${blockId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
-}
-
-/**
- * Helper to export an iDevice as .idevice file
- */
-async function exportIdevice(page: Page, blockId: string, ideviceId: string): Promise<Download> {
-    // Click on the iDevice's actions dropdown button (three dots horizontal)
-    const dropdownBtn = page.locator(`#dropdownMenuButtonIdevice${ideviceId}`);
-    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await dropdownBtn.click();
-    await page.waitForTimeout(300);
-
-    // Wait for download event and click export button
-    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-
-    const exportBtn = page.locator(`#exportIdevice${ideviceId}`);
-    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await exportBtn.click();
-
-    const download = await downloadPromise;
-    return download;
-}
-
-/**
- * Helper to add a new page to the project via Yjs bridge
- */
-async function addNewPage(page: Page, pageName: string = 'New Page'): Promise<string> {
-    const pageId = await page.evaluate(name => {
-        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-        if (!bridge) throw new Error('Yjs bridge not available');
-
-        // Add page using the structure binding
-        const newPage = bridge.structureBinding.addPage(name, null);
-        return newPage.id || newPage.pageId;
-    }, pageName);
-
-    await page.waitForTimeout(500);
-    return pageId;
-}
-
-/**
- * Helper to import a component file (.block or .idevice) to the current page
- */
-async function importComponentFile(page: Page, filePath: string): Promise<void> {
-    // Open the file menu to trigger import
-    // The import is handled by modalOpenUserOdeFiles when file type is .idevice or .block
-
-    // Create a file input for import (the modal uses a hidden file input)
-    const fileInput = await page.evaluateHandle(() => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.idevice,.block';
-        input.style.display = 'none';
-        document.body.appendChild(input);
-        return input;
-    });
-
-    // Set up the import handler
-    await page.evaluate(() => {
-        const input = document.querySelector('input[type="file"][accept=".idevice,.block"]') as HTMLInputElement;
-        if (input) {
-            input.addEventListener('change', async e => {
-                const file = (e.target as HTMLInputElement).files?.[0];
-                if (!file) return;
-
-                // Get the modal instance and call largeFilesUpload with isImportIdevices=true
-                const modal = (window as any).eXeLearning?.app?.modals?.openuserodefiles;
-                if (modal) {
-                    await modal.largeFilesUpload(file, true);
-                }
-            });
-        }
-    });
-
-    // Set the file
-    await (fileInput as any).setInputFiles(filePath);
-    await page.waitForTimeout(2000);
-
-    // Clean up
-    await page.evaluate(() => {
-        const input = document.querySelector('input[type="file"][accept=".idevice,.block"]');
-        if (input) input.remove();
-    });
-}
-
-/**
- * Alternative helper to import component via the Open modal
- */
-async function importComponentViaModal(page: Page, filePath: string): Promise<void> {
-    // Ensure ComponentImporter is loaded
-    try {
-        await page.waitForFunction(
-            () => {
-                return (window as any).ComponentImporter !== undefined;
-            },
-            { timeout: 15000 },
-        );
-    } catch {
-        const debugInfo = await page.evaluate(() => ({
-            YjsLoaderLoaded: (window as any).YjsLoader?.getStatus?.()?.loaded,
-            ComponentImporter: typeof (window as any).ComponentImporter,
-        }));
-        throw new Error(`ComponentImporter not loaded: ${JSON.stringify(debugInfo)}`);
-    }
-
-    // Open file dialog via keyboard shortcut
-    await page.keyboard.press('Control+o');
-    await page.waitForTimeout(500);
-
-    // Wait for modal to open
-    const modal = page.locator('#modalOpenUserOdeFiles, .modal-open-file');
-    await modal.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-
-    // Find the file input in the modal - look for the large files upload input
-    const fileInput = page.locator('#local-ode-modal-file-upload, input[type="file"]').first();
-
-    // Set the file
-    await fileInput.setInputFiles(filePath);
-
-    // Wait for import to complete - watch for either success (new iDevice) or error modal
-    await page.waitForTimeout(3000);
-
-    // Close any error modal if present
-    const errorModal = page.locator('.modal.show:has-text("Import error"), .modal.show:has-text("Error")');
-    if (await errorModal.isVisible().catch(() => false)) {
-        const errorText = await errorModal.textContent();
-        console.log('Import error modal:', errorText);
-        const closeBtn = errorModal.locator('.btn-close, button:has-text("Close")').first();
-        if (await closeBtn.isVisible()) {
-            await closeBtn.click();
-        }
-        throw new Error(`Import failed: ${errorText}`);
-    }
-}
 
 test.describe('Component Export/Import', () => {
     // Temporary directory for downloaded files
@@ -376,7 +76,7 @@ test.describe('Component Export/Import', () => {
         await waitForLoadingScreenHidden(page);
 
         // 2. Select the first page
-        await selectPage(page, 0);
+        await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
 
         // 3. Add a text iDevice with content
@@ -385,7 +85,7 @@ test.describe('Component Export/Import', () => {
         await editTextIdevice(page, testContent);
 
         // 4. Get the block and iDevice IDs
-        const { blockId, ideviceId } = await getBlockAndIdeviceIds(page);
+        const { blockId, ideviceId } = await getFirstBlockAndIdeviceIds(page);
         expect(blockId).toBeTruthy();
         expect(ideviceId).toBeTruthy();
 
@@ -403,7 +103,7 @@ test.describe('Component Export/Import', () => {
         console.log(`Block exported to: ${blockFilePath}`);
 
         // 6. Export the iDevice
-        const ideviceDownload = await exportIdevice(page, blockId, ideviceId);
+        const ideviceDownload = await exportIdevice(page, ideviceId);
         const ideviceFileName = ideviceDownload.suggestedFilename();
         expect(ideviceFileName).toContain('.idevice');
 
@@ -414,17 +114,17 @@ test.describe('Component Export/Import', () => {
         console.log(`iDevice exported to: ${ideviceFilePath}`);
 
         // 7. Add two new pages for importing
-        await addNewPage(page);
+        await addPage(page);
         await page.waitForTimeout(1000);
-        await addNewPage(page);
+        await addPage(page);
         await page.waitForTimeout(1000);
 
         // 8. Select page 2 and import the block
-        await selectPage(page, 1);
+        await selectPageByIndex(page, 1);
         await page.waitForTimeout(1000);
 
         // Import the block file
-        await importComponentViaModal(page, blockFilePath);
+        await importComponent(page, blockFilePath);
 
         // Wait for import to complete and verify
         await page.waitForFunction(
@@ -442,11 +142,11 @@ test.describe('Component Export/Import', () => {
         console.log('Block successfully imported to page 2');
 
         // 9. Select page 3 and import the iDevice
-        await selectPage(page, 2);
+        await selectPageByIndex(page, 2);
         await page.waitForTimeout(1000);
 
         // Import the iDevice file
-        await importComponentViaModal(page, ideviceFilePath);
+        await importComponent(page, ideviceFilePath);
 
         // Wait for import to complete and verify
         await page.waitForFunction(
@@ -465,7 +165,7 @@ test.describe('Component Export/Import', () => {
 
         // 10. Verify all three pages have content
         // Go back to page 1 and verify original content
-        await selectPage(page, 0);
+        await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
 
         const originalContent = page.locator('#node-content article .idevice_node.text').first();
@@ -493,11 +193,11 @@ test.describe('Component Export/Import', () => {
         await waitForLoadingScreenHidden(page);
 
         // Add text iDevice
-        await selectPage(page, 0);
+        await selectPageByIndex(page, 0);
         await addTextIdevice(page);
         await editTextIdevice(page, 'Block export test content');
 
-        const { blockId } = await getBlockAndIdeviceIds(page);
+        const { blockId } = await getFirstBlockAndIdeviceIds(page);
 
         // Export the block
         const download = await exportBlock(page, blockId);
@@ -537,14 +237,14 @@ test.describe('Component Export/Import', () => {
         await waitForLoadingScreenHidden(page);
 
         // Add text iDevice
-        await selectPage(page, 0);
+        await selectPageByIndex(page, 0);
         await addTextIdevice(page);
         await editTextIdevice(page, 'iDevice export test content');
 
-        const { blockId, ideviceId } = await getBlockAndIdeviceIds(page);
+        const { blockId, ideviceId } = await getFirstBlockAndIdeviceIds(page);
 
         // Export the iDevice
-        const download = await exportIdevice(page, blockId, ideviceId);
+        const download = await exportIdevice(page, ideviceId);
         const fileName = download.suggestedFilename();
 
         // Verify file name format
@@ -595,7 +295,7 @@ test.describe('Component Export/Import', () => {
         await waitForLoadingScreenHidden(page);
 
         // 2. Select the first page
-        await selectPage(page, 0);
+        await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
 
         // 3. Import the test iDevice file that contains an image
@@ -611,7 +311,7 @@ test.describe('Component Export/Import', () => {
         }
 
         // Import the iDevice
-        await importComponentViaModal(page, ideviceFilePath);
+        await importComponent(page, ideviceFilePath);
 
         // 4. Wait for the iDevice to appear
         await page.waitForFunction(
@@ -745,5 +445,664 @@ test.describe('Component Export/Import', () => {
         }
 
         console.log('Test completed - iDevice with image imported and displayed immediately');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS FOR IMAGE VERIFICATION TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get list of file names from a ZIP file
+ */
+function getZipFileNames(filePath: string): string[] {
+    const fileBuffer = fs.readFileSync(filePath);
+    const zipContents = unzipSync(fileBuffer);
+    return Object.keys(zipContents);
+}
+
+/**
+ * Verify images in the current iDevice are loaded correctly
+ * @param page - Playwright page
+ * @param expectedCount - Expected number of images
+ * @returns Object with verification results
+ */
+async function verifyIdeviceImages(
+    page: Page,
+    expectedCount: number,
+): Promise<{
+    found: boolean;
+    imgCount: number;
+    allLoaded: boolean;
+    allBlobUrls: boolean;
+    details: Array<{
+        src: string;
+        dataAssetUrl: string;
+        naturalWidth: number;
+        complete: boolean;
+        isBlobUrl: boolean;
+    }>;
+}> {
+    return await page
+        .waitForFunction(
+            (expected: number) => {
+                const idevice = document.querySelector('#node-content article .idevice_node');
+                if (!idevice) return { found: false, imgCount: 0, allLoaded: false, allBlobUrls: false, details: [] };
+
+                const images = idevice.querySelectorAll('img');
+                const details = Array.from(images).map(img => ({
+                    src: img.getAttribute('src')?.substring(0, 80) || 'no-src',
+                    dataAssetUrl: img.getAttribute('data-asset-url')?.substring(0, 80) || 'no-data-url',
+                    naturalWidth: img.naturalWidth,
+                    complete: img.complete,
+                    isBlobUrl: img.src.startsWith('blob:'),
+                }));
+
+                const allLoaded = details.every(d => d.complete && d.naturalWidth > 0);
+                const allBlobUrls = details.every(d => d.isBlobUrl);
+
+                return {
+                    found: images.length > 0,
+                    imgCount: images.length,
+                    allLoaded,
+                    allBlobUrls,
+                    details,
+                };
+            },
+            expectedCount,
+            { timeout: 15000 },
+        )
+        .then(handle => handle.jsonValue());
+}
+
+/**
+ * Fixture file path for the ELPX with images
+ */
+const FIXTURE_ELPX_WITH_IMAGES = path.join(
+    process.cwd(),
+    'test/fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx',
+);
+
+test.describe('Component Export/Import with Images', () => {
+    // Temporary directory for downloaded files
+    let tempDir: string;
+
+    test.beforeAll(() => {
+        tempDir = path.join('/tmp', `exelearning-e2e-images-${Date.now()}`);
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+
+        // Verify fixture file exists
+        if (!fs.existsSync(FIXTURE_ELPX_WITH_IMAGES)) {
+            throw new Error(`Fixture file not found: ${FIXTURE_ELPX_WITH_IMAGES}`);
+        }
+    });
+
+    test.afterAll(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('should export block from Inicio page and import with image to new project', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that blocks with images can be:
+         * 1. Exported from one document
+         * 2. Imported into a new document
+         * 3. Images load correctly with blob URLs
+         *
+         * Page "Inicio" contains a text iDevice with 1 image (00.jpg)
+         */
+        const page = authenticatedPage;
+
+        // 1. Open the fixture ELPX file
+        console.log('Opening fixture ELPX file with images...');
+        await openElpFile(page, FIXTURE_ELPX_WITH_IMAGES, 2);
+        await waitForAppReady(page);
+
+        // 2. Navigate to "Inicio" page (first page)
+        await navigateToPageByTitle(page, 'Inicio');
+        await page.waitForTimeout(1500);
+
+        // 3. Get the block and iDevice IDs
+        const { blockId, ideviceId } = await getBlockAndIdeviceIdsByIndex(page, 0);
+        console.log(`Found block: ${blockId}, iDevice: ${ideviceId}`);
+
+        // 4. Export the block
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFileName = blockDownload.suggestedFilename();
+        expect(blockFileName).toContain('.block');
+
+        const blockFilePath = path.join(tempDir, blockFileName);
+        await blockDownload.saveAs(blockFilePath);
+        expect(fs.existsSync(blockFilePath)).toBe(true);
+
+        console.log(`Block exported to: ${blockFilePath}`);
+
+        // 5. Verify ZIP contains image file
+        const zipFiles = getZipFileNames(blockFilePath);
+        console.log('ZIP contents:', zipFiles);
+
+        // Should have content.xml and at least one image file
+        expect(zipFiles).toContain('content.xml');
+
+        // Find image files (jpg, png, gif)
+        const imageFiles = zipFiles.filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f));
+        console.log('Image files in ZIP:', imageFiles);
+        expect(imageFiles.length).toBeGreaterThanOrEqual(1);
+
+        // 6. Create a NEW project for import
+        const newProjectUuid = await createProject(page, 'Block Import Test - Images');
+        await page.goto(`/workarea?project=${newProjectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 7. Select the first page
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 8. Import the block file
+        await importComponent(page, blockFilePath);
+
+        // 9. Wait for import to complete and verify iDevice appears
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        // Verify the imported block appears
+        const importedBlock = page.locator('#node-content article .idevice_node.text').first();
+        await expect(importedBlock).toBeVisible({ timeout: 10000 });
+
+        console.log('Block imported successfully');
+
+        // 10. Wait for asset resolution
+        await page.waitForTimeout(2000);
+
+        // 11. Verify the image is loaded correctly
+        const imageVerification = await verifyIdeviceImages(page, 1);
+        console.log('Image verification:', JSON.stringify(imageVerification, null, 2));
+
+        expect(imageVerification.found).toBe(true);
+        expect(imageVerification.imgCount).toBeGreaterThanOrEqual(1);
+        expect(imageVerification.allBlobUrls).toBe(true);
+        expect(imageVerification.allLoaded).toBe(true);
+
+        console.log('Block with image imported and verified successfully');
+    });
+
+    test('should export iDevice from Apartado uno and import with 3 images to new project', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that iDevices with multiple images can be:
+         * 1. Exported from one document
+         * 2. Imported into a new document
+         * 3. All images load correctly with blob URLs
+         *
+         * Page "Apartado uno, con un título largo..." contains a text iDevice with 3 images
+         * (sq01.jpg, sq02.jpg, sq03.jpg)
+         */
+        const page = authenticatedPage;
+
+        // 1. Open the fixture ELPX file
+        console.log('Opening fixture ELPX file with images...');
+        await openElpFile(page, FIXTURE_ELPX_WITH_IMAGES, 2);
+        await waitForAppReady(page);
+
+        // 2. Navigate to "Apartado uno" page
+        await navigateToPageByTitle(page, 'Apartado uno');
+        await page.waitForTimeout(1500);
+
+        // 3. Get the block and iDevice IDs (first block on the page)
+        const { blockId, ideviceId } = await getBlockAndIdeviceIdsByIndex(page, 0);
+        console.log(`Found block: ${blockId}, iDevice: ${ideviceId}`);
+
+        // 4. Export the iDevice
+        const ideviceDownload = await exportIdevice(page, ideviceId);
+        const ideviceFileName = ideviceDownload.suggestedFilename();
+        expect(ideviceFileName).toContain('.idevice');
+
+        const ideviceFilePath = path.join(tempDir, ideviceFileName);
+        await ideviceDownload.saveAs(ideviceFilePath);
+        expect(fs.existsSync(ideviceFilePath)).toBe(true);
+
+        console.log(`iDevice exported to: ${ideviceFilePath}`);
+
+        // 5. Verify ZIP contains 3 image files
+        const zipFiles = getZipFileNames(ideviceFilePath);
+        console.log('ZIP contents:', zipFiles);
+
+        // Should have content.xml and image files
+        expect(zipFiles).toContain('content.xml');
+
+        // Find image files
+        const imageFiles = zipFiles.filter(f => /\.(jpg|jpeg|png|gif)$/i.test(f));
+        console.log('Image files in ZIP:', imageFiles);
+        expect(imageFiles.length).toBeGreaterThanOrEqual(3);
+
+        // 6. Create a NEW project for import
+        const newProjectUuid = await createProject(page, 'iDevice Import Test - 3 Images');
+        await page.goto(`/workarea?project=${newProjectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 7. Select the first page
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 8. Import the iDevice file
+        await importComponent(page, ideviceFilePath);
+
+        // 9. Wait for import to complete and verify iDevice appears
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        // Verify the imported iDevice appears
+        const importedIdevice = page.locator('#node-content article .idevice_node.text').first();
+        await expect(importedIdevice).toBeVisible({ timeout: 10000 });
+
+        console.log('iDevice imported successfully');
+
+        // 10. Wait for asset resolution
+        await page.waitForTimeout(2000);
+
+        // 11. Verify all 3 images are loaded correctly
+        const imageVerification = await verifyIdeviceImages(page, 3);
+        console.log('Image verification:', JSON.stringify(imageVerification, null, 2));
+
+        expect(imageVerification.found).toBe(true);
+        expect(imageVerification.imgCount).toBeGreaterThanOrEqual(3);
+        expect(imageVerification.allBlobUrls).toBe(true);
+        expect(imageVerification.allLoaded).toBe(true);
+
+        // Verify each individual image detail
+        for (let i = 0; i < imageVerification.details.length; i++) {
+            const detail = imageVerification.details[i];
+            console.log(`Image ${i + 1}:`, detail);
+            expect(detail.complete).toBe(true);
+            expect(detail.naturalWidth).toBeGreaterThan(0);
+            expect(detail.isBlobUrl).toBe(true);
+        }
+
+        console.log('iDevice with 3 images imported and verified successfully');
+    });
+
+    test('should verify imported images display correctly in preview', async ({ authenticatedPage, createProject }) => {
+        /**
+         * This test verifies that imported images display correctly in the preview panel.
+         * The preview uses a Service Worker to serve exported HTML files.
+         */
+        const page = authenticatedPage;
+
+        // 1. Open the fixture ELPX file
+        console.log('Opening fixture ELPX file with images...');
+        await openElpFile(page, FIXTURE_ELPX_WITH_IMAGES, 2);
+        await waitForAppReady(page);
+
+        // 2. Navigate to "Inicio" page
+        await navigateToPageByTitle(page, 'Inicio');
+        await page.waitForTimeout(1500);
+
+        // 3. Export the block
+        const { blockId } = await getBlockAndIdeviceIdsByIndex(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        // 4. Create a NEW project for import
+        const newProjectUuid = await createProject(page, 'Preview Image Test');
+        await page.goto(`/workarea?project=${newProjectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 5. Select the first page and import the block
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+        await importComponent(page, blockFilePath);
+
+        // 6. Wait for import and asset resolution
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+        await page.waitForTimeout(2000);
+
+        // 7. Open preview panel and wait for content using shared helper
+        const contentLoaded = await waitForPreviewContent(page, 30000);
+        expect(contentLoaded).toBe(true);
+
+        // 8. Get iframe reference for verification
+        const iframe = getPreviewFrame(page);
+
+        // 9. Verify image displays in preview
+        const previewImageResult = await iframe.locator('body').evaluate(async body => {
+            // Wait for images to load in preview
+            const maxWait = 10000;
+            let elapsed = 0;
+            while (elapsed < maxWait) {
+                const images = body.querySelectorAll('img');
+                if (images.length > 0) {
+                    const imgDetails = Array.from(images).map(img => ({
+                        src: img.src?.substring(0, 80) || 'no-src',
+                        naturalWidth: img.naturalWidth,
+                        complete: img.complete,
+                    }));
+
+                    // Check if at least one image is loaded
+                    const someLoaded = imgDetails.some(d => d.complete && d.naturalWidth > 0);
+                    if (someLoaded) {
+                        return { found: true, imgCount: images.length, details: imgDetails };
+                    }
+                }
+                await new Promise(r => setTimeout(r, 500));
+                elapsed += 500;
+            }
+            return { found: false, imgCount: 0, details: [] };
+        });
+
+        console.log('Preview image result:', JSON.stringify(previewImageResult, null, 2));
+
+        expect(previewImageResult.found).toBe(true);
+        expect(previewImageResult.imgCount).toBeGreaterThanOrEqual(1);
+
+        // At least one image should be loaded
+        const loadedImages = previewImageResult.details.filter(
+            (d: { complete: boolean; naturalWidth: number }) => d.complete && d.naturalWidth > 0,
+        );
+        expect(loadedImages.length).toBeGreaterThanOrEqual(1);
+
+        console.log('Imported images display correctly in preview');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCK ICON PRESERVATION TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test.describe('Block Icon Preservation during Export/Import', () => {
+    // Temporary directory for downloaded files
+    let tempDir: string;
+
+    test.beforeAll(() => {
+        tempDir = path.join('/tmp', `exelearning-e2e-icon-${Date.now()}`);
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+    });
+
+    test.afterAll(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('should preserve block icon during export and verify iconName in ZIP content.xml', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that the block iconName is correctly included
+         * in the exported .block file's content.xml
+         *
+         * Previously, the iconName was hardcoded as empty: <iconName></iconName>
+         * After the fix, it should contain the actual block iconName value.
+         */
+        const page = authenticatedPage;
+
+        // 1. Create a new project
+        const projectUuid = await createProject(page, 'Block Icon Export Test');
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 2. Select the first page
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 3. Add a text iDevice
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for icon export');
+
+        // 4. Verify block starts with empty icon
+        const hasEmptyIconBefore = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconBefore).toBe(true);
+
+        // 5. Change the block icon to first theme icon (index 1)
+        await changeBlockIcon(page, 0, 1);
+
+        // 6. Verify icon changed
+        const hasEmptyIconAfter = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfter).toBe(false);
+
+        // 7. Get the icon name from Yjs to verify it's set
+        const iconNameInYjs = await getBlockIconName(page, 0);
+        console.log('Icon name in Yjs before export:', iconNameInYjs);
+        expect(iconNameInYjs).toBeTruthy();
+
+        // 8. Get block ID and export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFileName = blockDownload.suggestedFilename();
+        expect(blockFileName).toContain('.block');
+
+        const blockFilePath = path.join(tempDir, blockFileName);
+        await blockDownload.saveAs(blockFilePath);
+        expect(fs.existsSync(blockFilePath)).toBe(true);
+
+        console.log(`Block exported to: ${blockFilePath}`);
+
+        // 9. Extract and verify content.xml contains the iconName
+        const fileBuffer = fs.readFileSync(blockFilePath);
+        const zipContents = unzipSync(fileBuffer);
+
+        expect(zipContents['content.xml']).toBeDefined();
+
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+        console.log('Content.xml snippet:', contentXml.substring(0, 500));
+
+        // Verify iconName element contains the actual icon name (not empty)
+        const iconNameMatch = contentXml.match(/<iconName>([^<]*)<\/iconName>/);
+        expect(iconNameMatch).not.toBeNull();
+
+        const exportedIconName = iconNameMatch ? iconNameMatch[1] : '';
+        console.log('Exported iconName:', exportedIconName);
+
+        // The iconName should match what's in Yjs
+        expect(exportedIconName).toBe(iconNameInYjs);
+        expect(exportedIconName).not.toBe('');
+
+        console.log('Block icon preserved in exported content.xml');
+    });
+
+    test('should preserve block icon during import to new project', async ({ authenticatedPage, createProject }) => {
+        /**
+         * This test verifies the full export/import cycle for block icons:
+         * 1. Create block with icon
+         * 2. Export block
+         * 3. Import to new project
+         * 4. Verify icon is preserved
+         */
+        const page = authenticatedPage;
+
+        // 1. Create first project and add block with icon
+        const projectUuid1 = await createProject(page, 'Block Icon Export Source');
+        await page.goto(`/workarea?project=${projectUuid1}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Add text iDevice and set icon
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for icon import');
+
+        await changeBlockIcon(page, 0, 1);
+
+        // Get the icon src and name for comparison later
+        const originalIconSrc = await getBlockIconSrc(page, 0);
+        const originalIconName = await getBlockIconName(page, 0);
+        console.log('Original icon src:', originalIconSrc?.substring(0, 80));
+        console.log('Original icon name:', originalIconName);
+
+        expect(originalIconName).toBeTruthy();
+
+        // Export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        console.log(`Block exported to: ${blockFilePath}`);
+
+        // 2. Create a NEW project for import
+        const projectUuid2 = await createProject(page, 'Block Icon Import Target');
+        await page.goto(`/workarea?project=${projectUuid2}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 3. Select page and import the block
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        await importComponent(page, blockFilePath);
+
+        // 4. Wait for import to complete
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        // Verify the imported block appears
+        const importedBlock = page.locator('#node-content article .idevice_node.text').first();
+        await expect(importedBlock).toBeVisible({ timeout: 10000 });
+
+        console.log('Block imported successfully');
+
+        // 5. Wait for icon to be rendered
+        await page.waitForTimeout(2000);
+
+        // 6. Verify icon is preserved
+        const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfterImport).toBe(false);
+
+        const importedIconName = await getBlockIconName(page, 0);
+        console.log('Imported icon name:', importedIconName);
+
+        expect(importedIconName).toBe(originalIconName);
+
+        // Verify icon src is displayed (may have different blob URL but should be present)
+        const importedIconSrc = await getBlockIconSrc(page, 0);
+        console.log('Imported icon src:', importedIconSrc?.substring(0, 80));
+        expect(importedIconSrc).toBeTruthy();
+
+        console.log('Block icon preserved after import - test passed!');
+    });
+
+    test('should handle block without icon (empty iconName) during export/import', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that blocks without icons are correctly handled:
+         * Empty iconName should remain empty after export/import cycle.
+         */
+        const page = authenticatedPage;
+
+        // 1. Create project and add block WITHOUT setting an icon
+        const projectUuid1 = await createProject(page, 'Block No Icon Export');
+        await page.goto(`/workarea?project=${projectUuid1}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Add text iDevice (icon stays empty)
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content without icon');
+
+        // Verify block has empty icon
+        const hasEmptyIcon = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIcon).toBe(true);
+
+        // Export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        // Verify content.xml has empty iconName
+        const fileBuffer = fs.readFileSync(blockFilePath);
+        const zipContents = unzipSync(fileBuffer);
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+
+        const iconNameMatch = contentXml.match(/<iconName>([^<]*)<\/iconName>/);
+        expect(iconNameMatch).not.toBeNull();
+        const exportedIconName = iconNameMatch ? iconNameMatch[1] : null;
+        expect(exportedIconName).toBe('');
+
+        console.log('Empty iconName correctly preserved in export');
+
+        // 2. Create new project and import
+        const projectUuid2 = await createProject(page, 'Block No Icon Import');
+        await page.goto(`/workarea?project=${projectUuid2}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        await importComponent(page, blockFilePath);
+
+        // Wait for import
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        await page.waitForTimeout(1000);
+
+        // Verify block still has empty icon after import
+        const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfterImport).toBe(true);
+
+        const importedIconName = await getBlockIconName(page, 0);
+        expect(importedIconName === '' || importedIconName === null).toBe(true);
+
+        console.log('Block without icon correctly handled during export/import');
     });
 });

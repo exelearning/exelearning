@@ -337,6 +337,15 @@ describe('Constants', () => {
             it('should map alternative names', () => {
                 expect(IDEVICE_TYPE_MAP['download-package']).toBe('download-source-file');
             });
+
+            it('should map legacy Python eXeLearning iDevice types', () => {
+                // JsIdevice was a text iDevice in old Python eXeLearning (pre-v3.0)
+                expect(IDEVICE_TYPE_MAP['jsidevice']).toBe('text');
+                expect(IDEVICE_TYPE_MAP['js']).toBe('text');
+
+                // GalleryImages from old Python format
+                expect(IDEVICE_TYPE_MAP['galleryimages']).toBe('image-gallery');
+            });
         });
 
         describe('normalizeIdeviceType', () => {
@@ -375,6 +384,78 @@ describe('Constants', () => {
     });
 
     describe('License Functions', () => {
+        describe('getLicenseUrl', () => {
+            // Import getLicenseUrl for testing
+            const { getLicenseUrl } = require('./constants');
+
+            it('should return default URL for empty license', () => {
+                expect(getLicenseUrl('')).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+                expect(getLicenseUrl(null as unknown as string)).toBe(
+                    'https://creativecommons.org/licenses/by-sa/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY-SA license', () => {
+                expect(getLicenseUrl('creative commons: attribution - share alike 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by-sa/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY license', () => {
+                expect(getLicenseUrl('creative commons: attribution 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY-NC license', () => {
+                expect(getLicenseUrl('creative commons: attribution - non commercial 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by-nc/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY-NC-SA license', () => {
+                expect(getLicenseUrl('creative commons: attribution - non commercial - share alike 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by-nc-sa/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY-ND license', () => {
+                expect(getLicenseUrl('creative commons: attribution - non derived work 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by-nd/4.0/',
+                );
+            });
+
+            it('should return correct URL for CC BY-NC-ND license', () => {
+                expect(getLicenseUrl('creative commons: attribution - non derived work - non commercial 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+                );
+            });
+
+            it('should return correct URL for public domain', () => {
+                expect(getLicenseUrl('public domain')).toBe('https://creativecommons.org/publicdomain/zero/1.0/');
+            });
+
+            it('should return correct URL for GNU/GPL license', () => {
+                expect(getLicenseUrl('gnu/gpl')).toBe('https://www.gnu.org/licenses/gpl.html');
+            });
+
+            it('should handle case-insensitive matching', () => {
+                expect(getLicenseUrl('CREATIVE COMMONS: ATTRIBUTION 4.0')).toBe(
+                    'https://creativecommons.org/licenses/by/4.0/',
+                );
+                expect(getLicenseUrl('Public Domain')).toBe('https://creativecommons.org/publicdomain/zero/1.0/');
+            });
+
+            it('should fallback to keyword matching for non-exact matches', () => {
+                expect(getLicenseUrl('some license with share alike')).toBe(
+                    'https://creativecommons.org/licenses/by-sa/4.0/',
+                );
+                expect(getLicenseUrl('license with by-nc-nd')).toBe(
+                    'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+                );
+            });
+        });
+
         describe('formatLicenseText', () => {
             it('should convert short codes to full display text', () => {
                 expect(formatLicenseText('CC-BY-SA')).toBe('creative commons: attribution - share alike 4.0');

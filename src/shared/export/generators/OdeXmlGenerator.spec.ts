@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { generateOdeXml, generateOdeId, escapeXml, escapeCdata } from './OdeXmlGenerator';
+import { generateOdeXml, generateOdeId, escapeXml, escapeCdata, transformAssetUrlsForXml } from './OdeXmlGenerator';
 import type { ExportMetadata, ExportPage } from '../interfaces';
 
 describe('OdeXmlGenerator', () => {
@@ -481,6 +481,245 @@ describe('OdeXmlGenerator', () => {
         it('should handle null and undefined', () => {
             expect(escapeCdata(null)).toBe('');
             expect(escapeCdata(undefined)).toBe('');
+        });
+    });
+
+    describe('transformAssetUrlsForXml', () => {
+        it('should return content unchanged (all URLs already converted by BaseExporter)', () => {
+            const content = '<img src="{{context_path}}/content/resources/images/photo.jpg">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toBe(content);
+        });
+
+        it('should handle empty string', () => {
+            expect(transformAssetUrlsForXml('')).toBe('');
+        });
+
+        it('should handle null as empty string', () => {
+            expect(transformAssetUrlsForXml(null as any)).toBe('');
+        });
+
+        it('should preserve content with other URL protocols', () => {
+            const content = '<a href="https://example.com">Link</a><img src="data:image/gif;base64,R0lGOD">';
+            const result = transformAssetUrlsForXml(content);
+
+            expect(result).toBe(content);
+        });
+
+        it('should preserve content without asset URLs', () => {
+            const content = '<p>Normal content without assets</p>';
+            expect(transformAssetUrlsForXml(content)).toBe(content);
+        });
+    });
+
+    describe('asset URL handling in content.xml (URLs pre-converted by BaseExporter)', () => {
+        it('should preserve {{context_path}}/content/resources/ URLs in htmlView', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
+                                    content: '<img src="{{context_path}}/content/resources/images/photo.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('{{context_path}}/content/resources/images/photo.jpg');
+        });
+
+        it('should preserve {{context_path}} URLs in jsonProperties', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'image-gallery',
+                                    order: 0,
+                                    content: '',
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
+                                    properties: {
+                                        images: [
+                                            { img: '{{context_path}}/content/resources/gallery/img1.jpg' },
+                                            { img: '{{context_path}}/content/resources/gallery/img2.png' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('{{context_path}}/content/resources/gallery/img1.jpg');
+            expect(xml).toContain('{{context_path}}/content/resources/gallery/img2.png');
+        });
+
+        it('should handle multiple {{context_path}} URLs in single component', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
+                                    content:
+                                        '<img src="{{context_path}}/content/resources/a.jpg"><a href="{{context_path}}/content/resources/doc.pdf">PDF</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('{{context_path}}/content/resources/a.jpg');
+            expect(xml).toContain('{{context_path}}/content/resources/doc.pdf');
+        });
+
+        it('should preserve other URL protocols in content.xml', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<a href="https://example.com">Link</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('https://example.com');
+        });
+
+        it('should handle nested folder paths in {{context_path}} URLs', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    // URLs are pre-converted by BaseExporter.preprocessPagesForExport()
+                                    content:
+                                        '<img src="{{context_path}}/content/resources/docs/reports/2024/chart.png">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            expect(xml).toContain('{{context_path}}/content/resources/docs/reports/2024/chart.png');
+        });
+
+        it('should preserve unresolved asset UUIDs in {{context_path}} format', () => {
+            const meta: ExportMetadata = { title: 'Test' };
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    // Unresolved assets are converted to {{context_path}}/content/resources/UUID.ext
+                                    content:
+                                        '<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const xml = generateOdeXml(meta, pages);
+
+            // Unresolved assets use UUID as filename
+            expect(xml).toContain('{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.jpg');
         });
     });
 });

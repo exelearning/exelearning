@@ -24,8 +24,7 @@ var $text = {
      * Get the base html of the idevice view
      */
     renderView(data, accessibility, template) {
-        const hmltdata = $text.getHTMLView(data);
-        return template.replace('{content}', hmltdata);
+        return template.replace('{content}', data.textTextarea);
     },
 
     getHTMLView(data, pathMedia) {

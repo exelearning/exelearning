@@ -120,8 +120,8 @@ export interface ExportComponent {
  * Component structure properties
  */
 export interface ExportComponentProperties {
-    visibility?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    teacherOnly?: string | boolean;
     identifier?: string;
     cssClass?: string;
 }

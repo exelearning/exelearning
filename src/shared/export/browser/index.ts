@@ -613,5 +613,9 @@ if (typeof window !== 'undefined') {
     (window as unknown as { createSharedExporter: typeof createExporter }).createSharedExporter = createExporter;
     (window as unknown as { createExporter: typeof createExporter }).createExporter = createExporter;
 
+    // Expose ElpxExporter at window level for legacy compatibility
+    // This ensures the shared TypeScript ElpxExporter is used instead of the fallback in public/app/yjs/ElpxExporter.js
+    (window as unknown as { ElpxExporter: typeof ElpxExporter }).ElpxExporter = ElpxExporter;
+
     console.log('[SharedExporters] Browser export system loaded');
 }

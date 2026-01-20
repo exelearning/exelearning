@@ -243,18 +243,24 @@ const $exeExport = window.$exeExport = {
             let jsonDataText = ideviceNode.getAttribute('data-idevice-json-data');
             let jsonData = null;
 
-            // Parse JSON data or create empty object if not valid
-            try {
-                if (jsonDataText) {
-                    jsonData = JSON.parse(jsonDataText);
-                }
-            } catch (e) {
-                jsonData = null;
-            }
-
-            // If jsonData is not an object, create an empty one
-            if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+            // Text idevices don't need JSON data parsing - use empty object directly
+            const currentIdeviceType = ideviceNode.getAttribute('data-idevice-type');
+            if (currentIdeviceType === 'text') {
                 jsonData = {};
+            } else {
+                // Parse JSON data or create empty object if not valid
+                try {
+                    if (jsonDataText) {
+                        jsonData = JSON.parse(jsonDataText);
+                    }
+                } catch (e) {
+                    jsonData = null;
+                }
+
+                // If jsonData is not an object, create an empty one
+                if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+                    jsonData = {};
+                }
             }
 
             jsonData.ideviceId = ideviceNode.id;

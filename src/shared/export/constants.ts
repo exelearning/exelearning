@@ -446,6 +446,66 @@ export function getLicenseClass(licenseName: string): string {
 }
 
 /**
+ * License URL map - maps license names to their URLs
+ */
+const LICENSE_URL_MAP: Record<string, string> = {
+    'gnu/gpl': 'https://www.gnu.org/licenses/gpl.html',
+    'creative commons: attribution 4.0': 'https://creativecommons.org/licenses/by/4.0/',
+    'creative commons: attribution - share alike 4.0': 'https://creativecommons.org/licenses/by-sa/4.0/',
+    'creative commons: attribution - non derived work 4.0': 'https://creativecommons.org/licenses/by-nd/4.0/',
+    'creative commons: attribution - non commercial 4.0': 'https://creativecommons.org/licenses/by-nc/4.0/',
+    'creative commons: attribution - non commercial - share alike 4.0':
+        'https://creativecommons.org/licenses/by-nc-sa/4.0/',
+    'creative commons: attribution - non derived work - non commercial 4.0':
+        'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+    'public domain': 'https://creativecommons.org/publicdomain/zero/1.0/',
+};
+
+/**
+ * Get URL for a given license name
+ * @param licenseName - The license name
+ * @returns The URL for the license
+ */
+export function getLicenseUrl(licenseName: string): string {
+    if (!licenseName) return 'https://creativecommons.org/licenses/by-sa/4.0/';
+
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // 1. Direct lookup
+    if (LICENSE_URL_MAP[cleanName]) {
+        return LICENSE_URL_MAP[cleanName];
+    }
+
+    // 2. Fallback: check for keywords (order matters: most specific first)
+    if (cleanName.includes('by-nc-nd') || (cleanName.includes('non derived') && cleanName.includes('non commercial'))) {
+        return 'https://creativecommons.org/licenses/by-nc-nd/4.0/';
+    }
+    if (cleanName.includes('by-nc-sa') || (cleanName.includes('non commercial') && cleanName.includes('share alike'))) {
+        return 'https://creativecommons.org/licenses/by-nc-sa/4.0/';
+    }
+    if (cleanName.includes('by-nc') || cleanName.includes('non commercial')) {
+        return 'https://creativecommons.org/licenses/by-nc/4.0/';
+    }
+    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
+        return 'https://creativecommons.org/licenses/by-nd/4.0/';
+    }
+    if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
+        return 'https://creativecommons.org/licenses/by-sa/4.0/';
+    }
+    if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
+        return 'https://creativecommons.org/publicdomain/zero/1.0/';
+    }
+    if (cleanName.includes('gpl') || cleanName.includes('gnu')) {
+        return 'https://www.gnu.org/licenses/gpl.html';
+    }
+    if (cleanName.includes('creative commons') || cleanName.includes('attribution')) {
+        return 'https://creativecommons.org/licenses/by/4.0/';
+    }
+
+    return 'https://creativecommons.org/licenses/by-sa/4.0/';
+}
+
+/**
  * Map of short license codes to full display text
  * This normalizes various license codes to the canonical display format
  */
@@ -590,6 +650,7 @@ export const EPUB3_MIMETYPE = 'application/epub+zip';
  * - Legacy name → current name (e.g., 'freetext' → 'text')
  * - Plural → singular (e.g., 'rubrics' → 'rubric')
  * - Variant names (e.g., 'download-package' → 'download-source-file')
+ * - Legacy Python eXeLearning types (e.g., 'jsidevice' → 'text')
  *
  * The key is the lowercase type name (after removing 'idevice' suffix),
  * the value is the canonical export folder name.
@@ -600,6 +661,13 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     text: 'text',
     freetextidevice: 'text',
     textidevice: 'text',
+
+    // Legacy Python eXeLearning iDevice types (pre-v3.0)
+    // JsIdevice was a text iDevice in old Python eXeLearning
+    jsidevice: 'text',
+    js: 'text',
+    // GalleryImages from old Python format
+    galleryimages: 'image-gallery',
 
     // Spanish → English mappings
     adivina: 'guess',

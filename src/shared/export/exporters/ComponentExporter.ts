@@ -87,11 +87,19 @@ export class ComponentExporter extends BaseExporter {
                 return { success: false, error: 'Component not found' };
             }
 
-            // Generate component XML
-            const contentXml = this.generateComponentExportXml(block, component, pageId!);
+            // Preprocess block: convert asset:// URLs to {{context_path}}/content/resources/path
+            // This uses the same logic as ELPX export (BaseExporter.addFilenamesToAssetUrls)
+            const processedBlock = await this.preprocessBlockForExport(block, component);
+
+            // Generate component XML with preprocessed content
+            const contentXml = this.generateComponentExportXml(
+                processedBlock,
+                component ? processedBlock.components![0] : null,
+                pageId!,
+            );
             this.zip.addFile('content.xml', new TextEncoder().encode(contentXml));
 
-            // Add component assets
+            // Add component assets using the original block (asset:// URLs for ID extraction)
             await this.addComponentAssetsToZip(block, component);
 
             // Generate ZIP
@@ -104,6 +112,46 @@ export class ComponentExporter extends BaseExporter {
             console.error('[ComponentExporter] Export failed:', error);
             return { success: false, error: message };
         }
+    }
+
+    /**
+     * Preprocess block for export: convert asset:// URLs to {{context_path}}/content/resources/path
+     * Uses BaseExporter's addFilenamesToAssetUrls (same as ELPX export) for consistency.
+     *
+     * @param block - Original block data
+     * @param singleComponent - Single component to export (null = all components in block)
+     * @returns Processed block with URLs transformed
+     */
+    private async preprocessBlockForExport(
+        block: ExportBlock,
+        singleComponent: ExportComponent | null,
+    ): Promise<ExportBlock> {
+        // Deep clone to avoid mutating original
+        const clonedBlock: ExportBlock = JSON.parse(JSON.stringify(block));
+
+        // If exporting a single component, only process that one
+        const components = singleComponent
+            ? [clonedBlock.components!.find(c => c.id === singleComponent.id)!]
+            : clonedBlock.components || [];
+
+        for (const comp of components) {
+            if (comp.content) {
+                // Use BaseExporter's addFilenamesToAssetUrls (same as ELPX export)
+                comp.content = await this.addFilenamesToAssetUrls(comp.content);
+            }
+            if (comp.properties && Object.keys(comp.properties).length > 0) {
+                const propsStr = JSON.stringify(comp.properties);
+                const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                comp.properties = JSON.parse(processedStr);
+            }
+        }
+
+        // If single component, replace components array with just that one
+        if (singleComponent) {
+            clonedBlock.components = components;
+        }
+
+        return clonedBlock;
     }
 
     /**
@@ -189,7 +237,7 @@ export class ComponentExporter extends BaseExporter {
         let xml = '  <odePagStructure>\n';
         xml += `    <odeBlockId>${this.escapeXml(block.id)}</odeBlockId>\n`;
         xml += `    <blockName>${this.escapeXml(block.name || 'Block')}</blockName>\n`;
-        xml += `    <iconName></iconName>\n`;
+        xml += `    <iconName>${this.escapeXml(block.iconName || '')}</iconName>\n`;
         xml += `    <odePagStructureOrder>0</odePagStructureOrder>\n`;
         xml += `    <odePagStructureProperties>${this.escapeXml(JSON.stringify(block.properties || {}))}</odePagStructureProperties>\n`;
         xml += '    <odeComponents>\n';
@@ -207,11 +255,17 @@ export class ComponentExporter extends BaseExporter {
 
     /**
      * Generate XML for a single iDevice/component
-     * @param comp - Component data
+     * Content is already preprocessed with {{context_path}} URLs by preprocessBlockForExport()
+     *
+     * @param comp - Component data (already preprocessed)
      * @param blockId - Parent block ID
      * @param pageId - Parent page ID
      */
     private generateIdeviceExportXml(comp: ExportComponent, blockId: string, pageId: string): string {
+        // Content already has {{context_path}}/content/resources/ URLs from preprocessing
+        const htmlContent = comp.content || '';
+        const propsJson = JSON.stringify(comp.properties || {});
+
         let xml = '      <odeComponent>\n';
         xml += `        <odeIdeviceId>${this.escapeXml(comp.id)}</odeIdeviceId>\n`;
         xml += `        <odePageId>${this.escapeXml(pageId)}</odePageId>\n`;
@@ -219,8 +273,8 @@ export class ComponentExporter extends BaseExporter {
         xml += `        <odeIdeviceTypeName>${this.escapeXml(comp.type || 'FreeTextIdevice')}</odeIdeviceTypeName>\n`;
         xml += `        <ideviceSrcType>json</ideviceSrcType>\n`;
         xml += `        <userIdevice>0</userIdevice>\n`;
-        xml += `        <htmlView><![CDATA[${this.escapeCdata(comp.content || '')}]]></htmlView>\n`;
-        xml += `        <jsonProperties><![CDATA[${this.escapeCdata(JSON.stringify(comp.properties || {}))}]]></jsonProperties>\n`;
+        xml += `        <htmlView><![CDATA[${this.escapeCdata(htmlContent)}]]></htmlView>\n`;
+        xml += `        <jsonProperties><![CDATA[${this.escapeCdata(propsJson)}]]></jsonProperties>\n`;
         xml += `        <odeComponentsOrder>${comp.order || 0}</odeComponentsOrder>\n`;
         xml += `        <odeComponentsProperties></odeComponentsProperties>\n`;
         xml += '      </odeComponent>\n';
@@ -229,37 +283,54 @@ export class ComponentExporter extends BaseExporter {
 
     /**
      * Add only assets used by this component to ZIP
-     * Scans component content for asset:// URLs and includes only those assets
-     * @param block - Block data
+     * Scans component content for asset:// URLs and includes only those assets.
+     *
+     * Assets are stored at `content/resources/{folderPath}/{filename}` to match ELPX format.
+     * Uses buildAssetExportPathMap() for consistent path generation with addFilenamesToAssetUrls().
+     *
+     * @param block - Block data (with original asset:// URLs for ID extraction)
      * @param singleComponent - Single component (null = all in block)
      */
     private async addComponentAssetsToZip(block: ExportBlock, singleComponent: ExportComponent | null): Promise<void> {
         try {
             const allAssets = await this.assets.getAllAssets();
+            const exportPathMap = await this.buildAssetExportPathMap();
             const components = singleComponent ? [singleComponent] : block.components || [];
 
             // Extract asset IDs from component content (asset://uuid pattern)
             const usedAssetIds = new Set<string>();
             for (const comp of components) {
                 const content = comp.content || '';
-                const matches = content.matchAll(/asset:\/\/([a-f0-9-]+)/gi);
+                // Match asset://uuid (standard 36-char UUID format)
+                const matches = content.matchAll(/asset:\/\/([a-f0-9-]{36})/gi);
                 for (const match of matches) {
                     usedAssetIds.add(match[1]);
+                }
+                // Also check properties for asset references
+                if (comp.properties) {
+                    const propsStr = JSON.stringify(comp.properties);
+                    const propsMatches = propsStr.matchAll(/asset:\/\/([a-f0-9-]{36})/gi);
+                    for (const match of propsMatches) {
+                        usedAssetIds.add(match[1]);
+                    }
                 }
             }
 
             console.log(`[ComponentExporter] Found ${usedAssetIds.size} referenced assets`);
 
-            // Add only used assets
+            // Add only used assets at content/resources/ path (same as ELPX export)
             let addedCount = 0;
             for (const asset of allAssets) {
-                const assetId = asset.id;
-                if (usedAssetIds.has(assetId)) {
-                    const filename = asset.filename || `asset-${assetId}`;
-                    const originalPath = asset.originalPath || `content/resources/${assetId}/${filename}`;
-                    this.zip.addFile(originalPath, asset.data);
-                    console.log(`[ComponentExporter] Added asset: ${originalPath}`);
-                    addedCount++;
+                if (usedAssetIds.has(asset.id)) {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (exportPath) {
+                        const zipPath = `content/resources/${exportPath}`;
+                        this.zip.addFile(zipPath, asset.data);
+                        console.log(`[ComponentExporter] Added asset: ${zipPath}`);
+                        addedCount++;
+                    } else {
+                        console.warn(`[ComponentExporter] No export path for asset: ${asset.id}`);
+                    }
                 }
             }
 
