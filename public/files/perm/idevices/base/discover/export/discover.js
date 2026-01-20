@@ -205,7 +205,13 @@ var $eXeDescubre = {
             ? 2000
             : mOptions.timeShowSolution;
 
+         
         if (typeof mOptions.version == 'undefined' || mOptions.version < 1) {
+            for (let i = 0; i < mOptions.wordsGame.length; i++) {
+                mOptions.wordsGame[i].url0 = ''
+                mOptions.wordsGame[i].url1 = ''
+                mOptions.wordsGame[i].url2 = ''
+            }
             imgsLink0.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < mOptions.wordsGame.length) {
@@ -213,6 +219,9 @@ var $eXeDescubre = {
                     if (mOptions.wordsGame[iq].url0.length < 4) {
                         mOptions.wordsGame[iq].url0 = '';
                     }
+                    if (mOptions.version < 4 && mOptions.wordsGame[iq].type == 0) {
+                        mOptions.wordsGame[iq].url0 = ''
+                    } 
                 }
             });
 
@@ -233,6 +242,9 @@ var $eXeDescubre = {
                     if (mOptions.wordsGame[iq].url1.length < 4) {
                         mOptions.wordsGame[iq].url1 = '';
                     }
+                    if (mOptions.version < 4 && mOptions.wordsGame[iq].type == 0) {
+                        mOptions.wordsGame[iq].url1 = ''
+                    } 
                 }
             });
 
@@ -254,6 +266,9 @@ var $eXeDescubre = {
                         if (mOptions.wordsGame[iq].url2.length < 4) {
                             mOptions.wordsGame[iq].url2 = '';
                         }
+                        if (mOptions.version < 4 && mOptions.wordsGame[iq].type == 0) {
+                            mOptions.wordsGame[iq].url2 = ''
+                        } 
                     }
                 });
                 audioLink2.each(function () {
@@ -312,6 +327,11 @@ var $eXeDescubre = {
             }
             mOptions.wordsGame = words;
         } else {
+            for (let i = 0; i < mOptions.wordsGame.length; i++) {
+                for (let k = 0; k < mOptions.wordsGame[i].data.length; k++){
+                    mOptions.wordsGame[i].data[k].url = '';
+                }
+            }
             for (let k = 0; k < linkImages.length; k++) {
                 const $linImg = linkImages[k];
                 $linImg.each(function () {
@@ -321,6 +341,9 @@ var $eXeDescubre = {
                         p.url = $(this).attr('href');
                         if (p.url.length < 4) {
                             p.url = '';
+                        }
+                        if (mOptions.version < 4 && p.type == 1) {
+                            p.url = ''
                         }
                     }
                 });
