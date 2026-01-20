@@ -273,6 +273,10 @@ ${contentHtml}
                 if (assetPath.startsWith('blob:') || assetPath.startsWith('data:')) {
                     return _match;
                 }
+                // Avoid double prefix: if path already starts with content/resources/, just use basePath + path
+                if (assetPath.startsWith('content/resources/')) {
+                    return `${basePath}${assetPath}`;
+                }
                 return `${basePath}content/resources/${assetPath}`;
             });
         }

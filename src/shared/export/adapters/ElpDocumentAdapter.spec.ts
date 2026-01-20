@@ -373,4 +373,187 @@ describe('ElpDocumentAdapter', () => {
             expect(pages[2].parentId).toBe('child');
         });
     });
+
+    describe('pagination hierarchy (sortPagesHierarchically)', () => {
+        it('should sort pages in DFS reading order - children immediately after parent', () => {
+            // Simulates the structure from tema-8-exe-3.elpx:
+            // - Inicio (root, order 1)
+            // - 1. El contrato (root, order 2)
+            //   - 1.1 Qué es (child of 1, order 1)
+            //   - 1.2 Contenido (child of 1, order 2)
+            // - 2. Tipos de contrato (root, order 3)
+            //   - 2.1 Por duración (child of 2, order 1)
+            // Without sorting, navigation would go: Inicio → 1. El contrato → 2. Tipos
+            // With sorting, navigation should go: Inicio → 1. El contrato → 1.1 Qué es → 1.2 Contenido → 2. Tipos → 2.1 Por duración
+
+            const child11 = createTestPage({
+                id: 'child-1-1',
+                title: '1.1 Qué es',
+                parent_id: 'section-1',
+                position: 1,
+            });
+
+            const child12 = createTestPage({
+                id: 'child-1-2',
+                title: '1.2 Contenido',
+                parent_id: 'section-1',
+                position: 2,
+            });
+
+            const child21 = createTestPage({
+                id: 'child-2-1',
+                title: '2.1 Por duración',
+                parent_id: 'section-2',
+                position: 1,
+            });
+
+            const inicio = createTestPage({
+                id: 'inicio',
+                title: 'Inicio',
+                parent_id: null,
+                position: 1,
+            });
+
+            const section1 = createTestPage({
+                id: 'section-1',
+                title: '1. El contrato',
+                parent_id: null,
+                position: 2,
+                children: [child11, child12],
+            });
+
+            const section2 = createTestPage({
+                id: 'section-2',
+                title: '2. Tipos de contrato',
+                parent_id: null,
+                position: 3,
+                children: [child21],
+            });
+
+            const parsed = createTestStructure({
+                pages: [inicio, section1, section2],
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const pages = adapter.getNavigation();
+
+            // Verify the order is DFS reading order:
+            // Inicio, 1. El contrato, 1.1 Qué es, 1.2 Contenido, 2. Tipos, 2.1 Por duración
+            expect(pages).toHaveLength(6);
+            expect(pages[0].id).toBe('inicio');
+            expect(pages[0].title).toBe('Inicio');
+
+            expect(pages[1].id).toBe('section-1');
+            expect(pages[1].title).toBe('1. El contrato');
+
+            expect(pages[2].id).toBe('child-1-1');
+            expect(pages[2].title).toBe('1.1 Qué es');
+            expect(pages[2].parentId).toBe('section-1');
+
+            expect(pages[3].id).toBe('child-1-2');
+            expect(pages[3].title).toBe('1.2 Contenido');
+            expect(pages[3].parentId).toBe('section-1');
+
+            expect(pages[4].id).toBe('section-2');
+            expect(pages[4].title).toBe('2. Tipos de contrato');
+
+            expect(pages[5].id).toBe('child-2-1');
+            expect(pages[5].title).toBe('2.1 Por duración');
+            expect(pages[5].parentId).toBe('section-2');
+        });
+
+        it('should handle pages with incorrect XML document order', () => {
+            // This simulates a case where pages in the XML are not in parent-child order
+            // but by XML document order (all root pages first, then all children)
+
+            // Create a flat structure where children come AFTER all root pages in XML order
+            const rootPage1 = createTestPage({
+                id: 'root-1',
+                title: 'Root 1',
+                parent_id: null,
+                position: 1,
+            });
+
+            const rootPage2 = createTestPage({
+                id: 'root-2',
+                title: 'Root 2',
+                parent_id: null,
+                position: 2,
+            });
+
+            // Children of root-1 added later in XML (children array simulates nested XML)
+            const childOfRoot1 = createTestPage({
+                id: 'child-of-1',
+                title: 'Child of Root 1',
+                parent_id: 'root-1',
+                position: 1,
+            });
+
+            // Add child to root-1
+            rootPage1.children = [childOfRoot1];
+
+            const parsed = createTestStructure({
+                pages: [rootPage1, rootPage2],
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const pages = adapter.getNavigation();
+
+            // Expected order: Root 1, Child of Root 1, Root 2
+            expect(pages).toHaveLength(3);
+            expect(pages[0].id).toBe('root-1');
+            expect(pages[1].id).toBe('child-of-1');
+            expect(pages[2].id).toBe('root-2');
+        });
+
+        it('should sort children by order within each level', () => {
+            // Children added in wrong order
+            const child3 = createTestPage({
+                id: 'child-3',
+                title: 'Third Child',
+                parent_id: 'root',
+                position: 3,
+            });
+
+            const child1 = createTestPage({
+                id: 'child-1',
+                title: 'First Child',
+                parent_id: 'root',
+                position: 1,
+            });
+
+            const child2 = createTestPage({
+                id: 'child-2',
+                title: 'Second Child',
+                parent_id: 'root',
+                position: 2,
+            });
+
+            const root = createTestPage({
+                id: 'root',
+                title: 'Root',
+                parent_id: null,
+                position: 1,
+                // Children in wrong order
+                children: [child3, child1, child2],
+            });
+
+            const parsed = createTestStructure({
+                pages: [root],
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const pages = adapter.getNavigation();
+
+            // Should be sorted by position
+            expect(pages).toHaveLength(4);
+            expect(pages[0].id).toBe('root');
+            expect(pages[1].id).toBe('child-1');
+            expect(pages[1].order).toBe(1);
+            expect(pages[2].id).toBe('child-2');
+            expect(pages[2].order).toBe(2);
+            expect(pages[3].id).toBe('child-3');
+            expect(pages[3].order).toBe(3);
+        });
+    });
 });

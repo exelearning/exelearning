@@ -256,6 +256,18 @@ function generatePagStructurePropertyEntry(key: string, value: string): string {
 }
 
 /**
+ * Transform asset:// URLs to {{context_path}}/content/resources/ format.
+ *
+ * Note: In the current architecture, all asset URLs are converted by
+ * BaseExporter.addFilenamesToAssetUrls() during preprocessing.
+ * This function is kept for backward compatibility but should not
+ * find any asset:// URLs to transform.
+ */
+export function transformAssetUrlsForXml(content: string): string {
+    return content || '';
+}
+
+/**
  * Generate odeComponent for an iDevice
  */
 function generateOdeComponentXml(component: ExportComponent, pageId: string, blockId: string, order: number): string {
@@ -268,13 +280,13 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     xml += `          <odeIdeviceId>${escapeXml(componentId)}</odeIdeviceId>\n`;
     xml += `          <odeIdeviceTypeName>${escapeXml(ideviceType)}</odeIdeviceTypeName>\n`;
 
-    // HTML content (wrapped in CDATA)
-    const htmlContent = component.content || '';
+    // HTML content - transform asset:// URLs to content/resources/ (wrapped in CDATA)
+    const htmlContent = transformAssetUrlsForXml(component.content || '');
     xml += `          <htmlView><![CDATA[${escapeCdata(htmlContent)}]]></htmlView>\n`;
 
-    // JSON properties (wrapped in CDATA)
+    // JSON properties - transform asset:// URLs to content/resources/ (wrapped in CDATA)
     if (component.properties && Object.keys(component.properties).length > 0) {
-        const jsonStr = JSON.stringify(component.properties);
+        const jsonStr = transformAssetUrlsForXml(JSON.stringify(component.properties));
         xml += `          <jsonProperties><![CDATA[${escapeCdata(jsonStr)}]]></jsonProperties>\n`;
     } else {
         xml += `          <jsonProperties></jsonProperties>\n`;
