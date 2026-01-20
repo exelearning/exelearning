@@ -645,12 +645,14 @@ describe('MenuIdevicesBottom', () => {
 
       const promise = menuIdevicesBottom.getIdevices();
 
-      // Wait for promise to set up handlers
-      await Promise.resolve();
+      // Wait for promise to set up handlers (flush microtasks)
+      for (let i = 0; i < 20; i++) await Promise.resolve();
 
-      // Simulate IndexedDB calling onsuccess
-      if (capturedRequest.onsuccess) {
-        capturedRequest.onsuccess();
+      // Simulate IndexedDB calling calling handlers if request was captured
+      if (capturedRequest) {
+          if (capturedRequest.onsuccess) {
+            capturedRequest.onsuccess();
+          }
       }
 
       const result = await promise;
@@ -675,10 +677,9 @@ describe('MenuIdevicesBottom', () => {
       const promise = menuIdevicesBottom.getIdevices();
 
       // Wait for promise to set up handlers
-      await Promise.resolve();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
 
-      // Simulate IndexedDB calling onsuccess
-      if (capturedRequest.onsuccess) {
+      if (capturedRequest && capturedRequest.onsuccess) {
         capturedRequest.onsuccess();
       }
 
@@ -701,10 +702,9 @@ describe('MenuIdevicesBottom', () => {
       const promise = menuIdevicesBottom.getIdevices();
 
       // Wait for promise to set up handlers
-      await Promise.resolve();
+      for (let i = 0; i < 20; i++) await Promise.resolve();
 
-      // Simulate IndexedDB calling onerror
-      if (capturedRequest.onerror) {
+      if (capturedRequest && capturedRequest.onerror) {
         capturedRequest.onerror();
       }
 

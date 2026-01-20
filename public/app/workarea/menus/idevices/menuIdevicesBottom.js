@@ -201,7 +201,9 @@ export default class MenuIdevicesBottom {
                              if (result) {
                                  // Found in IndexedDB, migrate to Backend
                                  console.log("Migrating iDevices from IndexedDB to User Preferences...");
-                                 this.saveIdevices(result).then(() => resolve(result));
+                                 this.saveIdevices(result)
+                                     .then(() => resolve(result))
+                                     .catch(() => resolve(result));
                              } else {
                                  resolve(null); // Return null to trigger default initialization
                              }
