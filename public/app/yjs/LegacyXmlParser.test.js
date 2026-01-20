@@ -257,6 +257,86 @@ describe('LegacyXmlParser', () => {
       expect(meta.pp_addAccessibilityToolbar).toBe(false);
     });
 
+    it('extracts license from package', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With License"/>
+              <string role="key" value="license"/>
+              <unicode value="creative commons: attribution - share alike 4.0"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With License');
+      expect(meta.license).toBe('creative commons: attribution - share alike 4.0');
+    });
+
+    it('converts "None" license value to empty string', () => {
+      // Legacy eXe 2.x used "None" to indicate no license selected
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With None License"/>
+              <string role="key" value="license"/>
+              <unicode value="None"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With None License');
+      // "None" should be converted to empty string (no license)
+      expect(meta.license).toBe('');
+    });
+
+    it('returns empty license when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No License Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      // Missing license should be empty string
+      expect(meta.license).toBe('');
+    });
+
+    it('preserves empty license value from file', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Empty License Project"/>
+              <string role="key" value="license"/>
+              <unicode value=""/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      // Explicitly empty license should stay empty (not default to CC-BY-SA)
+      expect(meta.license).toBe('');
+    });
+
     it('has all expected metadata properties', () => {
       const xml = `<?xml version="1.0"?>
         <root>
@@ -276,6 +356,7 @@ describe('LegacyXmlParser', () => {
       expect(meta).toHaveProperty('author');
       expect(meta).toHaveProperty('description');
       expect(meta).toHaveProperty('language');
+      expect(meta).toHaveProperty('license');
       expect(meta).toHaveProperty('footer');
       expect(meta).toHaveProperty('extraHeadContent');
       expect(meta).toHaveProperty('exportSource');

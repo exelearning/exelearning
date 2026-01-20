@@ -215,7 +215,7 @@ export class PrintPreviewExporter {
         const lang = meta.language || 'en';
         const projectTitle = meta.title || 'eXeLearning';
         const customStyles = meta.customStyles || '';
-        const license = meta.license || 'CC-BY-SA';
+        const license = meta.license || '';
         const themeName = meta.theme || 'base';
         const userFooterContent = meta.footer || '';
 

@@ -626,6 +626,7 @@ class LegacyXmlParser {
       author: '',
       description: '',
       language: '', // Language code (e.g., 'es', 'en')
+      license: '', // License (empty for legacy files with no/unknown license)
       footer: '',
       extraHeadContent: '',
       // Export options (defaults) - use pp_ prefix to match form property names
@@ -685,7 +686,15 @@ class LegacyXmlParser {
     const addAccessibilityToolbar = this.findDictValue(dict, '_addAccessibilityToolbar');
     if (addAccessibilityToolbar === true) meta.pp_addAccessibilityToolbar = true;
 
-    Logger.log(`[LegacyXmlParser] Metadata: title="${meta.title}"`);
+    // Extract license - legacy format uses 'license' key with values like "None" or license names
+    // "None" in legacy format means "no license selected" - treat as empty string
+    // If not found, meta.license remains '' (the default initialized above)
+    const license = this.findDictValue(dict, 'license');
+    if (license !== null && license !== undefined) {
+      meta.license = (license === 'None') ? '' : license;
+    }
+
+    Logger.log(`[LegacyXmlParser] Metadata: title="${meta.title}", license="${meta.license}"`);
     return meta;
   }
 
