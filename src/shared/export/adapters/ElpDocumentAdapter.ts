@@ -153,12 +153,56 @@ export class ElpDocumentAdapter implements ExportDocument {
 
     /**
      * Get navigation structure as flat array of pages
+     * Pages are sorted in hierarchical "reading order":
+     * Root pages first (sorted by order), then each parent's children immediately after
+     * This ensures prev/next navigation and page counter work correctly
      * @returns Array of export pages
      */
     getNavigation(): ExportPage[] {
         const pages: ExportPage[] = [];
         this.flattenPages(this.parsed.pages, pages);
-        return pages;
+        // Sort pages in hierarchical reading order for proper pagination
+        return this.sortPagesHierarchically(pages);
+    }
+
+    /**
+     * Sort pages in hierarchical reading order
+     * Root pages come first (sorted by order), children follow their parent (also sorted by order)
+     * @param pages - Flat array of pages with parentId references
+     * @returns Pages sorted in reading order (DFS traversal)
+     */
+    private sortPagesHierarchically(pages: ExportPage[]): ExportPage[] {
+        // Build children map: parentId -> children[]
+        const childrenMap = new Map<string | null, ExportPage[]>();
+
+        for (const page of pages) {
+            const parentId = page.parentId ?? null;
+            if (!childrenMap.has(parentId)) {
+                childrenMap.set(parentId, []);
+            }
+            childrenMap.get(parentId)!.push(page);
+        }
+
+        // Sort children arrays by order
+        for (const children of childrenMap.values()) {
+            children.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        }
+
+        // Build result in reading order using DFS
+        const result: ExportPage[] = [];
+
+        const addPageAndChildren = (parentId: string | null): void => {
+            const children = childrenMap.get(parentId) || [];
+            for (const child of children) {
+                result.push(child);
+                addPageAndChildren(child.id);
+            }
+        };
+
+        // Start with root pages (parentId = null)
+        addPageAndChildren(null);
+
+        return result;
     }
 
     /**

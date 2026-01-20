@@ -435,8 +435,20 @@ export abstract class BaseExporter {
             const assets = await this.assets.getAllAssets();
 
             for (const asset of assets) {
-                const folderPath = asset.folderPath || '';
+                let folderPath = asset.folderPath || '';
                 const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+
+                // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
+                // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
+                // This can happen from corrupted ELPX files or bugs in asset saving
+                if (folderPath === filename) {
+                    // folderPath equals filename - remove the duplication
+                    folderPath = '';
+                } else if (folderPath.endsWith(`/${filename}`)) {
+                    // folderPath ends with /filename - remove the trailing duplicate
+                    folderPath = folderPath.slice(0, -(filename.length + 1));
+                }
+
                 const basePath = folderPath ? `${folderPath}/${filename}` : filename;
 
                 // Handle filename collisions (case-insensitive for Windows compatibility)
@@ -462,35 +474,41 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Add export paths to asset:// URLs without changing the protocol
-     * Transforms asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-     * Uses folderPath-based export paths for cleaner structure
+     * Convert asset:// URLs directly to {{context_path}}/content/resources/ format
+     * for XML export. This is the single transformation step.
      *
      * Supported input formats:
-     * - asset://uuid (simple UUID)
      * - asset://uuid.ext (new format with extension)
-     * - asset://uuid/oldPath (legacy format with old path, which gets replaced)
+     * - asset://uuid (simple UUID without extension)
+     *
+     * Output: {{context_path}}/content/resources/{exportPath}
+     *
+     * Also fixes duplicated filename patterns that may exist in content
+     * (e.g., content/resources/file.pdf/file.pdf → content/resources/file.pdf)
      */
     async addFilenamesToAssetUrls(content: string): Promise<string> {
         if (!content) return '';
 
         const assetMap = await this.buildAssetExportPathMap();
-        if (assetMap.size === 0) {
-            return content;
-        }
 
-        // Transform asset://uuid or asset://uuid.ext to asset://uuid/exportPath
-        // The pattern matches:
-        // - asset://uuid (36-char UUID)
-        // - asset://uuid.ext (UUID with extension)
-        // - asset://uuid/path (UUID with old path, to be replaced)
-        return content.replace(/asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+|\/[^"'\s)]+)?/gi, (match, uuid) => {
+        // Transform asset://uuid or asset://uuid.ext to {{context_path}}/content/resources/path
+        // Pattern matches: asset:// + 36-char UUID + optional extension
+        let result = content.replace(/asset:\/\/([a-f0-9-]{36})(\.[a-z0-9]+)?/gi, (_match, uuid, ext) => {
             const exportPath = assetMap.get(uuid);
             if (exportPath) {
-                return `asset://${uuid}/${exportPath}`;
+                // Resolved: use the proper export path from metadata
+                return `{{context_path}}/content/resources/${exportPath}`;
             }
-            return match;
+            // Unresolved: preserve UUID as filename for debugging
+            return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
+
+        // Fix duplicated filename patterns in existing content
+        // Pattern: content/resources/{filename}/{filename} where both filenames are identical
+        // This handles cases where the duplication is already in the source content.xml
+        result = result.replace(/content\/resources\/([^/"]+)\/\1(?=["'\s>])/g, 'content/resources/$1');
+
+        return result;
     }
 
     /**
@@ -515,10 +533,16 @@ export abstract class BaseExporter {
             for (const block of page.blocks || []) {
                 for (const component of block.components || []) {
                     if (component.content) {
-                        // Add filenames to asset URLs
+                        // Add filenames to asset URLs in content
                         component.content = await this.addFilenamesToAssetUrls(component.content);
                         // Convert internal links to proper page URLs
                         component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
+                    }
+                    // Also process properties (jsonProperties may contain asset URLs)
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
                     }
                 }
             }
@@ -765,10 +789,13 @@ window.__ELPX_MANIFEST__=${JSON.stringify(manifest, null, 2)};
     /**
      * Generate content.xml from document structure
      * Uses unified OdeXmlGenerator for consistent output across all exporters
+     *
+     * @param preprocessedPages - Optional preprocessed pages (with asset URLs already transformed).
+     *                            If not provided, uses raw navigation from document.
      */
-    generateContentXml(): string {
+    generateContentXml(preprocessedPages?: ExportPage[]): string {
         const metadata = this.getMetadata();
-        const pages = this.getNavigation();
+        const pages = preprocessedPages || this.getNavigation();
         return generateOdeXml(metadata, pages);
     }
 

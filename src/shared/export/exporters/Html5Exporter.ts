@@ -177,7 +177,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
-                const contentXml = this.generateContentXml();
+                const contentXml = this.generateContentXml(pages);
                 addFile('content.xml', contentXml);
             }
 

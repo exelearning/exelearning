@@ -88,15 +88,17 @@ class MockAssetProvider implements AssetProvider {
         id: string;
         filename: string;
         path: string;
+        folderPath: string;
         mimeType: string;
         data: Buffer;
     }> = [];
 
-    addAsset(id: string, filename: string, mimeType: string, data: Buffer): void {
+    addAsset(id: string, filename: string, mimeType: string, data: Buffer, folderPath = ''): void {
         this.assets.push({
             id,
             filename,
             path: `${id}/${filename}`,
+            folderPath,
             mimeType,
             data,
         });
@@ -112,6 +114,7 @@ class MockAssetProvider implements AssetProvider {
             id: string;
             filename: string;
             path: string;
+            folderPath: string;
             mimeType: string;
             data: Buffer;
         }>
@@ -163,6 +166,10 @@ class TestExporter extends BaseExporter {
 
     testBuildPageFilenameMap(pages: ExportPage[]): Map<string, string> {
         return this.buildPageFilenameMap(pages);
+    }
+
+    testPreprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        return this.preprocessPagesForExport(pages);
     }
 }
 
@@ -645,23 +652,39 @@ describe('BaseExporter', () => {
             expect(count).toBe(0);
         });
 
-        it('should add filenames to asset URLs', async () => {
+        it('should convert asset://uuid.ext to {{context_path}} format when resolved', async () => {
+            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/image.jpg">');
+        });
+
+        it('should convert asset://uuid without extension when resolved', async () => {
             assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
 
             const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
+            expect(result).toBe('<img src="{{context_path}}/content/resources/image.jpg">');
         });
 
-        it('should replace existing paths with correct export path based on folderPath', async () => {
-            assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'image.jpg', 'image/jpeg', Buffer.from(''));
-
-            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/existing.png">';
+        it('should convert unresolved asset://uuid.ext preserving UUID as filename', async () => {
+            // Asset not in map
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012.png">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            // Should replace with correct export path (folderPath/filename or just filename if no folderPath)
-            expect(result).toBe('<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/image.jpg">');
+            expect(result).toBe(
+                '<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012.png">',
+            );
+        });
+
+        it('should convert unresolved asset://uuid without extension', async () => {
+            const content = '<img src="asset://12345678-1234-1234-1234-123456789012">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/12345678-1234-1234-1234-123456789012">');
         });
 
         it('should return empty string for empty content', async () => {
@@ -669,20 +692,139 @@ describe('BaseExporter', () => {
             expect(result).toBe('');
         });
 
-        it('should return content unchanged when no assets', async () => {
+        it('should return content unchanged when no asset:// URLs', async () => {
             const content = '<p>No assets here</p>';
             const result = await exporter.addFilenamesToAssetUrls(content);
             expect(result).toBe(content);
         });
 
-        it('should not modify unknown asset UUIDs', async () => {
-            assets.addAsset('known-uuid', 'file.txt', 'text/plain', Buffer.from(''));
+        it('should handle multiple asset URLs in same content', async () => {
+            assets.addAsset('11111111-1111-1111-1111-111111111111', 'img1.jpg', 'image/jpeg', Buffer.from(''));
+            assets.addAsset('22222222-2222-2222-2222-222222222222', 'img2.png', 'image/png', Buffer.from(''));
 
-            const content = '<img src="asset://unknown-uuid-here">';
+            const content =
+                '<img src="asset://11111111-1111-1111-1111-111111111111.jpg"><img src="asset://22222222-2222-2222-2222-222222222222.png">';
             const result = await exporter.addFilenamesToAssetUrls(content);
 
-            // Should not modify unknown UUID
-            expect(result).toBe(content);
+            expect(result).not.toContain('asset://');
+            expect(result).toContain('{{context_path}}/content/resources/img1.jpg');
+            expect(result).toContain('{{context_path}}/content/resources/img2.png');
+        });
+
+        it('should use folderPath in export path when available', async () => {
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+            const result = await exporter.addFilenamesToAssetUrls(content);
+
+            expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+        });
+
+        describe('asset path duplication fix', () => {
+            it('should fix folderPath that equals filename (file.pdf → root)', async () => {
+                // This simulates corrupted ELPX where folderPath was set to the filename
+                // e.g., content/resources/contrato.pdf/contrato.pdf → content/resources/contrato.pdf
+                assets.addAsset(
+                    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                    'contrato.pdf',
+                    'application/pdf',
+                    Buffer.from(''),
+                    'contrato.pdf', // folderPath incorrectly set to filename
+                );
+
+                const content = '<a href="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/contrato.pdf/contrato.pdf
+                expect(result).not.toContain('contrato.pdf/contrato.pdf');
+                // Should produce content/resources/contrato.pdf
+                expect(result).toBe('<a href="{{context_path}}/content/resources/contrato.pdf">Download</a>');
+            });
+
+            it('should fix folderPath that ends with /filename', async () => {
+                // This simulates a path like images/photo.jpg/photo.jpg
+                assets.addAsset(
+                    'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images/photo.jpg', // folderPath incorrectly includes the filename
+                );
+
+                const content = '<img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should NOT produce content/resources/images/photo.jpg/photo.jpg
+                expect(result).not.toContain('photo.jpg/photo.jpg');
+                // Should produce content/resources/images/photo.jpg
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should fix existing duplicated paths in content', async () => {
+                // Content already has duplicated paths (from corrupted ELPX content.xml)
+                const content =
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf/contrato-de-trabajo.pdf">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should fix the duplicated path
+                expect(result).not.toContain('contrato-de-trabajo.pdf/contrato-de-trabajo.pdf');
+                expect(result).toBe(
+                    '<a href="{{context_path}}/content/resources/contrato-de-trabajo.pdf">Download</a>',
+                );
+            });
+
+            it('should fix multiple duplicated paths in same content', async () => {
+                const content = `
+                    <a href="{{context_path}}/content/resources/file1.pdf/file1.pdf">Download 1</a>
+                    <img src="{{context_path}}/content/resources/image.jpg/image.jpg">
+                    <a href="{{context_path}}/content/resources/doc.docx/doc.docx">Download 2</a>
+                `;
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).not.toContain('file1.pdf/file1.pdf');
+                expect(result).not.toContain('image.jpg/image.jpg');
+                expect(result).not.toContain('doc.docx/doc.docx');
+                expect(result).toContain('content/resources/file1.pdf"');
+                expect(result).toContain('content/resources/image.jpg"');
+                expect(result).toContain('content/resources/doc.docx"');
+            });
+
+            it('should not affect valid nested paths', async () => {
+                // Valid path: content/resources/images/photo.jpg (images ≠ photo.jpg)
+                assets.addAsset(
+                    'c3d4e5f6-a7b8-9012-cdef-123456789012',
+                    'photo.jpg',
+                    'image/jpeg',
+                    Buffer.from(''),
+                    'images', // Valid folderPath
+                );
+
+                const content = '<img src="asset://c3d4e5f6-a7b8-9012-cdef-123456789012.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+            });
+
+            it('should handle root-level assets correctly (empty folderPath)', async () => {
+                assets.addAsset(
+                    'd4e5f6a7-b8c9-0123-def0-123456789012',
+                    'readme.txt',
+                    'text/plain',
+                    Buffer.from(''),
+                    '', // Empty folderPath - asset at root of content/resources
+                );
+
+                const content = '<a href="asset://d4e5f6a7-b8c9-0123-def0-123456789012.txt">Read</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toBe('<a href="{{context_path}}/content/resources/readme.txt">Read</a>');
+            });
         });
     });
 
@@ -1145,6 +1287,257 @@ describe('BaseExporter', () => {
             expect(map.get('page-2')).toBe('chapter5.html');
             expect(map.get('page-3')).toBe('chapter-6.html'); // Increment from 5
             expect(map.get('page-4')).toBe('chapter-7.html');
+        });
+    });
+
+    describe('preprocessPagesForExport', () => {
+        it('should convert asset URLs to {{context_path}} format in component content', async () => {
+            // Setup mock asset provider that returns assets with folderPath
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe(
+                '<img src="{{context_path}}/content/resources/images/photo.jpg">',
+            );
+        });
+
+        it('should convert asset URLs to {{context_path}} format in component properties', async () => {
+            // Setup mock asset provider that returns assets with folderPath
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'gallery',
+                                    order: 0,
+                                    content: '',
+                                    properties: {
+                                        imageUrl: 'asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            // Properties should have the {{context_path}} format
+            expect(processed[0].blocks[0].components[0].properties.imageUrl).toBe(
+                '{{context_path}}/content/resources/images/photo.jpg',
+            );
+        });
+
+        it('should process multiple assets in properties', async () => {
+            assets.addAsset(
+                '11111111-2222-3333-4444-555555555555',
+                'img1.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'gallery',
+            );
+            assets.addAsset(
+                'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+                'img2.png',
+                'image/png',
+                Buffer.from(''),
+                'gallery',
+            );
+
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'image-gallery',
+                                    order: 0,
+                                    content: '',
+                                    properties: {
+                                        images: [
+                                            { img: 'asset://11111111-2222-3333-4444-555555555555.jpg' },
+                                            { img: 'asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.png' },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            const images = processed[0].blocks[0].components[0].properties.images;
+            expect(images[0].img).toBe('{{context_path}}/content/resources/gallery/img1.jpg');
+            expect(images[1].img).toBe('{{context_path}}/content/resources/gallery/img2.png');
+        });
+
+        it('should not modify original pages (immutability)', async () => {
+            assets.addAsset(
+                'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                'photo.jpg',
+                'image/jpeg',
+                Buffer.from(''),
+                'images',
+            );
+
+            const originalPages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">',
+                                    properties: {
+                                        imageUrl: 'asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg',
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            // Keep a copy of original content and properties
+            const originalContent = originalPages[0].blocks[0].components[0].content;
+            const originalImageUrl = originalPages[0].blocks[0].components[0].properties?.imageUrl;
+
+            await exporter.testPreprocessPagesForExport(originalPages);
+
+            // Original pages should not be modified
+            expect(originalPages[0].blocks[0].components[0].content).toBe(originalContent);
+            expect(originalPages[0].blocks[0].components[0].properties?.imageUrl).toBe(originalImageUrl);
+        });
+
+        it('should handle empty properties', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>No assets</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe('<p>No assets</p>');
+            expect(processed[0].blocks[0].components[0].properties).toEqual({});
+        });
+
+        it('should handle component with undefined properties', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<p>No properties</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            const processed = await exporter.testPreprocessPagesForExport(pages);
+
+            expect(processed[0].blocks[0].components[0].content).toBe('<p>No properties</p>');
         });
     });
 });

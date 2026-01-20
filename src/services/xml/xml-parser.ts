@@ -444,7 +444,8 @@ function normalizePagesFromOdeNavStructures(navStructures: RealOdeNavStructure[]
                     const blockProperties = parseBlockProperties(pag.odePagStructureProperties);
 
                     for (const comp of compArray) {
-                        const type = comp.odeIdeviceTypeName || 'unknown';
+                        // Read odeIdeviceTypeDirName first to match browser behavior (ElpxImporter.js:583-586)
+                        const type = comp.odeIdeviceTypeDirName || comp.odeIdeviceTypeName || 'unknown';
                         const isJson = isJsonIdevice(type);
 
                         // Extract CDATA content (handles both plain strings and __cdata wrapper objects)
