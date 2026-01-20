@@ -3,7 +3,19 @@ import type { Page, Download } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { unzipSync } from '../../../../src/shared/export';
-import { waitForAppReady, openElpFile, navigateToPageByTitle, selectPageByIndex } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    openElpFile,
+    navigateToPageByTitle,
+    selectPageByIndex,
+    addTextIdevice,
+    editTextIdevice,
+    changeBlockIcon,
+    blockHasEmptyIcon,
+    getBlockIconName,
+    waitForThemeIconsLoaded,
+    importComponent,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Export/Import
@@ -34,6 +46,10 @@ async function exportPage(page: Page, nodeId: string): Promise<Download> {
     // Find the page in navigation tree
     const navElement = page.locator(`.nav-element[nav-id="${nodeId}"]`);
     await navElement.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Hover over the nav element to reveal the settings trigger
+    await navElement.hover();
+    await page.waitForTimeout(300);
 
     // Find and click the dropdown trigger (three dots menu)
     const dropdownTrigger = navElement.locator('.page-settings-trigger');
@@ -442,5 +458,224 @@ test.describe('Page Export with Images', () => {
         }
 
         console.log('Page import with images verified successfully');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCK ICON PRESERVATION IN PAGE EXPORT TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test.describe('Block Icon Preservation during Page Export/Import', () => {
+    // Temporary directory for downloaded files
+    let tempDir: string;
+
+    test.beforeAll(() => {
+        tempDir = path.join('/tmp', `exelearning-page-icon-export-${Date.now()}`);
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+    });
+
+    test.afterAll(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('should preserve block icon during page export and verify iconName in content.xml', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that block icons are preserved when exporting a page:
+         * 1. Create a page with a block that has an icon
+         * 2. Export the page as .elpx
+         * 3. Verify the content.xml contains the correct iconName
+         */
+        const page = authenticatedPage;
+
+        // 1. Create a new project
+        const projectUuid = await createProject(page, 'Page Icon Export Test');
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 2. Select the first page
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 3. Add a text iDevice
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for page icon export');
+
+        // 4. Wait for theme icons to be loaded
+        const themeIconCount = await waitForThemeIconsLoaded(page, 1);
+        if (themeIconCount === 0) {
+            console.log('No theme icons available, skipping icon test');
+            test.skip();
+            return;
+        }
+        console.log(`Theme has ${themeIconCount} icons available`);
+
+        // 5. Verify block starts with empty icon
+        const hasEmptyIconBefore = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconBefore).toBe(true);
+
+        // 6. Change the block icon
+        await changeBlockIcon(page, 0, 1);
+
+        // 7. Verify icon changed
+        const hasEmptyIconAfter = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfter).toBe(false);
+
+        // 8. Get the icon name from Yjs
+        const iconNameInYjs = await getBlockIconName(page, 0);
+        console.log('Icon name in Yjs before export:', iconNameInYjs);
+        expect(iconNameInYjs).toBeTruthy();
+
+        // 9. Get the node ID for export
+        const nodeId = await page.evaluate(() => {
+            const selected = document.querySelector('.nav-element.selected');
+            return selected?.getAttribute('nav-id') || null;
+        });
+
+        if (!nodeId) {
+            throw new Error('Could not find node ID for selected page');
+        }
+
+        // 10. Export the page
+        const download = await exportPage(page, nodeId);
+        const fileName = download.suggestedFilename();
+        expect(fileName).toContain('.elpx');
+
+        const filePath = path.join(tempDir, fileName);
+        await download.saveAs(filePath);
+        expect(fs.existsSync(filePath)).toBe(true);
+
+        console.log(`Page exported to: ${filePath}`);
+
+        // 11. Extract and verify content.xml contains the iconName
+        const fileBuffer = fs.readFileSync(filePath);
+        const zipContents = unzipSync(fileBuffer);
+
+        expect(zipContents['content.xml']).toBeDefined();
+
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+        console.log('Content.xml snippet:', contentXml.substring(0, 500));
+
+        // Verify iconName element contains the actual icon name
+        const iconNameMatch = contentXml.match(/<iconName>([^<]*)<\/iconName>/);
+        expect(iconNameMatch).not.toBeNull();
+
+        const exportedIconName = iconNameMatch ? iconNameMatch[1] : '';
+        console.log('Exported iconName:', exportedIconName);
+
+        // The iconName should match what's in Yjs
+        expect(exportedIconName).toBe(iconNameInYjs);
+        expect(exportedIconName).not.toBe('');
+
+        console.log('Block icon preserved in page export content.xml');
+    });
+
+    test('should preserve block icon when importing page to new project', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies the full page export/import cycle for block icons:
+         * 1. Create page with block that has an icon
+         * 2. Export the page
+         * 3. Import to new project
+         * 4. Verify icon is preserved
+         */
+        const page = authenticatedPage;
+
+        // 1. Create first project
+        const projectUuid1 = await createProject(page, 'Page Icon Export Source');
+        await page.goto(`/workarea?project=${projectUuid1}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Add text iDevice
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for page icon import');
+
+        // Wait for theme icons
+        const themeIconCount = await waitForThemeIconsLoaded(page, 1);
+        if (themeIconCount === 0) {
+            console.log('No theme icons available, skipping icon test');
+            test.skip();
+            return;
+        }
+
+        // Change icon
+        await changeBlockIcon(page, 0, 1);
+
+        // Get original icon name
+        const originalIconName = await getBlockIconName(page, 0);
+        console.log('Original icon name:', originalIconName);
+        expect(originalIconName).toBeTruthy();
+
+        // Get node ID and export
+        const nodeId = await page.evaluate(() => {
+            const selected = document.querySelector('.nav-element.selected');
+            return selected?.getAttribute('nav-id') || null;
+        });
+
+        if (!nodeId) {
+            throw new Error('Could not find node ID');
+        }
+
+        const download = await exportPage(page, nodeId);
+        // Use a unique filename to avoid race conditions with parallel tests
+        const uniqueFilename = `page-icon-import-${Date.now()}.elpx`;
+        const exportedFilePath = path.join(tempDir, uniqueFilename);
+        await download.saveAs(exportedFilePath);
+
+        console.log(`Page exported to: ${exportedFilePath}`);
+
+        // 2. Create a NEW project
+        const projectUuid2 = await createProject(page, 'Page Icon Import Target');
+        await page.goto(`/workarea?project=${projectUuid2}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 3. Select page and import
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Import the exported page
+        await importComponent(page, exportedFilePath);
+
+        // 4. Wait for import to complete
+        await page.waitForFunction(
+            () => {
+                const navElements = document.querySelectorAll('.nav-element:not([nav-id="root"])');
+                return navElements.length >= 2;
+            },
+            { timeout: 15000 },
+        );
+
+        // 5. Select the IMPORTED page (second page)
+        await selectPageByIndex(page, 1);
+        await page.waitForTimeout(2000);
+
+        // 6. Verify icon is preserved
+        const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfterImport).toBe(false);
+
+        const importedIconName = await getBlockIconName(page, 0);
+        console.log('Imported icon name:', importedIconName);
+
+        expect(importedIconName).toBe(originalIconName);
+
+        console.log('Block icon preserved after page import - test passed!');
     });
 });
