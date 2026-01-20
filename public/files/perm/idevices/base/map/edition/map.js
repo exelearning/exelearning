@@ -1585,8 +1585,9 @@ var $exeDevice = {
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
 
-            const json = $('.mapa-DataGame', wrapper).text(),
-                dataGame =
+            let json = $('.mapa-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.mapa-LinkImagesPoints', wrapper),
                 $audiosLink = $('.mapa-LinkAudiosPoints', wrapper),

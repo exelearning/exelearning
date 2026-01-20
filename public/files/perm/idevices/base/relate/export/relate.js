@@ -94,8 +94,9 @@ var $eXeRelaciona = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.relaciona-LinkImages', sthis),
             $audiosLink = $('.relaciona-LinkAudios', sthis),

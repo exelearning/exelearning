@@ -820,8 +820,9 @@ var $exeDevice = {
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
 
-            const json = $('.flipcards-DataGame', wrapper).text(),
-                dataGame =
+            let json = $('.flipcards-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.flipcards-LinkImages', wrapper),
                 $audiosLink = $('.flipcards-LinkAudios', wrapper),

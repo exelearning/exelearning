@@ -849,9 +849,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $('<div></div>').html(originalHTML),
-                json = $('.relaciona-DataGame', wrapper).text(),
-                dataGame =
+            const wrapper = $('<div></div>').html(originalHTML);
+            let json = $('.relaciona-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.relaciona-LinkImages', wrapper),

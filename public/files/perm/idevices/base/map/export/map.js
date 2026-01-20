@@ -618,8 +618,9 @@ var $eXeMapa = {
         url,
         $toolTips
     ) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
         mOptions.url = url;

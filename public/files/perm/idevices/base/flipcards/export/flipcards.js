@@ -163,8 +163,9 @@ var $eXeFlipCards = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.flipcards-LinkImages', sthis),
             $audiosLink = $('.flipcards-LinkAudios', sthis),
