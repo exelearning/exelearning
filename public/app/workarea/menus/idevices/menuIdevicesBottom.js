@@ -173,19 +173,23 @@ export default class MenuIdevicesBottom {
      * @returns {Promise<Array|null>} List of idevices or null
      */
     async getIdevices() {
+        console.log('[DEBUG] getIdevices called');
         return new Promise((resolve) => {
             // 1. Try to get from loaded user preferences
             if (eXeLearning.app.user && eXeLearning.app.user.preferences) {
+                console.log('[DEBUG] User preferences object exists. Fetching from API...');
                 // We could assume preferences are loaded, but let's try to fetch if unsure or check cache
                 // Given this runs on init, we might want to fetch fresh or rely on what's loaded.
                 // Safest to try to get from API to ensure we have it, mirroring modal logic.
                 
                 eXeLearning.app.api.getUserPreferences().then(preferences => {
+                     console.log('[DEBUG] API getUserPreferences returned:', preferences);
                      if (preferences && 
                          preferences.userPreferences && 
                          preferences.userPreferences.idevices_selected) {
                              
                          let val = preferences.userPreferences.idevices_selected.value;
+                         console.log('[DEBUG] Found idevices_selected:', val);
                          if (typeof val === 'string') {
                              try {
                                  val = JSON.parse(val);
@@ -198,6 +202,7 @@ export default class MenuIdevicesBottom {
                          return;
                      }
                      
+                     console.log('[DEBUG] No idevices_selected in API. Trying IndexedDB fallback...');
                      // 2. Fallback to IndexedDB (Migration)
                      this.openDB().then(db => {
                          const tx = db.transaction('idevicesSettings', 'readonly');
@@ -207,6 +212,7 @@ export default class MenuIdevicesBottom {
                          
                          request.onsuccess = () => {
                              const result = request.result ? request.result.value : null;
+                             console.log('[DEBUG] IndexedDB result:', result);
                              if (result) {
                                  // Found in IndexedDB, migrate to Backend
                                  console.log("Migrating iDevices from IndexedDB to User Preferences...");
@@ -216,6 +222,7 @@ export default class MenuIdevicesBottom {
                              }
                          };
                          request.onerror = () => {
+                             console.error('[DEBUG] IndexedDB request error');
                              resolve(null);
                          };
                      }).catch(err => {
@@ -227,6 +234,7 @@ export default class MenuIdevicesBottom {
                     resolve(null);
                  });
             } else {
+                console.warn('[DEBUG] eXeLearning.app.user.preferences MISSING');
                 resolve(null);
             }
         });

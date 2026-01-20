@@ -15,11 +15,13 @@
     border: 1px solid #e8e6e6;
     background: var(--white);
     box-shadow: 0 0 6px 0 rgba(0, 0, 0, 0.10);
+
     .idevice_item {
         &.draggable {
             .idevice_icon {
                 cursor: grab;
             }
+
             &.dragging {
                 .idevice_icon {
                     cursor: grabbing;
@@ -27,6 +29,7 @@
             }
         }
     }
+
     .idevice_icon {
         height: 48px;
         width: 48px;
@@ -39,9 +42,11 @@
         margin: 0;
         justify-content: center;
         align-items: center;
+
         &:hover {
             background-color: var(--gray-100);
         }
+
         &.settings-icon {
             width: 36px;
             height: 55px;
@@ -52,54 +57,65 @@
             background-size: 16px;
             background-position: center;
             background-repeat: no-repeat;
+
             &:hover {
                 background-color: var(--gray-200);
             }
         }
     }
+
     &.disabled {
         opacity: .5;
         cursor: not-allowed;
+
         .idevice_item {
             pointer-events: none;
             user-select: none;
         }
     }
 }
-body:has(#node-content[mode='edition']) #idevices-bottom{
+
+/* body:has(#node-content[mode='edition']) #idevices-bottom{
     display:none!important;
-}
+} */
 
 
 #modalIdeviceManagerContent {
     .modal-header {
         padding: 24px 36px;
     }
+
     .modal-body {
         padding: 0 36px 36px 36px;
+
         .modal-body-content {
             .body-idevices-container {
+
                 .alert-danger,
                 .alert-info {
                     &:not(.show) {
                         display: none;
                     }
                 }
+
                 .search-icon {
                     float: right;
                     position: relative;
                     top: 10px;
                     left: 26px;
                 }
+
                 .table-filter.form-control {
                     height: 36px;
                     border-color: var(--gray-border);
                     padding-left: 30px !important;
+
                     &::placeholder {
                         color: var(--gray-400);
                         font-size: 14px;
                     }
                 }
+
                 .idevices-list-container {
                     .idevices-toggle-container {
                         overflow-x: auto;
@@ -108,16 +124,20 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                         padding: 0;
                         scrollbar-color: var(--gray-border-dark) transparent;
                         scrollbar-width: thin;
+
                         &::-webkit-scrollbar-track {
                             background: transparent !important;
                         }
+
                         ::-webkit-scrollbar {
                             width: 6px;
                         }
+
                         ::-webkit-scrollbar-thumb {
                             background-color: var(--gray-border-dark);
                             border-radius: 4px;
                         }
+
                         .toggle-header {
                             margin-bottom: 12px;
 
@@ -133,6 +153,7 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                                 color: #666;
                             }
                         }
+
                         .toggle-grid {
                             display: grid;
                             grid-template-columns: 1fr;
@@ -148,12 +169,14 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                                 gap: 5px 20px;
                             }
                         }
+
                         .toggle-item {
                             display: flex;
                             align-items: center;
                             justify-content: flex-start;
                             padding: 6px 0;
                         }
+
                         .toggle-label {
                             font-size: 14px;
                             line-height: 1.3;
@@ -162,12 +185,14 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                             margin-right: 12px;
                             margin-top: 0;
                         }
+
                         .toggle-control {
                             position: relative;
                             display: inline-flex;
                             align-items: center;
                             min-width: 48px;
                         }
+
                         .toggle-input {
                             position: absolute;
                             opacity: 0;
@@ -176,7 +201,7 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                             height: 100%;
                             cursor: pointer;
 
-                            &:checked + .toggle-visual {
+                            &:checked+.toggle-visual {
                                 background: var(--brand-primary);
 
                                 &::after {
@@ -185,12 +210,13 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                             }
 
 
-                            &:disabled + .toggle-visual {
+                            &:disabled+.toggle-visual {
                                 opacity: 0.5;
                                 filter: grayscale(0.3);
                                 cursor: not-allowed;
                             }
                         }
+
                         .toggle-visual {
                             display: inline-block;
                             width: 36px;
@@ -201,6 +227,7 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
                             transition: background 160ms ease, box-shadow 160ms ease;
                             position: relative;
                             cursor: pointer;
+
                             &::after {
                                 content: '';
                                 position: absolute;
@@ -219,6 +246,7 @@ body:has(#node-content[mode='edition']) #idevices-bottom{
             }
         }
     }
+
     .modal-footer {
         display: none;
     }
