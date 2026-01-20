@@ -61,6 +61,13 @@ describe('MenuIdevicesBottom', () => {
         },
         user: {
           name: 'testuser',
+          preferences: {
+            setPreferences: vi.fn(),
+          },
+        },
+        api: {
+          getUserPreferences: vi.fn(() => Promise.resolve({})),
+          putSaveUserPreferences: vi.fn(() => Promise.resolve()),
         },
       },
     };
