@@ -1083,6 +1083,45 @@ export async function getBlockAndIdeviceIdsByIndex(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PAGE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Export a page using the context menu "Export page" option
+ *
+ * @param page - Playwright page
+ * @param nodeId - Navigation node ID to export
+ * @returns Download object for the exported file
+ */
+export async function exportPage(page: Page, nodeId: string): Promise<Download> {
+    // Find the page in navigation tree
+    const navElement = page.locator(`.nav-element[nav-id="${nodeId}"]`);
+    await navElement.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Find and click the dropdown trigger (three dots menu)
+    const dropdownTrigger = navElement.locator('.page-settings-trigger');
+    await dropdownTrigger.waitFor({ state: 'visible', timeout: 5000 });
+    await dropdownTrigger.click();
+    await page.waitForTimeout(300);
+
+    // Wait for dropdown menu to appear
+    const dropdownMenu = navElement.locator('.dropdown-menu.show');
+    await dropdownMenu.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup download event listener before clicking
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+
+    // Click the "Export page" option
+    const exportOption = dropdownMenu.locator('.action_export_page');
+    await exportOption.waitFor({ state: 'visible', timeout: 5000 });
+    await exportOption.click();
+
+    // Wait for download to complete
+    const download = await downloadPromise;
+    return download;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TEXT IDEVICE HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
