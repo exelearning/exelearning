@@ -23,7 +23,7 @@
  * ```
  */
 
-import type { Page, FrameLocator } from '@playwright/test';
+import type { Page, FrameLocator, Download } from '@playwright/test';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP INITIALIZATION
@@ -826,4 +826,511 @@ export async function cloneCurrentPage(page: Page): Promise<void> {
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.click();
     await page.waitForTimeout(2000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Select a page in the navigation tree by index
+ *
+ * @param page - Playwright page
+ * @param pageIndex - Zero-based index of the page to select (default 0)
+ */
+export async function selectPageByIndex(page: Page, pageIndex: number = 0): Promise<void> {
+    // Get all page nodes (excluding root)
+    const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
+    const count = await pageNodes.count();
+
+    if (count === 0) {
+        throw new Error('No pages found in navigation tree');
+    }
+
+    const targetIndex = Math.min(pageIndex, count - 1);
+    const targetNode = pageNodes.nth(targetIndex);
+
+    await targetNode.scrollIntoViewIfNeeded();
+    await targetNode.click({ force: true });
+    await page.waitForTimeout(1000);
+
+    // Wait for page content area to be ready
+    await page
+        .waitForFunction(
+            () => {
+                const nodeContent = document.querySelector('#node-content');
+                const metadata = document.querySelector('#properties-node-content-form');
+                return nodeContent && (!metadata || !metadata.closest('.show'));
+            },
+            { timeout: 10000 },
+        )
+        .catch(() => {});
+}
+
+/**
+ * Add a new page to the project via Yjs bridge
+ *
+ * @param page - Playwright page
+ * @param name - Name for the new page (default 'New Page')
+ * @returns The page ID of the newly created page
+ */
+export async function addPage(page: Page, name: string = 'New Page'): Promise<string> {
+    const pageId = await page.evaluate(pageName => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge) throw new Error('Yjs bridge not available');
+
+        // Add page using the structure binding
+        const newPage = bridge.structureBinding.addPage(pageName, null);
+        return newPage.id || newPage.pageId;
+    }, name);
+
+    await page.waitForTimeout(500);
+    return pageId;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPONENT EXPORT/IMPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Export a block as a .block file
+ *
+ * @param page - Playwright page
+ * @param blockId - The block element ID (without the 'dropdownMenuButton' prefix)
+ * @returns The Download object for the exported file
+ */
+export async function exportBlock(page: Page, blockId: string): Promise<Download> {
+    // Click on the block's actions dropdown button (three dots)
+    const dropdownBtn = page.locator(`#dropdownMenuButton${blockId}`);
+    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdownBtn.click();
+    await page.waitForTimeout(300);
+
+    // Wait for download event and click export button
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+
+    const exportBtn = page.locator(`#dropdownBlockMore-button-export${blockId}`);
+    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await exportBtn.click();
+
+    const download = await downloadPromise;
+    return download;
+}
+
+/**
+ * Export an iDevice as a .idevice file
+ *
+ * @param page - Playwright page
+ * @param ideviceId - The iDevice element ID
+ * @returns The Download object for the exported file
+ */
+export async function exportIdevice(page: Page, ideviceId: string): Promise<Download> {
+    // Click on the iDevice's actions dropdown button (three dots horizontal)
+    const dropdownBtn = page.locator(`#dropdownMenuButtonIdevice${ideviceId}`);
+    await dropdownBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await dropdownBtn.click();
+    await page.waitForTimeout(300);
+
+    // Wait for download event and click export button
+    const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
+
+    const exportBtn = page.locator(`#exportIdevice${ideviceId}`);
+    await exportBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await exportBtn.click();
+
+    const download = await downloadPromise;
+    return download;
+}
+
+/**
+ * Import a component file (.block or .idevice) to the current page
+ * Uses the dedicated iDevice import file input (#local-ode-file-upload)
+ *
+ * @param page - Playwright page
+ * @param filePath - Absolute path to the component file
+ */
+export async function importComponent(page: Page, filePath: string): Promise<void> {
+    // Ensure ComponentImporter is loaded
+    try {
+        await page.waitForFunction(
+            () => {
+                return (window as any).ComponentImporter !== undefined;
+            },
+            { timeout: 15000 },
+        );
+    } catch {
+        const debugInfo = await page.evaluate(() => ({
+            YjsLoaderLoaded: (window as any).YjsLoader?.getStatus?.()?.loaded,
+            ComponentImporter: typeof (window as any).ComponentImporter,
+        }));
+        throw new Error(`ComponentImporter not loaded: ${JSON.stringify(debugInfo)}`);
+    }
+
+    // Use the dedicated iDevice import file input (#local-ode-file-upload)
+    // This is the hidden file input created by createIdevicesUploadInput() in menuStructureBehaviour.js
+    const fileInput = page.locator('#local-ode-file-upload');
+
+    // Wait for the file input to be available
+    await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+
+    // Set the file - this triggers the import directly
+    await fileInput.setInputFiles(filePath);
+
+    // Wait for import to complete - watch for iDevice to appear in the page
+    await page.waitForTimeout(3000);
+
+    // Close any error modal if present
+    const errorModal = page.locator('.modal.show:has-text("Import error"), .modal.show:has-text("Error")');
+    if (await errorModal.isVisible().catch(() => false)) {
+        const errorText = await errorModal.textContent();
+        console.log('Import error modal:', errorText);
+        const closeBtn = errorModal.locator('.btn-close, button:has-text("Close")').first();
+        if (await closeBtn.isVisible()) {
+            await closeBtn.click();
+        }
+        throw new Error(`Import failed: ${errorText}`);
+    }
+}
+
+/**
+ * Get the block and iDevice IDs from the first block on the current page
+ *
+ * @param page - Playwright page
+ * @returns Object containing blockId and ideviceId
+ */
+export async function getFirstBlockAndIdeviceIds(page: Page): Promise<{ blockId: string; ideviceId: string }> {
+    // Find the block - it's article.box in #node-content
+    const blockNode = page.locator('#node-content article.box').first();
+    await blockNode.waitFor({ state: 'visible', timeout: 15000 });
+
+    // Get block ID from the element's 'id' attribute
+    const blockId = await blockNode.getAttribute('id');
+    if (!blockId) {
+        // Debug: check what's in node-content
+        const html = await page.evaluate(() => document.querySelector('#node-content')?.innerHTML.substring(0, 1000));
+        console.log('Node content HTML:', html);
+        throw new Error('Block does not have an id attribute');
+    }
+
+    // Find the iDevice inside the block
+    // The iDevice dropdown button has id="dropdownMenuButtonIdevice{ideviceId}"
+    const ideviceDropdown = blockNode.locator('[id^="dropdownMenuButtonIdevice"]').first();
+    await ideviceDropdown.waitFor({ state: 'attached', timeout: 10000 });
+
+    const dropdownId = await ideviceDropdown.getAttribute('id');
+    const ideviceId = dropdownId?.replace('dropdownMenuButtonIdevice', '') || '';
+
+    if (!ideviceId) {
+        // Try alternative: get ID from idevice_node article
+        const ideviceNode = blockNode.locator('article.idevice_node').first();
+        const altId = await ideviceNode.getAttribute('id').catch(() => null);
+        if (altId) {
+            return { blockId, ideviceId: altId };
+        }
+        throw new Error('Could not find iDevice ID');
+    }
+
+    return { blockId, ideviceId };
+}
+
+/**
+ * Get block and iDevice IDs from a specific block on the current page
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns Object containing blockId and ideviceId
+ */
+export async function getBlockAndIdeviceIdsByIndex(
+    page: Page,
+    blockIndex: number = 0,
+): Promise<{ blockId: string; ideviceId: string }> {
+    // Find the block by index - blocks are article.box in #node-content
+    const blockNodes = page.locator('#node-content article.box');
+    const count = await blockNodes.count();
+
+    if (count === 0) {
+        throw new Error('No blocks found on the current page');
+    }
+
+    const targetIndex = Math.min(blockIndex, count - 1);
+    const blockNode = blockNodes.nth(targetIndex);
+    await blockNode.waitFor({ state: 'visible', timeout: 15000 });
+
+    // Get block ID from the element's 'id' attribute
+    const blockId = await blockNode.getAttribute('id');
+    if (!blockId) {
+        throw new Error('Block does not have an id attribute');
+    }
+
+    // Find the iDevice inside the block
+    const ideviceDropdown = blockNode.locator('[id^="dropdownMenuButtonIdevice"]').first();
+    await ideviceDropdown.waitFor({ state: 'attached', timeout: 10000 });
+
+    const dropdownId = await ideviceDropdown.getAttribute('id');
+    const ideviceId = dropdownId?.replace('dropdownMenuButtonIdevice', '') || '';
+
+    if (!ideviceId) {
+        // Try alternative: get ID from idevice_node article
+        const ideviceNode = blockNode.locator('article.idevice_node').first();
+        const altId = await ideviceNode.getAttribute('id').catch(() => null);
+        if (altId) {
+            return { blockId, ideviceId: altId };
+        }
+        throw new Error('Could not find iDevice ID');
+    }
+
+    return { blockId, ideviceId };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TEXT IDEVICE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Add a text iDevice to the current page
+ * Expands the "Information and presentation" category and clicks the text iDevice
+ *
+ * @param page - Playwright page
+ */
+export async function addTextIdevice(page: Page): Promise<void> {
+    // Expand "Information and presentation" category
+    const infoCategory = page
+        .locator('.idevice_category')
+        .filter({
+            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
+        })
+        .first();
+
+    if ((await infoCategory.count()) > 0) {
+        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
+        if (isCollapsed) {
+            await infoCategory.locator('.label').click();
+            await page.waitForTimeout(800);
+        }
+    }
+
+    // Click text iDevice
+    const textIdevice = page.locator('.idevice_item[id="text"]').first();
+    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
+    await textIdevice.click();
+
+    // Wait for iDevice to appear
+    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
+}
+
+/**
+ * Edit and save a text iDevice with the given content
+ * Handles entering edit mode, typing in TinyMCE, and saving
+ *
+ * @param page - Playwright page
+ * @param content - Text content to enter in the iDevice
+ */
+export async function editTextIdevice(page: Page, content: string): Promise<void> {
+    const block = page.locator('#node-content article .idevice_node.text').last();
+    await block.waitFor({ timeout: 10000 });
+
+    // Check if already in edition mode (TinyMCE visible or mode attribute)
+    const isEdition = await block.evaluate(el => {
+        const hasMode = el.getAttribute('mode') === 'edition';
+        const hasTinyMCE = el.querySelector('.tox-tinymce') !== null;
+        return hasMode || hasTinyMCE;
+    });
+
+    if (!isEdition) {
+        // Enter edit mode
+        const editBtn = block.locator('.btn-edit-idevice');
+        await editBtn.waitFor({ timeout: 10000 });
+        await editBtn.click();
+        await page.waitForTimeout(500);
+    }
+
+    // Wait for TinyMCE editor to load
+    await page.waitForSelector('.tox-edit-area__iframe', { timeout: 15000 });
+
+    // Find the TinyMCE iframe and type content
+    const frameEl = await block
+        .locator('iframe.tox-edit-area__iframe, iframe[title="Rich Text Area"]')
+        .first()
+        .elementHandle();
+
+    if (frameEl) {
+        const frame = await frameEl.contentFrame();
+        if (frame) {
+            await frame.waitForSelector('body', { timeout: 8000 });
+            await frame.evaluate(() => {
+                document.body.innerHTML = '';
+            });
+            await frame.focus('body');
+            await frame.type('body', content, { delay: 5 });
+        }
+    }
+
+    // Wait a bit before saving to ensure content is synced
+    await page.waitForTimeout(500);
+
+    // Save the iDevice
+    const saveBtn = block.locator('.btn-save-idevice');
+    await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await saveBtn.click();
+
+    // Wait for TinyMCE to be removed (indicates edit mode ended)
+    await page.waitForFunction(
+        () => {
+            const idevice = document.querySelector('#node-content article .idevice_node.text');
+            if (!idevice) return false;
+            // TinyMCE editor should be gone after save
+            const hasTinyMCE = idevice.querySelector('.tox-tinymce') !== null;
+            const isEditionMode = idevice.getAttribute('mode') === 'edition';
+            return !hasTinyMCE && !isEditionMode;
+        },
+        { timeout: 15000 },
+    );
+
+    // Wait a bit more for DOM to stabilize
+    await page.waitForTimeout(500);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCK ICON HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get current icon src from block header
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The src attribute of the icon image, or null if no image
+ */
+export async function getBlockIconSrc(page: Page, blockIndex: number = 0): Promise<string | null> {
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconImg = block.locator('header.box-head button.box-icon img').first();
+    if ((await iconImg.count()) === 0) return null;
+    return await iconImg.getAttribute('src');
+}
+
+/**
+ * Check if block has empty icon (SVG placeholder with exe-no-icon class)
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns true if block has empty/placeholder icon
+ */
+export async function blockHasEmptyIcon(page: Page, blockIndex: number = 0): Promise<boolean> {
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconBtn = block.locator('header.box-head button.box-icon').first();
+    return await iconBtn.evaluate(el => el.classList.contains('exe-no-icon') || el.querySelector('svg') !== null);
+}
+
+/**
+ * Change block icon via icon picker modal
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @param iconIndex - Index of the icon to select (0 = empty, 1+ = theme icons)
+ */
+export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex: number): Promise<void> {
+    // 1. Click icon button
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconBtn = block.locator('header.box-head button.box-icon').first();
+    await iconBtn.click();
+
+    // 2. Wait for icon picker modal
+    await page.waitForSelector('.option-block-icon', { timeout: 10000 });
+
+    // 3. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
+    const iconOption = page.locator('.option-block-icon').nth(iconIndex);
+    await iconOption.click();
+
+    // 4. Click Save button (confirm button in modal)
+    const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
+    await saveBtn.click();
+
+    // 5. Wait for modal to close
+    await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
+    await page.waitForTimeout(500);
+}
+
+/**
+ * Get the iconName value from Yjs document for a specific block
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The iconName value from Yjs, or null if not found
+ */
+export async function getBlockIconName(page: Page, blockIndex: number = 0): Promise<string | null> {
+    return await page.evaluate(targetIndex => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge) return null;
+
+        const docManager = bridge.getDocumentManager();
+        if (!docManager) return null;
+
+        const yDoc = docManager.getDoc();
+        if (!yDoc) return null;
+
+        // Get current page ID from the selected nav element
+        const selectedNav = document.querySelector('.nav-element.selected');
+        if (!selectedNav) return null;
+
+        const pageId = selectedNav.getAttribute('nav-id');
+        if (!pageId) return null;
+
+        // Helper function to find blocks in a page
+        const findBlocksInPage = (pageMap: any): any[] => {
+            const blocks: any[] = [];
+            const pageBlocks = pageMap?.get('blocks');
+            if (pageBlocks) {
+                for (let i = 0; i < pageBlocks.length; i++) {
+                    blocks.push(pageBlocks.get(i));
+                }
+            }
+            return blocks;
+        };
+
+        // Helper to recursively search pages for the matching pageId
+        const findPage = (pages: any, targetId: string): any | null => {
+            for (let i = 0; i < pages.length; i++) {
+                const pageMap = pages.get(i);
+                const id = pageMap?.get('id');
+                if (id === targetId) {
+                    return pageMap;
+                }
+                // Check nested pages
+                const subpages = pageMap?.get('pages');
+                if (subpages) {
+                    const found = findPage(subpages, targetId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        const navigation = yDoc.getArray('navigation');
+        const targetPage = findPage(navigation, pageId);
+
+        if (!targetPage) return null;
+
+        const blocks = findBlocksInPage(targetPage);
+        if (blocks.length <= targetIndex) return null;
+
+        const block = blocks[targetIndex];
+        return block?.get('iconName') || null;
+    }, blockIndex);
+}
+
+/**
+ * Get the block ID from the current page at a given index
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The block ID string
+ */
+export async function getBlockId(page: Page, blockIndex: number = 0): Promise<string> {
+    const blockNode = page.locator('#node-content article.box').nth(blockIndex);
+    await blockNode.waitFor({ state: 'visible', timeout: 15000 });
+    const blockId = await blockNode.getAttribute('id');
+    if (!blockId) {
+        throw new Error(`Block at index ${blockIndex} does not have an id attribute`);
+    }
+    return blockId;
 }
