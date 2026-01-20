@@ -18,6 +18,11 @@ import {
     getBlockAndIdeviceIdsByIndex,
     addTextIdevice,
     editTextIdevice,
+    getBlockIconSrc,
+    blockHasEmptyIcon,
+    changeBlockIcon,
+    getBlockIconName,
+    getBlockId,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -828,5 +833,276 @@ test.describe('Component Export/Import with Images', () => {
         expect(loadedImages.length).toBeGreaterThanOrEqual(1);
 
         console.log('Imported images display correctly in preview');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCK ICON PRESERVATION TESTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+test.describe('Block Icon Preservation during Export/Import', () => {
+    // Temporary directory for downloaded files
+    let tempDir: string;
+
+    test.beforeAll(() => {
+        tempDir = path.join('/tmp', `exelearning-e2e-icon-${Date.now()}`);
+        if (!fs.existsSync(tempDir)) {
+            fs.mkdirSync(tempDir, { recursive: true });
+        }
+    });
+
+    test.afterAll(() => {
+        // Clean up temp directory
+        if (fs.existsSync(tempDir)) {
+            fs.rmSync(tempDir, { recursive: true, force: true });
+        }
+    });
+
+    test('should preserve block icon during export and verify iconName in ZIP content.xml', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that the block iconName is correctly included
+         * in the exported .block file's content.xml
+         *
+         * Previously, the iconName was hardcoded as empty: <iconName></iconName>
+         * After the fix, it should contain the actual block iconName value.
+         */
+        const page = authenticatedPage;
+
+        // 1. Create a new project
+        const projectUuid = await createProject(page, 'Block Icon Export Test');
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 2. Select the first page
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // 3. Add a text iDevice
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for icon export');
+
+        // 4. Verify block starts with empty icon
+        const hasEmptyIconBefore = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconBefore).toBe(true);
+
+        // 5. Change the block icon to first theme icon (index 1)
+        await changeBlockIcon(page, 0, 1);
+
+        // 6. Verify icon changed
+        const hasEmptyIconAfter = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfter).toBe(false);
+
+        // 7. Get the icon name from Yjs to verify it's set
+        const iconNameInYjs = await getBlockIconName(page, 0);
+        console.log('Icon name in Yjs before export:', iconNameInYjs);
+        expect(iconNameInYjs).toBeTruthy();
+
+        // 8. Get block ID and export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFileName = blockDownload.suggestedFilename();
+        expect(blockFileName).toContain('.block');
+
+        const blockFilePath = path.join(tempDir, blockFileName);
+        await blockDownload.saveAs(blockFilePath);
+        expect(fs.existsSync(blockFilePath)).toBe(true);
+
+        console.log(`Block exported to: ${blockFilePath}`);
+
+        // 9. Extract and verify content.xml contains the iconName
+        const fileBuffer = fs.readFileSync(blockFilePath);
+        const zipContents = unzipSync(fileBuffer);
+
+        expect(zipContents['content.xml']).toBeDefined();
+
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+        console.log('Content.xml snippet:', contentXml.substring(0, 500));
+
+        // Verify iconName element contains the actual icon name (not empty)
+        const iconNameMatch = contentXml.match(/<iconName>([^<]*)<\/iconName>/);
+        expect(iconNameMatch).not.toBeNull();
+
+        const exportedIconName = iconNameMatch ? iconNameMatch[1] : '';
+        console.log('Exported iconName:', exportedIconName);
+
+        // The iconName should match what's in Yjs
+        expect(exportedIconName).toBe(iconNameInYjs);
+        expect(exportedIconName).not.toBe('');
+
+        console.log('Block icon preserved in exported content.xml');
+    });
+
+    test('should preserve block icon during import to new project', async ({ authenticatedPage, createProject }) => {
+        /**
+         * This test verifies the full export/import cycle for block icons:
+         * 1. Create block with icon
+         * 2. Export block
+         * 3. Import to new project
+         * 4. Verify icon is preserved
+         */
+        const page = authenticatedPage;
+
+        // 1. Create first project and add block with icon
+        const projectUuid1 = await createProject(page, 'Block Icon Export Source');
+        await page.goto(`/workarea?project=${projectUuid1}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Add text iDevice and set icon
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content for icon import');
+
+        await changeBlockIcon(page, 0, 1);
+
+        // Get the icon src and name for comparison later
+        const originalIconSrc = await getBlockIconSrc(page, 0);
+        const originalIconName = await getBlockIconName(page, 0);
+        console.log('Original icon src:', originalIconSrc?.substring(0, 80));
+        console.log('Original icon name:', originalIconName);
+
+        expect(originalIconName).toBeTruthy();
+
+        // Export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        console.log(`Block exported to: ${blockFilePath}`);
+
+        // 2. Create a NEW project for import
+        const projectUuid2 = await createProject(page, 'Block Icon Import Target');
+        await page.goto(`/workarea?project=${projectUuid2}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        // 3. Select page and import the block
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        await importComponent(page, blockFilePath);
+
+        // 4. Wait for import to complete
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        // Verify the imported block appears
+        const importedBlock = page.locator('#node-content article .idevice_node.text').first();
+        await expect(importedBlock).toBeVisible({ timeout: 10000 });
+
+        console.log('Block imported successfully');
+
+        // 5. Wait for icon to be rendered
+        await page.waitForTimeout(2000);
+
+        // 6. Verify icon is preserved
+        const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfterImport).toBe(false);
+
+        const importedIconName = await getBlockIconName(page, 0);
+        console.log('Imported icon name:', importedIconName);
+
+        expect(importedIconName).toBe(originalIconName);
+
+        // Verify icon src is displayed (may have different blob URL but should be present)
+        const importedIconSrc = await getBlockIconSrc(page, 0);
+        console.log('Imported icon src:', importedIconSrc?.substring(0, 80));
+        expect(importedIconSrc).toBeTruthy();
+
+        console.log('Block icon preserved after import - test passed!');
+    });
+
+    test('should handle block without icon (empty iconName) during export/import', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        /**
+         * This test verifies that blocks without icons are correctly handled:
+         * Empty iconName should remain empty after export/import cycle.
+         */
+        const page = authenticatedPage;
+
+        // 1. Create project and add block WITHOUT setting an icon
+        const projectUuid1 = await createProject(page, 'Block No Icon Export');
+        await page.goto(`/workarea?project=${projectUuid1}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        // Add text iDevice (icon stays empty)
+        await addTextIdevice(page);
+        await editTextIdevice(page, 'Test content without icon');
+
+        // Verify block has empty icon
+        const hasEmptyIcon = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIcon).toBe(true);
+
+        // Export the block
+        const blockId = await getBlockId(page, 0);
+        const blockDownload = await exportBlock(page, blockId);
+        const blockFilePath = path.join(tempDir, blockDownload.suggestedFilename());
+        await blockDownload.saveAs(blockFilePath);
+
+        // Verify content.xml has empty iconName
+        const fileBuffer = fs.readFileSync(blockFilePath);
+        const zipContents = unzipSync(fileBuffer);
+        const contentXml = new TextDecoder().decode(zipContents['content.xml']);
+
+        const iconNameMatch = contentXml.match(/<iconName>([^<]*)<\/iconName>/);
+        expect(iconNameMatch).not.toBeNull();
+        const exportedIconName = iconNameMatch ? iconNameMatch[1] : null;
+        expect(exportedIconName).toBe('');
+
+        console.log('Empty iconName correctly preserved in export');
+
+        // 2. Create new project and import
+        const projectUuid2 = await createProject(page, 'Block No Icon Import');
+        await page.goto(`/workarea?project=${projectUuid2}`);
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+        await waitForLoadingScreenHidden(page);
+
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(1000);
+
+        await importComponent(page, blockFilePath);
+
+        // Wait for import
+        await page.waitForFunction(
+            () => {
+                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
+                return idevices.length >= 1;
+            },
+            { timeout: 15000 },
+        );
+
+        await page.waitForTimeout(1000);
+
+        // Verify block still has empty icon after import
+        const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
+        expect(hasEmptyIconAfterImport).toBe(true);
+
+        const importedIconName = await getBlockIconName(page, 0);
+        expect(importedIconName === '' || importedIconName === null).toBe(true);
+
+        console.log('Block without icon correctly handled during export/import');
     });
 });

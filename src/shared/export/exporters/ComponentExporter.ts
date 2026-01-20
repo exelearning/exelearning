@@ -237,7 +237,7 @@ export class ComponentExporter extends BaseExporter {
         let xml = '  <odePagStructure>\n';
         xml += `    <odeBlockId>${this.escapeXml(block.id)}</odeBlockId>\n`;
         xml += `    <blockName>${this.escapeXml(block.name || 'Block')}</blockName>\n`;
-        xml += `    <iconName></iconName>\n`;
+        xml += `    <iconName>${this.escapeXml(block.iconName || '')}</iconName>\n`;
         xml += `    <odePagStructureOrder>0</odePagStructureOrder>\n`;
         xml += `    <odePagStructureProperties>${this.escapeXml(JSON.stringify(block.properties || {}))}</odePagStructureProperties>\n`;
         xml += '    <odeComponents>\n';

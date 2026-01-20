@@ -1,5 +1,13 @@
 import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
+import {
+    waitForAppReady,
+    selectFirstPage,
+    addTextIdevice as addTextIdeviceHelper,
+    getBlockIconSrc,
+    blockHasEmptyIcon,
+    changeBlockIcon,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Undo/Redo iDevice Title - Issue #956
@@ -12,37 +20,14 @@ import type { Page } from '@playwright/test';
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsInit(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 /**
  * Helper to select a page node (not root)
  */
 async function selectPageNode(page: Page): Promise<void> {
-    const pageNodeSelectors = [
-        '.nav-element:not([nav-id="root"]) .nav-element-text',
-        '.structure-tree .nav-element:not([nav-id="root"]) .nav-element-text',
-    ];
-
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.waitFor({ state: 'visible', timeout: 5000 });
-                await element.click({ timeout: 5000 });
-                await page.waitForTimeout(500);
-                return;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
+    await selectFirstPage(page);
 }
 
 /**
@@ -61,35 +46,10 @@ async function addTextIdevice(page: Page): Promise<void> {
         { timeout: 10000 },
     );
 
-    // Expand Information category
-    const infoCategory = page
-        .locator('.idevice_category')
-        .filter({ has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }) })
-        .first();
+    // Use the centralized helper to add text iDevice
+    await addTextIdeviceHelper(page);
 
-    if ((await infoCategory.count()) > 0) {
-        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-        if (isCollapsed) {
-            await infoCategory.locator('.label').click();
-            await page.waitForTimeout(800);
-        }
-    }
-
-    // Click text iDevice
-    const textIdevice = page.locator('.idevice_item[id="text"]').first();
-    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await textIdevice.click();
-
-    // Wait for iDevice to appear
-    await page.waitForFunction(
-        () => {
-            const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
-            return idevices.length > 0;
-        },
-        { timeout: 15000 },
-    );
-
-    // Save the iDevice (exit edit mode)
+    // Save the iDevice (exit edit mode) if still in edit mode
     await page.waitForTimeout(500);
     const textIdeviceNode = page.locator('#node-content article .idevice_node.text').last();
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');
@@ -206,49 +166,8 @@ async function editPageName(page: Page, pageIndex: number, newName: string): Pro
     await page.waitForTimeout(500);
 }
 
-/**
- * Helper to get current icon src from block
- */
-async function getBlockIconSrc(page: Page, blockIndex: number = 0): Promise<string | null> {
-    const block = page.locator('#node-content article.box').nth(blockIndex);
-    const iconImg = block.locator('header.box-head button.box-icon img').first();
-    if ((await iconImg.count()) === 0) return null;
-    return await iconImg.getAttribute('src');
-}
-
-/**
- * Helper to check if block has empty icon (SVG placeholder with exe-no-icon class)
- */
-async function blockHasEmptyIcon(page: Page, blockIndex: number = 0): Promise<boolean> {
-    const block = page.locator('#node-content article.box').nth(blockIndex);
-    const iconBtn = block.locator('header.box-head button.box-icon').first();
-    return await iconBtn.evaluate(el => el.classList.contains('exe-no-icon') || el.querySelector('svg') !== null);
-}
-
-/**
- * Helper to change block icon via icon picker modal
- */
-async function changeBlockIcon(page: Page, blockIndex: number, iconIndex: number): Promise<void> {
-    // 1. Click icon button
-    const block = page.locator('#node-content article.box').nth(blockIndex);
-    const iconBtn = block.locator('header.box-head button.box-icon').first();
-    await iconBtn.click();
-
-    // 2. Wait for icon picker modal
-    await page.waitForSelector('.option-block-icon', { timeout: 10000 });
-
-    // 3. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
-    const iconOption = page.locator('.option-block-icon').nth(iconIndex);
-    await iconOption.click();
-
-    // 4. Click Save button (confirm button in modal)
-    const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
-    await saveBtn.click();
-
-    // 5. Wait for modal to close
-    await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
-    await page.waitForTimeout(500);
-}
+// Icon helpers are imported from workarea-helpers:
+// getBlockIconSrc, blockHasEmptyIcon, changeBlockIcon
 
 test.describe('Undo/Redo iDevice Title - Issue #956', () => {
     test('should visually update block title after undo without page reload', async ({

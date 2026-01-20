@@ -1189,3 +1189,148 @@ export async function editTextIdevice(page: Page, content: string): Promise<void
     // Wait a bit more for DOM to stabilize
     await page.waitForTimeout(500);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BLOCK ICON HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get current icon src from block header
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The src attribute of the icon image, or null if no image
+ */
+export async function getBlockIconSrc(page: Page, blockIndex: number = 0): Promise<string | null> {
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconImg = block.locator('header.box-head button.box-icon img').first();
+    if ((await iconImg.count()) === 0) return null;
+    return await iconImg.getAttribute('src');
+}
+
+/**
+ * Check if block has empty icon (SVG placeholder with exe-no-icon class)
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns true if block has empty/placeholder icon
+ */
+export async function blockHasEmptyIcon(page: Page, blockIndex: number = 0): Promise<boolean> {
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconBtn = block.locator('header.box-head button.box-icon').first();
+    return await iconBtn.evaluate(el => el.classList.contains('exe-no-icon') || el.querySelector('svg') !== null);
+}
+
+/**
+ * Change block icon via icon picker modal
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @param iconIndex - Index of the icon to select (0 = empty, 1+ = theme icons)
+ */
+export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex: number): Promise<void> {
+    // 1. Click icon button
+    const block = page.locator('#node-content article.box').nth(blockIndex);
+    const iconBtn = block.locator('header.box-head button.box-icon').first();
+    await iconBtn.click();
+
+    // 2. Wait for icon picker modal
+    await page.waitForSelector('.option-block-icon', { timeout: 10000 });
+
+    // 3. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
+    const iconOption = page.locator('.option-block-icon').nth(iconIndex);
+    await iconOption.click();
+
+    // 4. Click Save button (confirm button in modal)
+    const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
+    await saveBtn.click();
+
+    // 5. Wait for modal to close
+    await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
+    await page.waitForTimeout(500);
+}
+
+/**
+ * Get the iconName value from Yjs document for a specific block
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The iconName value from Yjs, or null if not found
+ */
+export async function getBlockIconName(page: Page, blockIndex: number = 0): Promise<string | null> {
+    return await page.evaluate(targetIndex => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge) return null;
+
+        const docManager = bridge.getDocumentManager();
+        if (!docManager) return null;
+
+        const yDoc = docManager.getDoc();
+        if (!yDoc) return null;
+
+        // Get current page ID from the selected nav element
+        const selectedNav = document.querySelector('.nav-element.selected');
+        if (!selectedNav) return null;
+
+        const pageId = selectedNav.getAttribute('nav-id');
+        if (!pageId) return null;
+
+        // Helper function to find blocks in a page
+        const findBlocksInPage = (pageMap: any): any[] => {
+            const blocks: any[] = [];
+            const pageBlocks = pageMap?.get('blocks');
+            if (pageBlocks) {
+                for (let i = 0; i < pageBlocks.length; i++) {
+                    blocks.push(pageBlocks.get(i));
+                }
+            }
+            return blocks;
+        };
+
+        // Helper to recursively search pages for the matching pageId
+        const findPage = (pages: any, targetId: string): any | null => {
+            for (let i = 0; i < pages.length; i++) {
+                const pageMap = pages.get(i);
+                const id = pageMap?.get('id');
+                if (id === targetId) {
+                    return pageMap;
+                }
+                // Check nested pages
+                const subpages = pageMap?.get('pages');
+                if (subpages) {
+                    const found = findPage(subpages, targetId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        const navigation = yDoc.getArray('navigation');
+        const targetPage = findPage(navigation, pageId);
+
+        if (!targetPage) return null;
+
+        const blocks = findBlocksInPage(targetPage);
+        if (blocks.length <= targetIndex) return null;
+
+        const block = blocks[targetIndex];
+        return block?.get('iconName') || null;
+    }, blockIndex);
+}
+
+/**
+ * Get the block ID from the current page at a given index
+ *
+ * @param page - Playwright page
+ * @param blockIndex - Index of the block on the page (0-based)
+ * @returns The block ID string
+ */
+export async function getBlockId(page: Page, blockIndex: number = 0): Promise<string> {
+    const blockNode = page.locator('#node-content article.box').nth(blockIndex);
+    await blockNode.waitFor({ state: 'visible', timeout: 15000 });
+    const blockId = await blockNode.getAttribute('id');
+    if (!blockId) {
+        throw new Error(`Block at index ${blockIndex} does not have an id attribute`);
+    }
+    return blockId;
+}
