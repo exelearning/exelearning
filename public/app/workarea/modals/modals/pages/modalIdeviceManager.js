@@ -807,4 +807,24 @@ export default class ModalIdeviceManager extends Modal {
             }
         });
     }
+    /**
+     * Open IndexedDB
+     */
+    openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('exelearning', 1);
+            request.onupgradeneeded = function (event) {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('idevicesSettings')) {
+                    db.createObjectStore('idevicesSettings', { keyPath: 'id' });
+                }
+            };
+            request.onsuccess = function (event) {
+                resolve(event.target.result);
+            };
+            request.onerror = function (event) {
+                reject(event.target.error);
+            };
+        });
+    }
 }

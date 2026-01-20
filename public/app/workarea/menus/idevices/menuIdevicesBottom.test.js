@@ -606,6 +606,7 @@ describe('MenuIdevicesBottom', () => {
     });
   });
 
+  describe('saveIdevices', () => {
     it('should save idevices to Backend via API', async () => {
       const idevices = ['text', 'form'];
       await menuIdevicesBottom.saveIdevices(idevices);

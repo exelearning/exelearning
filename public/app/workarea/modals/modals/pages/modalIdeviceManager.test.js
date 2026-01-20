@@ -107,13 +107,13 @@ describe('ModalIdeviceManager', () => {
     window.eXeLearning = {
       app: {
         api: {
-          parameters: {
             ideviceInfoFieldsConfig: {
               name: true,
               title: true,
               type: true,
             },
           },
+          getUserPreferences: vi.fn().mockResolvedValue({}),
           putSaveUserPreferences: vi.fn().mockResolvedValue({}),
           postUploadIdevice: vi.fn().mockResolvedValue({
             responseMessage: 'OK',
