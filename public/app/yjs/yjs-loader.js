@@ -97,7 +97,6 @@
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
     [
       'ElpxImporter.js',
-      'ElpxExporter.js',
       'ComponentImporter.js',  // Imports .idevice/.block files
       'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],

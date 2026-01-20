@@ -1204,12 +1204,6 @@ test.describe('File Manager', () => {
 
             // Verify the correct log message appears (not "Asset already exists for this project")
             // The fix should show "Storing blob for current project" instead
-            const hasCorrectLog = consoleLogs.some(
-                log =>
-                    log.includes('Storing blob for current project') ||
-                    log.includes('New asset stored') ||
-                    log.includes('putAsset'),
-            );
             const hasIncorrectLog = consoleLogs.some(log => log.includes('Asset already exists for this project'));
 
             // If we see "Storing blob for current project", that's the fix working
@@ -1220,6 +1214,114 @@ test.describe('File Manager', () => {
             // The key is that if it's cross-project, we should NOT see "already exists for this project"
             // We should see either "Storing blob for current project" or "New asset stored"
             expect(hasIncorrectLog).toBe(false);
+        });
+    });
+
+    test.describe('Image Insertion No Duplication', () => {
+        /**
+         * This test verifies the fix for the bug where selecting an existing image
+         * from the File Manager and inserting it into TinyMCE would cause the image
+         * to be duplicated in the File Manager.
+         *
+         * Root cause: TinyMCE's images_upload_handler metadata does NOT automatically
+         * become HTML attributes. When data-asset-id was passed as metadata, it wasn't
+         * set as an attribute on the <img> element, so convertBlobURLsToAssetRefs()
+         * couldn't find it and would fall back to blob URL lookup, potentially
+         * creating duplicates.
+         *
+         * Fix: Added MutationObserver and SetContent handler in tinymce_5_settings.js
+         * to explicitly add data-asset-id as HTML attribute on images with blob URLs.
+         */
+        test('should NOT duplicate image when inserting existing asset from file manager', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'File Manager - No Duplicate Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+
+            await waitForLoadingScreenHidden(page);
+
+            // Step 1: Open File Manager and upload an image
+            await openFileManager(page);
+            await uploadFile(page, 'test/fixtures/sample-2.jpg');
+
+            // Verify initial count is 1
+            const initialCount = await getFileCount(page);
+            expect(initialCount).toBe(1);
+
+            // Step 2: Select the image and insert it
+            await selectFirstFile(page);
+            const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+            await expect(insertBtn).toBeVisible({ timeout: 5000 });
+            await insertBtn.click();
+
+            // Wait for File Manager to close
+            await page.waitForTimeout(500);
+
+            // Step 3: Fill alternative description to avoid prompt
+            // Locate by label text (works for both English "Alternative description" and Spanish "Descripción alternativa")
+            const altTextField = page
+                .locator('.tox-dialog .tox-form__group')
+                .filter({ has: page.locator('label:text-matches("alternativ", "i")') })
+                .locator('.tox-textfield');
+            if ((await altTextField.count()) > 0) {
+                await altTextField.fill('Test image description');
+            }
+
+            // Step 5: Save the TinyMCE dialog (which inserts the image)
+            const saveBtn = page.locator(
+                '.tox-dialog .tox-button[title="Save"], .tox-dialog .tox-button:has-text("Save")',
+            );
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.first().click();
+            }
+
+            await page.waitForTimeout(500);
+
+            // Step 6: Save the iDevice
+            const idevice = page.locator('#node-content article .idevice_node.text').first();
+            const saveIdeviceBtn = idevice.locator('.btn-save-idevice');
+            if ((await saveIdeviceBtn.count()) > 0) {
+                await saveIdeviceBtn.click();
+            }
+
+            // Wait for iDevice to exit edit mode
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Step 7: Open File Manager again and verify count is still 1
+            // First, enter edit mode again
+            const editIdeviceBtn = idevice.locator('.btn-edit-idevice');
+            await editIdeviceBtn.click();
+            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            // Open File Manager via TinyMCE image button
+            await openFileManager(page);
+
+            // CRITICAL ASSERTION: Image should NOT be duplicated
+            const finalCount = await getFileCount(page);
+            expect(finalCount).toBe(1); // Should still be 1, not 2
+
+            // Verify the same image is present (by filename)
+            const fileItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
+            const filename = await fileItem.getAttribute('data-filename');
+            expect(filename).toContain('sample-2');
         });
     });
 

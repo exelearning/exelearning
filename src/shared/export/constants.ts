@@ -650,6 +650,7 @@ export const EPUB3_MIMETYPE = 'application/epub+zip';
  * - Legacy name → current name (e.g., 'freetext' → 'text')
  * - Plural → singular (e.g., 'rubrics' → 'rubric')
  * - Variant names (e.g., 'download-package' → 'download-source-file')
+ * - Legacy Python eXeLearning types (e.g., 'jsidevice' → 'text')
  *
  * The key is the lowercase type name (after removing 'idevice' suffix),
  * the value is the canonical export folder name.
@@ -660,6 +661,13 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     text: 'text',
     freetextidevice: 'text',
     textidevice: 'text',
+
+    // Legacy Python eXeLearning iDevice types (pre-v3.0)
+    // JsIdevice was a text iDevice in old Python eXeLearning
+    jsidevice: 'text',
+    js: 'text',
+    // GalleryImages from old Python format
+    galleryimages: 'image-gallery',
 
     // Spanish → English mappings
     adivina: 'guess',

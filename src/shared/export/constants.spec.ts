@@ -337,6 +337,15 @@ describe('Constants', () => {
             it('should map alternative names', () => {
                 expect(IDEVICE_TYPE_MAP['download-package']).toBe('download-source-file');
             });
+
+            it('should map legacy Python eXeLearning iDevice types', () => {
+                // JsIdevice was a text iDevice in old Python eXeLearning (pre-v3.0)
+                expect(IDEVICE_TYPE_MAP['jsidevice']).toBe('text');
+                expect(IDEVICE_TYPE_MAP['js']).toBe('text');
+
+                // GalleryImages from old Python format
+                expect(IDEVICE_TYPE_MAP['galleryimages']).toBe('image-gallery');
+            });
         });
 
         describe('normalizeIdeviceType', () => {
