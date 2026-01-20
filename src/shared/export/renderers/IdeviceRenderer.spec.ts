@@ -85,6 +85,79 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('data-idevice-component-type="json"');
         });
 
+        it('should include only ideviceId in data-idevice-json-data for text idevice', () => {
+            // Text iDevices should only have ideviceId in JSON data, not full properties
+            // This reduces HTML size and avoids exposing unnecessary data
+            const component: ExportComponent = {
+                id: 'text-minimal-json',
+                type: 'text',
+                order: 0,
+                content: '<p>Some text content</p>',
+                properties: {
+                    someProperty: 'should not appear',
+                    anotherProperty: 123,
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            // Should contain data-idevice-json-data with only ideviceId
+            expect(html).toContain('data-idevice-json-data="');
+            // Extract and parse the JSON data
+            const jsonMatch = html.match(/data-idevice-json-data="([^"]+)"/);
+            expect(jsonMatch).not.toBeNull();
+            const jsonData = JSON.parse(jsonMatch![1].replace(/&quot;/g, '"'));
+            expect(jsonData).toEqual({ ideviceId: 'text-minimal-json' });
+            // Should NOT contain the other properties
+            expect(jsonData.someProperty).toBeUndefined();
+            expect(jsonData.anotherProperty).toBeUndefined();
+        });
+
+        it('should include full properties in data-idevice-json-data for non-text idevices', () => {
+            // Non-text iDevices should have full properties in JSON data
+            const component: ExportComponent = {
+                id: 'form-full-json',
+                type: 'form',
+                order: 0,
+                content: '',
+                properties: {
+                    questionsData: [{ question: 'Test?' }],
+                    exportScorm: { saveScore: true },
+                },
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).toContain('data-idevice-json-data="');
+            // Extract and parse the JSON data
+            const jsonMatch = html.match(/data-idevice-json-data="([^"]+)"/);
+            expect(jsonMatch).not.toBeNull();
+            const jsonData = JSON.parse(
+                jsonMatch![1]
+                    .replace(/&quot;/g, '"')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>'),
+            );
+            // Should contain the full properties
+            expect(jsonData.questionsData).toBeDefined();
+            expect(jsonData.exportScorm).toBeDefined();
+        });
+
+        it('should not include data-idevice-template for text idevice', () => {
+            // Text iDevices don't need template attribute
+            const component: ExportComponent = {
+                id: 'text-no-template',
+                type: 'text',
+                order: 0,
+                content: '<p>Text content</p>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('data-idevice-template');
+        });
+
         it('should not include data attributes when disabled', () => {
             const component: ExportComponent = {
                 id: 'comp-1',

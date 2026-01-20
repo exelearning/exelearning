@@ -18,9 +18,11 @@ describe('FileSystemAssetProvider', () => {
         await fs.ensureDir(testDir);
 
         // Create test asset structure
+        // v3.0 format: user assets in content/resources/
+        await fs.ensureDir(path.join(testDir, 'content', 'resources'));
+        // Legacy format: assets in resources/
         await fs.ensureDir(path.join(testDir, 'resources', 'images'));
         await fs.ensureDir(path.join(testDir, 'resources', 'media'));
-        await fs.ensureDir(path.join(testDir, 'content'));
 
         // Create test files
         await fs.writeFile(path.join(testDir, 'resources', 'images', 'photo.jpg'), Buffer.from([0xff, 0xd8, 0xff])); // JPEG magic bytes
@@ -29,7 +31,8 @@ describe('FileSystemAssetProvider', () => {
             Buffer.from([0x89, 0x50, 0x4e, 0x47]),
         ); // PNG magic bytes
         await fs.writeFile(path.join(testDir, 'resources', 'media', 'video.mp4'), Buffer.from('fake mp4 content'));
-        await fs.writeFile(path.join(testDir, 'content', 'document.pdf'), Buffer.from('fake pdf content'));
+        // v3.0 format: PDF in content/resources/
+        await fs.writeFile(path.join(testDir, 'content', 'resources', 'document.pdf'), Buffer.from('fake pdf content'));
 
         provider = new FileSystemAssetProvider(testDir);
     });
@@ -83,7 +86,7 @@ describe('FileSystemAssetProvider', () => {
         });
 
         it('should detect correct MIME type for PDF', async () => {
-            const asset = await provider.getAsset('content/document.pdf');
+            const asset = await provider.getAsset('content/resources/document.pdf');
 
             expect(asset?.mime).toBe('application/pdf');
         });
@@ -111,11 +114,11 @@ describe('FileSystemAssetProvider', () => {
             expect(mediaPaths).toContain('resources/media/video.mp4');
         });
 
-        it('should include assets from content directory', async () => {
+        it('should include assets from content/resources directory', async () => {
             const assets = await provider.getAllAssets();
             const contentPaths = assets.map(a => a.originalPath);
 
-            expect(contentPaths).toContain('content/document.pdf');
+            expect(contentPaths).toContain('content/resources/document.pdf');
         });
     });
 
