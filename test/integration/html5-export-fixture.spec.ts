@@ -295,12 +295,20 @@ describe('HTML5 Export Fixture Comparison', () => {
             expect(exportedIndexHtml).toContain('id="siteFooterContent"');
         });
 
-        it('should have packageLicense inside footer', async () => {
-            if (!exportedIndexHtml) return;
+        it('should have packageLicense inside footer when license is set', async () => {
+            if (!exportedIndexHtml || !parsedStructure) return;
 
-            expect(exportedIndexHtml).toContain('id="packageLicense"');
-            expect(exportedIndexHtml).toContain('class="license-label"');
-            expect(exportedIndexHtml).toContain('class="license"');
+            // packageLicense is only rendered when license is set in metadata
+            const hasLicense = !!parsedStructure.meta?.license;
+            if (hasLicense) {
+                expect(exportedIndexHtml).toContain('id="packageLicense"');
+                expect(exportedIndexHtml).toContain('class="license-label"');
+                expect(exportedIndexHtml).toContain('class="license"');
+            } else {
+                // When no license, footer exists but without packageLicense
+                expect(exportedIndexHtml).toContain('id="siteFooter"');
+                expect(exportedIndexHtml).not.toContain('id="packageLicense"');
+            }
         });
 
         it('should have made-with-eXe credit', async () => {
