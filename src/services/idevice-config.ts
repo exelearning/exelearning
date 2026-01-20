@@ -105,6 +105,8 @@ const IDEVICE_TYPE_ALIASES: Record<string, string> = {
     freetext: 'text',
     freetextidevice: 'text',
     textidevice: 'text',
+    // Legacy JsIdevice type normalization (matches browser ElpxImporter behavior)
+    js: 'text',
     // Alternative names
     'download-package': 'download-source-file',
     // Spanish → English mappings
