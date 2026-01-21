@@ -51,6 +51,9 @@ describe('MenuIdevices', () => {
     mockBottomElement = {
       id: 'idevices-bottom',
       children: [],
+      classList: {
+        add: vi.fn(),
+      },
     };
 
     mockCategoryElements = [
@@ -210,7 +213,7 @@ describe('MenuIdevices', () => {
 
     it('should create MenuIdevicesBottom when element has no children', () => {
       // Create fresh instance for this test
-      const emptyElement = { id: 'idevices-bottom', children: [] };
+      const emptyElement = { id: 'idevices-bottom', children: [], classList: { add: vi.fn() } };
       document.getElementById.mockReturnValueOnce(emptyElement);
 
       menuIdevices.behaviour();
@@ -220,7 +223,7 @@ describe('MenuIdevices', () => {
     });
 
     it('should initialize MenuIdevicesBottom when created', () => {
-      const emptyElement = { id: 'idevices-bottom', children: [] };
+      const emptyElement = { id: 'idevices-bottom', children: [], classList: { add: vi.fn() } };
       document.getElementById.mockReturnValueOnce(emptyElement);
 
       menuIdevices.behaviour();
@@ -232,6 +235,7 @@ describe('MenuIdevices', () => {
       const elementWithChildren = {
         id: 'idevices-bottom',
         children: [{ id: 'child' }],
+        classList: { add: vi.fn() },
       };
 
       document.getElementById.mockReturnValueOnce(elementWithChildren);
@@ -260,6 +264,7 @@ describe('MenuIdevices', () => {
       const elementWithContent = {
         id: 'idevices-bottom',
         children: [{ id: 'existing' }],
+        classList: { add: vi.fn() },
       };
       document.getElementById.mockReturnValueOnce(elementWithContent);
 
@@ -275,6 +280,7 @@ describe('MenuIdevices', () => {
       const emptyElement = {
         id: 'idevices-bottom',
         children: [],
+        classList: { add: vi.fn() },
       };
 
       document.getElementById.mockReturnValueOnce(emptyElement);
@@ -289,6 +295,7 @@ describe('MenuIdevices', () => {
       const elementWithContent = {
         id: 'idevices-bottom',
         children: [{ id: 'existing' }],
+        classList: { add: vi.fn() },
       };
 
       document.getElementById.mockReturnValueOnce(elementWithContent);
