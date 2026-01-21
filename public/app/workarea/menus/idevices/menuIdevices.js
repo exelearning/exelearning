@@ -33,6 +33,9 @@ export default class MenuIdevices {
         this.menuIdevicesBehaviour.behaviour();
         let currentMenuIdevicesbutton =
             document.getElementById('idevices-bottom');
+        if (currentMenuIdevicesbutton) {
+            currentMenuIdevicesbutton.classList.add('idevices-bottom-menu');
+        }
         if (
             !currentMenuIdevicesbutton ||
             currentMenuIdevicesbutton.children.length === 0

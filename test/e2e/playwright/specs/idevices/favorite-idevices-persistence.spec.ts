@@ -24,11 +24,16 @@ test.describe('Favorite iDevices Persistence', () => {
         await expect(modal).toBeVisible();
 
         // 3. Toggle specific iDevice
-        // "Activity" (activity)
-        const activityCheckbox = modal.locator('tr[idevice-id="activity"] input[type="checkbox"]');
-        await expect(activityCheckbox).toBeVisible();
+        // 3. Toggle specific iDevice
+        // "Text" (text)
+        const targetRow = modal.locator('div[idevice-id="text"]');
+        const targetInput = targetRow.locator('input[type="checkbox"]');
+        const targetVisual = targetRow.locator('.toggle-visual');
 
-        const wasChecked = await activityCheckbox.isChecked();
+        // Check visual element is visible (since input is hidden)
+        await expect(targetVisual).toBeVisible();
+
+        const wasChecked = await targetInput.isChecked();
 
         // Click to toggle and trigger save
         const saveResponsePromise = page.waitForResponse(
@@ -38,7 +43,7 @@ test.describe('Favorite iDevices Persistence', () => {
                 response.request().method() === 'PUT',
         );
 
-        await activityCheckbox.click();
+        await targetVisual.click();
         await saveResponsePromise;
 
         // Close modal
@@ -57,22 +62,22 @@ test.describe('Favorite iDevices Persistence', () => {
         await settingsBtn.click();
         await expect(modal).toBeVisible();
 
-        const isCheckedNow = await activityCheckbox.isChecked();
+        const isCheckedNow = await targetInput.isChecked();
         expect(isCheckedNow).toBe(!wasChecked); // Should be opposite of what it was initially
 
         // 6. Verify Bottom Menu Update (optional but good)
         // If we checked it (wasChecked=false -> true), it should be in the bottom menu
         if (!wasChecked) {
-            const bottomIcon = page.locator(`#idevices-bottom .idevice_item[id="activity"]`);
+            const bottomIcon = page.locator(`#idevices-bottom .idevice_item[id="text"]`);
             await expect(bottomIcon).toBeVisible();
         } else {
             // If we unchecked it, it should NOT be in the bottom menu
-            const bottomIcon = page.locator(`#idevices-bottom .idevice_item[id="activity"]`);
+            const bottomIcon = page.locator(`#idevices-bottom .idevice_item[id="text"]`);
             await expect(bottomIcon).toBeHidden();
         }
 
         // Toggle back to clean up
-        await activityCheckbox.click();
+        await targetVisual.click();
         await page.waitForResponse(response => response.url().includes('/api/user/preferences'));
     });
 });

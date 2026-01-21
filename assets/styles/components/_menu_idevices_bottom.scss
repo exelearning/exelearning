@@ -1,12 +1,14 @@
-.idevices-bottom-menu {
+.idevices-bottom-menu,
+#idevices-bottom {
     position: fixed;
     min-width: 100px;
     bottom: 12px;
-    z-index: 0;
+    z-index: 1000;
+    left: 50%;
     transform: translateX(-50%);
-    display: inline-flex;
-    height: 56px;
-    padding: 3px 0 3px 3px;
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
     justify-content: center;
     align-items: center;
     gap: 3px;
