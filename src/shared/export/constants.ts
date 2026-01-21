@@ -401,6 +401,8 @@ export interface LicenseEntry {
     cssClass: string;
     /** If true, license is preserved but not selectable in dropdown (legacy from older eXe versions) */
     legacy?: boolean;
+    /** If true, no license section is shown in export footer (e.g., propietary, not appropriate) */
+    hideInFooter?: boolean;
 }
 
 /**
@@ -581,16 +583,19 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         displayName: 'propietary license',
         url: '',
         cssClass: '',
+        hideInFooter: true,
     },
     'intellectual property license': {
         displayName: 'intellectual property license',
         url: '',
         cssClass: '',
+        legacy: true,
     },
     'not appropriate': {
         displayName: 'not appropriate',
         url: '',
         cssClass: '',
+        hideInFooter: true,
     },
 };
 
@@ -779,6 +784,25 @@ export function formatLicenseText(licenseName: string): string {
 
     // Unknown license - return as-is (no default)
     return licenseName;
+}
+
+/**
+ * Check if a license should show a footer in exports.
+ * Returns false for empty license or licenses with hideInFooter: true in the registry.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns true if footer should be shown, false otherwise
+ */
+export function shouldShowLicenseFooter(licenseName: string): boolean {
+    if (!licenseName) return false;
+
+    const cleaned = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const entry = LICENSE_REGISTRY[cleaned];
+
+    // If license is in registry and has hideInFooter, don't show footer
+    if (entry?.hideInFooter) return false;
+
+    return true;
 }
 
 // =============================================================================

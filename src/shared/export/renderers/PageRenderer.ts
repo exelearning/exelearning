@@ -16,7 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
+import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
 
 /**
  * PageRenderer class
@@ -718,9 +718,10 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        // Empty license = no license specified (legacy content with unknown license)
-        // Skip rendering the license section entirely
-        if (!license) {
+        // Skip license section for:
+        // - Empty license (no license specified, legacy content with unknown license)
+        // - "propietary license" and "not appropriate" (no meaningful license to display)
+        if (!shouldShowLicenseFooter(license)) {
             return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
         }
 
@@ -750,8 +751,8 @@ ${userFooterHtml}</div></footer>`;
     renderLicense(options: { author: string; license: string; licenseUrl?: string }): string {
         const { license, licenseUrl = '' } = options;
 
-        // Empty license = no license specified (legacy content with unknown license)
-        if (!license) {
+        // Skip license for empty, "propietary license", and "not appropriate"
+        if (!shouldShowLicenseFooter(license)) {
             return '';
         }
 

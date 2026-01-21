@@ -559,7 +559,6 @@ describe('PageRenderer', () => {
                     class: 'cc cc-by-nc-nd',
                 },
                 { name: 'public domain', class: 'cc cc-0' },
-                { name: 'propietary license', class: '' },
             ];
 
             for (const lic of licenses) {
@@ -569,6 +568,28 @@ describe('PageRenderer', () => {
                 });
                 expect(html).toContain(`class="${lic.class}"`);
             }
+        });
+
+        it('should skip license section for propietary license (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'propietary license',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+        });
+
+        it('should skip license section for not appropriate (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'not appropriate',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
         });
 
         it('should include user footer content when provided', () => {

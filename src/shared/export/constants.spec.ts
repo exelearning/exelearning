@@ -24,6 +24,7 @@ import {
     getLicenseClass,
     getLicenseUrl,
     LICENSE_REGISTRY,
+    shouldShowLicenseFooter,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -541,25 +542,38 @@ describe('Constants', () => {
                 ).toBeUndefined();
             });
 
-            it('should NOT mark public domain, propietary, intellectual property and not appropriate as legacy', () => {
+            it('should NOT mark public domain, propietary, and not appropriate as legacy', () => {
                 expect(LICENSE_REGISTRY['public domain'].legacy).toBeUndefined();
                 expect(LICENSE_REGISTRY['propietary license'].legacy).toBeUndefined();
-                expect(LICENSE_REGISTRY['intellectual property license'].legacy).toBeUndefined();
                 expect(LICENSE_REGISTRY['not appropriate'].legacy).toBeUndefined();
             });
 
-            it('should have exactly 20 legacy licenses and 8 non-legacy licenses', () => {
+            it('should mark intellectual property license as legacy', () => {
+                expect(LICENSE_REGISTRY['intellectual property license'].legacy).toBe(true);
+            });
+
+            it('should mark propietary license and not appropriate with hideInFooter', () => {
+                expect(LICENSE_REGISTRY['propietary license'].hideInFooter).toBe(true);
+                expect(LICENSE_REGISTRY['not appropriate'].hideInFooter).toBe(true);
+            });
+
+            it('should NOT mark other licenses with hideInFooter', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0'].hideInFooter).toBeUndefined();
+                expect(LICENSE_REGISTRY['public domain'].hideInFooter).toBeUndefined();
+                expect(LICENSE_REGISTRY['intellectual property license'].hideInFooter).toBeUndefined();
+            });
+
+            it('should have exactly 19 legacy licenses and 9 non-legacy licenses', () => {
                 const legacyCount = Object.values(LICENSE_REGISTRY).filter(e => e.legacy === true).length;
                 const nonLegacyCount = Object.values(LICENSE_REGISTRY).filter(e => !e.legacy).length;
-                // 6 CC 3.0 + 6 CC 2.5 + 6 GPL/EUPL/GFDL/other = 18... wait let me recount
                 // CC 3.0: 6 licenses
                 // CC 2.5: 6 licenses
-                // GNU/GPL: 1, free software gpl: 1, EUPL: 1, dual: 1, GFDL: 1, other: 1 = 6
-                // Total legacy: 6 + 6 + 6 = 18
-                // Non-legacy: CC 4.0 (6) + public domain (1) + propietary (1) + IP (1) + not appropriate (1) = 10
-                // Total: 18 + 10 = 28
-                expect(legacyCount).toBe(18);
-                expect(nonLegacyCount).toBe(10);
+                // GNU/GPL: 1, free software gpl: 1, EUPL: 1, dual: 1, GFDL: 1, other: 1, IP: 1 = 7
+                // Total legacy: 6 + 6 + 7 = 19
+                // Non-legacy: CC 4.0 (6) + public domain (1) + propietary (1) + not appropriate (1) = 9
+                // Total: 19 + 9 = 28
+                expect(legacyCount).toBe(19);
+                expect(nonLegacyCount).toBe(9);
             });
         });
     });
@@ -820,6 +834,45 @@ describe('Constants', () => {
             it('should return empty for unknown licenses', () => {
                 expect(getLicenseClass('unknown license')).toBe('');
                 expect(getLicenseClass('some random text')).toBe('');
+            });
+        });
+
+        describe('shouldShowLicenseFooter', () => {
+            it('should return false for empty license', () => {
+                expect(shouldShowLicenseFooter('')).toBe(false);
+                expect(shouldShowLicenseFooter(null as unknown as string)).toBe(false);
+                expect(shouldShowLicenseFooter(undefined as unknown as string)).toBe(false);
+            });
+
+            it('should return false for propietary license', () => {
+                expect(shouldShowLicenseFooter('propietary license')).toBe(false);
+                expect(shouldShowLicenseFooter('Propietary License')).toBe(false);
+                expect(shouldShowLicenseFooter('PROPIETARY LICENSE')).toBe(false);
+            });
+
+            it('should return false for not appropriate', () => {
+                expect(shouldShowLicenseFooter('not appropriate')).toBe(false);
+                expect(shouldShowLicenseFooter('Not Appropriate')).toBe(false);
+                expect(shouldShowLicenseFooter('NOT APPROPRIATE')).toBe(false);
+            });
+
+            it('should return true for CC licenses', () => {
+                expect(shouldShowLicenseFooter('creative commons: attribution 4.0')).toBe(true);
+                expect(shouldShowLicenseFooter('creative commons: attribution - share alike 4.0')).toBe(true);
+            });
+
+            it('should return true for public domain', () => {
+                expect(shouldShowLicenseFooter('public domain')).toBe(true);
+            });
+
+            it('should return true for legacy licenses (they still display)', () => {
+                expect(shouldShowLicenseFooter('creative commons: attribution 3.0')).toBe(true);
+                expect(shouldShowLicenseFooter('gnu/gpl')).toBe(true);
+                expect(shouldShowLicenseFooter('intellectual property license')).toBe(true);
+            });
+
+            it('should return true for unknown licenses', () => {
+                expect(shouldShowLicenseFooter('some random license')).toBe(true);
             });
         });
     });

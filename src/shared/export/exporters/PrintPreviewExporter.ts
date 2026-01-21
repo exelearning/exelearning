@@ -19,7 +19,7 @@ import type {
     MermaidPreRenderResult,
 } from '../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
-import { normalizeIdeviceType } from '../constants';
+import { normalizeIdeviceType, shouldShowLicenseFooter } from '../constants';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { getIdeviceExportFiles } from '../../../services/idevice-config';
 
@@ -402,6 +402,11 @@ ${blockHtml}
         let userFooterHtml = '';
         if (userFooterContent) {
             userFooterHtml = `<div id="siteUserFooter"><div>${userFooterContent}</div></div>`;
+        }
+
+        // Skip license section for empty, "propietary license", and "not appropriate"
+        if (!shouldShowLicenseFooter(license)) {
+            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
         }
 
         return `<footer id="siteFooter"><div id="siteFooterContent"><div id="packageLicense" class="cc cc-by-sa"><p><span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
