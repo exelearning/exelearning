@@ -142,34 +142,10 @@ var $exeDevice = {
                 });
                 $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
 
-                // FIX: Handle legacy blob URLs from buggy saves
-                // Blob URLs are ephemeral and won't work after reload
-                let imgUrl = value.img;
-                let thumbnailUrl = value.thumbnail;
-
-                // Try to recover asset:// URLs from blob:// URLs using AssetManager
-                // This handles cases where the iDevice system passes resolved blob URLs
-                // instead of the persisted asset URLs
-                const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
-
-                if (imgUrl && imgUrl.startsWith('blob:')) {
-                    // Try to recover the asset URL from the blob URL
-                    const recoveredUrl = assetManager?.getAssetUrlFromBlobUrl?.(imgUrl);
-                    if (recoveredUrl) {
-                        imgUrl = recoveredUrl;
-                    } else {
-                        console.error('[Image Gallery] Cannot recover asset URL from blob:', imgUrl);
-                        return; // Skip this corrupted entry
-                    }
-                }
-                if (thumbnailUrl && thumbnailUrl.startsWith('blob:')) {
-                    const recoveredUrl = assetManager?.getAssetUrlFromBlobUrl?.(thumbnailUrl);
-                    if (recoveredUrl) {
-                        thumbnailUrl = recoveredUrl;
-                    } else {
-                        thumbnailUrl = imgUrl; // Use full-size image as fallback
-                    }
-                }
+                // Asset URLs are now centrally converted by YjsStructureBinding.prepareJsonForSync()
+                // No need for local blob URL recovery - data should already have asset:// URLs
+                const imgUrl = value.img;
+                const thumbnailUrl = value.thumbnail;
 
                 this.addImageHTML(incrementalId, imgUrl, thumbnailUrl);
                 incrementalId++;
