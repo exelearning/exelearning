@@ -1,7 +1,17 @@
 /**
- * AssetCacheManager
- * Handles caching of project assets in IndexedDB for offline support.
- * Assets (images, videos, etc.) are stored as blobs and served locally when offline.
+ * @deprecated This class is deprecated and will be removed in a future release.
+ * Use AssetManager instead, which now stores blobs in memory (no IndexedDB).
+ *
+ * AssetCacheManager was used for:
+ * - Caching project assets in IndexedDB for offline support
+ * - Storing blobs and serving them locally when offline
+ *
+ * Migration notes:
+ * - AssetManager.blobCache now stores blobs in memory
+ * - Offline mode is no longer supported (blobs are lost on page reload)
+ * - Assets are re-downloaded from server on project open via downloadMissingAssets()
+ *
+ * This class is kept temporarily for backward compatibility but is no longer instantiated.
  */
 class AssetCacheManager {
   static DB_NAME = 'exelearning-assets';
