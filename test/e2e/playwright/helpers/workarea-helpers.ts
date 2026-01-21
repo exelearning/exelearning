@@ -1083,6 +1083,49 @@ export async function getBlockAndIdeviceIdsByIndex(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PAGE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Export a page using the context menu "Export page" option
+ *
+ * @param page - Playwright page
+ * @param nodeId - Navigation node ID to export
+ * @returns Download object for the exported file
+ */
+export async function exportPage(page: Page, nodeId: string): Promise<Download> {
+    // Find the page in navigation tree
+    const navElement = page.locator(`.nav-element[nav-id="${nodeId}"]`);
+    await navElement.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Hover over the nav element to reveal the settings trigger
+    await navElement.hover();
+    await page.waitForTimeout(300);
+
+    // Find and click the dropdown trigger (three dots menu)
+    const dropdownTrigger = navElement.locator('.page-settings-trigger');
+    await dropdownTrigger.waitFor({ state: 'visible', timeout: 5000 });
+    await dropdownTrigger.click();
+    await page.waitForTimeout(300);
+
+    // Wait for dropdown menu to appear
+    const dropdownMenu = navElement.locator('.dropdown-menu.show');
+    await dropdownMenu.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup download event listener before clicking
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+
+    // Click the "Export page" option
+    const exportOption = dropdownMenu.locator('.action_export_page');
+    await exportOption.waitFor({ state: 'visible', timeout: 5000 });
+    await exportOption.click();
+
+    // Wait for download to complete
+    const download = await downloadPromise;
+    return download;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TEXT IDEVICE HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1227,6 +1270,7 @@ export async function blockHasEmptyIcon(page: Page, blockIndex: number = 0): Pro
  * @param page - Playwright page
  * @param blockIndex - Index of the block on the page (0-based)
  * @param iconIndex - Index of the icon to select (0 = empty, 1+ = theme icons)
+ * @throws Error if iconIndex is out of bounds (theme icons may not be loaded)
  */
 export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex: number): Promise<void> {
     // 1. Click icon button
@@ -1237,17 +1281,61 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     // 2. Wait for icon picker modal
     await page.waitForSelector('.option-block-icon', { timeout: 10000 });
 
-    // 3. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
+    // 3. Verify the icon at the requested index exists
+    const iconCount = await page.locator('.option-block-icon').count();
+    if (iconIndex >= iconCount) {
+        // Close the modal before throwing
+        const closeBtn = page.locator('.modal.show button[data-bs-dismiss="modal"], .modal.show .btn-close').first();
+        if ((await closeBtn.count()) > 0) {
+            await closeBtn.click().catch(() => {});
+        }
+        throw new Error(
+            `Icon index ${iconIndex} not available. Only ${iconCount} icons found (theme icons may not be loaded).`,
+        );
+    }
+
+    // 4. Click desired icon (iconIndex 0 = empty, 1+ = theme icons)
     const iconOption = page.locator('.option-block-icon').nth(iconIndex);
     await iconOption.click();
 
-    // 4. Click Save button (confirm button in modal)
+    // 5. Click Save button (confirm button in modal)
     const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
     await saveBtn.click();
 
-    // 5. Wait for modal to close
+    // 6. Wait for modal to close
     await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
     await page.waitForTimeout(500);
+}
+
+/**
+ * Wait for theme icons to be loaded and available
+ *
+ * @param page - Playwright page
+ * @param minIcons - Minimum number of theme icons required (default 1)
+ * @param timeout - Maximum wait time in ms (default 10000)
+ * @returns Number of theme icons found, or 0 if timeout
+ */
+export async function waitForThemeIconsLoaded(
+    page: Page,
+    minIcons: number = 1,
+    timeout: number = 10000,
+): Promise<number> {
+    return await page.evaluate(
+        async ({ minRequired, maxWait }) => {
+            let elapsed = 0;
+            while (elapsed < maxWait) {
+                const icons = (window as any).eXeLearning?.app?.themes?.getThemeIcons() || {};
+                const count = Object.keys(icons).length;
+                if (count >= minRequired) {
+                    return count;
+                }
+                await new Promise(r => setTimeout(r, 200));
+                elapsed += 200;
+            }
+            return 0;
+        },
+        { minRequired: minIcons, maxWait: timeout },
+    );
 }
 
 /**
