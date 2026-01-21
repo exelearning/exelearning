@@ -107,12 +107,14 @@ describe('ModalIdeviceManager', () => {
     window.eXeLearning = {
       app: {
         api: {
+          parameters: {
             ideviceInfoFieldsConfig: {
               name: true,
               title: true,
               type: true,
             },
           },
+
           getUserPreferences: vi.fn().mockResolvedValue({}),
           putSaveUserPreferences: vi.fn().mockResolvedValue({}),
           postUploadIdevice: vi.fn().mockResolvedValue({
@@ -982,7 +984,7 @@ describe('ModalIdeviceManager', () => {
         });
 
         const promise = modalIdeviceManager.getUserListIdevices();
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         if (capturedRequest.onsuccess) {
           capturedRequest.onsuccess();
@@ -1006,14 +1008,14 @@ describe('ModalIdeviceManager', () => {
         });
 
         const promise = modalIdeviceManager.getUserListIdevices();
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         if (capturedRequest.onsuccess) {
           capturedRequest.onsuccess();
         }
 
         const result = await promise;
-        expect(result).toBeNull();
+        expect(result).toEqual([]);
       });
     });
 
@@ -1053,16 +1055,12 @@ describe('ModalIdeviceManager', () => {
     });
 
     describe('saveIdevices', () => {
-      it('should save idevices to IndexedDB', async () => {
-        vi.spyOn(modalIdeviceManager, 'openDB').mockResolvedValue(mockDB);
-
+      it('should save idevices to User Preferences', async () => {
+        const expectedPreferences = {
+            idevices_selected: JSON.stringify(['text', 'form'])
+        };
         await modalIdeviceManager.saveIdevices(['text', 'form']);
-
-        expect(mockDB.transaction).toHaveBeenCalledWith('idevicesSettings', 'readwrite');
-        expect(mockStore.put).toHaveBeenCalledWith({
-          id: 'testuser',
-          value: ['text', 'form'],
-        });
+        expect(eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith(expectedPreferences);
       });
     });
   });
