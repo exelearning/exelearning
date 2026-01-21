@@ -1087,6 +1087,145 @@ describe('PageRenderer', () => {
         });
     });
 
+    describe('hidePageTitle property', () => {
+        it('should add sr-av class to .page-title when hidePageTitle is true', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: true },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // page-title should have sr-av class (CSS handles hiding)
+            expect(html).toContain('class="page-title sr-av"');
+            // Should NOT use inline styles
+            expect(html).not.toContain('style="display:none"');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is false', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: false },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is not set', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should handle string "true" for hidePageTitle', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'true' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have sr-av class for string "true" value
+            expect(html).toContain('class="page-title sr-av"');
+        });
+
+        it('should add sr-av class to .page-title in renderSinglePage when hidePageTitle is true', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Hidden Title Page',
+                    properties: { hidePageTitle: true },
+                }),
+                createTestPage({
+                    id: 'page-2',
+                    title: 'Visible Title Page',
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
+
+            // First page should have hidden title with sr-av class
+            expect(html).toContain('class="page-title sr-av">Hidden Title Page');
+            // Second page should NOT have sr-av class
+            expect(html).toContain('<h1 class="page-title">Visible Title Page</h1>');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is string "false"', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'false' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is null', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: null },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 1', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 1 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // isTruthyProperty only accepts boolean true or string "true"
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 0', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 0 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+    });
+
     describe('page highlight', () => {
         it('should detect highlighted page with boolean true', () => {
             const page = createTestPage({ properties: { highlight: true } });

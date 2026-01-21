@@ -2108,6 +2108,179 @@ describe('prepareHtmlForSync', () => {
   });
 });
 
+describe('prepareJsonForSync', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    assetManager = new AssetManager('project-123');
+    // Set up some cached blob URLs
+    assetManager.reverseBlobCache.set('blob:http://localhost/abc123', 'asset-uuid-111');
+    assetManager.reverseBlobCache.set('blob:https://example.com/xyz789', 'asset-uuid-222');
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns null for null input', () => {
+    expect(assetManager.prepareJsonForSync(null)).toBeNull();
+  });
+
+  it('returns undefined for undefined input', () => {
+    expect(assetManager.prepareJsonForSync(undefined)).toBeUndefined();
+  });
+
+  it('returns non-string values unchanged', () => {
+    expect(assetManager.prepareJsonForSync(123)).toBe(123);
+    expect(assetManager.prepareJsonForSync({})).toEqual({});
+    expect(assetManager.prepareJsonForSync([])).toEqual([]);
+  });
+
+  it('converts blob:// URL in JSON to asset:// reference', () => {
+    const json = '{"img":"blob:http://localhost/abc123","title":"Test"}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toBe('{"img":"asset://asset-uuid-111","title":"Test"}');
+    expect(result).not.toContain('blob:');
+  });
+
+  it('converts multiple blob URLs in same JSON', () => {
+    const json = '{"img":"blob:http://localhost/abc123","thumbnail":"blob:https://example.com/xyz789"}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toContain('asset://asset-uuid-111');
+    expect(result).toContain('asset://asset-uuid-222');
+    expect(result).not.toContain('blob:');
+  });
+
+  it('preserves asset:// URLs unchanged', () => {
+    const json = '{"img":"asset://existing-asset-id","title":"Test"}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toBe(json);
+  });
+
+  it('preserves regular URLs unchanged', () => {
+    const json = '{"url":"https://example.com/image.jpg","title":"Test"}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toBe(json);
+  });
+
+  it('clears unrecoverable blob URLs to empty string', () => {
+    // Blob URL not in cache
+    const json = '{"img":"blob:http://unknown/xyz","title":"Test"}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toBe('{"img":"","title":"Test"}');
+    expect(result).not.toContain('blob:');
+  });
+
+  it('handles complex JSON with nested objects', () => {
+    const json = JSON.stringify({
+      img_0: { img: 'blob:http://localhost/abc123', title: 'Image 1' },
+      img_1: { img: 'blob:https://example.com/xyz789', title: 'Image 2' },
+      ideviceId: 'test-idevice'
+    });
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toContain('asset://asset-uuid-111');
+    expect(result).toContain('asset://asset-uuid-222');
+    expect(result).not.toContain('blob:');
+    expect(result).toContain('test-idevice');
+  });
+
+  it('handles image-gallery style JSON structure', () => {
+    // Real-world structure from image-gallery iDevice
+    const json = JSON.stringify({
+      ideviceId: 'gallery-123',
+      img_0: {
+        img: 'blob:http://localhost/abc123',
+        thumbnail: 'blob:http://localhost/abc123',
+        title: 'Photo 1',
+        author: 'Test Author',
+        license: 'CC-BY'
+      }
+    });
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toContain('asset://asset-uuid-111');
+    expect(result).not.toContain('blob:');
+    // Parse to verify valid JSON
+    const parsed = JSON.parse(result);
+    expect(parsed.img_0.img).toBe('asset://asset-uuid-111');
+    expect(parsed.img_0.thumbnail).toBe('asset://asset-uuid-111');
+  });
+
+  it('handles empty string input', () => {
+    expect(assetManager.prepareJsonForSync('')).toBe('');
+  });
+
+  it('handles JSON with no URLs', () => {
+    const json = '{"title":"Test","count":5,"enabled":true}';
+    const result = assetManager.prepareJsonForSync(json);
+
+    expect(result).toBe(json);
+  });
+});
+
+describe('getAssetUrlFromBlobUrl', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    assetManager = new AssetManager('project-123');
+    // Set up some cached blob URLs
+    assetManager.reverseBlobCache.set('blob:http://localhost/abc123', 'asset-uuid-111.jpg');
+    assetManager.reverseBlobCache.set('blob:https://example.com/xyz789', 'asset-uuid-222.png');
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns null for null input', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl(null)).toBeNull();
+  });
+
+  it('returns null for undefined input', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl(undefined)).toBeNull();
+  });
+
+  it('returns null for non-blob URL', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('https://example.com/image.jpg')).toBeNull();
+  });
+
+  it('returns null for asset:// URL', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('asset://some-uuid.jpg')).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('')).toBeNull();
+  });
+
+  it('returns asset URL for known blob URL (http)', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:http://localhost/abc123');
+    expect(result).toBe('asset://asset-uuid-111.jpg');
+  });
+
+  it('returns asset URL for known blob URL (https)', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:https://example.com/xyz789');
+    expect(result).toBe('asset://asset-uuid-222.png');
+  });
+
+  it('returns null for unknown blob URL', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:http://unknown/abc');
+    expect(result).toBeNull();
+  });
+
+  it('logs when recovering asset URL', () => {
+    assetManager.getAssetUrlFromBlobUrl('blob:http://localhost/abc123');
+    expect(global.Logger.log).toHaveBeenCalled();
+  });
+});
+
 describe('extractAssetsFromZip', () => {
   let assetManager;
   let mockDB;

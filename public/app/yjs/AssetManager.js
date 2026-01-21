@@ -2373,6 +2373,42 @@ class AssetManager {
   }
 
   /**
+   * Prepare JSON content for syncing to Yjs
+   * Converts blob:// URLs to asset:// references in JSON strings (jsonProperties)
+   *
+   * This centralizes blob URL recovery that was previously done in individual iDevices
+   * (e.g., image-gallery, map, quick-questions). When iDevices save their data,
+   * blob:// URLs may be incorrectly stored instead of asset:// URLs. Since blob://
+   * URLs are ephemeral (expire when page reloads), this method converts them back
+   * to persistent asset:// URLs before saving to Yjs.
+   *
+   * @param {string} json - JSON string that may contain blob:// URLs
+   * @returns {string} JSON with asset:// references
+   */
+  prepareJsonForSync(json) {
+    if (!json || typeof json !== 'string') return json;
+
+    // Pattern to match blob:// URLs inside JSON string values (quoted strings)
+    // Matches: "blob:http://..." or "blob:https://..."
+    // This captures blob URLs within JSON property values
+    const blobUrlPattern = /"(blob:https?:\/\/[^"]+)"/g;
+
+    return json.replace(blobUrlPattern, (match, blobUrl) => {
+      // Try to recover asset ID from reverseBlobCache
+      const assetId = this.reverseBlobCache.get(blobUrl);
+      if (assetId) {
+        Logger.log(`[AssetManager] JSON: Converted blob→asset: ${assetId.substring(0, 8)}...`);
+        return `"asset://${assetId}"`;
+      }
+
+      // If we can't recover, return empty string to avoid persisting broken blob URL
+      // This is safer than leaving a blob URL that will definitely break after reload
+      Logger.warn(`[AssetManager] JSON: Cannot recover blob URL, clearing: ${blobUrl.substring(0, 50)}...`);
+      return '""';
+    });
+  }
+
+  /**
    * Extract assets from ZIP file (for .elp/.elpx import)
    *
    * Supports two formats:
@@ -3938,6 +3974,25 @@ class AssetManager {
     );
 
     return results;
+  }
+
+  /**
+   * Get asset:// URL from a blob:// URL
+   * Uses the reverseBlobCache to find the assetId, then constructs asset:// URL
+   *
+   * @param {string} blobUrl - Blob URL to look up
+   * @returns {string|null} Asset URL (asset://assetId) or null if not found
+   */
+  getAssetUrlFromBlobUrl(blobUrl) {
+    if (!blobUrl || !blobUrl.startsWith('blob:')) {
+      return null;
+    }
+    const assetId = this.reverseBlobCache.get(blobUrl);
+    if (assetId) {
+      Logger.log(`[AssetManager] Recovered asset URL from blob: ${blobUrl.substring(0, 50)}... -> asset://${assetId}`);
+      return `asset://${assetId}`;
+    }
+    return null;
   }
 
   /**

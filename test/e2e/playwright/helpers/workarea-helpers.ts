@@ -306,7 +306,9 @@ export async function closePreviewPanel(page: Page): Promise<void> {
     const previewPanel = page.locator('#previewsidenav');
     const isVisible = await previewPanel.isVisible();
     if (isVisible) {
-        await page.click('#head-bottom-preview');
+        // Use the X close button on the panel header (force in case of viewport issues)
+        const closeButton = page.locator('#previewsidenavclose');
+        await closeButton.click({ force: true });
         await previewPanel.waitFor({ state: 'hidden', timeout: 15000 });
     }
 }
@@ -682,6 +684,34 @@ export async function getIdeviceFromYjs(
             domElementExists: !!element,
         };
     }, ideviceType);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// THEME MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Change the project theme
+ *
+ * @param page - Playwright page
+ * @param themeId - Theme ID ('base', 'flux', 'neo', 'nova', 'zen')
+ */
+export async function changeTheme(page: Page, themeId: string): Promise<void> {
+    await page.evaluate(theme => {
+        (window as any).eXeLearning.app.themes.selectTheme(theme, true, true, false);
+    }, themeId);
+
+    // Wait for theme to be applied
+    await page.waitForTimeout(1000);
+
+    // Verify theme was changed
+    await page.waitForFunction(
+        expectedTheme => {
+            return (window as any).eXeLearning?.app?.themes?.selected?.id === expectedTheme;
+        },
+        themeId,
+        { timeout: 10000 },
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
