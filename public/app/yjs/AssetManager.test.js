@@ -2225,6 +2225,62 @@ describe('prepareJsonForSync', () => {
   });
 });
 
+describe('getAssetUrlFromBlobUrl', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    global.Logger = { log: mock(() => {}), warn: mock(() => {}) };
+    assetManager = new AssetManager('project-123');
+    // Set up some cached blob URLs
+    assetManager.reverseBlobCache.set('blob:http://localhost/abc123', 'asset-uuid-111.jpg');
+    assetManager.reverseBlobCache.set('blob:https://example.com/xyz789', 'asset-uuid-222.png');
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+  });
+
+  it('returns null for null input', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl(null)).toBeNull();
+  });
+
+  it('returns null for undefined input', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl(undefined)).toBeNull();
+  });
+
+  it('returns null for non-blob URL', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('https://example.com/image.jpg')).toBeNull();
+  });
+
+  it('returns null for asset:// URL', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('asset://some-uuid.jpg')).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(assetManager.getAssetUrlFromBlobUrl('')).toBeNull();
+  });
+
+  it('returns asset URL for known blob URL (http)', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:http://localhost/abc123');
+    expect(result).toBe('asset://asset-uuid-111.jpg');
+  });
+
+  it('returns asset URL for known blob URL (https)', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:https://example.com/xyz789');
+    expect(result).toBe('asset://asset-uuid-222.png');
+  });
+
+  it('returns null for unknown blob URL', () => {
+    const result = assetManager.getAssetUrlFromBlobUrl('blob:http://unknown/abc');
+    expect(result).toBeNull();
+  });
+
+  it('logs when recovering asset URL', () => {
+    assetManager.getAssetUrlFromBlobUrl('blob:http://localhost/abc123');
+    expect(global.Logger.log).toHaveBeenCalled();
+  });
+});
+
 describe('extractAssetsFromZip', () => {
   let assetManager;
   let mockDB;

@@ -3327,6 +3327,92 @@ describe('ElpxImporter', () => {
         }
       }
     });
+
+    it('should include ideviceId even for iDevices with empty properties', async () => {
+      // Create XML with a JsIdevice that has no properties to test line 1806 coverage
+      const LEGACY_XML_WITH_MINIMAL_JSIDEVICE = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Minimal JsIdevice Test"/>
+            <string role="key" value="_nodeIdDict"/>
+            <dictionary/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page With JsIdevice"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.jsidevice.JsIdevice" reference="300">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Some JsIdevice"/>
+                            <string role="key" value="_iDeviceDir"/>
+                            <unicode value="unknown-idevice-type"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_MINIMAL_JSIDEVICE);
+
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('minimal.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      // Find the JsIdevice and verify ideviceId is in jsonProperties even when properties are empty
+      let foundJsIdevice = false;
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const compId = comp.get('id');
+
+                if (jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // Even for unknown iDevices with no properties, ideviceId should be present
+                  expect(jsonProps.ideviceId).toBeDefined();
+                  expect(jsonProps.ideviceId).toBe(compId);
+                  foundJsIdevice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      expect(foundJsIdevice).toBe(true);
+    });
   });
 
 });
