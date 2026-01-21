@@ -1807,6 +1807,32 @@ var $exeDevice = {
         return time.length == 8 && reg.test(time);
     },
 
+    /**
+     * Recover asset:// URL from blob:// URL using AssetManager's reverse cache.
+     * Blob URLs are ephemeral and won't survive page reloads.
+     * @param {string} url - The URL to check and potentially recover
+     * @returns {string} - The recovered asset:// URL or the original URL
+     */
+    recoverAssetUrl: function (url) {
+        if (!url || !url.startsWith('blob:')) {
+            return url;
+        }
+        const assetManager =
+            window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+        if (assetManager?.getAssetUrlFromBlobUrl) {
+            const recoveredUrl = assetManager.getAssetUrlFromBlobUrl(url);
+            if (recoveredUrl) {
+                return recoveredUrl;
+            }
+        }
+        // If we can't recover, return empty string to avoid persisting broken blob URLs
+        console.warn(
+            '[Quick Questions] Cannot recover asset URL from blob:',
+            url.substring(0, 50)
+        );
+        return '';
+    },
+
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
 
@@ -1829,7 +1855,10 @@ var $exeDevice = {
                 const iq = parseInt($(this).text(), 10);
                 if (!isNaN(iq) && iq < dataGame.selectsGame.length) {
                     const selectGameItem = dataGame.selectsGame[iq];
-                    selectGameItem.url = $(this).attr('href');
+                    let url = $(this).attr('href');
+                    // FIX: Recover asset:// URL from blob:// URL
+                    url = $exeDevice.recoverAssetUrl(url);
+                    selectGameItem.url = url;
                     if (
                         selectGameItem.url.length < 4 &&
                         selectGameItem.type === 1
@@ -1848,7 +1877,10 @@ var $exeDevice = {
                 const iq = parseInt($(this).text(), 10);
                 if (!isNaN(iq) && iq < dataGame.selectsGame.length) {
                     const selectGameItem = dataGame.selectsGame[iq];
-                    selectGameItem.audio = $(this).attr('href');
+                    let audio = $(this).attr('href');
+                    // FIX: Recover asset:// URL from blob:// URL
+                    audio = $exeDevice.recoverAssetUrl(audio);
+                    selectGameItem.audio = audio;
                     if (selectGameItem.audio.length < 4) {
                         selectGameItem.audio = '';
                     }
