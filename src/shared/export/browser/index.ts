@@ -3,14 +3,14 @@
  *
  * This module provides browser-compatible exports for the unified export system.
  * It wraps the TypeScript exporters and adapters for use with browser-based
- * Yjs documents, IndexedDB asset cache, and fetch-based resource loading.
+ * Yjs documents, AssetManager, and fetch-based resource loading.
  *
  * Bundle this file for browser use:
  *   bun build src/shared/export/browser/index.ts --outfile public/app/yjs/exporters.bundle.js --target browser
  *
  * Usage in browser:
  * ```javascript
- * const exporter = window.createExporter('html5', documentManager, assetCache, resourceFetcher);
+ * const exporter = window.createExporter('html5', documentManager, null, resourceFetcher, assetManager);
  * await exporter.export();
  * ```
  */
@@ -63,17 +63,8 @@ interface YjsDocumentManagerLike {
 }
 
 /**
- * Asset Cache Manager interface (legacy browser class)
- */
-interface AssetCacheManagerLike {
-    getAllAssets(): Promise<unknown[]>;
-    getAssetByPath(path: string): Promise<unknown>;
-    resolveAssetUrl(path: string): Promise<string | null>;
-}
-
-/**
- * Asset Manager interface (new browser class - preferred for exports)
- * Contains actual imported assets in IndexedDB 'exelearning-assets-v2' database
+ * Asset Manager interface (browser class)
+ * Contains project assets in memory and Cache API
  */
 interface AssetManagerLike {
     getProjectAssets(): Promise<unknown[]>;
@@ -119,7 +110,7 @@ function createNullResourceProvider() {
 
 /**
  * Create a null-safe asset provider that returns empty results
- * Used when AssetCacheManager is not available
+ * Used when AssetManager is not available
  */
 function createNullAssetProvider() {
     return {
@@ -137,15 +128,15 @@ function createNullAssetProvider() {
  *
  * @param format - Export format (html5, html5-sp, scorm12, scorm2004, ims, epub3, elpx)
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param _legacyAssetCache - Deprecated, always pass null (kept for backwards compatibility)
  * @param resourceFetcher - ResourceFetcher instance (optional, but required for exports with themes)
- * @param assetManager - AssetManager instance (new, preferred for exports with assets)
+ * @param assetManager - AssetManager instance for exports with assets
  * @returns Exporter instance ready for export
  */
 export function createExporter(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike | null,
+    _legacyAssetCache: null,
     resourceFetcher: ResourceFetcherLike | null,
     assetManager?: AssetManagerLike | null,
 ) {
@@ -163,15 +154,9 @@ export function createExporter(
         : createNullResourceProvider();
 
     // Create asset provider with null-safe fallback
-    // BrowserAssetProvider now supports both assetCache and assetManager
-    // assetManager is preferred as it contains actual imported assets
-    const assets =
-        assetCache || assetManager
-            ? new BrowserAssetProvider(
-                  assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                  assetManager as Parameters<typeof BrowserAssetProvider>[1],
-              )
-            : createNullAssetProvider();
+    const assets = assetManager
+        ? new BrowserAssetProvider(assetManager as Parameters<typeof BrowserAssetProvider>[0])
+        : createNullAssetProvider();
 
     const zip = new FflateZipProvider();
 
@@ -306,21 +291,21 @@ function getMermaidPreRendererHooks(): MermaidPreRendererHooks | undefined {
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param _legacyAssetCache - Deprecated, always pass null
  * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param options - Export options
- * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param assetManager - AssetManager instance for assets
  * @returns Export result with data buffer
  */
 export async function quickExport(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike | null,
+    _legacyAssetCache: null,
     resourceFetcher: ResourceFetcherLike | null,
     options?: ExportOptions,
     assetManager?: AssetManagerLike | null,
 ) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
+    const exporter = createExporter(format, documentManager, null, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
@@ -336,22 +321,22 @@ export async function quickExport(
  *
  * @param format - Export format
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param _legacyAssetCache - Deprecated, always pass null
  * @param resourceFetcher - ResourceFetcher instance (optional)
  * @param filename - Download filename (without extension)
  * @param options - Export options
- * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param assetManager - AssetManager instance for assets
  */
 export async function exportAndDownload(
     format: ExportFormat | string,
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike | null,
+    _legacyAssetCache: null,
     resourceFetcher: ResourceFetcherLike | null,
     filename: string,
     options?: ExportOptions,
     assetManager?: AssetManagerLike | null,
 ) {
-    const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
+    const exporter = createExporter(format, documentManager, null, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
@@ -451,15 +436,15 @@ export interface PreviewFilesResult {
  * enabling unified preview/export rendering via the eXeViewer approach.
  *
  * @param documentManager - YjsDocumentManager instance
- * @param assetCache - AssetCacheManager instance (legacy, optional)
+ * @param _legacyAssetCache - Deprecated, always pass null
  * @param resourceFetcher - ResourceFetcher instance (optional)
- * @param assetManager - AssetManager instance (new, preferred for assets)
+ * @param assetManager - AssetManager instance for assets
  * @param options - Export options (theme override, etc.)
  * @returns Preview files result with file map
  */
 export async function generatePreviewForSW(
     documentManager: YjsDocumentManagerLike,
-    assetCache: AssetCacheManagerLike | null,
+    _legacyAssetCache: null,
     resourceFetcher: ResourceFetcherLike | null,
     assetManager?: AssetManagerLike | null,
     options?: ExportOptions,
@@ -479,13 +464,9 @@ export async function generatePreviewForSW(
             : createNullResourceProvider();
 
         // Create asset provider with null-safe fallback
-        const assets =
-            assetCache || assetManager
-                ? new BrowserAssetProvider(
-                      assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                      assetManager as Parameters<typeof BrowserAssetProvider>[1],
-                  )
-                : createNullAssetProvider();
+        const assets = assetManager
+            ? new BrowserAssetProvider(assetManager as Parameters<typeof BrowserAssetProvider>[0])
+            : createNullAssetProvider();
 
         // Create a null zip provider (not needed for preview files)
         const zip = new FflateZipProvider();

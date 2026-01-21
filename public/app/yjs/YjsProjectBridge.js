@@ -22,8 +22,7 @@ class YjsProjectBridge {
     this.documentManager = null;
     this.structureBinding = null;
     this.lockManager = null;
-    this.assetCache = null;  // Legacy - kept for backward compatibility
-    this.assetManager = null; // New asset manager with asset:// URLs
+    this.assetManager = null; // Asset manager with asset:// URLs
     this.resourceFetcher = null; // ResourceFetcher for fetching themes, libs, iDevices
     this.resourceCache = null; // ResourceCache for persistent IndexedDB storage (themes, libs, iDevices)
     this.assetWebSocketHandler = null; // WebSocket handler for peer-to-peer asset sync
@@ -97,12 +96,19 @@ class YjsProjectBridge {
       // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
       Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
-    }
 
-    // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
-    // Assets are now stored in memory via AssetManager.blobCache
-    // The property is kept as null for backward compatibility with any code checking for it
-    this.assetCache = null;
+      // Register cleanup callback for when last tab closes
+      // This clears the Cache API storage in addition to IndexedDB (handled by YjsDocumentManager)
+      this.documentManager.setOnLastTabClosedCallback(() => {
+        Logger.log('[YjsProjectBridge] Last tab closed, clearing asset cache');
+        if (this.assetManager) {
+          // Use non-async clearCache - during page unload async operations may not complete
+          this.assetManager.clearCache().catch((err) => {
+            console.warn('[YjsProjectBridge] Error clearing asset cache:', err);
+          });
+        }
+      });
+    }
 
     // Create ResourceCache for persistent caching of themes, libraries, iDevices
     if (window.ResourceCache) {
@@ -1986,7 +1992,7 @@ class YjsProjectBridge {
         const exporter = window.SharedExporters.createExporter(
           'elpx',
           this.documentManager,
-          this.assetCache,
+          null, // Legacy assetCache removed - AssetManager handles all assets
           this.resourceFetcher,
           this.assetManager
         );
@@ -2049,9 +2055,7 @@ class YjsProjectBridge {
    * @returns {Promise<Object>} Import statistics
    */
   async importFromElpx(file, options = {}) {
-    // Use new AssetManager if available, otherwise fall back to legacy assetCache
-    const assetHandler = this.assetManager || this.assetCache;
-    const importer = new window.ElpxImporter(this.documentManager, assetHandler);
+    const importer = new window.ElpxImporter(this.documentManager, this.assetManager);
     const stats = await importer.importFromFile(file, options);
 
     // Announce imported assets to server for peer-to-peer collaboration
@@ -2808,14 +2812,9 @@ class YjsProjectBridge {
       this.assetWebSocketHandler.destroy();
     }
 
-    // Cleanup new AssetManager
+    // Cleanup AssetManager
     if (this.assetManager) {
       this.assetManager.cleanup();
-    }
-
-    // Cleanup legacy asset cache
-    if (this.assetCache && typeof this.assetCache.destroy === 'function') {
-      this.assetCache.destroy();
     }
 
     // Cleanup SaveManager (no explicit cleanup needed, just null reference)
@@ -2831,7 +2830,6 @@ class YjsProjectBridge {
     this.documentManager = null;
     this.structureBinding = null;
     this.lockManager = null;
-    this.assetCache = null;
     this.assetManager = null;
     this.assetWebSocketHandler = null;
 

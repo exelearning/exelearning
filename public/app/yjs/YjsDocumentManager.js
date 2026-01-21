@@ -79,6 +79,11 @@ class YjsDocumentManager {
     this._unloadHandler = () => this._clearAwarenessOnUnload();
     // Bind visibility change handler for tab switch recovery
     this._visibilityChangeHandler = this._handleVisibilityChange.bind(this);
+
+    // Tab tracker for cleanup when all tabs close (initialized in initialize())
+    this._tabTracker = null;
+    // External callback for additional cleanup (e.g., Cache API via YjsProjectBridge)
+    this._onLastTabClosedCallback = null;
   }
 
   /**
@@ -166,6 +171,16 @@ class YjsDocumentManager {
         resolve();
       }, 3000);
     });
+
+    // Setup tab tracker for cleanup when all browser tabs close
+    // This cleans up IndexedDB when user closes all tabs for this project
+    if (window.ProjectTabTracker) {
+      this._tabTracker = new window.ProjectTabTracker(this.projectId, () => {
+        this._cleanupOnLastTabClose();
+      });
+      this._tabTracker.start();
+      Logger.log(`[YjsDocumentManager] Tab tracker started for project ${this.projectId}`);
+    }
 
     // Setup WebSocket provider (but don't connect yet)
     // Connection happens later via startWebSocketConnection() after message handlers are installed
@@ -1327,6 +1342,12 @@ class YjsDocumentManager {
     window.removeEventListener('unload', this._unloadHandler);
     document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
 
+    // Stop tab tracker
+    if (this._tabTracker) {
+      this._tabTracker.stop();
+      this._tabTracker = null;
+    }
+
     // Save if requested and dirty
     if (saveBeforeDestroy && this.isDirty && !this.config.offline) {
       try {
@@ -1365,6 +1386,52 @@ class YjsDocumentManager {
     this.saveInProgress = false;
 
     Logger.log(`[YjsDocumentManager] Destroyed for project ${this.projectId}`);
+  }
+
+  /**
+   * Set callback for when the last browser tab closes
+   * Used by YjsProjectBridge to add Cache API cleanup alongside IndexedDB cleanup
+   * @param {Function} callback - Callback to invoke when last tab closes
+   */
+  setOnLastTabClosedCallback(callback) {
+    this._onLastTabClosedCallback = callback;
+  }
+
+  /**
+   * Cleanup when the last browser tab for this project closes
+   * Clears IndexedDB persistence and invokes external callback
+   * @private
+   */
+  _cleanupOnLastTabClose() {
+    Logger.log(`[YjsDocumentManager] Last tab closed for project ${this.projectId}, cleaning up IndexedDB`);
+
+    try {
+      // Clear IndexedDB persistence synchronously during page unload
+      // We use deleteDatabase directly as the provider might already be destroyed
+      const dbName = `exelearning-project-${this.projectId}`;
+      const request = indexedDB.deleteDatabase(dbName);
+
+      request.onsuccess = () => {
+        Logger.log(`[YjsDocumentManager] IndexedDB cleanup completed: ${dbName}`);
+      };
+      request.onerror = () => {
+        console.error(`[YjsDocumentManager] IndexedDB cleanup failed: ${dbName}`);
+      };
+      request.onblocked = () => {
+        console.warn(`[YjsDocumentManager] IndexedDB cleanup blocked: ${dbName}`);
+      };
+    } catch (error) {
+      console.error('[YjsDocumentManager] Error cleaning up IndexedDB:', error);
+    }
+
+    // Invoke external callback (e.g., Cache API cleanup)
+    if (this._onLastTabClosedCallback) {
+      try {
+        this._onLastTabClosedCallback();
+      } catch (error) {
+        console.error('[YjsDocumentManager] Error in external cleanup callback:', error);
+      }
+    }
   }
 
   /**

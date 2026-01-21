@@ -85,10 +85,10 @@
     ],
     // Group 1: Core managers (no dependencies between them)
     [
+      'ProjectTabTracker.js',  // Tab tracking for cleanup (must load before YjsDocumentManager)
       'YjsDocumentManager.js',
       'YjsLockManager.js',
       'YjsStructureBinding.js',
-      'AssetCacheManager.js',
       'AssetManager.js',
       'AssetWebSocketHandler.js',
       'LegacyXmlParser.js',  // Now can use LegacyHandlerRegistry

@@ -441,7 +441,7 @@ class AssetManager {
   }
 
   /**
-   * Get asset by ID - combines Yjs metadata + in-memory blob
+   * Get asset by ID - combines Yjs metadata + blob from memory/Cache API
    * @param {string} id - Asset UUID
    * @returns {Promise<Object|null>}
    */
@@ -449,8 +449,8 @@ class AssetManager {
     // Get metadata from Yjs
     const metadata = this.getAssetMetadata(id);
 
-    // Get blob from memory
-    const blob = this.blobCache.get(id);
+    // Get blob from memory or Cache API (survives page reload)
+    const blob = await this.getBlob(id);
 
     // If we have metadata, return combined object
     if (metadata) {
@@ -484,7 +484,7 @@ class AssetManager {
   /**
    * Get all assets for the project - reads from Yjs, optionally with blobs
    * @param {Object} options
-   * @param {boolean} options.includeBlobs - Include blobs from memory (default: true)
+   * @param {boolean} options.includeBlobs - Include blobs from memory/Cache API (default: true)
    * @returns {Promise<Array>}
    */
   async getProjectAssets(options = {}) {
@@ -504,21 +504,23 @@ class AssetManager {
 
     Logger.log(`[AssetManager] getProjectAssets: ${metadataList.length} assets from Yjs`);
 
-    // Count how many blobs are cached in memory
+    // Count how many blobs are found
     let blobCount = 0;
 
-    // Join metadata with blobs from memory
-    const assets = metadataList.map(meta => {
-      const blob = this.blobCache.get(meta.id) || null;
-      if (blob) blobCount++;
-      return {
-        ...meta,
-        projectId: this.projectId,
-        blob
-      };
-    });
+    // Join metadata with blobs from memory or Cache API (survives page reload)
+    const assets = await Promise.all(
+      metadataList.map(async meta => {
+        const blob = await this.getBlob(meta.id);
+        if (blob) blobCount++;
+        return {
+          ...meta,
+          projectId: this.projectId,
+          blob: blob || null
+        };
+      })
+    );
 
-    Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobCount} blobs in memory)`);
+    Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobCount} blobs found)`);
     return assets;
   }
 
