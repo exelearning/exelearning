@@ -830,10 +830,13 @@ describe('common_edition.js', () => {
 
     describe('addEvents', () => {
       let originalAlert;
+      let originalWindowOpen;
 
       beforeEach(() => {
         originalAlert = global.alert;
+        originalWindowOpen = global.window.open;
         global.alert = vi.fn();
+        global.window.open = vi.fn();
         document.body.innerHTML = `
           <textarea id="eXeEQuestionsArea"></textarea>
           <textarea id="eXeEPromptArea"></textarea>
@@ -844,6 +847,11 @@ describe('common_edition.js', () => {
           <button id="eXeEIAButton"></button>
           <button id="eXeECopyButton"></button>
           <button id="eXeEOpenChatGPTButton"></button>
+          <select id="eXeEIASelect">
+            <option value="https://chatgpt.com/?q=">ChatGPT</option>
+            <option value="https://grok.com/?q=">Grok</option>
+            <option value="https://claude.ai/new?q=">Claude</option>
+          </select>
           <button id="eXeGameAddQuestion"></button>
           <a id="eXeETabQuestions" class="active"></a>
           <a id="eXeETabPrompt"></a>
@@ -853,6 +861,7 @@ describe('common_edition.js', () => {
 
       afterEach(() => {
         global.alert = originalAlert;
+        global.window.open = originalWindowOpen;
       });
 
       it('saveButton click shows success alert when all lines are valid', () => {
@@ -898,6 +907,73 @@ describe('common_edition.js', () => {
 
         expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
+      });
+
+      it('openChatGPTButton click shows alert when prompt is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
+        expect(global.window.open).not.toHaveBeenCalled();
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (ChatGPT)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Generate 5 questions about history');
+        $('#eXeEIASelect').val('https://chatgpt.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://chatgpt.com/?q=Generate%205%20questions%20about%20history',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (Claude)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Test prompt');
+        $('#eXeEIASelect').val('https://claude.ai/new?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://claude.ai/new?q=Test%20prompt',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (Grok)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('My question');
+        $('#eXeEIASelect').val('https://grok.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://grok.com/?q=My%20question',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click trims whitespace from prompt', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('   test prompt with spaces   ');
+        $('#eXeEIASelect').val('https://chatgpt.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://chatgpt.com/?q=test%20prompt%20with%20spaces',
+          '_blank'
+        );
       });
     });
   });

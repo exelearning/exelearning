@@ -509,6 +509,13 @@ var $exeDevicesEdition = {
                                 <div class="d-flex justify-content-end  border-secondary p-2">
                                    <button id="eXeESaveButton"  class="btn  btn-primary ms-2"/>${_('Save')}</button>
                                    <button id="eXeECopyButton"  class="btn btn-primary ms-2"/>${_('Copy')}</button>
+                                   <select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
+                                        <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
+                                        <option value="https://claude.ai/new?q=">Claude</option>
+                                        <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
+                                        <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
+                                        <option value="https://grok.com/?q=">Grok</option>
+                                    </select>
                                    <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
                                    <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>
                                 </div>
@@ -717,6 +724,7 @@ var $exeDevicesEdition = {
                     const $openChatGPTButton = $('#eXeEOpenChatGPTButton');
                     const $saveButton = $('#eXeESaveButton');
                     const $iaButton = $('#eXeEIAButton');
+                    const $iaSelect = $('#eXeEIASelect');
 
                     const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
                     const $eXeEAddArea = $('#eXeEAddArea');
@@ -727,9 +735,9 @@ var $exeDevicesEdition = {
                     $textPrompt.show()
                     $copyButton.show();
                     $openChatGPTButton.show();
-
-                    $divEIA.hide();
-                    $iaButton.hide()
+                    $iaButton.hide();
+                    $iaSelect.show()
+                    $divEIA.hide();                   
 
                     // File input custom UI events
                     $(document).off('click.exeFileTrigger').on('click.exeFileTrigger', '[data-exe-file-trigger]', function () {
@@ -761,6 +769,7 @@ var $exeDevicesEdition = {
                         $copyButton.hide();
                         $openChatGPTButton.hide();
                         $iaButton.hide();
+                        $iaSelect.hide()
                     });
 
                     $tabPrompt.on('click', function (e) {
@@ -774,8 +783,8 @@ var $exeDevicesEdition = {
                         $saveButton.hide();
                         $copyButton.show();
                         $openChatGPTButton.show();
+                        $iaSelect.show();
                         $iaButton.hide();
-
                     });
 
                     $tabIA.on('click', function (e) {
@@ -792,6 +801,7 @@ var $exeDevicesEdition = {
                         $copyButton.hide();
                         $openChatGPTButton.hide();
                         $iaButton.hide();
+                        $iaSelect.hide();
                     });
 
                     $openChatGPTButton.on('click', function () {
@@ -802,7 +812,8 @@ var $exeDevicesEdition = {
                             return;
                         }
                         const encodedPrompt = encodeURIComponent(prompt.trim());
-                        const url = `https://chat.openai.com/?q=${encodedPrompt}`;
+                        const baseUrl = $iaSelect.val();
+                        const url = `${baseUrl}${encodedPrompt}`;
                         window.open(url, '_blank');
                     });
 
