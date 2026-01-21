@@ -141,7 +141,13 @@ var $exeDevice = {
                     }
                 });
                 $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
-                this.addImageHTML(incrementalId, value.img, value.thumbnail);
+
+                // Asset URLs are now centrally converted by YjsStructureBinding.prepareJsonForSync()
+                // No need for local blob URL recovery - data should already have asset:// URLs
+                const imgUrl = value.img;
+                const thumbnailUrl = value.thumbnail;
+
+                this.addImageHTML(incrementalId, imgUrl, thumbnailUrl);
                 incrementalId++;
             }
         });
@@ -165,12 +171,21 @@ var $exeDevice = {
         });
 
         this.dataIds.forEach((element) => {
-            let thumbnailURL = this.ideviceBody
-                .querySelector(`#${element}`)
-                .getAttribute('src');
-            let imageURL = this.ideviceBody
-                .querySelector(`#${element}`)
-                .getAttribute('origin');
+            const imgElement = this.ideviceBody.querySelector(`#${element}`);
+
+            // Use data-asset-* attributes directly to ensure we get asset:// URLs
+            // The MutationObserver doesn't update these when editing existing images,
+            // so we set them explicitly in addImageFromAsset() and addImageHTML()
+            let thumbnailURL = imgElement.getAttribute('data-asset-url')
+                || imgElement.getAttribute('src');
+            let imageURL = imgElement.getAttribute('data-asset-origin')
+                || imgElement.getAttribute('origin');
+
+            // FIX: Blob URLs are ephemeral and won't work after page reload.
+            if (thumbnailURL && thumbnailURL.startsWith('blob:')) {
+                thumbnailURL = imageURL;
+            }
+
             let imageTitle,
                 imageLinkTitle,
                 imageAuthor,
@@ -300,10 +315,12 @@ var $exeDevice = {
             // Editing existing image
             let img = this.ideviceBody.querySelector(`#img_${this.editionId}`);
             img.setAttribute('origin', assetUrl);
-            img.setAttribute('src', assetUrl);
+            img.setAttribute('data-asset-origin', assetUrl);
+            img.setAttribute('src', blobUrl || assetUrl);
+            img.setAttribute('data-asset-url', assetUrl);
         } else {
-            // Adding new image
-            this.addImageHTML(this.idImage, assetUrl, assetUrl);
+            // Adding new image - blobUrl for display, assetUrl for persistence in 'origin'
+            this.addImageHTML(this.idImage, assetUrl, blobUrl || assetUrl);
             // Add sortable behaviour to the new image
             let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
             this.addSortableBehaviour(images[images.length - 1]);
@@ -381,7 +398,9 @@ var $exeDevice = {
                     `#img_${this.editionId}`
                 );
                 img.setAttribute('origin', originPath);
+                img.setAttribute('data-asset-origin', originPath);
                 img.setAttribute('src', thumbnailPath);
+                img.setAttribute('data-asset-url', thumbnailPath);
             } else {
                 this.addImageHTML(this.idImage, originPath, thumbnailPath);
                 this.idImage++;
@@ -412,13 +431,17 @@ var $exeDevice = {
      * To generate the HTML container of image
      *
      * @param {*} id
-     * @param {*} thumbnailURL
+     * @param {*} originURL - The asset:// URL for persistence
+     * @param {*} displayURL - The blob:// or asset:// URL for immediate display
      */
-    addImageHTML: function (id, originURL, thumbnailURL) {
+    addImageHTML: function (id, originURL, displayURL) {
+        // data-asset-* attributes ensure save() gets asset URLs via the getAttribute interceptor
+        // even if the src/origin have been resolved to blob:// URLs
+        const srcUrl = displayURL || originURL;
         let html = `
       <div class="imgSelect">
         <div class="imageElement">
-          <img height=128 width=128 src="${thumbnailURL}" id="img_${id}" class="image" origin="${originURL}" draggable="false">
+          <img height=128 width=128 src="${srcUrl}" id="img_${id}" class="image" origin="${originURL}" data-asset-origin="${originURL}" data-asset-url="${originURL}" draggable="false">
         </div>
       </div>
       <div class="imgButtons">

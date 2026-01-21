@@ -30,20 +30,19 @@ import * as path from 'path';
 import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
 import { getBasePath } from '../utils/basepath.util';
+import { LICENSE_REGISTRY } from '../shared/export/constants';
 
 /**
- * Available licenses for content
+ * Available licenses for content dropdown
+ * Derived from LICENSE_REGISTRY - the single source of truth
+ * Legacy licenses (marked with legacy: true) are excluded from the dropdown
+ * but are preserved when already set on a project
  */
-const LICENSES = {
-    'creative commons: attribution 4.0': `${TRANS_PREFIX}creative commons: attribution 4.0 (BY)`,
-    'creative commons: attribution - share alike 4.0': `${TRANS_PREFIX}creative commons: attribution - share alike 4.0 (BY-SA)`,
-    'creative commons: attribution - non derived work 4.0': `${TRANS_PREFIX}creative commons: attribution - non derived work 4.0 (BY-ND)`,
-    'creative commons: attribution - non commercial 4.0': `${TRANS_PREFIX}creative commons: attribution - non commercial 4.0 (BY-NC)`,
-    'creative commons: attribution - non commercial - share alike 4.0': `${TRANS_PREFIX}creative commons: attribution - non commercial - share alike 4.0 (BY-NC-SA)`,
-    'creative commons: attribution - non derived work - non commercial 4.0': `${TRANS_PREFIX}creative commons: attribution - non derived work - non commercial 4.0 (BY-NC-ND)`,
-    'public domain': `${TRANS_PREFIX}public domain`,
-    'propietary license': `${TRANS_PREFIX}proprietary license`,
-};
+const LICENSES: Record<string, string> = Object.fromEntries(
+    Object.entries(LICENSE_REGISTRY)
+        .filter(([, entry]) => !entry.legacy)
+        .map(([key, entry]) => [key, `${TRANS_PREFIX}${entry.displayName}`]),
+);
 
 /**
  * User preferences configuration (expected by frontend)

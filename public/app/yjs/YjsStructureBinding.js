@@ -1654,6 +1654,15 @@ class YjsStructureBinding {
             }
             propsMap.set(propKey, finalValue);
           });
+        } else if (key === 'jsonProperties') {
+          // Prepare JSON for sync: convert blob:// URLs to asset:// refs
+          // This centralizes blob URL recovery for iDevices like image-gallery, map, etc.
+          let safeValue = typeof value === 'string' ? value : JSON.stringify(value);
+          const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+          if (assetManager && safeValue && typeof assetManager.prepareJsonForSync === 'function') {
+            safeValue = assetManager.prepareJsonForSync(safeValue);
+          }
+          compMap.set(key, safeValue);
         } else {
           compMap.set(key, value);
         }

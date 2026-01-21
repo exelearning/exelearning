@@ -164,7 +164,7 @@ describe('Page Properties Integration', () => {
                 addPagination: false,
             });
 
-            expect(headerHtml).toContain('style="display:none"');
+            expect(headerHtml).toContain('class="page-title sr-av"');
             expect(headerHtml).toContain('My Page Title');
         });
 
@@ -185,7 +185,7 @@ describe('Page Properties Integration', () => {
                 totalPages: 1,
             });
 
-            expect(headerHtml).toContain('style="display:none"');
+            expect(headerHtml).toContain('class="page-title sr-av"');
         });
 
         it('should show page title when hidePageTitle=false', () => {
@@ -221,7 +221,7 @@ describe('Page Properties Integration', () => {
 
             expect(html.length).toBeGreaterThan(0);
             expect(html).toContain('page-header');
-            expect(html).toContain('style="display:none"');
+            expect(html).toContain('class="page-title sr-av"');
         });
     });
 
@@ -624,7 +624,7 @@ describe('Page Properties Integration', () => {
             });
 
             // Title should be hidden but custom title used
-            expect(headerHtml).toContain('style="display:none"');
+            expect(headerHtml).toContain('class="page-title sr-av"');
             expect(headerHtml).toContain('Hidden Custom Title');
         });
 
@@ -648,7 +648,7 @@ describe('Page Properties Integration', () => {
             // Title should use custom titlePage
             expect(html).toContain('Full Property Test');
             // Title should be hidden
-            expect(html).toContain('style="display:none"');
+            expect(html).toContain('class="page-title sr-av"');
         });
     });
 
@@ -868,7 +868,7 @@ describe('Page Properties Integration', () => {
 
             const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
 
-            expect(html).toContain('style="display:none"');
+            expect(html).toContain('class="page-title sr-av"');
         });
 
         it('should render single page with custom title', () => {

@@ -441,6 +441,7 @@ describe('FormProperties', () => {
 
             expect(row.getAttribute('duplicate')).toBe('3');
         });
+
     });
 
     describe('makeRowElementLabel', () => {
@@ -592,6 +593,9 @@ describe('FormProperties', () => {
 
             expect(element.tagName).toBe('DIV');
         });
+
+        // Note: Legacy license handling tests are in YjsPropertiesBinding.test.js
+        // as that's where the actual legacy detection and injection logic lives
     });
 
     describe('addAttributesRowValueElement', () => {

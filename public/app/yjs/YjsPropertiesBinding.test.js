@@ -719,4 +719,122 @@ describe('YjsPropertiesBinding', () => {
       expect(binding.mapMetadataKeyToProperty('addMathJax')).toBe('pp_addMathJax');
     });
   });
+
+  describe('legacy license detection', () => {
+    it('injects synthetic option when select value is not in options', () => {
+      // Create a select with limited options (non-legacy licenses only)
+      const select = document.createElement('select');
+      select.className = 'property-value';
+      select.setAttribute('property', 'pp_license');
+      select.setAttribute('data-type', 'select');
+
+      const option1 = document.createElement('option');
+      option1.value = 'creative commons: attribution 4.0';
+      option1.text = 'CC BY 4.0';
+      select.appendChild(option1);
+
+      const option2 = document.createElement('option');
+      option2.value = 'public domain';
+      option2.text = 'Public Domain';
+      select.appendChild(option2);
+
+      // Set a legacy license value in Yjs
+      binding.metadata.set('license', 'creative commons: attribution 3.0');
+
+      // Update the select from Yjs
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify synthetic option was injected with warning in text
+      expect(select.options.length).toBe(3);
+      expect(select.options[0].value).toBe('creative commons: attribution 3.0');
+      expect(select.options[0].textContent).toContain('creative commons: attribution 3.0');
+      expect(select.options[0].textContent).toContain('⚠️');
+      expect(select.options[0].textContent).toContain('Legacy');
+      expect(select.dataset.legacyValue).toBe('true');
+    });
+
+    it('does NOT inject synthetic option when value is in options', () => {
+      const select = document.createElement('select');
+      select.className = 'property-value';
+      select.setAttribute('property', 'pp_license');
+      select.setAttribute('data-type', 'select');
+
+      const option1 = document.createElement('option');
+      option1.value = 'creative commons: attribution 4.0';
+      option1.text = 'CC BY 4.0';
+      select.appendChild(option1);
+
+      // Set a valid (non-legacy) license value in Yjs
+      binding.metadata.set('license', 'creative commons: attribution 4.0');
+
+      // Update the select from Yjs
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Should NOT have injected any option
+      expect(select.options.length).toBe(1);
+      expect(select.dataset.legacyValue).toBeUndefined();
+    });
+
+    it('injectLegacyOption creates correct synthetic option with warning in text', () => {
+      const select = document.createElement('select');
+
+      binding.injectLegacyOption(select, 'license gfdl');
+
+      expect(select.options.length).toBe(1);
+      expect(select.options[0].value).toBe('license gfdl');
+      expect(select.options[0].textContent).toContain('license gfdl');
+      expect(select.options[0].textContent).toContain('⚠️');
+      expect(select.options[0].textContent).toContain('Legacy');
+      expect(select.options[0].selected).toBe(true);
+      expect(select.options[0].dataset.legacySynthetic).toBe('true');
+      // CSS styling via data attribute, no class needed
+      expect(select.dataset.legacyValue).toBe('true');
+    });
+
+    it('removes legacy warning when valid license is selected', () => {
+      const select = document.createElement('select');
+      select.className = 'property-value';
+
+      // Add a valid option
+      const validOption = document.createElement('option');
+      validOption.value = 'public domain';
+      validOption.text = 'Public Domain';
+      select.appendChild(validOption);
+
+      // First set a legacy license
+      binding.metadata.set('license', 'gnu/gpl');
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify legacy warning is present via data attribute
+      expect(select.dataset.legacyValue).toBe('true');
+      expect(select.options.length).toBe(2); // synthetic + valid
+
+      // Now select a valid license
+      binding.metadata.set('license', 'public domain');
+      binding.updateInputFromYjs(select, 'license', 'select');
+
+      // Verify legacy warning is removed
+      expect(select.dataset.legacyValue).toBeUndefined();
+      expect(select.options.length).toBe(1); // only valid option remains
+      expect(select.value).toBe('public domain');
+    });
+
+    it('removeLegacyWarning cleans up select element', () => {
+      const select = document.createElement('select');
+
+      // Inject legacy option first
+      binding.injectLegacyOption(select, 'free software license eupl');
+
+      // Verify it was added
+      expect(select.options.length).toBe(1);
+      expect(select.dataset.legacyValue).toBe('true');
+
+      // Remove it
+      binding.removeLegacyWarning(select);
+
+      // Verify it was removed
+      expect(select.options.length).toBe(0);
+      expect(select.dataset.legacyValue).toBeUndefined();
+    });
+  });
 });
