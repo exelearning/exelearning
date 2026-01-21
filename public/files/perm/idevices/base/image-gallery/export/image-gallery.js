@@ -20,12 +20,6 @@ var $imagegallery = {
      * @returns {String}
      */
     renderView: function (data, accesibility, template) {
-        // In export context, the HTML is already rendered correctly server-side
-        // Don't re-generate to preserve correct paths (changeDirectory would break them)
-        if (document.body.classList.contains('exe-export')) {
-            return null; // Return null to prevent innerHTML replacement in exe_export.js
-        }
-
         // Generate html content from data values
         let htmlContent = $imagegallery.getStringGallery(data);
         // Insert the html content inside the template
@@ -47,12 +41,8 @@ var $imagegallery = {
      */
     renderBehaviour(data) {
         const $node = $('#' + data.ideviceId),
-            isInExe = eXe.app.isInExe(),
-            isExport = document.body.classList.contains('exe-export');
-
-        // Only re-render gallery in preview panel (not in export, which already has correct HTML)
-        // Export HTML is generated server-side with correct paths; re-rendering would break them
-        if (!isInExe && !isExport && $node.length == 1) {
+            isInExe = eXe.app.isInExe();
+        if (!isInExe && $node.length == 1) {
             let gallery = $imagegallery.getStringGallery(data);
             $node.html(gallery);
         }
@@ -93,14 +83,27 @@ var $imagegallery = {
 
         if (isInExe || $node.length == 0) return file;
 
-        const pathMedia = $('html').is('#exe-index')
-            ? 'content/resources/' + data.ideviceId + '/'
-            : '../content/resources/' + data.ideviceId + '/';
+        // Determine base path based on page location
+        const basePath = $('html').is('#exe-index') ? '' : '../';
 
-        const parts = file.split(/[/\\]/),
-            name = parts.pop(),
-            dir = pathMedia.replace(/[/\\]+$/, '');
-        return dir + '/' + name;
+        // If path already starts with content/resources/, handle it
+        if (file && file.startsWith('content/resources/')) {
+            const parts = file.split('/');
+            const filename = parts.pop();
+            const possibleFolder = parts[parts.length - 1];
+
+            // Check for malformed path: filename duplicated as folder
+            // e.g., content/resources/image.png/image.png -> content/resources/image.png
+            if (possibleFolder === filename) {
+                parts.pop(); // Remove the duplicated folder
+                return basePath + parts.join('/') + '/' + filename;
+            }
+
+            // Valid path with folder structure - preserve it
+            return basePath + file;
+        }
+
+        return file;
     },
 
     getStringGallery: function (data) {
