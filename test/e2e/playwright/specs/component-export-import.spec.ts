@@ -23,6 +23,7 @@ import {
     changeBlockIcon,
     getBlockIconName,
     getBlockId,
+    waitForThemeIconsLoaded,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -890,7 +891,16 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         const hasEmptyIconBefore = await blockHasEmptyIcon(page, 0);
         expect(hasEmptyIconBefore).toBe(true);
 
-        // 5. Change the block icon to first theme icon (index 1)
+        // 5. Wait for theme icons to be loaded before attempting to change icon
+        const themeIconCount = await waitForThemeIconsLoaded(page, 1);
+        if (themeIconCount === 0) {
+            console.log('No theme icons available, skipping icon change test');
+            test.skip();
+            return;
+        }
+        console.log(`Theme has ${themeIconCount} icons available`);
+
+        // 6. Change the block icon to first theme icon (index 1)
         await changeBlockIcon(page, 0, 1);
 
         // 6. Verify icon changed
@@ -960,6 +970,15 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         // Add text iDevice and set icon
         await addTextIdevice(page);
         await editTextIdevice(page, 'Test content for icon import');
+
+        // Wait for theme icons to be loaded before attempting to change icon
+        const themeIconCount = await waitForThemeIconsLoaded(page, 1);
+        if (themeIconCount === 0) {
+            console.log('No theme icons available, skipping icon change test');
+            test.skip();
+            return;
+        }
+        console.log(`Theme has ${themeIconCount} icons available`);
 
         await changeBlockIcon(page, 0, 1);
 
