@@ -547,6 +547,7 @@ describe('PageRenderer', () => {
         });
 
         it('should render correct license class for different licenses', () => {
+            // getLicenseClass looks up cssClass from LICENSE_REGISTRY by license name
             const licenses = [
                 { name: 'creative commons: attribution 4.0', class: 'cc' },
                 { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
@@ -558,11 +559,6 @@ describe('PageRenderer', () => {
                     class: 'cc cc-by-nc-nd',
                 },
                 { name: 'public domain', class: 'cc cc-0' },
-                { name: 'propietary license', class: 'propietary' },
-                // Robustness tests
-                { name: '  creative commons:   attribution - non commercial 4.0  ', class: 'cc cc-by-nc' }, // Extra spaces
-                { name: 'CREATIVE COMMONS: ATTRIBUTION - NON COMMERCIAL 4.0', class: 'cc cc-by-nc' }, // Case insensitivity
-                { name: 'Some other license text containing by-nc-sa', class: 'cc cc-by-nc-sa' }, // Partial match
             ];
 
             for (const lic of licenses) {
@@ -572,6 +568,28 @@ describe('PageRenderer', () => {
                 });
                 expect(html).toContain(`class="${lic.class}"`);
             }
+        });
+
+        it('should skip license section for propietary license (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'propietary license',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+        });
+
+        it('should skip license section for not appropriate (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'not appropriate',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
         });
 
         it('should include user footer content when provided', () => {
@@ -590,6 +608,34 @@ describe('PageRenderer', () => {
             });
 
             expect(html).not.toContain('id="siteUserFooter"');
+        });
+
+        it('should skip license section when license is empty (legacy content)', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+            });
+
+            // Footer should still render but without license content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteFooterContent"');
+            // License section should not be rendered
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+            expect(html).not.toContain('license-label');
+        });
+
+        it('should render user footer content even when license is empty', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+                userFooterContent: '<p>My custom footer</p>',
+            });
+
+            // Footer should render with user content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteUserFooter"');
+            expect(html).toContain('My custom footer');
+            // But no license section
+            expect(html).not.toContain('id="packageLicense"');
         });
     });
 
@@ -816,6 +862,49 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('CC-BY-SA');
             expect(html).toContain('creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderFooter({
+                author: 'Test Author',
+                license: '',
+            });
+
+            // Empty license should return empty string
+            expect(html).toBe('');
+        });
+    });
+
+    describe('renderLicense (deprecated)', () => {
+        it('should render license div when license is provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY',
+                licenseUrl: 'https://example.com/license',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('CC-BY');
+            expect(html).toContain('href="https://example.com/license"');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: '',
+            });
+
+            expect(html).toBe('');
+        });
+
+        it('should render empty href when licenseUrl not provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY-SA',
+            });
+
+            // No default URL - href should be empty when not provided
+            expect(html).toContain('href=""');
         });
     });
 
@@ -1084,6 +1173,145 @@ describe('PageRenderer', () => {
 
             expect(visible.length).toBe(2);
             expect(visible.map(p => p.id)).toEqual(['page-1', 'page-3']);
+        });
+    });
+
+    describe('hidePageTitle property', () => {
+        it('should add sr-av class to .page-title when hidePageTitle is true', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: true },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // page-title should have sr-av class (CSS handles hiding)
+            expect(html).toContain('class="page-title sr-av"');
+            // Should NOT use inline styles
+            expect(html).not.toContain('style="display:none"');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is false', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: false },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is not set', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have normal page-title class without sr-av
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should handle string "true" for hidePageTitle', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'true' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // Should have sr-av class for string "true" value
+            expect(html).toContain('class="page-title sr-av"');
+        });
+
+        it('should add sr-av class to .page-title in renderSinglePage when hidePageTitle is true', () => {
+            const pages: ExportPage[] = [
+                createTestPage({
+                    id: 'page-1',
+                    title: 'Hidden Title Page',
+                    properties: { hidePageTitle: true },
+                }),
+                createTestPage({
+                    id: 'page-2',
+                    title: 'Visible Title Page',
+                }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, { projectTitle: 'Test' });
+
+            // First page should have hidden title with sr-av class
+            expect(html).toContain('class="page-title sr-av">Hidden Title Page');
+            // Second page should NOT have sr-av class
+            expect(html).toContain('<h1 class="page-title">Visible Title Page</h1>');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is string "false"', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 'false' },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is null', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: null },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 1', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 1 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            // isTruthyProperty only accepts boolean true or string "true"
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
+        });
+
+        it('should NOT add sr-av class when hidePageTitle is number 0', () => {
+            const page = createTestPage({
+                id: 'test-page',
+                title: 'Test Page',
+                properties: { hidePageTitle: 0 },
+            });
+            const options = createDefaultOptions({ allPages: [page] });
+
+            const html = renderer.render(page, options);
+
+            expect(html).toContain('class="page-title"');
+            expect(html).not.toContain('sr-av');
         });
     });
 

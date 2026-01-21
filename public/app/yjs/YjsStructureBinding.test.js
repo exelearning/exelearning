@@ -1625,6 +1625,66 @@ describe('YjsStructureBinding', () => {
       // Should not throw
       binding.updateComponent('non-existent', { title: 'Test' });
     });
+
+    it('updates jsonProperties with string value', () => {
+      const jsonData = JSON.stringify({ key: 'value', items: [1, 2, 3] });
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property
+      expect(comp.jsonProperties).toBe(jsonData);
+    });
+
+    it('updates jsonProperties and calls prepareJsonForSync when assetManager available', () => {
+      // Setup mock assetManager on window.eXeLearning
+      const mockPrepareJsonForSync = mock((json) => json.replace('blob:', 'asset://'));
+      global.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                prepareJsonForSync: mockPrepareJsonForSync,
+              },
+            },
+          },
+        },
+      };
+
+      const jsonData = JSON.stringify({ img: 'blob:http://localhost/abc' });
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      expect(mockPrepareJsonForSync).toHaveBeenCalledWith(jsonData);
+
+      // Cleanup
+      delete global.window.eXeLearning;
+    });
+
+    it('handles jsonProperties when assetManager is not available', () => {
+      // Ensure no assetManager
+      global.window.eXeLearning = { app: null };
+
+      const jsonData = JSON.stringify({ key: 'value' });
+      // Should not throw
+      binding.updateComponent('comp-1', { jsonProperties: jsonData });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property
+      expect(comp.jsonProperties).toBe(jsonData);
+
+      // Cleanup
+      delete global.window.eXeLearning;
+    });
+
+    it('converts object jsonProperties to string before storing', () => {
+      const jsonObj = { key: 'value', nested: { a: 1 } };
+      binding.updateComponent('comp-1', { jsonProperties: jsonObj });
+
+      const comp = binding.getComponent('comp-1');
+      // getComponent returns a plain object with jsonProperties property (as string)
+      const stored = comp.jsonProperties;
+      expect(typeof stored).toBe('string');
+      expect(JSON.parse(stored)).toEqual(jsonObj);
+    });
   });
 
   describe('deleteComponent', () => {

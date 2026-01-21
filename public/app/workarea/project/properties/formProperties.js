@@ -405,7 +405,7 @@ export default class FormProperties {
                 valueElement.innerHTML = property.value;
                 valueElement.value = property.value;
                 break;
-            case 'select':
+            case 'select': {
                 valueElement = document.createElement('select');
                 for (let [value, text] of Object.entries(
                     property.options || {}
@@ -413,11 +413,15 @@ export default class FormProperties {
                     const optionElement = document.createElement('option');
                     optionElement.value = value;
                     optionElement.innerHTML = text;
-                    if (value === property.value)
+                    if (value === property.value) {
                         optionElement.setAttribute('selected', 'selected');
+                    }
                     valueElement.append(optionElement);
                 }
+                // Legacy license handling is done in YjsPropertiesBinding.updateInputFromYjs()
+                // which runs after form creation and loads the actual value from Yjs
                 break;
+            }
             default:
                 valueElement = document.createElement('div');
                 break;

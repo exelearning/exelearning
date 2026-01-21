@@ -22,6 +22,9 @@ import {
     normalizeIdeviceType,
     formatLicenseText,
     getLicenseClass,
+    getLicenseUrl,
+    LICENSE_REGISTRY,
+    shouldShowLicenseFooter,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -383,16 +386,203 @@ describe('Constants', () => {
         });
     });
 
+    describe('License Registry', () => {
+        describe('LICENSE_REGISTRY', () => {
+            it('should have all CC 4.0 licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 4.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 4.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 4.0']).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 4.0'],
+                ).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 4.0'],
+                ).toBeDefined();
+            });
+
+            it('should have all CC 3.0 licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 3.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 3.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 3.0']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 3.0']).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 3.0'],
+                ).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 3.0'],
+                ).toBeDefined();
+            });
+
+            it('should have all CC 2.5 licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 2.5']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 2.5']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 2.5']).toBeDefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 2.5']).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 2.5'],
+                ).toBeDefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 2.5'],
+                ).toBeDefined();
+            });
+
+            it('should have GPL, EUPL, and GFDL licenses', () => {
+                expect(LICENSE_REGISTRY['gnu/gpl']).toBeDefined();
+                expect(LICENSE_REGISTRY['free software license gpl']).toBeDefined();
+                expect(LICENSE_REGISTRY['free software license eupl']).toBeDefined();
+                expect(LICENSE_REGISTRY['dual free content license gpl and eupl']).toBeDefined();
+                expect(LICENSE_REGISTRY['license gfdl']).toBeDefined();
+            });
+
+            it('should have other license types', () => {
+                expect(LICENSE_REGISTRY['public domain']).toBeDefined();
+                expect(LICENSE_REGISTRY['propietary license']).toBeDefined();
+                expect(LICENSE_REGISTRY['intellectual property license']).toBeDefined();
+                expect(LICENSE_REGISTRY['not appropriate']).toBeDefined();
+                expect(LICENSE_REGISTRY['other free software licenses']).toBeDefined();
+            });
+
+            it('should have correct structure for each entry', () => {
+                for (const [key, entry] of Object.entries(LICENSE_REGISTRY)) {
+                    expect(entry.displayName).toBeDefined();
+                    expect(typeof entry.displayName).toBe('string');
+                    expect(typeof entry.url).toBe('string');
+                    expect(typeof entry.cssClass).toBe('string');
+                }
+            });
+
+            it('should include short codes in displayName for CC licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0'].displayName).toContain('(BY)');
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 4.0'].displayName).toContain(
+                    '(BY-SA)',
+                );
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 4.0'].displayName).toContain(
+                    '(BY-NC)',
+                );
+            });
+
+            it('should have correct URLs for CC 3.0 licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 3.0'].url).toBe(
+                    'https://creativecommons.org/licenses/by/3.0/',
+                );
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 3.0'].url).toBe(
+                    'https://creativecommons.org/licenses/by-sa/3.0/',
+                );
+            });
+
+            it('should have correct URLs for CC 2.5 licenses', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 2.5'].url).toBe(
+                    'https://creativecommons.org/licenses/by/2.5/',
+                );
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 2.5'].url).toBe(
+                    'https://creativecommons.org/licenses/by-sa/2.5/',
+                );
+            });
+
+            it('should have empty URLs for licenses without official URLs', () => {
+                expect(LICENSE_REGISTRY['free software license eupl'].url).toBe('');
+                expect(LICENSE_REGISTRY['free software license gpl'].url).toBe('');
+                expect(LICENSE_REGISTRY['license gfdl'].url).toBe('');
+                expect(LICENSE_REGISTRY['intellectual property license'].url).toBe('');
+                expect(LICENSE_REGISTRY['not appropriate'].url).toBe('');
+            });
+
+            it('should have total of 28 licenses', () => {
+                // 6 CC 4.0 + 6 CC 3.0 + 6 CC 2.5 + 2 GPL + 1 EUPL + 1 dual + 1 GFDL
+                // + 1 public domain + 1 propietary + 1 IP + 1 not appropriate + 1 other = 28
+                expect(Object.keys(LICENSE_REGISTRY).length).toBe(28);
+            });
+
+            it('should mark CC 3.0 licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 3.0'].legacy).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 3.0'].legacy,
+                ).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 3.0'].legacy,
+                ).toBe(true);
+            });
+
+            it('should mark CC 2.5 licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 2.5'].legacy).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 2.5'].legacy,
+                ).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 2.5'].legacy,
+                ).toBe(true);
+            });
+
+            it('should mark GPL, EUPL, GFDL and other free software licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['gnu/gpl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['free software license gpl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['free software license eupl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['dual free content license gpl and eupl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['license gfdl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['other free software licenses'].legacy).toBe(true);
+            });
+
+            it('should NOT mark CC 4.0 licenses as legacy (available in dropdown)', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 4.0'].legacy).toBeUndefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 4.0'].legacy,
+                ).toBeUndefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 4.0'].legacy,
+                ).toBeUndefined();
+            });
+
+            it('should NOT mark public domain, propietary, and not appropriate as legacy', () => {
+                expect(LICENSE_REGISTRY['public domain'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['propietary license'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['not appropriate'].legacy).toBeUndefined();
+            });
+
+            it('should mark intellectual property license as legacy', () => {
+                expect(LICENSE_REGISTRY['intellectual property license'].legacy).toBe(true);
+            });
+
+            it('should mark propietary license and not appropriate with hideInFooter', () => {
+                expect(LICENSE_REGISTRY['propietary license'].hideInFooter).toBe(true);
+                expect(LICENSE_REGISTRY['not appropriate'].hideInFooter).toBe(true);
+            });
+
+            it('should NOT mark other licenses with hideInFooter', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0'].hideInFooter).toBeUndefined();
+                expect(LICENSE_REGISTRY['public domain'].hideInFooter).toBeUndefined();
+                expect(LICENSE_REGISTRY['intellectual property license'].hideInFooter).toBeUndefined();
+            });
+
+            it('should have exactly 19 legacy licenses and 9 non-legacy licenses', () => {
+                const legacyCount = Object.values(LICENSE_REGISTRY).filter(e => e.legacy === true).length;
+                const nonLegacyCount = Object.values(LICENSE_REGISTRY).filter(e => !e.legacy).length;
+                // CC 3.0: 6 licenses
+                // CC 2.5: 6 licenses
+                // GNU/GPL: 1, free software gpl: 1, EUPL: 1, dual: 1, GFDL: 1, other: 1, IP: 1 = 7
+                // Total legacy: 6 + 6 + 7 = 19
+                // Non-legacy: CC 4.0 (6) + public domain (1) + propietary (1) + not appropriate (1) = 9
+                // Total: 19 + 9 = 28
+                expect(legacyCount).toBe(19);
+                expect(nonLegacyCount).toBe(9);
+            });
+        });
+    });
+
     describe('License Functions', () => {
         describe('getLicenseUrl', () => {
-            // Import getLicenseUrl for testing
-            const { getLicenseUrl } = require('./constants');
-
-            it('should return default URL for empty license', () => {
-                expect(getLicenseUrl('')).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
-                expect(getLicenseUrl(null as unknown as string)).toBe(
-                    'https://creativecommons.org/licenses/by-sa/4.0/',
-                );
+            it('should return empty string for empty license (no license specified)', () => {
+                expect(getLicenseUrl('')).toBe('');
+                expect(getLicenseUrl(null as unknown as string)).toBe('');
             });
 
             it('should return correct URL for CC BY-SA license', () => {
@@ -454,6 +644,44 @@ describe('Constants', () => {
                     'https://creativecommons.org/licenses/by-nc-nd/4.0/',
                 );
             });
+
+            // New tests for CC 3.0 and 2.5 licenses
+            it('should return correct URLs for CC 3.0 licenses', () => {
+                expect(getLicenseUrl('creative commons: attribution 3.0')).toBe(
+                    'https://creativecommons.org/licenses/by/3.0/',
+                );
+                expect(getLicenseUrl('creative commons: attribution - share alike 3.0')).toBe(
+                    'https://creativecommons.org/licenses/by-sa/3.0/',
+                );
+                expect(getLicenseUrl('creative commons: attribution - non commercial 3.0')).toBe(
+                    'https://creativecommons.org/licenses/by-nc/3.0/',
+                );
+            });
+
+            it('should return correct URLs for CC 2.5 licenses', () => {
+                expect(getLicenseUrl('creative commons: attribution 2.5')).toBe(
+                    'https://creativecommons.org/licenses/by/2.5/',
+                );
+                expect(getLicenseUrl('creative commons: attribution - share alike 2.5')).toBe(
+                    'https://creativecommons.org/licenses/by-sa/2.5/',
+                );
+            });
+
+            // New tests for licenses without URLs
+            it('should return empty string for licenses without URLs', () => {
+                expect(getLicenseUrl('free software license eupl')).toBe('');
+                expect(getLicenseUrl('free software license gpl')).toBe('');
+                expect(getLicenseUrl('license gfdl')).toBe('');
+                expect(getLicenseUrl('intellectual property license')).toBe('');
+                expect(getLicenseUrl('not appropriate')).toBe('');
+                expect(getLicenseUrl('propietary license')).toBe('');
+            });
+
+            it('should return GPL URL for gnu/gpl but empty for other GPL variants', () => {
+                expect(getLicenseUrl('gnu/gpl')).toBe('https://www.gnu.org/licenses/gpl.html');
+                // 'free software license gpl' has no URL in original eXe
+                expect(getLicenseUrl('free software license gpl')).toBe('');
+            });
         });
 
         describe('formatLicenseText', () => {
@@ -476,9 +704,9 @@ describe('Constants', () => {
                 expect(formatLicenseText('Cc-By-Sa')).toBe('creative commons: attribution - share alike 4.0');
             });
 
-            it('should pass through already full names', () => {
+            it('should pass through already full names (with short codes)', () => {
                 expect(formatLicenseText('creative commons: attribution - share alike 4.0')).toBe(
-                    'creative commons: attribution - share alike 4.0',
+                    'creative commons: attribution - share alike 4.0 (BY-SA)',
                 );
                 expect(formatLicenseText('public domain')).toBe('public domain');
                 expect(formatLicenseText('propietary license')).toBe('propietary license');
@@ -490,36 +718,161 @@ describe('Constants', () => {
                 expect(formatLicenseText('public domain')).toBe('public domain');
             });
 
-            it('should return default for empty input', () => {
-                expect(formatLicenseText('')).toBe('creative commons: attribution - share alike 4.0');
+            it('should return empty string for empty input (no license specified)', () => {
+                expect(formatLicenseText('')).toBe('');
             });
 
             it('should trim whitespace', () => {
                 expect(formatLicenseText('  CC-BY-SA  ')).toBe('creative commons: attribution - share alike 4.0');
             });
+
+            // New tests for CC 3.0 and 2.5 licenses
+            it('should pass through CC 3.0 licenses (with short codes)', () => {
+                expect(formatLicenseText('creative commons: attribution 3.0')).toBe(
+                    'creative commons: attribution 3.0 (BY)',
+                );
+                expect(formatLicenseText('creative commons: attribution - share alike 3.0')).toBe(
+                    'creative commons: attribution - share alike 3.0 (BY-SA)',
+                );
+            });
+
+            it('should pass through CC 2.5 licenses (with short codes)', () => {
+                expect(formatLicenseText('creative commons: attribution 2.5')).toBe(
+                    'creative commons: attribution 2.5 (BY)',
+                );
+                expect(formatLicenseText('creative commons: attribution - share alike 2.5')).toBe(
+                    'creative commons: attribution - share alike 2.5 (BY-SA)',
+                );
+            });
+
+            // New tests for GPL, EUPL, GFDL, and other licenses
+            it('should format GPL licenses', () => {
+                expect(formatLicenseText('gnu/gpl')).toBe('gnu/gpl');
+                expect(formatLicenseText('free software license gpl')).toBe('free software license GPL');
+            });
+
+            it('should format EUPL license', () => {
+                expect(formatLicenseText('free software license eupl')).toBe('free software license EUPL');
+            });
+
+            it('should format dual GPL/EUPL license', () => {
+                expect(formatLicenseText('dual free content license gpl and eupl')).toBe(
+                    'dual free content license GPL and EUPL',
+                );
+            });
+
+            it('should format GFDL license', () => {
+                expect(formatLicenseText('license gfdl')).toBe('license GFDL');
+            });
+
+            it('should format other license types', () => {
+                expect(formatLicenseText('intellectual property license')).toBe('intellectual property license');
+                expect(formatLicenseText('not appropriate')).toBe('not appropriate');
+                expect(formatLicenseText('other free software licenses')).toBe('other free software licenses');
+            });
+
+            it('should fallback to keyword matching for partial matches', () => {
+                expect(formatLicenseText('some eupl license')).toBe('free software license EUPL');
+                expect(formatLicenseText('gfdl documentation')).toBe('license GFDL');
+                expect(formatLicenseText('gpl open source')).toBe('gnu/gpl');
+            });
         });
 
         describe('getLicenseClass', () => {
-            it('should return correct CSS classes for licenses', () => {
-                expect(getLicenseClass('CC-BY-SA')).toBe('cc cc-by-sa');
-                expect(getLicenseClass('CC-BY')).toBe('cc');
-                expect(getLicenseClass('CC-BY-NC')).toBe('cc cc-by-nc');
-                expect(getLicenseClass('CC-BY-ND')).toBe('cc cc-by-nd');
-                expect(getLicenseClass('CC-BY-NC-SA')).toBe('cc cc-by-nc-sa');
-                expect(getLicenseClass('CC-BY-NC-ND')).toBe('cc cc-by-nc-nd');
+            // getLicenseClass looks up cssClass from LICENSE_REGISTRY by license name
+
+            it('should return correct CSS class for CC 4.0 licenses', () => {
+                expect(getLicenseClass('creative commons: attribution 4.0')).toBe('cc');
+                expect(getLicenseClass('creative commons: attribution - share alike 4.0')).toBe('cc cc-by-sa');
+                expect(getLicenseClass('creative commons: attribution - non commercial 4.0')).toBe('cc cc-by-nc');
+                expect(getLicenseClass('creative commons: attribution - non derived work 4.0')).toBe('cc cc-by-nd');
+                expect(getLicenseClass('creative commons: attribution - non commercial - share alike 4.0')).toBe(
+                    'cc cc-by-nc-sa',
+                );
+                expect(getLicenseClass('creative commons: attribution - non derived work - non commercial 4.0')).toBe(
+                    'cc cc-by-nc-nd',
+                );
             });
 
-            it('should return correct class for public domain', () => {
+            it('should return correct CSS class for CC 3.0 licenses', () => {
+                expect(getLicenseClass('creative commons: attribution 3.0')).toBe('cc');
+                expect(getLicenseClass('creative commons: attribution - share alike 3.0')).toBe('cc cc-by-sa');
+                expect(getLicenseClass('creative commons: attribution - non commercial 3.0')).toBe('cc cc-by-nc');
+            });
+
+            it('should return correct CSS class for CC 2.5 licenses', () => {
+                expect(getLicenseClass('creative commons: attribution 2.5')).toBe('cc');
+                expect(getLicenseClass('creative commons: attribution - share alike 2.5')).toBe('cc cc-by-sa');
+            });
+
+            it('should return cc cc-0 for public domain', () => {
                 expect(getLicenseClass('public domain')).toBe('cc cc-0');
-                expect(getLicenseClass('CC0')).toBe('cc cc-0');
             });
 
-            it('should return correct class for proprietary', () => {
-                expect(getLicenseClass('propietary license')).toBe('propietary');
+            it('should return empty class for propietary license (shows text without icon)', () => {
+                expect(getLicenseClass('propietary license')).toBe('');
             });
 
-            it('should return default for empty input', () => {
-                expect(getLicenseClass('')).toBe('cc cc-by-sa');
+            it('should handle case insensitivity', () => {
+                expect(getLicenseClass('CREATIVE COMMONS: ATTRIBUTION 4.0')).toBe('cc');
+                expect(getLicenseClass('Public Domain')).toBe('cc cc-0');
+            });
+
+            it('should return empty string for empty input', () => {
+                expect(getLicenseClass('')).toBe('');
+            });
+
+            it('should return empty string for licenses without icons', () => {
+                expect(getLicenseClass('gnu/gpl')).toBe('');
+                expect(getLicenseClass('free software license eupl')).toBe('');
+                expect(getLicenseClass('license gfdl')).toBe('');
+                expect(getLicenseClass('intellectual property license')).toBe('');
+                expect(getLicenseClass('not appropriate')).toBe('');
+                expect(getLicenseClass('other free software licenses')).toBe('');
+            });
+
+            it('should return empty for unknown licenses', () => {
+                expect(getLicenseClass('unknown license')).toBe('');
+                expect(getLicenseClass('some random text')).toBe('');
+            });
+        });
+
+        describe('shouldShowLicenseFooter', () => {
+            it('should return false for empty license', () => {
+                expect(shouldShowLicenseFooter('')).toBe(false);
+                expect(shouldShowLicenseFooter(null as unknown as string)).toBe(false);
+                expect(shouldShowLicenseFooter(undefined as unknown as string)).toBe(false);
+            });
+
+            it('should return false for propietary license', () => {
+                expect(shouldShowLicenseFooter('propietary license')).toBe(false);
+                expect(shouldShowLicenseFooter('Propietary License')).toBe(false);
+                expect(shouldShowLicenseFooter('PROPIETARY LICENSE')).toBe(false);
+            });
+
+            it('should return false for not appropriate', () => {
+                expect(shouldShowLicenseFooter('not appropriate')).toBe(false);
+                expect(shouldShowLicenseFooter('Not Appropriate')).toBe(false);
+                expect(shouldShowLicenseFooter('NOT APPROPRIATE')).toBe(false);
+            });
+
+            it('should return true for CC licenses', () => {
+                expect(shouldShowLicenseFooter('creative commons: attribution 4.0')).toBe(true);
+                expect(shouldShowLicenseFooter('creative commons: attribution - share alike 4.0')).toBe(true);
+            });
+
+            it('should return true for public domain', () => {
+                expect(shouldShowLicenseFooter('public domain')).toBe(true);
+            });
+
+            it('should return true for legacy licenses (they still display)', () => {
+                expect(shouldShowLicenseFooter('creative commons: attribution 3.0')).toBe(true);
+                expect(shouldShowLicenseFooter('gnu/gpl')).toBe(true);
+                expect(shouldShowLicenseFooter('intellectual property license')).toBe(true);
+            });
+
+            it('should return true for unknown licenses', () => {
+                expect(shouldShowLicenseFooter('some random license')).toBe(true);
             });
         });
     });

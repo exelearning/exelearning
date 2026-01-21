@@ -626,6 +626,7 @@ class LegacyXmlParser {
       author: '',
       description: '',
       language: '', // Language code (e.g., 'es', 'en')
+      license: '', // License (empty for legacy files with no/unknown license)
       footer: '',
       extraHeadContent: '',
       // Export options (defaults) - use pp_ prefix to match form property names
@@ -685,7 +686,15 @@ class LegacyXmlParser {
     const addAccessibilityToolbar = this.findDictValue(dict, '_addAccessibilityToolbar');
     if (addAccessibilityToolbar === true) meta.pp_addAccessibilityToolbar = true;
 
-    Logger.log(`[LegacyXmlParser] Metadata: title="${meta.title}"`);
+    // Extract license - legacy format uses 'license' key with values like "None" or license names
+    // "None" in legacy format means "no license selected" - treat as empty string
+    // If not found, meta.license remains '' (the default initialized above)
+    const license = this.findDictValue(dict, 'license');
+    if (license !== null && license !== undefined) {
+      meta.license = (license === 'None') ? '' : license;
+    }
+
+    Logger.log(`[LegacyXmlParser] Metadata: title="${meta.title}", license="${meta.license}"`);
     return meta;
   }
 
@@ -1502,6 +1511,7 @@ class LegacyXmlParser {
 
       // For JsIdevice, extract the actual type from _iDeviceDir (modern iDevice)
       let ideviceType;
+      let rawIdeviceDir = ''; // Store raw directory for handler matching (e.g., 'selecciona-activity')
       if (className === 'exe.engine.jsidevice.JsIdevice' && dict) {
         const iDeviceDir = this.findDictStringValue(dict, '_iDeviceDir');
         if (iDeviceDir) {
@@ -1509,6 +1519,9 @@ class LegacyXmlParser {
           // e.g., "C:\...\text" or "/path/to/text" -> "text"
           const parts = iDeviceDir.replace(/\\/g, '/').split('/');
           let extractedType = parts[parts.length - 1] || iDeviceDir;
+
+          // Store raw directory for handler matching (used by GameIdeviceHandler to detect game type)
+          rawIdeviceDir = extractedType;
 
           // Map legacy JsIdevice type names to modern iDevice types
           // Legacy ELP files may use different naming conventions
@@ -1682,7 +1695,9 @@ class LegacyXmlParser {
         // LEGACY IDEVICE PROPERTY EXTRACTION
         // Use handler registry if available, otherwise fall back to inline logic
         if (typeof LegacyHandlerRegistry !== 'undefined') {
-          const handler = LegacyHandlerRegistry.getHandler(className, ideviceType);
+          // Pass rawIdeviceDir (e.g., 'selecciona-activity') instead of mapped ideviceType
+          // This allows GameIdeviceHandler to match on legacy game type names
+          const handler = LegacyHandlerRegistry.getHandler(className, rawIdeviceDir || ideviceType);
           // Pass idevice.id and language context for handlers that need it
           const handlerContext = { language: this.projectLanguage };
           const handlerProps = handler.extractProperties(dict, idevice.id, handlerContext);
