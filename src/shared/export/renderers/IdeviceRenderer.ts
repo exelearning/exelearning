@@ -115,12 +115,7 @@ export class IdeviceRenderer {
                     // For text idevices, use object with only ideviceId; for others, transform URLs in properties
                     const transformedProps = isTextType
                         ? { ideviceId }
-                        : this.transformPropertiesUrls(
-                              jsonProps,
-                              basePath,
-                              isPreviewModeForUrls,
-                              assetExportPathMap,
-                          );
+                        : this.transformPropertiesUrls(jsonProps, basePath, isPreviewModeForUrls, assetExportPathMap);
                     const jsonData = JSON.stringify(transformedProps);
                     dataAttrs += ` data-idevice-json-data="${this.escapeAttr(jsonData)}"`;
                 }

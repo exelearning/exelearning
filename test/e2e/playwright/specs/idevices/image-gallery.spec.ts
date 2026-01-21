@@ -919,6 +919,314 @@ test.describe('Image Gallery iDevice', () => {
             }
             expect(blobErrors).toHaveLength(0);
         });
+
+        test('should persist modified images correctly after multiple page reloads', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            const workarea = new WorkareaPage(page);
+
+            // Capture console logs and errors
+            const consoleErrors: string[] = [];
+            const consoleLogs: string[] = [];
+            page.on('console', msg => {
+                const text = msg.text();
+                if (msg.type() === 'error') {
+                    consoleErrors.push(text);
+                }
+                // Capture Image Gallery related logs
+                if (text.includes('[Image Gallery')) {
+                    consoleLogs.push(`[${msg.type()}] ${text}`);
+                    console.log(`[Browser] ${text}`);
+                }
+            });
+
+            // Helper function to wait for app initialization and select page
+            async function waitForAppAndSelectPage(): Promise<void> {
+                await page.waitForFunction(
+                    () => {
+                        const app = (window as any).eXeLearning?.app;
+                        return app?.project?._yjsBridge !== undefined;
+                    },
+                    { timeout: 30000 },
+                );
+                await waitForLoadingScreenHidden(page);
+
+                // Wait for the tree to be populated
+                await page.waitForSelector('[role="tree"]', { timeout: 15000 });
+
+                // Navigate to the page containing the image gallery
+                const pageNodeSelectors = [
+                    '[role="treeitem"] button:has-text("New page")',
+                    '[role="treeitem"] button:has-text("Nueva página")',
+                    '.nav-element-text:has-text("New page")',
+                    '.nav-element-text:has-text("Nueva página")',
+                ];
+
+                for (const selector of pageNodeSelectors) {
+                    const element = page.locator(selector).first();
+                    if ((await element.count()) > 0) {
+                        try {
+                            await element.click({ force: true, timeout: 5000 });
+                            break;
+                        } catch {
+                            // Try next selector
+                        }
+                    }
+                }
+
+                // Wait for the image gallery iDevice to be visible in the content area
+                await page.waitForSelector('#node-content .idevice_node.image-gallery', { timeout: 15000 });
+
+                // Wait for the gallery to render in view mode (not edition mode)
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content .idevice_node.image-gallery');
+                        if (!idevice) return false;
+                        // Wait for view mode (either no mode attribute or mode !== 'edition')
+                        const mode = idevice.getAttribute('mode');
+                        if (mode === 'edition') return false;
+                        // Wait for the gallery content to be rendered
+                        const gallery = idevice.querySelector('.imageGallery-IDevice');
+                        return !!gallery;
+                    },
+                    { timeout: 15000 },
+                );
+
+                // Wait for AssetManager to resolve asset URLs to blob URLs
+                // Increase wait time to ensure all assets are fully resolved
+                await page.waitForTimeout(3000);
+            }
+
+            // Helper function to verify all images load correctly
+            async function verifyImagesLoadCorrectly(expectedCount: number): Promise<void> {
+                const viewModeGallery = page.locator('#node-content .idevice_node.image-gallery .imageGallery-IDevice');
+                await expect(viewModeGallery).toBeVisible({ timeout: 10000 });
+
+                const galleryImages = viewModeGallery.locator('img');
+                await expect(galleryImages).toHaveCount(expectedCount, { timeout: 10000 });
+
+                // Verify each image loads correctly (naturalWidth > 0)
+                for (let i = 0; i < expectedCount; i++) {
+                    const img = galleryImages.nth(i);
+                    await expect(img).toBeVisible({ timeout: 10000 });
+
+                    // Add debugging: check attributes to catch issues early
+                    const debugInfo = await img.evaluate((el: HTMLImageElement) => ({
+                        src: el.getAttribute('src'),
+                        origin: el.getAttribute('origin'),
+                        naturalWidth: el.naturalWidth,
+                        complete: el.complete,
+                    }));
+                    console.log(`Image ${i + 1} attributes:`, debugInfo);
+
+                    // In view mode, images use asset:// URLs in src which get resolved by the asset resolver
+
+                    // Wait for image to load successfully (naturalWidth > 0)
+                    // This polls until the image is loaded, not just complete
+                    const result = await page
+                        .waitForFunction(
+                            (idx: number) => {
+                                const images = document.querySelectorAll(
+                                    '#node-content .idevice_node.image-gallery .imageGallery-IDevice img',
+                                );
+                                const img = images[idx] as HTMLImageElement;
+                                if (!img) return null;
+                                // Only return when image is actually loaded with content
+                                if (img.complete && img.naturalWidth > 0) {
+                                    return {
+                                        loaded: true,
+                                        naturalWidth: img.naturalWidth,
+                                        src: img.getAttribute('src')?.substring(0, 100),
+                                    };
+                                }
+                                // If image is complete but has no width, it failed to load
+                                // Keep polling - AssetManager may still be resolving the URL
+                                return null;
+                            },
+                            i,
+                            { timeout: 30000 },
+                        )
+                        .then(handle => handle.jsonValue())
+                        .catch(async () => {
+                            // On timeout, get current state for debugging
+                            const debugState = await page.evaluate((idx: number) => {
+                                const images = document.querySelectorAll(
+                                    '#node-content .idevice_node.image-gallery .imageGallery-IDevice img',
+                                );
+                                const img = images[idx] as HTMLImageElement;
+                                if (!img) return { error: 'Image element not found' };
+                                return {
+                                    loaded: false,
+                                    naturalWidth: img.naturalWidth,
+                                    src: img.getAttribute('src')?.substring(0, 100),
+                                    origin: img.getAttribute('origin')?.substring(0, 100),
+                                    complete: img.complete,
+                                };
+                            }, i);
+                            return debugState;
+                        });
+
+                    console.log(`Image ${i + 1}:`, result);
+                    expect(result?.loaded).toBe(true);
+                    expect(result?.naturalWidth).toBeGreaterThan(0);
+                }
+            }
+
+            // Helper function to modify an image at a specific index
+            async function modifyImageAtIndex(index: number, newImagePath: string): Promise<void> {
+                // Enter edit mode
+                const galleryIdevice = page.locator('#node-content .idevice_node.image-gallery').first();
+                const editBtn = galleryIdevice.locator('.btn-edit-idevice, [data-action="edit"]').first();
+                if ((await editBtn.count()) > 0) {
+                    await editBtn.click();
+                }
+
+                // Wait for edit mode
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                        return idevice && idevice.getAttribute('mode') === 'edition';
+                    },
+                    { timeout: 15000 },
+                );
+
+                // Wait for MutationObserver to process images and set data-asset-url attributes
+                // This ensures all asset URLs are properly resolved before any modifications
+                await page.waitForTimeout(1000);
+
+                // Click modify button on the specified image
+                const imageContainers = page.locator('.imgSelectContainer');
+                const targetContainer = imageContainers.nth(index);
+                const modifyBtn = targetContainer.locator('button.modify');
+                await modifyBtn.click();
+
+                // Wait for File Manager modal to open
+                await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', {
+                    timeout: 10000,
+                });
+
+                // Upload and select the new image
+                const fileInput = page.locator('#modalFileManager input[type="file"]').first();
+                await fileInput.setInputFiles(newImagePath);
+
+                // Wait for upload to complete
+                await page.waitForSelector('#modalFileManager .media-library-item:not(.media-library-folder)', {
+                    timeout: 15000,
+                });
+                await page.waitForTimeout(500);
+
+                // Select the newly uploaded item
+                const newItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').last();
+                await newItem.click();
+                await page.waitForTimeout(300);
+
+                // Click insert button
+                await page.click('#modalFileManager .media-library-insert-btn');
+                await page.waitForTimeout(500);
+
+                // Save the iDevice
+                const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+                await block.locator('.btn-save-idevice').click();
+
+                // Wait for edition mode to end
+                await page.waitForFunction(
+                    () => {
+                        const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                        return idevice && idevice.getAttribute('mode') !== 'edition';
+                    },
+                    { timeout: 15000 },
+                );
+
+                // Save the project
+                await workarea.save();
+                await page.waitForTimeout(2000);
+            }
+
+            // ============ STEP 1: Create project and add two images ============
+            const projectUuid = await createProject(page, 'Image Gallery Multi-Modify Test');
+            await page.goto(`/workarea?project=${projectUuid}`);
+            await page.waitForLoadState('networkidle');
+
+            await page.waitForFunction(
+                () => {
+                    const app = (window as any).eXeLearning?.app;
+                    return app?.project?._yjsBridge !== undefined;
+                },
+                { timeout: 30000 },
+            );
+            await waitForLoadingScreenHidden(page);
+
+            // Add image-gallery iDevice
+            await addImageGalleryFromPanel(page);
+
+            // Upload two images
+            await uploadImagesToGallery(page, ['test/fixtures/sample-2.jpg', 'test/fixtures/sample-3.jpg']);
+
+            // Verify two image containers exist
+            const imageContainers = page.locator('.imgSelectContainer');
+            await expect(imageContainers).toHaveCount(2, { timeout: 10000 });
+
+            // Save the iDevice
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            await block.locator('.btn-save-idevice').click();
+
+            // Wait for edition mode to end
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Save project
+            await workarea.save();
+            await page.waitForTimeout(2000);
+            console.log('Step 1 complete: Two images added and saved');
+
+            // ============ STEP 2: Reload and verify both images display ============
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+            console.log('Step 2 complete: Both images display correctly after first reload');
+
+            // ============ STEP 3: Modify first image ============
+            // We'll use sample-3.jpg to replace the first image
+            await modifyImageAtIndex(0, 'test/fixtures/sample-3.jpg');
+            console.log('Step 3 complete: First image modified');
+
+            // ============ STEP 4: Reload and verify both images still display ============
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+            console.log('Step 4 complete: Both images display correctly after modifying first image');
+
+            // ============ STEP 5: Modify second image ============
+            await modifyImageAtIndex(1, 'test/fixtures/sample-2.jpg');
+            console.log('Step 5 complete: Second image modified');
+
+            // ============ STEP 6: Final reload and verification ============
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+            await waitForAppAndSelectPage();
+
+            await verifyImagesLoadCorrectly(2);
+
+            // Verify NO ERR_FILE_NOT_FOUND errors for blob URLs
+            const blobErrors = consoleErrors.filter(e => e.includes('ERR_FILE_NOT_FOUND') && e.includes('blob:'));
+            if (blobErrors.length > 0) {
+                console.log('Found blob URL errors:', blobErrors);
+            }
+            expect(blobErrors).toHaveLength(0);
+
+            console.log('Step 6 complete: Both images display correctly after final reload, no console errors');
+        });
     });
 
     test.describe('Folder Path Support', () => {

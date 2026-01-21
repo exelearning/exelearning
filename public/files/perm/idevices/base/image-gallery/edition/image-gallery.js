@@ -141,7 +141,37 @@ var $exeDevice = {
                     }
                 });
                 $exeDevice.attributionData[`img_${incrementalId}`] = imageData;
-                this.addImageHTML(incrementalId, value.img, value.thumbnail);
+
+                // FIX: Handle legacy blob URLs from buggy saves
+                // Blob URLs are ephemeral and won't work after reload
+                let imgUrl = value.img;
+                let thumbnailUrl = value.thumbnail;
+
+                // Try to recover asset:// URLs from blob:// URLs using AssetManager
+                // This handles cases where the iDevice system passes resolved blob URLs
+                // instead of the persisted asset URLs
+                const assetManager = eXeLearning?.app?.project?._yjsBridge?.assetManager;
+
+                if (imgUrl && imgUrl.startsWith('blob:')) {
+                    // Try to recover the asset URL from the blob URL
+                    const recoveredUrl = assetManager?.getAssetUrlFromBlobUrl?.(imgUrl);
+                    if (recoveredUrl) {
+                        imgUrl = recoveredUrl;
+                    } else {
+                        console.error('[Image Gallery] Cannot recover asset URL from blob:', imgUrl);
+                        return; // Skip this corrupted entry
+                    }
+                }
+                if (thumbnailUrl && thumbnailUrl.startsWith('blob:')) {
+                    const recoveredUrl = assetManager?.getAssetUrlFromBlobUrl?.(thumbnailUrl);
+                    if (recoveredUrl) {
+                        thumbnailUrl = recoveredUrl;
+                    } else {
+                        thumbnailUrl = imgUrl; // Use full-size image as fallback
+                    }
+                }
+
+                this.addImageHTML(incrementalId, imgUrl, thumbnailUrl);
                 incrementalId++;
             }
         });
@@ -165,15 +195,17 @@ var $exeDevice = {
         });
 
         this.dataIds.forEach((element) => {
-            let thumbnailURL = this.ideviceBody
-                .querySelector(`#${element}`)
-                .getAttribute('src');
-            let imageURL = this.ideviceBody
-                .querySelector(`#${element}`)
-                .getAttribute('origin');
+            const imgElement = this.ideviceBody.querySelector(`#${element}`);
+
+            // Use data-asset-* attributes directly to ensure we get asset:// URLs
+            // The MutationObserver doesn't update these when editing existing images,
+            // so we set them explicitly in addImageFromAsset() and addImageHTML()
+            let thumbnailURL = imgElement.getAttribute('data-asset-url')
+                || imgElement.getAttribute('src');
+            let imageURL = imgElement.getAttribute('data-asset-origin')
+                || imgElement.getAttribute('origin');
 
             // FIX: Blob URLs are ephemeral and won't work after page reload.
-            // If thumbnail is a blob URL, use the persistent asset URL instead.
             if (thumbnailURL && thumbnailURL.startsWith('blob:')) {
                 thumbnailURL = imageURL;
             }
@@ -307,10 +339,11 @@ var $exeDevice = {
             // Editing existing image
             let img = this.ideviceBody.querySelector(`#img_${this.editionId}`);
             img.setAttribute('origin', assetUrl);
-            // Use blobUrl for display (browsers can render blob: URLs), keep assetUrl in 'origin' for persistence
+            img.setAttribute('data-asset-origin', assetUrl);
             img.setAttribute('src', blobUrl || assetUrl);
+            img.setAttribute('data-asset-url', assetUrl);
         } else {
-            // Adding new image - use blobUrl for thumbnail display
+            // Adding new image - blobUrl for display, assetUrl for persistence in 'origin'
             this.addImageHTML(this.idImage, assetUrl, blobUrl || assetUrl);
             // Add sortable behaviour to the new image
             let images = this.ideviceBody.querySelectorAll('.imgSelectContainer');
@@ -389,7 +422,9 @@ var $exeDevice = {
                     `#img_${this.editionId}`
                 );
                 img.setAttribute('origin', originPath);
+                img.setAttribute('data-asset-origin', originPath);
                 img.setAttribute('src', thumbnailPath);
+                img.setAttribute('data-asset-url', thumbnailPath);
             } else {
                 this.addImageHTML(this.idImage, originPath, thumbnailPath);
                 this.idImage++;
@@ -420,13 +455,17 @@ var $exeDevice = {
      * To generate the HTML container of image
      *
      * @param {*} id
-     * @param {*} thumbnailURL
+     * @param {*} originURL - The asset:// URL for persistence
+     * @param {*} displayURL - The blob:// or asset:// URL for immediate display
      */
-    addImageHTML: function (id, originURL, thumbnailURL) {
+    addImageHTML: function (id, originURL, displayURL) {
+        // data-asset-* attributes ensure save() gets asset URLs via the getAttribute interceptor
+        // even if the src/origin have been resolved to blob:// URLs
+        const srcUrl = displayURL || originURL;
         let html = `
       <div class="imgSelect">
         <div class="imageElement">
-          <img height=128 width=128 src="${thumbnailURL}" id="img_${id}" class="image" origin="${originURL}" draggable="false">
+          <img height=128 width=128 src="${srcUrl}" id="img_${id}" class="image" origin="${originURL}" data-asset-origin="${originURL}" data-asset-url="${originURL}" draggable="false">
         </div>
       </div>
       <div class="imgButtons">

@@ -3941,6 +3941,25 @@ class AssetManager {
   }
 
   /**
+   * Get asset:// URL from a blob:// URL
+   * Uses the reverseBlobCache to find the assetId, then constructs asset:// URL
+   *
+   * @param {string} blobUrl - Blob URL to look up
+   * @returns {string|null} Asset URL (asset://assetId) or null if not found
+   */
+  getAssetUrlFromBlobUrl(blobUrl) {
+    if (!blobUrl || !blobUrl.startsWith('blob:')) {
+      return null;
+    }
+    const assetId = this.reverseBlobCache.get(blobUrl);
+    if (assetId) {
+      Logger.log(`[AssetManager] Recovered asset URL from blob: ${blobUrl.substring(0, 50)}... -> asset://${assetId}`);
+      return `asset://${assetId}`;
+    }
+    return null;
+  }
+
+  /**
    * Cleanup blob URLs and close database
    * MUST be called when done
    */
