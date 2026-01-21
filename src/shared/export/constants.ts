@@ -399,6 +399,8 @@ export interface LicenseEntry {
     url: string;
     /** CSS class for license icon (only CC and propietary have icons in themes) */
     cssClass: string;
+    /** If true, license is preserved but not selectable in dropdown (legacy from older eXe versions) */
+    legacy?: boolean;
 }
 
 /**
@@ -447,68 +449,80 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         cssClass: 'cc cc-by-nc-nd',
     },
 
-    // === Creative Commons 3.0 (Legacy) ===
+    // === Creative Commons 3.0 (Legacy - not selectable in dropdown) ===
     'creative commons: attribution 3.0': {
         displayName: 'creative commons: attribution 3.0 (BY)',
         url: 'https://creativecommons.org/licenses/by/3.0/',
         cssClass: 'cc',
+        legacy: true,
     },
     'creative commons: attribution - share alike 3.0': {
         displayName: 'creative commons: attribution - share alike 3.0 (BY-SA)',
         url: 'https://creativecommons.org/licenses/by-sa/3.0/',
         cssClass: 'cc cc-by-sa',
+        legacy: true,
     },
     'creative commons: attribution - non derived work 3.0': {
         displayName: 'creative commons: attribution - non derived work 3.0 (BY-ND)',
         url: 'https://creativecommons.org/licenses/by-nd/3.0/',
         cssClass: 'cc cc-by-nd',
+        legacy: true,
     },
     'creative commons: attribution - non commercial 3.0': {
         displayName: 'creative commons: attribution - non commercial 3.0 (BY-NC)',
         url: 'https://creativecommons.org/licenses/by-nc/3.0/',
         cssClass: 'cc cc-by-nc',
+        legacy: true,
     },
     'creative commons: attribution - non commercial - share alike 3.0': {
         displayName: 'creative commons: attribution - non commercial - share alike 3.0 (BY-NC-SA)',
         url: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
         cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
     },
     'creative commons: attribution - non derived work - non commercial 3.0': {
         displayName: 'creative commons: attribution - non derived work - non commercial 3.0 (BY-NC-ND)',
         url: 'https://creativecommons.org/licenses/by-nc-nd/3.0/',
         cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
     },
 
-    // === Creative Commons 2.5 (Legacy) ===
+    // === Creative Commons 2.5 (Legacy - not selectable in dropdown) ===
     'creative commons: attribution 2.5': {
         displayName: 'creative commons: attribution 2.5 (BY)',
         url: 'https://creativecommons.org/licenses/by/2.5/',
         cssClass: 'cc',
+        legacy: true,
     },
     'creative commons: attribution - share alike 2.5': {
         displayName: 'creative commons: attribution - share alike 2.5 (BY-SA)',
         url: 'https://creativecommons.org/licenses/by-sa/2.5/',
         cssClass: 'cc cc-by-sa',
+        legacy: true,
     },
     'creative commons: attribution - non derived work 2.5': {
         displayName: 'creative commons: attribution - non derived work 2.5 (BY-ND)',
         url: 'https://creativecommons.org/licenses/by-nd/2.5/',
         cssClass: 'cc cc-by-nd',
+        legacy: true,
     },
     'creative commons: attribution - non commercial 2.5': {
         displayName: 'creative commons: attribution - non commercial 2.5 (BY-NC)',
         url: 'https://creativecommons.org/licenses/by-nc/2.5/',
         cssClass: 'cc cc-by-nc',
+        legacy: true,
     },
     'creative commons: attribution - non commercial - share alike 2.5': {
         displayName: 'creative commons: attribution - non commercial - share alike 2.5 (BY-NC-SA)',
         url: 'https://creativecommons.org/licenses/by-nc-sa/2.5/',
         cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
     },
     'creative commons: attribution - non derived work - non commercial 2.5': {
         displayName: 'creative commons: attribution - non derived work - non commercial 2.5 (BY-NC-ND)',
         url: 'https://creativecommons.org/licenses/by-nc-nd/2.5/',
         cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
     },
 
     // === Public Domain ===
@@ -518,44 +532,50 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         cssClass: 'cc cc-0',
     },
 
-    // === GNU/GPL Licenses (no icon in themes) ===
+    // === GNU/GPL Licenses (Legacy - not selectable in dropdown, no icon in themes) ===
     'gnu/gpl': {
         displayName: 'gnu/gpl',
         url: 'https://www.gnu.org/licenses/gpl.html',
         cssClass: '',
+        legacy: true,
     },
     'free software license gpl': {
         displayName: 'free software license GPL',
         url: '',
         cssClass: '',
+        legacy: true,
     },
 
-    // === EUPL License (no icon in themes) ===
+    // === EUPL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'free software license eupl': {
         displayName: 'free software license EUPL',
         url: '',
         cssClass: '',
+        legacy: true,
     },
 
-    // === Dual License GPL + EUPL (no icon in themes) ===
+    // === Dual License GPL + EUPL (Legacy - not selectable in dropdown, no icon in themes) ===
     'dual free content license gpl and eupl': {
         displayName: 'dual free content license GPL and EUPL',
         url: '',
         cssClass: '',
+        legacy: true,
     },
 
-    // === GFDL License (no icon in themes) ===
+    // === GFDL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'license gfdl': {
         displayName: 'license GFDL',
         url: '',
         cssClass: '',
+        legacy: true,
     },
 
-    // === Other Licenses ===
+    // === Other Licenses (Legacy - not selectable in dropdown) ===
     'other free software licenses': {
         displayName: 'other free software licenses',
         url: '',
         cssClass: '',
+        legacy: true,
     },
     'propietary license': {
         displayName: 'propietary license',

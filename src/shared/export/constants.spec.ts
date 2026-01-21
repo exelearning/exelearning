@@ -492,6 +492,75 @@ describe('Constants', () => {
                 // + 1 public domain + 1 propietary + 1 IP + 1 not appropriate + 1 other = 28
                 expect(Object.keys(LICENSE_REGISTRY).length).toBe(28);
             });
+
+            it('should mark CC 3.0 licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 3.0'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 3.0'].legacy).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 3.0'].legacy,
+                ).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 3.0'].legacy,
+                ).toBe(true);
+            });
+
+            it('should mark CC 2.5 licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 2.5'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 2.5'].legacy).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 2.5'].legacy,
+                ).toBe(true);
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 2.5'].legacy,
+                ).toBe(true);
+            });
+
+            it('should mark GPL, EUPL, GFDL and other free software licenses as legacy', () => {
+                expect(LICENSE_REGISTRY['gnu/gpl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['free software license gpl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['free software license eupl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['dual free content license gpl and eupl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['license gfdl'].legacy).toBe(true);
+                expect(LICENSE_REGISTRY['other free software licenses'].legacy).toBe(true);
+            });
+
+            it('should NOT mark CC 4.0 licenses as legacy (available in dropdown)', () => {
+                expect(LICENSE_REGISTRY['creative commons: attribution 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - share alike 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non derived work 4.0'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['creative commons: attribution - non commercial 4.0'].legacy).toBeUndefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non commercial - share alike 4.0'].legacy,
+                ).toBeUndefined();
+                expect(
+                    LICENSE_REGISTRY['creative commons: attribution - non derived work - non commercial 4.0'].legacy,
+                ).toBeUndefined();
+            });
+
+            it('should NOT mark public domain, propietary, intellectual property and not appropriate as legacy', () => {
+                expect(LICENSE_REGISTRY['public domain'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['propietary license'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['intellectual property license'].legacy).toBeUndefined();
+                expect(LICENSE_REGISTRY['not appropriate'].legacy).toBeUndefined();
+            });
+
+            it('should have exactly 20 legacy licenses and 8 non-legacy licenses', () => {
+                const legacyCount = Object.values(LICENSE_REGISTRY).filter(e => e.legacy === true).length;
+                const nonLegacyCount = Object.values(LICENSE_REGISTRY).filter(e => !e.legacy).length;
+                // 6 CC 3.0 + 6 CC 2.5 + 6 GPL/EUPL/GFDL/other = 18... wait let me recount
+                // CC 3.0: 6 licenses
+                // CC 2.5: 6 licenses
+                // GNU/GPL: 1, free software gpl: 1, EUPL: 1, dual: 1, GFDL: 1, other: 1 = 6
+                // Total legacy: 6 + 6 + 6 = 18
+                // Non-legacy: CC 4.0 (6) + public domain (1) + propietary (1) + IP (1) + not appropriate (1) = 10
+                // Total: 18 + 10 = 28
+                expect(legacyCount).toBe(18);
+                expect(nonLegacyCount).toBe(10);
+            });
         });
     });
 

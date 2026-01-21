@@ -33,11 +33,15 @@ import { getBasePath } from '../utils/basepath.util';
 import { LICENSE_REGISTRY } from '../shared/export/constants';
 
 /**
- * Available licenses for content
+ * Available licenses for content dropdown
  * Derived from LICENSE_REGISTRY - the single source of truth
+ * Legacy licenses (marked with legacy: true) are excluded from the dropdown
+ * but are preserved when already set on a project
  */
 const LICENSES: Record<string, string> = Object.fromEntries(
-    Object.entries(LICENSE_REGISTRY).map(([key, entry]) => [key, `${TRANS_PREFIX}${entry.displayName}`]),
+    Object.entries(LICENSE_REGISTRY)
+        .filter(([, entry]) => !entry.legacy)
+        .map(([key, entry]) => [key, `${TRANS_PREFIX}${entry.displayName}`]),
 );
 
 /**
