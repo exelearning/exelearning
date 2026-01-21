@@ -65,6 +65,10 @@ window.YjsModules = {
 
     // Clean up previous instance if exists
     if (this._bridge) {
+      // Clear asset resolver cache before cleanup (blobs will be revoked)
+      if (window.eXeLearningAssetResolver?.clearCache) {
+        window.eXeLearningAssetResolver.clearCache();
+      }
       await this._bridge.disconnect();
       this._bridge = null;
     }
@@ -116,6 +120,11 @@ window.YjsModules = {
    * Disconnect and clean up all instances
    */
   async cleanup() {
+    // Clear asset resolver cache BEFORE disconnecting (blobs will be revoked)
+    if (window.eXeLearningAssetResolver?.clearCache) {
+      window.eXeLearningAssetResolver.clearCache();
+    }
+
     if (this._treeAdapter) {
       this._treeAdapter.destroy();
       this._treeAdapter = null;
