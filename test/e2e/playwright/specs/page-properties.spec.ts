@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { changeTheme } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Properties
@@ -309,23 +310,110 @@ test.describe('Page Properties', () => {
             { timeout: 15000 },
         );
 
-        // The page-header inside the article should be hidden (display:none) on first page
-        // Multi-page export uses .page-header, not .page-header-spa
-        const activePageHeader = iframe.locator('.page-header');
-        await expect(activePageHeader).toHaveCSS('display', 'none');
+        // The .page-title should be hidden (has sr-av class for accessible hiding)
+        // Multi-page export uses .page-title in .page-header
+        const pageTitle = iframe.locator('.page-title');
+        await expect(pageTitle).toHaveClass(/sr-av/);
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Visible Title Page' });
         await secondPageLink.click();
         await page.waitForTimeout(500);
 
-        // The page-header should be visible on the second page
-        await expect(activePageHeader).not.toHaveCSS('display', 'none');
+        // The page-title should be visible on the second page (no sr-av class)
+        await expect(pageTitle).not.toHaveClass(/sr-av/);
 
         // The title should be visible and contain the correct text
-        // Multi-page export uses .page-title in .page-header
-        const pageTitle = iframe.locator('.page-title');
         await expect(pageTitle).toContainText('Visible Title Page');
+    });
+
+    test('hidePageTitle should work with flux, neo, and nova themes', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'Hide Title Theme Test');
+
+        // Navigate to the project workarea
+        await page.goto(`/workarea?project=${projectUuid}`);
+        await page.waitForLoadState('networkidle');
+
+        // Wait for app to fully initialize including Yjs
+        await page.waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return app?.project?._yjsBridge?.structureBinding !== undefined;
+            },
+            { timeout: 30000 },
+        );
+
+        // Wait for loading screen to hide
+        await page.waitForFunction(
+            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+            { timeout: 30000 },
+        );
+
+        // Set page title and hide it
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const project = (window as any).eXeLearning.app.project;
+            const nav = bridge.documentManager.getNavigation();
+            const firstId = nav.get(0).get('id');
+            project.renamePageViaYjs(firstId, 'My Hidden Title Page');
+            bridge.structureBinding.updatePageProperties(firstId, { hidePageTitle: true });
+        });
+
+        await page.waitForTimeout(500);
+
+        // Test each theme that uses movePageTitle()
+        // Note: 'zen' theme has additional logic, testing core themes first
+        const themesToTest = ['flux', 'nova', 'neo'];
+
+        for (const themeId of themesToTest) {
+            // Change theme
+            await changeTheme(page, themeId);
+
+            // Click on the page in nav tree to ensure we're not on root
+            const pageLink = page.locator('.nav-element-text').filter({ hasText: 'My Hidden Title Page' }).first();
+            await pageLink.click({ force: true });
+            await page.waitForTimeout(500);
+
+            // Focus on main content area before keyboard shortcut
+            await page
+                .locator('#node-content')
+                .click({ force: true })
+                .catch(() => {});
+
+            // Use keyboard shortcut (Ctrl/Cmd+P) to toggle preview - more reliable
+            const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+            await page.keyboard.press(`${modifier}+p`);
+
+            const previewPanel = page.locator('#previewsidenav');
+            await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+            await page.waitForTimeout(2000);
+
+            const iframe = page.frameLocator('#preview-iframe');
+
+            // Wait for preview content
+            await page.waitForFunction(
+                () => {
+                    const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                    return previewIframe?.contentDocument?.querySelector('.exe-content, article, body');
+                },
+                { timeout: 15000 },
+            );
+
+            // Verify .page-title has sr-av class for accessible hiding regardless of where it was moved
+            // Theme JS (flux, neo, nova) moves .page-title from .page-header to .page-content
+            // The sr-av class hides the title accessibly (position:absolute, clip, height:0)
+            const pageTitle = iframe.locator('.page-title').first();
+            await expect(pageTitle).toHaveClass(/sr-av/, {
+                timeout: 5000,
+            });
+
+            // Close preview after each theme test
+            await page.keyboard.press(`${modifier}+p`);
+            await previewPanel.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        }
     });
 
     test('titlePage property should show custom title when editableInPage is true', async ({
