@@ -1578,32 +1578,6 @@ var $exeDevice = {
         };
     },
 
-    /**
-     * Recover asset:// URL from blob:// URL using AssetManager's reverse cache.
-     * Blob URLs are ephemeral and won't survive page reloads.
-     * @param {string} url - The URL to check and potentially recover
-     * @returns {string} - The recovered asset:// URL or the original URL
-     */
-    recoverAssetUrl: function (url) {
-        if (!url || !url.startsWith('blob:')) {
-            return url;
-        }
-        const assetManager =
-            window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        if (assetManager?.getAssetUrlFromBlobUrl) {
-            const recoveredUrl = assetManager.getAssetUrlFromBlobUrl(url);
-            if (recoveredUrl) {
-                return recoveredUrl;
-            }
-        }
-        // If we can't recover, return empty string to avoid persisting broken blob URLs
-        console.warn(
-            '[Map] Cannot recover asset URL from blob:',
-            url.substring(0, 50)
-        );
-        return '';
-    },
-
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
 
@@ -1642,8 +1616,6 @@ var $exeDevice = {
                 typeof dataGame.url == 'undefined'
                     ? $('.mapa-ImageMap', wrapper).eq(0).attr('href')
                     : dataGame.url;
-            // FIX: Recover asset:// URL from blob:// URL
-            dataGame.url = $exeDevice.recoverAssetUrl(dataGame.url);
 
             $exeDevice.setMedias(
                 dataGame.points,
@@ -1783,9 +1755,7 @@ var $exeDevice = {
                 typeof id != 'undefined' &&
                 s.id == id
             ) {
-                let url = type ? $(this).attr('src') : $(this).attr('href');
-                // FIX: Recover asset:// URL from blob:// URL
-                s.url = $exeDevice.recoverAssetUrl(url);
+                s.url = type ? $(this).attr('src') : $(this).attr('href');
                 return;
             }
         });
@@ -1804,9 +1774,7 @@ var $exeDevice = {
                 typeof id != 'undefined' &&
                 p.id == id
             ) {
-                let url = type ? $(this).attr('src') : $(this).attr('href');
-                // FIX: Recover asset:// URL from blob:// URL
-                p.url = $exeDevice.recoverAssetUrl(url);
+                p.url = type ? $(this).attr('src') : $(this).attr('href');
                 return;
             }
         });
@@ -1825,9 +1793,7 @@ var $exeDevice = {
                 typeof id != 'undefined' &&
                 p.id == id
             ) {
-                let audio = type ? $(this).attr('src') : $(this).attr('href');
-                // FIX: Recover asset:// URL from blob:// URL
-                p.audio = $exeDevice.recoverAssetUrl(audio);
+                p.audio = type ? $(this).attr('src') : $(this).attr('href');
                 return;
             }
         });
@@ -1846,11 +1812,9 @@ var $exeDevice = {
                 typeof id != 'undefined' &&
                 p.id == id
             ) {
-                let audio = type
+                p.question_audio = type
                     ? $(this).attr('src')
                     : $(this).attr('href');
-                // FIX: Recover asset:// URL from blob:// URL
-                p.question_audio = $exeDevice.recoverAssetUrl(audio);
                 return;
             }
         });
@@ -1897,9 +1861,7 @@ var $exeDevice = {
                 typeof id != 'undefined' &&
                 p.id == id
             ) {
-                let url = type ? $(this).attr('src') : $(this).attr('href');
-                // FIX: Recover asset:// URL from blob:// URL
-                p.map.url = $exeDevice.recoverAssetUrl(url);
+                p.map.url = type ? $(this).attr('src') : $(this).attr('href');
                 return;
             }
         });
