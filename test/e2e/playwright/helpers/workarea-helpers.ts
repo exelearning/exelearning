@@ -1166,6 +1166,9 @@ export async function exportPage(page: Page, nodeId: string): Promise<Download> 
  * @param page - Playwright page
  */
 export async function addTextIdevice(page: Page): Promise<void> {
+    // Ensure a non-root page is selected first (like addIdevice does)
+    await selectFirstPage(page);
+
     // Expand "Information and presentation" category
     const infoCategory = page
         .locator('.idevice_category')
@@ -1308,8 +1311,10 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     const iconBtn = block.locator('header.box-head button.box-icon').first();
     await iconBtn.click();
 
-    // 2. Wait for icon picker modal
-    await page.waitForSelector('.option-block-icon', { timeout: 10000 });
+    // 2. Wait for icon picker modal to be shown and icons to be loaded
+    await page.locator('.modal.show').waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for icons to be attached (using waitForSelector which waits for DOM attachment by default)
+    await page.waitForSelector('.option-block-icon', { state: 'attached', timeout: 10000 });
 
     // 3. Verify the icon at the requested index exists
     const iconCount = await page.locator('.option-block-icon').count();
@@ -1332,9 +1337,37 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
     await saveBtn.click();
 
-    // 6. Wait for modal to close
-    await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
-    await page.waitForTimeout(500);
+    // 6. Wait for modal to close completely
+    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 });
+    // Small delay to ensure Bootstrap modal transition completes
+    await page.waitForTimeout(300);
+
+    // 7. Wait for icon to be fully rendered in the DOM
+    if (iconIndex === 0) {
+        // Wait for empty icon state (SVG placeholder)
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                return iconBtn?.classList.contains('exe-no-icon') || iconBtn?.querySelector('svg') !== null;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    } else {
+        // Wait for icon image to be loaded
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const img = block.querySelector('header.box-head button.box-icon img') as HTMLImageElement;
+                return img?.complete && img.naturalWidth > 0;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    }
 }
 
 /**

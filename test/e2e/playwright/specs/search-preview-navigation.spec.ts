@@ -1,4 +1,5 @@
 import { test, expect, Page, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { selectPageByIndex } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Search Navigation in Preview
@@ -11,19 +12,15 @@ import { test, expect, Page, waitForLoadingScreenHidden } from '../fixtures/auth
 
 /**
  * Helper to select a non-root page node in the navigation tree
+ * Uses the centralized helper which properly waits for content area
  */
 async function selectPageNode(page: Page, index = 0): Promise<boolean> {
-    const pageNodes = page.locator('.nav-element:not([nav-id="root"]) .nav-element-text');
-    const count = await pageNodes.count();
-
-    if (count > index) {
-        const element = pageNodes.nth(index);
-        await element.waitFor({ state: 'visible', timeout: 5000 });
-        await element.click({ timeout: 5000 });
-        await page.waitForTimeout(500);
+    try {
+        await selectPageByIndex(page, index);
         return true;
+    } catch {
+        return false;
     }
-    return false;
 }
 
 /**
