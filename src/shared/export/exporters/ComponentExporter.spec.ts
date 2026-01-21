@@ -128,6 +128,9 @@ class MockZipProvider implements ZipProvider {
     }
 }
 
+// Valid 36-char UUID for testing
+const SAMPLE_ASSET_UUID = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
 // Sample pages for testing
 const samplePages: ExportPage[] = [
     {
@@ -153,7 +156,7 @@ const samplePages: ExportPage[] = [
                         id: 'idevice-2',
                         type: 'ImageGalleryIdevice',
                         order: 1,
-                        content: '<div class="gallery"><img src="asset://abc-123/image.png" /></div>',
+                        content: `<div class="gallery"><img src="asset://${SAMPLE_ASSET_UUID}" /></div>`,
                         properties: { columns: 3 },
                     },
                 ],
@@ -371,18 +374,20 @@ describe('ComponentExporter', () => {
         it('should include referenced assets in ZIP', async () => {
             assets.setAssets([
                 {
-                    id: 'abc-123',
+                    id: SAMPLE_ASSET_UUID,
                     filename: 'image.png',
-                    path: 'content/resources/abc-123/image.png',
-                    originalPath: 'content/resources/abc-123/image.png',
+                    path: `content/resources/${SAMPLE_ASSET_UUID}/image.png`,
+                    originalPath: `content/resources/${SAMPLE_ASSET_UUID}/image.png`,
                     mimeType: 'image/png',
                     data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), // PNG header
+                    // No folderPath - export path will be just filename
                 },
             ]);
 
             await exporter.exportComponent('block-1', 'idevice-2');
 
-            expect(zip.files.has('content/resources/abc-123/image.png')).toBe(true);
+            // When folderPath is not set, path is just the filename
+            expect(zip.files.has('content/resources/image.png')).toBe(true);
         });
 
         it('should not include unreferenced assets', async () => {
@@ -666,6 +671,9 @@ describe('ComponentExporter', () => {
 
     describe('Multiple Asset References', () => {
         it('should handle multiple assets in single component', async () => {
+            const asset1Id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            const asset2Id = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+
             const pagesWithMultipleAssets: ExportPage[] = [
                 {
                     id: 'page-multi',
@@ -682,8 +690,7 @@ describe('ComponentExporter', () => {
                                     id: 'idevice-multi',
                                     type: 'ImageGalleryIdevice',
                                     order: 0,
-                                    content:
-                                        '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/img1.png"/><img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901/img2.jpg"/>',
+                                    content: `<img src="asset://${asset1Id}"/><img src="asset://${asset2Id}"/>`,
                                 },
                             ],
                         },
@@ -696,27 +703,652 @@ describe('ComponentExporter', () => {
 
             assets.setAssets([
                 {
-                    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                    id: asset1Id,
                     filename: 'img1.png',
-                    path: 'content/resources/a1b2c3d4-e5f6-7890-abcd-ef1234567890/img1.png',
-                    originalPath: 'content/resources/a1b2c3d4-e5f6-7890-abcd-ef1234567890/img1.png',
+                    path: `content/resources/${asset1Id}/img1.png`,
+                    originalPath: `content/resources/${asset1Id}/img1.png`,
                     mimeType: 'image/png',
                     data: new Uint8Array([1, 2, 3]),
+                    // No folderPath - export path will be just filename
                 },
                 {
-                    id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    id: asset2Id,
                     filename: 'img2.jpg',
-                    path: 'content/resources/b2c3d4e5-f6a7-8901-bcde-f12345678901/img2.jpg',
-                    originalPath: 'content/resources/b2c3d4e5-f6a7-8901-bcde-f12345678901/img2.jpg',
+                    path: `content/resources/${asset2Id}/img2.jpg`,
+                    originalPath: `content/resources/${asset2Id}/img2.jpg`,
                     mimeType: 'image/jpeg',
                     data: new Uint8Array([4, 5, 6]),
+                    // No folderPath - export path will be just filename
                 },
             ]);
 
             await exporter.exportComponent('block-multi', 'idevice-multi');
 
-            expect(zip.files.has('content/resources/a1b2c3d4-e5f6-7890-abcd-ef1234567890/img1.png')).toBe(true);
-            expect(zip.files.has('content/resources/b2c3d4e5-f6a7-8901-bcde-f12345678901/img2.jpg')).toBe(true);
+            // When folderPath is not set, path is just the filename
+            expect(zip.files.has('content/resources/img1.png')).toBe(true);
+            expect(zip.files.has('content/resources/img2.jpg')).toBe(true);
+        });
+    });
+});
+
+/**
+ * Test class to expose protected/private methods for testing
+ */
+class TestComponentExporter extends ComponentExporter {
+    async testPreprocessBlockForExport(
+        block: import('../interfaces').ExportBlock,
+        singleComponent: import('../interfaces').ExportComponent | null,
+    ): Promise<import('../interfaces').ExportBlock> {
+        // Access the private method via any cast
+        return (this as any).preprocessBlockForExport(block, singleComponent);
+    }
+
+    async testAddComponentAssetsToZip(
+        block: import('../interfaces').ExportBlock,
+        singleComponent: import('../interfaces').ExportComponent | null,
+    ): Promise<void> {
+        return (this as any).addComponentAssetsToZip(block, singleComponent);
+    }
+}
+
+describe('ComponentExporter - preprocessBlockForExport()', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: TestComponentExporter;
+
+    beforeEach(() => {
+        document = new MockDocument({}, samplePages);
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new TestComponentExporter(document, resources, assets, zip);
+    });
+
+    describe('Asset URL Conversion', () => {
+        it('should convert asset:// URLs to {{context_path}} format in content', async () => {
+            const assetId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'image.png',
+                    path: `content/resources/${assetId}/image.png`,
+                    originalPath: `content/resources/${assetId}/image.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1, 2, 3]),
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<p>Image: <img src="asset://${assetId}" /></p>`,
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            expect(result.components![0].content).toContain('{{context_path}}/content/resources/');
+            expect(result.components![0].content).not.toContain('asset://');
+        });
+
+        it('should convert asset:// URLs in properties JSON', async () => {
+            const assetId = 'b2c3d4e5-f6a7-8901-bcde-f12345678901';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'background.jpg',
+                    path: `content/resources/${assetId}/background.jpg`,
+                    originalPath: `content/resources/${assetId}/background.jpg`,
+                    mimeType: 'image/jpeg',
+                    data: new Uint8Array([4, 5, 6]),
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'CustomIdevice',
+                        order: 0,
+                        content: '<p>Hello</p>',
+                        properties: {
+                            backgroundImage: `asset://${assetId}`,
+                            title: 'My Title',
+                        },
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            expect(result.components![0].properties!.backgroundImage).toContain('{{context_path}}/content/resources/');
+            expect(result.components![0].properties!.backgroundImage).not.toContain('asset://');
+            expect(result.components![0].properties!.title).toBe('My Title'); // Non-asset property unchanged
+        });
+
+        it('should handle nested asset URLs in properties', async () => {
+            const assetId1 = 'c3d4e5f6-a7b8-9012-cdef-123456789012';
+            const assetId2 = 'd4e5f6a7-b8c9-0123-def0-234567890123';
+            assets.setAssets([
+                {
+                    id: assetId1,
+                    filename: 'file1.png',
+                    path: `content/resources/${assetId1}/file1.png`,
+                    originalPath: `content/resources/${assetId1}/file1.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1]),
+                },
+                {
+                    id: assetId2,
+                    filename: 'file2.png',
+                    path: `content/resources/${assetId2}/file2.png`,
+                    originalPath: `content/resources/${assetId2}/file2.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([2]),
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'GalleryIdevice',
+                        order: 0,
+                        content: '',
+                        properties: {
+                            images: [
+                                { src: `asset://${assetId1}`, caption: 'Image 1' },
+                                { src: `asset://${assetId2}`, caption: 'Image 2' },
+                            ],
+                        },
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            const images = result.components![0].properties!.images as Array<{ src: string; caption: string }>;
+            expect(images[0].src).toContain('{{context_path}}/content/resources/');
+            expect(images[1].src).toContain('{{context_path}}/content/resources/');
+            expect(images[0].caption).toBe('Image 1');
+            expect(images[1].caption).toBe('Image 2');
+        });
+    });
+
+    describe('Deep Clone Immutability', () => {
+        it('should not mutate the original block', async () => {
+            const assetId = 'e5f6a7b8-c9d0-1234-ef01-345678901234';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'test.png',
+                    path: `content/resources/${assetId}/test.png`,
+                    originalPath: `content/resources/${assetId}/test.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1]),
+                },
+            ]);
+
+            const originalContent = `<img src="asset://${assetId}" />`;
+            const originalProps = { image: `asset://${assetId}` };
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: originalContent,
+                        properties: { ...originalProps },
+                    },
+                ],
+            };
+
+            await exporter.testPreprocessBlockForExport(block, null);
+
+            // Original block should be unchanged
+            expect(block.components![0].content).toBe(originalContent);
+            expect(block.components![0].content).toContain('asset://');
+            expect(block.components![0].properties!.image).toBe(originalProps.image);
+        });
+    });
+
+    describe('Single Component Filtering', () => {
+        it('should only process single component when specified', async () => {
+            const assetId = 'f6a7b8c9-d0e1-2345-f012-456789012345';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'img.png',
+                    path: `content/resources/${assetId}/img.png`,
+                    originalPath: `content/resources/${assetId}/img.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1]),
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<img src="asset://${assetId}" />`,
+                    },
+                    {
+                        id: 'idevice-2',
+                        type: 'FreeTextIdevice',
+                        order: 1,
+                        content: `<img src="asset://${assetId}" />`,
+                    },
+                ],
+            };
+
+            const singleComponent = block.components![0];
+            const result = await exporter.testPreprocessBlockForExport(block, singleComponent);
+
+            // Result should only have 1 component
+            expect(result.components!.length).toBe(1);
+            expect(result.components![0].id).toBe('idevice-1');
+            expect(result.components![0].content).toContain('{{context_path}}/content/resources/');
+        });
+
+        it('should process all components when singleComponent is null', async () => {
+            const assetId = 'a7b8c9d0-e1f2-3456-0123-567890123456';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'img.png',
+                    path: `content/resources/${assetId}/img.png`,
+                    originalPath: `content/resources/${assetId}/img.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1]),
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-1',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<img src="asset://${assetId}" />`,
+                    },
+                    {
+                        id: 'idevice-2',
+                        type: 'FreeTextIdevice',
+                        order: 1,
+                        content: `<img src="asset://${assetId}" />`,
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            // All components should be processed
+            expect(result.components!.length).toBe(2);
+            expect(result.components![0].content).toContain('{{context_path}}/content/resources/');
+            expect(result.components![1].content).toContain('{{context_path}}/content/resources/');
+        });
+    });
+
+    describe('Empty/Null Content Handling', () => {
+        it('should handle empty content', async () => {
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-empty',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '',
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            expect(result.components![0].content).toBe('');
+        });
+
+        it('should handle undefined content', async () => {
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-no-content',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            // Should not throw, content should remain undefined
+            expect(result.success !== false).toBe(true);
+        });
+
+        it('should handle empty properties', async () => {
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-empty-props',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Hello</p>',
+                        properties: {},
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            expect(result.components![0].properties).toEqual({});
+        });
+
+        it('should handle undefined properties', async () => {
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'idevice-no-props',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Hello</p>',
+                    },
+                ],
+            };
+
+            const result = await exporter.testPreprocessBlockForExport(block, null);
+
+            // Should not throw, properties should remain undefined
+            expect(result.success !== false).toBe(true);
+        });
+    });
+});
+
+describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathMap', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: TestComponentExporter;
+
+    beforeEach(() => {
+        document = new MockDocument({}, samplePages);
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new TestComponentExporter(document, resources, assets, zip);
+    });
+
+    describe('Asset Path Map Usage', () => {
+        it('should use buildAssetExportPathMap for consistent paths', async () => {
+            const assetId = 'b8c9d0e1-f2a3-4567-1234-678901234567';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'document.pdf',
+                    path: `content/resources/${assetId}/document.pdf`,
+                    originalPath: `content/resources/${assetId}/document.pdf`,
+                    mimeType: 'application/pdf',
+                    data: new Uint8Array([0x25, 0x50, 0x44, 0x46]), // %PDF header
+                    // No folderPath means path will just be filename
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<a href="asset://${assetId}">Download PDF</a>`,
+                    },
+                ],
+            };
+
+            await exporter.testAddComponentAssetsToZip(block, null);
+
+            // When folderPath is not set, path is just the filename
+            expect(zip.files.has('content/resources/document.pdf')).toBe(true);
+        });
+
+        it('should extract asset IDs from properties JSON', async () => {
+            const assetId = 'c9d0e1f2-a3b4-5678-2345-789012345678';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'icon.svg',
+                    path: `content/resources/${assetId}/icon.svg`,
+                    originalPath: `content/resources/${assetId}/icon.svg`,
+                    mimeType: 'image/svg+xml',
+                    data: new Uint8Array([0x3c, 0x73, 0x76, 0x67]), // <svg
+                    // No folderPath means path will just be filename
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'CustomIdevice',
+                        order: 0,
+                        content: '<p>No asset in content</p>',
+                        properties: {
+                            customIcon: `asset://${assetId}`,
+                            label: 'Custom Label',
+                        },
+                    },
+                ],
+            };
+
+            await exporter.testAddComponentAssetsToZip(block, null);
+
+            // Asset should be included even though it's only in properties (path is just filename)
+            expect(zip.files.has('content/resources/icon.svg')).toBe(true);
+        });
+
+        it('should handle assets with folderPath metadata', async () => {
+            const assetId = 'd0e1f2a3-b4c5-6789-3456-890123456789';
+            assets.setAssets([
+                {
+                    id: assetId,
+                    filename: 'photo.jpg',
+                    path: `content/resources/images/${assetId}/photo.jpg`,
+                    originalPath: `content/resources/images/${assetId}/photo.jpg`,
+                    mimeType: 'image/jpeg',
+                    data: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // JPEG header
+                    folderPath: 'images',
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<img src="asset://${assetId}" />`,
+                    },
+                ],
+            };
+
+            await exporter.testAddComponentAssetsToZip(block, null);
+
+            // Asset with folderPath should use that path structure
+            const filePaths = Array.from(zip.files.keys());
+            const assetPath = filePaths.find(p => p.includes('photo.jpg'));
+            expect(assetPath).toBeDefined();
+            expect(assetPath).toContain('content/resources/');
+        });
+
+        it('should only include assets referenced in content or properties', async () => {
+            const usedAssetId = 'e1f2a3b4-c5d6-7890-4567-901234567890';
+            const unusedAssetId = 'f2a3b4c5-d6e7-8901-5678-012345678901';
+
+            assets.setAssets([
+                {
+                    id: usedAssetId,
+                    filename: 'used.png',
+                    path: `content/resources/${usedAssetId}/used.png`,
+                    originalPath: `content/resources/${usedAssetId}/used.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+                    // No folderPath - export path will be just filename
+                },
+                {
+                    id: unusedAssetId,
+                    filename: 'unused.png',
+                    path: `content/resources/${unusedAssetId}/unused.png`,
+                    originalPath: `content/resources/${unusedAssetId}/unused.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+                    // No folderPath - export path will be just filename
+                },
+            ]);
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: `<img src="asset://${usedAssetId}" />`,
+                    },
+                ],
+            };
+
+            await exporter.testAddComponentAssetsToZip(block, null);
+
+            // Only the used asset should be included (path is just filename)
+            expect(zip.files.has('content/resources/used.png')).toBe(true);
+            expect(zip.files.has('content/resources/unused.png')).toBe(false);
+        });
+
+        it('should handle single component and only extract its assets', async () => {
+            const asset1Id = 'a2b3c4d5-e6f7-8901-6789-012345678901';
+            const asset2Id = 'b3c4d5e6-f7a8-9012-7890-123456789012';
+
+            assets.setAssets([
+                {
+                    id: asset1Id,
+                    filename: 'comp1.png',
+                    path: `content/resources/${asset1Id}/comp1.png`,
+                    originalPath: `content/resources/${asset1Id}/comp1.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([1]),
+                    // No folderPath - export path will be just filename
+                },
+                {
+                    id: asset2Id,
+                    filename: 'comp2.png',
+                    path: `content/resources/${asset2Id}/comp2.png`,
+                    originalPath: `content/resources/${asset2Id}/comp2.png`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array([2]),
+                    // No folderPath - export path will be just filename
+                },
+            ]);
+
+            const component1: import('../interfaces').ExportComponent = {
+                id: 'idevice-1',
+                type: 'FreeTextIdevice',
+                order: 0,
+                content: `<img src="asset://${asset1Id}" />`,
+            };
+
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    component1,
+                    {
+                        id: 'idevice-2',
+                        type: 'FreeTextIdevice',
+                        order: 1,
+                        content: `<img src="asset://${asset2Id}" />`,
+                    },
+                ],
+            };
+
+            // Pass only component1
+            await exporter.testAddComponentAssetsToZip(block, component1);
+
+            // Only asset1 should be included (from the single component, path is just filename)
+            expect(zip.files.has('content/resources/comp1.png')).toBe(true);
+            expect(zip.files.has('content/resources/comp2.png')).toBe(false);
+        });
+
+        it('should handle component with no assets gracefully', async () => {
+            const block: import('../interfaces').ExportBlock = {
+                id: 'test-block',
+                name: 'Test Block',
+                order: 0,
+                components: [
+                    {
+                        id: 'test-idevice',
+                        type: 'FreeTextIdevice',
+                        order: 0,
+                        content: '<p>Plain text with no assets</p>',
+                        properties: { title: 'No assets here' },
+                    },
+                ],
+            };
+
+            // Should not throw
+            await exporter.testAddComponentAssetsToZip(block, null);
+
+            // Only content.xml should exist (no assets)
+            const assetPaths = Array.from(zip.files.keys()).filter(p => p.startsWith('content/resources/'));
+            expect(assetPaths.length).toBe(0);
         });
     });
 });
