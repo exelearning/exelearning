@@ -102,7 +102,7 @@ describe('MenuIdevicesBottom', () => {
 
     // Mock IndexedDB
     mockStore = {
-      put: vi.fn(),
+
       get: vi.fn(() => ({
         onsuccess: null,
         onerror: null,
