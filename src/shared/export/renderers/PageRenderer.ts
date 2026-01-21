@@ -552,7 +552,10 @@ ${madeWithExeHtml}
         // Check if page title should be hidden and get effective title
         const hideTitle = this.shouldHidePageTitle(page);
         const effectiveTitle = this.getEffectivePageTitle(page);
-        const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+        // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+        // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+        // moves the .page-title element out of .page-header via movePageTitle()
+        const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
         // Render subtitle if present
         const subtitleHtml = projectSubtitle
@@ -564,7 +567,7 @@ ${madeWithExeHtml}
         // Note: page-counter is inside main-header for CSS compatibility with legacy themes
         return `<header class="main-header">${pageCounterHtml}
 <div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
-<div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
+<div class="page-header"><h2 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
 
@@ -869,13 +872,16 @@ ${userFooterHtml}</div></footer>`;
             // Check if page title should be hidden and get effective title
             const hideTitle = this.shouldHidePageTitle(page);
             const effectiveTitle = this.getEffectivePageTitle(page);
-            const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+            // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+            // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+            // moves the .page-title element out of .page-header via movePageTitle()
+            const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section>
 <header class="main-header">
-<div class="page-header"${pageHeaderStyle}>
-<h1 class="page-title">${this.escapeHtml(effectiveTitle)}</h1>
+<div class="page-header">
+<h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1>
 </div>
 </header>
 <div class="page-content">
