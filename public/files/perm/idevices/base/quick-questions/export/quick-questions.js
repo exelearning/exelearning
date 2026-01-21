@@ -823,8 +823,7 @@ var $quickquestions = {
         $('#quextLinkAudio-' + instance).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         if (mOptions.gameMode === 2) {
@@ -1221,7 +1220,7 @@ var $quickquestions = {
 
         $quickquestions.startVideo('', 0, 0, instance, 0);
         $quickquestions.stopVideo(mOptions);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#quextImage-' + instance).hide();
         $('#quextEText-' + instance).hide();
@@ -1424,13 +1423,10 @@ var $quickquestions = {
             $('#quextLinkAudio-' + instance).show();
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (q.type !== 2 && q.audio.trim().length > 5) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
 
         $quickquestions.drawQuestions(instance);

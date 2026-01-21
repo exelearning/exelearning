@@ -65,6 +65,7 @@ var $exeDevice = {
     areas: [],
     ci18n: {},
     init: function (element, previousData, path) {
+
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;

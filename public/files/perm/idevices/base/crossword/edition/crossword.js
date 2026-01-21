@@ -722,6 +722,8 @@ var $exeDevice = {
     },
 
     validateData() {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),

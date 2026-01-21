@@ -30,6 +30,7 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
+
         if (!element) return;
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;

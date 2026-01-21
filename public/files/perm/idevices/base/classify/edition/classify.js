@@ -36,6 +36,8 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;

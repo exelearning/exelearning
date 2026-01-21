@@ -455,8 +455,7 @@ var $eXeDragDrop = {
                     const audioData = $audio.data('audio');
                     if (audioData && audioData.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
-                            audioData,
-                            mOptions
+                            audioData
                         );
                     }
                 }
@@ -493,8 +492,7 @@ var $eXeDragDrop = {
             const data = $(this).data('audio');
             if (data && data.length > 3) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    data,
-                    mOptions
+                    data
                 );
             }
         });
@@ -700,8 +698,7 @@ var $eXeDragDrop = {
                     let data = $existingAudio.data('audio');
                     if (data && data.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
-                            data,
-                            mOptions
+                            data
                         );
                     }
                 }
@@ -816,7 +813,7 @@ var $eXeDragDrop = {
         $(`#dadPButtons-${instance}`).css('display', 'flex');
         $(`#dadPResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeDragDrop.showScoreGame(instance);
         $eXeDragDrop.saveEvaluation(instance, true);
 
@@ -995,10 +992,7 @@ var $eXeDragDrop = {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $(`#dadPContainerGame-${instance}`).hide();

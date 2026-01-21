@@ -686,7 +686,7 @@ var $eXeRelaciona = {
         $(`#rlcButtons-${instance}`).css('display', 'flex');
         $(`#rlcResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeRelaciona.showScoreGame(instance);
         $eXeRelaciona.saveEvaluation(instance, true);
 
@@ -887,10 +887,7 @@ var $eXeRelaciona = {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $eXeRelaciona.setupEventHandlers(instance);
@@ -1016,10 +1013,7 @@ var $eXeRelaciona = {
             isDragging = false;
 
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    sound,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(sound);
             }
         });
 

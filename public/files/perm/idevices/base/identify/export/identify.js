@@ -514,8 +514,7 @@ var $eXeIdentifica = {
                 mOptions.questionsGame[mOptions.activeQuestion].audio || ''
             ).trim();
             if (!audio || audio.length <= 4) return;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $gameContainerClue.on('click', '.IDFP-LinkClue', function (e) {
@@ -956,7 +955,7 @@ var $eXeIdentifica = {
         mOptions.gameStarted = false;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#idfCursor-' + instance).hide();
 
         let message = mOptions.msgs.msgGameEnd;
@@ -1100,7 +1099,7 @@ var $eXeIdentifica = {
             );
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         const hasAudio = q.audio && q.audio.trim().length > 4;
         if (hasAudio) {
             $(`#idfLinkAudio-${instance}`).show();

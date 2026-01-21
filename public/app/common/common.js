@@ -1662,28 +1662,82 @@ var $exeDevices = {
 
                 },
 
-                stopSound: function (game) {
-                    if (typeof game !== 'object' || game === null) return;
-                    if (game.playerAudio && typeof game.playerAudio.pause === "function") {
-                        game.playerAudio.pause();
-                        game.playerAudio.currentTime = 0;
+                playerAudio: null,
+                currentAudioUrl: null,
+                playSound: async function (selectedFile) {
+                    if (!selectedFile || typeof selectedFile !== 'string') {
+                        console.error('playSound: Invalid audio URL');
+                        return;
                     }
+
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        this.playerAudio &&
+                        this.currentAudioUrl === selectedFile &&
+                        !this.playerAudio.paused
+                    ) {
+                        this.stopSound();
+                        return;
+                    }
+
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound();
+
+                    let audioUrl = selectedFile;
+
+                    // Extract URL from Google Drive if applicable
+                    if (
+                        typeof $exeDevices !== 'undefined' &&
+                        $exeDevices.iDevice?.gamification?.media?.extractURLGD
+                    ) {
+                        audioUrl = $exeDevices.iDevice.gamification.media.extractURLGD(audioUrl);
+                    }
+
+                    // Store the original URL for comparison
+                    this.currentAudioUrl = selectedFile;
+
+                    // Create and play the audio
+                    this.playerAudio = new Audio(audioUrl);
+                    this.playerAudio
+                        .play()
+                        .catch((error) => console.error('playSound: Error playing audio:', error));
                 },
 
-                playSound: function (selectedFile, game) {
+                /**
+                 * Stop the currently playing audio
+                 */
+                stopSound: function () {
+                    if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
+                        this.playerAudio.pause();
+                        this.playerAudio = null;
+                    }
+                    this.currentAudioUrl = null;
+                },
+                playSound1: function (selectedFile, game) {
                     if (typeof game !== 'object' || game === null) return;
+                    if (!selectedFile || typeof selectedFile !== 'string') return;
+
                     selectedFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 
-                    if (game.playerAudio && !game.playerAudio.paused) {
-                        game.playerAudio.pause();
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        game.playerAudio &&
+                        game.currentAudioUrl === selectedFile &&
+                        !game.playerAudio.paused
+                    ) {
+                        this.stopSound(game);
+                        return;
                     }
 
-                    if (!game.playerAudio || game.playerAudio.src !== selectedFile) {
-                        game.playerAudio = new Audio(selectedFile);
-                        game.playerAudio.play().catch(error => console.error("Error playing audio:", error));
-                    } else if (game.playerAudio.paused) {
-                        game.playerAudio.play().catch(error => console.error("Error playing audio:", error));
-                    }
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound(game);
+
+                    // Store the URL for comparison
+                    game.currentAudioUrl = selectedFile;
+
+                    // Create and play the audio
+                    game.playerAudio = new Audio(selectedFile);
+                    game.playerAudio.play().catch(error => console.error("playSound: Error playing audio:", error));
                 },
 
                 startVideo: function (id, start, end, game, type, instance, updateTimerDisplayLocal) {

@@ -1072,10 +1072,7 @@ var $eXeDescubre = {
             e.preventDefault();
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audioId,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audioId);
             } else {
                 console.warn('Audio inválido en el enlace:', this);
             }
@@ -1160,7 +1157,7 @@ var $eXeDescubre = {
         } else if (mOptions.gameMode == 2) {
             maxsel = 3;
         }
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (
             !mOptions.gameActived ||
@@ -1191,7 +1188,7 @@ var $eXeDescubre = {
             '';
 
         if (sound.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         }
 
         $card.addClass('DescubreQP-CardActive');
@@ -1812,7 +1809,7 @@ var $eXeDescubre = {
         mOptions.gameStarted = false;
         mOptions.gameActived = false;
         mOptions.gameOver = true;
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#descubreCubierta-' + instance).show();
         $eXeDescubre.showScoreGame(type, instance);
         if (mOptions.isScorm == 1) {
@@ -1857,7 +1854,7 @@ var $eXeDescubre = {
         $('#descubreStartLevels-' + instance).hide();
         $('#descubreMessage-' + instance).hide();
         clearInterval(mOptions.counterClock);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#descubreStartLevels-' + instance).show();
         $('#descubreCubierta-' + instance).hide();
         $('#descubreInfo-' + instance).text(mOptions.msgs.msgSelectLevel);

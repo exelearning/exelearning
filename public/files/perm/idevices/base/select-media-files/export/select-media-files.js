@@ -278,7 +278,7 @@ var $eXeSeleccionaMedias = {
         mOptions.intentos = mOptions.attempsNumber;
         mOptions.phrase = mOptions.phrasesGame[num];
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeSeleccionaMedias.addCards(mOptions.phrase.cards, instance);
         $eXeSeleccionaMedias.showMessage(1, '', instance);
 
@@ -291,8 +291,7 @@ var $eXeSeleccionaMedias = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
                 $(`#slcmpAudioDef-${instance}`).css('display', 'block');
             }
@@ -593,10 +592,7 @@ var $eXeSeleccionaMedias = {
                 );
                 $sonidoEnlace.on('click', (e) => {
                     e.preventDefault();
-                    $exeDevices.iDevice.gamification.media.playSound(
-                        card.audio,
-                        mOptions
-                    );
+                    $exeDevices.iDevice.gamification.media.playSound(card.audio);
                 });
                 $divImage.append($sonidoEnlace);
             }
@@ -971,7 +967,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpAudioDef-' + instance).on('click', function (e) {
             e.preventDefault();
             const sound = mOptions.phrasesGame[mOptions.active].audioDefinition;
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         });
 
         const config = {
@@ -1052,13 +1048,13 @@ var $eXeSeleccionaMedias = {
     checkAudio: function (card) {
         const audio = $(card).find('.SLCMP-LinkAudio').data('audio');
         if (typeof audio != 'undefined' && audio.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 
     nextPhrase: function (instance) {
         const mOptions = $eXeSeleccionaMedias.options[instance];
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         setTimeout(function () {
             mOptions.active++;
             if (mOptions.active < mOptions.phrasesGame.length) {
@@ -1164,8 +1160,7 @@ var $eXeSeleccionaMedias = {
             mOptions.phrase.audioDefinition.length > 4
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.phrase.audioDefinition,
-                mOptions
+                mOptions.phrase.audioDefinition
             );
         }
 
@@ -1193,7 +1188,7 @@ var $eXeSeleccionaMedias = {
         mOptions.gameOver = true;
         clearInterval(mOptions.counterClock);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#slcmpCubierta-' + instance).show();
         $eXeSeleccionaMedias.showScoreGame(type, instance);

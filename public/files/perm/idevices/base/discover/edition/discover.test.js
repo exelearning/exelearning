@@ -171,7 +171,8 @@ const $exeDevice = {
                 const p = q.data[k];
                 let linkImage = '';
                 if (
-                    typeof p.audio != 'undefined' &&
+                    p.audio &&
+                    typeof p.audio === 'string' &&
                     p.audio.indexOf('http') != 0 &&
                     p.audio.length > 4
                 ) {

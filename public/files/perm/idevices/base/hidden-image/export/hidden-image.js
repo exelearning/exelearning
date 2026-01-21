@@ -475,11 +475,10 @@ var $eXeHiddenImage = {
         $('#hiPLinkAudio-' + instance).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.questionsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
             if (audio && audio.length > 3) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
+                    audio
                 );
             }
         });
@@ -687,7 +686,7 @@ var $eXeHiddenImage = {
         clearInterval(mOptions.counterClock);
         $('#hiPHome-' + instance).css('display', 'flex');
         $('#hiPContainer-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         const typem = parseInt(score) >= 5 ? 2 : 1;
         const message = msgs.msgGameOver.replace('%s', score);
@@ -737,7 +736,7 @@ var $eXeHiddenImage = {
         if (mQuestion.audio.length > 4) {
             $('#hiPLinkAudio-' + instance).show();
         }
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeHiddenImage.drawQuestions(instance);
 
         const html = $('#hiPQuestionDiv-' + instance).html(),
@@ -750,7 +749,7 @@ var $eXeHiddenImage = {
         }
         const audio = mOptions.questionsGame[i].audio;
         if (audio && audio.length > 4) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 

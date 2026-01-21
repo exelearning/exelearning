@@ -977,7 +977,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaLinkAudio-${instance}`).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.selectsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $(`#seleccionaLinkVideoIntroShow-${instance}`).on(
@@ -1501,7 +1501,7 @@ var $quickquestionsmultiplechoice = {
         ).hide();
 
         $quickquestionsmultiplechoice.stopVideo(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         const message =
             type === 0
@@ -1805,17 +1805,14 @@ var $quickquestionsmultiplechoice = {
         }
 
         $quickquestionsmultiplechoice.saveEvaluation(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (
             q.type !== 2 &&
             q.audio.trim().length > 5 &&
             !mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
     },
 
@@ -1986,10 +1983,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
 
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -2061,10 +2055,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
 
