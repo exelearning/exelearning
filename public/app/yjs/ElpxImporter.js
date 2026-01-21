@@ -268,7 +268,10 @@ class ElpxImporter {
       author: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_author') || '') : '',
       language: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_lang') || 'en') : 'en',
       description: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_description') || '') : '',
-      license: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_license') || '') : '',
+      // Check both pp_license (newer format) and license (older v3.x format) for backward compatibility
+      license: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_license')
+                               ?? this.getPropertyValue(odeProperties, 'license')
+                               ?? '') : '',
       theme: themeFromXml,
       // Export settings
       addPagination: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addPagination', false) : false,
@@ -1860,6 +1863,11 @@ class ElpxImporter {
           // Set custom head content if present in legacy file
           if (parsedData.meta.extraHeadContent) {
             metadata.set('extraHeadContent', parsedData.meta.extraHeadContent);
+          }
+          // Set license if present in legacy file (may be empty for legacy content - that's intentional)
+          if (parsedData.meta.license !== undefined) {
+            metadata.set('license', parsedData.meta.license);
+            Logger.log('[ElpxImporter] Legacy license set:', parsedData.meta.license || '(empty)');
           }
           // Set export options if present in legacy file
           // Use metadata keys WITHOUT pp_ prefix to match YjsPropertiesBinding.propertyKeyMap

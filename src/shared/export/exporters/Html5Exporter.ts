@@ -415,9 +415,9 @@ export class Html5Exporter extends BaseExporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'creative commons: attribution - share alike 4.0',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl: meta.licenseUrl || '',
             // Page counter options
             totalPages: allPages.length,
             currentPageIndex,

@@ -590,9 +590,9 @@ export class Epub3Exporter extends BaseExporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'CC-BY-SA',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl: meta.licenseUrl || '',
             bodyClass,
             // Theme files for HTML head includes
             themeFiles: themeFiles || [],

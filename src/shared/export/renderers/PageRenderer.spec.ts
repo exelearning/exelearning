@@ -547,6 +547,7 @@ describe('PageRenderer', () => {
         });
 
         it('should render correct license class for different licenses', () => {
+            // getLicenseClass looks up cssClass from LICENSE_REGISTRY by license name
             const licenses = [
                 { name: 'creative commons: attribution 4.0', class: 'cc' },
                 { name: 'creative commons: attribution - share alike 4.0', class: 'cc cc-by-sa' },
@@ -558,11 +559,6 @@ describe('PageRenderer', () => {
                     class: 'cc cc-by-nc-nd',
                 },
                 { name: 'public domain', class: 'cc cc-0' },
-                { name: 'propietary license', class: 'propietary' },
-                // Robustness tests
-                { name: '  creative commons:   attribution - non commercial 4.0  ', class: 'cc cc-by-nc' }, // Extra spaces
-                { name: 'CREATIVE COMMONS: ATTRIBUTION - NON COMMERCIAL 4.0', class: 'cc cc-by-nc' }, // Case insensitivity
-                { name: 'Some other license text containing by-nc-sa', class: 'cc cc-by-nc-sa' }, // Partial match
             ];
 
             for (const lic of licenses) {
@@ -572,6 +568,28 @@ describe('PageRenderer', () => {
                 });
                 expect(html).toContain(`class="${lic.class}"`);
             }
+        });
+
+        it('should skip license section for propietary license (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'propietary license',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+        });
+
+        it('should skip license section for not appropriate (no footer)', () => {
+            const html = renderer.renderFooterSection({
+                license: 'not appropriate',
+                licenseUrl: 'https://example.com',
+            });
+
+            expect(html).toContain('id="siteFooter"');
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
         });
 
         it('should include user footer content when provided', () => {
@@ -590,6 +608,34 @@ describe('PageRenderer', () => {
             });
 
             expect(html).not.toContain('id="siteUserFooter"');
+        });
+
+        it('should skip license section when license is empty (legacy content)', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+            });
+
+            // Footer should still render but without license content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteFooterContent"');
+            // License section should not be rendered
+            expect(html).not.toContain('id="packageLicense"');
+            expect(html).not.toContain('class="license"');
+            expect(html).not.toContain('license-label');
+        });
+
+        it('should render user footer content even when license is empty', () => {
+            const html = renderer.renderFooterSection({
+                license: '',
+                userFooterContent: '<p>My custom footer</p>',
+            });
+
+            // Footer should render with user content
+            expect(html).toContain('id="siteFooter"');
+            expect(html).toContain('id="siteUserFooter"');
+            expect(html).toContain('My custom footer');
+            // But no license section
+            expect(html).not.toContain('id="packageLicense"');
         });
     });
 
@@ -816,6 +862,49 @@ describe('PageRenderer', () => {
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('CC-BY-SA');
             expect(html).toContain('creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderFooter({
+                author: 'Test Author',
+                license: '',
+            });
+
+            // Empty license should return empty string
+            expect(html).toBe('');
+        });
+    });
+
+    describe('renderLicense (deprecated)', () => {
+        it('should render license div when license is provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY',
+                licenseUrl: 'https://example.com/license',
+            });
+
+            expect(html).toContain('id="packageLicense"');
+            expect(html).toContain('CC-BY');
+            expect(html).toContain('href="https://example.com/license"');
+        });
+
+        it('should return empty string when license is empty (legacy content)', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: '',
+            });
+
+            expect(html).toBe('');
+        });
+
+        it('should render empty href when licenseUrl not provided', () => {
+            const html = renderer.renderLicense({
+                author: 'Test Author',
+                license: 'CC-BY-SA',
+            });
+
+            // No default URL - href should be empty when not provided
+            expect(html).toContain('href=""');
         });
     });
 

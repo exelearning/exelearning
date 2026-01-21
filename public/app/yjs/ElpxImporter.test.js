@@ -1000,6 +1000,96 @@ describe('ElpxImporter', () => {
       // With basic XML (old format), values should use defaults
       // The test just verifies no errors are thrown
     });
+
+    it('extracts license from "license" key (v3.x format) when pp_license is not present', async () => {
+      // Sample XML with the old "license" key (without pp_ prefix) - used in older v3.x ELPX files
+      const XML_WITH_OLD_LICENSE_KEY = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project V3</value></odeProperty>
+    <odeProperty><key>license</key><value>creative commons: attribution - share alike 4.0</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_OLD_LICENSE_KEY);
+      const mockDocManager = createMockDocumentManager();
+      const oldLicenseImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await oldLicenseImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      expect(metadata.get('license')).toBe('creative commons: attribution - share alike 4.0');
+    });
+
+    it('prefers pp_license over license key when both are present', async () => {
+      // Sample XML with both keys - pp_license should take precedence
+      const XML_WITH_BOTH_LICENSE_KEYS = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project</value></odeProperty>
+    <odeProperty><key>pp_license</key><value>public domain</value></odeProperty>
+    <odeProperty><key>license</key><value>creative commons: attribution 4.0</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_BOTH_LICENSE_KEYS);
+      const mockDocManager = createMockDocumentManager();
+      const bothKeysImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await bothKeysImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      // pp_license should take precedence
+      expect(metadata.get('license')).toBe('public domain');
+    });
+
+    it('handles empty license value from both keys', async () => {
+      // Sample XML with empty license value
+      const XML_WITH_EMPTY_LICENSE = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project</value></odeProperty>
+    <odeProperty><key>license</key><value></value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_EMPTY_LICENSE);
+      const mockDocManager = createMockDocumentManager();
+      const emptyLicenseImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await emptyLicenseImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      // Empty license should be preserved (not defaulted to CC-BY-SA)
+      expect(metadata.get('license')).toBe('');
+    });
   });
 
   describe('findNavStructures', () => {
