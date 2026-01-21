@@ -35,6 +35,7 @@ import { ElpxExporter } from '../exporters/ElpxExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
+import { PageElpxExporter } from '../exporters/PageElpxExporter';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -111,6 +112,7 @@ function createNullResourceProvider() {
         fetchLibraryFiles: async () => new Map<string, Uint8Array>(),
         fetchLibraryDirectory: async () => new Map<string, Uint8Array>(),
         fetchSchemas: async () => new Map<string, Uint8Array>(),
+        fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
     };
 }
@@ -204,6 +206,10 @@ export function createExporter(
         case 'elpx':
         case 'elp':
             return new ElpxExporter(document, resources, assets, zip);
+
+        case 'pageelpx':
+        case 'pageelp':
+            return new PageElpxExporter(document, resources, assets, zip);
 
         case 'component':
         case 'block':
@@ -544,6 +550,7 @@ export {
     ElpxExporter,
     PrintPreviewExporter,
     ComponentExporter,
+    PageElpxExporter,
     // Renderers
     IdeviceRenderer,
     PageRenderer,
@@ -588,6 +595,7 @@ if (typeof window !== 'undefined') {
         ElpxExporter,
         PrintPreviewExporter,
         ComponentExporter,
+        PageElpxExporter,
         // Renderers
         IdeviceRenderer,
         PageRenderer,
