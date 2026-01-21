@@ -425,13 +425,6 @@ body [dir='rtl'] {
     height: 0
 }
 
-/* Page title hidden via Page Properties > Hide Title
-   Uses display:none to fully hide (matches legacy Symfony approach)
-   !important needed to override theme-specific .page-title styles */
-.page-title.sr-av {
-    display: none !important
-}
-
 /* Tables */
 .exe-table {
     margin: 2em auto;
