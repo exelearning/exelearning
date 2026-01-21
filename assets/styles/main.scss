@@ -29,6 +29,7 @@
 @use 'layout/previewpanel';
 @use 'pages/login';
 @use 'pages/properties';
+@use 'components/menu_idevices_bottom';
 
 /* eXe Mode */
 body[mode="default"] .exe-advanced {
@@ -414,5 +415,3 @@ button.close span {
     border-bottom: none;
 
 }
-
-@import 'components/_menu_idevices_bottom.scss';
