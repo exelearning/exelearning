@@ -2705,7 +2705,7 @@ class AssetManager {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2743,7 +2743,7 @@ class AssetManager {
 
     try {
       // Get list from server
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2752,7 +2752,9 @@ class AssetManager {
         return 0;
       }
 
-      const serverAssets = await response.json();
+      const result = await response.json();
+      // Handle both wrapped response { data: [...] } and bare array [...]
+      const serverAssets = Array.isArray(result) ? result : (result.data || []);
       Logger.log(`[AssetManager] Server has ${serverAssets.length} assets`);
 
       // Find missing locally
@@ -2775,7 +2777,7 @@ class AssetManager {
       for (const assetId of missing) {
         try {
           const assetResponse = await fetch(
-            `${apiBaseUrl}/api/projects/${this.projectId}/assets/${assetId}`,
+            `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
 

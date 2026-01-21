@@ -3656,7 +3656,7 @@ describe('uploadPendingAssets', () => {
     expect(result.uploaded).toBe(2);
     expect(result.bytes).toBe(300);
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://api/api/projects/project-123/assets',
+      'http://api/projects/project-123/assets',
       expect.objectContaining({ method: 'POST' })
     );
   });
@@ -3715,7 +3715,7 @@ describe('downloadMissingAssets', () => {
   it('returns 0 when all assets cached locally', async () => {
     global.fetch = mock(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }]),
+      json: () => Promise.resolve({ data: [{ id: 'a1' }] }),
     }));
     assetManager.getAsset = mock(() => Promise.resolve({ id: 'a1' }));
 
@@ -3728,7 +3728,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+        json: () => Promise.resolve({ data: [{ id: 'a1' }, { id: 'a2' }] }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -3749,7 +3749,7 @@ describe('downloadMissingAssets', () => {
       });
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+      json: () => Promise.resolve({ data: [{ id: 'a1' }, { id: 'a2' }] }),
     });
 
     // Use a proper mock for getAsset that returns null for missing assets
@@ -3770,7 +3770,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }]),
+        json: () => Promise.resolve({ data: [{ id: 'a1' }] }),
       })
       .mockResolvedValueOnce(createMockResponse(new Blob(['data1']), {
         'X-Original-Mime': 'image/png',
