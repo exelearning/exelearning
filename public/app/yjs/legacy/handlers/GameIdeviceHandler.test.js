@@ -672,4 +672,48 @@ describe('GameIdeviceHandler', () => {
       expect(handler.getTargetType()).toBe('unknown-game');
     });
   });
+
+  describe('extractProperties with actual ELP structure', () => {
+    // Test case that matches the actual structure from home_is_where_art_is.elp
+    it('extracts mapa game data from full ELP-style dict with nested divs', () => {
+      // This is the actual structure from home_is_where_art_is.elp
+      // The HTML has mapa-IDevice div containing mapa-DataGame div
+      const gameData = '{"typeGame":"Mapa","instructions":"","showMinimize":false,"points":[]}';
+
+      // Double-encode: first the JSON quotes, then the outer HTML entities
+      const htmlContent = `<div class="mapa-IDevice"><div class="mapa-version js-hidden">2</div><div class="mapa-instructions gameQP-instructions"><p>Click on the active areas of the image.</p></div><div class="mapa-DataGame js-hidden">${gameData}</div><img src="resources/test.png" class="js-hidden mapa-ImageMap" data-id="0" /></div>`;
+
+      // Escape for XML attribute
+      const escapedHtml = htmlContent
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+
+      const xml = `<?xml version="1.0"?>
+        <dictionary>
+          <string role="key" value="fields"/>
+          <list>
+            <instance class="exe.engine.field.TextAreaField">
+              <dictionary>
+                <string role="key" value="content_w_resourcePaths"/>
+                <unicode value="${escapedHtml}"/>
+              </dictionary>
+            </instance>
+          </list>
+        </dictionary>`;
+
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const dict = doc.querySelector('dictionary');
+
+      const result = handler.extractProperties(dict);
+
+      expect(result.typeGame).toBe('Mapa');
+      expect(result.points).toEqual([]);
+      expect(handler._detectedType).toBe('mapa');
+    });
+
+    // Note: Selecciona encryption is tested via E2E tests with real ELP file data
+    // because constructing valid encrypted test data is complex
+  });
 });

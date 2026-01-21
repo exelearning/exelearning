@@ -4259,4 +4259,145 @@ describe('LegacyXmlParser', () => {
       expect(result).toBe('Caso práctico');
     });
   });
+
+  describe('rawIdeviceDir handler integration', () => {
+    // Test that rawIdeviceDir is passed to LegacyHandlerRegistry.getHandler
+    // This allows handlers like GameIdeviceHandler to match on legacy type names
+    // (e.g., 'selecciona-activity' instead of 'quick-questions-multiple-choice')
+
+    it('should pass rawIdeviceDir to handler registry for game iDevices', () => {
+      // Set up handler registry with a mock
+      const mockHandler = {
+        extractProperties: mock(() => ({ gameData: 'test' })),
+        extractHtmlView: mock(() => '<div>Game</div>'),
+        getTargetType: mock(() => 'quick-questions-multiple-choice'),
+        constructor: { name: 'MockGameHandler' },
+      };
+      const mockGetHandler = mock(() => mockHandler);
+      global.LegacyHandlerRegistry = { getHandler: mockGetHandler };
+
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Game Test"/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.jsidevice.JsIdevice" reference="100">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Selecciona Game"/>
+                            <string role="key" value="_iDeviceDir"/>
+                            <unicode value="selecciona-activity"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      const result = parser.parse(xml);
+
+      // Verify getHandler was called with the raw directory name (selecciona-activity)
+      // not the mapped type (quick-questions-multiple-choice)
+      expect(mockGetHandler).toHaveBeenCalled();
+      const calls = mockGetHandler.mock.calls;
+      // Find the call with JsIdevice class
+      const jsIdeviceCall = calls.find(call =>
+        call[0].includes('JsIdevice') && call[1] === 'selecciona-activity'
+      );
+      expect(jsIdeviceCall).toBeDefined();
+
+      // Cleanup
+      delete global.LegacyHandlerRegistry;
+    });
+
+    it('should fall back to ideviceType when rawIdeviceDir is empty', () => {
+      // Set up handler registry with a mock
+      const mockHandler = {
+        extractProperties: mock(() => ({})),
+        getTargetType: mock(() => 'text'),
+        constructor: { name: 'MockDefaultHandler' },
+      };
+      const mockGetHandler = mock(() => mockHandler);
+      global.LegacyHandlerRegistry = { getHandler: mockGetHandler };
+
+      // Create XML with a generic iDevice (no _iDeviceDir)
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test"/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="100">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Text"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      parser.parse(xml);
+
+      // Verify getHandler was called with the ideviceType
+      expect(mockGetHandler).toHaveBeenCalled();
+      const calls = mockGetHandler.mock.calls;
+      const freeTextCall = calls.find(call =>
+        call[0].includes('FreeTextIdevice')
+      );
+      expect(freeTextCall).toBeDefined();
+      // Second arg should be the mapped ideviceType since rawIdeviceDir is empty for non-JsIdevice
+      // FreeTextIdevice maps to 'text' in LEGACY_TYPE_MAP
+      expect(freeTextCall[1]).toBe('text');
+
+      // Cleanup
+      delete global.LegacyHandlerRegistry;
+    });
+  });
 });
