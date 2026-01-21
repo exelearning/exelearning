@@ -310,10 +310,10 @@ test.describe('Page Properties', () => {
             { timeout: 15000 },
         );
 
-        // The .page-title should be hidden (has sr-av class -> display:none via CSS)
+        // The .page-title should be hidden (has sr-av class for accessible hiding)
         // Multi-page export uses .page-title in .page-header
         const pageTitle = iframe.locator('.page-title');
-        await expect(pageTitle).toHaveCSS('display', 'none');
+        await expect(pageTitle).toHaveClass(/sr-av/);
 
         // Navigate to the second page
         const secondPageLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Visible Title Page' });
@@ -321,7 +321,7 @@ test.describe('Page Properties', () => {
         await page.waitForTimeout(500);
 
         // The page-title should be visible on the second page (no sr-av class)
-        await expect(pageTitle).not.toHaveCSS('display', 'none');
+        await expect(pageTitle).not.toHaveClass(/sr-av/);
 
         // The title should be visible and contain the correct text
         await expect(pageTitle).toContainText('Visible Title Page');
@@ -402,11 +402,11 @@ test.describe('Page Properties', () => {
                 { timeout: 15000 },
             );
 
-            // Verify .page-title is hidden (has display:none) regardless of where it was moved
+            // Verify .page-title has sr-av class for accessible hiding regardless of where it was moved
             // Theme JS (flux, neo, nova) moves .page-title from .page-header to .page-content
-            // With the fix, the .page-title element has sr-av class -> display:none via CSS
+            // The sr-av class hides the title accessibly (position:absolute, clip, height:0)
             const pageTitle = iframe.locator('.page-title').first();
-            await expect(pageTitle).toHaveCSS('display', 'none', {
+            await expect(pageTitle).toHaveClass(/sr-av/, {
                 timeout: 5000,
             });
 
