@@ -718,5 +718,86 @@ describe('MenuIdevicesBottom', () => {
       const result = await promise;
       expect(result).toBeNull();
     });
+    it('should handle string idevices_selected by parsing it', async () => {
+      const dbRequest = {
+        onsuccess: null,
+        onerror: null,
+      };
+      
+      eXeLearning.app.api.getUserPreferences.mockResolvedValue({
+        userPreferences: {
+          idevices_selected: { value: '["text","form"]' }
+        }
+      });
+      
+      const result = await menuIdevicesBottom.getIdevices();
+      expect(result).toEqual(['text', 'form']);
+    });
+
+    it('should return empty array on JSON parse error', async () => {
+      eXeLearning.app.api.getUserPreferences.mockResolvedValue({
+        userPreferences: {
+          idevices_selected: { value: 'invalid-json' }
+        }
+      });
+      console.error = vi.fn(); // Mock console.error
+      
+      const result = await menuIdevicesBottom.getIdevices();
+      expect(result).toEqual([]);
+      expect(console.error).toHaveBeenCalled();
+    });
+
+    it('should fallback to IndexedDB if API returns no preferences', async () => {
+      // API returns empty (but success)
+      eXeLearning.app.api.getUserPreferences.mockResolvedValue({});
+      console.error = vi.fn();
+      
+      // Setup IndexedDB mock
+      const mockRequest = {
+        onsuccess: null,
+        onerror: null,
+        result: { value: ['idb-idevice'] }
+      };
+      const mockStore = {
+        get: vi.fn().mockReturnValue(mockRequest)
+      };
+      const mockTx = {
+        objectStore: vi.fn().mockReturnValue(mockStore)
+      };
+      const mockDB = {
+        transaction: vi.fn().mockReturnValue(mockTx)
+      };
+      
+      vi.spyOn(menuIdevicesBottom, 'openDB').mockResolvedValue(mockDB);
+      vi.spyOn(menuIdevicesBottom, 'saveIdevices').mockResolvedValue({});
+
+      const promise = menuIdevicesBottom.getIdevices();
+      await new Promise(resolve => setTimeout(resolve, 0)); // Let promise chain tick
+      
+      // Trigger IDB success
+      if (mockRequest.onsuccess) mockRequest.onsuccess();
+      
+      const result = await promise;
+      expect(result).toEqual(['idb-idevice']);
+      expect(menuIdevicesBottom.saveIdevices).toHaveBeenCalledWith(['idb-idevice']); // Migration check
+    });
+
+    it('should return null if API fails and IndexedDB fails', async () => {
+       eXeLearning.app.api.getUserPreferences.mockRejectedValue(new Error('API Error'));
+       console.error = vi.fn();
+       
+       vi.spyOn(menuIdevicesBottom, 'openDB').mockRejectedValue(new Error('IDB Error'));
+       
+       const result = await menuIdevicesBottom.getIdevices();
+       expect(result).toBeNull();
+    });
+
+    it('should return null if user is not defined', async () => {
+        const oldUser = eXeLearning.app.user;
+        eXeLearning.app.user = undefined;
+        const result = await menuIdevicesBottom.getIdevices();
+        expect(result).toBeNull();
+        eXeLearning.app.user = oldUser;
+    });
   });
 });

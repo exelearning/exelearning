@@ -1017,6 +1017,69 @@ describe('ModalIdeviceManager', () => {
         const result = await promise;
         expect(result).toEqual([]);
       });
+
+
+      it('should handle string idevices_selected by parsing it', async () => {
+        eXeLearning.app.api.getUserPreferences.mockResolvedValue({
+          userPreferences: { idevices_selected: { value: '["text","form"]' } }
+        });
+        const result = await modalIdeviceManager.getUserListIdevices();
+        expect(result).toEqual(['text', 'form']);
+      });
+
+      it('should return empty array on JSON parse error', async () => {
+        eXeLearning.app.api.getUserPreferences.mockResolvedValue({
+          userPreferences: { idevices_selected: { value: 'invalid-json' } }
+        });
+        console.error = vi.fn();
+        const result = await modalIdeviceManager.getUserListIdevices();
+        expect(result).toEqual([]);
+      });
+       
+      it('should return empty array on API error', async () => {
+        eXeLearning.app.api.getUserPreferences.mockRejectedValue(new Error('API failure'));
+        console.error = vi.fn();
+        const result = await modalIdeviceManager.getUserListIdevices();
+        expect(result).toEqual([]);
+        expect(console.error).toHaveBeenCalled();
+      });
+
+      it('should fallback to IndexedDB if API returns no preferences', async () => {
+        eXeLearning.app.api.getUserPreferences.mockResolvedValue({});
+        console.error = vi.fn();
+
+        const mockRequest = { onsuccess: null, onerror: null, result: { value: ['idb-val'] } };
+        const mockStore = { get: vi.fn().mockReturnValue(mockRequest) };
+        const mockTx = { objectStore: vi.fn().mockReturnValue(mockStore) };
+        const mockDB = { transaction: vi.fn().mockReturnValue(mockTx) };
+
+        vi.spyOn(modalIdeviceManager, 'openDB').mockResolvedValue(mockDB);
+        vi.spyOn(modalIdeviceManager, 'saveIdevices').mockResolvedValue({});
+
+        const promise = modalIdeviceManager.getUserListIdevices();
+        await new Promise(r => setTimeout(r, 0));
+        if(mockRequest.onsuccess) mockRequest.onsuccess();
+
+        const result = await promise;
+        expect(result).toEqual(['idb-val']);
+        expect(modalIdeviceManager.saveIdevices).toHaveBeenCalledWith(['idb-val']);
+      });
+
+      it('should return empty array if IDB fallback fails', async () => {
+        eXeLearning.app.api.getUserPreferences.mockResolvedValue({});
+        vi.spyOn(modalIdeviceManager, 'openDB').mockRejectedValue(new Error('IDB Error'));
+        console.error = vi.fn();
+        const result = await modalIdeviceManager.getUserListIdevices();
+        expect(result).toEqual([]);
+      });
+
+      it('should return empty array if user is undefined', async () => {
+        const oldUser = eXeLearning.app.user;
+        eXeLearning.app.user = undefined;
+        const result = await modalIdeviceManager.getUserListIdevices();
+        expect(result).toEqual([]);
+        eXeLearning.app.user = oldUser;
+      });
     });
 
     describe('openDB', () => {
@@ -1061,6 +1124,13 @@ describe('ModalIdeviceManager', () => {
         };
         await modalIdeviceManager.saveIdevices(['text', 'form']);
         expect(eXeLearning.app.api.putSaveUserPreferences).toHaveBeenCalledWith(expectedPreferences);
+      });
+
+      it('should handle save error', async () => {
+        eXeLearning.app.api.putSaveUserPreferences.mockRejectedValue(new Error('Save Error'));
+        console.error = vi.fn();
+        await expect(modalIdeviceManager.saveIdevices([])).rejects.toThrow('Save Error');
+        expect(console.error).toHaveBeenCalled();
       });
     });
   });
