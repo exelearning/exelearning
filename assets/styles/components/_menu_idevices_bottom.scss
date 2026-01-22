@@ -9,6 +9,19 @@
     display: inline-flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+
+    // Hide when any iDevice is in edition mode or TinyMCE is active
+    body:has(.idevice_node[mode="edition"]) &,
+    body:has(.tox-tinymce) &,
+    body:has(.mce-container) &,
+    body:has(#properties-node-content-form) & {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        z-index: -1 !important;
+    }
+
     justify-content: center;
     align-items: center;
     gap: 3px;
