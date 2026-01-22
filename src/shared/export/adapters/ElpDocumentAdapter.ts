@@ -32,6 +32,7 @@ import type {
 import { parseFromString } from '../../../services/xml/xml-parser';
 import type { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../../../services/xml/interfaces';
 import { getLicenseUrl } from '../constants';
+import { getAppVersion } from '../../../utils/version';
 
 // Re-export interfaces for backwards compatibility
 export type {
@@ -136,7 +137,7 @@ export class ElpDocumentAdapter implements ExportDocument {
             licenseUrl: getLicenseUrl(meta.license || ''),
             keywords: meta.keywords || '',
             theme: meta.theme || 'base',
-            exelearningVersion: meta.exelearning_version,
+            exelearningVersion: meta.exelearning_version || getAppVersion(),
             createdAt: meta.created || new Date().toISOString(),
             modifiedAt: meta.modified || new Date().toISOString(),
 

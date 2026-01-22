@@ -533,17 +533,17 @@ describe('PageRenderer', () => {
     describe('renderFooterSection', () => {
         it('should render footer with license', () => {
             const html = renderer.renderFooterSection({
-                license: 'CC-BY-SA',
-                licenseUrl: 'https://example.com/license',
+                license: 'creative commons: attribution - share alike 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
             });
 
             expect(html).toContain('<footer id="siteFooter">');
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            // formatLicenseText converts CC-BY-SA to full display text
-            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
-            expect(html).toContain('href="https://example.com/license"');
+            // formatLicenseText returns displayName with short code suffix
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0 (BY-SA)</a>');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
         });
 
         it('should render correct license class for different licenses', () => {
@@ -558,7 +558,8 @@ describe('PageRenderer', () => {
                     name: 'creative commons: attribution - non derived work - non commercial 4.0',
                     class: 'cc cc-by-nc-nd',
                 },
-                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'creative commons: cc0 1.0', class: 'cc cc-0' },
+                { name: 'public domain', class: '' },
             ];
 
             for (const lic of licenses) {
@@ -897,14 +898,15 @@ describe('PageRenderer', () => {
             expect(html).toBe('');
         });
 
-        it('should render empty href when licenseUrl not provided', () => {
+        it('should render span instead of link when licenseUrl not provided', () => {
             const html = renderer.renderLicense({
                 author: 'Test Author',
                 license: 'CC-BY-SA',
             });
 
-            // No default URL - href should be empty when not provided
-            expect(html).toContain('href=""');
+            // No URL - should render span instead of anchor
+            expect(html).not.toContain('href=');
+            expect(html).toContain('<span>CC-BY-SA</span>');
         });
     });
 

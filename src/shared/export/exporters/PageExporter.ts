@@ -137,6 +137,8 @@ export class PageExporter extends Html5Exporter {
             license: meta.license || '',
             faviconPath: faviconInfo?.path,
             faviconType: faviconInfo?.type,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 
