@@ -1018,7 +1018,7 @@ describe('IdeviceRenderer', () => {
                 name: 'Test Block',
                 order: 0,
                 components: [],
-                iconName: 'lightbulb', // iconName is on block, not properties
+                iconName: 'lightbulb.png', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
@@ -1028,13 +1028,12 @@ describe('IdeviceRenderer', () => {
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {
-            // This tests lines 190-194
             const block: ExportBlock = {
                 id: 'block-1',
                 name: 'Preview Block',
                 order: 0,
                 components: [],
-                iconName: 'check', // iconName is on block, not properties
+                iconName: 'check.svg', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, {
@@ -1043,7 +1042,7 @@ describe('IdeviceRenderer', () => {
                 themeIconBasePath: '/preview/icons/',
             });
 
-            expect(html).toContain('/preview/icons/check.png');
+            expect(html).toContain('/preview/icons/check.svg');
             expect(html).not.toContain('theme/icons/');
         });
 
@@ -1154,7 +1153,7 @@ describe('IdeviceRenderer', () => {
                 name: '', // No title
                 order: 0,
                 components: [],
-                iconName: 'check',
+                iconName: 'check.png', // iconName includes extension
                 properties: { allowToggle: 'true' as unknown as boolean },
             };
 

@@ -87,7 +87,7 @@ describe('Themes Routes', () => {
             expect(typeof theme.icons).toBe('object');
         });
 
-        it('should return icons with proper ThemeIcon structure (id, title, type, value)', async () => {
+        it('should return icons with proper ThemeIcon structure (id includes extension)', async () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
@@ -101,7 +101,7 @@ describe('Themes Routes', () => {
                 const firstIconKey = Object.keys(themeWithIcons.icons)[0];
                 const icon = themeWithIcons.icons[firstIconKey];
 
-                // Verify ThemeIcon structure - this is critical for the frontend
+                // Verify ThemeIcon structure
                 expect(icon).toHaveProperty('id');
                 expect(icon).toHaveProperty('title');
                 expect(icon).toHaveProperty('type');
@@ -112,6 +112,8 @@ describe('Themes Routes', () => {
                 expect(typeof icon.value).toBe('string');
                 expect(icon.value).toMatch(/\/icons\//);
                 expect(icon.type).toBe('img');
+                // id includes file extension (e.g., "share.svg")
+                expect(icon.id).toMatch(/\.(svg|png|gif|jpe?g|webp)$/i);
             }
         });
 
@@ -500,6 +502,223 @@ describe('Themes Routes', () => {
             expect(body.themes.length).toBeGreaterThan(0);
             // Themes should have empty icons object
             expect(typeof body.themes[0].icons).toBe('object');
+        });
+
+        it('should support multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
+            // Mock theme with icons in various formats
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('multi-format-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('multi-format-theme/config.xml')) {
+                            return '<theme><name>Multi Format Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'multi-format-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('multi-format-theme/icons')) {
+                            return [
+                                { name: 'icon-svg.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-png.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-gif.gif', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-jpg.jpg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-jpeg.jpeg', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon-webp.webp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('multi-format-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'multi-format-theme');
+            expect(theme).toBeDefined();
+            expect(theme.icons).toBeDefined();
+
+            // All formats should be recognized - keyed by filename
+            expect(theme.icons['icon-svg.svg']).toBeDefined();
+            expect(theme.icons['icon-svg.svg'].id).toBe('icon-svg.svg');
+
+            expect(theme.icons['icon-png.png']).toBeDefined();
+            expect(theme.icons['icon-png.png'].id).toBe('icon-png.png');
+
+            expect(theme.icons['icon-gif.gif']).toBeDefined();
+            expect(theme.icons['icon-gif.gif'].id).toBe('icon-gif.gif');
+
+            expect(theme.icons['icon-jpg.jpg']).toBeDefined();
+            expect(theme.icons['icon-jpg.jpg'].id).toBe('icon-jpg.jpg');
+
+            expect(theme.icons['icon-jpeg.jpeg']).toBeDefined();
+            expect(theme.icons['icon-jpeg.jpeg'].id).toBe('icon-jpeg.jpeg');
+
+            expect(theme.icons['icon-webp.webp']).toBeDefined();
+            expect(theme.icons['icon-webp.webp'].id).toBe('icon-webp.webp');
+        });
+
+        it('should prioritize SVG over PNG when same icon exists in multiple formats', async () => {
+            // Mock theme with same icon in svg and png formats
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('priority-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('priority-theme/config.xml')) {
+                            return '<theme><name>Priority Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'priority-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('priority-theme/icons')) {
+                            // Same icon exists in multiple formats
+                            return [
+                                { name: 'share.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'share.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'share.gif', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('priority-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'priority-theme');
+            expect(theme).toBeDefined();
+            expect(theme.icons).toBeDefined();
+
+            // Should only have one 'share' icon entry (the SVG version, keyed by filename)
+            expect(theme.icons['share.svg']).toBeDefined();
+            expect(theme.icons['share.svg'].id).toBe('share.svg');
+            expect(theme.icons['share.svg'].value).toContain('share.svg');
+            // Other formats for 'share' should not be present
+            expect(theme.icons['share.png']).toBeUndefined();
+            expect(theme.icons['share.gif']).toBeUndefined();
+        });
+
+        it('should prioritize PNG over GIF when SVG is not available', async () => {
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('png-gif-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('png-gif-theme/config.xml')) {
+                            return '<theme><name>PNG GIF Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'png-gif-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('png-gif-theme/icons')) {
+                            return [
+                                { name: 'download.gif', isDirectory: () => false, isFile: () => true },
+                                { name: 'download.png', isDirectory: () => false, isFile: () => true },
+                                { name: 'download.webp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('png-gif-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'png-gif-theme');
+            expect(theme).toBeDefined();
+
+            // PNG should be chosen over GIF and WEBP (keyed by filename)
+            expect(theme.icons['download.png']).toBeDefined();
+            expect(theme.icons['download.png'].id).toBe('download.png');
+            // Other formats for 'download' should not be present
+            expect(theme.icons['download.gif']).toBeUndefined();
+            expect(theme.icons['download.webp']).toBeUndefined();
+        });
+
+        it('should ignore unsupported file formats in icons directory', async () => {
+            configure({
+                fs: {
+                    existsSync: (p: string) => {
+                        if (typeof p === 'string' && p.includes('mixed-files-theme')) return true;
+                        return fs.existsSync(p);
+                    },
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        if (typeof p === 'string' && p.includes('mixed-files-theme/config.xml')) {
+                            return '<theme><name>Mixed Files Theme</name><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                        if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
+                            return [
+                                { name: 'mixed-files-theme', isDirectory: () => true, isFile: () => false },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('mixed-files-theme/icons')) {
+                            return [
+                                { name: 'valid-icon.svg', isDirectory: () => false, isFile: () => true },
+                                { name: 'readme.txt', isDirectory: () => false, isFile: () => true },
+                                { name: 'config.json', isDirectory: () => false, isFile: () => true },
+                                { name: '.DS_Store', isDirectory: () => false, isFile: () => true },
+                                { name: 'icon.bmp', isDirectory: () => false, isFile: () => true },
+                            ] as fs.Dirent[];
+                        }
+                        if (typeof dirPath === 'string' && dirPath.includes('mixed-files-theme')) {
+                            return [] as fs.Dirent[];
+                        }
+                        return fs.readdirSync(dirPath, options);
+                    },
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+            const body = await res.json();
+
+            const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'mixed-files-theme');
+            expect(theme).toBeDefined();
+
+            // Only valid icon should be included (keyed by filename)
+            const iconKeys = Object.keys(theme.icons);
+            expect(iconKeys).toHaveLength(1);
+            expect(iconKeys[0]).toBe('valid-icon.svg');
         });
 
         it('should handle non-directory entries in themes folder', async () => {

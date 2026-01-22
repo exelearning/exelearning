@@ -187,13 +187,12 @@ ${contentHtml}
         const hasIcon = iconName && iconName.trim() !== '';
         const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
-        // Build icon HTML if iconName exists
+        // Build icon HTML if iconName exists (iconName includes extension, e.g., "share.svg")
         let iconHtml = '';
         if (hasIcon) {
-            // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
             const iconPath = themeIconBasePath
-                ? `${themeIconBasePath}${iconName}.png`
-                : `${basePath}theme/icons/${iconName}.png`;
+                ? `${themeIconBasePath}${iconName}`
+                : `${basePath}theme/icons/${iconName}`;
             iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>
