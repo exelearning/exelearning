@@ -633,8 +633,6 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
-    /** Skip Mermaid library if diagrams were pre-rendered to SVG */
-    skipMermaid?: boolean;
 }
 
 /**
