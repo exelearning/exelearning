@@ -82,6 +82,71 @@ describe('ElpDocumentAdapter', () => {
             expect(metadata.language).toBe('en');
             expect(metadata.theme).toBe('base');
         });
+
+        it('should compute licenseUrl for Creative Commons license', () => {
+            const parsed = createTestStructure({
+                meta: {
+                    license: 'Creative Commons: Attribution - Share Alike 4.0',
+                },
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Creative Commons: Attribution - Share Alike 4.0');
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should compute licenseUrl for CC-BY-NC license', () => {
+            const parsed = createTestStructure({
+                meta: {
+                    license: 'Creative Commons: Attribution - Non Commercial 4.0',
+                },
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-nc/4.0/');
+        });
+
+        it('should return empty licenseUrl for proprietary license', () => {
+            const parsed = createTestStructure({
+                meta: {
+                    license: 'Proprietary License',
+                },
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Proprietary License');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl for empty license', () => {
+            const parsed = createTestStructure({
+                meta: {
+                    license: '',
+                },
+            });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl when license is not set', () => {
+            const parsed = createTestStructure({ meta: {} });
+            const adapter = new ElpDocumentAdapter(parsed);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
+        });
     });
 
     describe('getNavigation', () => {

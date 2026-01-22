@@ -312,6 +312,8 @@ export class Scorm2004Exporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 

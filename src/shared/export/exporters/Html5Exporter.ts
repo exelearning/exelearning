@@ -435,6 +435,8 @@ export class Html5Exporter extends BaseExporter {
             pageFilenameMap,
             // Asset URL transformation map
             assetExportPathMap,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 
