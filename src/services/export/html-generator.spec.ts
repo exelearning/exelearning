@@ -383,7 +383,8 @@ describe('HTML Generator Helper', () => {
                     name: 'creative commons: attribution - non derived work - non commercial 4.0',
                     class: 'cc cc-by-nc-nd',
                 },
-                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'creative commons: cc0 1.0', class: 'cc cc-0' },
+                { name: 'public domain', class: '' },
                 { name: 'propietary license', class: '' },
             ];
 
