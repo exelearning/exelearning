@@ -35,6 +35,7 @@ import { ElpxExporter } from '../exporters/ElpxExporter';
 import { PrintPreviewExporter } from '../exporters/PrintPreviewExporter';
 import type { PrintPreviewOptions, PrintPreviewResult } from '../exporters/PrintPreviewExporter';
 import { ComponentExporter } from '../exporters/ComponentExporter';
+import { PageElpxExporter } from '../exporters/PageElpxExporter';
 
 // Import renderers
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
@@ -111,6 +112,7 @@ function createNullResourceProvider() {
         fetchLibraryFiles: async () => new Map<string, Uint8Array>(),
         fetchLibraryDirectory: async () => new Map<string, Uint8Array>(),
         fetchSchemas: async () => new Map<string, Uint8Array>(),
+        fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
     };
 }
@@ -204,6 +206,10 @@ export function createExporter(
         case 'elpx':
         case 'elp':
             return new ElpxExporter(document, resources, assets, zip);
+
+        case 'pageelpx':
+        case 'pageelp':
+            return new PageElpxExporter(document, resources, assets, zip);
 
         case 'component':
         case 'block':
@@ -544,6 +550,7 @@ export {
     ElpxExporter,
     PrintPreviewExporter,
     ComponentExporter,
+    PageElpxExporter,
     // Renderers
     IdeviceRenderer,
     PageRenderer,
@@ -588,6 +595,7 @@ if (typeof window !== 'undefined') {
         ElpxExporter,
         PrintPreviewExporter,
         ComponentExporter,
+        PageElpxExporter,
         // Renderers
         IdeviceRenderer,
         PageRenderer,
@@ -612,6 +620,10 @@ if (typeof window !== 'undefined') {
     // Also expose createExporter at window level for compatibility
     (window as unknown as { createSharedExporter: typeof createExporter }).createSharedExporter = createExporter;
     (window as unknown as { createExporter: typeof createExporter }).createExporter = createExporter;
+
+    // Expose ElpxExporter at window level for legacy compatibility
+    // This ensures the shared TypeScript ElpxExporter is used instead of the fallback in public/app/yjs/ElpxExporter.js
+    (window as unknown as { ElpxExporter: typeof ElpxExporter }).ElpxExporter = ElpxExporter;
 
     console.log('[SharedExporters] Browser export system loaded');
 }

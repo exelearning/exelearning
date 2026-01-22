@@ -264,3 +264,10 @@
 .property-row .form-select {
     transition: box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
 }
+
+// Legacy license warning style - uses data attribute for simpler JS
+.form-select[data-legacy-value] {
+    color: var(--system-red, #dc3545) !important;
+    border-color: var(--system-red, #dc3545) !important;
+    font-style: italic;
+}

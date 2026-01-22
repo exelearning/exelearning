@@ -120,8 +120,8 @@ export interface ExportComponent {
  * Component structure properties
  */
 export interface ExportComponentProperties {
-    visibility?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    teacherOnly?: string | boolean;
     identifier?: string;
     cssClass?: string;
 }
@@ -556,6 +556,12 @@ export interface PageRenderOptions {
      * If not provided, filenames are generated directly from titles.
      */
     pageFilenameMap?: Map<string, string>;
+
+    /**
+     * Map of asset UUID to export path for URL transformation (new format asset://uuid.ext).
+     * Used to convert asset:// URLs to content/resources/ paths in export output.
+     */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -564,6 +570,8 @@ export interface PageRenderOptions {
 export interface ComponentRenderOptions {
     basePath: string;
     includeDataAttributes: boolean;
+    /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -625,8 +633,6 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
-    /** Skip Mermaid library if diagrams were pre-rendered to SVG */
-    skipMermaid?: boolean;
 }
 
 /**

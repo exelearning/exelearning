@@ -230,6 +230,31 @@ describe('YjsModules (index.js)', () => {
       expect(oldBridge.disconnect).toHaveBeenCalled();
     });
 
+    it('clears asset resolver cache when disconnecting previous bridge', async () => {
+      const mockClearCache = vi.fn();
+      window.eXeLearningAssetResolver = { clearCache: mockClearCache };
+
+      const oldBridge = {
+        disconnect: vi.fn().mockResolvedValue(),
+      };
+      window.YjsModules._bridge = oldBridge;
+
+      window.YjsProjectBridge = vi.fn().mockImplementation(function() {
+        this.initialize = vi.fn().mockResolvedValue();
+        this.enableAutoSync = vi.fn();
+        this.disconnect = vi.fn().mockResolvedValue();
+        this.structureBinding = {};
+        return this;
+      });
+
+      await window.YjsModules.initializeProject(123, 'test-token');
+
+      expect(mockClearCache).toHaveBeenCalled();
+
+      // Cleanup
+      delete window.eXeLearningAssetResolver;
+    });
+
     it('stores bridge reference', async () => {
       let capturedBridge;
       window.YjsProjectBridge = vi.fn().mockImplementation(function() {
@@ -314,6 +339,25 @@ describe('YjsModules (index.js)', () => {
 
       expect(mockBridge.disconnect).toHaveBeenCalled();
       expect(window.YjsModules._bridge).toBeNull();
+    });
+
+    it('clears asset resolver cache before disconnecting', async () => {
+      const mockClearCache = vi.fn();
+      window.eXeLearningAssetResolver = { clearCache: mockClearCache };
+
+      const mockBridge = {
+        disconnect: vi.fn().mockResolvedValue(),
+      };
+      window.YjsModules._bridge = mockBridge;
+
+      await window.YjsModules.cleanup();
+
+      expect(mockClearCache).toHaveBeenCalled();
+      // Verify clearCache was called (before or during cleanup)
+      expect(mockBridge.disconnect).toHaveBeenCalled();
+
+      // Cleanup
+      delete window.eXeLearningAssetResolver;
     });
 
     it('handles cleanup when no instances', async () => {

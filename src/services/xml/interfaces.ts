@@ -213,6 +213,7 @@ export interface RealOdeComponent {
     odePageId: string;
     odeBlockId: string;
     odeIdeviceId?: string;
+    odeIdeviceTypeDirName?: string; // Preferred type identifier (matches browser ElpxImporter behavior)
     odeIdeviceTypeName?: string;
     htmlView?: string;
     jsonProperties?: string;

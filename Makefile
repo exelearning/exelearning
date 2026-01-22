@@ -253,6 +253,12 @@ tmp-cleanup: check-bun
 translations: check-bun
 	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
 
+# Update license information in public/libs/README.md
+# Usage: make update-licenses [DRY_RUN=1]
+.PHONY: update-licenses
+update-licenses: check-bun
+	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
+
 
 # =============================================================================
 # ELPX PROCESSING
@@ -820,6 +826,7 @@ help:
 	@echo "  make generate-jwt EMAIL=x [TTL=3600]              Generate JWT token"
 	@echo "  make tmp-cleanup [MAX_AGE=86400]                Clean temp files"
 	@echo "  make translations [LOCALE=es]                   Extract/clean translations"
+	@echo "  make update-licenses [DRY_RUN=1]               Update license info"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y               Convert ELP v2.x to v3.0 (elpx)"

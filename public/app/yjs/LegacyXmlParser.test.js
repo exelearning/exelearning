@@ -257,6 +257,86 @@ describe('LegacyXmlParser', () => {
       expect(meta.pp_addAccessibilityToolbar).toBe(false);
     });
 
+    it('extracts license from package', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With License"/>
+              <string role="key" value="license"/>
+              <unicode value="creative commons: attribution - share alike 4.0"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With License');
+      expect(meta.license).toBe('creative commons: attribution - share alike 4.0');
+    });
+
+    it('converts "None" license value to empty string', () => {
+      // Legacy eXe 2.x used "None" to indicate no license selected
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Project With None License"/>
+              <string role="key" value="license"/>
+              <unicode value="None"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      expect(meta.title).toBe('Project With None License');
+      // "None" should be converted to empty string (no license)
+      expect(meta.license).toBe('');
+    });
+
+    it('returns empty license when not present', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="No License Project"/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      // Missing license should be empty string
+      expect(meta.license).toBe('');
+    });
+
+    it('preserves empty license value from file', () => {
+      const xml = `<?xml version="1.0"?>
+        <root>
+          <instance class="exe.engine.package.Package">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Empty License Project"/>
+              <string role="key" value="license"/>
+              <unicode value=""/>
+            </dictionary>
+          </instance>
+        </root>`;
+
+      parser.parse(xml);
+      const meta = parser.extractMetadata();
+
+      // Explicitly empty license should stay empty (not default to CC-BY-SA)
+      expect(meta.license).toBe('');
+    });
+
     it('has all expected metadata properties', () => {
       const xml = `<?xml version="1.0"?>
         <root>
@@ -276,6 +356,7 @@ describe('LegacyXmlParser', () => {
       expect(meta).toHaveProperty('author');
       expect(meta).toHaveProperty('description');
       expect(meta).toHaveProperty('language');
+      expect(meta).toHaveProperty('license');
       expect(meta).toHaveProperty('footer');
       expect(meta).toHaveProperty('extraHeadContent');
       expect(meta).toHaveProperty('exportSource');
@@ -1455,6 +1536,7 @@ describe('LegacyXmlParser', () => {
      */
 
     it('should create one block per iDevice', () => {
+      // Use custom titles that are NOT in IDEVICE_TITLE_TRANSLATIONS to avoid translation
       const xml = `<?xml version="1.0" encoding="UTF-8"?>
         <root>
           <instance class="exe.engine.node.Node" reference="node-1">
@@ -1468,19 +1550,19 @@ describe('LegacyXmlParser', () => {
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev1">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Introduction"/>
+                    <unicode value="Introducción"/>
                   </dictionary>
                 </instance>
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev2">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Objectives"/>
+                    <unicode value="Mis objetivos"/>
                   </dictionary>
                 </instance>
                 <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="idev3">
                   <dictionary>
                     <string role="key" value="_title"/>
-                    <unicode value="Activity"/>
+                    <unicode value="Primera actividad"/>
                   </dictionary>
                 </instance>
               </list>
@@ -1501,10 +1583,10 @@ describe('LegacyXmlParser', () => {
         expect(block.idevices).toHaveLength(1);
       });
 
-      // Block names should match iDevice titles
-      expect(page.blocks[0].name).toBe('Introduction');
-      expect(page.blocks[1].name).toBe('Objectives');
-      expect(page.blocks[2].name).toBe('Activity');
+      // Block names should match iDevice titles (custom titles not in translation map)
+      expect(page.blocks[0].name).toBe('Introducción');
+      expect(page.blocks[1].name).toBe('Mis objetivos');
+      expect(page.blocks[2].name).toBe('Primera actividad');
     });
 
     it('should use iDevice title as block name', () => {
@@ -3715,10 +3797,11 @@ describe('LegacyXmlParser', () => {
       expect(idevices.length).toBe(1);
       expect(idevices[0].type).toBe('text'); // Type stays as text
       expect(idevices[0].properties).toBeDefined();
-      expect(idevices[0].properties.textInfoDurationInput).toBe('Duración:');
-      expect(idevices[0].properties.textInfoDurationTextInput).toBe('2 sesiones');
-      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Agrupamiento:');
-      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Grupo de 4');
+      // TextInput = label (dt), Input = value (dd)
+      expect(idevices[0].properties.textInfoDurationTextInput).toBe('Duración:');
+      expect(idevices[0].properties.textInfoDurationInput).toBe('2 sesiones');
+      expect(idevices[0].properties.textInfoParticipantsTextInput).toBe('Agrupamiento:');
+      expect(idevices[0].properties.textInfoParticipantsInput).toBe('Grupo de 4');
     });
 
     it('should extract feedback metadata from PBL Task', () => {
@@ -3727,16 +3810,24 @@ describe('LegacyXmlParser', () => {
       const metadata = parser.extractPblTaskMetadata(html);
 
       expect(metadata).not.toBeNull();
-      expect(metadata.textInfoDurationInput).toBe('Duration:');
-      expect(metadata.textInfoDurationTextInput).toBe('1 hour');
-      expect(metadata.textInfoFeedbackButton).toBe('Show Feedback');
-      expect(metadata.textInfoFeedback).toContain('Feedback text');
+      // TextInput = label (dt), Input = value (dd)
+      expect(metadata.textInfoDurationTextInput).toBe('Duration:');
+      expect(metadata.textInfoDurationInput).toBe('1 hour');
+      expect(metadata.textFeedbackInput).toBe('Show Feedback');
+      expect(metadata.textFeedbackTextarea).toContain('Feedback text');
+      // Check rebuilt htmlView structure
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
+      expect(metadata.rebuiltHtmlView).toContain('Duration:');
+      expect(metadata.rebuiltHtmlView).toContain('1 hour');
+      expect(metadata.rebuiltHtmlView).toContain('feedbacktooglebutton');
     });
 
-    it('should return null for non-PBL content', () => {
+    it('should return metadata with empty values for non-PBL content', () => {
       const html = '<p>Regular text content</p>';
       const metadata = parser.extractPblTaskMetadata(html);
-      expect(metadata).toBeNull();
+      // Now always returns metadata with rebuiltHtmlView, even if no PBL elements found
+      expect(metadata).not.toBeNull();
+      expect(metadata.rebuiltHtmlView).toContain('exe-text-activity');
     });
   });
 
@@ -4088,6 +4179,306 @@ describe('LegacyXmlParser', () => {
         const result = parser.extractIDevicesWithTitles(list);
         expect(result[0].type).toBe('text');
       });
+    });
+
+    describe('iDevice title translations', () => {
+      it('should translate "Translation" title to localized Case Study for EjercicioresueltofpdIdevice', () => {
+        parser.projectLanguage = 'es';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.ejercicioresueltofpdidevice.EjercicioresueltofpdIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Translation"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Caso práctico');
+      });
+
+      it('should translate "Case Study" title to localized version for CasestudyIdevice', () => {
+        parser.projectLanguage = 'ca';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.casestudyidevice.CasestudyIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Case Study"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Cas pràctic');
+      });
+
+      it('should translate common English iDevice titles to project language', () => {
+        parser.projectLanguage = 'es';
+        const testCases = [
+          { english: 'Activity', expected: 'Actividad' },
+          { english: 'Reading Activity', expected: 'Actividad de lectura' },
+          { english: 'Preknowledge', expected: 'Conocimiento previo' },
+          { english: 'Objectives', expected: 'Objetivos' },
+          { english: 'Task', expected: 'Tarea' },
+          { english: 'Quotation', expected: 'Cita' },
+          { english: 'Reflection', expected: 'Reflexión' },
+        ];
+
+        for (const { english, expected } of testCases) {
+          const xml = `<?xml version="1.0"?>
+            <list>
+              <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="${english}"/>
+                  <string role="key" value="_iDeviceDir"/>
+                  <unicode value="text"/>
+                </dictionary>
+              </instance>
+            </list>`;
+          const doc = new DOMParser().parseFromString(xml, 'application/xml');
+          const list = doc.querySelector('list');
+          const result = parser.extractIDevicesWithTitles(list);
+          expect(result[0].title).toBe(expected);
+        }
+      });
+
+      it('should preserve custom titles that do not match common English titles', () => {
+        parser.projectLanguage = 'es';
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Mi actividad personalizada"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Mi actividad personalizada');
+      });
+
+      it('should use Spanish (default) translation when project language has no translation', () => {
+        parser.projectLanguage = 'xx'; // Unknown language - defaults to Spanish
+        const xml = `<?xml version="1.0"?>
+          <list>
+            <instance class="exe.engine.jsidevice.JsIdevice" reference="test1">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Activity"/>
+                <string role="key" value="_iDeviceDir"/>
+                <unicode value="text"/>
+              </dictionary>
+            </instance>
+          </list>`;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        const list = doc.querySelector('list');
+        const result = parser.extractIDevicesWithTitles(list);
+        expect(result[0].title).toBe('Actividad'); // Falls back to Spanish
+      });
+    });
+  });
+
+  describe('getLocalizedIdeviceTitle', () => {
+    it('returns Spanish translation for Case Study', () => {
+      const result = parser.getLocalizedIdeviceTitle('Case Study', 'es');
+      expect(result).toBe('Caso práctico');
+    });
+
+    it('returns Catalan translation for Activity', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'ca');
+      expect(result).toBe('Activitat');
+    });
+
+    it('returns French translation for Reflection', () => {
+      const result = parser.getLocalizedIdeviceTitle('Reflection', 'fr');
+      expect(result).toBe('Réflexion');
+    });
+
+    it('returns null for unknown English title', () => {
+      const result = parser.getLocalizedIdeviceTitle('Unknown Title', 'es');
+      expect(result).toBeNull();
+    });
+
+    it('returns Spanish (default) translation for unknown language code', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'xx');
+      expect(result).toBe('Actividad'); // Falls back to Spanish
+    });
+
+    it('returns English translation when language is en', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'en');
+      expect(result).toBe('Activity');
+    });
+
+    it('handles language codes with country suffix', () => {
+      const result = parser.getLocalizedIdeviceTitle('Activity', 'es-ES');
+      expect(result).toBe('Actividad');
+    });
+  });
+
+  describe('getLocalizedCaseStudyTitle', () => {
+    it('returns Spanish case study title', () => {
+      const result = parser.getLocalizedCaseStudyTitle('es');
+      expect(result).toBe('Caso práctico');
+    });
+
+    it('returns Basque case study title', () => {
+      const result = parser.getLocalizedCaseStudyTitle('eu');
+      expect(result).toBe('Kasu praktikoa');
+    });
+
+    it('returns default Caso práctico for unknown language', () => {
+      const result = parser.getLocalizedCaseStudyTitle('xx');
+      expect(result).toBe('Caso práctico');
+    });
+  });
+
+  describe('rawIdeviceDir handler integration', () => {
+    // Test that rawIdeviceDir is passed to LegacyHandlerRegistry.getHandler
+    // This allows handlers like GameIdeviceHandler to match on legacy type names
+    // (e.g., 'selecciona-activity' instead of 'quick-questions-multiple-choice')
+
+    it('should pass rawIdeviceDir to handler registry for game iDevices', () => {
+      // Set up handler registry with a mock
+      const mockHandler = {
+        extractProperties: mock(() => ({ gameData: 'test' })),
+        extractHtmlView: mock(() => '<div>Game</div>'),
+        getTargetType: mock(() => 'quick-questions-multiple-choice'),
+        constructor: { name: 'MockGameHandler' },
+      };
+      const mockGetHandler = mock(() => mockHandler);
+      global.LegacyHandlerRegistry = { getHandler: mockGetHandler };
+
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Game Test"/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.jsidevice.JsIdevice" reference="100">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Selecciona Game"/>
+                            <string role="key" value="_iDeviceDir"/>
+                            <unicode value="selecciona-activity"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      const result = parser.parse(xml);
+
+      // Verify getHandler was called with the raw directory name (selecciona-activity)
+      // not the mapped type (quick-questions-multiple-choice)
+      expect(mockGetHandler).toHaveBeenCalled();
+      const calls = mockGetHandler.mock.calls;
+      // Find the call with JsIdevice class
+      const jsIdeviceCall = calls.find(call =>
+        call[0].includes('JsIdevice') && call[1] === 'selecciona-activity'
+      );
+      expect(jsIdeviceCall).toBeDefined();
+
+      // Cleanup
+      delete global.LegacyHandlerRegistry;
+    });
+
+    it('should fall back to ideviceType when rawIdeviceDir is empty', () => {
+      // Set up handler registry with a mock
+      const mockHandler = {
+        extractProperties: mock(() => ({})),
+        getTargetType: mock(() => 'text'),
+        constructor: { name: 'MockDefaultHandler' },
+      };
+      const mockGetHandler = mock(() => mockHandler);
+      global.LegacyHandlerRegistry = { getHandler: mockGetHandler };
+
+      // Create XML with a generic iDevice (no _iDeviceDir)
+      const xml = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Test"/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="100">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Text"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      parser.parse(xml);
+
+      // Verify getHandler was called with the ideviceType
+      expect(mockGetHandler).toHaveBeenCalled();
+      const calls = mockGetHandler.mock.calls;
+      const freeTextCall = calls.find(call =>
+        call[0].includes('FreeTextIdevice')
+      );
+      expect(freeTextCall).toBeDefined();
+      // Second arg should be the mapped ideviceType since rawIdeviceDir is empty for non-JsIdevice
+      // FreeTextIdevice maps to 'text' in LEGACY_TYPE_MAP
+      expect(freeTextCall[1]).toBe('text');
+
+      // Cleanup
+      delete global.LegacyHandlerRegistry;
     });
   });
 });

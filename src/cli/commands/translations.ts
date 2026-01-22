@@ -28,6 +28,43 @@ export interface TranslationsResult {
 }
 
 /**
+ * Files/directories to exclude from translation scanning
+ */
+const EXCLUDE_FILE_PATTERNS = [
+    /\.spec\.ts$/, // Backend test files
+    /\.test\.ts$/, // Backend test files
+    /\.test\.js$/, // Frontend test files
+    /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
+    /[\\/]+node_modules[\\/]+/, // Dependencies
+];
+
+/**
+ * Keys that look like test patterns (not real translations)
+ */
+const INVALID_KEY_PATTERNS = [
+    /^test\./, // test.key, test.something
+    /^pattern\./, // pattern.trans, pattern.t
+    /^nonexistent\./, // nonexistent.translation.key
+    /^new\.key\./, // new.key.from.source
+    /^existing\.key$/, // existing.key
+    /^key$/, // just "key"
+];
+
+/**
+ * Check if a file path should be excluded from scanning
+ */
+function shouldExcludeFile(filePath: string): boolean {
+    return EXCLUDE_FILE_PATTERNS.some(pattern => pattern.test(filePath));
+}
+
+/**
+ * Check if a key looks like a test pattern and should be excluded
+ */
+function isInvalidKey(key: string): boolean {
+    return INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
+}
+
+/**
  * Extract translation keys from source files
  */
 async function extractTranslationKeys(): Promise<Set<string>> {
@@ -46,6 +83,11 @@ async function extractTranslationKeys(): Promise<Set<string>> {
 
     for (const glob of sourceGlobs) {
         for await (const filePath of glob.scan({ cwd: process.cwd(), absolute: true })) {
+            // Skip excluded files/directories
+            if (shouldExcludeFile(filePath)) {
+                continue;
+            }
+
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
                 for (const pattern of patterns) {
@@ -54,8 +96,9 @@ async function extractTranslationKeys(): Promise<Set<string>> {
                     let match;
                     while ((match = pattern.exec(content)) !== null) {
                         const key = match[1].trim();
-                        // Skip keys that look like template expressions or are empty
-                        if (key && !key.includes('${') && !key.startsWith('\\')) {
+                        // Skip keys that look like template expressions, are empty,
+                        // start with backslash, or match test patterns
+                        if (key && !key.includes('${') && !key.startsWith('\\') && !isInvalidKey(key)) {
                             keys.add(key);
                         }
                     }
