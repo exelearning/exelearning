@@ -113,7 +113,7 @@
         "@vitest/coverage-v8": "^4.0.16",
         "@vitest/ui": "^4.0.16",
         "cross-env": "^10.1.0",
-        "electron": "^39.2.7",
+        "electron": "^40.0.0",
         "electron-builder": "^26.0.12",
         "esbuild": "^0.27.2",
         "happy-dom": "^20.0.11",
