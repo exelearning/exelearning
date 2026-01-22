@@ -290,12 +290,12 @@ ${madeWithExeHtml}`;
         }
 
         // Detect required libraries
+        // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
         const libraryDetector = new LibraryDetector();
         const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
             includeAccessibilityToolbar: addAccessibilityToolbar,
             includeMathJax: meta.addMathJax === true,
             skipMathJax: latexWasRendered && !meta.addMathJax,
-            skipMermaid: mermaidWasRendered,
         });
 
         return `<!DOCTYPE html>

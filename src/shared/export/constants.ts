@@ -250,13 +250,10 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         isDirectory: true,
     },
 
-    // Mermaid diagrams
-    {
-        name: 'mermaid',
-        type: 'class',
-        pattern: 'mermaid',
-        files: ['mermaid/mermaid.min.js'],
-    },
+    // NOTE: Mermaid library is NOT included in exports.
+    // Mermaid diagrams are always pre-rendered to static SVG (class="exe-mermaid-rendered")
+    // before export, so the ~2.7MB mermaid.min.js library is never needed.
+    // The MermaidPreRenderer.js handles conversion in the workarea.
 
     // jQuery UI for sortable/draggable iDevices
     {
