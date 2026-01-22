@@ -11,7 +11,7 @@
 import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/interfaces';
 import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
-import { getLicenseClass } from '../../shared/export/constants';
+import { getLicenseClass, getLicenseUrl } from '../../shared/export/constants';
 
 // Import shared iDevice configuration service
 import { getIdeviceConfig, getIdeviceExportFiles } from '../idevice-config';
@@ -68,8 +68,8 @@ export function generatePageHtml(
 
     // Get license and user footer content
     const license = structure.meta.license || 'creative commons: attribution - share alike 4.0';
-    const licenseUrl = structure.meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/';
-    const userFooterContent = structure.meta.userFooter || '';
+    const licenseUrl = getLicenseUrl(license);
+    const userFooterContent = structure.meta.footer || '';
 
     return `<!DOCTYPE html>
 <html lang="${lang}" id="exe-${isIndex ? 'index' : page.id}">
@@ -184,10 +184,10 @@ function generateHead(
     const faviconHref = `${resourcesPrefix}${faviconPath}`;
     head += `<link rel="icon" type="${escapeAttr(faviconType)}" href="${escapeAttr(faviconHref)}">`;
 
-    // Custom styles from meta
-    const customStyles = structure.meta.customStyles;
-    if (customStyles) {
-        head += `\n<style>\n${customStyles}\n</style>`;
+    // Custom head content from meta (can include styles, scripts, etc.)
+    const extraHeadContent = structure.meta.extraHeadContent;
+    if (extraHeadContent) {
+        head += `\n${extraHeadContent}`;
     }
 
     return head;
@@ -445,7 +445,8 @@ function renderIdevice(component: NormalizedComponent, resourcesPrefix: string):
     const ideviceId = component.id;
     const properties = component.properties || {};
 
-    const rawContent = normalizeHtmlPaths(component.content || '');
+    const contentValue = typeof component.content === 'string' ? component.content : '';
+    const rawContent = normalizeHtmlPaths(contentValue);
 
     const classes = ['idevice_node', config.cssClass];
 
@@ -473,11 +474,16 @@ function renderIdevice(component: NormalizedComponent, resourcesPrefix: string):
     if (config.componentType === 'json') {
         dataAttrs += ` data-idevice-component-type="json"`;
 
+        // Text idevices only need ideviceId, not full properties
         const isText = isTextIdevice(type);
-        if (!isText && Object.keys(properties).length > 0) {
-            const jsonData = JSON.stringify(properties);
+        if (isText || Object.keys(properties).length > 0) {
+            // For text idevices, use object with only ideviceId; for others, use full properties
+            const jsonProps = isText ? { ideviceId } : properties;
+            const jsonData = JSON.stringify(jsonProps);
             dataAttrs += ` data-idevice-json-data="${escapeAttr(jsonData)}"`;
-            dataAttrs += ` data-idevice-template="${escapeAttr(config.template)}"`;
+            if (!isText) {
+                dataAttrs += ` data-idevice-template="${escapeAttr(config.template)}"`;
+            }
         }
     }
 

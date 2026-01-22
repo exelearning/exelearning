@@ -268,7 +268,10 @@ class ElpxImporter {
       author: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_author') || '') : '',
       language: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_lang') || 'en') : 'en',
       description: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_description') || '') : '',
-      license: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_license') || '') : '',
+      // Check both pp_license (newer format) and license (older v3.x format) for backward compatibility
+      license: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_license')
+                               ?? this.getPropertyValue(odeProperties, 'license')
+                               ?? '') : '',
       theme: themeFromXml,
       // Export settings
       addPagination: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addPagination', false) : false,
@@ -1750,7 +1753,7 @@ class ElpxImporter {
 
               // Convert htmlView to jsonProperties for JSON-type iDevices (FreeTextIdevice/TextIdevice)
               // These iDevices expect content in jsonProperties.textTextarea format
-              // Also include feedback content if present (from FreeTextHandler.extractProperties)
+              // Also include feedback content and PBL Task metadata (duration/participants)
               if (ideviceType === 'FreeTextIdevice' || ideviceType.toLowerCase().includes('text')) {
                 // Get feedback from handler properties (FreeTextHandler.extractProperties puts them in ideviceData.properties)
                 // Fall back to ideviceData.feedbackButton/feedbackHtml for backwards compatibility
@@ -1758,6 +1761,15 @@ class ElpxImporter {
                 const feedbackTextarea = ideviceData.properties?.textFeedbackTextarea || ideviceData.feedbackHtml || '';
 
                 const jsonProps = {
+                  ideviceId: compId,
+                  // Default values for duration/participants info (PBL Task metadata)
+                  textInfoDurationInput: '',
+                  textInfoDurationTextInput: '',
+                  textInfoParticipantsInput: '',
+                  textInfoParticipantsTextInput: '',
+                  // Spread any additional properties from LegacyXmlParser (e.g., PBL Task metadata)
+                  ...(ideviceData.properties || {}),
+                  // Core content fields (override any from properties to ensure correct values)
                   textTextarea: transformedHtml || '',
                   textFeedbackInput: feedbackInput,
                   textFeedbackTextarea: feedbackTextarea ? replaceAssetPathsWithMediaTypes(feedbackTextarea) : ''
@@ -1769,6 +1781,7 @@ class ElpxImporter {
                 // CaseStudyHandler extracts all content into properties, htmlView is empty
                 if (ideviceType === 'casestudy') {
                   const jsonProps = {
+                    ideviceId: compId,
                     history: '',
                     activities: [],
                     // Task info fields (new in modern format, default to empty for legacy imports)
@@ -1785,11 +1798,15 @@ class ElpxImporter {
                   const transformedProps = transformPropertiesAssets(jsonProps, replaceAssetPathsWithMediaTypes);
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else if (ideviceData.properties && typeof ideviceData.properties === 'object' && Object.keys(ideviceData.properties).length > 0) {
-                  // For other iDevices (form, etc.), use properties from LegacyXmlParser if available
+                  // For other iDevices (form, image-gallery, etc.), use properties from LegacyXmlParser if available
+                  // Ensure ideviceId is included in jsonProperties - required by iDevice JS code
+                  // (e.g., image-gallery.js line 107 expects data.ideviceId)
                   const transformedProps = transformPropertiesAssets(ideviceData.properties, replaceAssetPathsWithMediaTypes);
+                  transformedProps.ideviceId = compId;
                   compMap.set('jsonProperties', JSON.stringify(transformedProps));
                 } else {
-                  compMap.set('jsonProperties', '{}');
+                  // Even for empty properties, include ideviceId for iDevice JS code
+                  compMap.set('jsonProperties', JSON.stringify({ ideviceId: compId }));
                 }
               }
 
@@ -1846,6 +1863,11 @@ class ElpxImporter {
           // Set custom head content if present in legacy file
           if (parsedData.meta.extraHeadContent) {
             metadata.set('extraHeadContent', parsedData.meta.extraHeadContent);
+          }
+          // Set license if present in legacy file (may be empty for legacy content - that's intentional)
+          if (parsedData.meta.license !== undefined) {
+            metadata.set('license', parsedData.meta.license);
+            Logger.log('[ElpxImporter] Legacy license set:', parsedData.meta.license || '(empty)');
           }
           // Set export options if present in legacy file
           // Use metadata keys WITHOUT pp_ prefix to match YjsPropertiesBinding.propertyKeyMap

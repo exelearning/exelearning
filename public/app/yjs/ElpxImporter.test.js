@@ -1000,6 +1000,96 @@ describe('ElpxImporter', () => {
       // With basic XML (old format), values should use defaults
       // The test just verifies no errors are thrown
     });
+
+    it('extracts license from "license" key (v3.x format) when pp_license is not present', async () => {
+      // Sample XML with the old "license" key (without pp_ prefix) - used in older v3.x ELPX files
+      const XML_WITH_OLD_LICENSE_KEY = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project V3</value></odeProperty>
+    <odeProperty><key>license</key><value>creative commons: attribution - share alike 4.0</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_OLD_LICENSE_KEY);
+      const mockDocManager = createMockDocumentManager();
+      const oldLicenseImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await oldLicenseImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      expect(metadata.get('license')).toBe('creative commons: attribution - share alike 4.0');
+    });
+
+    it('prefers pp_license over license key when both are present', async () => {
+      // Sample XML with both keys - pp_license should take precedence
+      const XML_WITH_BOTH_LICENSE_KEYS = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project</value></odeProperty>
+    <odeProperty><key>pp_license</key><value>public domain</value></odeProperty>
+    <odeProperty><key>license</key><value>creative commons: attribution 4.0</value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_BOTH_LICENSE_KEYS);
+      const mockDocManager = createMockDocumentManager();
+      const bothKeysImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await bothKeysImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      // pp_license should take precedence
+      expect(metadata.get('license')).toBe('public domain');
+    });
+
+    it('handles empty license value from both keys', async () => {
+      // Sample XML with empty license value
+      const XML_WITH_EMPTY_LICENSE = `<?xml version="1.0"?>
+<ode>
+  <odeProperties>
+    <odeProperty><key>pp_title</key><value>Test Project</value></odeProperty>
+    <odeProperty><key>license</key><value></value></odeProperty>
+  </odeProperties>
+  <odeNavStructures>
+    <odeNavStructure>
+      <odePageId>page1</odePageId>
+      <pageName>Page 1</pageName>
+      <odeNavStructureOrder>1</odeNavStructureOrder>
+      <odePagStructures></odePagStructures>
+    </odeNavStructure>
+  </odeNavStructures>
+</ode>`;
+
+      global.window.fflate = createMockFflate(XML_WITH_EMPTY_LICENSE);
+      const mockDocManager = createMockDocumentManager();
+      const emptyLicenseImporter = new ElpxImporter(mockDocManager, createMockAssetManager());
+      const mockFile = createMockFile();
+
+      await emptyLicenseImporter.importFromFile(mockFile);
+
+      const metadata = mockDocManager.getMetadata();
+      // Empty license should be preserved (not defaulted to CC-BY-SA)
+      expect(metadata.get('license')).toBe('');
+    });
   });
 
   describe('findNavStructures', () => {
@@ -3188,6 +3278,230 @@ describe('ElpxImporter', () => {
       expect(updateInternalLinksWithRemap(undefined)).toBe(undefined);
       expect(updateInternalLinksWithRemap('')).toBe('');
       expect(updateInternalLinksWithRemap('no links here')).toBe('no links here');
+    });
+  });
+
+  describe('importLegacyFormat - ideviceId in jsonProperties', () => {
+    // Test that ideviceId is always included in jsonProperties during legacy import
+    // This is required because iDevice JS code (e.g., image-gallery.js line 107) expects data.ideviceId
+
+    // Reuse the LEGACY_XML_WITH_INTERNAL_LINKS format which has a working FreeTextIdevice
+    const LEGACY_XML_WITH_TEXT = `<?xml version="1.0"?>
+      <instance class="exe.engine.package.Package">
+        <dictionary>
+          <string role="key" value="_title"/>
+          <unicode value="Text iDevice Test"/>
+          <string role="key" value="_nodeIdDict"/>
+          <dictionary/>
+          <string role="key" value="_root"/>
+          <instance class="exe.engine.node.Node" reference="0">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root"/>
+              <string role="key" value="_children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="1">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Page With Text"/>
+                    <string role="key" value="parent"/>
+                    <reference key="0"/>
+                    <string role="key" value="_children"/>
+                    <list/>
+                    <string role="key" value="idevices"/>
+                    <list>
+                      <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="100">
+                        <dictionary>
+                          <string role="key" value="_title"/>
+                          <unicode value="Text iDevice"/>
+                          <string role="key" value="content"/>
+                          <instance class="exe.engine.field.TextAreaField">
+                            <dictionary>
+                              <string role="key" value="content_w_resourcePaths"/>
+                              <unicode value="&lt;p&gt;Hello World&lt;/p&gt;"/>
+                            </dictionary>
+                          </instance>
+                        </dictionary>
+                      </instance>
+                    </list>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </dictionary>
+      </instance>`;
+
+    beforeEach(() => {
+      global.window.LegacyXmlParser = LegacyXmlParser;
+    });
+
+    it('should include ideviceId in jsonProperties for FreeTextIdevice (text)', async () => {
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_TEXT);
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('text.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      // Find the text iDevice and verify ideviceId is in jsonProperties
+      let foundTextIdevice = false;
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const ideviceType = comp.get('ideviceType');
+
+                // FreeTextIdevice should have jsonProperties with ideviceId
+                if ((ideviceType === 'FreeTextIdevice' || ideviceType === 'text') && jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // The fix: jsonProperties should contain ideviceId
+                  expect(jsonProps.ideviceId).toBeDefined();
+                  expect(jsonProps.ideviceId).toMatch(/^idevice-/);
+                  foundTextIdevice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Text iDevices should always be created with jsonProperties
+      expect(foundTextIdevice).toBe(true);
+    });
+
+    it('should ensure ideviceId is a new generated ID, not from legacy XML', async () => {
+      // The ideviceId should be newly generated, not copied from the legacy XML
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_TEXT);
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('text.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const compId = comp.get('id');
+
+                if (jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // Verify ideviceId matches the component's id
+                  // This confirms we're using the newly generated ID
+                  expect(jsonProps.ideviceId).toBe(compId);
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    it('should include ideviceId even for iDevices with empty properties', async () => {
+      // Create XML with a JsIdevice that has no properties to test line 1806 coverage
+      const LEGACY_XML_WITH_MINIMAL_JSIDEVICE = `<?xml version="1.0"?>
+        <instance class="exe.engine.package.Package">
+          <dictionary>
+            <string role="key" value="_title"/>
+            <unicode value="Minimal JsIdevice Test"/>
+            <string role="key" value="_nodeIdDict"/>
+            <dictionary/>
+            <string role="key" value="_root"/>
+            <instance class="exe.engine.node.Node" reference="0">
+              <dictionary>
+                <string role="key" value="_title"/>
+                <unicode value="Root"/>
+                <string role="key" value="_children"/>
+                <list>
+                  <instance class="exe.engine.node.Node" reference="1">
+                    <dictionary>
+                      <string role="key" value="_title"/>
+                      <unicode value="Page With JsIdevice"/>
+                      <string role="key" value="parent"/>
+                      <reference key="0"/>
+                      <string role="key" value="_children"/>
+                      <list/>
+                      <string role="key" value="idevices"/>
+                      <list>
+                        <instance class="exe.engine.jsidevice.JsIdevice" reference="300">
+                          <dictionary>
+                            <string role="key" value="_title"/>
+                            <unicode value="Some JsIdevice"/>
+                            <string role="key" value="_iDeviceDir"/>
+                            <unicode value="unknown-idevice-type"/>
+                          </dictionary>
+                        </instance>
+                      </list>
+                    </dictionary>
+                  </instance>
+                </list>
+                <string role="key" value="idevices"/>
+                <list/>
+              </dictionary>
+            </instance>
+          </dictionary>
+        </instance>`;
+
+      global.window.fflate = createMockFflateLegacy(LEGACY_XML_WITH_MINIMAL_JSIDEVICE);
+
+      const mockDocManager = createMockDocumentManager();
+      const importer = new ElpxImporter(mockDocManager, createMockAssetManager());
+
+      const mockFile = createMockFile('minimal.elp');
+      await importer.importLegacyFormat(mockFile);
+
+      const navigation = mockDocManager.getNavigation();
+
+      // Find the JsIdevice and verify ideviceId is in jsonProperties even when properties are empty
+      let foundJsIdevice = false;
+      for (let i = 0; i < navigation.length; i++) {
+        const page = navigation.get(i);
+        const blocks = page.get('blocks');
+        if (blocks) {
+          for (let j = 0; j < blocks.length; j++) {
+            const block = blocks.get(j);
+            const components = block.get('components');
+            if (components) {
+              for (let k = 0; k < components.length; k++) {
+                const comp = components.get(k);
+                const jsonPropsStr = comp.get('jsonProperties');
+                const compId = comp.get('id');
+
+                if (jsonPropsStr) {
+                  const jsonProps = JSON.parse(jsonPropsStr);
+                  // Even for unknown iDevices with no properties, ideviceId should be present
+                  expect(jsonProps.ideviceId).toBeDefined();
+                  expect(jsonProps.ideviceId).toBe(compId);
+                  foundJsIdevice = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      expect(foundJsIdevice).toBe(true);
     });
   });
 

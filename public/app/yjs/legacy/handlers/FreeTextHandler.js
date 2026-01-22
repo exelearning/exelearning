@@ -35,6 +35,7 @@ class FreeTextHandler extends BaseLegacyHandler {
   /**
    * Extract HTML content from the legacy format
    * Also renders feedback button and content directly into htmlView (matching Symfony behavior)
+   * Wraps content in exe-text-activity structure for proper editor/export handling
    * @param {Element} dict - Dictionary element from legacy XML
    * @param {Object} context - Context with language info
    * @param {string} context.language - Project language code (e.g., 'es', 'en')
@@ -74,23 +75,46 @@ class FreeTextHandler extends BaseLegacyHandler {
       }
     }
 
-    // Render feedback into htmlView (matching Symfony legacy approach)
-    // This ensures feedback works in editor, preview, and export
+    // Extract feedback (if present)
     const feedback = this.extractFeedback(dict, context);
-    if (feedback.content) {
-      const buttonCaption = feedback.buttonCaption;
 
-      content += `<div class="iDevice_buttons feedback-button js-required">
-<input type="button" class="feedbacktooglebutton" value="${buttonCaption}" data-text-a="${buttonCaption}" data-text-b="${buttonCaption}">
-</div>
-<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
+    // If we have feedback, wrap content in exe-text-activity structure
+    // This matches Symfony format and allows text.js editor to properly parse it
+    if (feedback.content) {
+      const escapedCaption = this.escapeHtmlAttr(feedback.buttonCaption);
+      let rebuiltHtmlView = content;
+
+      // Add feedback button and content
+      rebuiltHtmlView += '<div class="iDevice_buttons feedback-button js-required">';
+      rebuiltHtmlView += `<input type="button" class="feedbacktooglebutton" value="${escapedCaption}" `;
+      rebuiltHtmlView += `data-text-a="${escapedCaption}" data-text-b="${escapedCaption}">`;
+      rebuiltHtmlView += '</div>';
+      rebuiltHtmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
+
+      // Wrap in exe-text-activity container (matches extractPblTaskMetadata format)
+      return `<div class="exe-text-activity">${rebuiltHtmlView}</div>`;
     }
 
     return content;
   }
 
   /**
-   * Extract feedback content (for Reflection iDevices)
+   * Escape HTML special characters for attribute values
+   * @param {string} str - String to escape
+   * @returns {string} Escaped string safe for HTML attributes
+   */
+  escapeHtmlAttr(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Extract feedback content (for Reflection iDevices and GenericIdevice with FeedbackField)
    * @param {Element} dict - Dictionary element
    * @param {Object} context - Context with language info
    * @param {string} context.language - Project language code
@@ -101,7 +125,7 @@ class FreeTextHandler extends BaseLegacyHandler {
     // Use project language for default caption (not UI locale)
     const defaultCaption = this.getLocalizedFeedbackText(context.language);
 
-    // Look for answerTextArea (ReflectionIdevice style)
+    // Strategy 1: Look for answerTextArea (ReflectionIdevice style)
     const answerTextArea = this.findDictInstance(dict, 'answerTextArea');
     if (answerTextArea) {
       const answerDict = answerTextArea.querySelector(':scope > dictionary');
@@ -119,7 +143,7 @@ class FreeTextHandler extends BaseLegacyHandler {
       }
     }
 
-    // Alternative: Look for feedbackTextArea
+    // Strategy 2: Look for feedbackTextArea
     const feedbackTextArea = this.findDictInstance(dict, 'feedbackTextArea');
     if (feedbackTextArea) {
       const feedbackDict = feedbackTextArea.querySelector(':scope > dictionary');
@@ -131,6 +155,61 @@ class FreeTextHandler extends BaseLegacyHandler {
       const content = this.extractTextAreaFieldContent(feedbackTextArea);
       if (content) {
         return { content, buttonCaption };
+      }
+    }
+
+    // Strategy 3: Look for FeedbackField inside "fields" list (GenericIdevice / Reading Activity style)
+    // GenericIdevice stores feedback as a FeedbackField within the fields list, not as a separate key
+    const feedbackFromFields = this.extractFeedbackFromFieldsList(dict, context);
+    if (feedbackFromFields.content) {
+      return feedbackFromFields;
+    }
+
+    return { content: '', buttonCaption: '' };
+  }
+
+  /**
+   * Extract feedback from FeedbackField inside "fields" list
+   * Used by GenericIdevice (Reading Activity, etc.)
+   * @param {Element} dict - Dictionary element
+   * @param {Object} context - Context with language info
+   */
+  extractFeedbackFromFieldsList(dict, context = {}) {
+    const defaultCaption = this.getLocalizedFeedbackText(context.language);
+    const children = Array.from(dict.children);
+
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      if (child.tagName === 'string' &&
+          child.getAttribute('role') === 'key' &&
+          child.getAttribute('value') === 'fields') {
+        const listEl = children[i + 1];
+        if (listEl && listEl.tagName === 'list') {
+          const fieldInstances = listEl.querySelectorAll(':scope > instance');
+          for (const fieldInst of fieldInstances) {
+            const fieldClass = fieldInst.getAttribute('class') || '';
+            if (fieldClass.includes('FeedbackField')) {
+              const fieldDict = fieldInst.querySelector(':scope > dictionary');
+              if (fieldDict) {
+                // Get button caption from _buttonCaption
+                const storedCaption = this.findDictStringValue(fieldDict, '_buttonCaption');
+                const buttonCaption = storedCaption || defaultCaption;
+
+                // Get content from feedback or content_w_resourcePaths
+                let content = this.findDictStringValue(fieldDict, 'feedback');
+                if (!content) {
+                  content = this.findDictStringValue(fieldDict, 'content_w_resourcePaths');
+                }
+                if (content) {
+                  // Decode HTML entities if needed
+                  content = this.decodeHtmlContent(content);
+                  return { content, buttonCaption };
+                }
+              }
+            }
+          }
+        }
+        break;
       }
     }
 

@@ -157,6 +157,17 @@ class YjsPropertiesBinding {
     const inputListener = (event) => {
       if (this.isUpdatingFromYjs) return;
 
+      // If this is a select with legacy warning and user selected a valid option, clean up immediately
+      if (inputType === 'select' && input.dataset.legacyValue === 'true') {
+        const selectedValue = input.value;
+        const isValidOption = Array.from(input.options).some(
+          opt => opt.value === selectedValue && !opt.dataset.legacySynthetic
+        );
+        if (isValidOption) {
+          this.removeLegacyWarning(input);
+        }
+      }
+
       // Notify immediately that there are pending changes (for instant UI feedback)
       // This enables undo buttons before the debounce timer fires
       this.notifyPendingChange();
@@ -303,6 +314,17 @@ class YjsPropertiesBinding {
           input.checked = value === 'true' || value === true;
           break;
         case 'select':
+          // Check if value exists in options (excluding synthetic legacy options)
+          const optionExists = Array.from(input.options).some(
+            opt => opt.value === value && !opt.dataset.legacySynthetic
+          );
+          if (value && !optionExists) {
+            // Value not in options (legacy license) - inject synthetic option
+            this.injectLegacyOption(input, value);
+          } else {
+            // Valid value selected - remove legacy warning if present
+            this.removeLegacyWarning(input);
+          }
           input.value = value;
           break;
         case 'text':
@@ -315,6 +337,42 @@ class YjsPropertiesBinding {
     } finally {
       this.isUpdatingFromYjs = false;
     }
+  }
+
+  /**
+   * Inject a synthetic option for legacy values not in the select options.
+   * CSS styling is handled via [data-legacy-value] attribute selector.
+   * @param {HTMLSelectElement} select - The select element
+   * @param {string} value - The legacy value to inject
+   */
+  injectLegacyOption(select, value) {
+    // Remove any existing synthetic option first
+    this.removeLegacyWarning(select);
+
+    // Create synthetic option with warning text
+    const syntheticOption = document.createElement('option');
+    syntheticOption.value = value;
+    syntheticOption.textContent = `${value} — ⚠️ ${_('Legacy license, please review')}`;
+    syntheticOption.selected = true;
+    syntheticOption.dataset.legacySynthetic = 'true';
+    select.insertBefore(syntheticOption, select.firstChild);
+
+    // Mark select for CSS styling via data attribute
+    select.dataset.legacyValue = 'true';
+
+    Logger.log(`[YjsPropertiesBinding] Injected legacy option: ${value}`);
+  }
+
+  /**
+   * Remove legacy warning and synthetic option from select.
+   * @param {HTMLSelectElement} select - The select element
+   */
+  removeLegacyWarning(select) {
+    const syntheticOption = select.querySelector('option[data-legacy-synthetic]');
+    if (syntheticOption) {
+      syntheticOption.remove();
+    }
+    delete select.dataset.legacyValue;
   }
 
   /**
