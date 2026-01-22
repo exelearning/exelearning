@@ -26,6 +26,7 @@ import type {
 } from '../interfaces';
 
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { getLicenseUrl } from '../constants';
 
 /**
  * Type definitions for Yjs structures used by YjsDocumentManager
@@ -78,6 +79,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             description: (meta.get('description') as string) || '',
             language: (meta.get('language') as string) || 'en',
             license: (meta.get('license') as string) || '',
+            licenseUrl: getLicenseUrl((meta.get('license') as string) || ''),
             keywords: (meta.get('keywords') as string) || '',
             theme: (meta.get('theme') as string) || 'base',
             exelearningVersion: (meta.get('exelearning_version') as string) || undefined,
