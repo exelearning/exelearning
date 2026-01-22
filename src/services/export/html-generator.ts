@@ -12,6 +12,7 @@ import { ParsedOdeStructure, NormalizedPage, NormalizedComponent } from '../xml/
 import { Html5ExportOptions } from './interfaces';
 import { normalizeHtmlPaths } from '../../utils/html-path-normalizer.util';
 import { getLicenseClass, getLicenseUrl } from '../../shared/export/constants';
+import { getAppVersion } from '../../utils/version';
 
 // Import shared iDevice configuration service
 import { getIdeviceConfig, getIdeviceExportFiles } from '../idevice-config';
@@ -127,13 +128,14 @@ function generateHead(
 ): string {
     const title = escapeHtml(structure.meta.title || 'eXeLearning');
     const description = structure.meta.description || '';
-    const licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+    const license = structure.meta.license || '';
+    const licenseUrl = getLicenseUrl(license);
+    const version = getAppVersion();
 
     let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning ${version}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="license" type="text/html" href="${licenseUrl}">
-<title>${title}</title>`;
+${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${title}</title>`;
 
     if (description) {
         head += `\n<meta name="description" content="${escapeAttr(description)}">`;
@@ -534,14 +536,19 @@ function fixAssetUrls(content: string, basePath: string): string {
  * Generate complete footer section with license and optional user content
  */
 function generateFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-    const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+    const { license, licenseUrl = '', userFooterContent } = options;
 
     let userFooterHtml = '';
     if (userFooterContent) {
         userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
     }
 
-    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${escapeHtml(license)}</a></p>
+    // If there's a license URL, create a link; otherwise, just show the text
+    const licenseContent = licenseUrl
+        ? `<a href="${licenseUrl}" class="license">${escapeHtml(license)}</a>`
+        : `<span class="license">${escapeHtml(license)}</span>`;
+
+    return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
 }

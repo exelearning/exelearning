@@ -501,6 +501,9 @@ export interface PageRenderOptions {
     description?: string;
     licenseUrl?: string;
 
+    /** Application version string (e.g., "v3.0.0") for generator meta tag */
+    version?: string;
+
     // Page counter options
     totalPages?: number;
     currentPageIndex?: number;

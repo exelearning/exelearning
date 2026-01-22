@@ -607,6 +607,8 @@ export class Epub3Exporter extends BaseExporter {
             addPagination: meta.addPagination === true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
 
         // Convert HTML to XHTML
