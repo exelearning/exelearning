@@ -14,7 +14,7 @@
     body:has(.idevice_node[mode="edition"]) &,
     body:has(.tox-tinymce) &,
     body:has(.mce-container) &,
-    body:has(#properties-node-content-form) & {
+    body:has(.show #properties-node-content-form) & {
         display: none !important;
         visibility: hidden !important;
         opacity: 0 !important;
