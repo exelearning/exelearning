@@ -244,7 +244,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 8. Detect and fetch additional required libraries based on content
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
-            // Skip Mermaid if diagrams were pre-rendered to static SVG
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
@@ -253,15 +253,11 @@ export class Html5Exporter extends BaseExporter {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
                     skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
-                    skipMermaid: mermaidWasRendered,
                 },
             );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
-            }
-            if (mermaidWasRendered) {
-                console.log('[Html5Exporter] Mermaid pre-rendered - skipping Mermaid library (~2.7MB saved)');
             }
 
             try {
@@ -700,6 +696,7 @@ export class Html5Exporter extends BaseExporter {
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
@@ -707,7 +704,6 @@ export class Html5Exporter extends BaseExporter {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
                     skipMathJax: latexWasRendered && !meta.addMathJax,
-                    skipMermaid: mermaidWasRendered,
                 },
             );
 

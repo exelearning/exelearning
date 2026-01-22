@@ -121,12 +121,15 @@ describe('LibraryDetector', () => {
             expect(result.libraries[0].name).toBe('abcjs');
         });
 
-        it('should detect mermaid by class pattern', () => {
+        it('should NOT include mermaid library (always pre-rendered to SVG)', () => {
+            // Mermaid diagrams are always pre-rendered to static SVG in the workarea
+            // The mermaid.min.js library (~2.7MB) is NEVER included in exports
             const html = '<div class="mermaid">graph TD; A-->B;</div>';
             const result = detector.detectLibraries(html);
 
-            expect(result.count).toBe(1);
-            expect(result.libraries[0].name).toBe('mermaid');
+            // Mermaid should NOT be detected
+            expect(result.libraries.find(l => l.name === 'mermaid')).toBeUndefined();
+            expect(result.files).not.toContain('mermaid/mermaid.min.js');
         });
 
         it('should detect jquery-ui for ordena iDevice', () => {
