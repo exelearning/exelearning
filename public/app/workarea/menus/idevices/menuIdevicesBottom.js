@@ -41,11 +41,16 @@ export default class MenuIdevicesBottom {
 
     centerMenuIdevices() {
         if (!this.nodeContainer || !this.menuIdevices) return;
-        const rect = this.nodeContainer.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        this.menuIdevices.style.position = 'fixed';
-        this.menuIdevices.style.left = `${centerX}px`;
-        this.menuIdevices.style.transform = 'translateX(-50%)';
+        if (this.centerTimeout) return;
+
+        this.centerTimeout = setTimeout(() => {
+            const rect = this.nodeContainer.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            this.menuIdevices.style.position = 'fixed';
+            this.menuIdevices.style.left = `${centerX}px`;
+            this.menuIdevices.style.transform = 'translateX(-50%)';
+            this.centerTimeout = null;
+        }, 50);
     }
 
     elementDivIdevice(ideviceData) {

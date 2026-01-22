@@ -20,6 +20,11 @@ describe('MenuIdevicesBottom', () => {
       },
     };
 
+
+
+    // Use fake timers
+    vi.useFakeTimers();
+
     // Mock idevices list
     mockIdevicesList = {
       text: {
@@ -332,6 +337,8 @@ describe('MenuIdevicesBottom', () => {
 
       menuIdevicesBottom.centerMenuIdevices();
 
+      vi.advanceTimersByTime(50);
+
       expect(mockNodeContainer.getBoundingClientRect).toHaveBeenCalled();
       expect(menuIdevicesBottom.menuIdevices.style.left).toBe('500px'); // 100 + 800/2
     });
@@ -342,6 +349,8 @@ describe('MenuIdevicesBottom', () => {
 
       menuIdevicesBottom.centerMenuIdevices();
 
+      vi.advanceTimersByTime(50);
+
       expect(menuIdevicesBottom.menuIdevices.style.position).toBe('fixed');
     });
 
@@ -350,6 +359,8 @@ describe('MenuIdevicesBottom', () => {
       menuIdevicesBottom.menuIdevices = { style: {} };
 
       menuIdevicesBottom.centerMenuIdevices();
+
+      vi.advanceTimersByTime(50);
 
       expect(menuIdevicesBottom.menuIdevices.style.transform).toBe('translateX(-50%)');
     });
@@ -772,7 +783,9 @@ describe('MenuIdevicesBottom', () => {
       vi.spyOn(menuIdevicesBottom, 'saveIdevices').mockResolvedValue({});
 
       const promise = menuIdevicesBottom.getIdevices();
-      await new Promise(resolve => setTimeout(resolve, 0)); // Let promise chain tick
+      // Let promise chain tick
+      await Promise.resolve();
+      await Promise.resolve();
       
       // Trigger IDB success
       if (mockRequest.onsuccess) mockRequest.onsuccess();
