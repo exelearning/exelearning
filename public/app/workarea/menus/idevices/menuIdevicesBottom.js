@@ -142,26 +142,79 @@ export default class MenuIdevicesBottom {
     /**
      * Save selected idevices to user preferences in backend
      * @param {Array} array List of selected idevice names
+     * @returns {Promise<Object>} Response from API
      */
-    saveIdevices(array) {
-        return new Promise((resolve, reject) => {
+    async saveIdevices(array) {
+        try {
             const preferences = {
                 idevices_selected: JSON.stringify(array)
             };
             
-            eXeLearning.app.api.putSaveUserPreferences(preferences)
-                .then((response) => {
-                    // Update local preferences cache
-                    if (eXeLearning.app.user && eXeLearning.app.user.preferences) {
-                        eXeLearning.app.user.preferences.setPreferences(response);
+            const response = await eXeLearning.app.api.putSaveUserPreferences(preferences);
+            
+            // Update local preferences cache
+            if (eXeLearning.app.user?.preferences) {
+                eXeLearning.app.user.preferences.setPreferences(response);
+            }
+            
+            return response;
+        } catch (error) {
+            console.error('[MenuIdevicesBottom] Error saving iDevices preferences:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Parse iDevices preference value from API response
+     * @param {string|Array} value Preference value to parse
+     * @returns {Array} Parsed array of iDevice IDs
+     * @private
+     */
+    _parseIdevicesPreference(value) {
+        if (typeof value === 'string') {
+            try {
+                value = JSON.parse(value);
+            } catch (e) {
+                console.error('[MenuIdevicesBottom] Error parsing idevices_selected:', e);
+                return [];
+            }
+        }
+        return Array.isArray(value) ? value : [];
+    }
+
+    /**
+     * Migrate iDevices selection from IndexedDB to database
+     * @returns {Promise<Array|null>} Migrated iDevice IDs or null
+     * @private
+     * @todo Remove after migration period (6 months post-release)
+     */
+    async _migrateFromIndexedDB() {
+        try {
+            const db = await this.openDB();
+            const tx = db.transaction('idevicesSettings', 'readonly');
+            const store = tx.objectStore('idevicesSettings');
+            const key = eXeLearning.app.user.name;
+            
+            return new Promise((resolve) => {
+                const request = store.get(key);
+                
+                request.onsuccess = async () => {
+                    const result = request.result?.value;
+                    if (result) {
+                        console.log('[MenuIdevicesBottom] Migrating iDevices from IndexedDB to User Preferences...');
+                        await this.saveIdevices(result).catch(() => {});
+                        resolve(result);
+                    } else {
+                        resolve(null);
                     }
-                    resolve(response);
-                })
-                .catch((error) => {
-                    console.error('Error saving iDevices preferences (Bottom Menu):', error);
-                    reject(error);
-                });
-        });
+                };
+                
+                request.onerror = () => resolve(null);
+            });
+        } catch (error) {
+            console.error('[MenuIdevicesBottom] Error opening IndexedDB for migration:', error);
+            return null;
+        }
     }
 
     /**
@@ -169,64 +222,25 @@ export default class MenuIdevicesBottom {
      * @returns {Promise<Array|null>} List of idevices or null
      */
     async getIdevices() {
-        return new Promise((resolve) => {
-            // 1. Try to get from loaded user preferences
-            if (eXeLearning.app.user && eXeLearning.app.user.preferences) {
-                // We could assume preferences are loaded, but let's try to fetch if unsure or check cache
-                // Given this runs on init, we might want to fetch fresh or rely on what's loaded.
-                // Safest to try to get from API to ensure we have it, mirroring modal logic.
-                
-                eXeLearning.app.api.getUserPreferences().then(preferences => {
-                     if (preferences && 
-                         preferences.userPreferences && 
-                         preferences.userPreferences.idevices_selected) {
-                             
-                         let val = preferences.userPreferences.idevices_selected.value;
-                         if (typeof val === 'string') {
-                             try {
-                                 val = JSON.parse(val);
-                             } catch (e) {
-                                 console.error("Error parsing idevices_selected", e);
-                                 val = [];
-                             }
-                         }
-                         resolve(Array.isArray(val) ? val : []);
-                         return;
-                     }
-                     
-                     // 2. Fallback to IndexedDB (Migration)
-                     this.openDB().then(db => {
-                         const tx = db.transaction('idevicesSettings', 'readonly');
-                         const store = tx.objectStore('idevicesSettings');
-                         const key = eXeLearning.app.user.name;
-                         const request = store.get(key);
-                         
-                         request.onsuccess = () => {
-                             const result = request.result ? request.result.value : null;
-                             if (result) {
-                                 // Found in IndexedDB, migrate to Backend
-                                 console.log("Migrating iDevices from IndexedDB to User Preferences...");
-                                 this.saveIdevices(result)
-                                     .then(() => resolve(result))
-                                     .catch(() => resolve(result));
-                             } else {
-                                 resolve(null); // Return null to trigger default initialization
-                             }
-                         };
-                         request.onerror = () => {
-                             resolve(null);
-                         };
-                     }).catch(err => {
-                         console.error("Error opening IndexedDB for fallback", err);
-                         resolve(null);
-                     });
-                }).catch(err => {
-                    console.error("Error fetching user preferences", err);
-                    resolve(null);
-                 });
-            } else {
-                resolve(null);
+        try {
+            // Return null early if user context not available
+            if (!eXeLearning.app.user?.preferences) {
+                return null;
             }
-        });
+
+            // Try to get from API
+            const preferences = await eXeLearning.app.api.getUserPreferences();
+            
+            if (preferences?.userPreferences?.idevices_selected) {
+                return this._parseIdevicesPreference(preferences.userPreferences.idevices_selected.value);
+            }
+            
+            // Fallback to IndexedDB for migration (temporary)
+            return await this._migrateFromIndexedDB();
+            
+        } catch (error) {
+            console.error('[MenuIdevicesBottom] Error fetching user preferences:', error);
+            return null;
+        }
     }
 }
