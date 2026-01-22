@@ -384,7 +384,7 @@ describe('HTML Generator Helper', () => {
                     class: 'cc cc-by-nc-nd',
                 },
                 { name: 'public domain', class: 'cc cc-0' },
-                { name: 'propietary license', class: 'propietary' },
+                { name: 'propietary license', class: '' },
             ];
 
             for (const lic of licenses) {

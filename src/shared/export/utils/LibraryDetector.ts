@@ -59,11 +59,6 @@ export class LibraryDetector {
                 continue;
             }
 
-            // Skip Mermaid library if diagrams were pre-rendered to static SVG
-            if (options.skipMermaid && lib.name === 'mermaid') {
-                continue;
-            }
-
             if (this._matchesPattern(html, lib)) {
                 // Special case: DataGame requires LaTeX check in decrypted content
                 if (lib.requiresLatexCheck) {

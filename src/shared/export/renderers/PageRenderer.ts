@@ -16,7 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
+import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
 
 /**
  * PageRenderer class
@@ -61,9 +61,9 @@ export class PageRenderer {
             basePath = '',
             isIndex = false,
             usedIdevices = [],
-            license = 'creative commons: attribution - share alike 4.0',
+            license = '',
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             // Page counter options
             totalPages,
             currentPageIndex,
@@ -192,7 +192,7 @@ ${madeWithExeHtml}
             extraHeadScripts = '',
             isScorm: _isScorm = false,
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             addAccessibilityToolbar = false,
             addMathJax = false,
             extraHeadContent = '',
@@ -207,8 +207,7 @@ ${madeWithExeHtml}
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning v3.0.0">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="license" type="text/html" href="${licenseUrl}">
-<title>${this.escapeHtml(pageTitle)}</title>`;
+${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
         head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
@@ -712,16 +711,25 @@ ${madeWithExeHtml}
      * @returns Footer HTML with siteFooter wrapper
      */
     renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+        const { license, licenseUrl = '', userFooterContent } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        const licenseText = formatLicenseText(license);
+        // Skip license section for:
+        // - Empty license (no license specified, legacy content with unknown license)
+        // - "propietary license" and "not appropriate" (no meaningful license to display)
+        if (!shouldShowLicenseFooter(license)) {
+            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
+        }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${licenseText}</a></p>
+        const licenseText = formatLicenseText(license);
+        const licenseClass = getLicenseClass(license);
+        const effectiveLicenseUrl = licenseUrl;
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span><a href="${effectiveLicenseUrl}" class="license">${licenseText}</a></p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -741,10 +749,17 @@ ${userFooterHtml}</div></footer>`;
      * @deprecated Use renderFooterSection instead
      */
     renderLicense(options: { author: string; license: string; licenseUrl?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/' } = options;
+        const { license, licenseUrl = '' } = options;
+
+        // Skip license for empty, "propietary license", and "not appropriate"
+        if (!shouldShowLicenseFooter(license)) {
+            return '';
+        }
+
+        const effectiveLicenseUrl = licenseUrl;
 
         return `<div id="packageLicense" class="${getLicenseClass(license)}">
-<p><span>Licensed under the</span> <a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a></p>
+<p><span>Licensed under the</span> <a rel="license" href="${effectiveLicenseUrl}">${this.escapeHtml(license)}</a></p>
 </div>`;
     }
 
@@ -868,8 +883,8 @@ ${userFooterHtml}</div></footer>`;
             language = 'en',
             customStyles = '',
             usedIdevices = [],
-            license = 'creative commons: attribution - share alike 4.0',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            license = '',
+            licenseUrl = '',
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
