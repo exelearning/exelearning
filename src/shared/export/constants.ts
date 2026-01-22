@@ -524,11 +524,18 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
         legacy: true,
     },
 
-    // === Public Domain ===
-    'public domain': {
-        displayName: 'public domain',
+    // === Creative Commons CC0 1.0 (Public Domain Dedication) ===
+    'creative commons: cc0 1.0': {
+        displayName: 'creative commons: public domain 1.0 (CC0)',
         url: 'https://creativecommons.org/publicdomain/zero/1.0/',
         cssClass: 'cc cc-0',
+    },
+
+    // === Public Domain (generic, no specific license link) ===
+    'public domain': {
+        displayName: 'public domain',
+        url: '',
+        cssClass: '',
     },
 
     // === GNU/GPL Licenses (Legacy - not selectable in dropdown, no icon in themes) ===
@@ -540,7 +547,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
     },
     'free software license gpl': {
         displayName: 'free software license GPL',
-        url: '',
+        url: 'https://www.gnu.org/licenses/gpl.html',
         cssClass: '',
         legacy: true,
     },
@@ -548,7 +555,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
     // === EUPL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'free software license eupl': {
         displayName: 'free software license EUPL',
-        url: '',
+        url: 'https://eupl.eu/',
         cssClass: '',
         legacy: true,
     },
@@ -564,7 +571,7 @@ export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
     // === GFDL License (Legacy - not selectable in dropdown, no icon in themes) ===
     'license gfdl': {
         displayName: 'license GFDL',
-        url: '',
+        url: 'https://www.gnu.org/licenses/fdl.html',
         cssClass: '',
         legacy: true,
     },
@@ -623,164 +630,28 @@ export function getLicenseClass(licenseName: string): string {
 }
 
 /**
- * Get URL for a given license name
+ * Get URL for a given license name.
+ *
  * @param licenseName - The license name
- * @returns The URL for the license (empty string if no URL available)
+ * @returns The URL for the license (empty string if not found or no URL)
  */
 export function getLicenseUrl(licenseName: string): string {
-    // Empty license = no license specified (legacy content with unknown license)
     if (!licenseName) return '';
-
-    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
-
-    // 1. Direct lookup in registry
-    if (LICENSE_REGISTRY[cleanName]) {
-        return LICENSE_REGISTRY[cleanName].url;
-    }
-
-    // 2. Fallback: check for keywords (order matters: most specific first)
-    // For CC licenses with version numbers, extract version and build URL
-    const versionMatch = cleanName.match(/(\d+\.\d+|\d+)$/);
-    const version = versionMatch ? versionMatch[1] : '4.0';
-
-    if (cleanName.includes('by-nc-nd') || (cleanName.includes('non derived') && cleanName.includes('non commercial'))) {
-        return `https://creativecommons.org/licenses/by-nc-nd/${version}/`;
-    }
-    if (cleanName.includes('by-nc-sa') || (cleanName.includes('non commercial') && cleanName.includes('share alike'))) {
-        return `https://creativecommons.org/licenses/by-nc-sa/${version}/`;
-    }
-    if (cleanName.includes('by-nc') || cleanName.includes('non commercial')) {
-        return `https://creativecommons.org/licenses/by-nc/${version}/`;
-    }
-    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
-        return `https://creativecommons.org/licenses/by-nd/${version}/`;
-    }
-    if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
-        return `https://creativecommons.org/licenses/by-sa/${version}/`;
-    }
-    if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
-        return 'https://creativecommons.org/publicdomain/zero/1.0/';
-    }
-    if (cleanName.includes('gpl') || cleanName.includes('gnu')) {
-        return 'https://www.gnu.org/licenses/gpl.html';
-    }
-    if (cleanName.includes('creative commons') || cleanName.includes('attribution')) {
-        return `https://creativecommons.org/licenses/by/${version}/`;
-    }
-
-    // For licenses without URLs (EUPL, GFDL, IP, etc.), return empty string
-    // Check if it matches a known license type without URL
-    if (
-        cleanName.includes('eupl') ||
-        cleanName.includes('gfdl') ||
-        cleanName.includes('intellectual property') ||
-        cleanName.includes('propietary') ||
-        cleanName.includes('proprietary') ||
-        cleanName.includes('not appropriate') ||
-        cleanName.includes('other free software')
-    ) {
-        return '';
-    }
-
-    // Default fallback for unknown CC-like licenses
-    return 'https://creativecommons.org/licenses/by-sa/4.0/';
+    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    return LICENSE_REGISTRY[key]?.url || '';
 }
 
 /**
- * Map of short license codes to full display text
- * This normalizes various license codes to the canonical display format
- * Derived from LICENSE_REGISTRY with additional short code mappings
- */
-const LICENSE_DISPLAY_MAP: Record<string, string> = {
-    // Short codes (always map to 4.0 versions)
-    'cc-by': 'creative commons: attribution 4.0',
-    'cc-by-sa': 'creative commons: attribution - share alike 4.0',
-    'cc-by-nd': 'creative commons: attribution - non derived work 4.0',
-    'cc-by-nc': 'creative commons: attribution - non commercial 4.0',
-    'cc-by-nc-sa': 'creative commons: attribution - non commercial - share alike 4.0',
-    'cc-by-nc-nd': 'creative commons: attribution - non derived work - non commercial 4.0',
-    'cc0': 'public domain',
-    'cc-0': 'public domain',
-    // Full names from registry
-    ...Object.fromEntries(Object.entries(LICENSE_REGISTRY).map(([key, entry]) => [key, entry.displayName])),
-};
-
-/**
- * Format license text for display in footer
- * Converts short license codes (e.g., "CC-BY-SA") to full display text
- * (e.g., "creative commons: attribution - share alike 4.0")
- * @param licenseName - The license name from metadata (can be short code or full name)
+ * Format license text for display in footer.
+ * Returns the displayName from registry if found, otherwise returns the input as-is.
+ *
+ * @param licenseName - The license name from metadata
  * @returns Formatted license text for display
  */
 export function formatLicenseText(licenseName: string): string {
-    // Empty license = no license specified (legacy content with unknown license)
     if (!licenseName) return '';
-
-    const cleaned = licenseName.toLowerCase().trim();
-
-    // Direct lookup in registry
-    if (LICENSE_REGISTRY[cleaned]) {
-        return LICENSE_REGISTRY[cleaned].displayName;
-    }
-
-    // Direct lookup in display map (for short codes)
-    if (LICENSE_DISPLAY_MAP[cleaned]) {
-        return LICENSE_DISPLAY_MAP[cleaned];
-    }
-
-    // Fallback: try to match by keywords for partial matches
-    // Extract version if present, default to 4.0
-    const versionMatch = cleaned.match(/(\d+\.\d+|\d+)$/);
-    const version = versionMatch ? versionMatch[1] : '4.0';
-
-    if (cleaned.includes('by-nc-nd') || (cleaned.includes('non derived') && cleaned.includes('non commercial'))) {
-        return `creative commons: attribution - non derived work - non commercial ${version}`;
-    }
-    if (cleaned.includes('by-nc-sa') || (cleaned.includes('non commercial') && cleaned.includes('share alike'))) {
-        return `creative commons: attribution - non commercial - share alike ${version}`;
-    }
-    if (cleaned.includes('by-nc') || cleaned.includes('non commercial')) {
-        return `creative commons: attribution - non commercial ${version}`;
-    }
-    if (cleaned.includes('by-nd') || cleaned.includes('non derived')) {
-        return `creative commons: attribution - non derived work ${version}`;
-    }
-    if (cleaned.includes('by-sa') || cleaned.includes('share alike')) {
-        return `creative commons: attribution - share alike ${version}`;
-    }
-    if (cleaned.includes('public domain') || cleaned.includes('cc0') || cleaned.includes('cc-0')) {
-        return 'public domain';
-    }
-    if (cleaned.includes('gfdl')) {
-        return 'license GFDL';
-    }
-    if (cleaned.includes('eupl') && cleaned.includes('gpl')) {
-        return 'dual free content license GPL and EUPL';
-    }
-    if (cleaned.includes('eupl')) {
-        return 'free software license EUPL';
-    }
-    if (cleaned.includes('gpl') || cleaned.includes('gnu')) {
-        return 'gnu/gpl';
-    }
-    if (cleaned.includes('intellectual property')) {
-        return 'intellectual property license';
-    }
-    if (cleaned.includes('propietary') || cleaned.includes('proprietary')) {
-        return 'propietary license';
-    }
-    if (cleaned.includes('not appropriate')) {
-        return 'not appropriate';
-    }
-    if (cleaned.includes('other free software')) {
-        return 'other free software licenses';
-    }
-    if (cleaned.includes('creative commons') || cleaned.includes('attribution') || cleaned.includes('cc-by')) {
-        return `creative commons: attribution ${version}`;
-    }
-
-    // Unknown license - return as-is (no default)
-    return licenseName;
+    const key = licenseName.toLowerCase().trim();
+    return LICENSE_REGISTRY[key]?.displayName || licenseName;
 }
 
 /**

@@ -90,6 +90,8 @@ export class PageRenderer {
             hideNavButtons = false,
             // Asset URL transformation map
             assetExportPathMap,
+            // Application version for generator meta tag
+            version,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -144,7 +146,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -183,6 +185,7 @@ ${madeWithExeHtml}
         themeFiles?: string[];
         faviconPath?: string;
         faviconType?: string;
+        version?: string;
     }): string {
         const {
             pageTitle,
@@ -201,11 +204,12 @@ ${madeWithExeHtml}
             themeFiles = [],
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
+            version,
         } = options;
 
         // Meta tags
         let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
@@ -727,9 +731,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
         const licenseText = formatLicenseText(license);
         const licenseClass = getLicenseClass(license);
-        const effectiveLicenseUrl = licenseUrl;
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span><a href="${effectiveLicenseUrl}" class="license">${licenseText}</a></p>
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a href="${licenseUrl}" class="license">${licenseText}</a>`
+            : `<span class="license">${licenseText}</span>`;
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -756,10 +764,13 @@ ${userFooterHtml}</div></footer>`;
             return '';
         }
 
-        const effectiveLicenseUrl = licenseUrl;
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a>`
+            : `<span>${this.escapeHtml(license)}</span>`;
 
         return `<div id="packageLicense" class="${getLicenseClass(license)}">
-<p><span>Licensed under the</span> <a rel="license" href="${effectiveLicenseUrl}">${this.escapeHtml(license)}</a></p>
+<p><span>Licensed under the</span> ${licenseContent}</p>
 </div>`;
     }
 
@@ -875,6 +886,7 @@ ${userFooterHtml}</div></footer>`;
             faviconType?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
+            version?: string;
         } = {},
     ): string {
         const {
@@ -889,6 +901,7 @@ ${userFooterHtml}</div></footer>`;
             faviconType = 'image/x-icon',
             addExeLink = true,
             userFooterContent = '',
+            version,
         } = options;
 
         let contentHtml = '';
@@ -930,7 +943,7 @@ ${this.renderPageContent(page, '', projectTitle)}
 <html lang="${language}">
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)}</title>
 <script>document.querySelector("html").classList.add("js");</script>
