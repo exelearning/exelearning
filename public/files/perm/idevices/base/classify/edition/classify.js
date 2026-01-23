@@ -36,6 +36,8 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
@@ -513,7 +515,7 @@ var $exeDevice = {
         $('#clasificaEMessageKO').val(p.msgError);
         $('#clasificaENumberQuestion').val(i + 1);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     hexToRgba: function (hex, alpha = 1) {
@@ -821,7 +823,7 @@ var $exeDevice = {
             msgs = $exeDevice.msgs,
             p = {};
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         p.type = parseInt($('input[name=qxtmediatype]:checked').val());
         p.x = parseFloat($('#clasificaEXImage').val());
@@ -1141,8 +1143,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#clasificaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1279,8 +1280,7 @@ var $exeDevice = {
                 $exeDevice.wordsGame[$exeDevice.active].audio = selectedFile;
             }
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                  $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

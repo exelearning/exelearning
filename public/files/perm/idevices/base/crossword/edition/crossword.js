@@ -437,10 +437,8 @@ var $exeDevice = {
             $exeDevice.showImage(p.url, p.x, p.y, p.alt);
         }
 
-        $exeDevice.stopSound();
-
         if (p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#ccgmEURLAudio').val(p.audio);
@@ -579,7 +577,7 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const fields = this.ci18n,
             i18n = fields;
@@ -694,7 +692,7 @@ var $exeDevice = {
                 percentageShow: parseInt($('#ccgmEPercentageShow').val()),
             };
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.word.length === 0) {
             message = $exeDevice.msgs.msgEProvideWord;
@@ -724,6 +722,8 @@ var $exeDevice = {
     },
 
     validateData() {
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
         const clear = $exeDevice.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),
@@ -990,8 +990,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#ccgmEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1101,8 +1100,7 @@ var $exeDevice = {
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevice.stopSound();
-                    $exeDevice.playSound(selectedFile);
+                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });

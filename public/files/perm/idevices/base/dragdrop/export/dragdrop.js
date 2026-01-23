@@ -82,8 +82,9 @@ var $eXeDragDrop = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.dragdrop-LinkImages', sthis),
             $audiosLink = $('.dragdrop-LinkAudios', sthis);
@@ -136,7 +137,8 @@ var $eXeDragDrop = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
@@ -453,8 +455,7 @@ var $eXeDragDrop = {
                     const audioData = $audio.data('audio');
                     if (audioData && audioData.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
-                            audioData,
-                            mOptions
+                            audioData
                         );
                     }
                 }
@@ -491,8 +492,7 @@ var $eXeDragDrop = {
             const data = $(this).data('audio');
             if (data && data.length > 3) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    data,
-                    mOptions
+                    data
                 );
             }
         });
@@ -698,8 +698,7 @@ var $eXeDragDrop = {
                     let data = $existingAudio.data('audio');
                     if (data && data.length > 3) {
                         $exeDevices.iDevice.gamification.media.playSound(
-                            data,
-                            mOptions
+                            data
                         );
                     }
                 }
@@ -814,7 +813,7 @@ var $eXeDragDrop = {
         $(`#dadPButtons-${instance}`).css('display', 'flex');
         $(`#dadPResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeDragDrop.showScoreGame(instance);
         $eXeDragDrop.saveEvaluation(instance, true);
 
@@ -993,10 +992,7 @@ var $eXeDragDrop = {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $(`#dadPContainerGame-${instance}`).hide();

@@ -324,9 +324,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
         $('#idfEURLAudio').val(p.audio);
         $('#idfENumberQuestion').val(i + 1);
@@ -983,7 +983,7 @@ var $exeDevice = {
         p.msgHit = $('#idfEMessageOK').val();
         p.msgError = $('#idfEMessageKO').val();
         p.attempts = parseInt($('#idfEAttemptsNumber').val());
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let clueEmpy = false;
         $('.IDFE-EAnwersClues').each(function (i) {
@@ -1509,8 +1509,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#idfEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1521,8 +1520,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

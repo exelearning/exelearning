@@ -179,18 +179,12 @@ var $form = {
         data.main = 'frmMainContainer-' + data.id;
         data.percentageQuestions = data.percentageQuestions ?? 100;
         data.questionsRandom = data.questionsRandom ?? false;
-        if (data.percentageQuestions < 100) {
-            data.questionsData =
-                $exeDevices.iDevice.gamification.helpers.getQuestions(
-                    data.questionsData,
-                    data.percentageQuestions
-                );
-        } else if (data.questionsRandom) {
-            data.questionsData =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    data.questionsData
-                );
-        }
+        data.questionsData =
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                data.questionsData,
+                data.percentageQuestions,
+                data.questionsRandom
+            );
 
         return data;
     },

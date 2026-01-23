@@ -316,9 +316,9 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
-        if (p.audio.trim().length > 4) $exeDevice.playSound(p.audio.trim());
+        if (p.audio.trim().length > 4) $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
 
         $('#hiEURLAudio').val(p.audio);
         $('#hiENumberQuestion').val(i + 1);
@@ -884,7 +884,7 @@ var $exeDevice = {
         p.customScore = parseFloat($('#hiEScoreQuestion').val());
         p.url = $('#hiEURLImage').val().trim();
         p.audio = $('#hiEURLAudio').val();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.question = $('#hiEQuestion').val().trim();
         p.options = [];
         p.solution = parseInt($('input[name=hisoluiton]:checked').val());
@@ -1196,8 +1196,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#hiEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1208,8 +1207,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                  $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
