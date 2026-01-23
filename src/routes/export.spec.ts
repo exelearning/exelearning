@@ -11,7 +11,6 @@ import { Elysia } from 'elysia';
 
 import {
     createExportRoutes,
-    convertYjsStructureToParsed,
     type ExportDependencies,
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
@@ -88,11 +87,6 @@ function createMockExportSystem(): ExportSystemDeps {
     const MockExporter = createMockExporter();
 
     return {
-        ElpDocumentAdapter: class MockElpDocumentAdapter {
-            getMetadata = () => mockParsedStructure.meta;
-            getNavigation = () => mockParsedStructure.pages;
-            static fromElpFile = async () => new MockElpDocumentAdapter({}, '');
-        } as any,
         FileSystemResourceProvider: class MockResourceProvider {
             fetchTheme = async () => new Map();
             fetchBaseLibraries = async () => new Map();
@@ -126,8 +120,24 @@ function createMockExportSystem(): ExportSystemDeps {
         Epub3Exporter: MockExporter as any,
         ElpxExporter: MockExporter as any,
         PageElpxExporter: MockExporter as any,
-        YjsDocumentAdapter: class MockYjsAdapter {} as any,
-        ServerYjsDocumentWrapper: class MockServerWrapper {} as any,
+        YjsDocumentAdapter: class MockYjsAdapter {
+            getMetadata = () => mockParsedStructure.meta;
+            getNavigation = () => mockParsedStructure.pages;
+        } as any,
+        ServerYjsDocumentWrapper: class MockServerWrapper {
+            hasContent = () => true;
+            destroy = () => {};
+        } as any,
+        // Import system
+        ElpxImporter: class MockElpxImporter {
+            importFromBuffer = async () => ({ pages: 1, blocks: 1, components: 1, assets: 0 });
+            importFromZipContents = async () => ({ pages: 1, blocks: 1, components: 1, assets: 0 });
+        } as any,
+        FileSystemAssetHandler: class MockFileSystemAssetHandler {
+            storeAsset = async () => 'asset-id';
+            extractAssetsFromZip = async () => new Map();
+            convertContextPathToAssetRefs = (html: string) => html;
+        } as any,
     };
 }
 
@@ -548,20 +558,23 @@ describe('Export Routes', () => {
             expect(body.error).toContain('Failed to read file');
         });
 
-        it('should use session structure when odeId lookup fails', async () => {
-            // Create session with odeId but structure as fallback
+        it('should fallback to ELP import when odeId lookup fails', async () => {
+            // Create session with odeId
             const odeIdSessionId = 'odeid-session';
             mockSessions.set(odeIdSessionId, {
                 id: odeIdSessionId,
                 fileName: 'test.elp',
                 odeId: 'test-uuid-12345',
-                structure: mockParsedStructure, // Fallback structure
             });
-            await fs.ensureDir(path.join(testDir, 'tmp', odeIdSessionId));
+
+            // Create temp dir with content.xml for fallback (ElpxImporter will read this)
+            const sessionTempDir = path.join(testDir, 'tmp', odeIdSessionId);
+            await fs.ensureDir(sessionTempDir);
+            await fs.writeFile(path.join(sessionTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
             await fs.ensureDir(path.join(testDir, 'dist', odeIdSessionId));
 
             // The findProjectByUuid will return null (no project found)
-            // This should trigger the fallback to session.structure
+            // This should trigger the fallback to ElpxImporter (content.xml)
             const res = await app.handle(new Request(`http://localhost/api/export/${odeIdSessionId}/html5/download`));
 
             expect(res.status).toBe(200);
@@ -593,7 +606,7 @@ describe('Export Routes', () => {
     });
 
     describe('unified export system integration', () => {
-        it('should use ElpDocumentAdapter from shared export system', async () => {
+        it('should use YjsDocumentAdapter from shared export system', async () => {
             // This test verifies that the route uses the injected export system
             const res = await app.handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));
 
@@ -605,8 +618,8 @@ describe('Export Routes', () => {
             expect(bytes[1]).toBe(0x4b); // 'K'
         });
 
-        it('should pass session structure to ElpDocumentAdapter', async () => {
-            // Session without structure should still work (fallback to fromElpFile)
+        it('should fallback to ElpxImporter when session has no structure', async () => {
+            // Session without structure should still work (fallback to ElpxImporter)
             const noStructureSessionId = 'no-structure-session';
             mockSessions.set(noStructureSessionId, {
                 id: noStructureSessionId,
@@ -624,7 +637,7 @@ describe('Export Routes', () => {
                 new Request(`http://localhost/api/export/${noStructureSessionId}/html5/download`),
             );
 
-            // Should still return success because mock adapter handles it
+            // Should still return success because mock importer handles it
             expect(res.status).toBe(200);
         });
     });
@@ -670,447 +683,438 @@ describe('Export Routes', () => {
 
             expect(res.status).toBe(200);
         });
-    });
-});
 
-describe('convertYjsStructureToParsed', () => {
-    it('should convert basic meta fields', () => {
-        const yjs: YjsExportStructure = {
-            meta: {
-                title: 'My Project',
-                author: 'John Doe',
-                description: 'A test project',
-                language: 'es',
-                license: 'CC BY',
-                theme: 'custom-theme',
-            },
-            pages: [],
-            navigation: [],
-        };
-
-        const result = convertYjsStructureToParsed(yjs);
-
-        expect(result.meta.title).toBe('My Project');
-        expect(result.meta.author).toBe('John Doe');
-        expect(result.meta.description).toBe('A test project');
-        expect(result.meta.language).toBe('es');
-        expect(result.meta.license).toBe('CC BY');
-        expect(result.meta.theme).toBe('custom-theme');
-    });
-
-    it('should use default values for missing meta fields', () => {
-        const yjs: YjsExportStructure = {
-            meta: {},
-            pages: [],
-            navigation: [],
-        };
-
-        const result = convertYjsStructureToParsed(yjs);
-
-        expect(result.meta.title).toBe('Untitled');
-        expect(result.meta.author).toBe('');
-        expect(result.meta.language).toBe('en');
-        expect(result.meta.theme).toBe('base');
-    });
-
-    it('should flatten blocks into components with blockName', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page 1',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            blockName: 'Block One',
-                            components: [
-                                {
-                                    id: 'comp-1',
-                                    ideviceType: 'FreeTextIdevice',
-                                    htmlContent: '<p>Content 1</p>',
-                                },
-                                {
-                                    id: 'comp-2',
-                                    ideviceType: 'TextIdevice',
-                                    htmlContent: '<p>Content 2</p>',
-                                },
-                            ],
-                        },
-                        {
-                            id: 'block-2',
-                            blockName: 'Block Two',
-                            components: [
-                                {
-                                    id: 'comp-3',
-                                    ideviceType: 'GalleryIdevice',
-                                    properties: { images: [] },
-                                },
-                            ],
-                        },
-                    ],
+        it('should accept Yjs structure with page/block/component properties', async () => {
+            const yjsStructure: YjsExportStructure = {
+                meta: {
+                    title: 'Test With Properties',
+                    author: 'Test Author',
+                    language: 'en',
+                    theme: 'base',
                 },
-            ],
-            navigation: [],
-        };
-
-        const result = convertYjsStructureToParsed(yjs);
-
-        expect(result.pages).toHaveLength(1);
-        expect(result.pages[0].components).toHaveLength(3);
-
-        // Check blockName is preserved
-        expect(result.pages[0].components[0].blockName).toBe('Block One');
-        expect(result.pages[0].components[1].blockName).toBe('Block One');
-        expect(result.pages[0].components[2].blockName).toBe('Block Two');
-
-        // Check order is incremental
-        expect(result.pages[0].components[0].order).toBe(0);
-        expect(result.pages[0].components[1].order).toBe(1);
-        expect(result.pages[0].components[2].order).toBe(2);
-    });
-
-    it('should preserve component properties', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page 1',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            components: [
-                                {
-                                    id: 'comp-1',
-                                    ideviceType: 'QuizIdevice',
-                                    htmlContent: '',
-                                    properties: {
-                                        questions: ['Q1', 'Q2'],
-                                        answers: [
-                                            [1, 2],
-                                            [3, 4],
-                                        ],
-                                        passScore: 80,
+                pages: [
+                    {
+                        id: 'page-1',
+                        pageName: 'Page with Properties',
+                        parentId: null,
+                        properties: {
+                            visibility: 'visible',
+                            cssClass: 'custom-page-class',
+                        },
+                        blocks: [
+                            {
+                                id: 'block-1',
+                                blockName: 'Block with Properties',
+                                iconName: 'icon-text',
+                                properties: {
+                                    minimized: false,
+                                    teacherOnly: true,
+                                },
+                                components: [
+                                    {
+                                        id: 'comp-1',
+                                        ideviceType: 'FreeTextIdevice',
+                                        htmlContent: '<p>Content with properties</p>',
+                                        properties: {
+                                            emphasis: 'strong',
+                                            customField: 'value',
+                                        },
                                     },
-                                },
-                            ],
-                        },
-                    ],
+                                ],
+                            },
+                        ],
+                    },
+                ],
+                navigation: [],
+            };
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: yjsStructure }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should create virtual session for Yjs-only sessions with structure in POST', async () => {
+            // Test for Yjs-only session (yjs-* prefix) with structure provided in body
+            const yjsOnlySessionId = 'yjs-only-test-session';
+            // Don't add to mockSessions - simulate a Yjs-only session
+
+            const yjsStructure: YjsExportStructure = {
+                meta: {
+                    title: 'Yjs Only Project',
+                    author: 'Test Author',
+                    language: 'en',
+                    theme: 'base',
                 },
-            ],
-            navigation: [],
-        };
+                pages: [
+                    {
+                        id: 'page-1',
+                        pageName: 'Page 1',
+                        blocks: [],
+                    },
+                ],
+                navigation: [],
+            };
 
-        const result = convertYjsStructureToParsed(yjs);
-        const comp = result.pages[0].components[0];
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${yjsOnlySessionId}/html5/download`, {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: yjsStructure }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
 
-        expect(comp.properties).toEqual({
-            questions: ['Q1', 'Q2'],
-            answers: [
-                [1, 2],
-                [3, 4],
-            ],
-            passScore: 80,
+            expect(res.status).toBe(200);
         });
     });
 
-    it('should build page hierarchy from parentId', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                { id: 'page-1', pageName: 'Root Page', parentId: null, blocks: [] },
-                { id: 'page-2', pageName: 'Child 1', parentId: 'page-1', blocks: [] },
-                { id: 'page-3', pageName: 'Child 2', parentId: 'page-1', blocks: [] },
-                { id: 'page-4', pageName: 'Grandchild', parentId: 'page-2', blocks: [] },
-            ],
-            navigation: [],
-        };
+    describe('elpx-page export type', () => {
+        it('should accept elpx-page export type', async () => {
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${testSessionId}/elpx-page/download`),
+            );
 
-        const result = convertYjsStructureToParsed(yjs);
-
-        // Only root pages at top level
-        expect(result.pages).toHaveLength(1);
-        expect(result.pages[0].title).toBe('Root Page');
-
-        // Children nested
-        expect(result.pages[0].children).toHaveLength(2);
-        expect(result.pages[0].children[0].title).toBe('Child 1');
-        expect(result.pages[0].children[1].title).toBe('Child 2');
-
-        // Grandchild nested in Child 1
-        expect(result.pages[0].children[0].children).toHaveLength(1);
-        expect(result.pages[0].children[0].children[0].title).toBe('Grandchild');
+            expect(res.status).toBe(200);
+        });
     });
 
-    it('should handle multiple root pages', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                { id: 'page-1', pageName: 'Root 1', blocks: [] },
-                { id: 'page-2', pageName: 'Root 2', blocks: [] },
-                { id: 'page-3', pageName: 'Root 3', blocks: [] },
-            ],
-            navigation: [],
-        };
+    describe('ELP file direct import', () => {
+        it('should import from .elp file when present in tempDir', async () => {
+            const elpFileSessionId = 'elp-file-session';
+            mockSessions.set(elpFileSessionId, {
+                id: elpFileSessionId,
+                fileName: 'project.elp',
+                // No structure - will trigger ELP import
+            });
 
-        const result = convertYjsStructureToParsed(yjs);
+            // Create temp dir with an .elp file
+            const elpFileTempDir = path.join(testDir, 'tmp', elpFileSessionId);
+            await fs.ensureDir(elpFileTempDir);
+            // Create a minimal ZIP file (ELP is a ZIP)
+            const zipHeader = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // PK header
+            await fs.writeFile(path.join(elpFileTempDir, 'project.elp'), zipHeader);
+            await fs.ensureDir(path.join(testDir, 'dist', elpFileSessionId));
 
-        expect(result.pages).toHaveLength(3);
-        expect(result.pages[0].title).toBe('Root 1');
-        expect(result.pages[1].title).toBe('Root 2');
-        expect(result.pages[2].title).toBe('Root 3');
+            const res = await app.handle(new Request(`http://localhost/api/export/${elpFileSessionId}/html5/download`));
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should import from .elpx file when present in tempDir', async () => {
+            const elpxFileSessionId = 'elpx-file-session';
+            mockSessions.set(elpxFileSessionId, {
+                id: elpxFileSessionId,
+                fileName: 'project.elpx',
+                // No structure - will trigger ELP import
+            });
+
+            // Create temp dir with an .elpx file
+            const elpxFileTempDir = path.join(testDir, 'tmp', elpxFileSessionId);
+            await fs.ensureDir(elpxFileTempDir);
+            // Create a minimal ZIP file (ELPX is a ZIP)
+            const zipHeader = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // PK header
+            await fs.writeFile(path.join(elpxFileTempDir, 'project.elpx'), zipHeader);
+            await fs.ensureDir(path.join(testDir, 'dist', elpxFileSessionId));
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${elpxFileSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+        });
     });
 
-    it('should convert navigation structure', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [],
-            navigation: [
-                { id: 'nav-1', navText: 'Home' },
-                { id: 'nav-2', navText: 'About', parentId: 'nav-1' },
-                { id: 'nav-3', navText: 'Contact' },
-            ],
-        };
+    describe('legacy content and resources import', () => {
+        it('should handle contentv3.xml (legacy format) when present', async () => {
+            const legacySessionId = 'legacy-session';
+            mockSessions.set(legacySessionId, {
+                id: legacySessionId,
+                fileName: 'legacy.elp',
+                // No structure - will trigger ELP import
+            });
 
-        const result = convertYjsStructureToParsed(yjs);
+            // Create temp dir with both content.xml and contentv3.xml
+            const legacyTempDir = path.join(testDir, 'tmp', legacySessionId);
+            await fs.ensureDir(legacyTempDir);
+            await fs.writeFile(path.join(legacyTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
+            await fs.writeFile(
+                path.join(legacyTempDir, 'contentv3.xml'),
+                '<?xml version="1.0"?><exe_document></exe_document>',
+            );
+            await fs.ensureDir(path.join(testDir, 'dist', legacySessionId));
 
-        // navigation is an object with page property
-        const pages = Array.isArray(result.navigation.page) ? result.navigation.page : [result.navigation.page];
-        expect(pages).toHaveLength(3);
+            const res = await app.handle(new Request(`http://localhost/api/export/${legacySessionId}/html5/download`));
 
-        // Check properties on the page objects
-        expect(pages[0].navText).toBe('Home');
-        expect(pages[0].position).toBe(0);
-        expect(pages[1].navText).toBe('About');
-        expect((pages[1] as any).parent_id).toBe('nav-1');
-        expect(pages[2].navText).toBe('Contact');
-        expect((pages[2] as any).parent_id).toBeUndefined();
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle resources directory when present', async () => {
+            const resourcesSessionId = 'resources-session';
+            mockSessions.set(resourcesSessionId, {
+                id: resourcesSessionId,
+                fileName: 'resources-test.elp',
+                // No structure - will trigger ELP import
+            });
+
+            // Create temp dir with content.xml and resources directory
+            const resourcesTempDir = path.join(testDir, 'tmp', resourcesSessionId);
+            await fs.ensureDir(resourcesTempDir);
+            await fs.writeFile(path.join(resourcesTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
+
+            // Create resources directory with files
+            const resourcesDir = path.join(resourcesTempDir, 'resources');
+            await fs.ensureDir(resourcesDir);
+            await fs.writeFile(path.join(resourcesDir, 'image.png'), 'PNG DATA');
+            await fs.writeFile(path.join(resourcesDir, 'style.css'), 'body { color: red; }');
+            await fs.ensureDir(path.join(testDir, 'dist', resourcesSessionId));
+
+            const res = await app.handle(
+                new Request(`http://localhost/api/export/${resourcesSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+        });
     });
 
-    it('should handle empty blocks array', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [{ id: 'page-1', pageName: 'Empty Page', blocks: [] }],
-            navigation: [],
-        };
+    describe('database asset provider integration', () => {
+        it('should use DatabaseAssetProvider when project exists in database', async () => {
+            // Create session with odeId that will find a project
+            const dbAssetSessionId = 'db-asset-session';
+            mockSessions.set(dbAssetSessionId, {
+                id: dbAssetSessionId,
+                fileName: 'db-asset-test.elp',
+                odeId: 'test-project-uuid',
+                structure: mockParsedStructure, // Has structure, will use it
+            });
 
-        const result = convertYjsStructureToParsed(yjs);
+            await fs.ensureDir(path.join(testDir, 'tmp', dbAssetSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', dbAssetSessionId));
 
-        expect(result.pages[0].components).toHaveLength(0);
+            // Create deps with database that returns a project
+            const dbDeps = createMockDependencies();
+            dbDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'test-project-uuid', title: 'Test' }) as any,
+            };
+
+            const dbApp = new Elysia().use(createExportRoutes(dbDeps));
+
+            const res = await dbApp.handle(
+                new Request(`http://localhost/api/export/${dbAssetSessionId}/html5/download`),
+            );
+
+            expect(res.status).toBe(200);
+        });
     });
 
-    it('should handle undefined blocks', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [{ id: 'page-1', pageName: 'No Blocks Page' } as any],
-            navigation: [],
-        };
+    describe('Yjs document reconstruction paths', () => {
+        it('should fallback when Yjs document has no content', async () => {
+            const emptyYjsSessionId = 'empty-yjs-session';
+            mockSessions.set(emptyYjsSessionId, {
+                id: emptyYjsSessionId,
+                fileName: 'empty-yjs.elp',
+                odeId: 'empty-yjs-project-uuid',
+            });
 
-        const result = convertYjsStructureToParsed(yjs);
+            // Create temp dir with content.xml for fallback
+            const emptyYjsTempDir = path.join(testDir, 'tmp', emptyYjsSessionId);
+            await fs.ensureDir(emptyYjsTempDir);
+            await fs.writeFile(path.join(emptyYjsTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
+            await fs.ensureDir(path.join(testDir, 'dist', emptyYjsSessionId));
 
-        expect(result.pages[0].components).toHaveLength(0);
-    });
-
-    it('should handle empty components array in block', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page',
-                    blocks: [{ id: 'block-1', blockName: 'Empty Block', components: [] }],
+            // Create deps where Yjs document is reconstructed but empty
+            const emptyYjsDeps = createMockDependencies();
+            emptyYjsDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'empty-yjs-project-uuid', title: 'Test' }) as any,
+            };
+            emptyYjsDeps.yjsPersistence = {
+                reconstructDocument: async () => {
+                    // Return a mock Y.Doc
+                    return { destroy: () => {} } as any;
                 },
-            ],
-            navigation: [],
-        };
+            };
+            // Make ServerYjsDocumentWrapper return hasContent() = false
+            emptyYjsDeps.exportSystem.ServerYjsDocumentWrapper = class EmptyWrapper {
+                hasContent = () => false;
+                destroy = () => {};
+            } as any;
 
-        const result = convertYjsStructureToParsed(yjs);
+            const emptyYjsApp = new Elysia().use(createExportRoutes(emptyYjsDeps));
 
-        expect(result.pages[0].components).toHaveLength(0);
-    });
+            const res = await emptyYjsApp.handle(
+                new Request(`http://localhost/api/export/${emptyYjsSessionId}/html5/download`),
+            );
 
-    it('should use default type for missing ideviceType', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            components: [
-                                { id: 'comp-1' } as any, // Missing ideviceType
-                            ],
-                        },
-                    ],
-                },
-            ],
-            navigation: [],
-        };
+            expect(res.status).toBe(200);
+        });
 
-        const result = convertYjsStructureToParsed(yjs);
+        it('should fallback when reconstructDocument returns null', async () => {
+            const nullYjsSessionId = 'null-yjs-session';
+            mockSessions.set(nullYjsSessionId, {
+                id: nullYjsSessionId,
+                fileName: 'null-yjs.elp',
+                odeId: 'null-yjs-project-uuid',
+            });
 
-        expect(result.pages[0].components[0].type).toBe('FreeTextIdevice');
-    });
+            // Create temp dir with content.xml for fallback
+            const nullYjsTempDir = path.join(testDir, 'tmp', nullYjsSessionId);
+            await fs.ensureDir(nullYjsTempDir);
+            await fs.writeFile(path.join(nullYjsTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
+            await fs.ensureDir(path.join(testDir, 'dist', nullYjsSessionId));
 
-    it('should include exelearning_version and timestamps in meta', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [],
-            navigation: [],
-        };
+            // Create deps where reconstructDocument returns null
+            const nullYjsDeps = createMockDependencies();
+            nullYjsDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'null-yjs-project-uuid', title: 'Test' }) as any,
+            };
+            nullYjsDeps.yjsPersistence = {
+                reconstructDocument: async () => null,
+            };
 
-        const result = convertYjsStructureToParsed(yjs);
+            const nullYjsApp = new Elysia().use(createExportRoutes(nullYjsDeps));
 
-        expect(result.meta.exelearning_version).toBe('4.0');
-        expect(result.meta.created).toBeDefined();
-        expect(result.meta.modified).toBeDefined();
-    });
+            const res = await nullYjsApp.handle(
+                new Request(`http://localhost/api/export/${nullYjsSessionId}/html5/download`),
+            );
 
-    it('should handle block without blockName', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            // No blockName
-                            components: [{ id: 'comp-1', ideviceType: 'TextIdevice' }],
-                        },
-                    ],
-                },
-            ],
-            navigation: [],
-        };
+            expect(res.status).toBe(200);
+        });
 
-        const result = convertYjsStructureToParsed(yjs);
+        it('should fallback when findProjectByUuid returns null', async () => {
+            const noProjectSessionId = 'no-project-session';
+            mockSessions.set(noProjectSessionId, {
+                id: noProjectSessionId,
+                fileName: 'no-project.elp',
+                odeId: 'non-existent-project-uuid',
+            });
 
-        expect(result.pages[0].components[0].blockName).toBe('');
-    });
+            // Create temp dir with content.xml for fallback
+            const noProjectTempDir = path.join(testDir, 'tmp', noProjectSessionId);
+            await fs.ensureDir(noProjectTempDir);
+            await fs.writeFile(path.join(noProjectTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
+            await fs.ensureDir(path.join(testDir, 'dist', noProjectSessionId));
 
-    it('should preserve htmlContent in component content field', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            components: [
-                                {
-                                    id: 'comp-1',
-                                    ideviceType: 'FreeTextIdevice',
-                                    htmlContent: '<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>',
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
-            navigation: [],
-        };
+            // Create deps where findProjectByUuid returns null
+            const noProjectDeps = createMockDependencies();
+            noProjectDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => null,
+            };
 
-        const result = convertYjsStructureToParsed(yjs);
+            const noProjectApp = new Elysia().use(createExportRoutes(noProjectDeps));
 
-        expect(result.pages[0].components[0].content).toBe('<h1>Title</h1><p>Paragraph with <strong>bold</strong></p>');
-    });
+            const res = await noProjectApp.handle(
+                new Request(`http://localhost/api/export/${noProjectSessionId}/html5/download`),
+            );
 
-    it('should handle orphan pages (invalid parentId)', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [{ id: 'page-1', pageName: 'Orphan', parentId: 'non-existent-parent', blocks: [] }],
-            navigation: [],
-        };
+            expect(res.status).toBe(200);
+        });
 
-        const result = convertYjsStructureToParsed(yjs);
+        it('should return error when all fallbacks fail (empty Yjs, no ELP)', async () => {
+            const allFailSessionId = 'all-fail-session';
+            mockSessions.set(allFailSessionId, {
+                id: allFailSessionId,
+                fileName: 'all-fail.elp',
+                odeId: 'all-fail-project-uuid',
+            });
 
-        // Orphan page should be treated as root
-        expect(result.pages[0].title).toBe('Orphan');
-    });
+            // Create temp dir WITHOUT content.xml - all fallbacks will fail
+            await fs.ensureDir(path.join(testDir, 'tmp', allFailSessionId));
+            await fs.ensureDir(path.join(testDir, 'dist', allFailSessionId));
 
-    it('should transform legacy TrueFalseIdevice to trueorfalse Game', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page 1',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            components: [
-                                {
-                                    id: 'tf-1',
-                                    ideviceType: 'TrueFalseIdevice',
-                                    properties: {
-                                        title: 'TF Question',
-                                        questions: [
-                                            {
-                                                question: 'Q1',
-                                                isCorrect: true,
-                                                feedback: 'F1',
-                                                hint: 'H1',
-                                            },
-                                        ],
-                                    },
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
-            navigation: [],
-        };
+            // Create deps where Yjs document has no content and no ELP fallback
+            const allFailDeps = createMockDependencies();
+            allFailDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'all-fail-project-uuid', title: 'Test' }) as any,
+            };
+            allFailDeps.yjsPersistence = {
+                reconstructDocument: async () => ({ destroy: () => {} }) as any,
+            };
+            allFailDeps.exportSystem.ServerYjsDocumentWrapper = class EmptyWrapper {
+                hasContent = () => false;
+                destroy = () => {};
+            } as any;
 
-        const result = convertYjsStructureToParsed(yjs);
-        const tf = result.pages[0].components[0];
+            const allFailApp = new Elysia().use(createExportRoutes(allFailDeps));
 
-        expect(tf.type).toBe('trueorfalse');
-        // Check if complex properties are preserved
-        const questionsGame = (tf.properties as any).questionsGame;
-        expect(questionsGame).toBeDefined();
-        expect(Array.isArray(questionsGame)).toBe(true);
-        expect(questionsGame[0].solution).toBe(1); // True
-        expect(questionsGame[0].question).toBe('Q1');
-        expect(questionsGame[0].feedback).toBe('F1');
-    });
+            const res = await allFailApp.handle(
+                new Request(`http://localhost/api/export/${allFailSessionId}/html5/download`),
+            );
 
-    it('should transform FormIdevice to form', () => {
-        const yjs: YjsExportStructure = {
-            meta: { title: 'Test' },
-            pages: [
-                {
-                    id: 'page-1',
-                    pageName: 'Page 1',
-                    blocks: [
-                        {
-                            id: 'block-1',
-                            components: [
-                                {
-                                    id: 'form-1',
-                                    ideviceType: 'FormIdevice',
-                                    properties: {
-                                        title: 'My Form',
-                                    },
-                                },
-                            ],
-                        },
-                    ],
-                },
-            ],
-            navigation: [],
-        };
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toContain('No project structure');
+        });
 
-        const result = convertYjsStructureToParsed(yjs);
-        const form = result.pages[0].components[0];
+        it('should return error when reconstructDocument is null and no ELP fallback', async () => {
+            const nullNoFallbackId = 'null-no-fallback-session';
+            mockSessions.set(nullNoFallbackId, {
+                id: nullNoFallbackId,
+                fileName: 'null-no-fallback.elp',
+                odeId: 'null-no-fallback-uuid',
+            });
 
-        expect(form.type).toBe('form');
+            // Create temp dir WITHOUT content.xml
+            await fs.ensureDir(path.join(testDir, 'tmp', nullNoFallbackId));
+            await fs.ensureDir(path.join(testDir, 'dist', nullNoFallbackId));
+
+            // Create deps where reconstructDocument returns null and no ELP
+            const nullNoFallbackDeps = createMockDependencies();
+            nullNoFallbackDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => ({ id: 1, uuid: 'null-no-fallback-uuid', title: 'Test' }) as any,
+            };
+            nullNoFallbackDeps.yjsPersistence = {
+                reconstructDocument: async () => null,
+            };
+
+            const nullNoFallbackApp = new Elysia().use(createExportRoutes(nullNoFallbackDeps));
+
+            const res = await nullNoFallbackApp.handle(
+                new Request(`http://localhost/api/export/${nullNoFallbackId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toContain('No project structure');
+        });
+
+        it('should return error when project not found and no ELP fallback', async () => {
+            const noProjectNoFallbackId = 'no-project-no-fallback-session';
+            mockSessions.set(noProjectNoFallbackId, {
+                id: noProjectNoFallbackId,
+                fileName: 'no-project-no-fallback.elp',
+                odeId: 'no-project-no-fallback-uuid',
+            });
+
+            // Create temp dir WITHOUT content.xml
+            await fs.ensureDir(path.join(testDir, 'tmp', noProjectNoFallbackId));
+            await fs.ensureDir(path.join(testDir, 'dist', noProjectNoFallbackId));
+
+            // Create deps where findProjectByUuid returns null and no ELP
+            const noProjectNoFallbackDeps = createMockDependencies();
+            noProjectNoFallbackDeps.database = {
+                db: {} as any,
+                findProjectByUuid: async () => null,
+            };
+
+            const noProjectNoFallbackApp = new Elysia().use(createExportRoutes(noProjectNoFallbackDeps));
+
+            const res = await noProjectNoFallbackApp.handle(
+                new Request(`http://localhost/api/export/${noProjectNoFallbackId}/html5/download`),
+            );
+
+            expect(res.status).toBe(500);
+            const body = await res.json();
+            expect(body.error).toContain('No project structure');
+        });
     });
 });

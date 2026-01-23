@@ -16,7 +16,7 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText } from '../constants';
+import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
 
 /**
  * PageRenderer class
@@ -61,9 +61,9 @@ export class PageRenderer {
             basePath = '',
             isIndex = false,
             usedIdevices = [],
-            license = 'creative commons: attribution - share alike 4.0',
+            license = '',
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             // Page counter options
             totalPages,
             currentPageIndex,
@@ -88,6 +88,10 @@ export class PageRenderer {
             // Navigation visibility options (for SCORM/IMS where LMS handles navigation)
             hideNavigation = false,
             hideNavButtons = false,
+            // Asset URL transformation map
+            assetExportPathMap,
+            // Application version for generator meta tag
+            version,
         } = options;
 
         const pageTitle = isIndex ? projectTitle : page.title || 'Page';
@@ -98,7 +102,7 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap);
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -142,7 +146,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -181,6 +185,7 @@ ${madeWithExeHtml}
         themeFiles?: string[];
         faviconPath?: string;
         faviconType?: string;
+        version?: string;
     }): string {
         const {
             pageTitle,
@@ -190,7 +195,7 @@ ${madeWithExeHtml}
             extraHeadScripts = '',
             isScorm: _isScorm = false,
             description = '',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl = '',
             addAccessibilityToolbar = false,
             addMathJax = false,
             extraHeadContent = '',
@@ -199,14 +204,14 @@ ${madeWithExeHtml}
             themeFiles = [],
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
+            version,
         } = options;
 
         // Meta tags
         let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="license" type="text/html" href="${licenseUrl}">
-<title>${this.escapeHtml(pageTitle)}</title>`;
+${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
         head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
@@ -552,7 +557,10 @@ ${madeWithExeHtml}
         // Check if page title should be hidden and get effective title
         const hideTitle = this.shouldHidePageTitle(page);
         const effectiveTitle = this.getEffectivePageTitle(page);
-        const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+        // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+        // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+        // moves the .page-title element out of .page-header via movePageTitle()
+        const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
         // Render subtitle if present
         const subtitleHtml = projectSubtitle
@@ -564,7 +572,7 @@ ${madeWithExeHtml}
         // Note: page-counter is inside main-header for CSS compatibility with legacy themes
         return `<header class="main-header">${pageCounterHtml}
 <div class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1>${subtitleHtml}</div>
-<div class="page-header"${pageHeaderStyle}><h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2></div>
+<div class="page-header"><h2 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h2></div>
 </header>`;
     }
 
@@ -573,15 +581,22 @@ ${madeWithExeHtml}
      * @param page - Page
      * @param basePath - Base path
      * @param projectTitle - Project title (for exe-package:elp transformation)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      * @returns Content HTML
      */
-    renderPageContent(page: ExportPage, basePath: string, projectTitle?: string): string {
+    renderPageContent(
+        page: ExportPage,
+        basePath: string,
+        projectTitle?: string,
+        assetExportPathMap?: Map<string, string>,
+    ): string {
         let html = '';
 
         for (const block of page.blocks || []) {
             html += this.ideviceRenderer.renderBlock(block, {
                 basePath,
                 includeDataAttributes: true,
+                assetExportPathMap,
             });
         }
 
@@ -700,16 +715,29 @@ ${madeWithExeHtml}
      * @returns Footer HTML with siteFooter wrapper
      */
     renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
+        const { license, licenseUrl = '', userFooterContent } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
             userFooterHtml = `<div id="siteUserFooter"> <div>${userFooterContent}</div>\n</div>`;
         }
 
-        const licenseText = formatLicenseText(license);
+        // Skip license section for:
+        // - Empty license (no license specified, legacy content with unknown license)
+        // - "propietary license" and "not appropriate" (no meaningful license to display)
+        if (!shouldShowLicenseFooter(license)) {
+            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
+        }
 
-        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${getLicenseClass(license)}"> <p> <span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${licenseText}</a></p>
+        const licenseText = formatLicenseText(license);
+        const licenseClass = getLicenseClass(license);
+
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a href="${licenseUrl}" class="license">${licenseText}</a>`
+            : `<span class="license">${licenseText}</span>`;
+
+        return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
 ${userFooterHtml}</div></footer>`;
     }
@@ -729,10 +757,20 @@ ${userFooterHtml}</div></footer>`;
      * @deprecated Use renderFooterSection instead
      */
     renderLicense(options: { author: string; license: string; licenseUrl?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/' } = options;
+        const { license, licenseUrl = '' } = options;
+
+        // Skip license for empty, "propietary license", and "not appropriate"
+        if (!shouldShowLicenseFooter(license)) {
+            return '';
+        }
+
+        // If there's a license URL, create a link; otherwise, just show the text
+        const licenseContent = licenseUrl
+            ? `<a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a>`
+            : `<span>${this.escapeHtml(license)}</span>`;
 
         return `<div id="packageLicense" class="${getLicenseClass(license)}">
-<p><span>Licensed under the</span> <a rel="license" href="${licenseUrl}">${this.escapeHtml(license)}</a></p>
+<p><span>Licensed under the</span> ${licenseContent}</p>
 </div>`;
     }
 
@@ -848,6 +886,7 @@ ${userFooterHtml}</div></footer>`;
             faviconType?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
+            version?: string;
         } = {},
     ): string {
         const {
@@ -856,12 +895,13 @@ ${userFooterHtml}</div></footer>`;
             language = 'en',
             customStyles = '',
             usedIdevices = [],
-            license = 'creative commons: attribution - share alike 4.0',
-            licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
+            license = '',
+            licenseUrl = '',
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
             userFooterContent = '',
+            version,
         } = options;
 
         let contentHtml = '';
@@ -869,13 +909,16 @@ ${userFooterHtml}</div></footer>`;
             // Check if page title should be hidden and get effective title
             const hideTitle = this.shouldHidePageTitle(page);
             const effectiveTitle = this.getEffectivePageTitle(page);
-            const pageHeaderStyle = hideTitle ? ' style="display:none"' : '';
+            // Use sr-av class on .page-title for hiding (matches legacy Symfony approach)
+            // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
+            // moves the .page-title element out of .page-header via movePageTitle()
+            const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
 
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section>
 <header class="main-header">
-<div class="page-header"${pageHeaderStyle}>
-<h1 class="page-title">${this.escapeHtml(effectiveTitle)}</h1>
+<div class="page-header">
+<h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1>
 </div>
 </header>
 <div class="page-content">
@@ -900,7 +943,7 @@ ${this.renderPageContent(page, '', projectTitle)}
 <html lang="${language}">
 <head>
 <meta charset="utf-8">
-<meta name="generator" content="eXeLearning v3.0.0">
+<meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${this.escapeHtml(projectTitle)}</title>
 <script>document.querySelector("html").classList.add("js");</script>

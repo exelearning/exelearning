@@ -405,7 +405,8 @@
 
         // For media elements reading 'src', check if we have a stored asset URL
         if (name === 'src' && MEDIA_TAGS.includes(this.tagName)) {
-            // If value is a blob:// URL and we have the original asset:// URL stored
+            // If we have an asset URL stored and current value is a blob:// URL
+            // return the persistent asset URL instead
             const assetUrl = originalGetAttribute.call(this, 'data-asset-url');
             if (assetUrl && value && value.startsWith('blob:')) {
                 return assetUrl;

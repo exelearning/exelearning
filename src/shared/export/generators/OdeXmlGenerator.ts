@@ -19,6 +19,7 @@
 
 import type { ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 import { ODE_DTD_FILENAME, ODE_VERSION } from '../constants';
+import { isExcludedFromXml, getXmlKeyForProperty, valueToXmlString } from '../metadata-properties';
 
 /**
  * Options for ODE XML generation
@@ -114,32 +115,23 @@ function generateOdeResourceEntry(key: string, value: string): string {
 
 /**
  * Generate ODE properties section (metadata)
+ * Automatically exports all ExportMetadata properties except those excluded in the centralized config.
+ * Property names and XML keys are managed by metadata-properties.ts
  */
 function generateOdePropertiesXml(meta: ExportMetadata): string {
     let xml = '<odeProperties>\n';
 
-    // Core properties
-    const properties: Record<string, string | boolean | undefined> = {
-        pp_title: meta.title,
-        pp_subtitle: meta.subtitle,
-        pp_author: meta.author,
-        pp_lang: meta.language,
-        pp_description: meta.description,
-        pp_license: meta.license,
-        pp_theme: meta.theme,
-        pp_keywords: meta.keywords,
-        pp_category: meta.category,
-        pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
-        pp_addMathJax: meta.addMathJax,
-        pp_customStyles: meta.customStyles,
-        pp_exelearning_version: meta.exelearningVersion,
-    };
+    for (const [key, value] of Object.entries(meta)) {
+        // Skip excluded properties (internal or belong in other sections)
+        if (isExcludedFromXml(key)) continue;
 
-    for (const [key, value] of Object.entries(properties)) {
-        if (value !== undefined && value !== null && value !== '') {
-            const strValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
-            xml += generateOdePropertyEntry(key, strValue);
-        }
+        // Skip undefined, null, or empty values
+        if (value === undefined || value === null || value === '') continue;
+
+        // Convert value to string using centralized helper (booleans become 'true'/'false')
+        const strValue = valueToXmlString(key, value);
+        const xmlKey = getXmlKeyForProperty(key);
+        xml += generateOdePropertyEntry(xmlKey, strValue);
     }
 
     xml += '</odeProperties>\n';
@@ -256,6 +248,18 @@ function generatePagStructurePropertyEntry(key: string, value: string): string {
 }
 
 /**
+ * Transform asset:// URLs to {{context_path}}/content/resources/ format.
+ *
+ * Note: In the current architecture, all asset URLs are converted by
+ * BaseExporter.addFilenamesToAssetUrls() during preprocessing.
+ * This function is kept for backward compatibility but should not
+ * find any asset:// URLs to transform.
+ */
+export function transformAssetUrlsForXml(content: string): string {
+    return content || '';
+}
+
+/**
  * Generate odeComponent for an iDevice
  */
 function generateOdeComponentXml(component: ExportComponent, pageId: string, blockId: string, order: number): string {
@@ -268,13 +272,13 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     xml += `          <odeIdeviceId>${escapeXml(componentId)}</odeIdeviceId>\n`;
     xml += `          <odeIdeviceTypeName>${escapeXml(ideviceType)}</odeIdeviceTypeName>\n`;
 
-    // HTML content (wrapped in CDATA)
-    const htmlContent = component.content || '';
+    // HTML content - transform asset:// URLs to content/resources/ (wrapped in CDATA)
+    const htmlContent = transformAssetUrlsForXml(component.content || '');
     xml += `          <htmlView><![CDATA[${escapeCdata(htmlContent)}]]></htmlView>\n`;
 
-    // JSON properties (wrapped in CDATA)
+    // JSON properties - transform asset:// URLs to content/resources/ (wrapped in CDATA)
     if (component.properties && Object.keys(component.properties).length > 0) {
-        const jsonStr = JSON.stringify(component.properties);
+        const jsonStr = transformAssetUrlsForXml(JSON.stringify(component.properties));
         xml += `          <jsonProperties><![CDATA[${escapeCdata(jsonStr)}]]></jsonProperties>\n`;
     } else {
         xml += `          <jsonProperties></jsonProperties>\n`;

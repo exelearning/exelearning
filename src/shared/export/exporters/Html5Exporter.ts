@@ -87,6 +87,9 @@ export class Html5Exporter extends BaseExporter {
                 ? { path: html5Options.faviconPath, type: html5Options.faviconType || 'image/x-icon' }
                 : detectedFavicon;
 
+            // Build asset export path map for URL transformation
+            const assetExportPathMap = await this.buildAssetExportPathMap();
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -103,6 +106,7 @@ export class Html5Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    assetExportPathMap,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -177,7 +181,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
             if (meta.exportSource !== false) {
-                const contentXml = this.generateContentXml();
+                const contentXml = this.generateContentXml(pages);
                 addFile('content.xml', contentXml);
             }
 
@@ -240,7 +244,7 @@ export class Html5Exporter extends BaseExporter {
 
             // 8. Detect and fetch additional required libraries based on content
             // Skip MathJax if LaTeX was pre-rendered to SVG+MathML (unless explicitly requested)
-            // Skip Mermaid if diagrams were pre-rendered to static SVG
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             // Note: exe-package:elp is still in the content at this point (transformation happens in PageRenderer)
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
@@ -249,15 +253,11 @@ export class Html5Exporter extends BaseExporter {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
                     skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
-                    skipMermaid: mermaidWasRendered,
                 },
             );
 
             if (latexWasRendered) {
                 console.log('[Html5Exporter] LaTeX pre-rendered - skipping MathJax library (~1MB saved)');
-            }
-            if (mermaidWasRendered) {
-                console.log('[Html5Exporter] Mermaid pre-rendered - skipping Mermaid library (~2.7MB saved)');
             }
 
             try {
@@ -366,6 +366,7 @@ export class Html5Exporter extends BaseExporter {
      * @param themeFiles - List of root-level theme CSS/JS files
      * @param faviconInfo - Favicon info (optional)
      * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
+     * @param assetExportPathMap - Map of asset UUID to export path for URL transformation
      */
     generatePageHtml(
         page: ExportPage,
@@ -376,6 +377,7 @@ export class Html5Exporter extends BaseExporter {
         themeFiles?: string[],
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
+        assetExportPathMap?: Map<string, string>,
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -409,9 +411,9 @@ export class Html5Exporter extends BaseExporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'creative commons: attribution - share alike 4.0',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl: meta.licenseUrl || '',
             // Page counter options
             totalPages: allPages.length,
             currentPageIndex,
@@ -431,6 +433,10 @@ export class Html5Exporter extends BaseExporter {
             faviconType: faviconInfo?.type,
             // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
+            // Asset URL transformation map
+            assetExportPathMap,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 
@@ -560,6 +566,9 @@ export class Html5Exporter extends BaseExporter {
                 ? { path: options.faviconPath, type: options.faviconType || 'image/x-icon' }
                 : detectedFavicon;
 
+            // Build asset export path map for URL transformation
+            const assetExportPathMap = await this.buildAssetExportPathMap();
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -576,6 +585,7 @@ export class Html5Exporter extends BaseExporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    assetExportPathMap,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -688,6 +698,7 @@ export class Html5Exporter extends BaseExporter {
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
+            // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
             const allHtmlContent = this.collectAllHtmlContent(pages);
             const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
                 allHtmlContent,
@@ -695,7 +706,6 @@ export class Html5Exporter extends BaseExporter {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
                     skipMathJax: latexWasRendered && !meta.addMathJax,
-                    skipMermaid: mermaidWasRendered,
                 },
             );
 

@@ -12,6 +12,7 @@ export default class ThemesManager {
 
         // Yjs binding for theme sync
         this.metadataObserver = null;
+        this._boundMetadata = null; // Store reference for cleanup on project switch
         this.isApplyingRemoteTheme = false;
     }
 
@@ -19,17 +20,29 @@ export default class ThemesManager {
      * Initialize Yjs binding for real-time theme sync
      */
     initYjsBinding() {
+        // Clean up previous binding before setting up new one
+        this.cleanup();
+
         const project = this.app.project;
         if (project?._yjsBridge) {
             const documentManager = project._yjsBridge.getDocumentManager();
             if (documentManager) {
                 const metadata = documentManager.getMetadata();
 
+                // Store reference for cleanup
+                this._boundMetadata = metadata;
+
                 // Load initial theme from Yjs
+                // Always load the project's theme (this.selected is null after cleanup)
                 const initialTheme = metadata.get('theme');
-                if (initialTheme && initialTheme !== this.selected?.id) {
+                if (initialTheme) {
                     this.selectTheme(initialTheme, false, false, false);
                     getLogger().log('[ThemesManager] Loaded initial theme from Yjs:', initialTheme);
+                } else {
+                    // If project has no theme, use the default
+                    const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
+                    this.selectTheme(defaultTheme, true, false, false);
+                    getLogger().log('[ThemesManager] No theme in project, using default:', defaultTheme);
                 }
 
                 // Observe metadata changes for remote theme updates
@@ -51,6 +64,24 @@ export default class ThemesManager {
                 getLogger().log('[ThemesManager] Yjs theme binding initialized');
             }
         }
+    }
+
+    /**
+     * Clean up Yjs bindings when switching projects.
+     * Must be called before initializing a new project.
+     */
+    cleanup() {
+        // Remove previous observer if exists
+        if (this._boundMetadata && this.metadataObserver) {
+            this._boundMetadata.unobserve(this.metadataObserver);
+            getLogger().log('[ThemesManager] Cleaned up previous Yjs binding');
+        }
+
+        // Reset state
+        this.metadataObserver = null;
+        this._boundMetadata = null;
+        this.selected = null;
+        this.isApplyingRemoteTheme = false;
     }
 
     /**

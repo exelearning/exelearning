@@ -285,9 +285,9 @@ export class Scorm12Exporter extends Html5Exporter {
             isIndex,
             usedIdevices,
             author: meta.author || '',
-            license: meta.license || 'CC-BY-SA',
+            license: meta.license || '',
             description: meta.description || '',
-            licenseUrl: meta.licenseUrl || 'https://creativecommons.org/licenses/by-sa/4.0/',
+            licenseUrl: meta.licenseUrl || '',
             // Export options - SCORM specific overrides
             // SCORM/IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
@@ -312,6 +312,8 @@ export class Scorm12Exporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Page filename map for navigation links (handles title collisions)
             pageFilenameMap,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 

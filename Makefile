@@ -274,6 +274,12 @@ tmp-cleanup: check-bun
 translations: check-bun
 	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
 
+# Update license information in public/libs/README.md
+# Usage: make update-licenses [DRY_RUN=1]
+.PHONY: update-licenses
+update-licenses: check-bun
+	@$(CLI) update-licenses $(if $(DRY_RUN),--dry-run,)
+
 
 # =============================================================================
 # ELPX PROCESSING
@@ -515,7 +521,7 @@ TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
 .PHONY: test-unit
-test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverage and 90% threshold
+test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
 	@FORCE_COLOR=1 $(TEST_ENV) bun test:unit > /tmp/exe-coverage.txt 2>&1; \
 	test_exit=$$?; \
@@ -524,11 +530,11 @@ test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverag
 	bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 .PHONY: test-integration
-test-integration: check-bun check-env ## Run integration tests
+test-integration: check-bun check-env bundle ## Run integration tests
 	$(TEST_ENV) bun test:integration
 
 .PHONY: test-frontend
-test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom) with coverage
+test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
 
 .PHONY: test-unit-ci
@@ -543,14 +549,14 @@ test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
 	bunx playwright test --project=chromium
 
 .PHONY: test-e2e
-test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
+test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 	bunx playwright test --ui
 
 .PHONY: test-e2e-firefox
-test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
+test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
 	bunx playwright test --project=firefox
 
 # =============================================================================
@@ -843,6 +849,7 @@ help:
 	@echo "  make generate-jwt EMAIL=x [TTL=3600]              Generate JWT token"
 	@echo "  make tmp-cleanup [MAX_AGE=86400]                Clean temp files"
 	@echo "  make translations [LOCALE=es]                   Extract/clean translations"
+	@echo "  make update-licenses [DRY_RUN=1]               Update license info"
 	@echo ""
 	@echo "ELPX Processing:"
 	@echo "  make convert-elp INPUT=x OUTPUT=y               Convert ELP v2.x to v3.0 (elpx)"

@@ -105,14 +105,12 @@ var $casestudy = {
                     ${
                         hasFeedback
                             ? `
-                    <div class="iDevice_buttons feedback-button">
-                        <button type="button" class="CSP-FeedbackBtn feedbacktooglebutton">
-                            ${button}
-                        </button>
+                    <div class="iDevice_buttons feedback-button js-required">
+                        <input type="button" class="CSP-FeedbackBtn feedbacktooglebutton" value="${button}">
                     </div>`
                             : ''
                     }
-                    <div class="CSP-FeedbackText" style="display: none;">
+                    <div class="CSP-FeedbackText feedback js-feedback js-hidden" style="display: none;">
                         ${feedback}
                     </div>
                 </div>

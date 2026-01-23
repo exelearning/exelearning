@@ -4,6 +4,11 @@
  * Backend provider that loads assets (images, media, documents) from an extracted ELP file.
  * Used by CLI commands to access user content from the extracted project directory.
  *
+ * FolderPath Extraction:
+ * - For assets in content/resources/{folder}/{filename}, extracts folderPath from the path
+ * - This determines where the asset is placed in the export (content/resources/{folderPath}/{filename})
+ * - The content.xml references assets as {{context_path}}/{folderPath}/{filename}
+ *
  * Usage:
  * ```typescript
  * const provider = new FileSystemAssetProvider('/tmp/session123/project');
@@ -99,17 +104,58 @@ export class FileSystemAssetProvider implements AssetProvider {
         const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
         const filename = path.basename(normalizedPath);
 
+        // Extract folderPath from content/resources/{folder}/{filename} structure
+        // This determines where the asset is placed in the export
+        const folderPath = this.extractFolderPath(normalizedPath);
+
+        // Use folderPath/filename as unique ID (handles multiple files in same folder)
+        // If no folderPath, just use filename
+        const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+
         // Create asset conforming to ExportAsset interface
         const asset: ExportAsset = {
-            id: normalizedPath, // Use path as ID for filesystem assets
+            id: assetId,
             filename: filename,
             originalPath: normalizedPath,
+            folderPath,
             mime: mimeType,
             data: content,
         };
 
         this.assetCache.set(normalizedPath, asset);
         return asset;
+    }
+
+    /**
+     * Extract folderPath from asset path
+     * For content/resources/... paths, extracts the folder structure between content/resources/ and the filename
+     *
+     * Examples:
+     * - content/resources/file.jpg → '' (root)
+     * - content/resources/folder/file.jpg → 'folder'
+     * - content/resources/a/b/c/file.jpg → 'a/b/c'
+     * - content/resources/20251009090601DKVACR/file.jpg → '20251009090601DKVACR'
+     * - resources/images/photo.jpg → 'resources/images' (backward compat)
+     */
+    private extractFolderPath(relativePath: string): string {
+        // Handle content/resources/ prefix - extract folder relative to content/resources/
+        if (relativePath.startsWith('content/resources/')) {
+            const withoutPrefix = relativePath.slice('content/resources/'.length);
+            const folderPath = path.dirname(withoutPrefix);
+            return folderPath === '.' ? '' : folderPath;
+        }
+
+        // Handle content/img/ (for exe_powered_logo.png and similar)
+        if (relativePath.startsWith('content/img/')) {
+            const withoutPrefix = relativePath.slice('content/'.length);
+            const folderPath = path.dirname(withoutPrefix);
+            return folderPath === '.' ? '' : folderPath;
+        }
+
+        // For other paths (e.g., resources/images/photo.jpg), use full directory path
+        // This maintains backward compatibility where id = originalPath
+        const folderPath = path.dirname(relativePath);
+        return folderPath === '.' ? '' : folderPath;
     }
 
     /**
@@ -127,10 +173,16 @@ export class FileSystemAssetProvider implements AssetProvider {
     async getAllAssets(): Promise<ExportAsset[]> {
         const assets: ExportAsset[] = [];
 
-        // Common asset directories in ELP files
-        const assetDirs = ['resources', 'content', 'images', 'media', 'files'];
+        // User assets are stored in content/resources/ (v3.0 format)
+        // Other directories like content/css/, content/img/ are system files, not user assets
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        if (await fs.pathExists(contentResourcesPath)) {
+            await this.collectAssetsFromDirectory(contentResourcesPath, 'content/resources', assets);
+        }
 
-        for (const dir of assetDirs) {
+        // Legacy asset directories (v2.x format)
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
             const dirPath = path.join(this.basePath, dir);
             if (await fs.pathExists(dirPath)) {
                 await this.collectAssetsFromDirectory(dirPath, dir, assets);

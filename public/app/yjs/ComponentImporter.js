@@ -260,12 +260,13 @@ class ComponentImporter {
       }
     }
 
-    // Convert asset URLs in HTML content
+    // Convert {{context_path}} URLs to asset:// URLs (same as ELPX import)
+    // This is used when importing components exported with the new flat UUID format
     if (this.assetManager && this.assetMap.size > 0 && htmlView) {
-      htmlView = this.convertAssetPaths(htmlView);
+      htmlView = this.assetManager.convertContextPathToAssetRefs(htmlView, this.assetMap);
     }
 
-    // Convert asset URLs in properties
+    // Convert {{context_path}} in properties too
     if (this.assetManager && this.assetMap.size > 0 && properties) {
       properties = this.convertAssetPathsInObject(properties);
     }
@@ -334,7 +335,8 @@ class ComponentImporter {
   }
 
   /**
-   * Recursively convert asset paths in an object
+   * Recursively convert {{context_path}} refs in an object to asset:// URLs
+   * Uses AssetManager.convertContextPathToAssetRefs for string conversion.
    * @param {any} obj - Object to process
    * @returns {any} Processed object
    */
@@ -344,7 +346,11 @@ class ComponentImporter {
     }
 
     if (typeof obj === 'string') {
-      return this.convertAssetPaths(obj);
+      // Use convertContextPathToAssetRefs for {{context_path}} format (new format)
+      if (obj.includes('{{context_path}}') && this.assetManager) {
+        return this.assetManager.convertContextPathToAssetRefs(obj, this.assetMap);
+      }
+      return obj;
     }
 
     if (Array.isArray(obj)) {

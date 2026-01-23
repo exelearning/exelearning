@@ -250,13 +250,10 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         isDirectory: true,
     },
 
-    // Mermaid diagrams
-    {
-        name: 'mermaid',
-        type: 'class',
-        pattern: 'mermaid',
-        files: ['mermaid/mermaid.min.js'],
-    },
+    // NOTE: Mermaid library is NOT included in exports.
+    // Mermaid diagrams are always pre-rendered to static SVG (class="exe-mermaid-rendered")
+    // before export, so the ~2.7MB mermaid.min.js library is never needed.
+    // The MermaidPreRenderer.js handles conversion in the workarea.
 
     // jQuery UI for sortable/draggable iDevices
     {
@@ -386,137 +383,294 @@ export function getExtensionFromMime(mime: string): string {
 }
 
 // =============================================================================
-// License Mappings
+// License Registry (Single Source of Truth)
 // =============================================================================
 
 /**
- * Maps license names to their CSS class names for the icon display
+ * License entry in the registry
  */
-export const LICENSE_CLASS_MAP: Record<string, string> = {
-    'creative commons: attribution 4.0': 'cc',
-    'creative commons: attribution - share alike 4.0': 'cc cc-by-sa',
-    'creative commons: attribution - non derived work 4.0': 'cc cc-by-nd',
-    'creative commons: attribution - non commercial 4.0': 'cc cc-by-nc',
-    'creative commons: attribution - non commercial - share alike 4.0': 'cc cc-by-nc-sa',
-    'creative commons: attribution - non derived work - non commercial 4.0': 'cc cc-by-nc-nd',
-    'public domain': 'cc cc-0',
-    'propietary license': 'propietary',
-};
-
-/**
- * Get CSS class for a given license name
- * @param licenseName - The license name
- * @returns The CSS class/es for the license icon
- */
-export function getLicenseClass(licenseName: string): string {
-    if (!licenseName) return 'cc cc-by-sa';
-
-    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
-
-    // 1. Direct lookup
-    if (LICENSE_CLASS_MAP[cleanName]) {
-        return LICENSE_CLASS_MAP[cleanName];
-    }
-
-    // 2. Fallback: check for keywords (order matters: most specific first)
-    if (cleanName.includes('by-nc-nd') || (cleanName.includes('non derived') && cleanName.includes('non commercial'))) {
-        return 'cc cc-by-nc-nd';
-    }
-    if (cleanName.includes('by-nc-sa') || (cleanName.includes('non commercial') && cleanName.includes('share alike'))) {
-        return 'cc cc-by-nc-sa';
-    }
-    if (cleanName.includes('by-nc') || cleanName.includes('non commercial')) {
-        return 'cc cc-by-nc';
-    }
-    if (cleanName.includes('by-nd') || cleanName.includes('non derived')) {
-        return 'cc cc-by-nd';
-    }
-    if (cleanName.includes('by-sa') || cleanName.includes('share alike')) {
-        return 'cc cc-by-sa';
-    }
-    if (cleanName.includes('public domain') || cleanName.includes('cc0')) {
-        return 'cc cc-0';
-    }
-    // CC-BY (attribution only) or full names containing these keywords
-    if (cleanName.includes('creative commons') || cleanName.includes('attribution') || cleanName === 'cc-by') {
-        return 'cc';
-    }
-
-    return 'cc cc-by-sa';
+export interface LicenseEntry {
+    /** Full display name with version and short code */
+    displayName: string;
+    /** Official license URL (empty if none) */
+    url: string;
+    /** CSS class for license icon (only CC and propietary have icons in themes) */
+    cssClass: string;
+    /** If true, license is preserved but not selectable in dropdown (legacy from older eXe versions) */
+    legacy?: boolean;
+    /** If true, no license section is shown in export footer (e.g., propietary, not appropriate) */
+    hideInFooter?: boolean;
 }
 
 /**
- * Map of short license codes to full display text
- * This normalizes various license codes to the canonical display format
+ * Central registry of all supported licenses.
+ * This is the single source of truth - all other license mappings derive from this.
+ *
+ * Includes:
+ * - CC 4.0 licenses (current)
+ * - CC 3.0 licenses (legacy support)
+ * - CC 2.5 licenses (legacy support)
+ * - GNU/GPL licenses
+ * - EUPL license
+ * - GFDL license
+ * - Other license types
  */
-const LICENSE_DISPLAY_MAP: Record<string, string> = {
-    // Short codes
-    'cc-by': 'creative commons: attribution 4.0',
-    'cc-by-sa': 'creative commons: attribution - share alike 4.0',
-    'cc-by-nd': 'creative commons: attribution - non derived work 4.0',
-    'cc-by-nc': 'creative commons: attribution - non commercial 4.0',
-    'cc-by-nc-sa': 'creative commons: attribution - non commercial - share alike 4.0',
-    'cc-by-nc-nd': 'creative commons: attribution - non derived work - non commercial 4.0',
-    'cc0': 'public domain',
-    'cc-0': 'public domain',
-    // Already full names (for case normalization)
-    'creative commons: attribution 4.0': 'creative commons: attribution 4.0',
-    'creative commons: attribution - share alike 4.0': 'creative commons: attribution - share alike 4.0',
-    'creative commons: attribution - non derived work 4.0': 'creative commons: attribution - non derived work 4.0',
-    'creative commons: attribution - non commercial 4.0': 'creative commons: attribution - non commercial 4.0',
-    'creative commons: attribution - non commercial - share alike 4.0':
-        'creative commons: attribution - non commercial - share alike 4.0',
-    'creative commons: attribution - non derived work - non commercial 4.0':
-        'creative commons: attribution - non derived work - non commercial 4.0',
-    'public domain': 'public domain',
-    'propietary license': 'propietary license',
+export const LICENSE_REGISTRY: Record<string, LicenseEntry> = {
+    // === Creative Commons 4.0 (Current) ===
+    'creative commons: attribution 4.0': {
+        displayName: 'creative commons: attribution 4.0 (BY)',
+        url: 'https://creativecommons.org/licenses/by/4.0/',
+        cssClass: 'cc',
+    },
+    'creative commons: attribution - share alike 4.0': {
+        displayName: 'creative commons: attribution - share alike 4.0 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/4.0/',
+        cssClass: 'cc cc-by-sa',
+    },
+    'creative commons: attribution - non derived work 4.0': {
+        displayName: 'creative commons: attribution - non derived work 4.0 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/4.0/',
+        cssClass: 'cc cc-by-nd',
+    },
+    'creative commons: attribution - non commercial 4.0': {
+        displayName: 'creative commons: attribution - non commercial 4.0 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/4.0/',
+        cssClass: 'cc cc-by-nc',
+    },
+    'creative commons: attribution - non commercial - share alike 4.0': {
+        displayName: 'creative commons: attribution - non commercial - share alike 4.0 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',
+        cssClass: 'cc cc-by-nc-sa',
+    },
+    'creative commons: attribution - non derived work - non commercial 4.0': {
+        displayName: 'creative commons: attribution - non derived work - non commercial 4.0 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+        cssClass: 'cc cc-by-nc-nd',
+    },
+
+    // === Creative Commons 3.0 (Legacy - not selectable in dropdown) ===
+    'creative commons: attribution 3.0': {
+        displayName: 'creative commons: attribution 3.0 (BY)',
+        url: 'https://creativecommons.org/licenses/by/3.0/',
+        cssClass: 'cc',
+        legacy: true,
+    },
+    'creative commons: attribution - share alike 3.0': {
+        displayName: 'creative commons: attribution - share alike 3.0 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/3.0/',
+        cssClass: 'cc cc-by-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work 3.0': {
+        displayName: 'creative commons: attribution - non derived work 3.0 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/3.0/',
+        cssClass: 'cc cc-by-nd',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial 3.0': {
+        displayName: 'creative commons: attribution - non commercial 3.0 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/3.0/',
+        cssClass: 'cc cc-by-nc',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial - share alike 3.0': {
+        displayName: 'creative commons: attribution - non commercial - share alike 3.0 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/3.0/',
+        cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work - non commercial 3.0': {
+        displayName: 'creative commons: attribution - non derived work - non commercial 3.0 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/3.0/',
+        cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
+    },
+
+    // === Creative Commons 2.5 (Legacy - not selectable in dropdown) ===
+    'creative commons: attribution 2.5': {
+        displayName: 'creative commons: attribution 2.5 (BY)',
+        url: 'https://creativecommons.org/licenses/by/2.5/',
+        cssClass: 'cc',
+        legacy: true,
+    },
+    'creative commons: attribution - share alike 2.5': {
+        displayName: 'creative commons: attribution - share alike 2.5 (BY-SA)',
+        url: 'https://creativecommons.org/licenses/by-sa/2.5/',
+        cssClass: 'cc cc-by-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work 2.5': {
+        displayName: 'creative commons: attribution - non derived work 2.5 (BY-ND)',
+        url: 'https://creativecommons.org/licenses/by-nd/2.5/',
+        cssClass: 'cc cc-by-nd',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial 2.5': {
+        displayName: 'creative commons: attribution - non commercial 2.5 (BY-NC)',
+        url: 'https://creativecommons.org/licenses/by-nc/2.5/',
+        cssClass: 'cc cc-by-nc',
+        legacy: true,
+    },
+    'creative commons: attribution - non commercial - share alike 2.5': {
+        displayName: 'creative commons: attribution - non commercial - share alike 2.5 (BY-NC-SA)',
+        url: 'https://creativecommons.org/licenses/by-nc-sa/2.5/',
+        cssClass: 'cc cc-by-nc-sa',
+        legacy: true,
+    },
+    'creative commons: attribution - non derived work - non commercial 2.5': {
+        displayName: 'creative commons: attribution - non derived work - non commercial 2.5 (BY-NC-ND)',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/2.5/',
+        cssClass: 'cc cc-by-nc-nd',
+        legacy: true,
+    },
+
+    // === Creative Commons CC0 1.0 (Public Domain Dedication) ===
+    'creative commons: cc0 1.0': {
+        displayName: 'creative commons: public domain 1.0 (CC0)',
+        url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        cssClass: 'cc cc-0',
+    },
+
+    // === Public Domain (generic, no specific license link) ===
+    'public domain': {
+        displayName: 'public domain',
+        url: '',
+        cssClass: '',
+    },
+
+    // === GNU/GPL Licenses (Legacy - not selectable in dropdown, no icon in themes) ===
+    'gnu/gpl': {
+        displayName: 'gnu/gpl',
+        url: 'https://www.gnu.org/licenses/gpl.html',
+        cssClass: '',
+        legacy: true,
+    },
+    'free software license gpl': {
+        displayName: 'free software license GPL',
+        url: 'https://www.gnu.org/licenses/gpl.html',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === EUPL License (Legacy - not selectable in dropdown, no icon in themes) ===
+    'free software license eupl': {
+        displayName: 'free software license EUPL',
+        url: 'https://eupl.eu/',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === Dual License GPL + EUPL (Legacy - not selectable in dropdown, no icon in themes) ===
+    'dual free content license gpl and eupl': {
+        displayName: 'dual free content license GPL and EUPL',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === GFDL License (Legacy - not selectable in dropdown, no icon in themes) ===
+    'license gfdl': {
+        displayName: 'license GFDL',
+        url: 'https://www.gnu.org/licenses/fdl.html',
+        cssClass: '',
+        legacy: true,
+    },
+
+    // === Other Licenses (Legacy - not selectable in dropdown) ===
+    'other free software licenses': {
+        displayName: 'other free software licenses',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+    'propietary license': {
+        displayName: 'propietary license',
+        url: '',
+        cssClass: '',
+        hideInFooter: true,
+    },
+    'intellectual property license': {
+        displayName: 'intellectual property license',
+        url: '',
+        cssClass: '',
+        legacy: true,
+    },
+    'not appropriate': {
+        displayName: 'not appropriate',
+        url: '',
+        cssClass: '',
+        hideInFooter: true,
+    },
 };
 
+// =============================================================================
+// License CSS Class Lookup
+// =============================================================================
+
 /**
- * Format license text for display in footer
- * Converts short license codes (e.g., "CC-BY-SA") to full display text
- * (e.g., "creative commons: attribution - share alike 4.0")
- * @param licenseName - The license name from metadata (can be short code or full name)
+ * Get CSS class for license icon display.
+ * Looks up the cssClass from LICENSE_REGISTRY.
+ *
+ * @param licenseName - License name to look up
+ * @returns The CSS class(es) for the license icon (empty string if no icon)
+ */
+export function getLicenseClass(licenseName: string): string {
+    if (!licenseName) {
+        return '';
+    }
+
+    const cleanName = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Direct lookup in registry
+    if (LICENSE_REGISTRY[cleanName]) {
+        return LICENSE_REGISTRY[cleanName].cssClass;
+    }
+
+    return '';
+}
+
+/**
+ * Get URL for a given license name.
+ *
+ * @param licenseName - The license name
+ * @returns The URL for the license (empty string if not found or no URL)
+ */
+export function getLicenseUrl(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    return LICENSE_REGISTRY[key]?.url || '';
+}
+
+/**
+ * Format license text for display in footer.
+ * Returns the displayName from registry if found, otherwise returns the input as-is.
+ *
+ * @param licenseName - The license name from metadata
  * @returns Formatted license text for display
  */
 export function formatLicenseText(licenseName: string): string {
-    if (!licenseName) return 'creative commons: attribution - share alike 4.0';
+    if (!licenseName) return '';
+    const key = licenseName.toLowerCase().trim();
+    return LICENSE_REGISTRY[key]?.displayName || licenseName;
+}
 
-    const cleaned = licenseName.toLowerCase().trim();
+/**
+ * Check if a license should show a footer in exports.
+ * Returns false for empty license or licenses with hideInFooter: true in the registry.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns true if footer should be shown, false otherwise
+ */
+export function shouldShowLicenseFooter(licenseName: string): boolean {
+    if (!licenseName) return false;
 
-    // Direct lookup in display map
-    if (LICENSE_DISPLAY_MAP[cleaned]) {
-        return LICENSE_DISPLAY_MAP[cleaned];
-    }
+    const cleaned = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const entry = LICENSE_REGISTRY[cleaned];
 
-    // Fallback: try to match by keywords for partial matches
-    if (cleaned.includes('by-nc-nd') || (cleaned.includes('non derived') && cleaned.includes('non commercial'))) {
-        return 'creative commons: attribution - non derived work - non commercial 4.0';
-    }
-    if (cleaned.includes('by-nc-sa') || (cleaned.includes('non commercial') && cleaned.includes('share alike'))) {
-        return 'creative commons: attribution - non commercial - share alike 4.0';
-    }
-    if (cleaned.includes('by-nc') || cleaned.includes('non commercial')) {
-        return 'creative commons: attribution - non commercial 4.0';
-    }
-    if (cleaned.includes('by-nd') || cleaned.includes('non derived')) {
-        return 'creative commons: attribution - non derived work 4.0';
-    }
-    if (cleaned.includes('by-sa') || cleaned.includes('share alike')) {
-        return 'creative commons: attribution - share alike 4.0';
-    }
-    if (cleaned.includes('public domain') || cleaned.includes('cc0') || cleaned.includes('cc-0')) {
-        return 'public domain';
-    }
-    if (cleaned.includes('propietary')) {
-        return 'propietary license';
-    }
-    if (cleaned.includes('creative commons') || cleaned.includes('attribution') || cleaned.includes('cc-by')) {
-        return 'creative commons: attribution 4.0';
-    }
+    // If license is in registry and has hideInFooter, don't show footer
+    if (entry?.hideInFooter) return false;
 
-    // Default fallback
-    return 'creative commons: attribution - share alike 4.0';
+    return true;
 }
 
 // =============================================================================
@@ -590,6 +744,7 @@ export const EPUB3_MIMETYPE = 'application/epub+zip';
  * - Legacy name → current name (e.g., 'freetext' → 'text')
  * - Plural → singular (e.g., 'rubrics' → 'rubric')
  * - Variant names (e.g., 'download-package' → 'download-source-file')
+ * - Legacy Python eXeLearning types (e.g., 'jsidevice' → 'text')
  *
  * The key is the lowercase type name (after removing 'idevice' suffix),
  * the value is the canonical export folder name.
@@ -600,6 +755,13 @@ export const IDEVICE_TYPE_MAP: Record<string, string> = {
     text: 'text',
     freetextidevice: 'text',
     textidevice: 'text',
+
+    // Legacy Python eXeLearning iDevice types (pre-v3.0)
+    // JsIdevice was a text iDevice in old Python eXeLearning
+    jsidevice: 'text',
+    js: 'text',
+    // GalleryImages from old Python format
+    galleryimages: 'image-gallery',
 
     // Spanish → English mappings
     adivina: 'guess',

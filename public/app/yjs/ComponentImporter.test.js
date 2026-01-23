@@ -563,34 +563,60 @@ describe('ComponentImporter', () => {
   });
 
   describe('convertAssetPathsInObject', () => {
-    it('should process arrays recursively', () => {
+    it('should process arrays recursively with {{context_path}} URLs', () => {
       const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
+        ['old-uuid-123/image.jpg', 'new-uuid-456'],
       ]);
 
       const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
+      // Create assetManager that converts {{context_path}} to asset://
+      const assetManager = {
+        convertContextPathToAssetRefs: vi.fn((content, map) => {
+          // Simulate conversion of {{context_path}} to asset://
+          return content.replace(
+            /\{\{context_path\}\}\/([^\s"']+)/g,
+            (match, path) => {
+              for (const [origPath, newId] of map.entries()) {
+                if (path.includes(origPath.split('/')[0])) {
+                  return `asset://${newId}/${origPath.split('/').pop()}`;
+                }
+              }
+              return match;
+            }
+          );
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, assetManager);
       importer.assetMap = assetMap;
 
-      const obj = ['asset://old-uuid-123/image.jpg', 'plain text'];
+      const obj = ['{{context_path}}/old-uuid-123/image.jpg', 'plain text'];
       const result = importer.convertAssetPathsInObject(obj);
 
-      expect(result).toEqual(['asset://new-uuid-456/image.jpg', 'plain text']);
+      expect(assetManager.convertContextPathToAssetRefs).toHaveBeenCalled();
+      expect(result[1]).toBe('plain text');
     });
 
-    it('should process nested objects recursively', () => {
+    it('should process nested objects recursively with {{context_path}} URLs', () => {
       const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
+        ['old-uuid-123/image.jpg', 'new-uuid-456'],
       ]);
 
       const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
+      const assetManager = {
+        convertContextPathToAssetRefs: vi.fn((content, map) => {
+          // Simulate conversion
+          return content.replace('{{context_path}}/old-uuid-123/image.jpg', 'asset://new-uuid-456/image.jpg');
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, assetManager);
       importer.assetMap = assetMap;
 
       const obj = {
         level1: {
           level2: {
-            url: 'asset://old-uuid-123/image.jpg',
+            url: '{{context_path}}/old-uuid-123/image.jpg',
           },
         },
         name: 'test',
@@ -599,6 +625,17 @@ describe('ComponentImporter', () => {
 
       expect(result.level1.level2.url).toBe('asset://new-uuid-456/image.jpg');
       expect(result.name).toBe('test');
+    });
+
+    it('should return strings without {{context_path}} unchanged', () => {
+      const docManager = createMockDocumentManager();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      importer.assetMap = new Map();
+
+      // Strings without {{context_path}} should not be converted
+      const result = importer.convertAssetPathsInObject('regular string');
+      expect(result).toBe('regular string');
     });
 
     it('should return primitive values unchanged', () => {

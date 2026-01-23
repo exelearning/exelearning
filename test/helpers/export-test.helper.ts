@@ -6,8 +6,21 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { v4 as uuidv4 } from 'uuid';
-import { ExportFormatType, ExportContext } from '../../src/services/export/interfaces';
+import { ExportFormatType } from '../../src/shared/export/interfaces';
 import { ParsedOdeStructure } from '../../src/services/xml/interfaces';
+
+/**
+ * Legacy ExportContext interface (for test mocks only)
+ * Note: This is kept for backward compatibility with existing tests.
+ * The new export system uses YjsDocumentAdapter instead.
+ */
+interface ExportContext {
+    sessionId: string;
+    structure: ParsedOdeStructure;
+    sessionPath: string;
+    exportDir: string;
+    options: Record<string, unknown>;
+}
 import { createTempTestDir, cleanupTempTestDir } from './fixture-loader';
 
 // Export fixtures directory

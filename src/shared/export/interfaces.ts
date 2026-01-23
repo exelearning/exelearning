@@ -8,6 +8,23 @@
  */
 
 // =============================================================================
+// Export Format Types (for API/test usage)
+// =============================================================================
+
+/**
+ * Export format type enum for API responses and tests
+ */
+export enum ExportFormatType {
+    HTML5 = 'html5',
+    PAGE = 'page',
+    SCORM12 = 'scorm12',
+    SCORM2004 = 'scorm2004',
+    IMS = 'ims',
+    EPUB3 = 'epub3',
+    ELPX = 'elpx',
+}
+
+// =============================================================================
 // Document Structure Interfaces
 // =============================================================================
 
@@ -49,6 +66,7 @@ export interface ExportMetadata {
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
+    globalFont?: string; // Global font for accessibility
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
@@ -120,8 +138,8 @@ export interface ExportComponent {
  * Component structure properties
  */
 export interface ExportComponentProperties {
-    visibility?: string;
-    teacherOnly?: string;
+    visibility?: string | boolean;
+    teacherOnly?: string | boolean;
     identifier?: string;
     cssClass?: string;
 }
@@ -501,6 +519,9 @@ export interface PageRenderOptions {
     description?: string;
     licenseUrl?: string;
 
+    /** Application version string (e.g., "v3.0.0") for generator meta tag */
+    version?: string;
+
     // Page counter options
     totalPages?: number;
     currentPageIndex?: number;
@@ -556,6 +577,12 @@ export interface PageRenderOptions {
      * If not provided, filenames are generated directly from titles.
      */
     pageFilenameMap?: Map<string, string>;
+
+    /**
+     * Map of asset UUID to export path for URL transformation (new format asset://uuid.ext).
+     * Used to convert asset:// URLs to content/resources/ paths in export output.
+     */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -564,6 +591,8 @@ export interface PageRenderOptions {
 export interface ComponentRenderOptions {
     basePath: string;
     includeDataAttributes: boolean;
+    /** Map of asset UUID to export path for URL transformation (new format asset://uuid.ext) */
+    assetExportPathMap?: Map<string, string>;
 }
 
 /**
@@ -625,8 +654,6 @@ export interface LibraryDetectionOptions {
     includeMathJax?: boolean;
     /** Skip MathJax library if LaTeX was pre-rendered to SVG+MathML */
     skipMathJax?: boolean;
-    /** Skip Mermaid library if diagrams were pre-rendered to SVG */
-    skipMermaid?: boolean;
 }
 
 /**

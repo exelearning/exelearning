@@ -207,6 +207,21 @@ var $exe = {
             $("body").addClass("exe-auto-math"); // Always load it
             var math = $(".exe-math");
             var mathjax = false;
+
+            // Check if content is pre-rendered (SVG+MathML)
+            // Pre-rendered LaTeX uses class "exe-math-rendered"
+            // If ALL LaTeX is pre-rendered and no explicit exe-math-engine elements exist,
+            // no need for MathJax library (similar pattern to Mermaid pre-rendering)
+            var hasPreRendered = $(".exe-math-rendered").length > 0;
+            var hasExplicitEngine = $(".exe-math-engine").length > 0;
+
+            if (hasPreRendered && !hasExplicitEngine) {
+                // Content was pre-rendered to SVG+MathML, no need for MathJax library
+                // Still create links for code/image access if needed
+                $exe.math.createLinks(math);
+                return;
+            }
+
             if (math.length > 0 || $("body").hasClass("exe-auto-math")) {
                 if ($("body").hasClass("exe-auto-math")) {
                     var hasLatex = /(?:\\\(|\\\[|\\begin\{.*?})/.test($('body').html());
@@ -271,13 +286,21 @@ var $exe = {
     // Mermaid options
     mermaid: {
         // Mermaid script path
-        engine: $("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js",
+        engine: (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) 
+            ? window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js' 
+            : ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js"),
         reload_pending: false,
         initialized: false,
         loadMermaid: function () {
+            // Dynamic path resolution
+            var enginePath = this.engine;
+            if (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) {
+                enginePath = window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            }
+
             if (typeof window.mermaid === 'undefined') {
                 const script = document.createElement("script");
-                script.src = this.engine;
+                script.src = enginePath;
                 script.async = true;
                 script.onload = function () {
                     mermaid = window.mermaid;

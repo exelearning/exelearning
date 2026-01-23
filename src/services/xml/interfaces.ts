@@ -49,6 +49,7 @@ export interface OdeXmlMeta {
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
     exportSource?: boolean;
+    globalFont?: string;
 
     // Custom content
     extraHeadContent?: string;
@@ -213,6 +214,7 @@ export interface RealOdeComponent {
     odePageId: string;
     odeBlockId: string;
     odeIdeviceId?: string;
+    odeIdeviceTypeDirName?: string; // Preferred type identifier (matches browser ElpxImporter behavior)
     odeIdeviceTypeName?: string;
     htmlView?: string;
     jsonProperties?: string;

@@ -31,24 +31,69 @@ export interface ResourceFile {
  */
 export class FileSystemResourceProvider implements ResourceProvider {
     private publicDir: string;
+    private extractedDir: string | null;
 
     /**
      * @param publicDir - Path to the public/ directory containing themes and libs
+     * @param extractedDir - Optional path to extracted ELP/ELPX directory (for embedded themes)
      */
-    constructor(publicDir: string) {
+    constructor(publicDir: string, extractedDir: string | null = null) {
         this.publicDir = publicDir;
+        this.extractedDir = extractedDir;
     }
 
     /**
      * Fetch all files for a theme
-     * @param themeName - Name of the theme (e.g., 'base', 'intef')
+     * Checks for embedded themes in the extracted directory first (custom themes),
+     * then falls back to base themes in public/files/perm/themes/base/.
+     *
+     * @param themeName - Name of the theme (e.g., 'base', 'intef', or custom like 'chiquito')
      * @returns Map of file paths to content
      */
     async fetchTheme(themeName: string): Promise<Map<string, Buffer>> {
-        // Themes are in public/files/perm/themes/base/{themeName}/
+        // 1. Check for embedded theme in extracted directory (custom themes from ELPX)
+        if (this.extractedDir) {
+            const extractedThemePath = path.join(this.extractedDir, 'theme');
+            if (await fs.pathExists(extractedThemePath)) {
+                // Check config.xml for downloadable flag
+                const configPath = path.join(extractedThemePath, 'config.xml');
+                if (await fs.pathExists(configPath)) {
+                    try {
+                        const configContent = await fs.readFile(configPath, 'utf-8');
+                        const downloadableMatch = configContent.match(/<downloadable>(\d)<\/downloadable>/);
+                        const isDownloadable = downloadableMatch && downloadableMatch[1] === '1';
+
+                        if (isDownloadable) {
+                            // Use embedded theme
+                            console.log(`[FileSystemResourceProvider] Using embedded theme from ${extractedThemePath}`);
+                            return this.readDirectoryRecursive(extractedThemePath, '');
+                        }
+                    } catch (e) {
+                        console.warn(`[FileSystemResourceProvider] Error reading theme config.xml:`, e);
+                    }
+                }
+            }
+        }
+
+        // 2. Try base themes from public/files/perm/themes/base/{themeName}/
         const themePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', themeName);
-        // No prefix - files go directly to theme/ folder (prefix added by caller)
-        return this.readDirectoryRecursive(themePath, '');
+        if (await fs.pathExists(themePath)) {
+            console.log(`[FileSystemResourceProvider] Using base theme '${themeName}' from ${themePath}`);
+            return this.readDirectoryRecursive(themePath, '');
+        }
+
+        // 3. Final fallback to 'base' theme
+        if (themeName !== 'base') {
+            const basePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', 'base');
+            if (await fs.pathExists(basePath)) {
+                console.warn(`[FileSystemResourceProvider] Theme '${themeName}' not found, falling back to 'base'`);
+                return this.readDirectoryRecursive(basePath, '');
+            }
+        }
+
+        // No theme found - return empty map (exporter will use fallback CSS)
+        console.warn(`[FileSystemResourceProvider] No theme found for '${themeName}'`);
+        return new Map();
     }
 
     /**
