@@ -506,15 +506,12 @@ describe('Really Simple Export Tests', () => {
  * Tests that preview generation works correctly with the really-simple fixture.
  * Preview is a SPA (Single Page Application) that renders all pages in one HTML document.
  */
-import {
-    ElpDocumentAdapter,
-    FileSystemResourceProvider,
-    unzipSync as fflateUnzipSync,
-} from '../../../src/shared/export';
+import { FileSystemResourceProvider, unzipSync as fflateUnzipSync } from '../../../src/shared/export';
 import { Html5Exporter } from '../../../src/shared/export/exporters/Html5Exporter';
 import { FflateZipProvider } from '../../../src/shared/export/providers/FflateZipProvider';
 import { FileSystemAssetProvider } from '../../../src/shared/export/providers/FileSystemAssetProvider';
 import { parseFromString } from '../../../src/services/xml/xml-parser';
+import { createDocumentFromElpFile, createDocumentFromStructure } from '../../helpers/document-test-utils';
 
 // Helper to get HTML from preview files
 const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
@@ -555,7 +552,7 @@ describe('Really Simple Preview Tests', () => {
         await fs.ensureDir(tempDir);
 
         try {
-            const document = new ElpDocumentAdapter(structure, tempDir);
+            const document = createDocumentFromStructure(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(tempDir);
             const zip = new FflateZipProvider();
@@ -577,7 +574,7 @@ describe('Really Simple Preview Tests', () => {
         await fs.ensureDir(tempDir);
 
         try {
-            const document = new ElpDocumentAdapter(structure, tempDir);
+            const document = createDocumentFromStructure(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(tempDir);
             const zip = new FflateZipProvider();
@@ -598,7 +595,7 @@ describe('Really Simple Preview Tests', () => {
         await fs.ensureDir(tempDir);
 
         try {
-            const document = new ElpDocumentAdapter(structure, tempDir);
+            const document = createDocumentFromStructure(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(tempDir);
             const zip = new FflateZipProvider();
@@ -619,13 +616,12 @@ describe('Really Simple Preview Tests', () => {
         }
     });
 
-    // Use ElpDocumentAdapter.fromElpFile() to properly load iDevice HTML content
+    // Use createDocumentFromElpFile() to properly load iDevice HTML content
     it('should include all distinctive bold words across all preview pages', async () => {
-        // Use fromElpFile which properly extracts and parses the ELP with all content
-        const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+        // Use createDocumentFromElpFile which properly extracts and parses the ELP with all content
+        const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
         const resources = new FileSystemResourceProvider(publicDir);
-        const extractDir = document.extractedPath || '';
-        const assets = new FileSystemAssetProvider(extractDir);
+        const assets = new FileSystemAssetProvider(extractedPath);
         const zip = new FflateZipProvider();
         const exporter = new Html5Exporter(document, resources, assets, zip);
 
@@ -645,10 +641,7 @@ describe('Really Simple Preview Tests', () => {
                 expect(allHtml).toContain(`<strong>${word}`);
             }
         } finally {
-            // Clean up the temp extraction directory created by fromElpFile
-            if (extractDir?.includes('/tmp/')) {
-                await fs.remove(extractDir);
-            }
+            await cleanup();
         }
     });
 
@@ -658,7 +651,7 @@ describe('Really Simple Preview Tests', () => {
         await fs.ensureDir(tempDir);
 
         try {
-            const document = new ElpDocumentAdapter(structure, tempDir);
+            const document = createDocumentFromStructure(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(tempDir);
             const zip = new FflateZipProvider();
@@ -683,7 +676,7 @@ describe('Really Simple Preview Tests', () => {
         await fs.ensureDir(tempDir);
 
         try {
-            const document = new ElpDocumentAdapter(structure, tempDir);
+            const document = createDocumentFromStructure(structure, tempDir);
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(tempDir);
             const zip = new FflateZipProvider();

@@ -490,7 +490,7 @@ export function createProjectRoutes(deps: ProjectDependencies = defaultDependenc
                 };
             })
 
-            // NOTE: Export is handled by routes/export.ts (ElpDocumentAdapter, Yjs-based).
+            // NOTE: Export is handled by routes/export.ts (Yjs-based via YjsDocumentAdapter).
             // Old session-based /api/project/export endpoint was removed.
 
             // =====================================================

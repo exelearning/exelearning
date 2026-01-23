@@ -15,12 +15,13 @@ import * as fs from 'fs-extra';
 import * as fflate from 'fflate';
 
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
     Html5Exporter,
 } from '../../../src/shared/export';
+
+import { createDocumentFromElpFile, type DocumentFromElpResult } from '../../helpers/document-test-utils';
 
 // Fixture with images
 const FIXTURE_PATH = path.join(
@@ -43,7 +44,7 @@ const EXPECTED_EXPORT_DIR = path.join(
 );
 
 describe('CLI Export Assets', () => {
-    let document: ElpDocumentAdapter;
+    let documentResult: DocumentFromElpResult;
     let extractedPath: string;
 
     beforeAll(async () => {
@@ -54,15 +55,13 @@ describe('CLI Export Assets', () => {
         }
 
         // Load the document
-        document = await ElpDocumentAdapter.fromElpFile(FIXTURE_PATH);
-        extractedPath = document.extractedPath;
+        documentResult = await createDocumentFromElpFile(FIXTURE_PATH);
+        extractedPath = documentResult.extractedPath;
     });
 
     afterAll(async () => {
         // Clean up extracted directory
-        if (extractedPath?.startsWith('/tmp/')) {
-            await fs.remove(extractedPath).catch(() => {});
-        }
+        await documentResult?.cleanup();
     });
 
     describe('FileSystemAssetProvider', () => {
@@ -140,7 +139,7 @@ describe('CLI Export Assets', () => {
             const assetProvider = new FileSystemAssetProvider(extractedPath);
             const zipProvider = new FflateZipProvider();
 
-            const exporter = new Html5Exporter(document, resourceProvider, assetProvider, zipProvider);
+            const exporter = new Html5Exporter(documentResult.document, resourceProvider, assetProvider, zipProvider);
             const result = await exporter.export();
 
             expect(result.success).toBe(true);
@@ -184,7 +183,7 @@ describe('CLI Export Assets', () => {
             const assetProvider = new FileSystemAssetProvider(extractedPath);
             const zipProvider = new FflateZipProvider();
 
-            const exporter = new Html5Exporter(document, resourceProvider, assetProvider, zipProvider);
+            const exporter = new Html5Exporter(documentResult.document, resourceProvider, assetProvider, zipProvider);
             const result = await exporter.export();
 
             expect(result.success).toBe(true);
