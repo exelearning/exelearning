@@ -11,7 +11,6 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 // Import from shared export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -23,6 +22,9 @@ import {
     unzipSync,
     type ParsedOdeStructure,
 } from '../../src/shared/export';
+
+// Import test helpers
+import { createDocumentFromStructure } from '../helpers/document-test-utils';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-unified-test');
 
@@ -96,16 +98,17 @@ describe('Unified Export System Integration', () => {
         }
     });
 
-    describe('ElpDocumentAdapter', () => {
+    describe('YjsDocumentAdapter (via createDocumentFromStructure)', () => {
         it('should create adapter from ParsedOdeStructure', () => {
-            const adapter = new ElpDocumentAdapter(sampleParsedStructure, testDir);
+            const adapter = createDocumentFromStructure(sampleParsedStructure, testDir);
 
             expect(adapter).toBeDefined();
-            expect(adapter.extractedPath).toBe(testDir);
+            // YjsDocumentAdapter doesn't expose extractedPath directly
+            expect(adapter.getMetadata()).toBeDefined();
         });
 
         it('should return correct metadata', () => {
-            const adapter = new ElpDocumentAdapter(sampleParsedStructure, testDir);
+            const adapter = createDocumentFromStructure(sampleParsedStructure, testDir);
             const metadata = adapter.getMetadata();
 
             expect(metadata.title).toBe('Test Project');
@@ -115,7 +118,7 @@ describe('Unified Export System Integration', () => {
         });
 
         it('should return navigation pages', () => {
-            const adapter = new ElpDocumentAdapter(sampleParsedStructure, testDir);
+            const adapter = createDocumentFromStructure(sampleParsedStructure, testDir);
             const pages = adapter.getNavigation();
 
             expect(pages).toHaveLength(2);
@@ -125,13 +128,13 @@ describe('Unified Export System Integration', () => {
     });
 
     describe('Exporters use same shared base', () => {
-        let document: ElpDocumentAdapter;
+        let document: ReturnType<typeof createDocumentFromStructure>;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
         let zip: FflateZipProvider;
 
         beforeEach(() => {
-            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             zip = new FflateZipProvider();
@@ -196,13 +199,13 @@ describe('Unified Export System Integration', () => {
     });
 
     describe('Export output structure consistency', () => {
-        let document: ElpDocumentAdapter;
+        let document: ReturnType<typeof createDocumentFromStructure>;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
         let zip: FflateZipProvider;
 
         beforeEach(() => {
-            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             zip = new FflateZipProvider();
@@ -260,7 +263,7 @@ describe('Unified Export System Integration', () => {
             const sharedExport = await import('../../src/shared/export');
 
             // All exporters should be available
-            expect(sharedExport.ElpDocumentAdapter).toBeDefined();
+            expect(sharedExport.YjsDocumentAdapter).toBeDefined();
             expect(sharedExport.Html5Exporter).toBeDefined();
             expect(sharedExport.PageExporter).toBeDefined();
             expect(sharedExport.Scorm12Exporter).toBeDefined();
@@ -274,7 +277,7 @@ describe('Unified Export System Integration', () => {
         });
 
         it('Export result structure is consistent', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -300,13 +303,13 @@ describe('Unified Export System Integration', () => {
     });
 
     describe('SCORM 1.2 Export - Complete Structure', () => {
-        let document: ElpDocumentAdapter;
+        let document: ReturnType<typeof createDocumentFromStructure>;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
         let zip: FflateZipProvider;
 
         beforeEach(async () => {
-            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             zip = new FflateZipProvider();
@@ -361,13 +364,13 @@ describe('Unified Export System Integration', () => {
     });
 
     describe('SCORM 2004 Export - Complete Structure', () => {
-        let document: ElpDocumentAdapter;
+        let document: ReturnType<typeof createDocumentFromStructure>;
         let resources: FileSystemResourceProvider;
         let assets: FileSystemAssetProvider;
         let zip: FflateZipProvider;
 
         beforeEach(async () => {
-            document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
             assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             zip = new FflateZipProvider();
@@ -425,7 +428,7 @@ describe('Unified Export System Integration', () => {
 
     describe('Metadata preservation', () => {
         it('Export preserves project title in metadata', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -441,7 +444,7 @@ describe('Unified Export System Integration', () => {
         });
 
         it('Export includes content.xml for full round-trip', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(path.join(testDir, 'public'));
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();

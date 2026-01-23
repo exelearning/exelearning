@@ -246,6 +246,16 @@ describe('ElpxImporter', () => {
       fflate: createMockFflate(),
     };
 
+    // Set up default mock for LegacyHandlerRegistry (loaded via importers.bundle.js in browser)
+    global.LegacyHandlerRegistry = {
+      getHandler: () => ({
+        extractProperties: () => ({}),
+        extractHtmlView: () => '',
+        getTargetType: () => 'text',
+        getBlockProperties: () => ({}),
+      }),
+    };
+
     mockDocManager = createMockDocumentManager();
     mockAssetManager = createMockAssetManager();
     importer = new ElpxImporter(mockDocManager, mockAssetManager);

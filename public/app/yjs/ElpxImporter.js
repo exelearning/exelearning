@@ -261,6 +261,9 @@ class ElpxImporter {
       themeFromXml = this.getPropertyValue(odeProperties, 'pp_style') || '';
     }
 
+    // Build metadata values object from XML properties.
+    // Property XML keys (pp_title, pp_lang, etc.) and defaults are defined in:
+    // src/shared/export/metadata-properties.ts (the single source of truth)
     const metadataValues = {
       // Basic metadata
       title: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_title') || 'Imported Project') : 'Imported Project',
@@ -278,7 +281,9 @@ class ElpxImporter {
       addSearchBox: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addSearchBox', false) : false,
       addExeLink: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addExeLink', true) : true,
       addAccessibilityToolbar: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addAccessibilityToolbar', false) : false,
+      addMathJax: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addMathJax', false) : false,
       exportSource: odeProperties ? this.parseBooleanProperty(odeProperties, 'exportSource', true) : true,
+      globalFont: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_globalFont') || 'default') : 'default',
       extraHeadContent: odeProperties ? (this.getPropertyValue(odeProperties, 'pp_extraHeadContent') || '') : '',
       footer: odeProperties ? (this.getPropertyValue(odeProperties, 'footer') || '') : '',
     };
@@ -340,7 +345,11 @@ class ElpxImporter {
           metadata.set('addSearchBox', metadataValues.addSearchBox);
           metadata.set('addExeLink', metadataValues.addExeLink);
           metadata.set('addAccessibilityToolbar', metadataValues.addAccessibilityToolbar);
+          metadata.set('addMathJax', metadataValues.addMathJax);
           metadata.set('exportSource', metadataValues.exportSource);
+          if (metadataValues.globalFont && metadataValues.globalFont !== 'default') {
+            metadata.set('globalFont', metadataValues.globalFont);
+          }
           if (metadataValues.extraHeadContent) {
             metadata.set('extraHeadContent', metadataValues.extraHeadContent);
           }
@@ -1886,6 +1895,12 @@ class ElpxImporter {
           }
           if (parsedData.meta.pp_addAccessibilityToolbar !== undefined) {
             metadata.set('addAccessibilityToolbar', parsedData.meta.pp_addAccessibilityToolbar);
+          }
+          if (parsedData.meta.pp_addMathJax !== undefined) {
+            metadata.set('addMathJax', parsedData.meta.pp_addMathJax);
+          }
+          if (parsedData.meta.pp_globalFont !== undefined && parsedData.meta.pp_globalFont !== 'default') {
+            metadata.set('globalFont', parsedData.meta.pp_globalFont);
           }
         }
       }

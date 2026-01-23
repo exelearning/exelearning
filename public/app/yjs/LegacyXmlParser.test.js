@@ -14,10 +14,24 @@ describe('LegacyXmlParser', () => {
 
   beforeEach(() => {
     parser = new LegacyXmlParser();
+
+    // Set up default mock for LegacyHandlerRegistry (loaded via importers.bundle.js in browser)
+    // Tests that need custom handler behavior should override this mock
+    if (!global.LegacyHandlerRegistry) {
+      global.LegacyHandlerRegistry = {
+        getHandler: () => ({
+          extractProperties: () => ({}),
+          extractHtmlView: () => '',
+          getTargetType: () => 'text',
+          getBlockProperties: () => ({}),
+        }),
+      };
+    }
   });
 
   afterEach(() => {
-    // Bun test cleanup happens automatically
+    // Clean up handler registry mock if it was set by us (not by a specific test)
+    // Note: Specific tests that override the mock should clean up themselves
   });
 
   describe('constructor', () => {

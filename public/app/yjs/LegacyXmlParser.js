@@ -1693,58 +1693,44 @@ class LegacyXmlParser {
         }
 
         // LEGACY IDEVICE PROPERTY EXTRACTION
-        // Use handler registry if available, otherwise fall back to inline logic
-        if (typeof LegacyHandlerRegistry !== 'undefined') {
-          // Pass rawIdeviceDir (e.g., 'selecciona-activity') instead of mapped ideviceType
-          // This allows GameIdeviceHandler to match on legacy game type names
-          const handler = LegacyHandlerRegistry.getHandler(className, rawIdeviceDir || ideviceType);
-          // Pass idevice.id and language context for handlers that need it
-          const handlerContext = { language: this.projectLanguage };
-          const handlerProps = handler.extractProperties(dict, idevice.id, handlerContext);
-          if (handlerProps && Object.keys(handlerProps).length > 0) {
-            idevice.properties = handlerProps;
-            Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
-          }
+        // Uses handler registry from importers.bundle.js (TypeScript handlers)
+        // Pass rawIdeviceDir (e.g., 'selecciona-activity') instead of mapped ideviceType
+        // This allows GameHandler to match on legacy game type names
+        const handler = LegacyHandlerRegistry.getHandler(className, rawIdeviceDir || ideviceType);
+        // Pass idevice.id and language context for handlers that need it
+        const handlerContext = { language: this.projectLanguage };
+        const handlerProps = handler.extractProperties(dict, idevice.id, handlerContext);
+        if (handlerProps && Object.keys(handlerProps).length > 0) {
+          idevice.properties = handlerProps;
+          Logger.log(`[LegacyXmlParser] Extracted properties via ${handler.constructor.name}`);
+        }
 
-          // Use handler's extractHtmlView if available (e.g., GameIdeviceHandler updates DataGame div with decrypted JSON)
-          // Pass project language as context for proper localization of default texts
-          if (typeof handler.extractHtmlView === 'function') {
-            const handlerHtml = handler.extractHtmlView(dict, { language: this.projectLanguage });
-            if (handlerHtml) {
-              idevice.htmlView = handlerHtml;
-              Logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
-            }
+        // Use handler's extractHtmlView if available (e.g., GameHandler updates DataGame div with decrypted JSON)
+        // Pass project language as context for proper localization of default texts
+        if (typeof handler.extractHtmlView === 'function') {
+          const handlerHtml = handler.extractHtmlView(dict, { language: this.projectLanguage });
+          if (handlerHtml) {
+            idevice.htmlView = handlerHtml;
+            Logger.log(`[LegacyXmlParser] Used handler htmlView (${handlerHtml.length} chars)`);
           }
+        }
 
-          // Update type from handler if it provides a normalized type
-          // GameIdeviceHandler normalizes: flipcards-activity -> flipcards, selecciona-activity -> selecciona
-          // Call this AFTER extractProperties since handler may set _detectedType during extraction
-          const handlerType = handler.getTargetType();
-          if (handlerType && handlerType !== 'text' && handlerType !== idevice.type) {
-            Logger.log(`[LegacyXmlParser] Handler updated type: ${idevice.type} -> ${handlerType}`);
-            idevice.type = handlerType;
-          }
+        // Update type from handler if it provides a normalized type
+        // GameHandler normalizes: flipcards-activity -> flipcards, selecciona-activity -> selecciona
+        // Call this AFTER extractProperties since handler may set _detectedType during extraction
+        const handlerType = handler.getTargetType();
+        if (handlerType && handlerType !== 'text' && handlerType !== idevice.type) {
+          Logger.log(`[LegacyXmlParser] Handler updated type: ${idevice.type} -> ${handlerType}`);
+          idevice.type = handlerType;
+        }
 
-          // Get block properties from handler if available
-          // This allows handlers like NotaHandler to set visibility=false on the block
-          if (typeof handler.getBlockProperties === 'function') {
-            const blockProps = handler.getBlockProperties();
-            if (blockProps && Object.keys(blockProps).length > 0) {
-              idevice.blockProperties = blockProps;
-              Logger.log(`[LegacyXmlParser] Handler block properties:`, blockProps);
-            }
-          }
-        } else {
-          // Fallback: Legacy inline extraction for MultichoiceIdevice/MultiSelectIdevice
-          if (ideviceType === 'form' && (
-            className.includes('MultichoiceIdevice') ||
-            className.includes('MultiSelectIdevice')
-          )) {
-            const questionsData = this.extractMultichoiceQuestions(dict);
-            if (questionsData.length > 0) {
-              idevice.properties = { questionsData };
-              Logger.log(`[LegacyXmlParser] Form iDevice with ${questionsData.length} questions`);
-            }
+        // Get block properties from handler if available
+        // This allows handlers like NotaHandler to set visibility=false on the block
+        if (typeof handler.getBlockProperties === 'function') {
+          const blockProps = handler.getBlockProperties();
+          if (blockProps && Object.keys(blockProps).length > 0) {
+            idevice.blockProperties = blockProps;
+            Logger.log(`[LegacyXmlParser] Handler block properties:`, blockProps);
           }
         }
       }
@@ -1931,77 +1917,6 @@ class LegacyXmlParser {
       }
     }
     return false;
-  }
-
-  /**
-   * LEGACY MULTICHOICE IDEVICE QUESTION EXTRACTION
-   *
-   * Extracts questions from legacy MultichoiceIdevice format
-   * and converts to modern form iDevice questionsData format.
-   *
-   * Structure:
-   * - MultichoiceIdevice.questions -> list of QuizQuestionField
-   * - QuizQuestionField.questionTextArea -> question text
-   * - QuizQuestionField.options -> list of QuizOptionField
-   * - QuizOptionField.answerTextArea -> option text
-   * - QuizOptionField.isCorrect -> boolean
-   *
-   * @param {Element} dict - Dictionary element of the MultichoiceIdevice
-   * @returns {Array} Array of question objects in form iDevice format
-   */
-  extractMultichoiceQuestions(dict) {
-    const questionsData = [];
-
-    // Find "questions" list in dictionary
-    const questionsList = this.findDictList(dict, 'questions');
-    if (!questionsList) return questionsData;
-
-    // Iterate each QuizQuestionField
-    const questionFields = questionsList.querySelectorAll(':scope > instance');
-    for (const questionField of questionFields) {
-      const qDict = questionField.querySelector(':scope > dictionary');
-      if (!qDict) continue;
-
-      // Extract question text from questionTextArea
-      const questionTextArea = this.findDictInstance(qDict, 'questionTextArea');
-      const questionText = questionTextArea ? this.extractTextAreaFieldContent(questionTextArea) : '';
-
-      // Extract options from options list
-      const optionsList = this.findDictList(qDict, 'options');
-      const answers = [];
-      let correctCount = 0;
-
-      if (optionsList) {
-        const optionFields = optionsList.querySelectorAll(':scope > instance');
-        for (const optionField of optionFields) {
-          const optDict = optionField.querySelector(':scope > dictionary');
-          if (!optDict) continue;
-
-          // Get answer text from answerTextArea
-          const answerTextArea = this.findDictInstance(optDict, 'answerTextArea');
-          const optionText = answerTextArea ? this.extractTextAreaFieldContent(answerTextArea) : '';
-
-          // Get isCorrect flag
-          const isCorrect = this.findDictBoolValue(optDict, 'isCorrect');
-
-          if (isCorrect) correctCount++;
-          answers.push([isCorrect, optionText]);
-        }
-      }
-
-      // Only add if we have a question or answers
-      if (questionText || answers.length > 0) {
-        questionsData.push({
-          activityType: 'selection',
-          selectionType: correctCount > 1 ? 'multiple' : 'single',
-          baseText: questionText,
-          answers: answers
-        });
-      }
-    }
-
-    Logger.log(`[LegacyXmlParser] Extracted ${questionsData.length} multichoice questions`);
-    return questionsData;
   }
 
   /**
