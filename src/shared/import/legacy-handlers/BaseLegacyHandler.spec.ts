@@ -37,6 +37,10 @@ class TestHandler extends BaseLegacyHandler {
     public testGetDirectChildrenByTagName(parent: Element, tagName: string): Element[] {
         return this.getDirectChildrenByTagName(parent, tagName);
     }
+
+    public testGetElementsByClassContains(parent: Element, tagName: string, classSubstring: string): Element[] {
+        return this.getElementsByClassContains(parent, tagName, classSubstring);
+    }
 }
 
 /**
@@ -548,6 +552,490 @@ describe('BaseLegacyHandler', () => {
             `);
             const result = handler.extractFeedbackFieldContent(field);
             expect(result.buttonCaption).toBe('Show Feedback');
+        });
+
+        it('should skip empty/whitespace-only feedback content (line 370)', () => {
+            const field = createDomElement(`
+                <instance class="FeedbackField">
+                    <dictionary>
+                        <string role="key" value="feedback"/>
+                        <unicode value="   "/>
+                        <string role="key" value="content_w_resourcePaths"/>
+                        <unicode value="Actual content"/>
+                    </dictionary>
+                </instance>
+            `);
+            const result = handler.extractFeedbackFieldContent(field);
+            expect(result.content).toBe('Actual content');
+        });
+
+        it('should extract button caption from string element (line 388)', () => {
+            const field = createDomElement(`
+                <instance class="FeedbackField">
+                    <dictionary>
+                        <string role="key" value="feedback"/>
+                        <unicode value="Feedback"/>
+                        <string role="key" value="_buttonCaption"/>
+                        <string value="Click Me"/>
+                    </dictionary>
+                </instance>
+            `);
+            const result = handler.extractFeedbackFieldContent(field);
+            expect(result.buttonCaption).toBe('Click Me');
+        });
+    });
+
+    describe('findDictStringValue edge cases', () => {
+        it('should return null when unicode element has no value and no textContent (line 147)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="empty"/>
+                    <unicode/>
+                </dictionary>
+            `);
+            expect(handler.findDictStringValue(dict, 'empty')).toBeNull();
+        });
+
+        it('should return null when key is found but next element is not string/unicode', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="notstring"/>
+                    <int value="42"/>
+                </dictionary>
+            `);
+            expect(handler.findDictStringValue(dict, 'notstring')).toBeNull();
+        });
+    });
+
+    describe('findDictList edge cases', () => {
+        it('should return null when key is found but next element is not a list (line 172)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="notlist"/>
+                    <string value="not a list"/>
+                </dictionary>
+            `);
+            expect(handler.findDictList(dict, 'notlist')).toBeNull();
+        });
+    });
+
+    describe('findDictInstance edge cases', () => {
+        it('should return null when key is found but next element is not an instance (line 197)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="notinstance"/>
+                    <string value="not an instance"/>
+                </dictionary>
+            `);
+            expect(handler.findDictInstance(dict, 'notinstance')).toBeNull();
+        });
+    });
+
+    describe('findDictBoolValue edge cases', () => {
+        it('should return true when bool value is 1 (line 222)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="flag"/>
+                    <bool value="1"/>
+                </dictionary>
+            `);
+            expect(handler.findDictBoolValue(dict, 'flag')).toBe(true);
+        });
+
+        it('should return false when key found but next element is not bool', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="notbool"/>
+                    <string value="true"/>
+                </dictionary>
+            `);
+            expect(handler.findDictBoolValue(dict, 'notbool')).toBe(false);
+        });
+    });
+
+    describe('findDictIntValue edge cases', () => {
+        it('should return NaN when int has empty value attribute (line 248)', () => {
+            // When getAttribute returns empty string, parseInt returns NaN
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="emptyval"/>
+                    <int value=""/>
+                </dictionary>
+            `);
+            const result = handler.findDictIntValue(dict, 'emptyval');
+            expect(Number.isNaN(result as number)).toBe(true);
+        });
+
+        it('should return null when key found but next element is not int', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="notint"/>
+                    <string value="42"/>
+                </dictionary>
+            `);
+            expect(handler.findDictIntValue(dict, 'notint')).toBeNull();
+        });
+
+        it('should handle int with zero value', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="zero"/>
+                    <int value="0"/>
+                </dictionary>
+            `);
+            expect(handler.findDictIntValue(dict, 'zero')).toBe(0);
+        });
+    });
+
+    describe('getElementsByClassContains (lines 287-296)', () => {
+        it('should find elements by class substring', () => {
+            const parent = createDomElement(`
+                <root>
+                    <div class="field-text-area"/>
+                    <div class="field-select"/>
+                    <div class="field-text-input"/>
+                    <div class="other"/>
+                </root>
+            `);
+            const result = handler.testGetElementsByClassContains(parent, 'div', 'field-text');
+            expect(result.length).toBe(2);
+            expect(result[0].getAttribute('class')).toBe('field-text-area');
+            expect(result[1].getAttribute('class')).toBe('field-text-input');
+        });
+
+        it('should return empty array when no matches', () => {
+            const parent = createDomElement(`
+                <root>
+                    <div class="other"/>
+                </root>
+            `);
+            const result = handler.testGetElementsByClassContains(parent, 'div', 'field');
+            expect(result.length).toBe(0);
+        });
+
+        it('should handle elements without class attribute', () => {
+            const parent = createDomElement(`
+                <root>
+                    <div/>
+                    <div class="field"/>
+                </root>
+            `);
+            const result = handler.testGetElementsByClassContains(parent, 'div', 'field');
+            expect(result.length).toBe(1);
+        });
+    });
+
+    describe('extractFieldsContent (lines 526-527)', () => {
+        it('should extract content from fields list with TextAreaField', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="Field 1 content"/>
+                            </dictionary>
+                        </instance>
+                        <instance class="TextField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="Field 2 content"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractFieldsContent(dict);
+            expect(result).toContain('Field 1 content');
+            expect(result).toContain('Field 2 content');
+        });
+
+        it('should return empty string when no fields key', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="other"/>
+                    <list/>
+                </dictionary>
+            `);
+            expect(handler.extractFieldsContent(dict)).toBe('');
+        });
+
+        it('should return empty string when fields value is not a list', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <string value="not a list"/>
+                </dictionary>
+            `);
+            expect(handler.extractFieldsContent(dict)).toBe('');
+        });
+
+        it('should skip non-text field instances', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="SelectField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="Skipped"/>
+                            </dictionary>
+                        </instance>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="Included"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractFieldsContent(dict);
+            expect(result).toBe('Included');
+            expect(result).not.toContain('Skipped');
+        });
+    });
+
+    describe('extractRichTextContent (lines 550-560)', () => {
+        it('should return empty string when field not found', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="other"/>
+                    <unicode value="value"/>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'missing')).toBe('');
+        });
+
+        it('should return empty string when value element is missing (line 552)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="field"/>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'field')).toBe('');
+        });
+
+        it('should extract from unicode element (line 554-555)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="richText"/>
+                    <unicode value="&lt;p&gt;Rich content&lt;/p&gt;"/>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'richText')).toBe('<p>Rich content</p>');
+        });
+
+        it('should extract from string element (line 554-555)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="richText"/>
+                    <string value="Plain content"/>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'richText')).toBe('Plain content');
+        });
+
+        it('should extract from instance element (line 558-559)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="richText"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="Instance content"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'richText')).toBe('Instance content');
+        });
+
+        it('should return empty string for unsupported value element type', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="field"/>
+                    <list/>
+                </dictionary>
+            `);
+            expect(handler.extractRichTextContent(dict, 'field')).toBe('');
+        });
+    });
+
+    describe('extractAnyTextFieldContent (lines 577-596)', () => {
+        it('should extract from direct child TextAreaField instance (lines 577-583)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="Direct content"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('Direct content');
+        });
+
+        it('should extract from direct child TextField instance', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <instance class="TextField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="TextField content"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('TextField content');
+        });
+
+        it('should extract from nested TextAreaField instance (lines 589-596)', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <nested>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="Nested content"/>
+                            </dictionary>
+                        </instance>
+                    </nested>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('Nested content');
+        });
+
+        it('should return empty string when no text field found', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <instance class="SelectField">
+                        <dictionary/>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('');
+        });
+
+        it('should skip text fields with empty content', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value=""/>
+                        </dictionary>
+                    </instance>
+                    <nested>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="Real content"/>
+                            </dictionary>
+                        </instance>
+                    </nested>
+                </dictionary>
+            `);
+            expect(handler.extractAnyTextFieldContent(dict)).toBe('Real content');
+        });
+    });
+
+    describe('extractResourcePath (lines 610-624)', () => {
+        it('should return null when resource instance not found', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="other"/>
+                    <instance class="Other"/>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'resource')).toBeNull();
+        });
+
+        it('should return null when resource has no dictionary', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="resource"/>
+                    <instance class="Resource"/>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'resource')).toBeNull();
+        });
+
+        it('should extract _storageName from resource', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="image"/>
+                    <instance class="Resource">
+                        <dictionary>
+                            <string role="key" value="_storageName"/>
+                            <string value="image.png"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'image')).toBe('image.png');
+        });
+
+        it('should extract storageName from resource', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="file"/>
+                    <instance class="Resource">
+                        <dictionary>
+                            <string role="key" value="storageName"/>
+                            <string value="document.pdf"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'file')).toBe('document.pdf');
+        });
+
+        it('should extract _fileName from resource', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="media"/>
+                    <instance class="Resource">
+                        <dictionary>
+                            <string role="key" value="_fileName"/>
+                            <string value="video.mp4"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'media')).toBe('video.mp4');
+        });
+
+        it('should extract fileName from resource', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="audio"/>
+                    <instance class="Resource">
+                        <dictionary>
+                            <string role="key" value="fileName"/>
+                            <string value="audio.mp3"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'audio')).toBe('audio.mp3');
+        });
+
+        it('should return null when no storage/file name found', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="resource"/>
+                    <instance class="Resource">
+                        <dictionary>
+                            <string role="key" value="other"/>
+                            <string value="value"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            expect(handler.extractResourcePath(dict, 'resource')).toBeNull();
         });
     });
 });
