@@ -2537,6 +2537,43 @@ describe('IdeviceNode', () => {
 
             expect(mockSetEditingComponent).toHaveBeenCalledWith('yjs-comp-id');
         });
+
+        it('stops playing audio when entering edition mode', () => {
+            const mockStopSound = vi.fn();
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        media: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockStopSound).toHaveBeenCalled();
+            delete global.$exeDevices;
+        });
+
+        it('does not throw when $exeDevices is undefined', () => {
+            delete global.$exeDevices;
+
+            expect(() => idevice.edition()).not.toThrow();
+        });
+
+        it('does not throw when stopSound is not available', () => {
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        media: {},
+                    },
+                },
+            };
+
+            expect(() => idevice.edition()).not.toThrow();
+            delete global.$exeDevices;
+        });
     });
 
     describe('save', () => {
@@ -2603,6 +2640,43 @@ describe('IdeviceNode', () => {
             await idevice.save(false);
 
             expect(mockReleaseLock).toHaveBeenCalledWith('yjs-comp');
+        });
+
+        it('stops playing audio when exiting edition mode', async () => {
+            const mockStopSound = vi.fn();
+            global.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            await idevice.save(false);
+
+            expect(mockStopSound).toHaveBeenCalled();
+            delete global.$exeDevicesEdition;
+        });
+
+        it('does not throw when $exeDevicesEdition is undefined', async () => {
+            delete global.$exeDevicesEdition;
+
+            await expect(idevice.save(false)).resolves.not.toThrow();
+        });
+
+        it('does not throw when stopSound is not available in edition helpers', async () => {
+            global.$exeDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {},
+                    },
+                },
+            };
+
+            await expect(idevice.save(false)).resolves.not.toThrow();
+            delete global.$exeDevicesEdition;
         });
     });
 

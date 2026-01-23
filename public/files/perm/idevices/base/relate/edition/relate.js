@@ -583,7 +583,7 @@ var $exeDevice = {
     showCard: function (i) {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#rclEURLImage').val(p.url);
         $('#rclEURLImageBack').val(p.urlBk);
@@ -670,7 +670,7 @@ var $exeDevice = {
             ),
         };
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let message = '';
         if (!p.eText && !p.url && !p.audio) {
@@ -849,9 +849,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $('<div></div>').html(originalHTML),
-                json = $('.relaciona-DataGame', wrapper).text(),
-                dataGame =
+            const wrapper = $('<div></div>').html(originalHTML);
+            let json = $('.relaciona-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.relaciona-LinkImages', wrapper),
@@ -1481,8 +1482,7 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevice.stopSound();
-            $exeDevice.playSound(url);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 

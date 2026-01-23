@@ -618,8 +618,9 @@ var $eXeMapa = {
         url,
         $toolTips
     ) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
         mOptions.url = url;
@@ -2345,14 +2346,13 @@ var $eXeMapa = {
 
         $('#mapaMessageFindP-' + instance).text(mq);
         $('#mapaPlayAudioIdenty-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         if (
             typeof mOptions.title.audio != 'undefined' &&
             mOptions.title.audio.length > 4
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.title.audio,
-                mOptions
+                mOptions.title.audio
             );
             $('#mapaPlayAudioIdenty-' + instance).show();
         }
@@ -2564,8 +2564,7 @@ var $eXeMapa = {
                     mOptions.activeMap.pts[n].audio.length > 4
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        mOptions.activeMap.pts[n].audio,
-                        mOptions
+                        mOptions.activeMap.pts[n].audio
                     );
                     if (mOptions.activeMap.pts[n].type == 3) {
                         mOptions.visiteds.push(id);
@@ -2591,8 +2590,7 @@ var $eXeMapa = {
                     4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.activeMap.pts[mOptions.activeMap.active].audio,
-                    mOptions
+                    mOptions.activeMap.pts[mOptions.activeMap.active].audio
                 );
             }
         });
@@ -2606,8 +2604,7 @@ var $eXeMapa = {
                     4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.activeMap.pts[mOptions.activeMap.active].audio,
-                    mOptions
+                    mOptions.activeMap.pts[mOptions.activeMap.active].audio
                 );
             }
         });
@@ -2619,8 +2616,7 @@ var $eXeMapa = {
                 mOptions.title.audio.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.title.audio,
-                    mOptions
+                    mOptions.title.audio
                 );
             }
         });
@@ -2637,8 +2633,7 @@ var $eXeMapa = {
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
                     mOptions.activeMap.pts[mOptions.activeMap.active]
-                        .question_audio,
-                    mOptions
+                        .question_audio
                 );
             }
         });
@@ -2784,7 +2779,7 @@ var $eXeMapa = {
         $('#mapaLinkClose-' + instance).on('click', function (e) {
             e.preventDefault();
             $eXeMapa.stopVideo(instance);
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
             $eXeMapa.hideCover(instance);
         });
 
@@ -3199,8 +3194,7 @@ var $eXeMapa = {
             mOptions.activeMap.pts[n].audio.length > 4
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
-                mOptions.activeMap.pts[n].audio,
-                mOptions
+                mOptions.activeMap.pts[n].audio
             );
             if (mOptions.activeMap.pts[n].type == 3) {
                 mOptions.visiteds.push(id);
@@ -3777,7 +3771,7 @@ var $eXeMapa = {
         } else {
             mOptions.evaluationG = -1;
         }
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
     },
     closePoint: function (instance) {
         const mOptions = $eXeMapa.options[instance],
@@ -3786,7 +3780,7 @@ var $eXeMapa = {
         $eXeMapa.hideModalWindows(instance);
         $eXeMapa.stopVideo(instance);
         $eXeMapa.stopVideoText(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#mapaFDetailsSound-' + instance).hide();
         $('#mapaFDetails-' + instance).hide();
@@ -4047,7 +4041,7 @@ var $eXeMapa = {
         const mOptions = $eXeMapa.options[instance],
             quextion = mOptions.selectsGame[mOptions.activeQuestion];
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         if (!mOptions.gameActived) return;
 
         mOptions.gameActived = false;
@@ -4136,7 +4130,7 @@ var $eXeMapa = {
             p = mOptions.activeMap.pts[mOptions.activeMap.active],
             q = p.tests[p.activeTest];
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (!mOptions.gameActived) return;
 
@@ -4501,7 +4495,7 @@ var $eXeMapa = {
             p.state = -1;
             mOptions.showData = false;
         });
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
     },
     randomSubset: function (num, k, sol) {
         let copy = [],
@@ -4568,7 +4562,7 @@ var $eXeMapa = {
             top: -tp + 'px',
         });
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#mapaPlayAudioRect-' + instance).hide();
         if (
@@ -4576,8 +4570,7 @@ var $eXeMapa = {
             p.question_audio.length > 4
         ) {
             $exeDevices.iDevice.gamification.media.playSound(
-                p.question_audio,
-                mOptions
+                p.question_audio
             );
             $('#mapaPlayAudioRect-' + instance).show();
         }
@@ -4669,7 +4662,7 @@ var $eXeMapa = {
                 } else {
                     $('#mapaTest-' + instance).hide();
                 }
-                $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                $exeDevices.iDevice.gamification.media.stopSound();
                 mOptions.showData = false;
             }, mOptions.timeShowSolution * 1000);
         }
@@ -4878,7 +4871,7 @@ var $eXeMapa = {
         mOptions.activeMap.active = i;
 
         if (q.type == 1) {
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
         }
 
         $('#mapaTooltipA-' + instance).hide();
@@ -4942,7 +4935,7 @@ var $eXeMapa = {
             $eXeMapa.showTPQuestionnaire(i, instance);
         }
         if (typeof q.audio != 'undefined' && q.audio.length > 4) {
-            $exeDevices.iDevice.gamification.media.playSound(q.audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(q.audio);
         }
 
         if (
@@ -5087,7 +5080,7 @@ var $eXeMapa = {
                 mOptions.levels.pop();
             }
             mOptions.activeMap = $.extend(true, {}, parent);
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
             $eXeMapa.addPoints(instance, mOptions.activeMap.pts);
             $eXeMapa.showImage(
                 mOptions.activeMap.url,
