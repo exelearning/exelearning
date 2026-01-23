@@ -11,10 +11,14 @@
 <script>
     (function() {
         var basePath = '';
+        var version = '';
         try {
             basePath = (parent && parent.eXeLearning && parent.eXeLearning.config && parent.eXeLearning.config.basePath) || '';
+            version = (parent && parent.eXeLearning && parent.eXeLearning.version) || '';
         } catch(e) {}
-        document.write('<script src="' + basePath + '/libs/jquery/jquery.min.js"><\/script>');
+        var jqueryPath = '/libs/jquery/jquery.min.js';
+        var jqueryUrl = basePath ? basePath + '/' + version + jqueryPath : '/' + version + jqueryPath;
+        document.write('<script src="' + jqueryUrl + '"><\/script>');
     })();
 </script>
 <script type="text/javascript" src="includes/codemirror/codemirror.js"></script>

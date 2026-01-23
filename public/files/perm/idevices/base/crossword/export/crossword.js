@@ -337,7 +337,7 @@ var $eXeCrucigrama = {
                     nextCol = col;
 
                 if (e.key === 'Tab') {
-                    $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                    $exeDevices.iDevice.gamification.media.stopSound();
                     e.preventDefault();
                     let active = mOptions.activeQuestion;
                     active++;
@@ -715,7 +715,7 @@ var $eXeCrucigrama = {
         }
 
         $eXeCrucigrama.updateInputPresentation(instance, wordindex);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#ccgmActiveDefinition-' + instance).show();
     },
@@ -2205,7 +2205,7 @@ var $eXeCrucigrama = {
         $('#ccgmLinkSound-' + instance).on('click', function (e) {
             e.preventDefault();
             let audio = mOptions.wordsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $('#ccgmShowClue-' + instance).hide();
@@ -2238,7 +2238,7 @@ var $eXeCrucigrama = {
         $(window).on(
             'unload.eXeCrucigrama beforeunload.eXeCrucigrama',
             function () {
-                $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                $exeDevices.iDevice.gamification.media.stopSound();
                 if ($eXeCrucigrama.mScorm) {
                     $exeDevices.iDevice.gamification.scorm.endScorm(
                         $eXeCrucigrama.mScorm
@@ -2280,14 +2280,14 @@ var $eXeCrucigrama = {
             e.preventDefault();
             let num = $(this).data('number'),
                 sound = mOptions.wordsGame[num].audio;
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         });
 
         $mainContainer.on('click', '.CCGMP-LinkSoundDef', function (e) {
             e.preventDefault();
             let num = $(this).data('number'),
                 sound = mOptions.wordsGame[num].audio;
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         });
 
         $mainContainer.on('click', '.CCGMP-LinkClose', function (e) {
@@ -2402,7 +2402,7 @@ var $eXeCrucigrama = {
                 const validKeys =
                     /[a-zA-ZçÇáéíóúÁÉÍÓÚñÑäëïöüÄËÏÖÜ0-9àÀèÈòÒïÏüÜ]/;
                 if (e.key === 'Tab' && $(this).hasClass('CCGMP-InputWordDef')) {
-                    $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                    $exeDevices.iDevice.gamification.media.stopSound();
                     e.preventDefault();
                     let currentNumber = parseInt($(this).data('number')) + 1;
                     // Wrap around to 0 if we exceed the number of words
@@ -2841,7 +2841,7 @@ var $eXeCrucigrama = {
 
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (mOptions.isScorm == 1) {
             $eXeCrucigrama.sendScore(true, instance);

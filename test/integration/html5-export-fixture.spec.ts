@@ -17,7 +17,6 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 // Import from shared export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -28,6 +27,9 @@ import {
 
 // Import XML parser for loading ELP
 import { parseFromString } from '../../src/services/xml/xml-parser';
+
+// Import test helpers
+import { createDocumentFromStructure } from '../helpers/document-test-utils';
 
 const fixturesPath = path.join(process.cwd(), 'test', 'fixtures');
 const elpFixturePath = path.join(fixturesPath, 'old_el_cid.elp');
@@ -80,7 +82,7 @@ describe('HTML5 Export Fixture Comparison', () => {
         parsedStructure = parseFromString(contentXml);
 
         // Create exporters and export
-        const document = new ElpDocumentAdapter(parsedStructure, extractedPath);
+        const document = createDocumentFromStructure(parsedStructure, extractedPath);
         const resources = new FileSystemResourceProvider(path.join(process.cwd(), 'public'));
         const assets = new FileSystemAssetProvider(extractedPath);
         const zip = new FflateZipProvider();
@@ -468,7 +470,7 @@ describe('HTML5 Export Fixture Comparison', () => {
             if (!parsedStructure) return;
 
             // Get block names from parsed structure
-            const pages = new ElpDocumentAdapter(parsedStructure, extractedPath).getNavigation();
+            const pages = createDocumentFromStructure(parsedStructure, extractedPath).getNavigation();
             const blockNames = pages.flatMap(p => (p.blocks || []).map(b => b.name));
 
             // At least one block should have a real name (not empty or "Block")

@@ -302,6 +302,11 @@ export default class projectManager {
             this.properties.loadPropertiesFromYjs();
         }
 
+        // Reinitialize theme binding from new Yjs document
+        if (this.app?.themes) {
+            this.app.themes.initYjsBinding();
+        }
+
         // Select first page and load its content
         await this.initialiceProject();
 

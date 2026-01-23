@@ -2862,6 +2862,10 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when exiting edition mode
+        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        }
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();
         // Desactivate user flags
@@ -2941,6 +2945,10 @@ export default class IdeviceNode {
      */
     edition() {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when entering edition mode
+        if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice?.gamification?.media?.stopSound) {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        }
         if (this.engine.mode == 'view') {
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');

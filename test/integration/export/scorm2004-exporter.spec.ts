@@ -15,7 +15,6 @@ import * as path from 'path';
 
 // Import from shared export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -23,6 +22,9 @@ import {
     unzipSync as fflateUnzipSync,
     type ParsedOdeStructure,
 } from '../../../src/shared/export';
+
+// Import test helpers
+import { createDocumentFromStructure, createDocumentFromElpFile } from '../../helpers/document-test-utils';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'scorm2004-exporter-test');
 const fixtureElpx = path.join(process.cwd(), 'test', 'fixtures', 'really-simple-test-project.elpx');
@@ -105,7 +107,7 @@ describe('Scorm2004Exporter Integration', () => {
 
     describe('Basic export with sample structure', () => {
         it('should generate SCORM 2004 package successfully', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -118,7 +120,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should include imsmanifest.xml', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -135,7 +137,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should have SCORM 2004 schema in manifest', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -152,7 +154,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should have sequencing rules in manifest', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -169,7 +171,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should have resources with scormType="sco"', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -185,7 +187,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should have COMMON_FILES resource', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -201,7 +203,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should include SCORM API wrapper files', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -221,7 +223,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should include HTML pages with SCORM 2004 body class', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -247,9 +249,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -273,9 +275,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -289,9 +291,7 @@ describe('Scorm2004Exporter Integration', () => {
                 expect(htmlFiles).toContain('index.html');
                 expect(htmlFiles.length).toBeGreaterThanOrEqual(6);
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
 
@@ -302,9 +302,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -318,9 +318,7 @@ describe('Scorm2004Exporter Integration', () => {
                 expect(contentXml).toContain('<?xml');
                 expect(contentXml).toContain('<ode');
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
 
@@ -331,9 +329,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -355,9 +353,7 @@ describe('Scorm2004Exporter Integration', () => {
                 expect(manifest).toContain('<title>Page 1</title>');
                 expect(manifest).toContain('<title>Page 2</title>');
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
 
@@ -368,9 +364,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -384,9 +380,7 @@ describe('Scorm2004Exporter Integration', () => {
                 expect(lomXml).toContain('<?xml');
                 expect(lomXml).toContain('lom');
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
 
@@ -397,9 +391,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -421,9 +415,7 @@ describe('Scorm2004Exporter Integration', () => {
                 const hasCommonJs = files.some(f => f.includes('common.js'));
                 expect(hasCommonJs).toBe(true);
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
 
@@ -434,9 +426,9 @@ describe('Scorm2004Exporter Integration', () => {
                 return;
             }
 
-            const document = await ElpDocumentAdapter.fromElpFile(fixtureElpx);
+            const { document, extractedPath, cleanup } = await createDocumentFromElpFile(fixtureElpx);
             const resources = new FileSystemResourceProvider(publicDir);
-            const assets = new FileSystemAssetProvider(document.extractedPath!);
+            const assets = new FileSystemAssetProvider(extractedPath);
             const zip = new FflateZipProvider();
 
             try {
@@ -458,16 +450,14 @@ describe('Scorm2004Exporter Integration', () => {
                 // Should have exe-export class in body
                 expect(indexHtml).toContain('exe-export exe-scorm exe-scorm2004');
             } finally {
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                await cleanup();
             }
         });
     });
 
     describe('SCORM 2004 vs SCORM 1.2 differences', () => {
         it('should use different namespace declarations than SCORM 1.2', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -485,7 +475,7 @@ describe('Scorm2004Exporter Integration', () => {
         });
 
         it('should use scormType instead of scormtype (case difference)', async () => {
-            const document = new ElpDocumentAdapter(sampleParsedStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(sampleParsedStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();
@@ -509,7 +499,7 @@ describe('Scorm2004Exporter Integration', () => {
                 navigation: null,
                 raw: null,
             };
-            const document = new ElpDocumentAdapter(emptyStructure, path.join(testDir, 'extracted'));
+            const document = createDocumentFromStructure(emptyStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);
             const assets = new FileSystemAssetProvider(path.join(testDir, 'extracted'));
             const zip = new FflateZipProvider();

@@ -27,7 +27,6 @@ import type { ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
-    ElpDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -38,8 +37,14 @@ import {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
+    ServerYjsDocumentWrapper,
+    YjsDocumentAdapter,
     type ExportResult,
 } from '../shared/export';
+
+// Import system (ELP → Y.Doc)
+import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
+import * as Y from 'yjs';
 
 // =============================================================================
 // Types and Interfaces
@@ -184,17 +189,34 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
      * Run export using unified export system
      */
     async function runExport(
-        extractedPath: string,
+        elpFilePath: string,
         exportType: string,
         options: ExportOptions = {},
     ): Promise<ExportResult & { filename?: string }> {
+        let ydoc: Y.Doc | null = null;
+        let wrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
+
         try {
-            // Create document adapter from extracted ELP
-            const document = await ElpDocumentAdapter.fromElpFile(extractedPath);
+            // Read ELP file
+            const elpBuffer = await fs.readFile(elpFilePath);
+
+            // Create extraction directory for assets
+            const extractDir = path.join(tempDir!, `extract-${randomUUID()}`);
+            await fs.ensureDir(extractDir);
+
+            // Import ELP to Y.Doc using unified import system
+            ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(extractDir);
+            const importer = new ElpxImporter(ydoc, assetHandler);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Wrap Y.Doc for export
+            wrapper = new ServerYjsDocumentWrapper(ydoc, 'convert-export');
+            const document = new YjsDocumentAdapter(wrapper);
 
             // Create providers
             const resources = new FileSystemResourceProvider(publicDir!);
-            const assets = new FileSystemAssetProvider(document.extractedPath);
+            const assets = new FileSystemAssetProvider(extractDir);
             const zip = new FflateZipProvider();
 
             // Select exporter based on format
@@ -233,6 +255,11 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[Convert] Error during ${exportType} export:`, error);
             return { success: false, error: errorMessage };
+        } finally {
+            // Cleanup Y.Doc
+            if (wrapper) {
+                wrapper.destroy();
+            }
         }
     }
 

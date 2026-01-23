@@ -11,6 +11,7 @@ const IGNORE_PATTERNS = [
     /\.d\.ts$/,
     /types\.ts$/,
     /src\/db\/migrations\//, // Migrations are declarative and tested implicitly
+    /src\/shared\/import\/legacy-handlers\//, // Handlers tested in combined handlers.spec.ts
 ]
 
 async function getFiles(dir: string): Promise<string[]> {

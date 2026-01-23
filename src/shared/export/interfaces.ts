@@ -8,6 +8,23 @@
  */
 
 // =============================================================================
+// Export Format Types (for API/test usage)
+// =============================================================================
+
+/**
+ * Export format type enum for API responses and tests
+ */
+export enum ExportFormatType {
+    HTML5 = 'html5',
+    PAGE = 'page',
+    SCORM12 = 'scorm12',
+    SCORM2004 = 'scorm2004',
+    IMS = 'ims',
+    EPUB3 = 'epub3',
+    ELPX = 'elpx',
+}
+
+// =============================================================================
 // Document Structure Interfaces
 // =============================================================================
 
@@ -49,6 +66,7 @@ export interface ExportMetadata {
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
     exportSource?: boolean; // Include content.xml for re-editing
+    globalFont?: string; // Global font for accessibility
 
     // Custom content
     extraHeadContent?: string; // Custom content in <head>
