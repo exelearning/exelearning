@@ -2587,5 +2587,19 @@ describe('ProjectManager', () => {
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
         });
+
+        it('reinitializes theme binding when themes manager exists', async () => {
+            mockApp.themes = { initYjsBinding: vi.fn() };
+
+            await projectManager.refreshAfterDirectImport();
+
+            expect(mockApp.themes.initYjsBinding).toHaveBeenCalled();
+        });
+
+        it('does not fail when themes manager is not available', async () => {
+            mockApp.themes = null;
+
+            await expect(projectManager.refreshAfterDirectImport()).resolves.not.toThrow();
+        });
     });
 });

@@ -1310,7 +1310,11 @@ describe('DropdownHandler', () => {
             `);
             const props = handler.extractProperties(dict);
             expect(props.questionsData).toBeDefined();
-            const questions = props.questionsData as { activityType: string; baseText: string; wrongAnswersValue: string }[];
+            const questions = props.questionsData as {
+                activityType: string;
+                baseText: string;
+                wrongAnswersValue: string;
+            }[];
             expect(questions.length).toBe(1);
             expect(questions[0].activityType).toBe('dropdown');
             expect(questions[0].baseText).toContain('<u>correct</u>');
@@ -1480,7 +1484,12 @@ describe('ScormTestHandler', () => {
             `);
             const props = handler.extractProperties(dict);
             expect(props.questionsData).toBeDefined();
-            const questions = props.questionsData as { activityType: string; selectionType: string; baseText: string; answers: [boolean, string][] }[];
+            const questions = props.questionsData as {
+                activityType: string;
+                selectionType: string;
+                baseText: string;
+                answers: [boolean, string][];
+            }[];
             expect(questions.length).toBe(1);
             expect(questions[0].activityType).toBe('selection');
             expect(questions[0].selectionType).toBe('single');
