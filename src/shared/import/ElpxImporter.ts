@@ -605,6 +605,16 @@ export class ElpxImporter {
             }
         }
 
+        // For text iDevices, the editor expects the content in jsonProperties.textTextarea
+        // So we need to populate it from htmlView
+        let properties = legacyIdevice.properties || {};
+        if (legacyIdevice.type === 'text' && htmlView) {
+            properties = {
+                ...properties,
+                textTextarea: htmlView,
+            };
+        }
+
         const componentData: ComponentData = {
             id: legacyIdevice.id,
             ideviceId: legacyIdevice.id,
@@ -613,7 +623,7 @@ export class ElpxImporter {
             order: legacyIdevice.position,
             createdAt: new Date().toISOString(),
             htmlView: htmlView,
-            properties: legacyIdevice.properties || null,
+            properties: properties,
             componentProps: {},
             structureProps: {},
         };
@@ -1117,6 +1127,11 @@ export class ElpxImporter {
         // Store htmlView as plain string
         if (compData.htmlView) {
             compMap.set('htmlView', compData.htmlView);
+            this.logger.log(
+                `[ElpxImporter] createComponentYMap: Stored htmlView for ${compData.id}, length=${compData.htmlView.length}`,
+            );
+        } else {
+            this.logger.log(`[ElpxImporter] createComponentYMap: No htmlView for ${compData.id}`);
         }
 
         // Store jsonProperties as plain string
