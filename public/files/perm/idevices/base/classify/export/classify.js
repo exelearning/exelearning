@@ -422,10 +422,7 @@ var $eXeClasifica = {
             const $cardAudio = $item.find('.CQP-LinkAudio');
             const audio = $cardAudio.data('audio');
             if (typeof audio !== 'undefined' && audio && audio.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
             }
         } catch (err) {
             //
@@ -685,10 +682,7 @@ var $eXeClasifica = {
                 const audio = $(e.target)
                     .closest('.CQP-LinkAudio, .CQP-LinkAudioBig')
                     .data('audio');
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
             }
         );
 
@@ -791,7 +785,7 @@ var $eXeClasifica = {
         const mOptions = $eXeClasifica.options[instance],
             audio = $(card).find('.CQP-LinkAudio').data('audio');
         if (typeof audio !== 'undefined' && audio.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 

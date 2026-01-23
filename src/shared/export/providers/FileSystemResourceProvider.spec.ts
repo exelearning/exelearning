@@ -90,10 +90,100 @@ describe('FileSystemResourceProvider', () => {
             expect(cssContent?.toString()).toBe('.base { color: red; }');
         });
 
-        it('should return empty map for non-existent theme', async () => {
+        it('should fall back to base theme for non-existent theme', async () => {
             const files = await provider.fetchTheme('nonexistent');
 
+            // Falls back to 'base' theme, which has 2 files in our test setup
+            expect(files.size).toBe(2);
+            expect(files.has('content.css')).toBe(true);
+            expect(files.has('default.js')).toBe(true);
+        });
+
+        it('should return empty map when neither theme nor base exists', async () => {
+            // Create a provider with a directory that has no themes at all
+            const emptyDir = path.join(os.tmpdir(), `test-empty-${Date.now()}`);
+            await fs.ensureDir(emptyDir);
+            const emptyProvider = new FileSystemResourceProvider(emptyDir);
+
+            const files = await emptyProvider.fetchTheme('nonexistent');
+
             expect(files.size).toBe(0);
+
+            await fs.remove(emptyDir);
+        });
+    });
+
+    describe('fetchTheme with embedded themes', () => {
+        let extractedDir: string;
+
+        beforeEach(async () => {
+            // Create a temp directory for extracted ELP/ELPX files
+            extractedDir = path.join(os.tmpdir(), `test-extracted-${Date.now()}`);
+            await fs.ensureDir(extractedDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(extractedDir);
+        });
+
+        it('should use embedded theme when downloadable=1', async () => {
+            // Create embedded theme structure
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(
+                path.join(extractedDir, 'theme', 'config.xml'),
+                `<?xml version="1.0"?>
+<theme>
+    <name>custom</name>
+    <downloadable>1</downloadable>
+</theme>`,
+            );
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.custom { color: blue; }');
+            await fs.writeFile(path.join(extractedDir, 'theme', 'default.js'), 'console.log("custom");');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('custom');
+
+            expect(files.size).toBe(3); // config.xml, content.css, default.js
+            expect(files.has('content.css')).toBe(true);
+            expect(files.get('content.css')?.toString()).toBe('.custom { color: blue; }');
+        });
+
+        it('should fall back to base theme when downloadable=0', async () => {
+            // Create embedded theme with downloadable=0
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(
+                path.join(extractedDir, 'theme', 'config.xml'),
+                `<?xml version="1.0"?>
+<theme>
+    <name>nondl</name>
+    <downloadable>0</downloadable>
+</theme>`,
+            );
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.nondl { color: green; }');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('nondl');
+
+            // Should fall back to base theme (2 files in our test setup)
+            expect(files.size).toBe(2);
+            expect(files.has('content.css')).toBe(true);
+            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
+        });
+
+        it('should fall back to base theme when config.xml is missing', async () => {
+            // Create embedded theme without config.xml
+            await fs.ensureDir(path.join(extractedDir, 'theme'));
+            await fs.writeFile(path.join(extractedDir, 'theme', 'content.css'), '.noconfig { color: pink; }');
+
+            // Create provider with extracted directory
+            const embeddedProvider = new FileSystemResourceProvider(testDir, extractedDir);
+            const files = await embeddedProvider.fetchTheme('noconfig');
+
+            // Should fall back to base theme
+            expect(files.size).toBe(2);
+            expect(files.get('content.css')?.toString()).toBe('.base { color: red; }');
         });
     });
 

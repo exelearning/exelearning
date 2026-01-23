@@ -213,11 +213,8 @@ var $eXeOrdena = {
         mOptions.phrasesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.phrasesGame,
-                mOptions.percentajeQuestions
-            );
-        mOptions.phrasesGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                mOptions.phrasesGame
+                mOptions.percentajeQuestions,
+                true
             );
         mOptions.numberQuestions = mOptions.phrasesGame.length;
         mOptions.gameColumns =
@@ -280,7 +277,7 @@ var $eXeOrdena = {
         }
 
         $eXeOrdena.randomPhrase(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeOrdena.addCards(mOptions.phrase.cards, instance);
         $eXeOrdena.initCards(instance);
 
@@ -331,8 +328,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -420,10 +416,7 @@ var $eXeOrdena = {
             e.preventDefault();
             const audio = $(this).data('audio');
             if (audio && audio.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
             }
         });
     },
@@ -690,7 +683,7 @@ var $eXeOrdena = {
         }
         const shuffledWords = [...words].sort(() => Math.random() - 0.5);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeOrdena.addCardsPhrase(shuffledWords, instance);
 
         const html = $('#ordenaPhrasesContainer-' + instance).html(),
@@ -1039,8 +1032,7 @@ var $eXeOrdena = {
                     mOptions.phrase.audioHit.length > 4
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        mOptions.phrase.audioHit,
-                        mOptions
+                        mOptions.phrase.audioHit
                     );
                 }
                 $eXeOrdena.nextPhrase(instance);
@@ -1053,8 +1045,7 @@ var $eXeOrdena = {
                     mOptions.phrase.audioError.length > 4
                 ) {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        mOptions.phrase.audioError,
-                        mOptions
+                        mOptions.phrase.audioError
                     );
                 }
             }
@@ -1179,8 +1170,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -1282,7 +1272,7 @@ var $eXeOrdena = {
         const audio = $(card).find('.ODNP-LinkAudio').data('audio'),
             mOptions = $eXeOrdena.options[instance];
         if (audio && audio.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         }
     },
 
@@ -1294,7 +1284,7 @@ var $eXeOrdena = {
 
     nextPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         setTimeout(() => {
             const $histsGame = $(`#ordenaHistsGame-${instance}`);
             $histsGame.html('');
@@ -1788,8 +1778,7 @@ var $eXeOrdena = {
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    mOptions.phrase.audioDefinition,
-                    mOptions
+                    mOptions.phrase.audioDefinition
                 );
             }
         }
@@ -1929,7 +1918,7 @@ var $eXeOrdena = {
             mOptions.obtainedClue = true;
         }
         clearInterval(mOptions.counterClock);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#ordenaCubierta-' + instance).show();
         $('#ordenaPhrasesContainer-' + instance).hide();
         $eXeOrdena.showScoreGame(type, instance);

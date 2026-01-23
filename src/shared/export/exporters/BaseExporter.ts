@@ -503,6 +503,32 @@ export abstract class BaseExporter {
             return `{{context_path}}/content/resources/${uuid}${ext || ''}`;
         });
 
+        // Transform asset://filename or asset://path/filename to {{context_path}}/content/resources/path
+        // Pattern matches: asset:// + filename with optional path (NOT a 36-char UUID)
+        // This handles filename-based asset IDs from legacy ELP imports
+        result = result.replace(/asset:\/\/([^"'\s]+)/g, (_match, assetPath) => {
+            // Skip if already processed (UUID format was already transformed)
+            if (assetPath.includes('{{context_path}}')) {
+                return _match;
+            }
+
+            // Look up in asset map using different key formats
+            const exportPath = assetMap.get(assetPath) || assetMap.get(`resources/${assetPath}`);
+            if (exportPath) {
+                return `{{context_path}}/content/resources/${exportPath}`;
+            }
+
+            // For simple filenames, try direct lookup and use as-is
+            const filename = assetPath.includes('/') ? assetPath.split('/').pop() : assetPath;
+            const filenameExportPath = assetMap.get(filename);
+            if (filenameExportPath) {
+                return `{{context_path}}/content/resources/${filenameExportPath}`;
+            }
+
+            // Unresolved: use the asset path as-is
+            return `{{context_path}}/content/resources/${assetPath}`;
+        });
+
         // Fix duplicated filename patterns in existing content
         // Pattern: content/resources/{filename}/{filename} where both filenames are identical
         // This handles cases where the duplication is already in the source content.xml

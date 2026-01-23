@@ -45,7 +45,9 @@ class YjsPropertiesBinding {
     this.titleElement = null;
     this.titleInputListener = null;
 
-    // Property key mapping: pp_title -> title, pp_author -> author, etc.
+    // Property key mapping: XML key (pp_title) -> internal Yjs key (title)
+    // Source of truth for these mappings: src/shared/export/metadata-properties.ts
+    // When adding new properties, update both this map AND metadata-properties.ts
     this.propertyKeyMap = {
       'pp_title': 'title',
       'pp_subtitle': 'subtitle',

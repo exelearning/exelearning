@@ -553,7 +553,7 @@ var $exeDevice = {
                 : num;
         const p = $exeDevice.cardsGame[num];
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#flipcardsEURLImage').val(p.url);
         $('#flipcardsEX').val(p.x);
@@ -666,7 +666,7 @@ var $exeDevice = {
             message = false;
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         return message;
     },
@@ -820,8 +820,9 @@ var $exeDevice = {
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
 
-            const json = $('.flipcards-DataGame', wrapper).text(),
-                dataGame =
+            let json = $('.flipcards-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 $imagesLink = $('.flipcards-LinkImages', wrapper),
                 $audiosLink = $('.flipcards-LinkAudios', wrapper),
@@ -1576,8 +1577,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },

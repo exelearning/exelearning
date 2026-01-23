@@ -2339,15 +2339,23 @@ class YjsStructureBinding {
     const rawHtmlView = compMap.get('htmlView');
     let htmlContent;
 
+    // DEBUG: Log what we're getting from Yjs
+    const compId = compMap.get('id');
+    console.debug(`[YjsStructureBinding] mapToComponent ${compId}: rawHtmlContent type=${typeof rawHtmlContent}, isYText=${rawHtmlContent instanceof this.Y.Text}, rawHtmlView type=${typeof rawHtmlView}, rawHtmlView length=${rawHtmlView?.length || 0}`);
+
     if (rawHtmlContent instanceof this.Y.Text) {
       htmlContent = rawHtmlContent.toString();
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using Y.Text htmlContent, length=${htmlContent.length}`);
     } else if (typeof rawHtmlContent === 'string' && rawHtmlContent) {
       htmlContent = rawHtmlContent;
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using string htmlContent, length=${htmlContent.length}`);
     } else if (typeof rawHtmlView === 'string' && rawHtmlView) {
       // Fallback to htmlView (used during import when Y.Text is not created)
       htmlContent = rawHtmlView;
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: Using htmlView fallback, length=${htmlContent.length}`);
     } else {
       htmlContent = '';
+      console.debug(`[YjsStructureBinding] mapToComponent ${compId}: No content found, using empty string`);
     }
 
     // Get jsonProperties - handle both Y.Map and string storage

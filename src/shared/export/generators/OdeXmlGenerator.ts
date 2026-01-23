@@ -19,6 +19,7 @@
 
 import type { ExportMetadata, ExportPage, ExportBlock, ExportComponent } from '../interfaces';
 import { ODE_DTD_FILENAME, ODE_VERSION } from '../constants';
+import { isExcludedFromXml, getXmlKeyForProperty, valueToXmlString } from '../metadata-properties';
 
 /**
  * Options for ODE XML generation
@@ -114,32 +115,23 @@ function generateOdeResourceEntry(key: string, value: string): string {
 
 /**
  * Generate ODE properties section (metadata)
+ * Automatically exports all ExportMetadata properties except those excluded in the centralized config.
+ * Property names and XML keys are managed by metadata-properties.ts
  */
 function generateOdePropertiesXml(meta: ExportMetadata): string {
     let xml = '<odeProperties>\n';
 
-    // Core properties
-    const properties: Record<string, string | boolean | undefined> = {
-        pp_title: meta.title,
-        pp_subtitle: meta.subtitle,
-        pp_author: meta.author,
-        pp_lang: meta.language,
-        pp_description: meta.description,
-        pp_license: meta.license,
-        pp_theme: meta.theme,
-        pp_keywords: meta.keywords,
-        pp_category: meta.category,
-        pp_addAccessibilityToolbar: meta.addAccessibilityToolbar,
-        pp_addMathJax: meta.addMathJax,
-        pp_customStyles: meta.customStyles,
-        pp_exelearning_version: meta.exelearningVersion,
-    };
+    for (const [key, value] of Object.entries(meta)) {
+        // Skip excluded properties (internal or belong in other sections)
+        if (isExcludedFromXml(key)) continue;
 
-    for (const [key, value] of Object.entries(properties)) {
-        if (value !== undefined && value !== null && value !== '') {
-            const strValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value);
-            xml += generateOdePropertyEntry(key, strValue);
-        }
+        // Skip undefined, null, or empty values
+        if (value === undefined || value === null || value === '') continue;
+
+        // Convert value to string using centralized helper (booleans become 'true'/'false')
+        const strValue = valueToXmlString(key, value);
+        const xmlKey = getXmlKeyForProperty(key);
+        xml += generateOdePropertyEntry(xmlKey, strValue);
     }
 
     xml += '</odeProperties>\n';

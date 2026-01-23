@@ -49,6 +49,7 @@ export interface OdeXmlMeta {
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
     exportSource?: boolean;
+    globalFont?: string;
 
     // Custom content
     extraHeadContent?: string;

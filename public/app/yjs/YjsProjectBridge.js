@@ -94,13 +94,15 @@ class YjsProjectBridge {
       // Connect AssetManager to Yjs bridge for metadata storage
       this.assetManager.setYjsBridge(this);
       await this.assetManager.init();
-      // Preload all assets from IndexedDB into memory cache
+      // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
-      Logger.log(`[YjsProjectBridge] AssetManager initialized with Yjs metadata, preloaded ${preloadedAssetCount} assets`);
+      Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
     }
 
-    // Create legacy asset cache (for backward compatibility)
-    this.assetCache = new window.AssetCacheManager(projectId);
+    // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
+    // Assets are now stored in memory via AssetManager.blobCache
+    // The property is kept as null for backward compatibility with any code checking for it
+    this.assetCache = null;
 
     // Create ResourceCache for persistent caching of themes, libraries, iDevices
     if (window.ResourceCache) {
@@ -177,6 +179,25 @@ class YjsProjectBridge {
       if (this.assetWebSocketHandler && preloadedAssetCount > 0) {
         Logger.log(`[YjsProjectBridge] Announcing ${preloadedAssetCount} assets to server...`);
         await this.assetWebSocketHandler.announceAssetAvailability();
+      }
+
+      // Download missing assets from server (blobs not in memory after page reload)
+      // This is critical for in-memory storage: blobs are lost on refresh but metadata syncs from Yjs
+      if (this.assetManager) {
+        const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+        const token = authToken || '';
+        if (token && projectId) {
+          // Don't await - download in background to avoid blocking UI
+          this.assetManager.downloadMissingAssets(apiBaseUrl, token)
+            .then(downloaded => {
+              if (downloaded > 0) {
+                Logger.log(`[YjsProjectBridge] Downloaded ${downloaded} missing assets from server`);
+              }
+            })
+            .catch(err => {
+              console.warn('[YjsProjectBridge] Failed to download missing assets:', err);
+            });
+        }
       }
 
       // Create ConnectionMonitor for connection failure handling

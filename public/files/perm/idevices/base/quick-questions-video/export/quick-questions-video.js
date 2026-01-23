@@ -519,7 +519,8 @@ var $quickquestionsvideo = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.optionsRamdon
             );
         mOptions.numberQuestions = mOptions.questionsGame.length;
         mOptions.modeBoard =
