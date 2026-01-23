@@ -203,6 +203,21 @@ var $exe = {
             $("body").addClass("exe-auto-math"); // Always load it
             var math = $(".exe-math");
             var mathjax = false;
+
+            // Check if content is pre-rendered (SVG+MathML)
+            // Pre-rendered LaTeX uses class "exe-math-rendered"
+            // If ALL LaTeX is pre-rendered and no explicit exe-math-engine elements exist,
+            // no need for MathJax library (similar pattern to Mermaid pre-rendering)
+            var hasPreRendered = $(".exe-math-rendered").length > 0;
+            var hasExplicitEngine = $(".exe-math-engine").length > 0;
+
+            if (hasPreRendered && !hasExplicitEngine) {
+                // Content was pre-rendered to SVG+MathML, no need for MathJax library
+                // Still create links for code/image access if needed
+                $exe.math.createLinks(math);
+                return;
+            }
+
             if (math.length > 0 || $("body").hasClass("exe-auto-math")) {
                 if ($("body").hasClass("exe-auto-math")) {
                     var hasLatex = /(?:\\\(|\\\[|\\begin\{.*?})/.test($('body').html());

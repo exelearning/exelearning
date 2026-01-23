@@ -203,6 +203,63 @@ describe('YjsDocumentAdapter', () => {
 
             expect(metadata.customStyles).toBe('.custom { color: red; }');
         });
+
+        it('should compute licenseUrl for Creative Commons license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Creative Commons: Attribution - Share Alike 4.0',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Creative Commons: Attribution - Share Alike 4.0');
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-sa/4.0/');
+        });
+
+        it('should compute licenseUrl for CC-BY-NC license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Creative Commons: Attribution - Non Commercial 4.0',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.licenseUrl).toBe('https://creativecommons.org/licenses/by-nc/4.0/');
+        });
+
+        it('should return empty licenseUrl for proprietary license', () => {
+            manager = new MockYjsDocumentManager({
+                license: 'Proprietary License',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('Proprietary License');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl for empty license', () => {
+            manager = new MockYjsDocumentManager({
+                license: '',
+            });
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
+        });
+
+        it('should return empty licenseUrl when license is not set', () => {
+            manager = new MockYjsDocumentManager({});
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const metadata = adapter.getMetadata();
+
+            expect(metadata.license).toBe('');
+            expect(metadata.licenseUrl).toBe('');
+        });
     });
 
     describe('getNavigation', () => {

@@ -724,6 +724,93 @@ describe('common.js $exe helpers', () => {
       const code = document.querySelector('.exe-math-code').innerHTML;
       expect(code).toContain('\\[');
     });
+
+    it('init skips MathJax loading when only pre-rendered elements exist', () => {
+      // Pre-rendered LaTeX content (produced by LatexPreRenderer)
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      // createLinks should still be called
+      expect(createLinksSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      createLinksSpy.mockRestore();
+    });
+
+    it('init loads MathJax when exe-math-engine elements exist alongside pre-rendered', () => {
+      // Both pre-rendered and explicit engine elements
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+        <div class="exe-math exe-math-engine"><div class="exe-math-code">x^2</div></div>
+      `;
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded because exe-math-engine exists
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init does not skip MathJax when no pre-rendered elements but LaTeX in body', () => {
+      // Raw LaTeX without pre-rendering
+      document.body.innerHTML = '<p>\\(x^2\\)</p>';
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded for raw LaTeX
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init returns early for pre-rendered content without loading MathJax', () => {
+      // Verify that the regex in $('body').html() is not falsely triggered by data-latex attributes
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\(x^2\\)">
+          <svg><text>x²</text></svg>
+        </span>
+        <span class="exe-math-rendered" data-latex="\\[\\frac{a}{b}\\]">
+          <svg><text>a/b</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded even though data-latex contains LaTeX patterns
+      // The fix detects pre-rendered elements and skips the regex check on HTML
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+    });
   });
 });
 
