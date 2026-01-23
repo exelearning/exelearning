@@ -341,7 +341,7 @@ test.describe('Text iDevice', () => {
             await expect(dialog).toBeVisible({ timeout: 10000 });
 
             // Get the codemagic frame (now served via API endpoint)
-            const codemagicFrame = page.frameLocator('iframe[src*="codemagic-editor"]');
+            const codemagicFrame = page.frameLocator('iframe[src*="codemagic.html"]');
 
             // Wait for CodeMirror to be initialized
             await codemagicFrame.locator('.CodeMirror').waitFor({ timeout: 10000 });
@@ -351,7 +351,7 @@ test.describe('Text iDevice', () => {
             const testHtml = `<p id="test-${uniqueId}">HTML edited via CodeMagic</p>`;
 
             // Get the iframe element and use evaluate to set CodeMirror content
-            const iframeHandle = await page.locator('iframe[src*="codemagic-editor"]').elementHandle();
+            const iframeHandle = await page.locator('iframe[src*="codemagic.html"]').elementHandle();
             const frame = await iframeHandle?.contentFrame();
             if (frame) {
                 // Wait for CodeMirror element to be available (it stores a reference on the DOM element)

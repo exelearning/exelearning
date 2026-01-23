@@ -2585,12 +2585,10 @@ class AssetManager {
 
     let convertedHTML = html;
 
-    // Pattern: {{context_path}}/path/to/file.jpg
-    const contextPathRegex = /\{\{context_path\}\}\/([^"'\s<>]+)/g;
-
-    convertedHTML = convertedHTML.replace(contextPathRegex, (fullMatch, assetPath) => {
+    // Helper function to find asset and return URL
+    const findAssetUrl = (assetPath) => {
       // Clean up path - remove trailing backslash/special chars and normalize
-      let cleanPath = assetPath.replace(/[\\\s]+$/, '').trim();
+      const cleanPath = assetPath.replace(/[\\\s]+$/, '').trim();
 
       // Try to find asset by exact path
       if (assetMap.has(cleanPath)) {
@@ -2626,7 +2624,28 @@ class AssetManager {
         }
       }
 
-      console.warn(`[AssetManager] Asset not found for path: ${cleanPath}`);
+      return null;
+    };
+
+    // Pattern 1: {{context_path}}/path/to/file.jpg
+    const contextPathRegex = /\{\{context_path\}\}\/([^"'\s<>]+)/g;
+    convertedHTML = convertedHTML.replace(contextPathRegex, (fullMatch, assetPath) => {
+      const url = findAssetUrl(assetPath);
+      if (url) return url;
+      console.warn(`[AssetManager] Asset not found for path: ${assetPath}`);
+      return fullMatch;
+    });
+
+    // Pattern 2: Direct resources/ paths (legacy ELP files)
+    // Match: src="resources/file.jpg" or href="resources/file.jpg"
+    const directResourcesRegex = /(src|href)=(["'])resources\/([^"']+)\2/gi;
+    convertedHTML = convertedHTML.replace(directResourcesRegex, (fullMatch, attr, quote, assetPath) => {
+      const url = findAssetUrl(`resources/${assetPath}`);
+      if (url) return `${attr}=${quote}${url}${quote}`;
+      // Also try without the resources/ prefix
+      const urlWithoutPrefix = findAssetUrl(assetPath);
+      if (urlWithoutPrefix) return `${attr}=${quote}${urlWithoutPrefix}${quote}`;
+      console.warn(`[AssetManager] Asset not found for direct resources path: resources/${assetPath}`);
       return fullMatch;
     });
 

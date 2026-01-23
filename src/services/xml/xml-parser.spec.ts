@@ -148,7 +148,8 @@ describe('xml-parser', () => {
                 </ode>`;
 
             const result = parseFromString(xml, undefined, { skipValidation: true });
-            expect(result.meta.title).toBe('Untitled');
+            // Default title comes from centralized metadata-properties config
+            expect(result.meta.title).toBe('eXeLearning');
             expect(result.meta.author).toBe('');
         });
 
@@ -210,7 +211,7 @@ describe('xml-parser', () => {
             expect(result.meta.author).toBe('John Doe');
             expect(result.meta.description).toBe('A description');
             expect(result.meta.license).toBe('MIT');
-            expect(result.meta.locale).toBe('es');
+            expect(result.meta.language).toBe('es');
             expect(result.meta.theme).toBe('modern');
         });
 
@@ -226,7 +227,8 @@ describe('xml-parser', () => {
                 </ode>`;
 
             const result = parseFromString(xml, undefined, { skipValidation: true });
-            expect(result.meta.title).toBe('Untitled'); // Falls back to default
+            // When property has no value, falls back to centralized default
+            expect(result.meta.title).toBe('eXeLearning');
         });
 
         it('should handle null/undefined properties', () => {
@@ -236,7 +238,8 @@ describe('xml-parser', () => {
                 </ode>`;
 
             const result = parseFromString(xml, undefined, { skipValidation: true });
-            expect(result.meta.title).toBe('Untitled');
+            // Default title comes from centralized metadata-properties config
+            expect(result.meta.title).toBe('eXeLearning');
         });
 
         it('should extract theme from userPreferences', () => {
@@ -610,6 +613,342 @@ describe('xml-parser', () => {
             const rebuilt = buildXml(parsed);
 
             expect(rebuilt).toContain('<item>value</item>');
+        });
+    });
+
+    describe('XML validation', () => {
+        it('should throw error when validation fails', () => {
+            // Create XML that has validation errors (missing required elements)
+            const invalidXml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <!-- Missing required odePageId -->
+                            <pageName>Page without ID</pageName>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            expect(() => parseFromString(invalidXml)).toThrow('Invalid ODE XML structure');
+        });
+
+        it('should throw error with strictValidation when warnings exist', () => {
+            // Create XML that has warnings but is technically valid
+            const xmlWithWarnings = `
+                <ode>
+                    <odeProperties></odeProperties>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <!-- Missing odeParentPageId triggers warning -->
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            // With strictValidation, warnings should cause error
+            expect(() => parseFromString(xmlWithWarnings, undefined, { strictValidation: true })).toThrow(
+                'ODE XML has validation warnings',
+            );
+        });
+    });
+
+    describe('validateXml function', () => {
+        it('should validate XML without parsing structure', async () => {
+            // Import validateXml function
+            const { validateXml } = await import('./xml-parser');
+
+            const validXml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_title</key>
+                            <value>Test</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <odeParentPageId></odeParentPageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures></odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = validateXml(validXml);
+            expect(result.valid).toBe(true);
+        });
+
+        it('should return validation errors for invalid XML', async () => {
+            const { validateXml } = await import('./xml-parser');
+
+            const invalidXml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <!-- Missing odePageId -->
+                            <pageName>Page</pageName>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = validateXml(invalidXml);
+            expect(result.valid).toBe(false);
+            expect(result.errors.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('legacy key patterns in metadata', () => {
+        it('should handle legacy key patterns without pp_ prefix', () => {
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>mytitle</key>
+                            <value>Legacy Title</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>mysubtitle</key>
+                            <value>Legacy Subtitle</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>myauthor</key>
+                            <value>Legacy Author</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>mydescription</key>
+                            <value>Legacy Description</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>mylicense</key>
+                            <value>Legacy License</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            expect(result.meta.title).toBe('Legacy Title');
+            expect(result.meta.subtitle).toBe('Legacy Subtitle');
+            expect(result.meta.author).toBe('Legacy Author');
+            expect(result.meta.description).toBe('Legacy Description');
+            expect(result.meta.license).toBe('Legacy License');
+        });
+
+        it('should handle license_url key (not matching license)', () => {
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_license_url</key>
+                            <value>https://example.com/license</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>pp_license</key>
+                            <value>MIT</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            // license_url should not override license
+            expect(result.meta.license).toBe('MIT');
+        });
+    });
+
+    describe('block properties parsing', () => {
+        it('should parse block properties with boolean values', () => {
+            const xml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures>
+                                <odePagStructure>
+                                    <odePagStructureId>block1</odePagStructureId>
+                                    <odePagStructureName>Block 1</odePagStructureName>
+                                    <odePagStructureProperties>
+                                        <odeProperty>
+                                            <key>minimized</key>
+                                            <value>true</value>
+                                        </odeProperty>
+                                        <odeProperty>
+                                            <key>teacherOnly</key>
+                                            <value>false</value>
+                                        </odeProperty>
+                                        <odeProperty>
+                                            <key>cssClass</key>
+                                            <value>custom-class</value>
+                                        </odeProperty>
+                                    </odePagStructureProperties>
+                                    <odeComponents>
+                                        <odeComponent>
+                                            <odeIdeviceId>comp1</odeIdeviceId>
+                                            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+                                            <htmlView>&lt;p&gt;Content&lt;/p&gt;</htmlView>
+                                            <odeComponentsOrder>0</odeComponentsOrder>
+                                        </odeComponent>
+                                    </odeComponents>
+                                </odePagStructure>
+                            </odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            // Block properties are stored in component's blockProperties
+            const component = result.pages[0].components[0];
+            expect(component?.blockProperties?.minimized).toBe(true);
+            expect(component?.blockProperties?.teacherOnly).toBe(false);
+            expect(component?.blockProperties?.cssClass).toBe('custom-class');
+        });
+
+        it('should handle single block property (non-array)', () => {
+            const xml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures>
+                                <odePagStructure>
+                                    <odePagStructureId>block1</odePagStructureId>
+                                    <odePagStructureName>Block 1</odePagStructureName>
+                                    <odePagStructureProperties>
+                                        <odeProperty>
+                                            <key>visibility</key>
+                                            <value>hidden</value>
+                                        </odeProperty>
+                                    </odePagStructureProperties>
+                                    <odeComponents>
+                                        <odeComponent>
+                                            <odeIdeviceId>comp1</odeIdeviceId>
+                                            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+                                            <htmlView>&lt;p&gt;Content&lt;/p&gt;</htmlView>
+                                            <odeComponentsOrder>0</odeComponentsOrder>
+                                        </odeComponent>
+                                    </odeComponents>
+                                </odePagStructure>
+                            </odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            const component = result.pages[0].components[0];
+            expect(component?.blockProperties?.visibility).toBe('hidden');
+        });
+    });
+
+    describe('CDATA content extraction', () => {
+        it('should handle CDATA content in htmlView', () => {
+            const xml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures>
+                                <odePagStructure>
+                                    <odeComponents>
+                                        <odeComponent>
+                                            <odeIdeviceId>comp1</odeIdeviceId>
+                                            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+                                            <htmlView><![CDATA[<p>CDATA Content</p>]]></htmlView>
+                                            <odeComponentsOrder>0</odeComponentsOrder>
+                                        </odeComponent>
+                                    </odeComponents>
+                                </odePagStructure>
+                            </odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            expect(result.pages[0].components[0].content).toContain('CDATA Content');
+        });
+
+        it('should handle number values in CDATA fields', () => {
+            // In some edge cases, xml parsers might return numbers
+            const xml = `
+                <ode>
+                    <odeNavStructures>
+                        <odeNavStructure>
+                            <odePageId>page1</odePageId>
+                            <pageName>Page 1</pageName>
+                            <odeNavStructureOrder>0</odeNavStructureOrder>
+                            <odePagStructures>
+                                <odePagStructure>
+                                    <odeComponents>
+                                        <odeComponent>
+                                            <odeIdeviceId>comp1</odeIdeviceId>
+                                            <odeIdeviceTypeName>text</odeIdeviceTypeName>
+                                            <htmlView>12345</htmlView>
+                                            <odeComponentsOrder>0</odeComponentsOrder>
+                                        </odeComponent>
+                                    </odeComponents>
+                                </odePagStructure>
+                            </odePagStructures>
+                        </odeNavStructure>
+                    </odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            // Should handle numeric content
+            expect(result.pages[0].components[0].content).toBeDefined();
+        });
+    });
+
+    describe('boolean property parsing', () => {
+        it('should parse boolean export settings', () => {
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_addPagination</key>
+                            <value>true</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>pp_addSearchBox</key>
+                            <value>false</value>
+                        </odeProperty>
+                        <odeProperty>
+                            <key>exportSource</key>
+                            <value>false</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            expect(result.meta.addPagination).toBe(true);
+            expect(result.meta.addSearchBox).toBe(false);
+            expect(result.meta.exportSource).toBe(false);
+        });
+
+        it('should handle boolean values parsed by xml parser', () => {
+            // fast-xml-parser may parse "true"/"false" as actual booleans
+            const xml = `
+                <ode>
+                    <odeProperties>
+                        <odeProperty>
+                            <key>pp_addExeLink</key>
+                            <value>true</value>
+                        </odeProperty>
+                    </odeProperties>
+                    <odeNavStructures></odeNavStructures>
+                </ode>`;
+
+            const result = parseFromString(xml, undefined, { skipValidation: true });
+            expect(result.meta.addExeLink).toBe(true);
         });
     });
 });

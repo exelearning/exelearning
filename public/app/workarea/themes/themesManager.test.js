@@ -115,6 +115,10 @@ describe('ThemesManager', () => {
     it('should initialize isApplyingRemoteTheme as false', () => {
       expect(themesManager.isApplyingRemoteTheme).toBe(false);
     });
+
+    it('should initialize _boundMetadata as null', () => {
+      expect(themesManager._boundMetadata).toBeNull();
+    });
   });
 
   describe('initYjsBinding', () => {
@@ -147,14 +151,47 @@ describe('ThemesManager', () => {
       expect(spy).toHaveBeenCalledWith('test-theme', false, false, false);
     });
 
-    it('should not load theme if already selected', () => {
+    it('should call cleanup before initializing', () => {
+      mockMetadata._data.set('theme', 'test-theme');
+      const cleanupSpy = vi.spyOn(themesManager, 'cleanup');
+
+      themesManager.initYjsBinding();
+
+      expect(cleanupSpy).toHaveBeenCalled();
+    });
+
+    it('should always load theme after cleanup (even if same theme was selected)', () => {
+      // Set a previous theme selection (simulating previous project)
       themesManager.selected = { id: 'test-theme' };
       mockMetadata._data.set('theme', 'test-theme');
       const spy = vi.spyOn(themesManager, 'selectTheme');
 
       themesManager.initYjsBinding();
 
-      expect(spy).not.toHaveBeenCalled();
+      // Should call selectTheme because cleanup() resets this.selected to null
+      expect(spy).toHaveBeenCalledWith('test-theme', false, false, false);
+    });
+
+    it('should store metadata reference for cleanup', () => {
+      mockMetadata._data.set('theme', 'test-theme');
+
+      themesManager.initYjsBinding();
+
+      expect(themesManager._boundMetadata).toBe(mockMetadata);
+    });
+
+    it('should load default theme when project has no theme', () => {
+      // No theme set in metadata
+      const spy = vi.spyOn(themesManager, 'selectTheme');
+      themesManager.list.installed['base'] = {
+        id: 'base',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+
+      themesManager.initYjsBinding();
+
+      // Should use default theme ('default-theme' from window.eXeLearning.config)
+      expect(spy).toHaveBeenCalledWith('default-theme', true, false, false);
     });
 
     it('should observe metadata changes', () => {
@@ -181,6 +218,109 @@ describe('ThemesManager', () => {
       mockBridge.getDocumentManager.mockReturnValue(null);
 
       expect(() => themesManager.initYjsBinding()).not.toThrow();
+    });
+  });
+
+  describe('cleanup', () => {
+    it('should unobserve metadata when bound', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = mockMetadata;
+      const observer = vi.fn();
+      themesManager.metadataObserver = observer;
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).toHaveBeenCalledWith(observer);
+    });
+
+    it('should not unobserve if no bound metadata', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = null;
+      themesManager.metadataObserver = vi.fn();
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).not.toHaveBeenCalled();
+    });
+
+    it('should not unobserve if no observer', () => {
+      mockMetadata.unobserve = vi.fn();
+      themesManager._boundMetadata = mockMetadata;
+      themesManager.metadataObserver = null;
+
+      themesManager.cleanup();
+
+      expect(mockMetadata.unobserve).not.toHaveBeenCalled();
+    });
+
+    it('should reset metadataObserver to null', () => {
+      themesManager.metadataObserver = vi.fn();
+
+      themesManager.cleanup();
+
+      expect(themesManager.metadataObserver).toBeNull();
+    });
+
+    it('should reset _boundMetadata to null', () => {
+      themesManager._boundMetadata = mockMetadata;
+
+      themesManager.cleanup();
+
+      expect(themesManager._boundMetadata).toBeNull();
+    });
+
+    it('should reset selected to null', () => {
+      themesManager.selected = { id: 'some-theme' };
+
+      themesManager.cleanup();
+
+      expect(themesManager.selected).toBeNull();
+    });
+
+    it('should reset isApplyingRemoteTheme to false', () => {
+      themesManager.isApplyingRemoteTheme = true;
+
+      themesManager.cleanup();
+
+      expect(themesManager.isApplyingRemoteTheme).toBe(false);
+    });
+
+    it('should handle cleanup when switching projects', () => {
+      // Setup first project binding
+      mockMetadata.unobserve = vi.fn();
+      themesManager.list.installed['theme-a'] = {
+        id: 'theme-a',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+      mockMetadata._data.set('theme', 'theme-a');
+
+      themesManager.initYjsBinding();
+
+      expect(themesManager._boundMetadata).toBe(mockMetadata);
+      expect(themesManager.metadataObserver).not.toBeNull();
+
+      // Create new metadata for second project
+      const mockMetadata2 = new Map();
+      mockMetadata2.observe = vi.fn();
+      mockMetadata2.get = vi.fn((key) => mockMetadata2._data?.get(key));
+      mockMetadata2._data = new Map();
+      mockMetadata2._data.set('theme', 'theme-b');
+
+      themesManager.list.installed['theme-b'] = {
+        id: 'theme-b',
+        select: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const oldObserver = themesManager.metadataObserver;
+      mockDocumentManager.getMetadata.mockReturnValue(mockMetadata2);
+
+      // Initialize second project
+      themesManager.initYjsBinding();
+
+      // Should have unobserved the old metadata
+      expect(mockMetadata.unobserve).toHaveBeenCalledWith(oldObserver);
+      // Should have new binding
+      expect(themesManager._boundMetadata).toBe(mockMetadata2);
     });
   });
 

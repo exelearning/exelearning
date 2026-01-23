@@ -20,6 +20,11 @@ import { generateId } from '../../utils/id-generator.util';
 import * as legacyParser from './legacy-xml-parser';
 import { isJsonIdevice } from '../idevice-config';
 import { validateOdeXml, formatValidationErrors, type ValidationResult } from './ode-xml-validator';
+import {
+    buildXmlKeyToInternalKeyMap,
+    getDefaultValue,
+    parsePropertyValue,
+} from '../../shared/export/metadata-properties';
 
 export interface XmlParseOptions {
     preserveOrder?: boolean;
@@ -186,6 +191,7 @@ function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
 
 /**
  * Normalized metadata type
+ * Note: Uses same property names as OdeXmlMeta for compatibility
  */
 interface NormalizedMetadata {
     title: string;
@@ -193,7 +199,7 @@ interface NormalizedMetadata {
     author: string;
     description: string;
     license: string;
-    locale: string;
+    language: string; // Uses 'language' to match OdeXmlMeta
     theme: string;
     version: string;
     // Export options
@@ -201,7 +207,9 @@ interface NormalizedMetadata {
     addPagination?: boolean;
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
+    addMathJax?: boolean;
     exportSource?: boolean;
+    globalFont?: string;
     // Custom content
     extraHeadContent?: string;
     footer?: string;
@@ -217,37 +225,38 @@ function extractMetadata(meta: OdeXmlMeta): NormalizedMetadata {
         author: meta.author || '',
         description: meta.description || '',
         license: meta.license || '',
-        locale: meta.locale || 'en',
+        language: meta.language || 'en',
         theme: meta.theme || 'base',
         version: meta.version || '1.0',
     };
 }
 
-/**
- * Parse boolean value from string or boolean
- * fast-xml-parser may return booleans for "true"/"false" values
- */
-function parseBoolean(value: string | boolean | undefined, defaultValue: boolean): boolean {
-    if (value === undefined || value === null || value === '') return defaultValue;
-    if (typeof value === 'boolean') return value;
-    return String(value).toLowerCase() === 'true';
-}
+// Build XML key to internal key map once at module load time
+const xmlKeyToInternalKeyMap = buildXmlKeyToInternalKeyMap();
 
 /**
- * Extract metadata from odeProperties
- * Note: fast-xml-parser may parse values as boolean/number, so value type is flexible
+ * Extract metadata from odeProperties using centralized property configuration.
+ * Note: fast-xml-parser may parse values as boolean/number, so value type is flexible.
+ *
+ * The function uses the centralized metadata-properties.ts configuration for:
+ * - Mapping XML keys (pp_title, pp_lang, etc.) to internal keys (title, language, etc.)
+ * - Determining property types (boolean vs string)
+ * - Getting default values
+ *
+ * Legacy key patterns (e.g., 'author' without 'pp_' prefix) are still supported
+ * for backward compatibility with older ELP files.
  */
 function extractMetadataFromOdeProperties(
     properties: Array<{ key: string; value: string | boolean | number }>,
 ): NormalizedMetadata {
     const meta: NormalizedMetadata = {
-        title: 'Untitled',
-        subtitle: '',
-        author: '',
-        description: '',
-        license: '',
-        locale: 'en',
-        theme: 'base',
+        title: getDefaultValue('title') as string,
+        subtitle: getDefaultValue('subtitle') as string,
+        author: getDefaultValue('author') as string,
+        description: getDefaultValue('description') as string,
+        license: getDefaultValue('license') as string,
+        language: getDefaultValue('language') as string,
+        theme: getDefaultValue('theme') as string,
         version: '1.0',
     };
 
@@ -257,43 +266,36 @@ function extractMetadataFromOdeProperties(
         if (!prop || !prop.key) continue;
 
         // Ensure key is string (fast-xml-parser may parse numeric/boolean keys)
-        const key = String(prop.key).toLowerCase();
-        // raw value may be string, boolean, number - convert to string for text fields
+        const xmlKey = String(prop.key).toLowerCase();
         const rawValue = prop.value;
+
+        // First, try exact match using centralized configuration
+        const internalKey = xmlKeyToInternalKeyMap.get(xmlKey);
+        if (internalKey) {
+            // Use centralized parsing based on property type
+            const parsedValue = parsePropertyValue(internalKey, rawValue);
+            (meta as Record<string, unknown>)[internalKey] = parsedValue;
+            continue;
+        }
+
+        // Legacy fallback: handle old key patterns for backward compatibility
+        // This supports ELP files that may use non-standard key names
         const stringValue = rawValue !== null && rawValue !== undefined ? String(rawValue) : '';
 
-        if (key === 'pp_title' || (key.includes('title') && !key.includes('subtitle'))) {
+        if (xmlKey.includes('title') && !xmlKey.includes('subtitle')) {
             meta.title = stringValue || meta.title;
-        } else if (key === 'pp_subtitle' || key.includes('subtitle')) {
+        } else if (xmlKey.includes('subtitle')) {
             meta.subtitle = stringValue;
-        } else if (key.includes('author')) {
+        } else if (xmlKey.includes('author')) {
             meta.author = stringValue;
-        } else if (key.includes('description')) {
+        } else if (xmlKey.includes('description')) {
             meta.description = stringValue;
-        } else if (key.includes('license')) {
+        } else if (xmlKey.includes('license') && !xmlKey.includes('url')) {
             meta.license = stringValue;
-        } else if (key.includes('locale') || key.includes('language')) {
-            meta.locale = stringValue || meta.locale;
-        } else if (key.includes('style') || key.includes('theme')) {
+        } else if (xmlKey.includes('locale') || xmlKey.includes('lang')) {
+            meta.language = stringValue || meta.language;
+        } else if (xmlKey.includes('style') || xmlKey.includes('theme')) {
             meta.theme = stringValue || meta.theme;
-        }
-        // Export options - use rawValue directly for booleans
-        else if (key === 'pp_addexelink') {
-            meta.addExeLink = parseBoolean(rawValue, true);
-        } else if (key === 'pp_addpagination') {
-            meta.addPagination = parseBoolean(rawValue, false);
-        } else if (key === 'pp_addsearchbox') {
-            meta.addSearchBox = parseBoolean(rawValue, false);
-        } else if (key === 'pp_addaccessibilitytoolbar') {
-            meta.addAccessibilityToolbar = parseBoolean(rawValue, false);
-        } else if (key === 'exportsource') {
-            meta.exportSource = parseBoolean(rawValue, true);
-        }
-        // Custom content
-        else if (key === 'pp_extraheadcontent') {
-            meta.extraHeadContent = stringValue;
-        } else if (key === 'footer') {
-            meta.footer = stringValue;
         }
     }
 

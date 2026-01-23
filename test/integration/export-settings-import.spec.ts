@@ -92,7 +92,7 @@ describe('Export Settings Import', () => {
             // Check basic metadata
             expect(structure.meta.title).toBe('Really Simple Test Project');
             expect(structure.meta.author).toBe('eXe Team');
-            expect(structure.meta.locale).toBe('en');
+            expect(structure.meta.language).toBe('en');
             expect(structure.meta.description).toContain('Test content generated with eXeLearning');
         }, 30000);
 
@@ -112,7 +112,7 @@ describe('Export Settings Import', () => {
             const expectedProps = [
                 'title',
                 'author',
-                'locale',
+                'language',
                 'description',
                 'addPagination',
                 'addSearchBox',
@@ -155,7 +155,7 @@ describe('Export Settings Import', () => {
 
             // Default values should be used
             expect(structure.meta.title).toBe('Minimal Project');
-            expect(structure.meta.locale).toBe('en');
+            expect(structure.meta.language).toBe('en');
 
             // Boolean defaults (may vary by implementation)
             // Just verify no errors and properties exist

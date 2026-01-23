@@ -2892,6 +2892,40 @@ describe('convertContextPathToAssetRefs', () => {
     expect(result).toContain('asset://uuid-1.png');
     expect(result).toContain('asset://uuid-2.jpg');
   });
+
+  it('converts direct resources/ paths (legacy ELP format)', () => {
+    const assetMap = new Map([['resources/elcid.png', 'uuid-elcid']]);
+    const html = '<img src="resources/elcid.png" alt="El Cid">';
+    const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+    expect(result).toBe('<img src="asset://uuid-elcid.png" alt="El Cid">');
+  });
+
+  it('converts direct resources/ paths with href', () => {
+    const assetMap = new Map([['resources/document.pdf', 'uuid-doc']]);
+    const html = '<a href="resources/document.pdf">Download</a>';
+    const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+    expect(result).toBe('<a href="asset://uuid-doc.pdf">Download</a>');
+  });
+
+  it('handles multiple direct resources/ paths', () => {
+    const assetMap = new Map([
+      ['resources/img1.png', 'uuid-1'],
+      ['resources/img2.jpg', 'uuid-2'],
+    ]);
+    const html = '<img src="resources/img1.png"><img src="resources/img2.jpg">';
+    const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+    expect(result).toContain('asset://uuid-1.png');
+    expect(result).toContain('asset://uuid-2.jpg');
+  });
+
+  it('leaves unmatched direct resources/ paths unchanged', () => {
+    spyOn(console, 'warn').mockImplementation(() => {});
+    const assetMap = new Map();
+    const html = '<img src="resources/missing.png">';
+    const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+    expect(result).toBe(html);
+    expect(console.warn).toHaveBeenCalled();
+  });
 });
 
 describe('resolveAssetURLWithPlaceholder', () => {

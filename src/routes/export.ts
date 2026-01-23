@@ -13,15 +13,6 @@ import * as pathModule from 'path';
 
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
 import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
-import type {
-    ParsedOdeStructure,
-    NormalizedPage,
-    NormalizedComponent,
-    OdeXmlMeta,
-    PropertyValue,
-    OdeXmlNavigation,
-    RealOdeXmlDocument,
-} from '../services/xml/interfaces';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
     getOdeSessionDistDir as getOdeSessionDistDirDefault,
@@ -31,7 +22,6 @@ import {
 
 // Centralized export system - same as CLI and frontend
 import {
-    ElpDocumentAdapter as ElpDocumentAdapterDefault,
     FileSystemResourceProvider as FileSystemResourceProviderDefault,
     FileSystemAssetProvider as FileSystemAssetProviderDefault,
     FflateZipProvider as FflateZipProviderDefault,
@@ -51,6 +41,13 @@ import {
     type AssetProvider,
     type ZipProvider,
 } from '../shared/export';
+
+// Import system (ELP → Y.Doc)
+import {
+    ElpxImporter as ElpxImporterDefault,
+    FileSystemAssetHandler as FileSystemAssetHandlerDefault,
+} from '../shared/import';
+import * as Y from 'yjs';
 
 // Yjs persistence for server-side Yjs documents
 import { reconstructDocument as reconstructDocumentDefault } from '../websocket/yjs-persistence';
@@ -86,7 +83,6 @@ export interface ExportFileHelperDeps {
  * Shared export system dependencies (for testability)
  */
 export interface ExportSystemDeps {
-    ElpDocumentAdapter: typeof ElpDocumentAdapterDefault;
     FileSystemResourceProvider: typeof FileSystemResourceProviderDefault;
     FileSystemAssetProvider: typeof FileSystemAssetProviderDefault;
     DatabaseAssetProvider: typeof DatabaseAssetProviderDefault;
@@ -102,6 +98,9 @@ export interface ExportSystemDeps {
     PageElpxExporter: typeof PageElpxExporterDefault;
     YjsDocumentAdapter: typeof YjsDocumentAdapterDefault;
     ServerYjsDocumentWrapper: typeof ServerYjsDocumentWrapperDefault;
+    // Import system
+    ElpxImporter: typeof ElpxImporterDefault;
+    FileSystemAssetHandler: typeof FileSystemAssetHandlerDefault;
 }
 
 /**
@@ -146,7 +145,6 @@ const defaultFileHelper: ExportFileHelperDeps = {
 };
 
 const defaultExportSystem: ExportSystemDeps = {
-    ElpDocumentAdapter: ElpDocumentAdapterDefault,
     FileSystemResourceProvider: FileSystemResourceProviderDefault,
     FileSystemAssetProvider: FileSystemAssetProviderDefault,
     DatabaseAssetProvider: DatabaseAssetProviderDefault,
@@ -162,6 +160,9 @@ const defaultExportSystem: ExportSystemDeps = {
     PageElpxExporter: PageElpxExporterDefault,
     YjsDocumentAdapter: YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper: ServerYjsDocumentWrapperDefault,
+    // Import system
+    ElpxImporter: ElpxImporterDefault,
+    FileSystemAssetHandler: FileSystemAssetHandlerDefault,
 };
 
 const defaultYjsPersistence: ExportYjsDeps = {
@@ -189,262 +190,91 @@ const EXPORT_FORMATS = [
 ];
 
 // ============================================================================
-// Yjs Structure Conversion
+// Yjs Structure Population
 // ============================================================================
 
 /**
- * Convert YjsExportStructure (from client) to ParsedOdeStructure (for export)
+ * Populate a Y.Doc from YjsExportStructure
+ * This allows us to use YjsDocumentAdapter for exports from client-sent structures
  *
- * The client sends a structure with blocks already grouped inside pages,
- * but ParsedOdeStructure expects flat components with blockName property.
- *
- * @param yjs - Yjs structure from client (blocks grouped inside pages)
- * @returns ParsedOdeStructure with flat components (blockName on each component)
+ * @param ydoc - Y.Doc to populate
+ * @param structure - YjsExportStructure from client
  */
-export function convertYjsStructureToParsed(yjs: YjsExportStructure): ParsedOdeStructure {
-    // Helper to parse boolean values (may be boolean or string 'true'/'false')
-    const parseBoolean = (value: boolean | string | undefined, defaultValue: boolean): boolean => {
-        if (value === undefined || value === null) return defaultValue;
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') return value.toLowerCase() === 'true';
-        return defaultValue;
-    };
+export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStructure): void {
+    // Set metadata
+    const metadata = ydoc.getMap('metadata');
+    const meta = structure.meta;
+    metadata.set('title', meta.title || 'Untitled');
+    metadata.set('author', meta.author || '');
+    metadata.set('description', meta.description || '');
+    metadata.set('language', meta.language || 'en');
+    metadata.set('license', meta.license || '');
+    metadata.set('theme', meta.theme || 'base');
+    metadata.set('addExeLink', meta.addExeLink ?? true);
+    metadata.set('addPagination', meta.addPagination ?? false);
+    metadata.set('addSearchBox', meta.addSearchBox ?? false);
+    metadata.set('addAccessibilityToolbar', meta.addAccessibilityToolbar ?? false);
+    metadata.set('exportSource', meta.exportSource ?? true);
+    if (meta.extraHeadContent) metadata.set('extraHeadContent', meta.extraHeadContent);
+    if (meta.footer) metadata.set('footer', meta.footer);
 
-    const meta: OdeXmlMeta = {
-        title: yjs.meta.title || 'Untitled',
-        author: yjs.meta.author || '',
-        description: yjs.meta.description || '',
-        language: yjs.meta.language || 'en',
-        license: yjs.meta.license || '',
-        theme: yjs.meta.theme || 'base',
-        keywords: '',
-        exelearning_version: '4.0',
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
+    // Set navigation (pages with blocks)
+    const navigation = ydoc.getArray('navigation');
 
-        // Export options
-        addExeLink: parseBoolean(yjs.meta.addExeLink, true),
-        addPagination: parseBoolean(yjs.meta.addPagination, false),
-        addSearchBox: parseBoolean(yjs.meta.addSearchBox, false),
-        addAccessibilityToolbar: parseBoolean(yjs.meta.addAccessibilityToolbar, false),
-        exportSource: parseBoolean(yjs.meta.exportSource, true),
+    for (const page of structure.pages) {
+        const pageMap = new Y.Map();
+        pageMap.set('id', page.id);
+        pageMap.set('pageName', page.pageName);
+        pageMap.set('parentId', page.parentId || null);
 
-        // Custom content
-        extraHeadContent: yjs.meta.extraHeadContent,
-        footer: yjs.meta.footer,
-    };
+        // Page properties
+        if (page.properties) {
+            const propsMap = new Y.Map();
+            for (const [key, value] of Object.entries(page.properties)) {
+                propsMap.set(key, value);
+            }
+            pageMap.set('properties', propsMap);
+        }
 
-    // Build pages map for parent lookup
-    const pageMap = new Map<string, { id: string; parentId?: string | null }>();
-    for (const page of yjs.pages) {
-        pageMap.set(page.id, { id: page.id, parentId: page.parentId });
-    }
-
-    // Build hierarchical pages structure
-    const rootPages: NormalizedPage[] = [];
-    const pageById = new Map<string, NormalizedPage>();
-
-    // First pass: create all pages
-    for (const page of yjs.pages) {
-        // Flatten blocks into components with blockName
-        const components: NormalizedComponent[] = [];
-        let compOrder = 0;
-
+        // Blocks
+        const blocksArray = new Y.Array();
         for (const block of page.blocks || []) {
+            const blockMap = new Y.Map();
+            blockMap.set('id', block.id);
+            blockMap.set('blockName', block.blockName || '');
+            blockMap.set('iconName', block.iconName || '');
+
+            // Block properties
+            if (block.properties) {
+                const blockPropsMap = new Y.Map();
+                for (const [key, value] of Object.entries(block.properties)) {
+                    blockPropsMap.set(key, value);
+                }
+                blockMap.set('properties', blockPropsMap);
+            }
+
+            // Components
+            const componentsArray = new Y.Array();
             for (const comp of block.components || []) {
-                const compProperties = (comp.properties || {}) as Record<string, unknown>;
+                const compMap = new Y.Map();
+                compMap.set('id', comp.id);
+                compMap.set('type', comp.ideviceType || 'FreeTextIdevice');
+                compMap.set('htmlContent', comp.htmlContent || '');
 
-                // Define normalized component structure
-                let normalizedComponent: NormalizedComponent = {
-                    id: comp.id,
-                    type: comp.ideviceType || 'FreeTextIdevice',
-                    order: compOrder++,
-                    position: compOrder,
-                    content: comp.htmlContent || '',
-                    blockName: block.blockName || '',
-                    blockId: block.id,
-                    blockIconName: block.iconName || '',
-                    blockProperties: (block.properties || {}) as unknown as Record<string, PropertyValue>,
-                    data: {},
-                    properties: compProperties as unknown as Record<string, PropertyValue>,
-                };
+                // Component properties - store as JSON string in jsonProperties field
+                // This matches the browser-side ComponentImporter.createComponentYMap behavior
+                if (comp.properties && Object.keys(comp.properties).length > 0) {
+                    compMap.set('jsonProperties', JSON.stringify(comp.properties));
+                }
 
-                // Transform legacy iDevice data if needed (e.g., TrueFalse -> trueorfalse)
-                normalizedComponent = transformLegacyIdeviceData(normalizedComponent);
-
-                components.push(normalizedComponent);
+                componentsArray.push([compMap]);
             }
+            blockMap.set('components', componentsArray);
+            blocksArray.push([blockMap]);
         }
-
-        const normalizedPage: NormalizedPage = {
-            id: page.id,
-            title: page.pageName,
-            parent_id: page.parentId || null,
-            position: 0,
-            level: 0,
-            children: [],
-            components,
-            properties: {
-                ...(page.properties || {}),
-                titleHtml: (page.properties && (page.properties.titleHtml as string)) || page.pageName,
-                description: (page.properties && (page.properties.description as string)) || '',
-            } as unknown as Record<string, PropertyValue>,
-        };
-
-        pageById.set(page.id, normalizedPage);
+        pageMap.set('blocks', blocksArray);
+        navigation.push([pageMap]);
     }
-
-    // Second pass: build hierarchy
-    for (const page of yjs.pages) {
-        const normalizedPage = pageById.get(page.id)!;
-
-        if (page.parentId && pageById.has(page.parentId)) {
-            const parent = pageById.get(page.parentId)!;
-            parent.children.push(normalizedPage);
-        } else {
-            rootPages.push(normalizedPage);
-        }
-    }
-
-    // Build navigation
-    const navigation = yjs.navigation.map((nav, index) => ({
-        id: nav.id,
-        navText: nav.navText,
-        parent_id: nav.parentId || undefined,
-        position: index,
-        page: [], // Satisfy OdeXmlNavigation structure (roughly)
-    }));
-
-    return {
-        meta,
-        pages: rootPages,
-        navigation: { page: navigation } as unknown as OdeXmlNavigation,
-        raw: {} as unknown as RealOdeXmlDocument,
-    };
-}
-
-/**
- * Transform data from legacy iDevices to match modern renderer expectations
- * e.g. TrueFalseIdevice (with questions array) -> trueorfalse (with questionsGame array)
- */
-export function transformLegacyIdeviceData(component: NormalizedComponent): NormalizedComponent {
-    const type = component.type;
-    const props = (component.properties || {}) as Record<string, unknown>;
-
-    // Handle legacy TrueFalseIdevice (and variants)
-    // Map to 'trueorfalse' type which expects game-like structure
-    if (
-        type === 'TrueFalseIdevice' ||
-        type === 'VerdaderoFalsoFPDIdevice' ||
-        type === 'true-false' ||
-        type === 'truefalse'
-    ) {
-        // Only transform if we have legacy 'questions' structure but not modern 'questionsGame'
-        if (Array.isArray(props.questions) && !props.questionsGame) {
-            // Map questions to game format
-            const questionsGame = props.questions
-                .map((q: { question?: string; feedback?: string; hint?: string; isCorrect?: boolean }) => ({
-                    question: q.question || '',
-                    feedback: q.feedback || '',
-                    suggestion: q.hint || '',
-                    solution: q.isCorrect ? 1 : 0,
-                }))
-                .filter((q: { question?: string }) => q.question); // generic filter
-
-            if (questionsGame.length > 0) {
-                // Return transformed component
-                return {
-                    ...component,
-                    type: 'trueorfalse', // Normalize type
-                    properties: {
-                        ...props,
-                        questionsGame,
-                        // Add default game field requirements
-                        typeGame: 'TrueOrFalse',
-                        questionsRandom: false,
-                        percentageQuestions: 100,
-                        isTest: false,
-                        time: 0,
-                        isScorm: 0,
-                        textButtonScorm: 'Save score',
-                        repeatActivity: true,
-                        weighted: 100,
-                        evaluation: false,
-                        showSlider: false,
-                        msgs: {
-                            msgStartGame: 'Click here to start',
-                            msgSubmit: 'Submit',
-                            msgEnterCode: 'Enter your code',
-                            msgErrorCode: 'Invalid code',
-                            msgGameOver: 'Game Over',
-                            msgIndicateCode: 'Please indicate your code',
-                            msgEndGameScore: 'Please start the game before saving your score.',
-                            msgOnlySaveScore: 'You can only save the score once!',
-                            msgOnlySave: 'You can only save once',
-                            msgYouScore: 'Your score',
-                            msgAuthor: 'Authorship',
-                            msgOnlySaveAuto: 'Your score will be saved after each question. You can only play once.',
-                            msgSaveAuto: 'Your score will be automatically saved after each question.',
-                            msgSeveralScore: 'You can save the score as many times as you want',
-                            msgYouLastScore: 'The last score saved is',
-                            msgActityComply: 'You have already done this activity.',
-                            msgPlaySeveralTimes: 'You can do this activity as many times as you want',
-                            msgUncompletedActivity: 'Incomplete activity',
-                            msgSuccessfulActivity: 'Activity: Passed. Score: %s',
-                            msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
-                            msgTypeGame: 'True or false',
-                            msgFeedback: 'Feedback',
-                            msgSuggestion: 'Suggestion',
-                            msgSolution: 'Solution',
-                            msgQuestion: 'Question',
-                            msgTrue: 'True',
-                            msgFalse: 'False',
-                            msgOk: 'Correct',
-                            msgKO: 'Incorrect',
-                            msgShow: 'Show',
-                            msgHide: 'Hide',
-                            msgCheck: 'Check',
-                            msgReboot: 'Try again!',
-                            msgScore: 'Score',
-                            msgWeight: 'Weight',
-                            msgNext: 'Next',
-                            msgPrevious: 'Previous',
-                        },
-                    },
-                };
-            }
-        }
-    }
-
-    // Handle 'Form' iDevice
-    // Type mismatch: FormIdevice -> form
-    if (type === 'FormIdevice' || type === 'Form') {
-        // Form expects 'questionsData'
-        // If it exists or properties are generically mapable, safe to normalize type to 'form'
-        return {
-            ...component,
-            type: 'form',
-        };
-    }
-
-    // Handle 'MultiChoice' / 'MultiSelect'
-    if (type === 'MultiSelectIdevice' || type === 'MultiChoiceIdevice') {
-        return {
-            ...component,
-            type: 'quick-questions-multiple-choice',
-        };
-    }
-
-    // Handle 'ScormIdevice' -> 'scorm'
-    if (type === 'ScormIdevice') {
-        return {
-            ...component,
-            type: 'scorm',
-        };
-    }
-
-    // Default: pass through unchanged
-    return component;
 }
 
 // ============================================================================
@@ -467,7 +297,6 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
 
     // Destructure export system classes
     const {
-        ElpDocumentAdapter,
         FileSystemResourceProvider,
         FileSystemAssetProvider,
         DatabaseAssetProvider,
@@ -483,6 +312,9 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         PageElpxExporter,
         YjsDocumentAdapter,
         ServerYjsDocumentWrapper,
+        // Import system
+        ElpxImporter,
+        FileSystemAssetHandler,
     } = exportSystem;
 
     // ========================================================================
@@ -515,19 +347,94 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         // Track if we need to cleanup Yjs document after export
         let yjsDocWrapper: InstanceType<typeof ServerYjsDocumentWrapper> | null = null;
 
+        // Helper to import ELP file from tempDir using ElpxImporter
+        async function importElpFromTempDir(): Promise<{
+            document: ExportDocument;
+            wrapper: InstanceType<typeof ServerYjsDocumentWrapper>;
+        } | null> {
+            // Look for ELP files in tempDir
+            const files = await fs.readdir(tempDir);
+            const elpFile = files.find(f => f.endsWith('.elp') || f.endsWith('.elpx'));
+
+            if (elpFile) {
+                const elpPath = path.join(tempDir, elpFile);
+                const elpBuffer = await fs.readFile(elpPath);
+
+                const ydoc = new Y.Doc();
+                const assetHandler = new FileSystemAssetHandler(tempDir);
+                const importer = new ElpxImporter(ydoc, assetHandler);
+                await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+                const wrapper = new ServerYjsDocumentWrapper(ydoc, 'import-export');
+                const document = new YjsDocumentAdapter(wrapper);
+                return { document, wrapper };
+            }
+
+            // Fallback: Try to parse content.xml directly
+            const contentXmlPath = path.join(tempDir, 'content.xml');
+            if (await fileExists(contentXmlPath)) {
+                // Read all files in tempDir to create a zip-like structure for ElpxImporter
+                const ydoc = new Y.Doc();
+                const assetHandler = new FileSystemAssetHandler(tempDir);
+                const importer = new ElpxImporter(ydoc, assetHandler);
+
+                // Read content.xml and resources
+                const contentXml = await fs.readFile(contentXmlPath);
+                const zipContents: Record<string, Uint8Array> = {
+                    'content.xml': new Uint8Array(contentXml),
+                };
+
+                // Check for contentv3.xml (legacy format)
+                const contentV3Path = path.join(tempDir, 'contentv3.xml');
+                if (await fileExists(contentV3Path)) {
+                    const contentV3 = await fs.readFile(contentV3Path);
+                    zipContents['contentv3.xml'] = new Uint8Array(contentV3);
+                }
+
+                // Add resources directory contents
+                const resourcesDir = path.join(tempDir, 'resources');
+                if (await fileExists(resourcesDir)) {
+                    const stats = await fs.stat(resourcesDir);
+                    if (stats.isDirectory()) {
+                        const resourceFiles = await fs.readdir(resourcesDir);
+                        for (const file of resourceFiles) {
+                            const filePath = path.join(resourcesDir, file);
+                            const fileStats = await fs.stat(filePath);
+                            if (fileStats.isFile()) {
+                                const fileContent = await fs.readFile(filePath);
+                                zipContents[`resources/${file}`] = new Uint8Array(fileContent);
+                            }
+                        }
+                    }
+                }
+
+                // Import from constructed zip-like structure
+                await importer.importFromZipContents(zipContents);
+
+                const wrapper = new ServerYjsDocumentWrapper(ydoc, 'xml-import-export');
+                const document = new YjsDocumentAdapter(wrapper);
+                return { document, wrapper };
+            }
+
+            return null;
+        }
+
         try {
             // Create document adapter from structure
             // Priority:
-            // 1. options.structure (Yjs from client)
+            // 1. options.structure (Yjs from client) - create Y.Doc from structure
             // 2. Yjs from database (server-side Yjs document)
-            // 3. session.structure (from ELP open)
-            // 4. content.xml (legacy fallback for CLI)
+            // 3. ELP file in tempDir - use ElpxImporter
+            // 4. content.xml (legacy fallback) - use ElpxImporter
             let document: ExportDocument;
 
             if (options.structure) {
-                // Yjs structure sent from client - convert to ParsedOdeStructure
-                const parsedStructure = convertYjsStructureToParsed(options.structure);
-                document = new ElpDocumentAdapter(parsedStructure, tempDir);
+                // Yjs structure sent from client - create Y.Doc directly
+                console.log('[Export] Creating Y.Doc from client structure');
+                const ydoc = new Y.Doc();
+                populateYDocFromStructure(ydoc, options.structure);
+                yjsDocWrapper = new ServerYjsDocumentWrapper(ydoc, 'client-structure');
+                document = new YjsDocumentAdapter(yjsDocWrapper);
             } else if (session.odeId) {
                 // Try to load Yjs document from database
                 try {
@@ -541,46 +448,57 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                                 console.log('[Export] Using Yjs document from database');
                                 document = new YjsDocumentAdapter(yjsDocWrapper);
                             } else {
-                                console.log('[Export] Yjs document empty, falling back to session structure');
+                                console.log('[Export] Yjs document empty, falling back to ELP import');
                                 yjsDocWrapper.destroy();
                                 yjsDocWrapper = null;
-                                if (session.structure) {
-                                    document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
+                                // Try to import from ELP file
+                                const imported = await importElpFromTempDir();
+                                if (imported) {
+                                    document = imported.document;
+                                    yjsDocWrapper = imported.wrapper;
                                 } else {
                                     return { success: false, error: 'No project structure found' };
                                 }
                             }
-                        } else if (session.structure) {
-                            console.log('[Export] No Yjs document in database, using session structure');
-                            document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
+                        } else {
+                            console.log('[Export] No Yjs document in database, falling back to ELP import');
+                            // Try to import from ELP file
+                            const imported = await importElpFromTempDir();
+                            if (imported) {
+                                document = imported.document;
+                                yjsDocWrapper = imported.wrapper;
+                            } else {
+                                return { success: false, error: 'No project structure found' };
+                            }
+                        }
+                    } else {
+                        console.log('[Export] Project not found in database, falling back to ELP import');
+                        const imported = await importElpFromTempDir();
+                        if (imported) {
+                            document = imported.document;
+                            yjsDocWrapper = imported.wrapper;
                         } else {
                             return { success: false, error: 'No project structure found' };
                         }
-                    } else if (session.structure) {
-                        console.log('[Export] Project not found in database, using session structure');
-                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
-                    } else {
-                        return { success: false, error: 'No project structure found' };
                     }
                 } catch (yjsError) {
-                    // Database/Yjs lookup failed - fall back to session structure
-                    console.warn('[Export] Yjs lookup failed, falling back to session structure:', yjsError);
-                    if (session.structure) {
-                        document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
+                    // Database/Yjs lookup failed - fall back to ELP import
+                    console.warn('[Export] Yjs lookup failed, falling back to ELP import:', yjsError);
+                    const imported = await importElpFromTempDir();
+                    if (imported) {
+                        document = imported.document;
+                        yjsDocWrapper = imported.wrapper;
                     } else {
                         return { success: false, error: 'No project structure found' };
                     }
                 }
-            } else if (session.structure) {
-                // Session structure from when ELP was opened
-                console.log('[Export] Using session structure (no odeId)');
-                document = new ElpDocumentAdapter(session.structure as ParsedOdeStructure, tempDir);
             } else {
-                // Fallback: Try to parse content.xml directly (for CLI exports)
-                const contentXmlPath = path.join(tempDir, 'content.xml');
-                if (await fileExists(contentXmlPath)) {
-                    console.log('[Export] Fallback: parsing content.xml directly');
-                    document = await ElpDocumentAdapter.fromElpFile(tempDir);
+                // No odeId, try to import from ELP file directly
+                console.log('[Export] No odeId, trying ELP import');
+                const imported = await importElpFromTempDir();
+                if (imported) {
+                    document = imported.document;
+                    yjsDocWrapper = imported.wrapper;
                 } else {
                     return { success: false, error: 'No project structure found in session' };
                 }
@@ -770,7 +688,6 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     session = {
                         sessionId: odeSessionId,
                         fileName: `${projectTitle}.elp`,
-                        structure: convertYjsStructureToParsed(options.structure),
                         createdAt: new Date(),
                         updatedAt: new Date(),
                     } as ProjectSession;
