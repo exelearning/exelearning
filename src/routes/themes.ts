@@ -81,7 +81,8 @@ const ICON_EXTENSION_REGEX = /\.(svg|png|gif|jpe?g|webp)$/i;
 
 /**
  * Theme icon structure expected by the frontend
- * The `id` field includes the file extension (e.g., "share.svg")
+ * The `id` field is the baseName WITHOUT extension (e.g., "share")
+ * The `value` field contains the full URL with extension (e.g., "/v3.1/.../share.svg")
  */
 interface ThemeIcon {
     id: string;
@@ -139,7 +140,8 @@ function scanThemeFiles(themePath: string, extension: string): string[] {
  * Supports multiple formats with priority: svg > png > gif > jpg > jpeg > webp
  * When multiple formats exist for the same icon base name, the highest priority format wins
  *
- * Icons are keyed by filename (e.g., "share.svg") which matches how iconName is stored in blocks
+ * Icons are keyed by baseName (e.g., "share") to allow cross-theme compatibility.
+ * The iconName stored in blocks is the baseName without extension.
  */
 function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
     const icons: Record<string, ThemeIcon> = {};
@@ -168,13 +170,15 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, The
         }
     }
 
-    // Build icons record - keyed by filename (e.g., "share.svg")
+    // Build icons record - keyed by baseName (e.g., "share")
+    // This allows icon selection to persist when switching themes
+    // (Theme A may have share.svg, Theme B may have share.png)
     for (const [baseName, { filename }] of bestByBaseName) {
-        icons[filename] = {
-            id: filename,
+        icons[baseName] = {
+            id: baseName, // baseName without extension
             title: baseName,
             type: 'img',
-            value: `${themeUrl}/icons/${filename}`,
+            value: `${themeUrl}/icons/${filename}`, // Full URL with extension
         };
     }
 

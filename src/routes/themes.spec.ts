@@ -87,7 +87,7 @@ describe('Themes Routes', () => {
             expect(typeof theme.icons).toBe('object');
         });
 
-        it('should return icons with proper ThemeIcon structure (id includes extension)', async () => {
+        it('should return icons with proper ThemeIcon structure (id is baseName without extension)', async () => {
             const res = await app.handle(new Request('http://localhost/api/themes/installed'));
 
             const body = await res.json();
@@ -112,8 +112,10 @@ describe('Themes Routes', () => {
                 expect(typeof icon.value).toBe('string');
                 expect(icon.value).toMatch(/\/icons\//);
                 expect(icon.type).toBe('img');
-                // id includes file extension (e.g., "share.svg")
-                expect(icon.id).toMatch(/\.(svg|png|gif|jpe?g|webp)$/i);
+                // id is baseName without extension (e.g., "share") for cross-theme compatibility
+                // Key and id should match and not include extension
+                expect(icon.id).toBe(firstIconKey);
+                expect(icon.id).not.toMatch(/\.(svg|png|gif|jpe?g|webp)$/i);
             }
         });
 
@@ -550,24 +552,30 @@ describe('Themes Routes', () => {
             expect(theme).toBeDefined();
             expect(theme.icons).toBeDefined();
 
-            // All formats should be recognized - keyed by filename
-            expect(theme.icons['icon-svg.svg']).toBeDefined();
-            expect(theme.icons['icon-svg.svg'].id).toBe('icon-svg.svg');
+            // All formats should be recognized - keyed by baseName (without extension)
+            expect(theme.icons['icon-svg']).toBeDefined();
+            expect(theme.icons['icon-svg'].id).toBe('icon-svg');
+            expect(theme.icons['icon-svg'].value).toContain('icon-svg.svg');
 
-            expect(theme.icons['icon-png.png']).toBeDefined();
-            expect(theme.icons['icon-png.png'].id).toBe('icon-png.png');
+            expect(theme.icons['icon-png']).toBeDefined();
+            expect(theme.icons['icon-png'].id).toBe('icon-png');
+            expect(theme.icons['icon-png'].value).toContain('icon-png.png');
 
-            expect(theme.icons['icon-gif.gif']).toBeDefined();
-            expect(theme.icons['icon-gif.gif'].id).toBe('icon-gif.gif');
+            expect(theme.icons['icon-gif']).toBeDefined();
+            expect(theme.icons['icon-gif'].id).toBe('icon-gif');
+            expect(theme.icons['icon-gif'].value).toContain('icon-gif.gif');
 
-            expect(theme.icons['icon-jpg.jpg']).toBeDefined();
-            expect(theme.icons['icon-jpg.jpg'].id).toBe('icon-jpg.jpg');
+            expect(theme.icons['icon-jpg']).toBeDefined();
+            expect(theme.icons['icon-jpg'].id).toBe('icon-jpg');
+            expect(theme.icons['icon-jpg'].value).toContain('icon-jpg.jpg');
 
-            expect(theme.icons['icon-jpeg.jpeg']).toBeDefined();
-            expect(theme.icons['icon-jpeg.jpeg'].id).toBe('icon-jpeg.jpeg');
+            expect(theme.icons['icon-jpeg']).toBeDefined();
+            expect(theme.icons['icon-jpeg'].id).toBe('icon-jpeg');
+            expect(theme.icons['icon-jpeg'].value).toContain('icon-jpeg.jpeg');
 
-            expect(theme.icons['icon-webp.webp']).toBeDefined();
-            expect(theme.icons['icon-webp.webp'].id).toBe('icon-webp.webp');
+            expect(theme.icons['icon-webp']).toBeDefined();
+            expect(theme.icons['icon-webp'].id).toBe('icon-webp');
+            expect(theme.icons['icon-webp'].value).toContain('icon-webp.webp');
         });
 
         it('should prioritize SVG over PNG when same icon exists in multiple formats', async () => {
@@ -614,13 +622,11 @@ describe('Themes Routes', () => {
             expect(theme).toBeDefined();
             expect(theme.icons).toBeDefined();
 
-            // Should only have one 'share' icon entry (the SVG version, keyed by filename)
-            expect(theme.icons['share.svg']).toBeDefined();
-            expect(theme.icons['share.svg'].id).toBe('share.svg');
-            expect(theme.icons['share.svg'].value).toContain('share.svg');
-            // Other formats for 'share' should not be present
-            expect(theme.icons['share.png']).toBeUndefined();
-            expect(theme.icons['share.gif']).toBeUndefined();
+            // Should only have one 'share' icon entry (the SVG version, keyed by baseName)
+            expect(theme.icons['share']).toBeDefined();
+            expect(theme.icons['share'].id).toBe('share');
+            expect(theme.icons['share'].value).toContain('share.svg');
+            // The key is baseName, so there's only one entry for 'share' (SVG prioritized)
         });
 
         it('should prioritize PNG over GIF when SVG is not available', async () => {
@@ -664,12 +670,11 @@ describe('Themes Routes', () => {
             const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'png-gif-theme');
             expect(theme).toBeDefined();
 
-            // PNG should be chosen over GIF and WEBP (keyed by filename)
-            expect(theme.icons['download.png']).toBeDefined();
-            expect(theme.icons['download.png'].id).toBe('download.png');
-            // Other formats for 'download' should not be present
-            expect(theme.icons['download.gif']).toBeUndefined();
-            expect(theme.icons['download.webp']).toBeUndefined();
+            // PNG should be chosen over GIF and WEBP (keyed by baseName)
+            expect(theme.icons['download']).toBeDefined();
+            expect(theme.icons['download'].id).toBe('download');
+            expect(theme.icons['download'].value).toContain('download.png');
+            // The key is baseName, so there's only one entry for 'download' (PNG prioritized)
         });
 
         it('should ignore unsupported file formats in icons directory', async () => {
@@ -715,10 +720,11 @@ describe('Themes Routes', () => {
             const theme = body.themes.find((t: { dirName: string }) => t.dirName === 'mixed-files-theme');
             expect(theme).toBeDefined();
 
-            // Only valid icon should be included (keyed by filename)
+            // Only valid icon should be included (keyed by baseName)
             const iconKeys = Object.keys(theme.icons);
             expect(iconKeys).toHaveLength(1);
-            expect(iconKeys[0]).toBe('valid-icon.svg');
+            expect(iconKeys[0]).toBe('valid-icon');
+            expect(theme.icons['valid-icon'].value).toContain('valid-icon.svg');
         });
 
         it('should handle non-directory entries in themes folder', async () => {

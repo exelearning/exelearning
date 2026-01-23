@@ -54,8 +54,8 @@ global.eXeLearning = {
         },
         themes: {
             getThemeIcons: vi.fn(() => ({
-                'icon1.svg': { id: 'icon1.svg', value: '/path/to/icon1.svg', title: 'icon1' },
-                'icon2.png': { id: 'icon2.png', value: '/path/to/icon2.png', title: 'icon2' },
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
+                icon2: { id: 'icon2', value: '/path/to/icon2.svg', title: 'Icon 2' },
             })),
         },
         modals: {
@@ -1063,9 +1063,9 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('uses theme icon when iconName exists', () => {
-            block.iconName = 'icon1.svg';
+            block.iconName = 'icon1';
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
-                'icon1.svg': { id: 'icon1.svg', value: '/path/to/icon1.svg', title: 'icon1' },
+                icon1: { id: 'icon1', value: '/path/to/icon1.svg', title: 'Icon 1' },
             }));
             const iconEl = block.makeIconNameElement();
             expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
@@ -1073,19 +1073,19 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('makeModalChangeIconBody', () => {
-        it('sets icon-id attribute to icon.id (includes extension)', () => {
+        it('sets icon-id attribute to icon.id (without extension)', () => {
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
-                'share.svg': { id: 'share.svg', value: '/path/to/share.svg', title: 'share' },
-                'download.png': { id: 'download.png', value: '/path/to/download.png', title: 'download' },
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
             }));
 
             const body = block.makeModalChangeIconBody();
             const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');
 
-            // icon-id uses icon.id which includes the extension
+            // icon-id uses icon.id which does NOT include the extension (consistent with themes.ts)
             const iconIds = Array.from(iconElements).map(el => el.getAttribute('icon-id'));
-            expect(iconIds).toContain('share.svg');
-            expect(iconIds).toContain('download.png');
+            expect(iconIds).toContain('share');
+            expect(iconIds).toContain('download');
         });
     });
 

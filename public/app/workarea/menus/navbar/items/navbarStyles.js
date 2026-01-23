@@ -792,8 +792,8 @@ export default class NavbarFile {
                     themeConfig.cssFiles.push(filePath);
                 } else if (filePath.endsWith('.js') && !filePath.includes('/')) {
                     themeConfig.js.push(filePath);
-                } else if (filePath.startsWith('icons/') && (filePath.endsWith('.png') || filePath.endsWith('.svg'))) {
-                    const iconName = filePath.replace('icons/', '').replace(/\.(png|svg)$/, '');
+                } else if (filePath.startsWith('icons/') && /\.(svg|png|gif|jpe?g|webp)$/i.test(filePath)) {
+                    const iconName = filePath.replace('icons/', '').replace(/\.(svg|png|gif|jpe?g|webp)$/i, '');
                     // Store as ThemeIcon object - blob URLs will be resolved on theme selection
                     themeConfig.icons[iconName] = {
                         id: iconName,
