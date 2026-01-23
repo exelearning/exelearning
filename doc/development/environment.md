@@ -48,18 +48,32 @@ The application will be available at [http://localhost:8080](http://localhost:80
 ```
 exelearning/
 ├── src/                   # Elysia backend (TypeScript)
-│   ├── routes/            # API routes
+│   ├── index.ts           # Elysia entry point
+│   ├── routes/            # API routes (Elysia plugins)
 │   ├── services/          # Business logic
-│   ├── db/                # Kysely database (queries, migrations)
-│   └── websocket/         # Yjs WebSocket collaboration
+│   ├── shared/            # Shared code (export/, import/)
+│   ├── db/                # Kysely: client, dialect, migrations, queries
+│   ├── websocket/         # Yjs collaboration, room/asset management
+│   ├── yjs/               # Server-side Yjs operations (for REST API)
+│   ├── cli/               # CLI commands (export, user management)
+│   ├── utils/             # Utility functions
+│   └── exceptions/        # Custom exceptions
 ├── public/                # Static files
 │   ├── app/               # Vanilla JS frontend
-│   │   └── yjs/           # Yjs integration (real-time)
-│   ├── libs/              # jQuery, Bootstrap, TinyMCE
-│   └── style/             # CSS/SCSS
+│   │   ├── yjs/           # Yjs integration (DocumentManager, AssetManager)
+│   │   ├── common/        # Common components (math, media, effects)
+│   │   ├── workarea/      # Editor UI (interface, idevices, menus, modals)
+│   │   ├── admin/         # Admin panel
+│   │   ├── locate/        # Internationalization (i18n)
+│   │   └── rest/          # REST API client calls
+│   ├── libs/              # External libraries (jQuery, TinyMCE, Bootstrap)
+│   ├── files/perm/        # Permanent files (themes, idevices)
+│   └── style/             # Compiled CSS
+├── assets/styles/         # SCSS source files
 ├── views/                 # Nunjucks templates
+├── translations/          # i18n files (messages.{locale}.xlf)
 ├── doc/                   # Documentation
-├── test/                  # Integration tests
+├── test/                  # Tests (integration/, e2e/, fixtures/)
 ├── main.js                # Electron main process
 ├── Makefile               # Build commands
 └── package.json           # Dependencies

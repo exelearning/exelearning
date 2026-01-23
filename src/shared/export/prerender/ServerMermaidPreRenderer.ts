@@ -13,8 +13,10 @@
  * the mermaid npm package with jsdom for DOM virtualization.
  */
 
-import { JSDOM } from 'jsdom';
 import type { MermaidPreRenderResult, ServerMermaidPreRendererInterface } from './interfaces';
+
+// JSDOM type for lazy loading
+type JSDOMType = typeof import('jsdom').JSDOM;
 
 // Detection pattern for mermaid diagrams
 const HAS_MERMAID_PATTERN = /<pre\s+[^>]*class="[^"]*\bmermaid\b[^"]*"/i;
@@ -45,12 +47,15 @@ function decodeHtmlEntities(text: string): string {
 // Import mermaid dynamically to handle the ESM module
 let mermaidModule: MermaidAPI | null = null;
 
+// JSDOM loaded dynamically to avoid ESM/CommonJS conflicts in test environments
+let jsdomModule: { JSDOM: JSDOMType } | null = null;
+
 /**
  * Server-side Mermaid Pre-renderer using mermaid npm package
  */
 export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterface {
     private mermaid: MermaidAPI | null = null;
-    private dom: JSDOM | null = null;
+    private dom: InstanceType<JSDOMType> | null = null;
     private initialized = false;
     private initializationFailed = false;
 
@@ -68,6 +73,14 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         if (this.initialized) {
             return;
         }
+
+        // Load JSDOM dynamically to avoid ESM/CommonJS conflicts
+        // This prevents the module from being loaded when only importing
+        // unzipSync or other non-JSDOM-dependent exports from shared/export
+        if (!jsdomModule) {
+            jsdomModule = await import('jsdom');
+        }
+        const { JSDOM } = jsdomModule;
 
         // Create jsdom with required features for mermaid
         this.dom = new JSDOM(
