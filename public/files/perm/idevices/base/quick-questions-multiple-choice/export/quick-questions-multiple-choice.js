@@ -437,11 +437,12 @@ var $quickquestionsmultiplechoice = {
             mOptions.order = mOptions.optionsRamdon ? 1 : 0;
         }
 
-        if (mOptions.order != 2 && mOptions.percentajeQuestions < 100) {
+        if (mOptions.order != 2) {
             mOptions.selectsGame =
                 $exeDevices.iDevice.gamification.helpers.getQuestions(
                     mOptions.selectsGame,
-                    mOptions.percentajeQuestions
+                    mOptions.percentajeQuestions,
+                    mOptions.order == 1
                 );
         }
 
@@ -452,13 +453,6 @@ var $quickquestionsmultiplechoice = {
                 mOptions.selectsGame[i].customScore = 1;
                 mOptions.scoreTotal += mOptions.selectsGame[i].customScore;
             }
-        }
-
-        if (mOptions.order == 1) {
-            mOptions.selectsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.selectsGame
-                );
         }
         mOptions.numberQuestions = mOptions.selectsGame.length;
         return mOptions;
@@ -983,7 +977,7 @@ var $quickquestionsmultiplechoice = {
         $(`#seleccionaLinkAudio-${instance}`).on('click', (e) => {
             e.preventDefault();
             const audio = mOptions.selectsGame[mOptions.activeQuestion].audio;
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $(`#seleccionaLinkVideoIntroShow-${instance}`).on(
@@ -1507,7 +1501,7 @@ var $quickquestionsmultiplechoice = {
         ).hide();
 
         $quickquestionsmultiplechoice.stopVideo(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         const message =
             type === 0
@@ -1811,17 +1805,14 @@ var $quickquestionsmultiplechoice = {
         }
 
         $quickquestionsmultiplechoice.saveEvaluation(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (
             q.type !== 2 &&
             q.audio.trim().length > 5 &&
             !mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
     },
 
@@ -1992,10 +1983,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
 
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
@@ -2067,10 +2055,7 @@ var $quickquestionsmultiplechoice = {
             question.audio.trim().length > 5 &&
             mOptions.audioFeedBach
         ) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                question.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(question.audio.trim());
             $(`#seleccionaLinkAudio-${instance}`).show();
         }
 

@@ -57,7 +57,7 @@ var $eXePuzzle = {
             $exeDevices.iDevice.gamification.media
         ) {
             try {
-                $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                $exeDevices.iDevice.gamification.media.stopSound();
             } catch (e) {
                 /* noop */
             }
@@ -251,14 +251,9 @@ var $eXePuzzle = {
         mOptions.puzzlesGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.puzzlesGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.randomPuzzles
             );
-
-        if (mOptions.randomPuzzles)
-            mOptions.puzzlesGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    mOptions.puzzlesGame
-                );
 
         mOptions.numberQuestions = mOptions.puzzlesGame.length;
 
@@ -492,8 +487,7 @@ var $eXePuzzle = {
         if (q.audioDefinition && q.audioDefinition.length > 4) {
             if (!mOptions.audiofirst)
                 $exeDevices.iDevice.gamification.media.playSound(
-                    q.audioDefinition,
-                    mOptions
+                    q.audioDefinition
                 );
             $('#pzlAudioDef-' + instance).css('display', 'block');
         }
@@ -945,8 +939,7 @@ var $eXePuzzle = {
             mOptions.audiofirst
         )
             $exeDevices.iDevice.gamification.media.playSound(
-                q.audioDefinition,
-                mOptions
+                q.audioDefinition
             );
 
         mOptions.attemps++;
@@ -958,8 +951,7 @@ var $eXePuzzle = {
                 $eXePuzzle.stopAllSounds(instance);
                 $('#pzlAudioClue-' + instance).css('display', 'block');
                 $exeDevices.iDevice.gamification.media.playSound(
-                    q.audioClue,
-                    mOptions
+                    q.audioClue
                 );
             }
             $eXePuzzle.showSholution(instance);
@@ -1209,10 +1201,7 @@ var $eXePuzzle = {
             mOptions.loading = false;
             const sound = mOptions.puzzlesGame[mOptions.active].audioDefinition;
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    sound,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(sound);
             }
         });
 
@@ -1220,10 +1209,7 @@ var $eXePuzzle = {
             e.preventDefault();
             const sound = mOptions.puzzlesGame[mOptions.active].audioClue;
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    sound,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(sound);
             }
         });
 

@@ -94,8 +94,9 @@ var $eXeRelaciona = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.relaciona-LinkImages', sthis),
             $audiosLink = $('.relaciona-LinkAudios', sthis),
@@ -172,7 +173,8 @@ var $eXeRelaciona = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
         for (let i = 0; i < mOptions.cardsGame.length; i++) {
             mOptions.cardsGame[i].id = i;
@@ -684,7 +686,7 @@ var $eXeRelaciona = {
         $(`#rlcButtons-${instance}`).css('display', 'flex');
         $(`#rlcResetButton-${instance}`).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeRelaciona.showScoreGame(instance);
         $eXeRelaciona.saveEvaluation(instance, true);
 
@@ -885,10 +887,7 @@ var $eXeRelaciona = {
             if (!mOptions.gameStarted || mOptions.gameOver) return;
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
-                $exeDevices.iDevice.gamification.media.playSound(
-                    audio,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $eXeRelaciona.setupEventHandlers(instance);
@@ -1014,10 +1013,7 @@ var $eXeRelaciona = {
             isDragging = false;
 
             if (sound && sound.length > 4) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    sound,
-                    mOptions
-                );
+                $exeDevices.iDevice.gamification.media.playSound(sound);
             }
         });
 

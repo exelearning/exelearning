@@ -186,18 +186,12 @@ var $trueorfalse = {
             data.gameStarted = true;
             data.showSlider = false;
         }
-        if (data.percentageQuestions < 100) {
-            data.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.getQuestions(
-                    data.questionsGame,
-                    data.percentageQuestions
-                );
-        } else if (data.questionsRandom) {
-            data.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    data.questionsGame
-                );
-        }
+        data.questionsGame =
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                data.questionsGame,
+                data.percentageQuestions,
+                data.questionsRandom
+            );
         data.numberQuestions = data.questionsGame.length;
         data.current = 0;
 
