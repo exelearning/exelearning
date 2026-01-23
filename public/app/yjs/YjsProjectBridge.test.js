@@ -107,6 +107,7 @@ class MockAssetManager {
   }
   async init() {}
   async preloadAllAssets() { return 0; }
+  async downloadMissingAssets() { return 0; }
   cleanup() {}
 }
 
@@ -324,14 +325,25 @@ describe('YjsProjectBridge', () => {
       expect(bridge.structureBinding).toBeInstanceOf(MockYjsStructureBinding);
     });
 
-    it('creates assetCache', async () => {
+    it('sets assetCache to null (deprecated)', async () => {
       await bridge.initialize(123, 'test-token');
-      expect(bridge.assetCache).toBeDefined();
+      // AssetCacheManager is deprecated - assetCache is now null
+      // Assets are stored in memory via AssetManager.blobCache instead
+      expect(bridge.assetCache).toBeNull();
     });
 
     it('creates assetManager if available', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.assetManager).toBeDefined();
+    });
+
+    it('assetManager has downloadMissingAssets method for in-memory storage', async () => {
+      await bridge.initialize(123, 'test-token');
+
+      // Verify assetManager has the downloadMissingAssets method
+      // This method is called during initialization to fetch blobs that were lost on page reload
+      expect(bridge.assetManager).toBeDefined();
+      expect(typeof bridge.assetManager.downloadMissingAssets).toBe('function');
     });
 
     it('creates saveManager if available', async () => {
@@ -3380,17 +3392,18 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file);
     });
 
-    it('falls back to assetCache when assetManager unavailable', async () => {
+    it('uses null assetHandler when assetManager unavailable (assetCache is deprecated)', async () => {
       const mockImporter = {
         importFromFile: mock(() => Promise.resolve({ assets: 0 })),
       };
       global.window.ElpxImporter = mock(function(docManager, assetHandler) {
-        expect(assetHandler).toBe(bridge.assetCache);
+        // With assetCache deprecated and set to null, assetHandler is null when no assetManager
+        expect(assetHandler).toBeNull();
         return mockImporter;
       });
 
       bridge.assetManager = null;
-      bridge.assetCache = { id: 'asset-cache' };
+      bridge.assetCache = null; // Deprecated - always null now
 
       const file = new Blob(['test']);
       await bridge.importFromElpx(file);
@@ -4312,9 +4325,9 @@ describe('YjsProjectBridge', () => {
       expect(bridge.connectionMonitor).toBeNull();
     });
 
-    it('handles disconnect without assetCache.destroy method', async () => {
+    it('handles disconnect with null assetCache (deprecated)', async () => {
       bridge.documentManager = { destroy: mock(() => Promise.resolve()) };
-      bridge.assetCache = {}; // No destroy method
+      bridge.assetCache = null; // Always null now (deprecated)
       bridge.assetWebSocketHandler = null;
       bridge.assetManager = null;
       bridge.connectionMonitor = null;

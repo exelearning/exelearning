@@ -1,8 +1,10 @@
 /**
  * AssetManager Tests
  *
- * Unit tests for AssetManager - offline-first asset management for eXeLearning.
+ * Unit tests for AssetManager - in-memory asset management for eXeLearning.
  *
+ * Note: AssetManager now uses in-memory storage (blobCache Map) instead of IndexedDB.
+ * Assets are lost on page reload but re-downloaded from server via downloadMissingAssets().
  */
 
 // Test functions available globally from vitest setup
@@ -135,6 +137,32 @@ describe('AssetManager', () => {
 
     global.fetch = mock(() => undefined);
 
+    // Mock Cache API for persistence tests
+    const cacheStorage = new Map(); // cache name -> Map<url, Response>
+    global.caches = {
+      open: mock(async (cacheName) => {
+        if (!cacheStorage.has(cacheName)) {
+          cacheStorage.set(cacheName, new Map());
+        }
+        const cache = cacheStorage.get(cacheName);
+        return {
+          put: mock(async (url, response) => {
+            cache.set(url, response);
+          }),
+          match: mock(async (url) => {
+            return cache.get(url) || undefined;
+          }),
+          delete: mock(async (url) => {
+            return cache.delete(url);
+          }),
+        };
+      }),
+      delete: mock(async (cacheName) => {
+        return cacheStorage.delete(cacheName);
+      }),
+      _storage: cacheStorage, // For test inspection
+    };
+
     global.Image = class {
       constructor() {
         this.onload = null;
@@ -172,6 +200,7 @@ describe('AssetManager', () => {
     delete global.crypto;
     delete global.fetch;
     delete global.Image;
+    delete global.caches;
   });
 
   describe('constructor', () => {
@@ -179,8 +208,9 @@ describe('AssetManager', () => {
       expect(assetManager.projectId).toBe('project-123');
     });
 
-    it('initializes db as null', () => {
-      expect(assetManager.db).toBeNull();
+    it('initializes empty blobCache (in-memory storage)', () => {
+      expect(assetManager.blobCache).toBeInstanceOf(Map);
+      expect(assetManager.blobCache.size).toBe(0);
     });
 
     it('initializes empty blobURLCache', () => {
@@ -194,47 +224,17 @@ describe('AssetManager', () => {
     });
   });
 
-  describe('static properties', () => {
-    it('has correct DB_NAME', () => {
-      expect(AssetManager.DB_NAME).toBe('exelearning-assets'); // Uses Yjs for metadata
-    });
-
-    it('has correct DB_VERSION', () => {
-      expect(AssetManager.DB_VERSION).toBe(1); // Fresh start
-    });
-
-    it('has correct STORE_NAME', () => {
-      expect(AssetManager.STORE_NAME).toBe('blobs'); // Now only stores blobs
-    });
-  });
-
   describe('init', () => {
-    it('opens IndexedDB database', async () => {
+    it('is a no-op (in-memory storage)', async () => {
       await assetManager.init();
-      expect(global.indexedDB.open).toHaveBeenCalledWith('exelearning-assets', 1); // Yjs metadata
-      expect(assetManager.db).toBe(mockDB);
+      // init() is now a no-op since we use in-memory storage
+      // No IndexedDB connection is made
     });
 
-    it('returns early if already initialized', async () => {
-      assetManager.db = mockDB;
+    it('can be called multiple times without error', async () => {
       await assetManager.init();
-      expect(global.indexedDB.open).not.toHaveBeenCalled();
-    });
-
-    it('handles open error', async () => {
-      global.indexedDB.open.mockImplementationOnce(() => {
-        const request = {
-          error: new Error('Open failed'),
-          onsuccess: null,
-          onerror: null,
-        };
-        setTimeout(() => {
-          if (request.onerror) request.onerror();
-        }, 0);
-        return request;
-      });
-
-      await expect(assetManager.init()).rejects.toThrow();
+      await assetManager.init();
+      // No error should be thrown
     });
   });
 
@@ -280,22 +280,9 @@ describe('AssetManager', () => {
   });
 
   describe('putAsset', () => {
-    it('throws if database not initialized', async () => {
-      await expect(assetManager.putAsset({})).rejects.toThrow('Database not initialized');
-    });
-
-    it('stores asset metadata in Yjs and blob in IndexedDB', async () => {
-      assetManager.db = mockDB;
-
-      const mockTx = {
-        objectStore: mock(() => mockStore),
-        oncomplete: null,
-        onerror: null,
-      };
-      mockDB.transaction.mockReturnValue(mockTx);
-
+    it('stores asset metadata in Yjs and blob in memory', async () => {
       const testBlob = new Blob(['test data']);
-      const putPromise = assetManager.putAsset({
+      await assetManager.putAsset({
         id: 'asset-1',
         filename: 'test.jpg',
         folderPath: 'images',
@@ -306,35 +293,19 @@ describe('AssetManager', () => {
         blob: testBlob
       });
 
-      setTimeout(() => {
-        mockTx.oncomplete?.();
-      }, 0);
-
-      await putPromise;
-
       // Check metadata was stored in Yjs
       const storedMeta = mockYjsBridge._assetsMap.get('asset-1');
       expect(storedMeta).toBeDefined();
       expect(storedMeta.filename).toBe('test.jpg');
       expect(storedMeta.folderPath).toBe('images');
 
-      // Check blob was stored in IndexedDB (only id, projectId, blob)
-      expect(mockStore.put).toHaveBeenCalledWith({
-        id: 'asset-1',
-        projectId: 'project-123',
-        blob: testBlob
-      });
+      // Check blob was stored in memory (blobCache Map)
+      expect(assetManager.blobCache.get('asset-1')).toBe(testBlob);
     });
   });
 
   describe('getAsset', () => {
-    it('throws if database not initialized', async () => {
-      await expect(assetManager.getAsset('id')).rejects.toThrow('Database not initialized');
-    });
-
-    it('retrieves asset combining Yjs metadata and IndexedDB blob', async () => {
-      assetManager.db = mockDB;
-
+    it('retrieves asset combining Yjs metadata and in-memory blob', async () => {
       // Setup metadata in Yjs
       mockYjsBridge._assetsMap.set('asset-1', {
         filename: 'test.jpg',
@@ -346,92 +317,88 @@ describe('AssetManager', () => {
         createdAt: '2024-01-01'
       });
 
-      // Setup blob in IndexedDB mock
+      // Setup blob in memory
       const testBlob = new Blob(['test data']);
-      const mockBlobRecord = { id: 'asset-1', projectId: 'project-123', blob: testBlob };
-      const mockGetRequest = { result: mockBlobRecord, onsuccess: null, onerror: null };
+      assetManager.blobCache.set('asset-1', testBlob);
 
-      const mockTx = {
-        objectStore: mock(() => ({
-          get: mock(() => mockGetRequest),
-        })),
-      };
-      mockDB.transaction.mockReturnValue(mockTx);
+      const result = await assetManager.getAsset('asset-1');
 
-      const getPromise = assetManager.getAsset('asset-1');
-
-      setTimeout(() => {
-        mockGetRequest.onsuccess?.();
-      }, 0);
-
-      const result = await getPromise;
-
-      // Should combine metadata from Yjs with blob from IndexedDB
+      // Should combine metadata from Yjs with blob from memory
       expect(result.id).toBe('asset-1');
       expect(result.filename).toBe('test.jpg');
       expect(result.folderPath).toBe('images');
       expect(result.blob).toBe(testBlob);
     });
 
-    it('returns actual IndexedDB projectId when no Yjs metadata exists (cross-project asset reuse)', async () => {
-      // This test ensures that when an asset blob exists in IndexedDB but belongs to a DIFFERENT project,
-      // getAsset() returns the ACTUAL projectId from IndexedDB, not this.projectId.
-      // This is critical for extractAssetsFromZip() to detect cross-project assets and create
-      // proper metadata for the current project.
-      assetManager.db = mockDB;
+    it('returns asset with projectId when blob exists but no Yjs metadata', async () => {
+      // With in-memory storage, all blobs belong to current project
+      const testBlob = new Blob(['test data'], { type: 'image/jpeg' });
+      assetManager.blobCache.set('asset-1', testBlob);
 
-      // NO metadata in Yjs for this asset (simulating cross-project scenario)
-      // mockYjsBridge._assetsMap does NOT have 'cross-project-asset'
+      // NO metadata in Yjs for this asset
 
-      // Setup blob in IndexedDB with a DIFFERENT projectId
-      const testBlob = new Blob(['cross project data']);
-      const differentProjectId = 'different-project-uuid';
-      const mockBlobRecord = { id: 'cross-project-asset', projectId: differentProjectId, blob: testBlob };
-      const mockGetRequest = { result: mockBlobRecord, onsuccess: null, onerror: null };
+      const result = await assetManager.getAsset('asset-1');
 
-      const mockTx = {
-        objectStore: mock(() => ({
-          get: mock(() => mockGetRequest),
-        })),
-      };
-      mockDB.transaction.mockReturnValue(mockTx);
-
-      const getPromise = assetManager.getAsset('cross-project-asset');
-
-      setTimeout(() => {
-        mockGetRequest.onsuccess?.();
-      }, 0);
-
-      const result = await getPromise;
-
-      // CRITICAL: projectId should be from IndexedDB, NOT from assetManager.projectId
-      expect(result.projectId).toBe(differentProjectId);
-      expect(result.projectId).not.toBe(assetManager.projectId);
-      expect(result.id).toBe('cross-project-asset');
+      // With in-memory storage, projectId is always the current project
+      expect(result.projectId).toBe('project-123');
+      expect(result.id).toBe('asset-1');
       expect(result.blob).toBe(testBlob);
       // Fallback metadata when no Yjs metadata exists
       expect(result.filename).toBe('unknown');
       expect(result.folderPath).toBe('');
     });
+
+    it('returns null when asset not found', async () => {
+      const result = await assetManager.getAsset('nonexistent');
+      expect(result).toBeNull();
+    });
   });
 
   describe('getProjectAssets', () => {
-    it('throws if database not initialized', async () => {
-      await expect(assetManager.getProjectAssets()).rejects.toThrow('Database not initialized');
-    });
-
-    it('returns empty array for invalid projectId', async () => {
-      assetManager.db = mockDB;
-      assetManager.projectId = null;
+    it('returns assets from Yjs metadata with blobs from memory', async () => {
+      // Setup assets in Yjs and memory
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test1.jpg',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+      const testBlob = new Blob(['test data']);
+      assetManager.blobCache.set('asset-1', testBlob);
 
       const result = await assetManager.getProjectAssets();
-      expect(result).toEqual([]);
+
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBe('asset-1');
+      expect(result[0].filename).toBe('test1.jpg');
+      expect(result[0].blob).toBe(testBlob);
+    });
+
+    it('returns metadata only when includeBlobs is false', async () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test1.jpg',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+      const testBlob = new Blob(['test data']);
+      assetManager.blobCache.set('asset-1', testBlob);
+
+      const result = await assetManager.getProjectAssets({ includeBlobs: false });
+
+      expect(result.length).toBe(1);
+      expect(result[0].blob).toBeNull();
     });
   });
 
   describe('insertImage', () => {
     it('stores new image and returns asset:// URL', async () => {
-      assetManager.db = mockDB;
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
       assetManager.putAsset = mock(() => undefined).mockResolvedValue();
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
@@ -451,7 +418,7 @@ describe('AssetManager', () => {
     });
 
     it('returns existing asset URL if already exists for current project', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
       // Mock getAsset to return existing asset
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
@@ -483,7 +450,7 @@ describe('AssetManager', () => {
     });
 
     it('stores blob when asset exists but for different project', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
       // Mock getAsset to return existing asset (blob from another project)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
@@ -523,7 +490,7 @@ describe('AssetManager', () => {
     it('registers blob URL in reverseBlobCache with pure UUID (not asset:// URL)', async () => {
       // This is the CRITICAL test for the bug fix
       // The bug was that asset:// URLs were being stored in reverseBlobCache instead of UUIDs
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
       assetManager.putAsset = mock(() => undefined).mockResolvedValue();
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef');
@@ -558,7 +525,7 @@ describe('AssetManager', () => {
 
     it('full image insertion flow: insert -> conversion -> resolve', async () => {
       // Test the complete flow that was broken
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
       assetManager.putAsset = mock(() => undefined).mockResolvedValue();
       assetManager.calculateHash = mock(() => undefined).mockResolvedValue('abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789');
@@ -613,7 +580,7 @@ describe('AssetManager', () => {
     });
 
     it('creates blob URL from IndexedDB', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         blob: new Blob(['test']),
       });
@@ -625,7 +592,7 @@ describe('AssetManager', () => {
     });
 
     it('returns null when asset not found', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
 
       const url = await assetManager.resolveAssetURL('asset://nonexistent');
@@ -685,93 +652,46 @@ describe('AssetManager', () => {
   });
 
   describe('getBlobRecord', () => {
-    it('returns null when db is not initialized', async () => {
-      assetManager.db = null;
-
-      const result = await assetManager.getBlobRecord('any-id');
-
+    it('returns null when blob not found', async () => {
+      const result = await assetManager.getBlobRecord('nonexistent-id');
       expect(result).toBeNull();
     });
 
-    it('returns full blob record including projectId', async () => {
-      // Store a blob record with specific projectId
-      const blobRecord = {
-        id: 'asset-with-project',
-        projectId: 'original-project-123',
-        blob: new Blob(['test content']),
-      };
-      mockStore.get = mock(() => {
-        const req = { result: blobRecord, onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
-        return req;
-      });
-      assetManager.db = mockDB;
+    it('returns full blob record including projectId from memory', async () => {
+      const testBlob = new Blob(['test content']);
+      assetManager.blobCache.set('asset-with-project', testBlob);
 
       const result = await assetManager.getBlobRecord('asset-with-project');
 
       expect(result).not.toBeNull();
       expect(result.id).toBe('asset-with-project');
-      expect(result.projectId).toBe('original-project-123');
+      expect(result.projectId).toBe('project-123'); // Uses AssetManager's projectId
+      expect(result.blob).toBe(testBlob);
+    });
+
+    it('returns blob record from Cache API fallback', async () => {
+      const testBlob = new Blob(['cached content']);
+      // Put in Cache API but NOT in memory
+      await assetManager._putToCache('cached-asset', testBlob);
+      assetManager.blobCache.delete('cached-asset');
+
+      const result = await assetManager.getBlobRecord('cached-asset');
+
+      expect(result).not.toBeNull();
+      expect(result.id).toBe('cached-asset');
+      expect(result.projectId).toBe('project-123');
       expect(result.blob).toBeInstanceOf(Blob);
     });
 
-    it('returns null when asset not found in IndexedDB', async () => {
-      mockStore.get = mock(() => {
-        const req = { result: null, onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess?.(), 0);
-        return req;
-      });
-      assetManager.db = mockDB;
+    it('uses current projectId regardless of original storage', async () => {
+      // The projectId returned is always the current AssetManager's projectId
+      // since blobs are stored per-project in Cache API
+      const testBlob = new Blob(['shared content']);
+      assetManager.blobCache.set('shared-asset', testBlob);
 
-      const result = await assetManager.getBlobRecord('nonexistent-id');
+      const result = await assetManager.getBlobRecord('shared-asset');
 
-      expect(result).toBeNull();
-    });
-
-    it('rejects on IndexedDB error', async () => {
-      mockStore.get = mock(() => {
-        const req = { result: null, onsuccess: null, onerror: null, error: new Error('DB Error') };
-        setTimeout(() => req.onerror?.(), 0);
-        return req;
-      });
-      assetManager.db = mockDB;
-
-      await expect(assetManager.getBlobRecord('any-id')).rejects.toThrow();
-    });
-
-    it('distinguishes between projects with same asset content', async () => {
-      // Scenario: Same content (same assetId due to content-addressing)
-      // stored for different projects
-      const assetId = 'content-hash-based-id';
-
-      // First, check record for project A
-      mockStore.get = mock(() => {
-        const req = {
-          result: { id: assetId, projectId: 'project-A', blob: new Blob(['shared content']) },
-          onsuccess: null,
-          onerror: null
-        };
-        setTimeout(() => req.onsuccess?.(), 0);
-        return req;
-      });
-      assetManager.db = mockDB;
-
-      const recordA = await assetManager.getBlobRecord(assetId);
-      expect(recordA.projectId).toBe('project-A');
-
-      // After another project stores it, projectId changes
-      mockStore.get = mock(() => {
-        const req = {
-          result: { id: assetId, projectId: 'project-B', blob: new Blob(['shared content']) },
-          onsuccess: null,
-          onerror: null
-        };
-        setTimeout(() => req.onsuccess?.(), 0);
-        return req;
-      });
-
-      const recordB = await assetManager.getBlobRecord(assetId);
-      expect(recordB.projectId).toBe('project-B');
+      expect(result.projectId).toBe('project-123');
     });
   });
 
@@ -1123,7 +1043,7 @@ describe('AssetManager', () => {
 
   describe('preloadAllAssets', () => {
     it('preloads all assets into memory', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1', blob: new Blob(['1']) },
         { id: 'a2', blob: new Blob(['2']) },
@@ -1136,7 +1056,7 @@ describe('AssetManager', () => {
     });
 
     it('skips already cached assets', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.blobURLCache.set('a1', 'blob:existing');
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1', blob: new Blob(['1']) },
@@ -1151,7 +1071,7 @@ describe('AssetManager', () => {
 
   describe('getPendingAssets', () => {
     it('returns empty array for invalid projectId', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.projectId = null;
 
       const result = await assetManager.getPendingAssets();
@@ -1161,7 +1081,7 @@ describe('AssetManager', () => {
 
   describe('markAssetUploaded', () => {
     it('marks asset as uploaded via Yjs metadata', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
 
       // Setup metadata in Yjs
       mockYjsBridge._assetsMap.set('a1', {
@@ -1177,7 +1097,7 @@ describe('AssetManager', () => {
     });
 
     it('does nothing if asset not found in Yjs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       // No metadata in Yjs
 
       await assetManager.markAssetUploaded('nonexistent');
@@ -1200,7 +1120,7 @@ describe('AssetManager', () => {
     });
 
     it('deletes asset and revokes blob URL', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.blobURLCache.set('a1', 'blob:url1');
       assetManager.reverseBlobCache.set('blob:url1', 'a1');
 
@@ -1225,7 +1145,7 @@ describe('AssetManager', () => {
     });
 
     it('calls _deleteFromServer when token and projectId are available', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager._deleteFromServer = mock(() => Promise.resolve());
 
       // Setup window.eXeLearning.config for server deletion
@@ -1256,7 +1176,7 @@ describe('AssetManager', () => {
     });
 
     it('skips server deletion when skipServerDelete option is true', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager._deleteFromServer = mock(() => Promise.resolve());
 
       global.window.eXeLearning = {
@@ -1450,7 +1370,7 @@ describe('AssetManager', () => {
 
   describe('clearProjectAssets', () => {
     it('clears all assets for project', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1' },
         { id: 'a2' },
@@ -1465,7 +1385,7 @@ describe('AssetManager', () => {
 
   describe('getStats', () => {
     it('returns asset statistics from Yjs metadata', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
 
       // Setup metadata in Yjs
       mockYjsBridge._assetsMap.set('a1', { uploaded: true, size: 1000 });
@@ -1483,7 +1403,7 @@ describe('AssetManager', () => {
 
   describe('updateAssetFilename', () => {
     it('updates asset filename via Yjs metadata', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
 
       // Setup metadata in Yjs
       mockYjsBridge._assetsMap.set('a1', { filename: 'old.jpg' });
@@ -1496,7 +1416,7 @@ describe('AssetManager', () => {
     });
 
     it('does nothing if asset not found in Yjs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       // No metadata in Yjs
 
       await assetManager.updateAssetFilename('nonexistent', 'new.jpg');
@@ -1508,7 +1428,7 @@ describe('AssetManager', () => {
 
   describe('getImageDimensions', () => {
     it('returns dimensions for image', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         blob: new Blob(['image']),
         mime: 'image/png',
@@ -1520,7 +1440,7 @@ describe('AssetManager', () => {
     });
 
     it('returns null for non-image', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         blob: new Blob(['data']),
         mime: 'application/pdf',
@@ -1532,7 +1452,7 @@ describe('AssetManager', () => {
     });
 
     it('returns null when asset not found', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
 
       const dimensions = await assetManager.getImageDimensions('nonexistent');
@@ -1600,7 +1520,7 @@ describe('AssetManager', () => {
 
   describe('getAllAssetIds', () => {
     it('returns array of asset IDs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1' },
         { id: 'a2' },
@@ -1615,7 +1535,7 @@ describe('AssetManager', () => {
 
   describe('getAllLocalBlobIds', () => {
     it('returns only assets with blobs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1', blob: new Blob(['data1']) },
         { id: 'a2', blob: null }, // Has metadata but no blob
@@ -1631,7 +1551,7 @@ describe('AssetManager', () => {
     });
 
     it('checks IndexedDB for assets without blob in memory', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1', blob: null }, // No blob in memory
         { id: 'a2', blob: null },
@@ -1647,7 +1567,7 @@ describe('AssetManager', () => {
     });
 
     it('returns empty array when no assets have blobs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getProjectAssets = mock(() => undefined).mockResolvedValue([
         { id: 'a1', blob: null },
         { id: 'a2', blob: null },
@@ -1662,7 +1582,7 @@ describe('AssetManager', () => {
 
   describe('hasAsset', () => {
     it('returns true when asset exists', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({ id: 'a1' });
 
       const exists = await assetManager.hasAsset('a1');
@@ -1671,7 +1591,7 @@ describe('AssetManager', () => {
     });
 
     it('returns false when asset does not exist', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
 
       const exists = await assetManager.hasAsset('nonexistent');
@@ -1682,7 +1602,7 @@ describe('AssetManager', () => {
 
   describe('getAssetForUpload', () => {
     it('returns asset data for upload', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       const blob = new Blob(['test']);
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         id: 'a1',
@@ -1703,7 +1623,7 @@ describe('AssetManager', () => {
     });
 
     it('returns null when asset not found', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
 
       const data = await assetManager.getAssetForUpload('nonexistent');
@@ -1714,7 +1634,7 @@ describe('AssetManager', () => {
 
   describe('storeAssetFromServer', () => {
     it('stores asset received from server', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.getAsset = mock(() => undefined).mockResolvedValue(null);
       assetManager.putAsset = mock(() => undefined).mockResolvedValue();
 
@@ -1735,7 +1655,7 @@ describe('AssetManager', () => {
     });
 
     it('skips if asset already exists with blob for same project', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       // Mock existing asset with same projectId AND blob - should skip putAsset
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         id: 'a1',
@@ -1750,7 +1670,7 @@ describe('AssetManager', () => {
     });
 
     it('stores blob if asset exists without blob for same project', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       // Mock existing asset with same projectId but NO blob - should store blob
       assetManager.getAsset = mock(() => undefined).mockResolvedValue({
         id: 'a1',
@@ -1775,7 +1695,7 @@ describe('AssetManager', () => {
 
   describe('getMissingAssetIds', () => {
     it('returns list of missing asset IDs', async () => {
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
       assetManager.hasAsset = mock(() => undefined)
         .mockResolvedValueOnce(true)
         .mockResolvedValueOnce(false)
@@ -1787,12 +1707,74 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('hasUnsavedAssets', () => {
+    it('returns false when no assets', () => {
+      expect(assetManager.hasUnsavedAssets()).toBe(false);
+    });
+
+    it('returns false when all assets are uploaded', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: true,
+      });
+      assetManager.blobCache.set('asset-1', new Blob(['test']));
+
+      expect(assetManager.hasUnsavedAssets()).toBe(false);
+    });
+
+    it('returns true when asset has local blob but not uploaded', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+      assetManager.blobCache.set('asset-1', new Blob(['test']));
+
+      expect(assetManager.hasUnsavedAssets()).toBe(true);
+    });
+
+    it('returns false when asset is not uploaded but blob not in memory', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+      // No blob in blobCache - blob was never stored locally
+
+      expect(assetManager.hasUnsavedAssets()).toBe(false);
+    });
+  });
+
+  describe('getUnsavedAssetCount', () => {
+    it('returns 0 when no assets', () => {
+      expect(assetManager.getUnsavedAssetCount()).toBe(0);
+    });
+
+    it('returns count of unsaved assets with local blobs', () => {
+      mockYjsBridge._assetsMap.set('asset-1', {
+        filename: 'test1.jpg',
+        uploaded: false,
+      });
+      mockYjsBridge._assetsMap.set('asset-2', {
+        filename: 'test2.jpg',
+        uploaded: false,
+      });
+      mockYjsBridge._assetsMap.set('asset-3', {
+        filename: 'test3.jpg',
+        uploaded: true, // Already uploaded
+      });
+      assetManager.blobCache.set('asset-1', new Blob(['test1']));
+      assetManager.blobCache.set('asset-2', new Blob(['test2']));
+      assetManager.blobCache.set('asset-3', new Blob(['test3']));
+
+      expect(assetManager.getUnsavedAssetCount()).toBe(2);
+    });
+  });
+
   describe('cleanup', () => {
     it('revokes all blob URLs', () => {
       assetManager.blobURLCache.set('a1', 'blob:url1');
       assetManager.blobURLCache.set('a2', 'blob:url2');
       assetManager.reverseBlobCache.set('blob:url1', 'a1');
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
 
       assetManager.cleanup();
 
@@ -1802,12 +1784,274 @@ describe('AssetManager', () => {
     });
 
     it('closes database connection', () => {
-      assetManager.db = mockDB;
+      // Add some data to caches
+      assetManager.blobCache.set('asset-1', new Blob(['test']));
+      assetManager.blobURLCache.set('asset-1', 'blob:test');
 
       assetManager.cleanup();
 
-      expect(mockDB.close).toHaveBeenCalled();
-      expect(assetManager.db).toBeNull();
+      // With in-memory storage, cleanup clears all caches
+      expect(assetManager.blobCache.size).toBe(0);
+      expect(assetManager.blobURLCache.size).toBe(0);
+    });
+
+    it('clears Cache API storage', async () => {
+      // Put something in the cache first
+      const blob = new Blob(['test content'], { type: 'text/plain' });
+      await assetManager._putToCache('test-asset-id', blob);
+
+      // Verify it's in the cache
+      const cacheName = assetManager.getCacheName();
+      expect(global.caches._storage.has(cacheName)).toBe(true);
+
+      // Cleanup should clear the cache
+      assetManager.cleanup();
+
+      // Wait for async clearCache to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Cache should be deleted
+      expect(global.caches._storage.has(cacheName)).toBe(false);
+    });
+  });
+
+  describe('Cache API persistence', () => {
+    describe('getCacheName', () => {
+      it('returns cache name based on project ID', () => {
+        expect(assetManager.getCacheName()).toBe('exe-assets-project-123');
+      });
+    });
+
+    describe('_putToCache', () => {
+      it('stores blob in Cache API', async () => {
+        const blob = new Blob(['test content'], { type: 'image/png' });
+        await assetManager._putToCache('asset-123', blob);
+
+        const cacheName = assetManager.getCacheName();
+        const cache = global.caches._storage.get(cacheName);
+        expect(cache).toBeDefined();
+        expect(cache.has('/asset/asset-123')).toBe(true);
+      });
+
+      it('handles Cache API not supported', async () => {
+        delete global.caches;
+
+        // Should not throw
+        await assetManager._putToCache('asset-123', new Blob(['test']));
+      });
+
+      it('handles Cache API errors gracefully', async () => {
+        global.caches.open = mock(async () => {
+          throw new Error('Cache API error');
+        });
+
+        // Should not throw
+        await assetManager._putToCache('asset-123', new Blob(['test']));
+        expect(console.warn).toHaveBeenCalled();
+      });
+    });
+
+    describe('_getFromCache', () => {
+      it('retrieves blob from Cache API', async () => {
+        const blob = new Blob(['test content'], { type: 'image/png' });
+        await assetManager._putToCache('asset-123', blob);
+
+        const retrieved = await assetManager._getFromCache('asset-123');
+        expect(retrieved).toBeInstanceOf(Blob);
+      });
+
+      it('returns null if not found', async () => {
+        const retrieved = await assetManager._getFromCache('non-existent');
+        expect(retrieved).toBeNull();
+      });
+
+      it('handles Cache API not supported', async () => {
+        delete global.caches;
+
+        const retrieved = await assetManager._getFromCache('asset-123');
+        expect(retrieved).toBeNull();
+      });
+
+      it('handles Cache API errors gracefully', async () => {
+        global.caches.open = mock(async () => {
+          throw new Error('Cache API error');
+        });
+
+        const retrieved = await assetManager._getFromCache('asset-123');
+        expect(retrieved).toBeNull();
+        expect(console.warn).toHaveBeenCalled();
+      });
+    });
+
+    describe('_deleteFromCache', () => {
+      it('deletes blob from Cache API', async () => {
+        const blob = new Blob(['test content'], { type: 'image/png' });
+        await assetManager._putToCache('asset-123', blob);
+
+        await assetManager._deleteFromCache('asset-123');
+
+        const cacheName = assetManager.getCacheName();
+        const cache = global.caches._storage.get(cacheName);
+        expect(cache.has('/asset/asset-123')).toBe(false);
+      });
+
+      it('handles Cache API not supported', async () => {
+        delete global.caches;
+
+        // Should not throw
+        await assetManager._deleteFromCache('asset-123');
+      });
+    });
+
+    describe('clearCache', () => {
+      it('deletes entire project cache', async () => {
+        const blob = new Blob(['test'], { type: 'text/plain' });
+        await assetManager._putToCache('asset-1', blob);
+        await assetManager._putToCache('asset-2', blob);
+
+        const cacheName = assetManager.getCacheName();
+        expect(global.caches._storage.has(cacheName)).toBe(true);
+
+        await assetManager.clearCache();
+
+        expect(global.caches._storage.has(cacheName)).toBe(false);
+      });
+
+      it('handles Cache API not supported', async () => {
+        delete global.caches;
+
+        // Should not throw
+        await assetManager.clearCache();
+      });
+
+      it('handles Cache API errors gracefully', async () => {
+        global.caches.delete = mock(async () => {
+          throw new Error('Cache API delete error');
+        });
+
+        // Should not throw
+        await assetManager.clearCache();
+        expect(console.warn).toHaveBeenCalled();
+      });
+    });
+
+    describe('putAsset stores blob in Cache API', () => {
+      it('persists blob to Cache API when storing asset', async () => {
+        const blob = new Blob(['test image'], { type: 'image/png' });
+        const asset = {
+          id: 'asset-uuid-123',
+          filename: 'test.png',
+          folderPath: '',
+          mime: 'image/png',
+          size: blob.size,
+          hash: 'abc123',
+          blob: blob,
+        };
+
+        await assetManager.putAsset(asset);
+
+        // Wait for async cache write
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const cacheName = assetManager.getCacheName();
+        const cache = global.caches._storage.get(cacheName);
+        expect(cache.has('/asset/asset-uuid-123')).toBe(true);
+      });
+    });
+
+    describe('putBlob stores blob in Cache API', () => {
+      it('persists blob to Cache API when storing blob', async () => {
+        const blob = new Blob(['test content'], { type: 'text/plain' });
+
+        await assetManager.putBlob('blob-id-456', blob);
+
+        // Wait for async cache write
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const cacheName = assetManager.getCacheName();
+        const cache = global.caches._storage.get(cacheName);
+        expect(cache.has('/asset/blob-id-456')).toBe(true);
+      });
+    });
+
+    describe('getBlob checks Cache API as fallback', () => {
+      it('returns from memory first', async () => {
+        const blob = new Blob(['memory blob'], { type: 'text/plain' });
+        assetManager.blobCache.set('asset-mem', blob);
+
+        const retrieved = await assetManager.getBlob('asset-mem');
+
+        expect(retrieved).toBe(blob);
+        // Verify we didn't need to hit the cache
+        expect(global.caches.open).not.toHaveBeenCalled();
+      });
+
+      it('falls back to Cache API when not in memory', async () => {
+        const blob = new Blob(['cached blob'], { type: 'text/plain' });
+        await assetManager._putToCache('asset-cached', blob);
+
+        // Ensure not in memory
+        assetManager.blobCache.delete('asset-cached');
+
+        const retrieved = await assetManager.getBlob('asset-cached');
+
+        expect(retrieved).toBeInstanceOf(Blob);
+      });
+
+      it('restores blob to memory after Cache API hit', async () => {
+        const blob = new Blob(['cached blob'], { type: 'text/plain' });
+        await assetManager._putToCache('asset-restore', blob);
+
+        // Ensure not in memory
+        assetManager.blobCache.delete('asset-restore');
+        expect(assetManager.blobCache.has('asset-restore')).toBe(false);
+
+        await assetManager.getBlob('asset-restore');
+
+        // Should now be in memory
+        expect(assetManager.blobCache.has('asset-restore')).toBe(true);
+      });
+
+      it('returns null when not found anywhere', async () => {
+        const retrieved = await assetManager.getBlob('non-existent-id');
+        expect(retrieved).toBeNull();
+      });
+    });
+
+    describe('deleteAsset removes from Cache API', () => {
+      it('deletes from both memory and Cache API', async () => {
+        const blob = new Blob(['test'], { type: 'text/plain' });
+        const asset = {
+          id: 'asset-to-delete',
+          filename: 'delete.txt',
+          folderPath: '',
+          mime: 'text/plain',
+          size: blob.size,
+          hash: 'deletehash',
+          blob: blob,
+        };
+
+        await assetManager.putAsset(asset);
+
+        // Wait for cache write
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        const cacheName = assetManager.getCacheName();
+        let cache = global.caches._storage.get(cacheName);
+        expect(cache.has('/asset/asset-to-delete')).toBe(true);
+
+        await assetManager.deleteAsset('asset-to-delete');
+
+        // Wait for async cache delete
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Memory should be cleared
+        expect(assetManager.blobCache.has('asset-to-delete')).toBe(false);
+
+        // Cache should be cleared
+        cache = global.caches._storage.get(cacheName);
+        expect(cache.has('/asset/asset-to-delete')).toBe(false);
+      });
     });
   });
 });
@@ -2298,14 +2542,9 @@ describe('extractAssetsFromZip', () => {
     };
 
     global.Logger = { log: mock(() => {}) };
-    global.crypto = {
-      subtle: {
-        digest: mock(async () => new ArrayBuffer(32)),
-      },
-    };
 
     assetManager = new AssetManager('project-123');
-    assetManager.db = mockDB;
+    // (In-memory storage - no db initialization needed)
     assetManager.getAsset = mock(() => Promise.resolve(null));
     assetManager.putAsset = mock(() => Promise.resolve());
     assetManager.calculateHash = mock(() => Promise.resolve('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'));
@@ -2315,12 +2554,6 @@ describe('extractAssetsFromZip', () => {
 
   afterEach(() => {
     delete global.Logger;
-    delete global.crypto;
-  });
-
-  it('throws if database not initialized', async () => {
-    assetManager.db = null;
-    await expect(assetManager.extractAssetsFromZip({})).rejects.toThrow('AssetManager not initialized');
   });
 
   it('extracts image assets from resources/ folder', async () => {
@@ -3112,7 +3345,7 @@ describe('boostAssetsInHTML', () => {
 
   beforeEach(() => {
     assetManager = new AssetManager('project-123');
-    assetManager.db = {}; // Initialize db to prevent "Database not initialized" error
+    // (In-memory storage - no db initialization needed)
     assetManager.blobURLCache = new Map();
     global.Logger = { log: mock(() => {}) };
     global.window = {
@@ -3185,12 +3418,28 @@ describe('boostAssetsInHTML', () => {
 
 describe('findByHash', () => {
   let assetManager;
-  let mockDB;
   let mockYjsBridge;
 
   beforeEach(() => {
     // Mock Logger
     global.Logger = { log: mock(() => {}) };
+
+    // Mock Cache API
+    const cacheStorage = new Map();
+    global.caches = {
+      open: mock(async (cacheName) => {
+        if (!cacheStorage.has(cacheName)) {
+          cacheStorage.set(cacheName, new Map());
+        }
+        const cache = cacheStorage.get(cacheName);
+        return {
+          put: mock(async (url, response) => cache.set(url, response)),
+          match: mock(async (url) => cache.get(url) || undefined),
+          delete: mock(async (url) => cache.delete(url)),
+        };
+      }),
+      delete: mock(async (cacheName) => cacheStorage.delete(cacheName)),
+    };
 
     // Create mock Yjs bridge
     mockYjsBridge = createMockYjsBridge();
@@ -3199,49 +3448,28 @@ describe('findByHash', () => {
     mockYjsBridge._assetsMap.set('asset-1', { hash: 'hash123', filename: 'test1.jpg' });
     mockYjsBridge._assetsMap.set('asset-2', { hash: 'hash456', filename: 'test2.jpg' });
 
-    mockDB = {
-      transaction: mock(() => ({
-        objectStore: mock(() => ({
-          get: mock((id) => ({
-            result: id === 'asset-1' ? { id: 'asset-1', blob: new Blob(['test']) } : null,
-            onsuccess: null,
-          })),
-        })),
-      })),
-    };
-
     assetManager = new AssetManager('project-123');
     assetManager.setYjsBridge(mockYjsBridge);
-    assetManager.db = mockDB;
+
+    // Put blob in memory cache for asset-1
+    assetManager.blobCache.set('asset-1', new Blob(['test']));
   });
 
   afterEach(() => {
     delete global.Logger;
+    delete global.caches;
   });
 
   it('returns null when db not initialized but Yjs has no match', async () => {
-    assetManager.db = null;
+    // (In-memory storage - db is no longer used)
     // findByHash now uses Yjs metadata, so it doesn't require DB
     const result = await assetManager.findByHash('nonexistent');
     expect(result).toBeNull();
   });
 
   it('returns asset matching hash from Yjs metadata', async () => {
-    const mockGetRequest = {
-      result: { id: 'asset-1', blob: new Blob(['test']) },
-      onsuccess: null,
-    };
-
-    mockDB.transaction.mockReturnValue({
-      objectStore: mock(() => ({
-        get: mock(() => mockGetRequest),
-      })),
-    });
-
-    const findPromise = assetManager.findByHash('hash123');
-    setTimeout(() => mockGetRequest.onsuccess?.(), 0);
-
-    const result = await findPromise;
+    // findByHash looks up hash in Yjs metadata and gets blob from blobCache
+    const result = await assetManager.findByHash('hash123');
     expect(result.id).toBe('asset-1');
     expect(result.hash).toBe('hash123');
     expect(result.projectId).toBe('project-123');
@@ -3258,7 +3486,7 @@ describe('uploadPendingAssets', () => {
 
   beforeEach(() => {
     assetManager = new AssetManager('project-123');
-    assetManager.db = {};
+    // (In-memory storage - no db initialization needed)
     global.Logger = { log: mock(() => {}) };
     global.fetch = mock(() => Promise.resolve({
       ok: true,
@@ -3329,7 +3557,7 @@ describe('downloadMissingAssets', () => {
 
   beforeEach(() => {
     assetManager = new AssetManager('project-123');
-    assetManager.db = {};
+    // (In-memory storage - no db initialization needed)
     global.Logger = { log: mock(() => {}) };
     spyOn(console, 'warn').mockImplementation(() => {});
     spyOn(console, 'error').mockImplementation(() => {});
@@ -3435,7 +3663,7 @@ describe('downloadMissingAssetsFromServer', () => {
 
   beforeEach(() => {
     assetManager = new AssetManager('project-123');
-    assetManager.db = {};
+    // (In-memory storage - no db initialization needed)
     assetManager.blobURLCache = new Map();
     assetManager.reverseBlobCache = new Map();
     assetManager.missingAssets = new Set();
@@ -4464,7 +4692,7 @@ describe('AssetManager folder operations - Unit Tests', () => {
           };
         }),
       };
-      assetManager.db = mockDB;
+      // (In-memory storage - no db initialization needed)
     });
 
     afterEach(() => {
@@ -4533,12 +4761,6 @@ describe('AssetManager folder operations - Unit Tests', () => {
       expect(assetManager.deleteAsset).toHaveBeenCalledWith('asset-1', { skipServerDelete: true });
       // Bulk delete should be called instead
       expect(assetManager._deleteMultipleFromServer).toHaveBeenCalledWith(['asset-1']);
-    });
-  });
-
-  describe('DB_VERSION for Yjs metadata architecture', () => {
-    it('has DB_VERSION 1 for Yjs metadata architecture', () => {
-      expect(AssetManager.DB_VERSION).toBe(1);
     });
   });
 });
@@ -5730,14 +5952,29 @@ describe('_isHtmlAsset', () => {
 describe('resolveHtmlWithAssets', () => {
   let assetManager;
   let mockYjsBridge;
-  let mockDB;
-  let storedBlobs;
 
   beforeEach(() => {
     // Mock Logger if not defined
     if (typeof global.Logger === 'undefined') {
       global.Logger = { log: () => {} };
     }
+
+    // Mock Cache API
+    const cacheStorage = new Map();
+    global.caches = {
+      open: mock(async (cacheName) => {
+        if (!cacheStorage.has(cacheName)) {
+          cacheStorage.set(cacheName, new Map());
+        }
+        const cache = cacheStorage.get(cacheName);
+        return {
+          put: mock(async (url, response) => cache.set(url, response)),
+          match: mock(async (url) => cache.get(url) || undefined),
+          delete: mock(async (url) => cache.delete(url)),
+        };
+      }),
+      delete: mock(async (cacheName) => cacheStorage.delete(cacheName)),
+    };
 
     // Create mock Yjs bridge
     const assetsMap = new Map();
@@ -5752,33 +5989,6 @@ describe('resolveHtmlWithAssets', () => {
     mockYjsBridge = {
       getAssetsMap: () => mockYMap,
       _assetsMap: assetsMap
-    };
-
-    // Create mock IndexedDB
-    storedBlobs = new Map();
-    const mockStore = {
-      put: mock((blobRecord) => {
-        storedBlobs.set(blobRecord.id, blobRecord);
-        return { onsuccess: null, onerror: null };
-      }),
-      get: mock((id) => {
-        const result = storedBlobs.get(id) || null;
-        const req = { result, onsuccess: null, onerror: null };
-        setTimeout(() => req.onsuccess && req.onsuccess(), 0);
-        return req;
-      }),
-      delete: mock((id) => {
-        storedBlobs.delete(id);
-        return { onsuccess: null, onerror: null };
-      })
-    };
-    mockDB = {
-      transaction: mock(() => ({
-        objectStore: mock(() => mockStore),
-        oncomplete: null,
-        onerror: null
-      })),
-      close: mock(() => undefined)
     };
 
     // Create blob URL tracking
@@ -5797,7 +6007,6 @@ describe('resolveHtmlWithAssets', () => {
 
     assetManager = new AssetManager('project-123');
     assetManager.setYjsBridge(mockYjsBridge);
-    assetManager.db = mockDB;
 
     // Mock console to suppress logs
     spyOn(console, 'log').mockImplementation(() => {});
@@ -5807,6 +6016,7 @@ describe('resolveHtmlWithAssets', () => {
   afterEach(() => {
     delete global.URL;
     delete global.Logger;
+    delete global.caches;
   });
 
   it('returns null for non-existent asset', async () => {
@@ -5835,7 +6045,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'mywebsite',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-simple', { id: 'uuid-simple', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-simple', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-simple');
     expect(result).not.toBeNull();
@@ -5858,7 +6068,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'mywebsite',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-external', { id: 'uuid-external', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-external', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-external');
     expect(result).not.toBeNull();
@@ -5884,7 +6094,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'mywebsite',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-special', { id: 'uuid-special', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-special', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-special');
     expect(result).not.toBeNull();
@@ -5915,7 +6125,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'mywebsite',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-links', { id: 'uuid-links', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-links', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-links');
     expect(result).not.toBeNull();
@@ -5950,7 +6160,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: '',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-anchor', { id: 'uuid-anchor', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-anchor', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-anchor');
     expect(capturedBlob).not.toBeNull();
@@ -5983,7 +6193,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: '',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-external', { id: 'uuid-external', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-external', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-external');
     expect(capturedBlob).not.toBeNull();
@@ -6019,8 +6229,8 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'website/images',
       mime: 'image/png'
     });
-    storedBlobs.set('uuid-inline', { id: 'uuid-inline', projectId: 'project-123', blob: htmlBlob });
-    storedBlobs.set('uuid-bg', { id: 'uuid-bg', projectId: 'project-123', blob: new Blob(['PNG'], { type: 'image/png' }) });
+    assetManager.blobCache.set('uuid-inline', htmlBlob);
+    assetManager.blobCache.set('uuid-bg', new Blob(['PNG'], { type: 'image/png' }));
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-inline');
     expect(result).not.toBeNull();
@@ -6055,8 +6265,8 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'site/icons',
       mime: 'image/png'
     });
-    storedBlobs.set('uuid-style', { id: 'uuid-style', projectId: 'project-123', blob: htmlBlob });
-    storedBlobs.set('uuid-star', { id: 'uuid-star', projectId: 'project-123', blob: new Blob(['STAR'], { type: 'image/png' }) });
+    assetManager.blobCache.set('uuid-style', htmlBlob);
+    assetManager.blobCache.set('uuid-star', new Blob(['STAR'], { type: 'image/png' }));
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-style');
     expect(result).not.toBeNull();
@@ -6090,8 +6300,8 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'mysite/styles',
       mime: 'text/css'
     });
-    storedBlobs.set('uuid-html-css', { id: 'uuid-html-css', projectId: 'project-123', blob: htmlBlob });
-    storedBlobs.set('uuid-css', { id: 'uuid-css', projectId: 'project-123', blob: cssBlob });
+    assetManager.blobCache.set('uuid-html-css', htmlBlob);
+    assetManager.blobCache.set('uuid-css', cssBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-html-css');
     expect(capturedBlob).not.toBeNull();
@@ -6132,8 +6342,8 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: '',
       mime: 'text/css'
     });
-    storedBlobs.set('uuid-html-media', { id: 'uuid-html-media', projectId: 'project-123', blob: htmlBlob });
-    storedBlobs.set('uuid-print-css', { id: 'uuid-print-css', projectId: 'project-123', blob: cssBlob });
+    assetManager.blobCache.set('uuid-html-media', htmlBlob);
+    assetManager.blobCache.set('uuid-print-css', cssBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-html-media');
     expect(capturedBlob).not.toBeNull();
@@ -6165,7 +6375,7 @@ describe('resolveHtmlWithAssets', () => {
       folderPath: 'site',
       mime: 'text/html'
     });
-    storedBlobs.set('uuid-nav', { id: 'uuid-nav', projectId: 'project-123', blob: htmlBlob });
+    assetManager.blobCache.set('uuid-nav', htmlBlob);
 
     const result = await assetManager.resolveHtmlWithAssets('uuid-nav');
     expect(capturedBlob).not.toBeNull();

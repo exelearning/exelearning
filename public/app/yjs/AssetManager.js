@@ -1,13 +1,35 @@
 /**
  * AssetManager
  *
- * Offline-first asset management for eXeLearning.
+ * In-memory + Cache API asset management for eXeLearning.
  *
  * Key features:
  * - Assets referenced with asset:// URLs in HTML (not base64 or http://)
- * - Stored in IndexedDB for offline use
+ * - Blobs stored in-memory (blobCache) + Cache API (persistent across reloads)
+ * - Metadata synced via Yjs Y.Map
  * - Deduplication by SHA-256 hash
- * - Uploaded to server only on explicit save
+ * - Assets downloaded from server on project open, uploaded on save
+ *
+ * Architecture:
+ *   Metadata: Yjs Y.Map (synced between clients)
+ *       ↓
+ *   Blobs: blobCache Map<assetId, Blob> (in-memory, fast)
+ *       ↓
+ *   Blobs: Cache API (persistent, survives page reload)
+ *       ↓
+ *   Display: blobURLCache Map<assetId, blob://>
+ *
+ * Cache API Persistence:
+ * - putAsset() and putBlob() write to both memory and Cache API
+ * - getBlob() checks memory first, then falls back to Cache API
+ * - deleteAsset() removes from both memory and Cache API
+ * - cleanup() clears the entire project cache
+ * - Per-project isolation via cache name: exe-assets-{projectId}
+ *
+ * Benefits:
+ * - Assets survive page reload (before saving to server)
+ * - No server traffic for local persistence
+ * - Works offline
  *
  * Usage:
  *   const manager = new AssetManager(projectId);
@@ -19,16 +41,15 @@
 // Logger is defined globally by yjs-loader.js before this file loads
 
 class AssetManager {
-  static DB_NAME = 'exelearning-assets'; // Yjs-based metadata, IndexedDB for blobs only
-  static DB_VERSION = 1; // Fresh start - blobs only schema
-  static STORE_NAME = 'blobs'; // Renamed from 'assets' to clarify purpose
-
   /**
    * @param {string} projectId - Project UUID
    */
   constructor(projectId) {
     this.projectId = projectId;
-    this.db = null;
+
+    // In-memory blob storage (replaces IndexedDB)
+    // Map: assetId -> Blob
+    this.blobCache = new Map();
 
     // Cache of blob URLs: assetId -> blob:// URL
     this.blobURLCache = new Map();
@@ -71,6 +92,88 @@ class AssetManager {
   setYjsBridge(bridge) {
     this.yjsBridge = bridge;
     Logger.log('[AssetManager] Yjs bridge attached');
+  }
+
+  // ===== Cache API Methods (persistent storage across page reloads) =====
+
+  /**
+   * Get Cache API cache name for this project
+   * @returns {string}
+   */
+  getCacheName() {
+    return `exe-assets-${this.projectId}`;
+  }
+
+  /**
+   * Store blob in Cache API for persistence across page reloads
+   * @param {string} id - Asset UUID
+   * @param {Blob} blob - Asset blob
+   * @private
+   */
+  async _putToCache(id, blob) {
+    if (!('caches' in window)) return; // Cache API not supported
+
+    try {
+      const cache = await caches.open(this.getCacheName());
+      const response = new Response(blob, {
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' }
+      });
+      await cache.put(`/asset/${id}`, response);
+    } catch (e) {
+      console.warn('[AssetManager] Cache API write failed:', e.message);
+    }
+  }
+
+  /**
+   * Get blob from Cache API
+   * @param {string} id - Asset UUID
+   * @returns {Promise<Blob|null>}
+   * @private
+   */
+  async _getFromCache(id) {
+    if (!('caches' in window)) return null;
+
+    try {
+      const cache = await caches.open(this.getCacheName());
+      const response = await cache.match(`/asset/${id}`);
+      if (response) {
+        return await response.blob();
+      }
+    } catch (e) {
+      console.warn('[AssetManager] Cache API read failed:', e.message);
+    }
+    return null;
+  }
+
+  /**
+   * Delete blob from Cache API
+   * @param {string} id - Asset UUID
+   * @private
+   */
+  async _deleteFromCache(id) {
+    if (!('caches' in window)) return;
+
+    try {
+      const cache = await caches.open(this.getCacheName());
+      await cache.delete(`/asset/${id}`);
+    } catch (e) {
+      // Ignore delete errors
+    }
+  }
+
+  /**
+   * Clear entire cache for this project
+   * Called on project close or after successful save
+   */
+  async clearCache() {
+    if (!('caches' in window)) return;
+
+    try {
+      await caches.delete(this.getCacheName());
+      Logger.log('[AssetManager] Cache cleared');
+    } catch (e) {
+      console.warn('[AssetManager] Cache clear failed:', e.message);
+    }
   }
 
   /**
@@ -170,55 +273,19 @@ class AssetManager {
   }
 
   /**
-   * Initialize database connection
+   * Initialize asset manager
    * Must be called before any other operations.
    *
-   * New architecture (v4):
-   * - IndexedDB stores ONLY blobs: {id, projectId, blob}
+   * Architecture (in-memory):
+   * - Blobs stored in blobCache Map (in-memory only)
    * - Metadata stored in Yjs Y.Map for instant sync
+   * - On page reload, blobs are re-fetched via downloadMissingAssets()
    *
    * @returns {Promise<void>}
    */
   async init() {
-    if (this.db) return;
-
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(AssetManager.DB_NAME, AssetManager.DB_VERSION);
-
-      request.onerror = () => {
-        console.error('[AssetManager] Failed to open IndexedDB:', request.error);
-        reject(request.error);
-      };
-
-      request.onsuccess = () => {
-        this.db = request.result;
-        Logger.log(`[AssetManager] Initialized blobs store for project ${this.projectId}`);
-        resolve();
-      };
-
-      // Handle blocked event - occurs when another tab has an older version open
-      request.onblocked = () => {
-        console.warn('[AssetManager] Database upgrade blocked by another tab. Rejecting.');
-        reject(new Error('AssetManager database blocked by another tab'));
-      };
-
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-
-        if (!db.objectStoreNames.contains(AssetManager.STORE_NAME)) {
-          // Create blobs store - minimal schema
-          // Only stores: {id (uuid), projectId, blob}
-          const store = db.createObjectStore(AssetManager.STORE_NAME, {
-            keyPath: 'id'
-          });
-
-          // Index for querying blobs by project
-          store.createIndex('projectId', 'projectId', { unique: false });
-
-          Logger.log('[AssetManager] Created blobs object store (v4 - Yjs metadata)');
-        }
-      };
-    });
+    // No-op: blobs stored in memory, no database needed
+    Logger.log(`[AssetManager] Initialized (in-memory) for project ${this.projectId}`);
   }
 
   /**
@@ -298,13 +365,11 @@ class AssetManager {
   }
 
   /**
-   * Store asset - metadata to Yjs, blob to IndexedDB
+   * Store asset - metadata to Yjs, blob to in-memory cache
    * @param {Object} asset - Full asset object with blob and metadata
    * @returns {Promise<void>}
    */
   async putAsset(asset) {
-    if (!this.db) throw new Error('Database not initialized');
-
     // 1. Store metadata in Yjs (instant sync to other clients)
     this.setAssetMetadata(asset.id, {
       filename: asset.filename,
@@ -316,98 +381,76 @@ class AssetManager {
       createdAt: asset.createdAt || new Date().toISOString()
     });
 
-    // 2. Store blob in IndexedDB (local cache)
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      // Store only blob data - metadata is in Yjs
-      store.put({
-        id: asset.id,
-        projectId: asset.projectId || this.projectId,
-        blob: asset.blob
-      });
+    // 2. Store blob in memory
+    this.blobCache.set(asset.id, asset.blob);
 
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    // 3. Persist to Cache API (background, non-blocking)
+    this._putToCache(asset.id, asset.blob).catch(() => {});
   }
 
   /**
-   * Store only blob in IndexedDB (without updating Yjs metadata)
+   * Store only blob in memory (without updating Yjs metadata)
    * Used when receiving blob from peer/server
    * @param {string} id - Asset UUID
    * @param {Blob} blob - Asset blob
    * @returns {Promise<void>}
    */
   async putBlob(id, blob) {
-    if (!this.db) throw new Error('Database not initialized');
-
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      store.put({
-        id,
-        projectId: this.projectId,
-        blob
-      });
-
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    this.blobCache.set(id, blob);
+    // Also persist to Cache API
+    this._putToCache(id, blob).catch(() => {});
   }
 
   /**
-   * Get blob from IndexedDB
+   * Get blob from memory
    * @param {string} id - Asset UUID
    * @returns {Promise<Blob|null>}
    */
   async getBlob(id) {
-    if (!this.db) throw new Error('Database not initialized');
+    // 1. Check in-memory cache first (fastest)
+    const memBlob = this.blobCache.get(id);
+    if (memBlob) return memBlob;
 
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const request = store.get(id);
+    // 2. Fallback to Cache API (survives page reload)
+    const cachedBlob = await this._getFromCache(id);
+    if (cachedBlob) {
+      // Restore to memory cache for faster subsequent access
+      this.blobCache.set(id, cachedBlob);
+      return cachedBlob;
+    }
 
-      request.onsuccess = () => {
-        const result = request.result;
-        resolve(result?.blob || null);
-      };
-      request.onerror = () => reject(request.error);
-    });
+    return null;
   }
 
   /**
-   * Get raw blob record from IndexedDB (includes projectId)
+   * Get raw blob record from memory (includes projectId)
    * Unlike getBlob() which returns just the blob, this returns the full record
    * with id, projectId, and blob - useful for checking which project owns the blob.
    * @param {string} id - Asset UUID
    * @returns {Promise<{id: string, projectId: string, blob: Blob}|null>}
    */
   async getBlobRecord(id) {
-    if (!this.db) return null;
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const request = store.get(id);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
+    // Use getBlob() to benefit from Cache API fallback
+    const blob = await this.getBlob(id);
+    if (!blob) return null;
+    return {
+      id,
+      projectId: this.projectId,
+      blob
+    };
   }
 
   /**
-   * Get asset by ID - combines Yjs metadata + IndexedDB blob
+   * Get asset by ID - combines Yjs metadata + in-memory blob
    * @param {string} id - Asset UUID
    * @returns {Promise<Object|null>}
    */
   async getAsset(id) {
-    if (!this.db) throw new Error('Database not initialized');
-
     // Get metadata from Yjs
     const metadata = this.getAssetMetadata(id);
 
-    // Get blob record from IndexedDB (includes projectId)
-    const blobRecord = await this.getBlobRecord(id);
+    // Get blob from memory
+    const blob = this.blobCache.get(id);
 
     // If we have metadata, return combined object
     if (metadata) {
@@ -415,24 +458,22 @@ class AssetManager {
         ...metadata,
         id,
         projectId: this.projectId,
-        blob: blobRecord?.blob || null // may be null if blob not cached locally
+        blob: blob || null // may be null if blob not cached locally
       };
     }
 
-    // Fallback: if no Yjs metadata but blob exists (cross-project asset reuse)
-    // IMPORTANT: Use the ACTUAL projectId from IndexedDB, not this.projectId
-    // This allows extractAssetsFromZip to detect when an asset belongs to another project
-    // and properly create metadata for the current project
-    if (blobRecord?.blob) {
+    // Fallback: if no Yjs metadata but blob exists
+    // With in-memory storage, all blobs belong to current project
+    if (blob) {
       return {
         id,
-        projectId: blobRecord.projectId, // Use actual stored projectId, not this.projectId
-        blob: blobRecord.blob,
+        projectId: this.projectId,
+        blob: blob,
         // Minimal metadata from blob alone
         filename: 'unknown',
         folderPath: '',
-        mime: blobRecord.blob.type || 'application/octet-stream',
-        size: blobRecord.blob.size,
+        mime: blob.type || 'application/octet-stream',
+        size: blob.size,
         uploaded: false
       };
     }
@@ -443,7 +484,7 @@ class AssetManager {
   /**
    * Get all assets for the project - reads from Yjs, optionally with blobs
    * @param {Object} options
-   * @param {boolean} options.includeBlobs - Include blobs from IndexedDB (default: true)
+   * @param {boolean} options.includeBlobs - Include blobs from memory (default: true)
    * @returns {Promise<Array>}
    */
   async getProjectAssets(options = {}) {
@@ -461,66 +502,38 @@ class AssetManager {
       }));
     }
 
-    if (!this.db) throw new Error('Database not initialized');
-
-    // Validate projectId is a valid IndexedDB key (string)
-    if (!this.projectId || typeof this.projectId !== 'string') {
-      console.warn('[AssetManager] getProjectAssets: Invalid projectId, returning empty array');
-      return [];
-    }
-
     Logger.log(`[AssetManager] getProjectAssets: ${metadataList.length} assets from Yjs`);
 
-    // Get blobs from IndexedDB and join with metadata
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const index = store.index('projectId');
-      const request = index.getAll(this.projectId);
+    // Count how many blobs are cached in memory
+    let blobCount = 0;
 
-      request.onsuccess = () => {
-        const blobRecords = request.result || [];
-
-        // Create blob lookup map
-        const blobMap = new Map();
-        for (const record of blobRecords) {
-          blobMap.set(record.id, record.blob);
-        }
-
-        // Join metadata with blobs
-        const assets = metadataList.map(meta => ({
-          ...meta,
-          projectId: this.projectId,
-          blob: blobMap.get(meta.id) || null
-        }));
-
-        Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobRecords.length} blobs cached)`);
-        resolve(assets);
+    // Join metadata with blobs from memory
+    const assets = metadataList.map(meta => {
+      const blob = this.blobCache.get(meta.id) || null;
+      if (blob) blobCount++;
+      return {
+        ...meta,
+        projectId: this.projectId,
+        blob
       };
-      request.onerror = () => reject(request.error);
     });
+
+    Logger.log(`[AssetManager] getProjectAssets: ${assets.length} assets (${blobCount} blobs in memory)`);
+    return assets;
   }
 
   /**
-   * Get ALL blobs from IndexedDB without filtering by projectId.
+   * Get ALL blobs from memory.
    * Used for debugging.
    * @returns {Promise<Array>}
    */
   async getAllBlobsRaw() {
-    if (!this.db) throw new Error('Database not initialized');
-
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readonly');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const blobs = request.result || [];
-        Logger.log(`[AssetManager] getAllBlobsRaw: Found ${blobs.length} total blobs in DB`);
-        resolve(blobs);
-      };
-      request.onerror = () => reject(request.error);
-    });
+    const blobs = [];
+    for (const [id, blob] of this.blobCache.entries()) {
+      blobs.push({ id, projectId: this.projectId, blob });
+    }
+    Logger.log(`[AssetManager] getAllBlobsRaw: Found ${blobs.length} total blobs in memory`);
+    return blobs;
   }
 
   /**
@@ -1683,7 +1696,7 @@ class AssetManager {
     const match = assets.find(a => a.hash === hash);
 
     if (match) {
-      // Get blob from IndexedDB if needed
+      // Get blob from memory if needed
       const blob = await this.getBlob(match.id);
       return {
         ...match,
@@ -1757,7 +1770,7 @@ class AssetManager {
    * 2. Calculate SHA-256 hash
    * 3. Generate deterministic ID from hash (content-addressable)
    * 4. Check if already exists (same content = same ID)
-   * 5. Store in IndexedDB with uploaded=false
+   * 5. Store in memory with uploaded=false
    * 6. Return asset:// URL
    *
    * @param {File} file - Image file
@@ -1968,7 +1981,7 @@ class AssetManager {
       return cachedBlobUrl;
     }
 
-    // Load from IndexedDB
+    // Load from memory
     const asset = await this.getAsset(assetId);
     if (!asset) {
       console.warn(`[AssetManager] Asset not found: ${assetId}`);
@@ -2419,10 +2432,6 @@ class AssetManager {
    * @returns {Promise<Map<string, string>>} Map of originalPath -> assetId
    */
   async extractAssetsFromZip(zip) {
-    if (!this.db) {
-      throw new Error('AssetManager not initialized. Call init() first before extracting assets.');
-    }
-
     const assetMap = new Map();
     const assetFiles = [];
 
@@ -3032,7 +3041,7 @@ class AssetManager {
       };
     }
 
-    // Try to load from IndexedDB
+    // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset) {
       const blobURL = await this.createBlobURL(asset.blob);
@@ -3091,7 +3100,7 @@ class AssetManager {
       };
     }
 
-    // Try to load from IndexedDB
+    // Try to load from memory
     const asset = await this.getAsset(assetId);
     if (asset) {
       const blobURL = await this.createBlobURL(asset.blob);
@@ -3321,7 +3330,7 @@ class AssetManager {
   }
 
   /**
-   * Delete asset - removes metadata from Yjs, blob from IndexedDB, and file from server
+   * Delete asset - removes metadata from Yjs, blob from memory, and file from server
    * @param {string} id
    * @param {Object} options - Optional configuration
    * @param {boolean} options.skipServerDelete - If true, skip server deletion (used by bulk operations)
@@ -3339,31 +3348,18 @@ class AssetManager {
       this.reverseBlobCache.delete(blobURL);
     }
 
-    // 3. Delete blob from IndexedDB
-    if (!this.db) {
-      Logger.log(`[AssetManager] DB not initialized, skipping blob deletion for ${id}`);
-      // Still try to delete from server
-      if (!options.skipServerDelete) {
-        this._deleteFromServer(id).catch(() => {}); // Fire-and-forget
-      }
-      return;
+    // 3. Delete blob from memory
+    this.blobCache.delete(id);
+
+    // 4. Delete from Cache API (non-blocking)
+    this._deleteFromCache(id).catch(() => {});
+
+    Logger.log(`[AssetManager] Deleted asset ${id.substring(0, 8)}... from Yjs, memory, and cache`);
+
+    // 5. Delete from server (fire-and-forget, don't block local deletion)
+    if (!options.skipServerDelete) {
+      this._deleteFromServer(id).catch(() => {}); // Errors are logged inside _deleteFromServer
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([AssetManager.STORE_NAME], 'readwrite');
-      const store = tx.objectStore(AssetManager.STORE_NAME);
-      const request = store.delete(id);
-
-      request.onsuccess = () => {
-        Logger.log(`[AssetManager] Deleted asset ${id.substring(0, 8)}... from Yjs and IndexedDB`);
-        // 4. Delete from server (fire-and-forget, don't block local deletion)
-        if (!options.skipServerDelete) {
-          this._deleteFromServer(id).catch(() => {}); // Errors are logged inside _deleteFromServer
-        }
-        resolve();
-      };
-      request.onerror = () => reject(request.error);
-    });
   }
 
   /**
@@ -3557,10 +3553,10 @@ class AssetManager {
         continue;
       }
 
-      // Skip if already in IndexedDB (just not loaded to cache yet)
+      // Skip if already in memory (just not loaded to URL cache yet)
       const existingAsset = await this.getAsset(assetId);
       if (existingAsset?.blob) {
-        // Load it to cache (use createBlobURL with fallback)
+        // Load it to URL cache (use createBlobURL with fallback)
         const blobURL = await this.createBlobURL(existingAsset.blob);
         this.blobURLCache.set(assetId, blobURL);
         this.reverseBlobCache.set(blobURL, assetId);
@@ -3568,7 +3564,7 @@ class AssetManager {
         this.failedAssets.delete(assetId); // Clear failure tracking
         // Update DOM
         await this.updateDomImagesForAsset(assetId);
-        Logger.log(`[AssetManager] Found ${assetId.substring(0, 8)}... in IndexedDB, loaded to cache`);
+        Logger.log(`[AssetManager] Found ${assetId.substring(0, 8)}... in memory, loaded to URL cache`);
         continue;
       }
 
@@ -3623,7 +3619,7 @@ class AssetManager {
         // Calculate hash
         const hash = await this.calculateHash(blob);
 
-        // Store in IndexedDB
+        // Store in memory
         const asset = {
           id: assetId,
           projectId: this.projectId,
@@ -3711,7 +3707,7 @@ class AssetManager {
   }
 
   /**
-   * Get asset IDs that have local blobs in IndexedDB
+   * Get asset IDs that have local blobs in memory
    * Used to announce asset availability to peers - only announces assets we can actually serve
    * @returns {Promise<string[]>} Array of asset UUIDs with local blobs
    */
@@ -3720,11 +3716,11 @@ class AssetManager {
     const localBlobIds = [];
 
     for (const asset of allAssets) {
-      // Check if we have the blob locally (in cache or IndexedDB)
+      // Check if we have the blob locally in memory
       if (asset.blob) {
         localBlobIds.push(asset.id);
       } else {
-        // Double-check IndexedDB directly
+        // Double-check memory directly
         const hasBlob = await this.hasLocalBlob(asset.id);
         if (hasBlob) {
           localBlobIds.push(asset.id);
@@ -3748,7 +3744,7 @@ class AssetManager {
   }
 
   /**
-   * Check if asset blob exists in IndexedDB (not just metadata)
+   * Check if asset blob exists in memory (not just metadata)
    * Unlike hasAsset(), this returns true only if the actual binary blob is available locally.
    * Used to determine if we need to fetch the blob from peers or server.
    * @param {string} assetId - Asset UUID
@@ -3911,7 +3907,7 @@ class AssetManager {
         continue;
       }
 
-      // Skip if blob already exists in IndexedDB
+      // Skip if blob already exists in memory
       // Note: Use hasLocalBlob() not hasAsset() - the latter returns true for Yjs-only metadata
       const hasBlob = await this.hasLocalBlob(assetId);
       if (hasBlob) {
@@ -3952,7 +3948,7 @@ class AssetManager {
           const success = await this.wsHandler.requestAsset(assetId, timeout);
 
           if (success) {
-            // Asset should now be in IndexedDB - load to cache
+            // Asset should now be in memory - load to URL cache
             const asset = await this.getAsset(assetId);
             if (asset && asset.blob) {
               const blobURL = await this.createBlobURL(asset.blob);
@@ -4015,7 +4011,7 @@ class AssetManager {
   }
 
   /**
-   * Cleanup blob URLs and close database
+   * Cleanup blob URLs and clear memory
    * MUST be called when done
    */
   cleanup() {
@@ -4026,12 +4022,44 @@ class AssetManager {
     this.blobURLCache.clear();
     this.reverseBlobCache.clear();
 
-    if (this.db) {
-      this.db.close();
-      this.db = null;
-    }
+    // Clear blob cache (releases memory)
+    this.blobCache.clear();
+
+    // Clear Cache API storage
+    this.clearCache().catch(() => {});
 
     Logger.log('[AssetManager] Cleaned up');
+  }
+
+  /**
+   * Check if there are unsaved assets (blobs in memory that haven't been uploaded)
+   * Used by beforeunload handler to warn users
+   * @returns {boolean} True if there are unsaved local blobs
+   */
+  hasUnsavedAssets() {
+    // Check if any assets with local blobs have not been uploaded
+    const allMetadata = this.getAllAssetsMetadata();
+    for (const meta of allMetadata) {
+      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Get count of unsaved assets (for UI display)
+   * @returns {number} Number of assets with local blobs not yet uploaded
+   */
+  getUnsavedAssetCount() {
+    const allMetadata = this.getAllAssetsMetadata();
+    let count = 0;
+    for (const meta of allMetadata) {
+      if (!meta.uploaded && this.blobCache.has(meta.id)) {
+        count++;
+      }
+    }
+    return count;
   }
 }
 
