@@ -830,10 +830,13 @@ describe('common_edition.js', () => {
 
     describe('addEvents', () => {
       let originalAlert;
+      let originalWindowOpen;
 
       beforeEach(() => {
         originalAlert = global.alert;
+        originalWindowOpen = global.window.open;
         global.alert = vi.fn();
+        global.window.open = vi.fn();
         document.body.innerHTML = `
           <textarea id="eXeEQuestionsArea"></textarea>
           <textarea id="eXeEPromptArea"></textarea>
@@ -844,6 +847,11 @@ describe('common_edition.js', () => {
           <button id="eXeEIAButton"></button>
           <button id="eXeECopyButton"></button>
           <button id="eXeEOpenChatGPTButton"></button>
+          <select id="eXeEIASelect">
+            <option value="https://chatgpt.com/?q=">ChatGPT</option>
+            <option value="https://grok.com/?q=">Grok</option>
+            <option value="https://claude.ai/new?q=">Claude</option>
+          </select>
           <button id="eXeGameAddQuestion"></button>
           <a id="eXeETabQuestions" class="active"></a>
           <a id="eXeETabPrompt"></a>
@@ -853,6 +861,7 @@ describe('common_edition.js', () => {
 
       afterEach(() => {
         global.alert = originalAlert;
+        global.window.open = originalWindowOpen;
       });
 
       it('saveButton click shows success alert when all lines are valid', () => {
@@ -898,6 +907,73 @@ describe('common_edition.js', () => {
 
         expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
         expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
+      });
+
+      it('openChatGPTButton click shows alert when prompt is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
+        expect(global.window.open).not.toHaveBeenCalled();
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (ChatGPT)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Generate 5 questions about history');
+        $('#eXeEIASelect').val('https://chatgpt.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://chatgpt.com/?q=Generate%205%20questions%20about%20history',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (Claude)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Test prompt');
+        $('#eXeEIASelect').val('https://claude.ai/new?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://claude.ai/new?q=Test%20prompt',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click opens URL with selected AI service (Grok)', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('My question');
+        $('#eXeEIASelect').val('https://grok.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://grok.com/?q=My%20question',
+          '_blank'
+        );
+      });
+
+      it('openChatGPTButton click trims whitespace from prompt', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('   test prompt with spaces   ');
+        $('#eXeEIASelect').val('https://chatgpt.com/?q=');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(global.window.open).toHaveBeenCalledWith(
+          'https://chatgpt.com/?q=test%20prompt%20with%20spaces',
+          '_blank'
+        );
       });
     });
   });
@@ -1045,6 +1121,240 @@ describe('common_edition.js', () => {
 
       globalThis.$exeDevicesEdition.iDevice.save();
       expect($('.mceEditor').val()).toBe('original');
+    });
+  });
+
+  describe('gamification.helpers', () => {
+    let mockAudioInstance;
+
+    beforeEach(() => {
+      mockAudioInstance = {
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn(),
+        paused: true,
+      };
+
+      // Use a function constructor instead of vi.fn to properly mock Audio class
+      globalThis.Audio = vi.fn().mockImplementation(function(url) {
+        return mockAudioInstance;
+      });
+
+      // Reset helpers state
+      globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = null;
+      globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl = null;
+    });
+
+    afterEach(() => {
+      delete globalThis.Audio;
+      delete globalThis.window.eXeLearningAssetResolver;
+      delete globalThis.$exeDevices;
+    });
+
+    describe('playSound', () => {
+      it('plays audio with a regular URL', async () => {
+        const audioUrl = 'https://example.com/audio.mp3';
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl);
+
+        expect(globalThis.Audio).toHaveBeenCalledWith(audioUrl);
+        expect(mockAudioInstance.play).toHaveBeenCalled();
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl).toBe(audioUrl);
+      });
+
+      it('returns early for invalid audio URL (null)', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(null);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+        expect(globalThis.Audio).not.toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+      });
+
+      it('returns early for invalid audio URL (non-string)', async () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(123);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+        expect(globalThis.Audio).not.toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+      });
+
+      it('stops currently playing audio when same URL is playing (toggle behavior)', async () => {
+        const audioUrl = 'https://example.com/audio.mp3';
+
+        // First play
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl);
+
+        // Simulate audio is playing
+        mockAudioInstance.paused = false;
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = mockAudioInstance;
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl = audioUrl;
+
+        // Second play with same URL - should toggle off
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl);
+
+        expect(mockAudioInstance.pause).toHaveBeenCalled();
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl).toBeNull();
+      });
+
+      it('stops previous audio before playing new one', async () => {
+        const audioUrl1 = 'https://example.com/audio1.mp3';
+        const audioUrl2 = 'https://example.com/audio2.mp3';
+
+        // First play
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl1);
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = mockAudioInstance;
+
+        // Create new mock for second audio
+        const mockAudioInstance2 = {
+          play: vi.fn().mockResolvedValue(undefined),
+          pause: vi.fn(),
+          paused: true,
+        };
+        globalThis.Audio = vi.fn().mockImplementation(function(url) {
+          return mockAudioInstance2;
+        });
+
+        // Second play with different URL
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl2);
+
+        expect(mockAudioInstance.pause).toHaveBeenCalled();
+        expect(mockAudioInstance2.play).toHaveBeenCalled();
+      });
+
+      it('resolves asset:// URLs using eXeLearningAssetResolver', async () => {
+        const assetUrl = 'asset://12345';
+        const resolvedUrl = 'blob:https://example.com/resolved-audio';
+
+        globalThis.window.eXeLearningAssetResolver = {
+          resolve: vi.fn().mockResolvedValue(resolvedUrl),
+        };
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(assetUrl);
+
+        expect(globalThis.window.eXeLearningAssetResolver.resolve).toHaveBeenCalledWith(assetUrl);
+        expect(globalThis.Audio).toHaveBeenCalledWith(resolvedUrl);
+        expect(mockAudioInstance.play).toHaveBeenCalled();
+      });
+
+      it('returns early if asset:// URL cannot be resolved', async () => {
+        const assetUrl = 'asset://12345';
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        globalThis.window.eXeLearningAssetResolver = {
+          resolve: vi.fn().mockResolvedValue(null),
+        };
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(assetUrl);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Could not resolve asset URL');
+        expect(globalThis.Audio).not.toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+      });
+
+      it('returns early if AssetResolver throws an error', async () => {
+        const assetUrl = 'asset://12345';
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        globalThis.window.eXeLearningAssetResolver = {
+          resolve: vi.fn().mockRejectedValue(new Error('Resolver error')),
+        };
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(assetUrl);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Error resolving asset URL:', expect.any(Error));
+        expect(globalThis.Audio).not.toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+      });
+
+      it('returns early if AssetResolver is not available for asset:// URLs', async () => {
+        const assetUrl = 'asset://12345';
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        // No AssetResolver defined
+        delete globalThis.window.eXeLearningAssetResolver;
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(assetUrl);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: AssetResolver not available');
+        expect(globalThis.Audio).not.toHaveBeenCalled();
+
+        consoleSpy.mockRestore();
+      });
+
+      it('uses extractURLGD for Google Drive URLs when $exeDevices is available', async () => {
+        const gdUrl = 'https://drive.google.com/file/d/123/view?usp=sharing';
+        const extractedUrl = 'https://docs.google.com/uc?export=open&id=123';
+
+        globalThis.$exeDevices = {
+          iDevice: {
+            gamification: {
+              media: {
+                extractURLGD: vi.fn().mockReturnValue(extractedUrl),
+              },
+            },
+          },
+        };
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(gdUrl);
+
+        expect(globalThis.$exeDevices.iDevice.gamification.media.extractURLGD).toHaveBeenCalledWith(gdUrl);
+        expect(globalThis.Audio).toHaveBeenCalledWith(extractedUrl);
+      });
+
+      it('handles audio play error gracefully', async () => {
+        const audioUrl = 'https://example.com/audio.mp3';
+        const playError = new Error('Play failed');
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        mockAudioInstance.play = vi.fn().mockRejectedValue(playError);
+
+        await globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playSound(audioUrl);
+
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Error playing audio:', playError);
+
+        consoleSpy.mockRestore();
+      });
+    });
+
+    describe('stopSound', () => {
+      it('stops playing audio and resets state', () => {
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = mockAudioInstance;
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl = 'https://example.com/audio.mp3';
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
+        expect(mockAudioInstance.pause).toHaveBeenCalled();
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio).toBeNull();
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl).toBeNull();
+      });
+
+      it('does nothing if no audio is playing', () => {
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = null;
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl = null;
+
+        // Should not throw
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio).toBeNull();
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl).toBeNull();
+      });
+
+      it('resets currentAudioUrl even if playerAudio has no pause function', () => {
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.playerAudio = {};
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl = 'https://example.com/audio.mp3';
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+
+        // playerAudio should remain unchanged (no pause to call)
+        expect(globalThis.$exeDevicesEdition.iDevice.gamification.helpers.currentAudioUrl).toBeNull();
+      });
     });
   });
 

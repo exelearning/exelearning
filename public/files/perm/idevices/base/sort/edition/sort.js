@@ -605,7 +605,7 @@ var $exeDevice = {
         $('#ordenaEURLAudioKO').val(phrase.audioError);
         $('#ordenaEPraseI').val(phrase.phrase);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
     initPhrases: function () {
         $exeDevice.active = 0;
@@ -1784,8 +1784,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },

@@ -705,10 +705,10 @@ var $exeDevice = {
             tinyMCE.get('adivinaEText').setContent(unescape(p.eText));
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#adivinaEURLAudio').val(p.audio);
@@ -1306,7 +1306,7 @@ var $exeDevice = {
         p.audio = $('#adivinaEURLAudio').val();
         p.msgHit = $('#adivinaEMessageOK').val();
         p.msgError = $('#adivinaEMessageKO').val();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
@@ -1745,8 +1745,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#adivinaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1995,8 +1994,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

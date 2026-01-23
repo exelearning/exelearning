@@ -708,10 +708,10 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         p.audio = p.audio && p.audio !== 'undefined' ? p.audio : '';
         if (p.type !== 2 && p.audio.trim().length > 4)
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
 
         $('#quextEURLAudio').val(p.audio);
         $('#quextENumberQuestion').val(i + 1);
@@ -1756,7 +1756,7 @@ var $exeDevice = {
         p.url = $('#quextEURLImage').val().trim();
         p.audio = $('#quextEURLAudio').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
 
         if (p.type === 2) {
@@ -2654,8 +2654,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#quextEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -2666,8 +2665,7 @@ var $exeDevice = {
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

@@ -556,9 +556,9 @@ var $exeDevice = {
         };
     },
 
+ 
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
-
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             let wrapper = $('<div></div>');
             wrapper.html(originalHTML);
@@ -598,6 +598,11 @@ var $exeDevice = {
                 typeof dataGame.version == 'undefined' ||
                 dataGame.version < 1
             ) {
+                for (let i = 0; i < dataGame.wordsGame.length; i++) {
+                    dataGame.wordsGame[i].url0 = ''
+                    dataGame.wordsGame[i].url1 = ''
+                    dataGame.wordsGame[i].url2 = ''
+                }
                 $imagesLink0.each(function () {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < dataGame.wordsGame.length) {
@@ -605,6 +610,9 @@ var $exeDevice = {
                         if (dataGame.wordsGame[iq].url0.length < 4) {
                             dataGame.wordsGame[iq].url0 = '';
                         }
+                        if (dataGame.version < 4 && dataGame.wordsGame[iq].type == 0) {
+                             dataGame.wordsGame[iq].url0 = ''
+                        }                            
                     }
                 });
 
@@ -625,6 +633,9 @@ var $exeDevice = {
                         if (dataGame.wordsGame[iq].url1.length < 4) {
                             dataGame.wordsGame[iq].url1 = '';
                         }
+                        if (dataGame.version < 4 && dataGame.wordsGame[iq].type == 0) {
+                             dataGame.wordsGame[iq].url1 = ''
+                        }   
                     }
                 });
 
@@ -645,6 +656,9 @@ var $exeDevice = {
                         if (dataGame.wordsGame[iq].url2.length < 4) {
                             dataGame.wordsGame[iq].url2 = '';
                         }
+                        if (dataGame.version < 4 && dataGame.wordsGame[iq].type == 0) {
+                             dataGame.wordsGame[iq].url2 = '';
+                        }  
                     }
                 });
 
@@ -665,6 +679,9 @@ var $exeDevice = {
                         if (dataGame.wordsGame[iq].url3.length < 4) {
                             dataGame.wordsGame[iq].url3 = '';
                         }
+                        if (dataGame.version < 4 && dataGame.wordsGame[iq].type == 0) {
+                             dataGame.wordsGame[iq].url3 = ''
+                        }  
                     }
                 });
 
@@ -722,7 +739,12 @@ var $exeDevice = {
                     words.push(p);
                 }
                 dataGame.wordsGame = words;
-            } else {
+            } else { for (let i = 0; i < dataGame.wordsGame.length; i++) {
+                for (let k = 0; k < dataGame.wordsGame[i].data.length; k++){
+                        dataGame.wordsGame[i].data[k].url = '';
+                    }
+                }               
+
                 for (let k = 0; k < linkImages.length; k++) {
                     const $linImg = linkImages[k];
                     $linImg.each(function () {
@@ -941,7 +963,7 @@ var $exeDevice = {
         q.msgHit = $('#descubreEMessageOK').val();
         q.msgError = $('#descubreEMessageKO').val();
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let num_cards = 2;
         if (gameMode == 1) {
@@ -1813,16 +1835,15 @@ var $exeDevice = {
     },
 
     loadAudio: function (url) {
-        const validExt = ['mp3', 'ogg', 'waw'],
+        const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
+            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1865,7 +1886,7 @@ var $exeDevice = {
 
             $exeDevice.showImage('', 0, 0, _('No image'), i);
         }
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     addQuestion: function () {

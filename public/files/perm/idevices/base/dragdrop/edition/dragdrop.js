@@ -30,6 +30,7 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
+
         if (!element) return;
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -465,7 +466,7 @@ var $exeDevice = {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $('#dadEURLImage').val(p.url);
         $('#dadEAuthor').val(p.author);
         $('#dadEAlt').val(p.alt);
@@ -475,7 +476,7 @@ var $exeDevice = {
         $('#dadENumCards').text($exeDevice.cardsGame.length);
 
         if (p.audio.length > 3) {
-            $exeDevice.playSound(p.audio);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
         }
         $exeDevice.showImage(p.url);
     },
@@ -641,9 +642,10 @@ var $exeDevice = {
         const originalHTML = this.idevicePreviousData;
 
         if (originalHTML && Object.keys(originalHTML).length > 0) {
-            const wrapper = $('<div></div>').html(originalHTML),
-                json = $('.dragdrop-DataGame', wrapper).text(),
-                dataGame =
+            const wrapper = $('<div></div>').html(originalHTML);
+            let json = $('.dragdrop-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            const dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.dragdrop-LinkImages', wrapper),
@@ -1232,8 +1234,7 @@ var $exeDevice = {
         }
 
         if (url.length > 4) {
-            $exeDevice.stopSound();
-            $exeDevice.playSound(url);
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 

@@ -928,7 +928,7 @@ var $eXeTrivial = {
             $eXeTrivial.correctAnswer(instance);
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $eXeTrivial.saveEvaluation(instance);
         $eXeTrivial.saveDataStorage(instance);
     },
@@ -2267,8 +2267,7 @@ var $eXeTrivial = {
                     mOptions.activesQuestions[mOptions.activeTema]
                 ];
             const audio = mq.audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         if (typeof mOptions.trivialID != 'undefined') {
@@ -2580,7 +2579,7 @@ var $eXeTrivial = {
 
         $eXeTrivial.startVideo('', 0, 0, instance);
         $exeDevices.iDevice.gamification.media.stopVideo(instance);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#trivialDivModeBoard-' + instance).hide();
         $('#trivialImagen-' + instance).hide();
@@ -2901,12 +2900,9 @@ var $eXeTrivial = {
             $('#trivialLinkAudio-' + instance).show();
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         if (q.type != 2 && q.audio.trim().length > 5) {
-            $exeDevices.iDevice.gamification.media.playSound(
-                q.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(q.audio.trim());
         }
         $('#trivialEdAnswer-' + instance).focus();
     },
