@@ -53,8 +53,7 @@
   // Each group is loaded in parallel, groups are loaded sequentially
   const LOCAL_MODULE_GROUPS = [
     // Group 0: Shared importers bundle (TypeScript from src/shared/import/)
-    // Contains LegacyHandlerRegistry and all legacy iDevice handlers
-    // Must load BEFORE LegacyXmlParser which uses LegacyHandlerRegistry
+    // Contains LegacyHandlerRegistry, LegacyXmlParser, ElpxImporter, and all legacy iDevice handlers
     [
       'importers.bundle.js',  // Compiled from src/shared/import/browser/index.ts
     ],
@@ -66,7 +65,6 @@
       'AssetCacheManager.js',
       'AssetManager.js',
       'AssetWebSocketHandler.js',
-      'LegacyXmlParser.js',  // Now can use LegacyHandlerRegistry
       'ResourceCache.js',    // IndexedDB cache for ResourceFetcher
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)

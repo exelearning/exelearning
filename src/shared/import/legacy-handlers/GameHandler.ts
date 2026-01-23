@@ -389,7 +389,11 @@ export class GameHandler extends BaseLegacyHandler {
         for (const regex of patterns) {
             const match = html.match(regex);
             if (match?.[1]) {
-                return match[1].trim();
+                // Decode HTML entities in the extracted content
+                // The content may be double-encoded from legacy XML
+                let content = match[1].trim();
+                content = this.decodeHtmlContent(content);
+                return content;
             }
         }
 
@@ -461,12 +465,12 @@ export class GameHandler extends BaseLegacyHandler {
                 return obj as Record<string, unknown>;
             }
         } catch (_e) {
-            // Try to fix common JSON issues (newlines, tabs inside strings)
+            // Try to fix common JSON issues (newlines, tabs, NBSP inside strings)
             try {
                 // Escape control characters that may be inside string values
                 // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching control characters
                 const controlCharRegex = /[\x00-\x1F]/g;
-                const fixedStr = str.replace(controlCharRegex, char => {
+                let fixedStr = str.replace(controlCharRegex, char => {
                     const escapes: Record<string, string> = {
                         '\n': '\\n',
                         '\r': '\\r',
@@ -474,6 +478,8 @@ export class GameHandler extends BaseLegacyHandler {
                     };
                     return escapes[char] || '';
                 });
+                // Replace non-breaking spaces (NBSP, char 160) with regular spaces
+                fixedStr = fixedStr.replace(/\u00A0/g, ' ');
 
                 const obj = JSON.parse(fixedStr);
                 if (obj && typeof obj === 'object' && !Array.isArray(obj)) {

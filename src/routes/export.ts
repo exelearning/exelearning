@@ -261,13 +261,10 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
                 compMap.set('type', comp.ideviceType || 'FreeTextIdevice');
                 compMap.set('htmlContent', comp.htmlContent || '');
 
-                // Component properties
-                if (comp.properties) {
-                    const compPropsMap = new Y.Map();
-                    for (const [key, value] of Object.entries(comp.properties)) {
-                        compPropsMap.set(key, value);
-                    }
-                    compMap.set('properties', compPropsMap);
+                // Component properties - store as JSON string in jsonProperties field
+                // This matches the browser-side ComponentImporter.createComponentYMap behavior
+                if (comp.properties && Object.keys(comp.properties).length > 0) {
+                    compMap.set('jsonProperties', JSON.stringify(comp.properties));
                 }
 
                 componentsArray.push([compMap]);
