@@ -15,28 +15,7 @@
  */
 
 import type { IdeviceHandler, IdeviceHandlerContext, FeedbackResult, BlockProperties } from './IdeviceHandler';
-
-/**
- * Localized feedback button translations
- * Maps language codes to their translated "Show Feedback" text
- */
-const FEEDBACK_TRANSLATIONS: Record<string, string> = {
-    es: 'Mostrar retroalimentaci\u00f3n',
-    en: 'Show Feedback',
-    ca: 'Mostra la retroalimentaci\u00f3',
-    eu: 'Erakutsi feedbacka',
-    gl: 'Mostrar retroalimentaci\u00f3n',
-    pt: 'Mostrar feedback',
-    fr: 'Afficher le feedback',
-    de: 'Feedback anzeigen',
-    it: 'Mostra feedback',
-    nl: 'Toon feedback',
-    pl: 'Poka\u017c informacj\u0119 zwrotn\u0105',
-    ru: '\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u043e\u0442\u0437\u044b\u0432',
-    zh: '\u663e\u793a\u53cd\u9988',
-    ja: '\u30d5\u30a3\u30fc\u30c9\u30d0\u30c3\u30af\u3092\u8868\u793a',
-    ar: '\u0625\u0638\u0647\u0627\u0631 \u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0627\u062a',
-};
+import { FEEDBACK_TRANSLATIONS } from '../interfaces';
 
 /**
  * Abstract base class for legacy iDevice handlers

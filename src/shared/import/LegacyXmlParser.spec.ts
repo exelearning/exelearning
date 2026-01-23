@@ -6,6 +6,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { LegacyXmlParser } from './LegacyXmlParser';
+import { FEEDBACK_TRANSLATIONS } from './interfaces';
 
 describe('LegacyXmlParser', () => {
     let parser: LegacyXmlParser;
@@ -39,10 +40,11 @@ describe('LegacyXmlParser', () => {
             expect(LegacyXmlParser.LEGACY_ICON_MAP.casestudy).toBe('case');
         });
 
-        it('should have FEEDBACK_TRANSLATIONS', () => {
-            expect(LegacyXmlParser.FEEDBACK_TRANSLATIONS).toBeDefined();
-            expect(LegacyXmlParser.FEEDBACK_TRANSLATIONS.es).toBeDefined();
-            expect(LegacyXmlParser.FEEDBACK_TRANSLATIONS.en).toBe('Show Feedback');
+        it('should have FEEDBACK_TRANSLATIONS imported from interfaces', () => {
+            // FEEDBACK_TRANSLATIONS is now a shared constant imported from interfaces
+            expect(FEEDBACK_TRANSLATIONS).toBeDefined();
+            expect(FEEDBACK_TRANSLATIONS.es).toBe('Mostrar retroalimentación');
+            expect(FEEDBACK_TRANSLATIONS.en).toBe('Show Feedback');
         });
 
         it('should have IDEVICE_TITLE_TRANSLATIONS', () => {
@@ -55,7 +57,7 @@ describe('LegacyXmlParser', () => {
     describe('getLocalizedFeedbackText', () => {
         it('should return Spanish text for es language', () => {
             const result = parser.getLocalizedFeedbackText('es');
-            expect(result).toBe('Mostrar retroalimentacion');
+            expect(result).toBe('Mostrar retroalimentación');
         });
 
         it('should return English text for en language', () => {
@@ -65,17 +67,17 @@ describe('LegacyXmlParser', () => {
 
         it('should handle language codes with region', () => {
             const result = parser.getLocalizedFeedbackText('es-ES');
-            expect(result).toBe('Mostrar retroalimentacion');
+            expect(result).toBe('Mostrar retroalimentación');
         });
 
         it('should default to Spanish for unknown languages', () => {
             const result = parser.getLocalizedFeedbackText('xx');
-            expect(result).toBe('Mostrar retroalimentacion');
+            expect(result).toBe('Mostrar retroalimentación');
         });
 
         it('should default to Spanish for empty string', () => {
             const result = parser.getLocalizedFeedbackText('');
-            expect(result).toBe('Mostrar retroalimentacion');
+            expect(result).toBe('Mostrar retroalimentación');
         });
     });
 

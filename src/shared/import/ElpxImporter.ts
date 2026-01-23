@@ -713,26 +713,26 @@ export class ElpxImporter {
         }
 
         return {
-            title: odeProperties
-                ? this.getPropertyValue(odeProperties, 'pp_title') || 'Imported Project'
-                : 'Imported Project',
-            subtitle: odeProperties ? this.getPropertyValue(odeProperties, 'pp_subtitle') || '' : '',
-            author: odeProperties ? this.getPropertyValue(odeProperties, 'pp_author') || '' : '',
-            language: odeProperties ? this.getPropertyValue(odeProperties, 'pp_lang') || 'en' : 'en',
-            description: odeProperties ? this.getPropertyValue(odeProperties, 'pp_description') || '' : '',
-            license: odeProperties ? this.getPropertyValue(odeProperties, 'pp_license') || '' : '',
+            title: this.getMetadataProperty(odeProperties, 'pp_title', 'Imported Project'),
+            subtitle: this.getMetadataProperty(odeProperties, 'pp_subtitle'),
+            author: this.getMetadataProperty(odeProperties, 'pp_author'),
+            language: this.getMetadataProperty(odeProperties, 'pp_lang', 'en'),
+            description: this.getMetadataProperty(odeProperties, 'pp_description'),
+            license: this.getMetadataProperty(odeProperties, 'pp_license'),
             theme: themeFromXml,
-            addPagination: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addPagination', false) : false,
-            addSearchBox: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addSearchBox', false) : false,
-            addExeLink: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addExeLink', true) : true,
-            addAccessibilityToolbar: odeProperties
-                ? this.parseBooleanProperty(odeProperties, 'pp_addAccessibilityToolbar', false)
-                : false,
-            exportSource: odeProperties ? this.parseBooleanProperty(odeProperties, 'exportSource', true) : true,
-            extraHeadContent: odeProperties ? this.getPropertyValue(odeProperties, 'pp_extraHeadContent') || '' : '',
-            footer: odeProperties ? this.getPropertyValue(odeProperties, 'footer') || '' : '',
-            addMathJax: odeProperties ? this.parseBooleanProperty(odeProperties, 'pp_addMathJax', false) : false,
-            globalFont: odeProperties ? this.getPropertyValue(odeProperties, 'pp_globalFont') || 'default' : 'default',
+            addPagination: this.getBooleanMetadataProperty(odeProperties, 'pp_addPagination', false),
+            addSearchBox: this.getBooleanMetadataProperty(odeProperties, 'pp_addSearchBox', false),
+            addExeLink: this.getBooleanMetadataProperty(odeProperties, 'pp_addExeLink', true),
+            addAccessibilityToolbar: this.getBooleanMetadataProperty(
+                odeProperties,
+                'pp_addAccessibilityToolbar',
+                false,
+            ),
+            exportSource: this.getBooleanMetadataProperty(odeProperties, 'exportSource', true),
+            extraHeadContent: this.getMetadataProperty(odeProperties, 'pp_extraHeadContent'),
+            footer: this.getMetadataProperty(odeProperties, 'footer'),
+            addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
+            globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
         };
     }
 
@@ -1240,85 +1240,75 @@ export class ElpxImporter {
      * Get navigation order from nav structure
      */
     private getNavOrder(navNode: Element): number {
-        const order = navNode.getAttribute('odeNavStructureOrder');
-        if (order) return parseInt(order, 10) || 0;
+        return this.getOrderValue(navNode, ['odeNavStructureOrder'], 'odeNavStructureOrder');
+    }
 
-        const orderEl = this.getElement(navNode, 'odeNavStructureOrder');
-        if (orderEl) return parseInt(orderEl.textContent || '0', 10) || 0;
+    /**
+     * Generic helper to extract XML properties from a container element
+     * Consolidates the common pattern used by page, block, and component property extraction
+     *
+     * @param parentNode - The parent element containing the properties container
+     * @param containerTag - Tag name of the properties container (e.g., 'odeNavStructureProperties')
+     * @param propertyTag - Tag name of individual property elements (e.g., 'odeNavStructureProperty')
+     * @param defaults - Default property values to use as base
+     * @returns Record of extracted properties with defaults applied
+     */
+    private extractXmlProperties(
+        parentNode: Element,
+        containerTag: string,
+        propertyTag: string,
+        defaults: Record<string, unknown>,
+    ): Record<string, unknown> {
+        const properties: Record<string, unknown> = { ...defaults };
 
-        return 0;
+        const propsContainer = this.getElement(parentNode, containerTag);
+        if (!propsContainer) return properties;
+
+        const propNodes = this.getElements(propsContainer, propertyTag);
+        for (const propNode of propNodes) {
+            const key = this.getTextContent(propNode, 'key');
+            const value = this.getTextContent(propNode, 'value');
+            if (key && value !== null) {
+                properties[key] = value === 'true' || value === 'false' ? value === 'true' : value;
+            }
+        }
+        return properties;
     }
 
     /**
      * Extract page properties from odeNavStructureProperties
      */
     private getNavStructureProperties(navNode: Element): Record<string, unknown> {
-        const properties: Record<string, unknown> = { ...PAGE_PROPERTY_DEFAULTS };
-
-        const propsContainer = this.getElement(navNode, 'odeNavStructureProperties');
-        if (!propsContainer) return properties;
-
-        const propNodes = this.getElements(propsContainer, 'odeNavStructureProperty');
-        for (const propNode of propNodes) {
-            const key = this.getTextContent(propNode, 'key');
-            const value = this.getTextContent(propNode, 'value');
-            if (key && value !== null) {
-                if (value === 'true' || value === 'false') {
-                    properties[key] = value === 'true';
-                } else {
-                    properties[key] = value;
-                }
-            }
-        }
-        return properties;
+        return this.extractXmlProperties(
+            navNode,
+            'odeNavStructureProperties',
+            'odeNavStructureProperty',
+            PAGE_PROPERTY_DEFAULTS,
+        );
     }
 
     /**
      * Extract block properties from odePagStructureProperties
      */
     private getPagStructureProperties(pagNode: Element): Record<string, unknown> {
-        const properties: Record<string, unknown> = { ...BLOCK_PROPERTY_DEFAULTS };
-
-        const propsContainer = this.getElement(pagNode, 'odePagStructureProperties');
-        if (!propsContainer) return properties;
-
-        const propNodes = this.getElements(propsContainer, 'odePagStructureProperty');
-        for (const propNode of propNodes) {
-            const key = this.getTextContent(propNode, 'key');
-            const value = this.getTextContent(propNode, 'value');
-            if (key && value !== null) {
-                if (value === 'true' || value === 'false') {
-                    properties[key] = value === 'true';
-                } else {
-                    properties[key] = value;
-                }
-            }
-        }
-        return properties;
+        return this.extractXmlProperties(
+            pagNode,
+            'odePagStructureProperties',
+            'odePagStructureProperty',
+            BLOCK_PROPERTY_DEFAULTS,
+        );
     }
 
     /**
      * Extract component properties from odeComponentsProperties
      */
     private getComponentsProperties(compNode: Element): Record<string, unknown> {
-        const properties: Record<string, unknown> = { ...COMPONENT_PROPERTY_DEFAULTS };
-
-        const propsContainer = this.getElement(compNode, 'odeComponentsProperties');
-        if (!propsContainer) return properties;
-
-        const propNodes = this.getElements(propsContainer, 'odeComponentsProperty');
-        for (const propNode of propNodes) {
-            const key = this.getTextContent(propNode, 'key');
-            const value = this.getTextContent(propNode, 'value');
-            if (key && value !== null) {
-                if (value === 'true' || value === 'false') {
-                    properties[key] = value === 'true';
-                } else {
-                    properties[key] = value;
-                }
-            }
-        }
-        return properties;
+        return this.extractXmlProperties(
+            compNode,
+            'odeComponentsProperties',
+            'odeComponentsProperty',
+            COMPONENT_PROPERTY_DEFAULTS,
+        );
     }
 
     /**
@@ -1337,16 +1327,31 @@ export class ElpxImporter {
     }
 
     /**
-     * Get block order from pag structure
+     * Generic helper to extract order value from an element
+     * Checks multiple attribute names and a child element for the order value
+     *
+     * @param node - The element to extract order from
+     * @param attrNames - Array of attribute names to check (in order of priority)
+     * @param childTagName - Child element tag name to check as fallback
+     * @returns The order value or 0 if not found
      */
-    private getPagOrder(pagNode: Element): number {
-        const order = pagNode.getAttribute('odePagStructureOrder');
-        if (order) return parseInt(order, 10) || 0;
+    private getOrderValue(node: Element, attrNames: string[], childTagName: string): number {
+        for (const attrName of attrNames) {
+            const order = node.getAttribute(attrName);
+            if (order) return parseInt(order, 10) || 0;
+        }
 
-        const orderEl = this.getElement(pagNode, 'odePagStructureOrder');
+        const orderEl = this.getElement(node, childTagName);
         if (orderEl) return parseInt(orderEl.textContent || '0', 10) || 0;
 
         return 0;
+    }
+
+    /**
+     * Get block order from pag structure
+     */
+    private getPagOrder(pagNode: Element): number {
+        return this.getOrderValue(pagNode, ['odePagStructureOrder'], 'odePagStructureOrder');
     }
 
     /**
@@ -1368,16 +1373,7 @@ export class ElpxImporter {
      * Get component order
      */
     private getComponentOrder(compNode: Element): number {
-        let order = compNode.getAttribute('odeComponentOrder');
-        if (order) return parseInt(order, 10) || 0;
-
-        order = compNode.getAttribute('odeComponentsOrder');
-        if (order) return parseInt(order, 10) || 0;
-
-        const orderEl = this.getElement(compNode, 'odeComponentsOrder');
-        if (orderEl) return parseInt(orderEl.textContent || '0', 10) || 0;
-
-        return 0;
+        return this.getOrderValue(compNode, ['odeComponentOrder', 'odeComponentsOrder'], 'odeComponentsOrder');
     }
 
     /**
@@ -1444,6 +1440,34 @@ export class ElpxImporter {
             if (lower === 'false' || lower === '0') return false;
         }
         return defaultValue;
+    }
+
+    /**
+     * Helper to extract a string metadata property with a default value
+     * Simplifies the common pattern of checking for odeProperties existence
+     *
+     * @param odeProperties - The odeProperties container element (may be null)
+     * @param key - Property key to extract
+     * @param defaultValue - Default value if property not found
+     * @returns Property value or default
+     */
+    private getMetadataProperty(odeProperties: Element | null, key: string, defaultValue: string = ''): string {
+        if (!odeProperties) return defaultValue;
+        return this.getPropertyValue(odeProperties, key) || defaultValue;
+    }
+
+    /**
+     * Helper to extract a boolean metadata property with a default value
+     * Simplifies the common pattern of checking for odeProperties existence
+     *
+     * @param odeProperties - The odeProperties container element (may be null)
+     * @param key - Property key to extract
+     * @param defaultValue - Default value if property not found
+     * @returns Property value or default
+     */
+    private getBooleanMetadataProperty(odeProperties: Element | null, key: string, defaultValue: boolean): boolean {
+        if (!odeProperties) return defaultValue;
+        return this.parseBooleanProperty(odeProperties, key, defaultValue);
     }
 
     /**

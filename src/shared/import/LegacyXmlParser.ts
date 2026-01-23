@@ -19,7 +19,7 @@
 
 import { DOMParser } from '@xmldom/xmldom';
 import type { Logger } from './interfaces';
-import { defaultLogger } from './interfaces';
+import { defaultLogger, FEEDBACK_TRANSLATIONS } from './interfaces';
 import { LegacyHandlerRegistry } from './legacy-handlers';
 import type { IdeviceHandlerContext } from './legacy-handlers';
 
@@ -119,27 +119,6 @@ export class LegacyXmlParser {
         reading: 'book',
         casestudy: 'case',
         question: 'interactive',
-    };
-
-    /**
-     * FEEDBACK BUTTON TEXT TRANSLATIONS
-     */
-    static FEEDBACK_TRANSLATIONS: Record<string, string> = {
-        es: 'Mostrar retroalimentacion',
-        en: 'Show Feedback',
-        ca: 'Mostra la retroalimentacio',
-        eu: 'Erakutsi feedbacka',
-        gl: 'Mostrar retroalimentacion',
-        pt: 'Mostrar feedback',
-        fr: 'Afficher le feedback',
-        de: 'Feedback anzeigen',
-        it: 'Mostra feedback',
-        nl: 'Toon feedback',
-        pl: 'Pokaz informacje zwrotna',
-        ru: 'Показать отзыв',
-        zh: '显示反馈',
-        ja: 'フィードバックを表示',
-        ar: 'إظهار الملاحظات',
     };
 
     /**
@@ -313,7 +292,7 @@ export class LegacyXmlParser {
      */
     getLocalizedFeedbackText(langCode: string): string {
         const lang = (langCode || '').split('-')[0].toLowerCase();
-        return LegacyXmlParser.FEEDBACK_TRANSLATIONS[lang] || LegacyXmlParser.FEEDBACK_TRANSLATIONS.es;
+        return FEEDBACK_TRANSLATIONS[lang] || FEEDBACK_TRANSLATIONS.es;
     }
 
     /**

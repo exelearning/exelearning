@@ -177,6 +177,29 @@ export const LEGACY_TYPE_ALIASES: Record<string, string> = {
 };
 
 /**
+ * Localized feedback button translations
+ * Maps language codes to their translated "Show Feedback" text
+ * Used by both LegacyXmlParser and legacy iDevice handlers
+ */
+export const FEEDBACK_TRANSLATIONS: Record<string, string> = {
+    es: 'Mostrar retroalimentación',
+    en: 'Show Feedback',
+    ca: 'Mostra la retroalimentació',
+    eu: 'Erakutsi feedbacka',
+    gl: 'Mostrar retroalimentación',
+    pt: 'Mostrar feedback',
+    fr: 'Afficher le feedback',
+    de: 'Feedback anzeigen',
+    it: 'Mostra feedback',
+    nl: 'Toon feedback',
+    pl: 'Pokaż informację zwrotną',
+    ru: 'Показать отзыв',
+    zh: '显示反馈',
+    ja: 'フィードバックを表示',
+    ar: 'إظهار الملاحظات',
+};
+
+/**
  * Plain JS data structure for a page (before Yjs conversion)
  */
 export interface PageData {
