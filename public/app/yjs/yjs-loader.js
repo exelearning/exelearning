@@ -51,11 +51,12 @@
 
   // Local modules organized in parallel-loadable groups
   // Each group is loaded in parallel, groups are loaded sequentially
+  // Note: Paths starting with '/' are absolute and use assetPath() for versioning
   const LOCAL_MODULE_GROUPS = [
     // Group 0: Shared importers bundle (TypeScript from src/shared/import/)
     // Contains LegacyHandlerRegistry, LegacyXmlParser, ElpxImporter, and all legacy iDevice handlers
     [
-      'importers.bundle.js',  // Compiled from src/shared/import/browser/index.ts
+      '/app/yjs/importers.bundle.js',  // Compiled from src/shared/import/browser/index.ts
     ],
     // Group 1: Core managers (no dependencies between them)
     [
@@ -76,7 +77,7 @@
     // Group 3: Shared exporters bundle (TypeScript from src/shared/export/)
     // Contains all export functionality: Html5, SCORM, IMS, EPUB3, Preview
     [
-      'exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
+      '/app/yjs/exporters.bundle.js',  // Compiled from src/shared/export/browser/index.ts
     ],
     // Group 4: Bridge components (depend on exporters)
     [
@@ -219,7 +220,13 @@
         Logger.log('[YjsLoader] Loading local modules (parallel groups)...');
         for (let i = 0; i < LOCAL_MODULE_GROUPS.length; i++) {
           const group = LOCAL_MODULE_GROUPS[i];
-          const groupUrls = group.map((m) => `${basePath}/${m}`);
+          // Resolve module paths: absolute paths use assetPath(), relative paths use basePath
+          const groupUrls = group.map((m) => {
+            if (m.startsWith('/')) {
+              return assetPath(m);  // Absolute path like '/bundles/...'
+            }
+            return `${basePath}/${m}`;  // Relative path like 'YjsDocumentManager.js'
+          });
           // Last group (index.js etc) must be sequential for correct initialization
           if (i === LOCAL_MODULE_GROUPS.length - 1) {
             await loadScriptsSequentially(groupUrls);
