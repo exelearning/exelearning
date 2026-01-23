@@ -15,5 +15,9 @@
 }
 
 .caseStudyContent .CSP-FeedbackText {
-    margin-bottom: 2em;
+    margin-bottom: 2.5em;
+}
+
+.caseStudyContent .CSP-Activities .CSP-ActivityDiv:last-child .CSP-FeedbackText {
+    margin-bottom: 0;
 }
