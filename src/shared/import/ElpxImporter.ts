@@ -623,7 +623,7 @@ export class ElpxImporter {
             componentData.structureProps.cssClass = legacyIdevice.cssClass;
         }
 
-        // Convert {{context_path}} in properties
+        // Convert {{context_path}} and resources/ paths in properties
         if (componentData.properties && this.assetHandler && this.assetMap.size > 0) {
             try {
                 componentData.properties = this.convertAssetPathsInObject(componentData.properties) as Record<
@@ -1033,7 +1033,12 @@ export class ElpxImporter {
             const propsMap = new Y.Map();
             for (const [key, value] of Object.entries(pageData.properties)) {
                 if (value !== undefined && value !== null) {
-                    propsMap.set(key, value);
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
                 }
             }
             pageMap.set('properties', propsMap);
@@ -1071,7 +1076,12 @@ export class ElpxImporter {
             const propsMap = new Y.Map();
             for (const [key, value] of Object.entries(blockData.properties)) {
                 if (value !== undefined && value !== null) {
-                    propsMap.set(key, value);
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
                 }
             }
             blockMap.set('properties', propsMap);
@@ -1133,7 +1143,12 @@ export class ElpxImporter {
             const propsMap = new Y.Map();
             for (const [key, value] of Object.entries(compData.structureProps)) {
                 if (value !== undefined && value !== null) {
-                    propsMap.set(key, value);
+                    // Yjs only accepts primitives - convert objects/arrays to JSON strings
+                    if (typeof value === 'object') {
+                        propsMap.set(key, JSON.stringify(value));
+                    } else {
+                        propsMap.set(key, value);
+                    }
                 }
             }
             compMap.set('properties', propsMap);
@@ -1487,7 +1502,7 @@ export class ElpxImporter {
     }
 
     /**
-     * Recursively convert {{context_path}} references to asset:// URLs in an object
+     * Recursively convert {{context_path}} references and resources/ paths to asset:// URLs in an object
      */
     private convertAssetPathsInObject(obj: unknown): unknown {
         if (obj === null || obj === undefined) {
@@ -1495,9 +1510,20 @@ export class ElpxImporter {
         }
 
         if (typeof obj === 'string') {
+            // Handle {{context_path}}/... references (in HTML content)
             if (obj.includes('{{context_path}}') && this.assetHandler) {
                 return this.assetHandler.convertContextPathToAssetRefs(obj, this.assetMap);
             }
+
+            // Handle resources/filename.jpg paths (legacy gallery/iDevice properties)
+            // These are just path strings, not HTML, so we look them up directly
+            if (obj.startsWith('resources/') && this.assetMap.size > 0) {
+                const assetUrl = this.findAssetUrlForPath(obj);
+                if (assetUrl) {
+                    return assetUrl;
+                }
+            }
+
             return obj;
         }
 
@@ -1514,5 +1540,39 @@ export class ElpxImporter {
         }
 
         return obj;
+    }
+
+    /**
+     * Find asset URL for a given path, trying various lookup strategies
+     * Handles legacy ELP files where assets are at root level (just filename in assetMap)
+     * but referenced with resources/ prefix in iDevice properties
+     */
+    private findAssetUrlForPath(assetPath: string): string | null {
+        // Try exact match first
+        if (this.assetMap.has(assetPath)) {
+            const assetId = this.assetMap.get(assetPath)!;
+            return `asset://${assetId}/${assetPath.split('/').pop()}`;
+        }
+
+        // Try without resources/ prefix (legacy format stores assets at root)
+        if (assetPath.startsWith('resources/')) {
+            const pathWithoutPrefix = assetPath.substring('resources/'.length);
+            if (this.assetMap.has(pathWithoutPrefix)) {
+                const assetId = this.assetMap.get(pathWithoutPrefix)!;
+                return `asset://${assetId}/${pathWithoutPrefix.split('/').pop()}`;
+            }
+        }
+
+        // Try matching just the filename
+        const filename = assetPath.split('/').pop();
+        if (filename) {
+            for (const [path, assetId] of this.assetMap.entries()) {
+                if (path === filename || path.endsWith('/' + filename)) {
+                    return `asset://${assetId}/${filename}`;
+                }
+            }
+        }
+
+        return null;
     }
 }
