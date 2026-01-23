@@ -46,13 +46,6 @@ This version is built with modern technologies (Bun, Elysia, Kysely) and provide
 * Compatible with MySQL, PostgreSQL, and SQLite databases
 * Offline installers supported via [Electron](https://www.electronjs.org/) and [nativePHP](https://nativephp.com/)
 
-### Built With
-
-* [![TypeScript][TypeScript.badge]][TypeScript-url]
-* [![Bun][Bun.badge]][Bun-url]
-* [![Elysia][Elysia.badge]][Elysia-url]
-* [![Kysely][Kysely.badge]][Kysely-url]
-
 ## Quick Start
 
 ### Using Docker
@@ -70,11 +63,10 @@ First install [Bun](https://bun.sh/) if you don't have it yet. Then:
 ```bash
 git clone https://github.com/exelearning/exelearning.git
 cd exelearning
-bun install
-bun run start:dev
+make up-local
 ```
 
-This will start eXeLearning at `http://localhost:8080`.
+This will install dependencies, build assets, and start eXeLearning at `http://localhost:8080` with hot reload.
 
 Offline installers for Linux, Windows and macOS are also available on the [Releases page](https://github.com/exelearning/exelearning/releases).
 
@@ -93,35 +85,13 @@ See [doc/development/environment.md](./doc/development/environment.md) for full 
 ```bash
 git clone https://github.com/exelearning/exelearning.git
 cd exelearning
-bun install
-bun run start:dev
+make up-local
 ```
 
-This will start the development server at `http://localhost:8080` with hot reload.
+This will install dependencies, build assets, and start the development server at `http://localhost:8080` with hot reload.
 
 More development tools, options, and real-time collaboration info are documented in the `doc/` folder. See also [Architecture Documentation](./doc/architecture.md).
 
-## Project Structure
-
-```
-exelearning/
-├── src/                   # Elysia backend (TypeScript)
-│   ├── routes/            # API routes
-│   ├── services/          # Business logic
-│   ├── db/                # Kysely database (queries, migrations)
-│   └── websocket/         # Yjs WebSocket collaboration
-├── public/                # Static files
-│   ├── app/               # Vanilla JS frontend
-│   │   └── yjs/           # Yjs integration (real-time)
-│   ├── libs/              # jQuery, Bootstrap, TinyMCE
-│   └── style/             # CSS/SCSS
-├── views/                 # Nunjucks templates
-├── doc/                   # Documentation
-├── test/                  # Integration tests
-├── main.js                # Electron main process
-├── Makefile               # Build commands
-└── package.json           # Dependencies
-```
 
 ## Usage
 
@@ -164,14 +134,14 @@ See our [versioning guide](./doc/development/version-control.md) for details abo
 The project includes a Makefile to simplify development tasks:
 
 ```
-make install          # Install dependencies (bun install)
-make start:dev        # Start development server with hot reload
+make up-local         # Start development server (installs deps + hot reload)
+make up               # Start with Docker
 make test-unit        # Run unit tests
-make test-coverage    # Run tests with coverage report
-make build            # Build for production
-make package          # Build Electron installers for all platforms
-make lint             # Run Biome linter
-make fix              # Automatically fix linting issues
+make test-integration # Run integration tests
+make test-frontend    # Run frontend tests (Vitest)
+make test-e2e         # Run E2E tests (Playwright)
+make lint             # Run linter
+make fix              # Auto-fix linting issues
 ```
 
 To see all available commands, run:
@@ -193,18 +163,3 @@ The full project documentation is available in the [`doc`](./doc/index.md) direc
 ## License
 
 Distributed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0. See `LICENSE` for more information.
-
----
-
-**eXeLearning** is a free/libre tool to create and publish open educational resources.
-
-<!-- MARKDOWN LINKS & IMAGES -->
-
-[TypeScript.badge]: https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white
-[TypeScript-url]: https://www.typescriptlang.org/
-[Bun.badge]: https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white
-[Bun-url]: https://bun.sh/
-[Elysia.badge]: https://img.shields.io/badge/Elysia-7C3AED?style=for-the-badge
-[Elysia-url]: https://elysiajs.com/
-[Kysely.badge]: https://img.shields.io/badge/Kysely-0D9488?style=for-the-badge
-[Kysely-url]: https://kysely.dev/

@@ -6,7 +6,7 @@ eXeLearning uses **Bun** as the runtime and **Elysia** as the web framework. The
 
 ## Prerequisites
 
-- **Bun** (v1.0+) - [Install Bun](https://bun.sh/docs/installation)
+- **Bun** (v1.3+) - [Install Bun](https://bun.sh/docs/installation)
 - **Git**
 
 Supported operating systems:
@@ -33,11 +33,8 @@ git clone https://github.com/exelearning/exelearning.git
 # 2. Enter the project directory
 cd exelearning
 
-# 3. Install dependencies
-bun install
-
-# 4. Start development server
-bun run start:dev
+# 3. Start development server (installs deps + builds assets automatically)
+make up-local
 ```
 
 The application will be available at [http://localhost:8080](http://localhost:8080).
@@ -53,14 +50,19 @@ exelearning/
 ├── src/                   # Elysia backend (TypeScript)
 │   ├── routes/            # API routes
 │   ├── services/          # Business logic
-│   ├── db/                # Kysely database
-│   └── websocket/         # Yjs WebSocket
+│   ├── db/                # Kysely database (queries, migrations)
+│   └── websocket/         # Yjs WebSocket collaboration
 ├── public/                # Static files
-│   └── app/               # Vanilla JS frontend
+│   ├── app/               # Vanilla JS frontend
+│   │   └── yjs/           # Yjs integration (real-time)
+│   ├── libs/              # jQuery, Bootstrap, TinyMCE
+│   └── style/             # CSS/SCSS
 ├── views/                 # Nunjucks templates
+├── doc/                   # Documentation
 ├── test/                  # Integration tests
 ├── main.js                # Electron main process
-└── package.json
+├── Makefile               # Build commands
+└── package.json           # Dependencies
 ```
 
 ## Makefile Commands
@@ -71,9 +73,7 @@ The project provides a Makefile for common tasks:
 
 | Command | Description |
 |---------|-------------|
-| `make install` | Install dependencies (`bun install`) |
-| `make start:dev` | Start development server with hot reload |
-| `make build` | Build for production |
+| `make up-local` | Start development server (installs deps + hot reload) |
 | `make help` | Show all available commands |
 
 ### Testing Commands
@@ -85,22 +85,42 @@ The project provides a Makefile for common tasks:
 | `make test-integration` | Run integration tests |
 | `make test-frontend` | Run frontend tests (Vitest) |
 | `make test-e2e` | Run E2E tests (Playwright) |
-| `make test-coverage` | Run tests with coverage report |
+| `make test-e2e-firefox` | Run E2E tests with Firefox (Playwright) |
+| `make test-e2e-mariadb` | Run E2E tests with MariaDB (Playwright) |
+| `make test-e2e-postgres` | Run E2E tests with PostgreSQL (Playwright) |
+
 
 ### Code Quality
 
 | Command | Description |
 |---------|-------------|
-| `make lint` | Run ESLint |
+| `make lint` | Run Biome linter |
 | `make fix` | Auto-fix linting issues |
-| `make format` | Format code with Prettier |
 
 ### CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `make create-user` | Create a new user |
-| `make generate-jwt` | Generate a JWT token |
+| `make create-user EMAIL=x PASSWORD=y USER_ID=z` | Create a new user |
+| `make promote-admin EMAIL=x` | Grant ROLE_ADMIN to user |
+| `make demote-admin EMAIL=x` | Remove ROLE_ADMIN from user |
+| `make grant-role EMAIL=x ROLE=y` | Add role to user |
+| `make revoke-role EMAIL=x ROLE=y` | Remove role from user |
+| `make generate-jwt EMAIL=x [TTL=3600]` | Generate JWT token |
+| `make tmp-cleanup [MAX_AGE=86400]` | Clean temporary files |
+| `make translations [LOCALE=es]` | Extract/clean translations |
+
+### ELPX Processing
+
+| Command | Description |
+|---------|-------------|
+| `make convert-elp INPUT=x OUTPUT=y` | Convert legacy ELP to ELPX format |
+| `make export-html5 INPUT=x OUTPUT=y` | Export to HTML5 |
+| `make export-html5-sp INPUT=x OUTPUT=y` | Export to HTML5 single-page |
+| `make export-scorm12 INPUT=x OUTPUT=y` | Export to SCORM 1.2 |
+| `make export-scorm2004 INPUT=x OUTPUT=y` | Export to SCORM 2004 |
+| `make export-ims INPUT=x OUTPUT=y` | Export to IMS Content Package |
+| `make export-epub3 INPUT=x OUTPUT=y` | Export to EPUB3 |
 
 ## Configuration
 
@@ -203,20 +223,55 @@ For details, see [Real-Time Collaboration](real-time.md).
 
 ### Hot Reload
 
-The development server (`bun run start:dev`) includes hot reload:
+The development server (`make up-local`) includes hot reload:
 - Backend changes restart the server automatically
 - Frontend changes are served immediately (static files)
 
 ## Using Docker
 
-For containerized development, use the provided Docker configuration:
+### Starting the Environment
 
 ```bash
-# Build and run
-docker compose up
+make up               # Start Docker (development mode)
+make up APP_ENV=prod  # Start in production mode
+make upd              # Start in background (detached)
+make down             # Stop Docker
+make shell            # Open shell inside container
+make logs             # View container logs
+```
 
-# Run in background
-docker compose up -d
+### Running CLI Commands Inside Docker
+
+When eXeLearning runs in Docker, execute CLI commands inside the container:
+
+```bash
+# General pattern
+docker compose exec exelearning bun cli <command> [arguments]
+
+# User management
+docker compose exec exelearning bun cli create-user admin@example.com password123 admin
+docker compose exec exelearning bun cli promote-admin admin@example.com
+
+# Generate JWT token
+docker compose exec exelearning bun cli jwt:generate admin@example.com --ttl=86400
+
+# Export commands
+docker compose exec exelearning bun cli elp:export /data/input.elpx /data/output --format=html5
+docker compose exec exelearning bun cli elp:convert /data/legacy.elp /data/output.elpx
+
+# Cleanup
+docker compose exec exelearning bun cli tmp:cleanup --max-age=86400
+```
+
+### Interactive Shell
+
+For multiple commands or debugging:
+
+```bash
+make shell
+# Inside container:
+bun cli --help
+bun cli create-user test@example.com test123 testuser
 ```
 
 See [Deployment](../deployment.md) for production Docker configuration.
@@ -225,9 +280,9 @@ See [Deployment](../deployment.md) for production Docker configuration.
 
 ### Port Already in Use
 
-Change `APP_PORT` in `.env`:
+Change `APP_PORT` in `.env` or override it:
 ```bash
-APP_PORT=8081 bun run start:dev
+APP_PORT=8081 make up-local
 ```
 
 ### Database Issues
@@ -235,11 +290,6 @@ APP_PORT=8081 bun run start:dev
 For SQLite, ensure the database directory exists and is writable:
 ```bash
 mkdir -p /mnt/data
-```
-
-For in-memory testing:
-```bash
-DB_PATH=:memory: bun run start:dev
 ```
 
 ### Bun Installation Issues
