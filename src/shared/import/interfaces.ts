@@ -71,6 +71,19 @@ export interface AssetHandler {
      * Clear all stored assets (optional)
      */
     clear?(): Promise<void>;
+
+    /**
+     * Extract embedded theme files from a ZIP object (optional)
+     * Theme files are stored in the `theme/` directory in ELP/ELPX files.
+     *
+     * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @returns Theme info including name, directory path, and whether it's downloadable
+     */
+    extractThemeFromZip?(zip: Record<string, Uint8Array>): Promise<{
+        themeName: string | null;
+        themeDir: string | null;
+        downloadable: boolean;
+    }>;
 }
 
 /**

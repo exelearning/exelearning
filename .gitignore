@@ -109,6 +109,7 @@ release/
 # Generated bundles
 public/app/app.bundle.js
 public/app/yjs/exporters.bundle.js
+public/app/yjs/importers.bundle.js
 public/app/dist/
 
 ###> claude-code ###

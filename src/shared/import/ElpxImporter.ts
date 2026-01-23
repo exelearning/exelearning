@@ -1362,6 +1362,20 @@ export class ElpxImporter {
         this.assetMap = await this.assetHandler.extractAssetsFromZip(zip);
         this.logger.log(`[ElpxImporter] Imported ${this.assetMap.size} assets`);
 
+        // Also extract embedded theme files if present
+        if (this.assetHandler.extractThemeFromZip) {
+            try {
+                const themeInfo = await this.assetHandler.extractThemeFromZip(zip);
+                if (themeInfo.themeName) {
+                    this.logger.log(
+                        `[ElpxImporter] Extracted embedded theme: ${themeInfo.themeName} (downloadable: ${themeInfo.downloadable})`,
+                    );
+                }
+            } catch (e) {
+                this.logger.warn('[ElpxImporter] Error extracting theme:', e);
+            }
+        }
+
         return this.assetMap.size;
     }
 

@@ -196,8 +196,9 @@ export async function execute(
         }
 
         // Create providers
+        // Pass extractDir to resourceProvider so it can find embedded themes
         const publicDir = path.resolve(process.cwd(), process.env.PUBLIC_DIR || 'public');
-        const resourceProvider = new FileSystemResourceProvider(publicDir);
+        const resourceProvider = new FileSystemResourceProvider(publicDir, extractDir);
 
         // Use the extraction directory for assets
         const assetProvider = new FileSystemAssetProvider(extractDir);

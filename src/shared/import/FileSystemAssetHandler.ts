@@ -17,6 +17,11 @@ import type { AssetHandler, AssetMetadata } from './interfaces';
 const ASSET_DIRECTORIES = ['resources', 'images', 'media', 'files', 'attachments'];
 
 /**
+ * Theme directory in ELP/ELPX files
+ */
+const THEME_DIRECTORY = 'theme';
+
+/**
  * Media file extensions that should be treated as assets
  * Used to detect root-level assets in legacy ELP files
  */
@@ -360,6 +365,7 @@ export class FileSystemAssetHandler implements AssetHandler {
         // Clean up both possible asset directories
         const resourcesDir = path.join(this.extractPath, 'resources');
         const contentResourcesDir = path.join(this.extractPath, 'content', 'resources');
+        const themeDir = path.join(this.extractPath, 'theme');
 
         if (existsSync(resourcesDir)) {
             await fs.rm(resourcesDir, { recursive: true, force: true });
@@ -367,6 +373,78 @@ export class FileSystemAssetHandler implements AssetHandler {
         if (existsSync(contentResourcesDir)) {
             await fs.rm(contentResourcesDir, { recursive: true, force: true });
         }
+        if (existsSync(themeDir)) {
+            await fs.rm(themeDir, { recursive: true, force: true });
+        }
         this.assetIdMap.clear();
+    }
+
+    /**
+     * Extract theme files from a ZIP object
+     * Theme files are stored in the `theme/` directory in ELP/ELPX files.
+     * This extracts them to the same `theme/` directory in the extraction path
+     * so they can be used during export.
+     *
+     * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @returns Theme info including name and whether it's downloadable
+     */
+    async extractThemeFromZip(zip: Record<string, Uint8Array>): Promise<{
+        themeName: string | null;
+        themeDir: string | null;
+        downloadable: boolean;
+    }> {
+        const themeDir = path.join(this.extractPath, THEME_DIRECTORY);
+        let themeName: string | null = null;
+        let downloadable = false;
+        let hasThemeFiles = false;
+
+        for (const [zipPath, content] of Object.entries(zip)) {
+            // Check if this is a theme file
+            if (!zipPath.startsWith(`${THEME_DIRECTORY}/`) || zipPath.endsWith('/')) {
+                continue;
+            }
+
+            hasThemeFiles = true;
+
+            // Get relative path within theme directory
+            const relativePath = zipPath.substring(THEME_DIRECTORY.length + 1);
+            const fullPath = path.join(themeDir, relativePath);
+
+            // Create directory if needed
+            const fileDir = path.dirname(fullPath);
+            if (!existsSync(fileDir)) {
+                mkdirSync(fileDir, { recursive: true });
+            }
+
+            // Write the file
+            await fs.writeFile(fullPath, Buffer.from(content));
+
+            // Parse config.xml to get theme info
+            if (relativePath === 'config.xml') {
+                try {
+                    const configXml = new TextDecoder().decode(content);
+
+                    // Extract theme name
+                    const nameMatch = configXml.match(/<name>([^<]+)<\/name>/);
+                    if (nameMatch) {
+                        themeName = nameMatch[1].trim();
+                    }
+
+                    // Extract downloadable flag
+                    const downloadableMatch = configXml.match(/<downloadable>(\d)<\/downloadable>/);
+                    if (downloadableMatch) {
+                        downloadable = downloadableMatch[1] === '1';
+                    }
+                } catch (_e) {
+                    // Ignore config parsing errors, use defaults
+                }
+            }
+        }
+
+        return {
+            themeName,
+            themeDir: hasThemeFiles ? themeDir : null,
+            downloadable,
+        };
     }
 }

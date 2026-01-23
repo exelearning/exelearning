@@ -70,8 +70,8 @@
       'ResourceCache.js',    // IndexedDB cache for ResourceFetcher
     ],
     // Group 2: Importers/Exporters and ResourceFetcher (depend on Group 1)
+    // NOTE: ElpxImporter is now in importers.bundle.js (unified TypeScript version)
     [
-      'ElpxImporter.js',
       'ComponentImporter.js',  // Imports .idevice/.block files
       'ResourceFetcher.js',  // Fetches themes, libraries, iDevices for exports (uses ResourceCache)
     ],
