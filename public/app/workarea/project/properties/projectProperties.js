@@ -98,6 +98,9 @@ export default class ProjectProperties {
      * @returns {string} - e.g., 'title'
      */
     mapPropertyToMetadataKey(propertyKey) {
+        if (propertyKey === 'pp_lang') {
+            return 'language';
+        }
         // Remove pp_ prefix if present
         if (propertyKey.startsWith('pp_')) {
             return propertyKey.substring(3);

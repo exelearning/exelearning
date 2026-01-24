@@ -33,15 +33,19 @@ export default class projectManager {
         await this.loadCurrentProject();
         // Load project properties
         await this.loadProjectProperties();
-        this.app.locale.loadContentTranslationsStrings(
-            this.properties.properties.pp_lang.value
-        );
         // Compose and initialized interface
         await this.loadInterface();
 
         // Initialize Yjs collaborative editing BEFORE loading structure
         // This ensures Yjs is the source of truth for document structure
         await this.initializeYjs();
+        // Reload content translations after Yjs metadata sync (pp_lang -> language).
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+        }
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
 
         // Load project visibility for share button
         if (this.app.interface?.shareButton) {
@@ -541,6 +545,9 @@ export default class projectManager {
         this.app.interface.loadingScreen.show();
         // Load project properties
         await this.loadProjectProperties();
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
         // Load structure data
         await this.loadStructureData();
         // Load title
