@@ -42,7 +42,10 @@ src/
 
 ### Session-Based Architecture
 
-Every opened project receives a UUID session ID. Sessions are stored in-memory (`Map<sessionId, ProjectSession>`) and include parsed XML structure, project metadata, and timestamps.
+Every opened project receives a UUID session ID. The server maintains
+lightweight session metadata in-memory (Map<sessionId, ProjectSession>). The  
+actual document structure lives client-side in Yjs (Y.Doc), persisted to      
+IndexedDB, and synced between clients via WebSocket relay.
 
 **Note:** ELP extraction and export generation happen client-side. The server only stores assets permanently.
 
