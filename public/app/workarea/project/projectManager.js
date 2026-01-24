@@ -258,13 +258,11 @@ export default class projectManager {
 
         Logger.log('[ProjectManager] Direct import complete:', stats);
 
-        // Save to server
-        try {
-            await this._yjsBridge.documentManager.saveToServer();
-            Logger.log('[ProjectManager] Document saved to server after direct import');
-        } catch (saveError) {
-            console.warn('[ProjectManager] Failed to save to server:', saveError);
-        }
+        // Note: Don't save immediately on file open.
+        // The document is now in memory and will be saved when:
+        // - User explicitly saves (Save button)
+        // - Autosave triggers (if enabled)
+        // This avoids an unnecessary network round-trip on open.
 
         return stats;
     }

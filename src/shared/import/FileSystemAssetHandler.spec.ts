@@ -193,6 +193,39 @@ describe('FileSystemAssetHandler', () => {
             expect(assetMap.has('resources/image.png')).toBe(true);
             expect(assetMap.has('image.png')).toBe(true);
         });
+
+        it('should call progress callback for each asset', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const zip = {
+                'resources/file1.txt': new Uint8Array([1]),
+                'resources/file2.txt': new Uint8Array([2]),
+                'resources/file3.txt': new Uint8Array([3]),
+            };
+
+            const progressCalls: { current: number; total: number; filename: string }[] = [];
+
+            await handler.extractAssetsFromZip(zip, (current, total, filename) => {
+                progressCalls.push({ current, total, filename });
+            });
+
+            expect(progressCalls.length).toBe(3);
+            expect(progressCalls[0]).toEqual({ current: 1, total: 3, filename: 'file1.txt' });
+            expect(progressCalls[1]).toEqual({ current: 2, total: 3, filename: 'file2.txt' });
+            expect(progressCalls[2]).toEqual({ current: 3, total: 3, filename: 'file3.txt' });
+        });
+
+        it('should not fail when progress callback is null', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const zip = {
+                'resources/image.png': new Uint8Array([137, 80]),
+            };
+
+            // Should not throw when callback is not provided
+            const assetMap = await handler.extractAssetsFromZip(zip);
+            expect(assetMap.has('resources/image.png')).toBe(true);
+        });
     });
 
     describe('convertContextPathToAssetRefs', () => {

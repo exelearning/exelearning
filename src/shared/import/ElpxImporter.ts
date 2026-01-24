@@ -423,6 +423,9 @@ export class ElpxImporter {
         // Add theme to stats
         stats.theme = metadataValues.theme || null;
 
+        // Cache zip contents for theme import (avoids re-unzipping)
+        stats.zipContents = zip;
+
         this.logger.log('[ElpxImporter] Import complete:', stats);
         return stats;
     }
@@ -516,6 +519,9 @@ export class ElpxImporter {
 
         // Import complete (100%)
         this.reportProgress('precache', 100, 'Import complete');
+
+        // Cache zip contents for theme import (avoids re-unzipping)
+        stats.zipContents = zip;
 
         this.logger.log('[ElpxImporter] Legacy import complete:', stats);
         return stats;
@@ -1385,7 +1391,12 @@ export class ElpxImporter {
             return 0;
         }
 
-        this.assetMap = await this.assetHandler.extractAssetsFromZip(zip);
+        // Pass progress callback to report asset extraction progress (10% to 50% range)
+        this.assetMap = await this.assetHandler.extractAssetsFromZip(zip, (current, total, _filename) => {
+            // Map progress from 10% to 50% (assets phase range)
+            const percent = 10 + Math.round((current / total) * 40);
+            this.reportProgress('assets', percent, 'Extracting assets...');
+        });
         this.logger.log(`[ElpxImporter] Imported ${this.assetMap.size} assets`);
 
         // Also extract embedded theme files if present

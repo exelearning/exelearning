@@ -115,8 +115,41 @@ describe('BrowserAssetHandler', () => {
             const result = await handler.extractAssetsFromZip(zipContents);
 
             expect(mockAssetManager.init).toHaveBeenCalled();
-            expect(mockAssetManager.extractAssetsFromZip).toHaveBeenCalledWith(zipContents);
+            expect(mockAssetManager.extractAssetsFromZip).toHaveBeenCalledWith(zipContents, undefined);
             expect(result.get('test.jpg')).toBe('asset-1');
+        });
+
+        it('should forward progress callback to asset manager', async () => {
+            const handler = new BrowserAssetHandler(mockAssetManager);
+            const zipContents = {
+                'image.jpg': new Uint8Array([1, 2, 3]),
+            };
+            const progressCallback = (current: number, total: number, filename: string) => {};
+
+            await handler.extractAssetsFromZip(zipContents, progressCallback);
+
+            expect(mockAssetManager.extractAssetsFromZip).toHaveBeenCalledWith(zipContents, progressCallback);
+        });
+
+        it('should log and rethrow error when extraction fails', async () => {
+            const mockLogger = {
+                log: mock(() => {}),
+                warn: mock(() => {}),
+                error: mock(() => {}),
+            };
+            const handler = new BrowserAssetHandler(mockAssetManager, mockLogger);
+            const zipContents = {
+                'image.jpg': new Uint8Array([1, 2, 3]),
+            };
+
+            const extractionError = new Error('Extraction failed');
+            mockAssetManager.extractAssetsFromZip = mock(() => Promise.reject(extractionError));
+
+            await expect(handler.extractAssetsFromZip(zipContents)).rejects.toThrow('Extraction failed');
+
+            expect(mockLogger.error).toHaveBeenCalledTimes(1);
+            expect(mockLogger.error.mock.calls[0][0]).toBe('[BrowserAssetHandler] Failed to extract assets from ZIP:');
+            expect(mockLogger.error.mock.calls[0][1]).toBe(extractionError);
         });
     });
 
