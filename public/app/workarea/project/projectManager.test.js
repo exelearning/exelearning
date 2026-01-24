@@ -1551,6 +1551,26 @@ describe('ProjectManager', () => {
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
         });
 
+        it('loads content translations after Yjs initialization', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.properties.loadPropertiesFromYjs).toHaveBeenCalled();
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language from properties', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'es';
+
+            await projectManager.load();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('es');
+        });
+
         it('generates autosave interval when Yjs not enabled', async () => {
             projectManager._yjsEnabled = false;
             projectManager.offlineInstallation = true;
@@ -1611,12 +1631,14 @@ describe('ProjectManager', () => {
             projectManager.subscribeToSessionAndNotify = vi.fn().mockResolvedValue();
             projectManager.properties = {
                 formProperties: { remove: vi.fn() },
+                properties: { pp_lang: { value: 'en' } },
             };
             projectManager.structure = {
                 reloadStructureMenu: vi.fn().mockResolvedValue(),
             };
             mockApp.interface.loadingScreen = { show: vi.fn(), hide: vi.fn() };
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn().mockResolvedValue() };
             window.eXeLearning.app.modals.openuserodefiles = { close: vi.fn() };
         });
 
@@ -1648,6 +1670,23 @@ describe('ProjectManager', () => {
             expect(projectManager.loadStructureData).toHaveBeenCalled();
             expect(projectManager.loadModalsContent).toHaveBeenCalled();
             expect(projectManager.initialiceProject).toHaveBeenCalled();
+        });
+
+        it('loads content translations after loading properties', async () => {
+            projectManager.offlineInstallation = true;
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language', async () => {
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'fr';
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('fr');
         });
     });
 
