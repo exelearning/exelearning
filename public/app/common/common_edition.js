@@ -729,6 +729,20 @@ var $exeDevicesEdition = {
                     const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
                     const $eXeEAddArea = $('#eXeEAddArea');
 
+                    // Load user's default AI preference and select it
+                    if (window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
+                        const defaultAI = eXeLearning.app.user.preferences.preferences.defaultAI.value;
+                        $iaSelect.val(defaultAI);
+                    }
+
+                    // Save preference when user changes the AI selection
+                    $iaSelect.off('change.defaultAI').on('change.defaultAI', function() {
+                        const selectedAI = $(this).val();
+                        if (window.eXeLearning?.app?.user?.preferences) {
+                            eXeLearning.app.user.preferences.apiSaveProperties({ defaultAI: selectedAI });
+                        }
+                    });
+
                     $saveButton.hide();
                     $textQuestionsArea.hide();
 

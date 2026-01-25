@@ -84,6 +84,20 @@ const USER_PREFERENCES_CONFIG = {
         type: 'checkbox',
         category: `${TRANS_PREFIX}General settings`,
     },
+    defaultAI: {
+        title: `${TRANS_PREFIX}Default AI Assistant`,
+        help: `${TRANS_PREFIX}Select the AI that will be selected by default when editing iDevices.`,
+        value: 'https://chatgpt.com/?q=',
+        type: 'select',
+        options: {
+            'https://chatgpt.com/?q=': 'ChatGPT',
+            'https://claude.ai/new?q=': 'Claude',
+            'https://www.perplexity.ai/search?q=': 'Perplexity',
+            'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
+            'https://grok.com/?q=': 'Grok',
+        },
+        category: `${TRANS_PREFIX}General settings`,
+    },
 };
 
 /**

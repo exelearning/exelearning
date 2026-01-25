@@ -39,6 +39,7 @@ const DEFAULT_PREFERENCES = {
     advancedMode: { value: 'true' },
     versionControl: { value: 'true' },
     defaultLicense: { value: 'creative commons: attribution - share alike 4.0' },
+    defaultAI: { value: 'https://chatgpt.com/?q=' },
 };
 
 /**
