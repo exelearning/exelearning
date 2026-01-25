@@ -219,6 +219,12 @@ class YjsProjectBridge {
         apiUrl: config.apiUrl,
         token: authToken,
       });
+
+      // Connect SaveManager to WebSocket handler for optimized upload sessions
+      if (this.assetWebSocketHandler) {
+        this.saveManager.setWebSocketHandler(this.assetWebSocketHandler);
+      }
+
       Logger.log('[YjsProjectBridge] SaveManager initialized');
     }
 

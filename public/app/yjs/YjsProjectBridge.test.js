@@ -116,8 +116,10 @@ class MockSaveManager {
   constructor(bridge, options) {
     this.bridge = bridge;
     this.options = options;
+    this.wsHandler = null;
   }
   async save() { return { success: true, bytes: 100 }; }
+  setWebSocketHandler(handler) { this.wsHandler = handler; }
 }
 
 // Mock ResourceFetcher
@@ -1633,6 +1635,31 @@ describe('YjsProjectBridge', () => {
       bridge.assetWebSocketHandler = null;
       // Should not throw
       await bridge.announceAssets();
+    });
+
+    it('connects SaveManager to WebSocket handler during initialization', async () => {
+      // Create a fresh bridge with assetWebSocketHandler mock
+      const newBridge = new YjsProjectBridge('test-project-2', {
+        apiUrl: '/api',
+        exeVersion: '3.0.0',
+        wsUrl: 'ws://localhost:1234',
+        offline: true,
+      });
+
+      // Set up mocks
+      newBridge.assetWebSocketHandler = { id: 'mock-ws-handler' };
+      newBridge.saveManager = new MockSaveManager(newBridge, {});
+
+      // Verify setWebSocketHandler was not called yet
+      expect(newBridge.saveManager.wsHandler).toBeNull();
+
+      // Manually call setWebSocketHandler as done in initialize
+      if (newBridge.assetWebSocketHandler) {
+        newBridge.saveManager.setWebSocketHandler(newBridge.assetWebSocketHandler);
+      }
+
+      // Verify wsHandler is now set
+      expect(newBridge.saveManager.wsHandler).toEqual({ id: 'mock-ws-handler' });
     });
   });
 

@@ -61,6 +61,10 @@ class AssetWebSocketHandler {
       priorityAck: [],
       preemptUpload: [],
       slotAvailable: [],
+      // Upload session events
+      uploadSessionReady: [],
+      uploadFileProgress: [],
+      uploadBatchComplete: [],
     };
 
     // Bound handlers for cleanup
@@ -124,6 +128,31 @@ class AssetWebSocketHandler {
   }
 
   /**
+   * Decode binary payload with 0xFF asset message prefix
+   * Returns the parsed message if valid asset message, null otherwise
+   * @param {Uint8Array} bytes - Binary data to decode
+   * @returns {{parsed: Object}|null} - Parsed message or null
+   */
+  _decodeBinaryAssetPayload(bytes) {
+    const ASSET_MESSAGE_PREFIX = 0xff;
+
+    if (bytes.length === 0 || bytes[0] !== ASSET_MESSAGE_PREFIX) {
+      return null;
+    }
+
+    try {
+      const jsonStr = new TextDecoder().decode(bytes.slice(1));
+      const parsed = JSON.parse(jsonStr);
+      if (this._isAssetMessage(parsed.type)) {
+        return { parsed };
+      }
+    } catch (err) {
+      console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
+    }
+    return null;
+  }
+
+  /**
    * Setup message handler on WebSocket
    * Intercepts JSON messages for asset protocol
    */
@@ -135,9 +164,6 @@ class AssetWebSocketHandler {
     // Store original onmessage
     const originalOnMessage = ws.onmessage;
 
-    // Asset message prefix byte - must match server's ASSET_MESSAGE_PREFIX
-    const ASSET_MESSAGE_PREFIX = 0xff;
-
     // Wrap onmessage to intercept asset protocol messages
     // Asset messages from server are binary with 0xFF prefix byte
     // Format: [0xFF][JSON bytes]
@@ -147,20 +173,14 @@ class AssetWebSocketHandler {
       // Handle ArrayBuffer (binary messages)
       if (data instanceof ArrayBuffer) {
         const bytes = new Uint8Array(data);
-        // Check for asset message prefix (0xFF)
-        if (bytes.length > 0 && bytes[0] === ASSET_MESSAGE_PREFIX) {
-          // Asset message - decode JSON after prefix
-          try {
-            const jsonStr = new TextDecoder().decode(bytes.slice(1));
-            const parsed = JSON.parse(jsonStr);
-            if (this._isAssetMessage(parsed.type)) {
-              this._handleAssetMessage(parsed);
-              return;
-            }
-          } catch (err) {
-            console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-          }
-          return; // Don't pass asset messages to y-websocket
+        const decoded = this._decodeBinaryAssetPayload(bytes);
+        if (decoded) {
+          this._handleAssetMessage(decoded.parsed);
+          return;
+        }
+        // If has 0xFF prefix but decode failed, don't pass to y-websocket
+        if (bytes.length > 0 && bytes[0] === 0xff) {
+          return;
         }
         // Regular Yjs binary message - pass to y-websocket
         if (originalOnMessage) {
@@ -171,17 +191,12 @@ class AssetWebSocketHandler {
 
       // Handle Uint8Array (less common, but possible)
       if (data instanceof Uint8Array) {
-        if (data.length > 0 && data[0] === ASSET_MESSAGE_PREFIX) {
-          try {
-            const jsonStr = new TextDecoder().decode(data.slice(1));
-            const parsed = JSON.parse(jsonStr);
-            if (this._isAssetMessage(parsed.type)) {
-              this._handleAssetMessage(parsed);
-              return;
-            }
-          } catch (err) {
-            console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-          }
+        const decoded = this._decodeBinaryAssetPayload(data);
+        if (decoded) {
+          this._handleAssetMessage(decoded.parsed);
+          return;
+        }
+        if (data.length > 0 && data[0] === 0xff) {
           return;
         }
         if (originalOnMessage) {
@@ -194,18 +209,15 @@ class AssetWebSocketHandler {
       if (data instanceof Blob) {
         data.arrayBuffer().then((buffer) => {
           const bytes = new Uint8Array(buffer);
-          if (bytes.length > 0 && bytes[0] === ASSET_MESSAGE_PREFIX) {
-            try {
-              const jsonStr = new TextDecoder().decode(bytes.slice(1));
-              const parsed = JSON.parse(jsonStr);
-              if (this._isAssetMessage(parsed.type)) {
-                this._handleAssetMessage(parsed);
-                return;
-              }
-            } catch (err) {
-              console.warn('[AssetWebSocketHandler] Failed to decode asset message:', err);
-            }
-          } else if (originalOnMessage) {
+          const decoded = this._decodeBinaryAssetPayload(bytes);
+          if (decoded) {
+            this._handleAssetMessage(decoded.parsed);
+            return;
+          }
+          if (bytes.length > 0 && bytes[0] === 0xff) {
+            return;
+          }
+          if (originalOnMessage) {
             // Create a new MessageEvent with ArrayBuffer for y-websocket
             const newEvent = new MessageEvent('message', { data: buffer });
             originalOnMessage.call(ws, newEvent);
@@ -267,6 +279,10 @@ class AssetWebSocketHandler {
       'resume-upload',
       'slot-available',
       'navigation-hint',
+      // Upload session message types
+      'upload-session-ready',
+      'upload-file-progress',
+      'upload-batch-complete',
     ];
     return assetTypes.includes(type);
   }
@@ -459,6 +475,19 @@ class AssetWebSocketHandler {
       // Access control messages
       case 'access-revoked':
         this._handleAccessRevoked(data);
+        break;
+
+      // Upload session messages
+      case 'upload-session-ready':
+        this._handleUploadSessionReady(data);
+        break;
+
+      case 'upload-file-progress':
+        this._handleUploadFileProgress(data);
+        break;
+
+      case 'upload-batch-complete':
+        this._handleUploadBatchComplete(data);
         break;
 
       default:
@@ -1264,6 +1293,127 @@ class AssetWebSocketHandler {
     setTimeout(() => {
       window.location.href = accessDeniedUrl;
     }, 100);
+  }
+
+  // ===== Upload Session Methods =====
+
+  /**
+   * Create an upload session for optimized batch uploads
+   * Returns a session token and config for mega-batch uploads
+   *
+   * @param {Array<{clientId: string, filename: string, size: number, mimeType: string}>} manifest - Asset manifest
+   * @param {number} timeout - Timeout in ms (default 10000)
+   * @returns {Promise<{sessionToken: string, expiresAt: number, config: Object}>}
+   */
+  async createUploadSession(manifest, timeout = 10000) {
+    if (!this.connected) {
+      throw new Error('WebSocket not connected');
+    }
+
+    const totalFiles = manifest.length;
+    const totalBytes = manifest.reduce((sum, asset) => sum + (asset.size || 0), 0);
+
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        this.off('uploadSessionReady', handler);
+        reject(new Error('Upload session creation timed out'));
+      }, timeout);
+
+      const handler = (data) => {
+        clearTimeout(timeoutId);
+        this.off('uploadSessionReady', handler);
+
+        if (data.error) {
+          reject(new Error(data.error));
+        } else {
+          resolve({
+            sessionToken: data.sessionToken,
+            expiresAt: data.expiresAt,
+            config: data.config,
+          });
+        }
+      };
+
+      this.on('uploadSessionReady', handler);
+
+      this._sendMessage({
+        type: 'upload-session-create',
+        data: {
+          projectId: this.config.projectId,
+          totalFiles,
+          totalBytes,
+          manifest,
+        },
+      });
+
+      Logger.log(
+        `[AssetWebSocketHandler] Creating upload session: ${totalFiles} files, ` +
+          `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`
+      );
+    });
+  }
+
+  /**
+   * Handle upload-session-ready message from server
+   * @param {Object} data - { sessionToken, expiresAt, config, error? }
+   */
+  _handleUploadSessionReady(data) {
+    const { sessionToken, expiresAt, config, error } = data;
+
+    if (error) {
+      console.error(`[AssetWebSocketHandler] Upload session error: ${error}`);
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Upload session ready, expires at ${new Date(expiresAt).toISOString()}`
+      );
+    }
+
+    // Emit event (handled by createUploadSession promise)
+    this._emit('uploadSessionReady', data);
+  }
+
+  /**
+   * Handle upload-file-progress message from server
+   * Provides real-time progress as files are written to disk
+   * @param {Object} data - { clientId, bytesWritten, totalBytes, status, error? }
+   */
+  _handleUploadFileProgress(data) {
+    const { clientId, bytesWritten, totalBytes, status, error } = data;
+
+    if (status === 'error') {
+      console.warn(
+        `[AssetWebSocketHandler] Upload progress error for ${clientId.substring(0, 8)}...: ${error}`
+      );
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Upload progress: ${clientId.substring(0, 8)}... ` +
+          `${status} (${bytesWritten}/${totalBytes})`
+      );
+    }
+
+    // Emit event for UI updates
+    this._emit('uploadFileProgress', data);
+  }
+
+  /**
+   * Handle upload-batch-complete message from server
+   * @param {Object} data - { uploaded, failed, results }
+   */
+  _handleUploadBatchComplete(data) {
+    const { uploaded, failed, results } = data;
+
+    if (failed > 0) {
+      console.warn(
+        `[AssetWebSocketHandler] Batch complete with errors: ${uploaded} uploaded, ${failed} failed`
+      );
+    } else {
+      Logger.log(
+        `[AssetWebSocketHandler] Batch complete: ${uploaded} files uploaded successfully`
+      );
+    }
+
+    // Emit event for SaveManager
+    this._emit('uploadBatchComplete', data);
   }
 
   /**

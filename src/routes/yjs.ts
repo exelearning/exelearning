@@ -3,7 +3,6 @@
  * Endpoints for saving and loading Yjs document state
  */
 import { Elysia } from 'elysia';
-import * as Y from 'yjs';
 import {
     findProjectByUuid,
     upsertSnapshot,
@@ -92,7 +91,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
             // POST - Save Yjs document state
             // Use ?markSaved=true to also mark the project as saved (for explicit user save)
             // Without this parameter, only persists data (for auto-save on page unload)
-            .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query }) => {
+            .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query, headers }) => {
                 const project = await queries.findProjectByUuid(database, params.uuid);
                 if (!project) {
                     set.status = 404;
@@ -103,18 +102,20 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 const binaryData = new Uint8Array(body as ArrayBuffer);
                 const version = Date.now().toString();
 
-                // Extract title from Yjs document metadata
+                // Get title from X-Project-Title header (sent by client to avoid server decoding Yjs)
+                // This is a major performance optimization: avoids Y.applyUpdate() which can take
+                // 500-2000ms for large documents (5-10MB)
                 let title = project.title;
-                try {
-                    const ydoc = new Y.Doc();
-                    Y.applyUpdate(ydoc, binaryData);
-                    const metadata = ydoc.getMap('metadata');
-                    const metadataTitle = metadata.get('title') as string | undefined;
-                    if (metadataTitle?.trim()) {
-                        title = metadataTitle.trim();
+                const headerTitle = headers['x-project-title'];
+                if (headerTitle) {
+                    try {
+                        const decodedTitle = decodeURIComponent(headerTitle);
+                        if (decodedTitle.trim()) {
+                            title = decodedTitle.trim();
+                        }
+                    } catch {
+                        // If decoding fails, keep the existing project title
                     }
-                } catch {
-                    // If we can't decode the document, use the existing project title
                 }
 
                 await queries.upsertSnapshot(database, project.id, binaryData, version);
