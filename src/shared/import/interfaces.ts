@@ -22,6 +22,14 @@ export interface ImportProgress {
 }
 
 /**
+ * Callback for reporting asset extraction progress
+ * @param current - Current asset number being processed (1-indexed)
+ * @param total - Total number of assets to process
+ * @param filename - Name of the file currently being extracted
+ */
+export type AssetProgressCallback = (current: number, total: number, filename: string) => void;
+
+/**
  * Asset metadata for storage
  */
 export interface AssetMetadata {
@@ -50,9 +58,13 @@ export interface AssetHandler {
     /**
      * Extract all assets from a ZIP object
      * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @param onAssetProgress - Optional callback for reporting extraction progress
      * @returns Map of original path to asset ID
      */
-    extractAssetsFromZip(zip: Record<string, Uint8Array>): Promise<Map<string, string>>;
+    extractAssetsFromZip(
+        zip: Record<string, Uint8Array>,
+        onAssetProgress?: AssetProgressCallback,
+    ): Promise<Map<string, string>>;
 
     /**
      * Convert {{context_path}} references to asset:// URLs
@@ -110,6 +122,12 @@ export interface ElpxImportResult {
     assets: number;
     /** Theme name from imported project (if any) */
     theme?: string | null;
+    /**
+     * Cached ZIP contents from import.
+     * Used to avoid re-unzipping the file for theme import.
+     * Only populated in browser environment for performance optimization.
+     */
+    zipContents?: Record<string, Uint8Array>;
 }
 
 /**

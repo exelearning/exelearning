@@ -2965,6 +2965,47 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('document.pdf')).toBe(true);
       expect(assetMap.has('animation.gif')).toBe(true);
     });
+
+    it('calls progress callback for each asset extracted', async () => {
+      const zipData = {
+        'resources/file1.txt': new Uint8Array([1]),
+        'resources/file2.txt': new Uint8Array([2]),
+        'resources/file3.txt': new Uint8Array([3]),
+      };
+
+      const progressCalls = [];
+      const progressCallback = (current, total, filename) => {
+        progressCalls.push({ current, total, filename });
+      };
+
+      await assetManager.extractAssetsFromZip(zipData, progressCallback);
+
+      expect(progressCalls.length).toBe(3);
+      expect(progressCalls[0].current).toBe(1);
+      expect(progressCalls[0].total).toBe(3);
+      expect(progressCalls[1].current).toBe(2);
+      expect(progressCalls[2].current).toBe(3);
+    });
+
+    it('does not fail when progress callback is null', async () => {
+      const zipData = {
+        'resources/image.png': new Uint8Array([137, 80]),
+      };
+
+      // Should not throw when callback is not provided
+      const assetMap = await assetManager.extractAssetsFromZip(zipData, null);
+      expect(assetMap.size).toBe(1);
+    });
+
+    it('does not fail when progress callback is undefined', async () => {
+      const zipData = {
+        'resources/image.png': new Uint8Array([137, 80]),
+      };
+
+      // Should work when callback is omitted entirely
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.size).toBe(1);
+    });
   });
 
   // New .elpx format tests (content.xml)

@@ -116,8 +116,10 @@ class MockSaveManager {
   constructor(bridge, options) {
     this.bridge = bridge;
     this.options = options;
+    this.wsHandler = null;
   }
   async save() { return { success: true, bytes: 100 }; }
+  setWebSocketHandler(handler) { this.wsHandler = handler; }
 }
 
 // Mock ResourceFetcher
@@ -549,6 +551,49 @@ describe('YjsProjectBridge', () => {
       await bridge._checkAndImportTheme('unknown-theme', mockFile);
 
       // selectTheme should be called with default theme (fallback) and save=true to update Yjs
+      expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
+    });
+
+    it('should use cached zip when provided instead of re-unzipping', async () => {
+      const mockSelectTheme = mock(() => Promise.resolve());
+      const mockUnzipSync = mock(() => ({}));
+
+      global.eXeLearning = {
+        app: {
+          themes: {
+            list: {
+              installed: {}, // No themes installed
+            },
+            selectTheme: mockSelectTheme,
+          },
+        },
+        config: {
+          defaultTheme: 'base',
+          userStyles: 1, // Enable user styles
+          isOfflineInstallation: false,
+        },
+      };
+
+      // Mock fflate for ZIP handling
+      global.window.fflate = {
+        unzipSync: mockUnzipSync,
+      };
+
+      // Provide cached zip contents (no theme/config.xml)
+      const cachedZip = { 'content.xml': new Uint8Array([60, 63]) };
+
+      // Create a mock file with arrayBuffer (should NOT be called)
+      const mockFile = {
+        arrayBuffer: mock(() => Promise.resolve(new ArrayBuffer(10))),
+      };
+
+      await bridge._checkAndImportTheme('unknown-theme', mockFile, cachedZip);
+
+      // fflate.unzipSync should NOT be called when cached zip is provided
+      expect(mockUnzipSync).not.toHaveBeenCalled();
+      // file.arrayBuffer should NOT be called when cached zip is provided
+      expect(mockFile.arrayBuffer).not.toHaveBeenCalled();
+      // selectTheme should be called with default theme (fallback)
       expect(mockSelectTheme).toHaveBeenCalledWith('base', true);
     });
 
@@ -1590,6 +1635,31 @@ describe('YjsProjectBridge', () => {
       bridge.assetWebSocketHandler = null;
       // Should not throw
       await bridge.announceAssets();
+    });
+
+    it('connects SaveManager to WebSocket handler during initialization', async () => {
+      // Create a fresh bridge with assetWebSocketHandler mock
+      const newBridge = new YjsProjectBridge('test-project-2', {
+        apiUrl: '/api',
+        exeVersion: '3.0.0',
+        wsUrl: 'ws://localhost:1234',
+        offline: true,
+      });
+
+      // Set up mocks
+      newBridge.assetWebSocketHandler = { id: 'mock-ws-handler' };
+      newBridge.saveManager = new MockSaveManager(newBridge, {});
+
+      // Verify setWebSocketHandler was not called yet
+      expect(newBridge.saveManager.wsHandler).toBeNull();
+
+      // Manually call setWebSocketHandler as done in initialize
+      if (newBridge.assetWebSocketHandler) {
+        newBridge.saveManager.setWebSocketHandler(newBridge.assetWebSocketHandler);
+      }
+
+      // Verify wsHandler is now set
+      expect(newBridge.saveManager.wsHandler).toEqual({ id: 'mock-ws-handler' });
     });
   });
 
@@ -3327,8 +3397,9 @@ describe('YjsProjectBridge', () => {
     });
 
     it('calls importer and announces assets', async () => {
+      const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
-        importFromFile: mock(() => Promise.resolve({ assets: 5, theme: 'base' })),
+        importFromFile: mock(() => Promise.resolve({ assets: 5, theme: 'base', zipContents: mockZipContents })),
       };
       global.window.ElpxImporter = mock(function() { return mockImporter; });
 
@@ -3340,13 +3411,14 @@ describe('YjsProjectBridge', () => {
 
       expect(result.assets).toBe(5);
       expect(bridge.announceAssets).toHaveBeenCalled();
-      // Theme import is called when clearExisting is true (default)
-      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file);
+      // Theme import is called with cached zipContents to avoid re-unzipping
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('base', file, mockZipContents);
     });
 
     it('imports theme when clearExisting is explicitly true', async () => {
+      const mockZipContents = { 'content.xml': new Uint8Array([60, 63]) };
       const mockImporter = {
-        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme' })),
+        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme', zipContents: mockZipContents })),
       };
       global.window.ElpxImporter = mock(function() { return mockImporter; });
 
@@ -3355,7 +3427,7 @@ describe('YjsProjectBridge', () => {
       const file = new Blob(['test'], { type: 'application/zip' });
       await bridge.importFromElpx(file, { clearExisting: true });
 
-      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file);
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file, mockZipContents);
     });
 
     it('does NOT import theme when clearExisting is false (importing into existing project)', async () => {

@@ -73,7 +73,16 @@ const getAppVersion = (): string => {
 };
 
 /**
+ * Supported icon extensions in priority order (highest priority first)
+ * When multiple formats exist for the same icon, the highest priority format wins
+ */
+const ICON_EXTENSIONS = ['svg', 'png', 'gif', 'jpg', 'jpeg', 'webp'];
+const ICON_EXTENSION_REGEX = /\.(svg|png|gif|jpe?g|webp)$/i;
+
+/**
  * Theme icon structure expected by the frontend
+ * The `id` field is the baseName WITHOUT extension (e.g., "share")
+ * The `value` field contains the full URL with extension (e.g., "/v3.1/.../share.svg")
  */
 interface ThemeIcon {
     id: string;
@@ -128,6 +137,11 @@ function scanThemeFiles(themePath: string, extension: string): string[] {
 
 /**
  * Scan theme directory for icon files
+ * Supports multiple formats with priority: svg > png > gif > jpg > jpeg > webp
+ * When multiple formats exist for the same icon base name, the highest priority format wins
+ *
+ * Icons are keyed by baseName (e.g., "share") to allow cross-theme compatibility.
+ * The iconName stored in blocks is the baseName without extension.
  */
 function scanThemeIcons(themePath: string, themeUrl: string): Record<string, ThemeIcon> {
     const icons: Record<string, ThemeIcon> = {};
@@ -137,18 +151,37 @@ function scanThemeIcons(themePath: string, themeUrl: string): Record<string, The
         return icons;
     }
 
+    // Track best icon per base name (highest priority = lowest index)
+    const bestByBaseName: Map<string, { filename: string; priority: number }> = new Map();
+
     const entries = deps.fs.readdirSync(iconsPath, { withFileTypes: true });
     for (const entry of entries) {
-        if (entry.isFile() && (entry.name.endsWith('.png') || entry.name.endsWith('.svg'))) {
-            const iconId = entry.name.replace(/\.(png|svg)$/, '');
-            icons[iconId] = {
-                id: iconId,
-                title: iconId,
-                type: 'img',
-                value: `${themeUrl}/icons/${entry.name}`,
-            };
+        if (!entry.isFile()) continue;
+
+        const ext = entry.name.split('.').pop()?.toLowerCase();
+        if (!ext || !ICON_EXTENSIONS.includes(ext)) continue;
+
+        const baseName = entry.name.replace(ICON_EXTENSION_REGEX, '');
+        const priority = ICON_EXTENSIONS.indexOf(ext);
+
+        const existing = bestByBaseName.get(baseName);
+        if (!existing || priority < existing.priority) {
+            bestByBaseName.set(baseName, { filename: entry.name, priority });
         }
     }
+
+    // Build icons record - keyed by baseName (e.g., "share")
+    // This allows icon selection to persist when switching themes
+    // (Theme A may have share.svg, Theme B may have share.png)
+    for (const [baseName, { filename }] of bestByBaseName) {
+        icons[baseName] = {
+            id: baseName, // baseName without extension
+            title: baseName,
+            type: 'img',
+            value: `${themeUrl}/icons/${filename}`, // Full URL with extension
+        };
+    }
+
     return icons;
 }
 

@@ -1018,7 +1018,7 @@ describe('IdeviceRenderer', () => {
                 name: 'Test Block',
                 order: 0,
                 components: [],
-                iconName: 'lightbulb', // iconName is on block, not properties
+                iconName: 'lightbulb.png', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
@@ -1028,13 +1028,12 @@ describe('IdeviceRenderer', () => {
         });
 
         it('should use themeIconBasePath when provided for icon (preview mode)', () => {
-            // This tests lines 190-194
             const block: ExportBlock = {
                 id: 'block-1',
                 name: 'Preview Block',
                 order: 0,
                 components: [],
-                iconName: 'check', // iconName is on block, not properties
+                iconName: 'check.svg', // iconName includes extension
             };
 
             const html = renderer.renderBlock(block, {
@@ -1043,7 +1042,7 @@ describe('IdeviceRenderer', () => {
                 themeIconBasePath: '/preview/icons/',
             });
 
-            expect(html).toContain('/preview/icons/check.png');
+            expect(html).toContain('/preview/icons/check.svg');
             expect(html).not.toContain('theme/icons/');
         });
 
@@ -1154,7 +1153,7 @@ describe('IdeviceRenderer', () => {
                 name: '', // No title
                 order: 0,
                 components: [],
-                iconName: 'check',
+                iconName: 'check.png', // iconName includes extension
                 properties: { allowToggle: 'true' as unknown as boolean },
             };
 
@@ -1210,6 +1209,131 @@ describe('IdeviceRenderer', () => {
             // Toggle text is always English in HTML - translated at runtime by exe_export.js
             expect(html).toContain('title="Toggle content"');
             expect(html).toContain('<span>Toggle content</span>');
+        });
+
+        it('should resolve icon baseName to filename with extension using setThemeIconFiles', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'activity', // baseName without extension
+            };
+
+            // Configure renderer with theme files that maps 'activity' → 'activity.svg'
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should use resolved name with extension
+            expect(html).toContain('theme/icons/activity.svg');
+            // Should not have just the baseName without extension
+            expect(html).not.toMatch(/theme\/icons\/activity["']/);
+        });
+
+        it('should fall back to iconName when theme does not contain the icon', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'unknown-icon', // Icon not in theme
+            };
+
+            // Configure renderer with theme files without 'unknown-icon'
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should use iconName as-is since it's not in the theme
+            expect(html).toContain('theme/icons/unknown-icon');
+        });
+
+        it('should use iconName as-is when setThemeIconFiles is not called', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'share', // baseName without extension
+            };
+
+            // Note: setThemeIconFiles not called, so internal map is empty
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+
+            // Should use iconName as-is
+            expect(html).toContain('theme/icons/share');
+        });
+
+        it('should resolve icon and apply themeIconBasePath together', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Preview Block',
+                order: 0,
+                components: [],
+                iconName: 'check', // baseName without extension
+            };
+
+            // Configure renderer with theme files
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            const html = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+                themeIconBasePath: '/preview/icons/',
+            });
+
+            // Should use themeIconBasePath with resolved filename
+            expect(html).toContain('/preview/icons/check.png');
+            expect(html).not.toContain('theme/icons/');
+        });
+
+        it('should resolve icon with different file extensions based on theme', () => {
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test Block',
+                order: 0,
+                components: [],
+                iconName: 'info', // Same baseName
+            };
+
+            // Theme A: SVG format
+            const themeFilesMapA = new Map<string, unknown>();
+            themeFilesMapA.set('icons/info.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMapA);
+
+            const htmlThemeA = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+            expect(htmlThemeA).toContain('theme/icons/info.svg');
+
+            // Theme B: PNG format (reconfigure renderer)
+            const themeFilesMapB = new Map<string, unknown>();
+            themeFilesMapB.set('icons/info.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMapB);
+
+            const htmlThemeB = renderer.renderBlock(block, {
+                basePath: '',
+                includeDataAttributes: true,
+            });
+            expect(htmlThemeB).toContain('theme/icons/info.png');
         });
     });
 
@@ -1376,6 +1500,125 @@ describe('IdeviceRenderer', () => {
             expect(transformed.active).toBe(true);
             expect(transformed.name).toBe('Test');
             expect(transformed.empty).toBeNull();
+        });
+    });
+
+    describe('setThemeIconFiles', () => {
+        it('should build icon resolution map from theme files', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            themeFilesMap.set('icons/info.gif', new Uint8Array(0));
+            themeFilesMap.set('style.css', 'css content'); // Non-icon file
+
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // Test that icons are resolved correctly
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            expect(html).toContain('theme/icons/activity.svg');
+        });
+
+        it('should handle null theme files map', () => {
+            renderer.setThemeIconFiles(null);
+
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use iconName as-is since no resolution map
+            expect(html).toContain('theme/icons/activity');
+        });
+
+        it('should clear previous icon resolution map when called again', () => {
+            // First call with activity.svg
+            const themeFilesMap1 = new Map<string, unknown>();
+            themeFilesMap1.set('icons/activity.svg', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap1);
+
+            // Second call with activity.png (different extension)
+            const themeFilesMap2 = new Map<string, unknown>();
+            themeFilesMap2.set('icons/activity.png', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap2);
+
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'activity',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use the second configuration (png)
+            expect(html).toContain('theme/icons/activity.png');
+            expect(html).not.toContain('activity.svg');
+        });
+
+        it('should handle various image extensions', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/icon1.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon2.png', new Uint8Array(0));
+            themeFilesMap.set('icons/icon3.gif', new Uint8Array(0));
+            themeFilesMap.set('icons/icon4.jpg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon5.jpeg', new Uint8Array(0));
+            themeFilesMap.set('icons/icon6.webp', new Uint8Array(0));
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // Test each extension
+            const testIcon = (iconName: string, expectedExt: string) => {
+                const block: ExportBlock = {
+                    id: `block-${iconName}`,
+                    name: 'Test',
+                    order: 0,
+                    components: [],
+                    iconName,
+                };
+                const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+                expect(html).toContain(`theme/icons/${iconName}.${expectedExt}`);
+            };
+
+            testIcon('icon1', 'svg');
+            testIcon('icon2', 'png');
+            testIcon('icon3', 'gif');
+            testIcon('icon4', 'jpg');
+            testIcon('icon5', 'jpeg');
+            testIcon('icon6', 'webp');
+        });
+
+        it('should ignore non-icon files in theme', () => {
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            themeFilesMap.set('style.css', 'css content');
+            themeFilesMap.set('script.js', 'js content');
+            themeFilesMap.set('img/logo.png', new Uint8Array(0)); // Not in icons/ folder
+            renderer.setThemeIconFiles(themeFilesMap);
+
+            // 'logo' should not be resolved from img/ folder because only icons/ is scanned
+            // But it should fall back to .png extension for backwards compatibility
+            const block: ExportBlock = {
+                id: 'block-1',
+                name: 'Test',
+                order: 0,
+                components: [],
+                iconName: 'logo',
+            };
+
+            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
+            // Should use iconName with .png fallback (not from img/ folder)
+            expect(html).toContain('theme/icons/logo.png');
         });
     });
 

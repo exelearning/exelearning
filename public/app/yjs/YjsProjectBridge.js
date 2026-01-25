@@ -219,6 +219,12 @@ class YjsProjectBridge {
         apiUrl: config.apiUrl,
         token: authToken,
       });
+
+      // Connect SaveManager to WebSocket handler for optimized upload sessions
+      if (this.assetWebSocketHandler) {
+        this.saveManager.setWebSocketHandler(this.assetWebSocketHandler);
+      }
+
       Logger.log('[YjsProjectBridge] SaveManager initialized');
     }
 
@@ -1009,11 +1015,14 @@ class YjsProjectBridge {
     const undoRedoContainer = document.createElement('div');
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
+    // Use formatShortcut() to display platform-appropriate shortcuts (⌘Z on Mac, Ctrl+Z elsewhere)
+    const undoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+z') : 'Ctrl+Z';
+    const redoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+shift+z') : 'Ctrl+Shift+Z';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="${_('Undo')} (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (${undoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="${_('Redo')} (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (${redoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;
@@ -2064,7 +2073,8 @@ class YjsProjectBridge {
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
     const clearExisting = options.clearExisting !== false; // default is true
     if (stats && stats.theme && clearExisting) {
-      await this._checkAndImportTheme(stats.theme, file);
+      // Pass cached zip contents to avoid re-unzipping the file
+      await this._checkAndImportTheme(stats.theme, file, stats.zipContents);
     }
 
     return stats;
@@ -2087,9 +2097,10 @@ class YjsProjectBridge {
    *
    * @param {string} themeName - Name of the theme from the package
    * @param {File} file - The original .elpx file to check for /theme/ folder
+   * @param {Record<string, Uint8Array>} [cachedZip] - Pre-extracted ZIP contents (avoids re-unzipping)
    * @private
    */
-  async _checkAndImportTheme(themeName, file) {
+  async _checkAndImportTheme(themeName, file, cachedZip = null) {
     if (!themeName) return;
 
     Logger.log(`[YjsProjectBridge] Checking theme: ${themeName}`);
@@ -2132,13 +2143,22 @@ class YjsProjectBridge {
 
     // Theme not installed - check if package has /theme/ folder
     try {
-      const fflateLib = window.fflate;
-      if (!fflateLib) {
-        throw new Error('fflate library not loaded');
+      let zip;
+      if (cachedZip) {
+        // Use cached zip from import (avoids re-unzipping large files)
+        zip = cachedZip;
+        Logger.log('[YjsProjectBridge] Using cached zip contents for theme check');
+      } else {
+        // Fallback: unzip file (should rarely happen now)
+        const fflateLib = window.fflate;
+        if (!fflateLib) {
+          throw new Error('fflate library not loaded');
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Data = new Uint8Array(arrayBuffer);
+        zip = fflateLib.unzipSync(uint8Data);
+        Logger.log('[YjsProjectBridge] Unzipped file for theme check (fallback path)');
       }
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Data = new Uint8Array(arrayBuffer);
-      const zip = fflateLib.unzipSync(uint8Data);
       const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {
