@@ -8,7 +8,7 @@
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { existsSync, mkdirSync } from 'fs';
-import type { AssetHandler, AssetMetadata } from './interfaces';
+import type { AssetHandler, AssetMetadata, AssetProgressCallback } from './interfaces';
 
 /**
  * Directories within an ELP that contain project assets
@@ -245,17 +245,39 @@ export class FileSystemAssetHandler implements AssetHandler {
      * This ensures the export can find assets by the ID used in HTML content.
      *
      * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @param onAssetProgress - Optional callback for reporting extraction progress
      * @returns Map of original path to asset ID
      */
-    async extractAssetsFromZip(zip: Record<string, Uint8Array>): Promise<Map<string, string>> {
+    async extractAssetsFromZip(
+        zip: Record<string, Uint8Array>,
+        onAssetProgress?: AssetProgressCallback,
+    ): Promise<Map<string, string>> {
         const assetMap = new Map<string, string>();
 
+        // Filter to only asset entries first for accurate progress reporting
+        const assetEntries: [string, Uint8Array][] = [];
         for (const [zipPath, content] of Object.entries(zip)) {
-            // Check if this is an asset file
             const assetInfo = isAssetPath(zipPath);
-            if (!assetInfo.isAsset) continue;
+            if (assetInfo.isAsset) {
+                assetEntries.push([zipPath, content]);
+            }
+        }
+
+        const totalAssets = assetEntries.length;
+        let currentAsset = 0;
+
+        for (const [zipPath, content] of assetEntries) {
+            currentAsset++;
 
             const filename = path.basename(zipPath);
+
+            // Report progress if callback provided
+            if (onAssetProgress) {
+                onAssetProgress(currentAsset, totalAssets, filename);
+            }
+
+            // Get asset info (already filtered, but need the paths)
+            const assetInfo = isAssetPath(zipPath);
             const mimeType = getMimeType(filename);
 
             // Determine the folder path (directory structure to preserve)
@@ -435,7 +457,7 @@ export class FileSystemAssetHandler implements AssetHandler {
                     if (downloadableMatch) {
                         downloadable = downloadableMatch[1] === '1';
                     }
-                } catch (_e) {
+                } catch {
                     // Ignore config parsing errors, use defaults
                 }
             }

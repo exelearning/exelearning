@@ -200,6 +200,61 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should report incremental progress during asset extraction', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const progressMessages: { phase: string; percent: number; message: string }[] = [];
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer), {
+                onProgress: progress => {
+                    progressMessages.push({
+                        phase: progress.phase,
+                        percent: progress.percent,
+                        message: progress.message,
+                    });
+                },
+            });
+
+            // If there were assets, we should see incremental progress updates
+            if (result.assets > 0) {
+                const extractingMessages = progressMessages.filter(
+                    p => p.phase === 'assets' && p.message === 'Extracting assets...',
+                );
+                expect(extractingMessages.length).toBeGreaterThan(0);
+
+                // All extracting messages should have percent between 10 and 50
+                for (const msg of extractingMessages) {
+                    expect(msg.percent).toBeGreaterThanOrEqual(10);
+                    expect(msg.percent).toBeLessThanOrEqual(50);
+                }
+            }
+
+            ydoc.destroy();
+        });
+
+        it('should return zipContents in result for theme import optimization', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // zipContents should be returned for theme import optimization
+            expect(result.zipContents).toBeDefined();
+            expect(typeof result.zipContents).toBe('object');
+            // Should contain content.xml (the main content file)
+            expect(result.zipContents!['content.xml']).toBeDefined();
+
+            ydoc.destroy();
+        });
     });
 
     describe('error handling', () => {
@@ -335,6 +390,24 @@ describe('ElpxImporter - Legacy Format', () => {
             expect(progressEvents).toContain('assets');
             expect(progressEvents).toContain('structure');
             expect(progressEvents).toContain('precache');
+
+            ydoc.destroy();
+        });
+
+        it('should return zipContents in result for legacy format', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // zipContents should be returned for theme import optimization
+            expect(result.zipContents).toBeDefined();
+            expect(typeof result.zipContents).toBe('object');
+            // Legacy files use contentv3.xml
+            expect(result.zipContents!['contentv3.xml']).toBeDefined();
 
             ydoc.destroy();
         });
@@ -738,6 +811,42 @@ describe('FileSystemAssetHandler', () => {
 
             // Should not extract from non-asset directories
             expect(assetMap.has('some-other-dir/file.txt')).toBe(false);
+        });
+
+        it('should invoke progress callback for each asset during extraction', async () => {
+            const handler = new FileSystemAssetHandler(testDir);
+
+            const zip = {
+                'resources/image1.png': new Uint8Array([137, 80, 78, 71]),
+                'resources/image2.jpg': new Uint8Array([255, 216, 255, 224]),
+                'resources/doc.pdf': new Uint8Array([37, 80, 68, 70]),
+                'content.xml': new Uint8Array([60, 63, 120, 109, 108]),
+            };
+
+            const progressCalls: { current: number; total: number; filename: string }[] = [];
+
+            await handler.extractAssetsFromZip(zip, (current, total, filename) => {
+                progressCalls.push({ current, total, filename });
+            });
+
+            // Should have exactly 3 progress calls (one per asset)
+            expect(progressCalls.length).toBe(3);
+
+            // Total should be consistent across all calls
+            expect(progressCalls[0].total).toBe(3);
+            expect(progressCalls[1].total).toBe(3);
+            expect(progressCalls[2].total).toBe(3);
+
+            // Current should increment from 1 to 3
+            expect(progressCalls[0].current).toBe(1);
+            expect(progressCalls[1].current).toBe(2);
+            expect(progressCalls[2].current).toBe(3);
+
+            // Filenames should be the base names of the assets
+            const filenames = progressCalls.map(p => p.filename);
+            expect(filenames).toContain('image1.png');
+            expect(filenames).toContain('image2.jpg');
+            expect(filenames).toContain('doc.pdf');
         });
     });
 

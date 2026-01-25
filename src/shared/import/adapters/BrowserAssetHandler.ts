@@ -11,7 +11,7 @@
  * - AssetManager class (browser IndexedDB implementation)
  */
 
-import type { AssetHandler, AssetMetadata, Logger } from '../interfaces';
+import type { AssetHandler, AssetMetadata, AssetProgressCallback, Logger } from '../interfaces';
 
 /**
  * Browser AssetManager interface (from public/app/yjs/AssetManager.js)
@@ -32,7 +32,10 @@ interface BrowserAssetManager {
     /** Get existing asset by hash */
     getAssetByHash(hash: string): Promise<{ id: string; blob: Blob } | null>;
     /** Extract assets from ZIP object */
-    extractAssetsFromZip(zip: Record<string, Uint8Array>): Promise<Map<string, string>>;
+    extractAssetsFromZip(
+        zip: Record<string, Uint8Array>,
+        onAssetProgress?: AssetProgressCallback,
+    ): Promise<Map<string, string>>;
     /** Convert {{context_path}} references to asset:// URLs */
     convertContextPathToAssetRefs(html: string, assetMap: Map<string, string>): string;
     /** Preload all assets for immediate rendering */
@@ -116,11 +119,20 @@ export class BrowserAssetHandler implements AssetHandler {
      * Extract all assets from a ZIP object
      * Delegates to AssetManager's existing implementation
      * @param zip - Extracted ZIP files object from fflate {path: Uint8Array}
+     * @param onAssetProgress - Optional callback for reporting extraction progress
      * @returns Map of original path to asset ID
      */
-    async extractAssetsFromZip(zip: Record<string, Uint8Array>): Promise<Map<string, string>> {
+    async extractAssetsFromZip(
+        zip: Record<string, Uint8Array>,
+        onAssetProgress?: AssetProgressCallback,
+    ): Promise<Map<string, string>> {
         await this.ensureInitialized();
-        return this.assetManager.extractAssetsFromZip(zip);
+        try {
+            return await this.assetManager.extractAssetsFromZip(zip, onAssetProgress);
+        } catch (error) {
+            this.logger.error('[BrowserAssetHandler] Failed to extract assets from ZIP:', error);
+            throw error;
+        }
     }
 
     /**
