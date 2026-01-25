@@ -168,12 +168,21 @@ describe('YjsLoader', () => {
   });
 
   describe('initProject', () => {
+    let originalLoad;
+
     beforeEach(() => {
+      // Save original load function before mocking
+      originalLoad = window.YjsLoader.load;
       // Mock successful load
       window.YjsLoader.load = mock(() => undefined).mockResolvedValue();
       window.YjsModules = {
         initializeProject: mock(() => undefined).mockResolvedValue({ bridge: true }),
       };
+    });
+
+    afterEach(() => {
+      // Restore original load function
+      window.YjsLoader.load = originalLoad;
     });
 
     it('calls load first', async () => {
@@ -862,6 +871,166 @@ describe('YjsLoader', () => {
       const shouldAutoload = currentScript?.dataset?.autoload !== undefined;
 
       expect(shouldAutoload).toBe(false);
+    });
+  });
+
+  describe('path resolution in _doLoad (lines 224-227)', () => {
+    // These tests verify the new path resolution logic for absolute vs relative module paths
+    // The code being tested:
+    //   const groupUrls = group.map((m) => {
+    //     if (m.startsWith('/')) {
+    //       return assetPath(m);  // Absolute path like '/bundles/...'
+    //     }
+    //     return `${basePath}/${m}`;  // Relative path like 'YjsDocumentManager.js'
+    //   });
+
+    let loadedUrls;
+    let originalCreateElement;
+
+    beforeEach(() => {
+      // Reset loader state
+      window.YjsLoader.loaded = false;
+      window.YjsLoader.loading = false;
+      window.YjsLoader._loadPromise = null;
+
+      // Set up Y and fflate to skip their loading phases
+      window.Y = { Doc: function() {} };
+      window.fflate = { zipSync: function() {} };
+
+      // Set up eXeLearning config
+      window.eXeLearning = {
+        config: { basePath: '/web/exelearning' },
+        version: 'v2.0.0',
+      };
+
+      // Track URLs passed to appendChild
+      loadedUrls = [];
+
+      // Save original createElement for this describe block
+      originalCreateElement = document.createElement.bind(document);
+
+      // Mock createElement to capture script elements
+      document.createElement.mockImplementation((tag) => {
+        if (tag === 'script') {
+          return {
+            src: '',
+            async: false,
+            onload: null,
+            onerror: null,
+          };
+        }
+        return originalCreateElement(tag);
+      });
+
+      // Override querySelector to return null (scripts not loaded yet)
+      document.querySelector.mockReturnValue(null);
+
+      // Capture all script URLs attempted to be loaded
+      // Use queueMicrotask instead of setTimeout for faster, more predictable async behavior
+      document.head.appendChild.mockImplementation((script) => {
+        if (script.src) {
+          loadedUrls.push(script.src);
+        }
+        // Simulate script loading with microtask for proper async flow
+        queueMicrotask(() => {
+          if (script.onload) script.onload();
+        });
+        return script;
+      });
+    });
+
+    afterEach(async () => {
+      // Ensure any pending load promise is settled to avoid unhandled rejections
+      if (window.YjsLoader._loadPromise) {
+        try {
+          await window.YjsLoader._loadPromise;
+        } catch {
+          // Expected - load will fail because YjsModules isn't defined
+        }
+      }
+      // Reset for next test
+      window.YjsLoader._loadPromise = null;
+      window.YjsLoader.loaded = false;
+      window.YjsLoader.loading = false;
+    });
+
+    it('resolves absolute paths (starting with /) using assetPath()', async () => {
+      // Start load - attach catch handler immediately to prevent unhandled rejection
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for enough URLs to be collected (absolute path loads in group 0)
+      const startTime = Date.now();
+      while (loadedUrls.length < 1 && Date.now() - startTime < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // The absolute paths should be transformed using assetPath()
+      // Format: {basePath}/{version}{path}
+      // For '/app/yjs/importers.bundle.js' → '/web/exelearning/v2.0.0/app/yjs/importers.bundle.js'
+      const absolutePathUrl = loadedUrls.find((url) =>
+        url.includes('/v2.0.0/app/yjs/importers.bundle.js')
+      );
+      expect(absolutePathUrl).toBeDefined();
+    });
+
+    it('resolves relative paths using basePath prefix', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for enough URLs (group 1 has 7 relative path modules)
+      // Group 0 (1 script) + Group 1 (7 scripts) = at least 8 scripts
+      const startTime = Date.now();
+      while (loadedUrls.length < 8 && Date.now() - startTime < 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Relative paths should be prefixed with basePath
+      // For 'YjsDocumentManager.js' → '/web/exelearning/v2.0.0/app/yjs/YjsDocumentManager.js'
+      const relativePathUrl = loadedUrls.find((url) =>
+        url.includes('/YjsDocumentManager.js')
+      );
+      expect(relativePathUrl).toBeDefined();
+    });
+
+    it('handles both absolute and relative paths in same group', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for enough URLs to include both types
+      const startTime = Date.now();
+      while (loadedUrls.length < 8 && Date.now() - startTime < 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Verify we have both types of URLs
+      const hasAbsolutePath = loadedUrls.some((url) =>
+        url.includes('/v2.0.0/app/yjs/') && url.includes('.bundle.js')
+      );
+      const hasRelativePath = loadedUrls.some((url) =>
+        url.includes('YjsDocumentManager.js') || url.includes('YjsLockManager.js')
+      );
+
+      expect(hasAbsolutePath).toBe(true);
+      expect(hasRelativePath).toBe(true);
+    });
+
+    it('path resolution uses correct version from eXeLearning config', async () => {
+      // Set specific version
+      window.eXeLearning.version = 'v3.5.0';
+
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for enough URLs
+      const startTime = Date.now();
+      while (loadedUrls.length < 1 && Date.now() - startTime < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Check that version is included in absolute paths
+      const versionedUrl = loadedUrls.find((url) => url.includes('/v3.5.0/'));
+      expect(versionedUrl).toBeDefined();
     });
   });
 

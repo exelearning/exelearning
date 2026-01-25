@@ -12,47 +12,21 @@ services:
       - .env.dist
       - .env # Overrides what is defined in .env
     ports:
-      - ${APP_PORT:-8080}:8080 # Maps the host's $APP_PORT to the container's internal port 8080
+      - ${APP_PORT:-8080}:${APP_PORT-8080} # Maps the host's $APP_PORT to the container's ${APP_PORT} internal port
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
-      - ./src:/app/src
-      - ./tests:/app/tests
-      - ./templates:/app/templates
-      - ./translations:/app/translations
-      - ./public:/app/public
-      - ./assets:/app/assets
-      - ./scripts:/app/scripts
-      - ./package.json:/app/package.json
-
-      # Anonym volumes - MUCH faster
-      - /app/node_modules    # ← To avoid copying npm files
-
-      # Persistent data
-      - mnt-data:/mnt/data:rw
-      - ./data:/app/data:rw  # SQLite database persistence
-
+      # Persistent data only - no source code mounting
+      - mnt-data:/mnt/data:rw         # Uploaded assets
+      - ./data:/app/data:rw           # SQLite database persistence
+    # Always run in production mode (pre-compiled, no watchers)
+    # For development with hot reload, run locally: make up-local
     environment:
       PRE_CONFIGURE_COMMANDS:
       POST_CONFIGURE_COMMANDS: |
         echo "this is a test line 1"
         echo "this is a test line 2"
-        # php bin/console app:create-user ${TEST_USER_EMAIL} ${TEST_USER_PASSWORD} ${TEST_USER_USERNAME} --no-fail
-    # Start based on APP_ENV
-    # dev (default): Elysia with hot-reload + SCSS watcher
-    # prod: Pre-compiled Elysia, no watchers
-    command: >
-      sh -c "if [ \"$$APP_ENV\" = 'prod' ]; then
-        echo 'Building assets for production (because we bind /public/)...' &&
-        bun run css:node &&
-        bun run bundle:app &&
-        echo 'Starting Elysia (prod mode)...' &&
-        bun run start;
-      else
-        echo 'Starting Elysia (dev mode with watchers)...' &&
-        bun run dev;
-      fi"
 
-  #  ⚠️ WARNING: Uncomment this for using mariadb as local database for development 
+  #  ⚠️ WARNING: Uncomment this for using mariadb as local database for development
   #     # Database settings
   #     DB_DRIVER: pdo_mysql
   #     DB_HOST: mariadb

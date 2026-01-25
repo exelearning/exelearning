@@ -6,7 +6,7 @@
  * Yjs documents, IndexedDB asset cache, and fetch-based resource loading.
  *
  * Bundle this file for browser use:
- *   bun build src/shared/export/browser/index.ts --outfile public/app/yjs/exporters.bundle.js --target browser
+ *   bun run bundle:exporters (outputs to public/app/yjs/exporters.bundle.js)
  *
  * Usage in browser:
  * ```javascript

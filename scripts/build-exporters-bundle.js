@@ -10,45 +10,32 @@ const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
 
+/**
+ * Check if import comes from our source files (for selective redirects)
+ */
+function isFromSourceFiles(importer) {
+    // Normalize path separators for Windows compatibility
+    const normalized = importer.replace(/\\/g, '/');
+    return normalized.includes('src/shared/export') || normalized.includes('src/services');
+}
+
 // Plugin to redirect server-side imports to browser shims
 const browserAliasPlugin = {
     name: 'browser-alias',
     setup(build) {
-        // Intercept imports of idevice-config
+        // Redirect idevice-config to browser version
         build.onResolve({ filter: /idevice-config$/ }, (args) => {
-            // Normalize path separators for Windows compatibility
-            const normalizedPath = args.importer.replace(/\\/g, '/');
-            // Only redirect if coming from our source files
-            if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
-                return {
-                    path: path.join(projectRoot, 'src/shared/export/browser/idevice-config-browser.ts'),
-                };
+            if (isFromSourceFiles(args.importer)) {
+                return { path: path.join(projectRoot, 'src/shared/export/browser/idevice-config-browser.ts') };
             }
         });
 
-        // Intercept imports of our internal xml-parser module (uses fs-extra which doesn't work in browser)
+        // Redirect xml-parser to browser shim (uses fs-extra which doesn't work in browser)
         // Note: Use specific pattern to avoid matching npm packages like 'fast-xml-parser'
         build.onResolve({ filter: /services\/xml\/xml-parser$/ }, (args) => {
-            // Normalize path separators for Windows compatibility
-            const normalizedPath = args.importer.replace(/\\/g, '/');
-            if (normalizedPath.includes('src/shared/export') || normalizedPath.includes('src/services')) {
-                return {
-                    path: path.join(projectRoot, 'src/shared/export/browser/xml-validator-shim.ts'),
-                };
+            if (isFromSourceFiles(args.importer)) {
+                return { path: path.join(projectRoot, 'src/shared/export/browser/xml-validator-shim.ts') };
             }
-        });
-
-        // Mark Node.js-only modules as external (not used in browser bundle)
-        build.onResolve({ filter: /^fs-extra$/ }, () => {
-            return { path: 'fs-extra', external: true };
-        });
-
-        build.onResolve({ filter: /^fs$/ }, () => {
-            return { path: 'fs', external: true };
-        });
-
-        build.onResolve({ filter: /^path$/ }, () => {
-            return { path: 'path', external: true };
         });
     },
 };
@@ -59,10 +46,10 @@ esbuild.build({
     outfile: path.join(projectRoot, 'public/app/yjs/exporters.bundle.js'),
     format: 'iife',
     platform: 'browser',
-    external: ['jszip'],
     plugins: [browserAliasPlugin],
+    // Node.js-only modules - mark as external (not used in browser bundle)
+    external: ['fs', 'fs-extra', 'path'],
     logLevel: 'info',
-    // Replace Node.js environment variables with browser-safe values
     define: {
         'process.env.APP_DEBUG': '"0"',
     },

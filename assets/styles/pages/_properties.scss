@@ -266,8 +266,7 @@
 }
 
 // Legacy license warning style - uses data attribute for simpler JS
-.form-select[data-legacy-value] {
+.form-select[data-legacy-value]:not(:focus) {
     color: var(--system-red, #dc3545) !important;
     border-color: var(--system-red, #dc3545) !important;
-    font-style: italic;
 }

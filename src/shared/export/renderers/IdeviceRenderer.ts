@@ -41,6 +41,44 @@ export interface IdeviceJsScript {
  */
 export class IdeviceRenderer {
     /**
+     * Private icon resolution map: baseName → filename with extension
+     * Configured via setThemeIconFiles() before rendering
+     */
+    private iconResolutionMap: Map<string, string> = new Map();
+
+    /**
+     * Configure icon resolution from theme files.
+     * Call this once before rendering blocks.
+     *
+     * @param themeFilesMap - Map of theme file paths (e.g., 'icons/activity.svg')
+     */
+    setThemeIconFiles(themeFilesMap: Map<string, unknown> | null): void {
+        this.iconResolutionMap.clear();
+        if (!themeFilesMap) return;
+
+        for (const [filePath] of themeFilesMap) {
+            if (filePath.startsWith('icons/') && /\.(svg|png|gif|jpe?g|webp)$/i.test(filePath)) {
+                const filename = filePath.replace('icons/', '');
+                const baseName = filename.replace(/\.(svg|png|gif|jpe?g|webp)$/i, '');
+                this.iconResolutionMap.set(baseName, filename);
+            }
+        }
+    }
+
+    /**
+     * Resolve icon baseName to filename with extension.
+     * Returns baseName + '.png' as fallback if not found (backwards compatibility).
+     */
+    private resolveIconName(baseName: string): string {
+        const resolved = this.iconResolutionMap.get(baseName);
+        if (resolved) {
+            return resolved;
+        }
+        // Fallback to .png for backwards compatibility with legacy themes
+        return `${baseName}.png`;
+    }
+
+    /**
      * Render a single iDevice component to HTML
      * @param component - Component data
      * @param options - Rendering options
@@ -188,12 +226,15 @@ ${contentHtml}
         const headerClass = hasIcon ? 'box-head' : 'box-head no-icon';
 
         // Build icon HTML if iconName exists
+        // iconName is stored WITHOUT extension (e.g., "share") to allow cross-theme compatibility
+        // We use resolveIconName() to resolve to actual filename with extension (e.g., "share.svg")
         let iconHtml = '';
         if (hasIcon) {
-            // Icon path: use themeIconBasePath if provided (for preview), otherwise use basePath + theme/icons/
+            // Resolve icon baseName to actual filename with extension
+            const resolvedIconName = this.resolveIconName(iconName);
             const iconPath = themeIconBasePath
-                ? `${themeIconBasePath}${iconName}.png`
-                : `${basePath}theme/icons/${iconName}.png`;
+                ? `${themeIconBasePath}${resolvedIconName}`
+                : `${basePath}theme/icons/${resolvedIconName}`;
             iconHtml = `<div class="box-icon exe-icon">
 <img src="${this.escapeAttr(iconPath)}" alt="">
 </div>

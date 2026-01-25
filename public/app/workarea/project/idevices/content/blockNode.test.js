@@ -1072,6 +1072,23 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('makeModalChangeIconBody', () => {
+        it('sets icon-id attribute to icon.id (without extension)', () => {
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                share: { id: 'share', value: '/path/to/share.svg', title: 'Share' },
+                download: { id: 'download', value: '/path/to/download.png', title: 'Download' },
+            }));
+
+            const body = block.makeModalChangeIconBody();
+            const iconElements = body.querySelectorAll('.option-block-icon:not(.empty-block-icon)');
+
+            // icon-id uses icon.id which does NOT include the extension (consistent with themes.ts)
+            const iconIds = Array.from(iconElements).map(el => el.getAttribute('icon-id'));
+            expect(iconIds).toContain('share');
+            expect(iconIds).toContain('download');
+        });
+    });
+
     describe('makeIconValueElement', () => {
         it('creates img element with src and alt', () => {
             const icon = { value: '/path/to/icon.svg', title: 'Test Icon' };
