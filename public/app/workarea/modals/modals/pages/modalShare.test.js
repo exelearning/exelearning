@@ -401,6 +401,39 @@ describe('ModalShare', () => {
       expect(window.eXeLearning.app.api.updateProjectVisibility).toHaveBeenCalled();
       expect(modal.projectData.visibility).toBe('public');
     });
+
+    it('should revert visibility and icon when API returns error', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        detail: 'Failed to update',
+      });
+      const updateIconSpy = vi.spyOn(modal, 'updateVisibilityIcon');
+
+      await modal.handleVisibilityChange('public');
+
+      expect(modal.visibilitySelect.value).toBe('private');
+      expect(updateIconSpy).toHaveBeenCalledWith('private');
+    });
+
+    it('should revert visibility and icon when API throws exception', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updateProjectVisibility.mockRejectedValueOnce(
+        new Error('Network error')
+      );
+      const updateIconSpy = vi.spyOn(modal, 'updateVisibilityIcon');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await modal.handleVisibilityChange('public');
+
+      expect(modal.visibilitySelect.value).toBe('private');
+      expect(updateIconSpy).toHaveBeenCalledWith('private');
+      consoleErrorSpy.mockRestore();
+    });
   });
 
   describe('utilities', () => {

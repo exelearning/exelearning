@@ -441,6 +441,48 @@ describe('NavbarFile', () => {
             expect(mockButtons.uploadPlatformButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
+        it('setUploadPlatformEvent should add click listener to finishButton when it exists', () => {
+            const finishButton = document.createElement('button');
+            finishButton.id = 'head-top-finish-button';
+            finishButton.addEventListener = vi.fn();
+            navbarFile.finishButton = finishButton;
+
+            navbarFile.setUploadPlatformEvent();
+
+            expect(finishButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setUploadPlatformEvent should not add listener to finishButton when it is null', () => {
+            navbarFile.finishButton = null;
+            navbarFile.setUploadPlatformEvent();
+            // Should not throw and uploadPlatformButton listener should still be added
+            expect(mockButtons.uploadPlatformButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setUploadPlatformEvent handler should return early if idevice is open', () => {
+            global.eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            const uploadEventSpy = vi.spyOn(navbarFile, 'uploadPlatformEvent');
+
+            navbarFile.setUploadPlatformEvent();
+            const handler = mockButtons.uploadPlatformButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(global.eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
+            expect(uploadEventSpy).not.toHaveBeenCalled();
+        });
+
+        it('setUploadPlatformEvent handler should call uploadPlatformEvent when no idevice is open', () => {
+            global.eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            const uploadEventSpy = vi.spyOn(navbarFile, 'uploadPlatformEvent').mockImplementation(() => {});
+
+            navbarFile.setUploadPlatformEvent();
+            const handler = mockButtons.uploadPlatformButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(global.eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
+            expect(uploadEventSpy).toHaveBeenCalled();
+        });
+
         it('setOpenUserOdeFilesEvent should add click listener', () => {
             navbarFile.setOpenUserOdeFilesEvent();
             expect(mockButtons.openUserOdeFilesButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
