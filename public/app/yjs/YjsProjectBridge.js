@@ -1009,11 +1009,14 @@ class YjsProjectBridge {
     const undoRedoContainer = document.createElement('div');
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
+    // Use formatShortcut() to display platform-appropriate shortcuts (⌘Z on Mac, Ctrl+Z elsewhere)
+    const undoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+z') : 'Ctrl+Z';
+    const redoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+shift+z') : 'Ctrl+Shift+Z';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="${_('Undo')} (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (${undoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="${_('Redo')} (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (${redoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;

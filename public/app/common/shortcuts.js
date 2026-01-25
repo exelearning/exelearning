@@ -17,7 +17,59 @@
  *   refresh()
  *   observe(root = '#eXeLearningNavbar')  // MutationObserver (optional)
  *   destroy()
+ *
+ * Utility functions (no class instantiation needed):
+ *   isMacOS()           - Returns true if running on macOS/iOS
+ *   getModifierKey()    - Returns "⌘" on Mac, "Ctrl" elsewhere
+ *   formatShortcut(combo) - Formats "mod+z" to "⌘Z" (Mac) or "Ctrl+Z" (elsewhere)
  */
+
+/**
+ * Detect if the current platform is macOS or iOS
+ * @returns {boolean}
+ */
+export function isMacOS() {
+  // navigator.platform is deprecated but still widely supported
+  // navigator.userAgentData is the modern alternative but not universally available
+  if (typeof navigator !== 'undefined') {
+    if (navigator.userAgentData?.platform) {
+      return /macOS|iOS/i.test(navigator.userAgentData.platform);
+    }
+    return /Mac|iP(hone|ad|od)/.test(navigator.platform);
+  }
+  return false;
+}
+
+/**
+ * Get the primary modifier key name for the current platform
+ * @returns {string} "⌘" on Mac, "Ctrl" elsewhere
+ */
+export function getModifierKey() {
+  return isMacOS() ? '⌘' : 'Ctrl';
+}
+
+/**
+ * Format a keyboard shortcut for display based on the current platform
+ * @param {string} combo - Shortcut in normalized form, e.g., "mod+z", "mod+shift+z"
+ * @returns {string} Formatted shortcut, e.g., "⌘Z" (Mac) or "Ctrl+Z" (elsewhere)
+ */
+export function formatShortcut(combo) {
+  const mac = isMacOS();
+  const tokens = String(combo).split('+').map(s => s.trim()).filter(Boolean);
+  const out = [];
+
+  for (const raw of tokens) {
+    const t = raw.toLowerCase();
+    if (t === 'mod') out.push(mac ? '⌘' : 'Ctrl');
+    else if (t === 'meta' || t === 'cmd' || t === 'command' || raw === '⌘') out.push('⌘');
+    else if (t === 'ctrl' || t === 'control') out.push('Ctrl');
+    else if (t === 'shift' || raw === '⇧') out.push(mac ? '⇧' : 'Shift');
+    else if (t === 'alt' || t === 'option' || raw === '⌥') out.push(mac ? '⌥' : 'Alt');
+    else out.push(raw.toUpperCase());
+  }
+
+  return mac ? out.join('') : out.join('+');
+}
 export default class Shortcuts {
   constructor(app) {
     this.app = app;
@@ -254,4 +306,11 @@ comboFromEvent(e) {
     if (!document.body.classList.contains('modal-open')) return false;
     return !!(target && target.closest?.('.modal.show'));
   }
+}
+
+// Expose utility functions globally for non-module scripts (e.g., YjsProjectBridge.js)
+if (typeof window !== 'undefined') {
+  window.isMacOS = isMacOS;
+  window.getModifierKey = getModifierKey;
+  window.formatShortcut = formatShortcut;
 }
