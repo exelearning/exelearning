@@ -13034,6 +13034,10 @@
         <source>Access denied</source>
         <target>Access denied</target>
       </trans-unit>
+      <trans-unit id="error.access_denied_message" resname="error.access_denied_message">
+        <source>You don't have permission to access this project.</source>
+        <target>You don't have permission to access this project.</target>
+      </trans-unit>
       <trans-unit id="error.server_error" resname="error.server_error">
         <source>Server error</source>
         <target>Server error</target>
