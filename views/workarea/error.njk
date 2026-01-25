@@ -1,31 +1,54 @@
-{% extends "base.njk" %}
-
-{% block title %}{{ error }} - eXeLearning{% endblock %}
+{% extends 'base.njk' %}
 
 {% block stylesheets %}
     <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
-    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
-    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/base.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/login.css' | asset }}">
+    <style>.error-page-logo{top: -7%;}</style>
 {% endblock %}
 
-{% block javascripts %}
-    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
-{% endblock %}
+{% block title %}eXeLearning{% endblock %}
 
-{% block id %}error-page{% endblock %}
 {% block body %}
-    <div class="container d-flex flex-column align-items-center justify-content-center vh-100">
-        <div class="text-center">
-            <h1 class="display-4 text-danger mb-4">{{ error }}</h1>
-            <p class="lead text-muted mb-4">{{ message }}</p>
-            <div class="d-flex gap-3 justify-content-center">
-                <a href="{{ basePath }}/workarea" class="btn btn-primary">
-                    {{ 'error.create_new_project' | trans }}
-                </a>
-                <a href="{{ basePath }}/login" class="btn btn-outline-secondary">
-                    {{ 'error.back_to_login' | trans }}
-                </a>
-            </div>
-        </div>
+<section class="error-page bg-white vh-100 d-flex justify-content-center align-items-center flex-column" id="error-tpl">
+    <div class="error-page-logo position-relative">
+        <img src="{{ '/images/logo.svg' | asset }}" width="100" height="92" alt="eXeLearning">
     </div>
+    {% if status_code == 404 %}
+        <h1 class="mb-5">{{ 'error.page_not_found' | trans }}</h1>
+    {% elif status_code == 403 %}
+        <h1 class="mb-5">{{ 'error.access_denied' | trans }}</h1>
+    {% elif status_code >= 500 %}
+        <h1 class="mb-5">{{ 'error.server_error' | trans }}</h1>
+    {% else %}
+        <h1 class="mb-5">{{ 'Error' | trans }}</h1>
+    {% endif %}
+    <h2 class="visually-hidden">{{ 'Error' | trans }}</h2>
+
+    <div class="show mb-5 bg-light py-3 px-4 rounded-3" role="alert">
+    {% if status_code == 404 %}
+        {{ 'error.page_cannot_be_displayed' | trans }}
+    {% elif status_code == 403 %}
+        {{ 'error.access_denied_message' | trans }}
+    {% elif status_code >= 500 %}
+        {{ 'error.server_error_try_again' | trans }}
+    {% elif message %}
+        {{ message }}
+    {% else %}
+        {{ 'error.page_cannot_be_displayed' | trans }}
+    {% endif %}
+    </div>
+
+    <div class="d-flex gap-3 justify-content-center">
+        <a href="{{ basePath }}/workarea" class="btn btn-primary">{{ 'error.create_new_project' | trans }}</a>
+        <a href="{{ basePath }}/login" class="btn btn-secondary">{{ 'error.back_to_login' | trans }}</a>
+    </div>
+</section>
+
+<script>
+  if (window.location.hash && window.location.hash === "#_=_") {
+      history.replaceState("", document.title, window.location.pathname + window.location.search);
+  }
+</script>
+
+<script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
 {% endblock %}
