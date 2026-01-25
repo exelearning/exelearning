@@ -61,7 +61,7 @@ Every opened project receives a UUID session ID. The server maintains lightweigh
 │                     SERVER (Bun/Elysia)                         │
 ├─────────────────────────────────────────────────────────────────┤
 │  SessionManager: lightweight metadata only (not document)       │
-│  WebSocket: stateless relay (does NOT store Y.oc)               │
+│  WebSocket: stateless relay (does NOT store Y.Doc)              │
 │  Database: projects table + yjs_documents (binary snapshots)    │
 │  Filesystem: FILES_DIR/assets/{projectUuid}/                    │
 └─────────────────────────────────────────────────────────────────┘
@@ -243,7 +243,7 @@ Configuration is managed via `.env` file. Use `.env.dist` as template (`cp .env.
 | `APP_PORT` | Server port | `8080` |
 | `DB_PATH` | SQLite database path | `/mnt/data/exelearning.db` |
 | `DB_DRIVER` | Database driver | `pdo_sqlite` |
-| `FILES_DIR` | Session/temp file storage | `/mnt/data/` |
+| `FILES_DIR` | Root for assets, tmp, dist (see File Storage) | `/mnt/data/` (prod), `./data/` (dev) |
 | `APP_SECRET` | JWT secret | (required) |
 | `BASE_PATH` | URL prefix for subdirectory install | (empty) |
 | `APP_AUTH_METHODS` | Auth methods (password,cas,openid,guest) | `password` |
