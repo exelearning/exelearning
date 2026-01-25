@@ -1,4 +1,176 @@
-import Shortcuts from './shortcuts.js';
+import Shortcuts, { isMacOS, getModifierKey, formatShortcut } from './shortcuts.js';
+
+describe('Utility functions', () => {
+  const originalNavigator = global.navigator;
+
+  afterEach(() => {
+    // Restore original navigator
+    Object.defineProperty(global, 'navigator', {
+      value: originalNavigator,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  describe('isMacOS', () => {
+    it('should return true for Mac platform', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(true);
+    });
+
+    it('should return true for iPhone platform', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'iPhone', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(true);
+    });
+
+    it('should return true for iPad platform', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'iPad', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(true);
+    });
+
+    it('should return false for Windows platform', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(false);
+    });
+
+    it('should return false for Linux platform', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Linux x86_64', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(false);
+    });
+
+    it('should use userAgentData.platform when available (macOS)', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: { platform: 'macOS' } },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(true);
+    });
+
+    it('should use userAgentData.platform when available (Windows)', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: { platform: 'Windows' } },
+        writable: true,
+        configurable: true,
+      });
+      expect(isMacOS()).toBe(false);
+    });
+  });
+
+  describe('getModifierKey', () => {
+    it('should return ⌘ for Mac', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(getModifierKey()).toBe('⌘');
+    });
+
+    it('should return Ctrl for non-Mac', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(getModifierKey()).toBe('Ctrl');
+    });
+  });
+
+  describe('formatShortcut', () => {
+    it('should format mod+z as ⌘Z on Mac', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+z')).toBe('⌘Z');
+    });
+
+    it('should format mod+z as Ctrl+Z on Windows', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+z')).toBe('Ctrl+Z');
+    });
+
+    it('should format mod+shift+z as ⌘⇧Z on Mac', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+shift+z')).toBe('⌘⇧Z');
+    });
+
+    it('should format mod+shift+z as Ctrl+Shift+Z on Windows', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+shift+z')).toBe('Ctrl+Shift+Z');
+    });
+
+    it('should format mod+alt+s correctly on Mac', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+alt+s')).toBe('⌘⌥S');
+    });
+
+    it('should format mod+alt+s correctly on Windows', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'Win32', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('mod+alt+s')).toBe('Ctrl+Alt+S');
+    });
+
+    it('should handle explicit ctrl key', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('ctrl+c')).toBe('CtrlC');
+    });
+
+    it('should handle symbol modifiers', () => {
+      Object.defineProperty(global, 'navigator', {
+        value: { platform: 'MacIntel', userAgentData: undefined },
+        writable: true,
+        configurable: true,
+      });
+      expect(formatShortcut('⌘+⇧+s')).toBe('⌘⇧S');
+    });
+  });
+});
 
 describe('Shortcuts', () => {
   let shortcuts;

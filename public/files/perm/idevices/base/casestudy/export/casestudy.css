@@ -13,3 +13,11 @@
 .idevice_node.text .iDevice_buttons.feedback-button {
     margin-bottom: 1em;
 }
+
+.caseStudyContent .CSP-FeedbackText {
+    margin-bottom: 2.5em;
+}
+
+.caseStudyContent .CSP-Activities .CSP-ActivityDiv:last-child .CSP-FeedbackText {
+    margin-bottom: 0;
+}
