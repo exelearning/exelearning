@@ -197,10 +197,15 @@ afterEach(() => resetDependencies());
 ### Test Structure
 
 ```
-src/**/*.spec.ts          # Unit tests next to source files
-test/integration/         # Multi-service integration tests
-test/fixtures/xml/        # Sample content.xml files
-test/helpers/             # Test utilities and mock providers
+src/**/*.spec.ts                   # Backend unit tests next to source files
+public/app/**/*.test.js            # Frontend unit tests (workarea/UI)
+public/libs/**/*.test.js           # Frontend lib tests
+public/files/perm/idevices/**/*.test.js # Idevice edition/export tests
+test/unit/                         # Extra unit tests not colocated
+test/integration/                  # Integration tests
+test/e2e/playwright/specs/         # Playwright E2E specs
+test/fixtures/xml/                 # Sample content.xml files
+test/helpers/                      # Test utilities and mock providers
 ```
 
 ## Database
