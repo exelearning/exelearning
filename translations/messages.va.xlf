@@ -13001,6 +13001,10 @@
         <source>Send to %s</source>
         <target>~Envia a %s</target>
       </trans-unit>
+      <trans-unit id="finish_001" resname="Finish">
+        <source>Finish</source>
+        <target>~Finalitza</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

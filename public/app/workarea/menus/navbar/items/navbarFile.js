@@ -35,6 +35,8 @@ export default class NavbarFile {
         this.uploadPlatformButton = this.menu.navbar.querySelector(
             '#navbar-button-uploadtoplatform'
         );
+        // Finish button in header (alternative to uploadPlatformButton)
+        this.finishButton = document.querySelector('#head-top-finish-button');
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
             '#navbar-button-openuserodefiles'
         );
@@ -332,14 +334,20 @@ export default class NavbarFile {
     /**
      * Upload ELP to platform
      * File -> Upload to -> platform
-     *
+     * Also handles the Finish button in the header
      */
     setUploadPlatformEvent() {
+        const handler = () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.uploadPlatformEvent();
+        };
+
         if (this.uploadPlatformButton) {
-            this.uploadPlatformButton.addEventListener('click', () => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.uploadPlatformEvent();
-            });
+            this.uploadPlatformButton.addEventListener('click', handler);
+        }
+
+        if (this.finishButton) {
+            this.finishButton.addEventListener('click', handler);
         }
     }
 

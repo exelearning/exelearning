@@ -67,7 +67,10 @@ describe('ModalShare', () => {
         <div id="share-people-list"></div>
       </div>
       <div id="share-general-access-section">
-        <select id="share-visibility-select">
+        <img id="share-visibility-icon" src="/icons/lock.svg" alt="" width="16" height="16">
+        <select id="share-visibility-select"
+                data-icon-private="/icons/exe-lock-icon-green.svg"
+                data-icon-public="/icons/exe-globe-icon-green.svg">
             <option value="private">Private</option>
             <option value="public">Public</option>
         </select>
@@ -229,6 +232,37 @@ describe('ModalShare', () => {
       modal.renderVisibilitySection();
 
       expect(modal.visibilitySelect.disabled).toBe(true);
+    });
+
+    it('should update icon when rendering visibility section', () => {
+      modal.projectData = { visibility: 'public' };
+      modal.currentUserIsOwner = true;
+
+      modal.renderVisibilitySection();
+
+      expect(modal.visibilityIcon.src).toContain('exe-globe-icon-green.svg');
+    });
+  });
+
+  describe('updateVisibilityIcon', () => {
+    it('should set public icon when visibility is public', () => {
+      modal.updateVisibilityIcon('public');
+      expect(modal.visibilityIcon.src).toContain('exe-globe-icon-green.svg');
+    });
+
+    it('should set private icon when visibility is private', () => {
+      modal.updateVisibilityIcon('private');
+      expect(modal.visibilityIcon.src).toContain('exe-lock-icon-green.svg');
+    });
+
+    it('should handle missing visibilityIcon gracefully', () => {
+      modal.visibilityIcon = null;
+      expect(() => modal.updateVisibilityIcon('public')).not.toThrow();
+    });
+
+    it('should handle missing visibilitySelect gracefully', () => {
+      modal.visibilitySelect = null;
+      expect(() => modal.updateVisibilityIcon('public')).not.toThrow();
     });
   });
 

@@ -13001,6 +13001,10 @@
         <source>Send to %s</source>
         <target>~Bidali hona: %s</target>
       </trans-unit>
+      <trans-unit id="finish_001" resname="Finish">
+        <source>Finish</source>
+        <target>~Amaitu</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

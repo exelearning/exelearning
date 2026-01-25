@@ -12997,6 +12997,10 @@
         <source>Send to %s</source>
         <target>~Sendi al %s</target>
       </trans-unit>
+      <trans-unit id="finish_001" resname="Finish">
+        <source>Finish</source>
+        <target>~Fini</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
