@@ -12993,6 +12993,10 @@
         <source>Adds additional information to the main title.</source>
         <target>~Aldonas pliajn informojn al la ĉefa titolo.</target>
       </trans-unit>
+      <trans-unit id="send_to_platform_001" resname="Send to %s">
+        <source>Send to %s</source>
+        <target>~Sendi al %s</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

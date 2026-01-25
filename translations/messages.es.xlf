@@ -13063,6 +13063,10 @@
         <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
         <target>Este archivo fue creado con una versión más reciente de eXeLearning. Es posible que no funcione correctamente. Por favor, actualiza la aplicación.</target>
       </trans-unit>
+      <trans-unit id="send_to_platform_001" resname="Send to %s">
+        <source>Send to %s</source>
+        <target>Enviar a %s</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

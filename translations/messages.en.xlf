@@ -13067,6 +13067,10 @@
         <source>Project Properties</source>
         <target>Project Properties</target>
       </trans-unit>
+      <trans-unit id="send_to_platform_001" resname="Send to %s">
+        <source>Send to %s</source>
+        <target>Send to %s</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

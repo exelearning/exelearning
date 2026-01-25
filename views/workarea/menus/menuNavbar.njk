@@ -69,12 +69,8 @@
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
                     {% if config.platformIntegration %}
-                        <li class="dropdown dropend exe-advanced">
-                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.upload_to or 'Upload to' }}</a>
-                            <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
-                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName }}</a></li>
-                            </ul>
-                        </li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-uploadtoplatform" href="#"><span class="small-icon upload-cloud-icon-green"></span> {{ 'Send to %s' | trans({ s: config.platformName }) }}</a></li>
                     {% endif %}
                     <li class="dropdown dropend exe-advanced d-none">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.metadata or 'Metadata' }}</a>
