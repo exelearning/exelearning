@@ -148,11 +148,14 @@ ELP files are ZIP archives containing:
 ## Development Commands
 
 ```bash
-bun install              # Install dependencies
-bun run start:dev        # Development server with hot reload
-make test-unit           # Run tests (ALWAYS use this)
-make test-coverage       # Run with coverage
-bun run build            # Build
+make deps                # Install dependencies (preferred over bun install)
+make up-local            # Local dev server (web only, dev mode)
+make up-local APP_ENV=prod # Local dev server (web only, prod mode)
+make run-app             # Electron + backend (desktop app)
+make bundle              # Build all assets (TS + CSS + JS bundle)
+make test-unit           # Run unit tests with coverage (ALWAYS use this)
+make test                # Run full test suite
+make up                  # Docker dev environment
 ```
 
 ## Testing
