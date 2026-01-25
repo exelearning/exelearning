@@ -2,7 +2,7 @@
     <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <div class="modal-title">{{ 'Image Optimizer' | trans }}</div>
+                <div class="modal-title">{{ 'Image optimizer' | trans }}</div>
                 <button type="button" class="close image-optimizer-close-btn" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -27,7 +27,7 @@
                     <div class="image-optimizer-settings d-flex align-items-center gap-3 mb-3 flex-wrap">
                         <div class="d-flex align-items-center gap-2">
                             <label class="mb-0 fw-semibold">{{ 'Preset' | trans }}:</label>
-                            <select class="form-select form-select-sm image-optimizer-preset" style="width: auto;">
+                            <select class="form-select form-select-sm image-optimizer-preset" style="width: auto; min-width: 110px;">
                                 <option value="light">{{ 'Light' | trans }}</option>
                                 <option value="medium" selected>{{ 'Medium' | trans }}</option>
                                 <option value="strong">{{ 'Strong' | trans }}</option>
@@ -39,10 +39,10 @@
                             <span class="image-optimizer-quality-value badge bg-secondary">85</span>
                         </div>
                         <div class="ms-auto d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary image-optimizer-select-all">
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-select-all">
                                 {{ 'Select All' | trans }}
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary image-optimizer-deselect-all">
+                            <button type="button" class="btn btn-sm btn-secondary image-optimizer-deselect-all">
                                 {{ 'Deselect All' | trans }}
                             </button>
                         </div>
@@ -128,7 +128,7 @@
                     <button type="button" class="btn btn-primary image-optimizer-optimize-btn" disabled>
                         {{ 'Optimize' | trans }}
                     </button>
-                    <button type="button" class="close btn btn-outline-secondary" data-dismiss="modal">
+                    <button type="button" class="close btn btn-secondary" data-dismiss="modal">
                         {{ 'Close' | trans }}
                     </button>
                 </div>
@@ -137,13 +137,13 @@
                     <button type="button" class="btn btn-warning image-optimizer-confirm-btn">
                         {{ 'Optimize' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary image-optimizer-cancel-btn">
+                    <button type="button" class="btn btn-secondary image-optimizer-cancel-btn">
                         {{ 'Cancel' | trans }}
                     </button>
                 </div>
                 <!-- Progress footer (hidden by default) -->
                 <div class="image-optimizer-footer-progress d-none">
-                    <button type="button" class="btn btn-outline-secondary" disabled>
+                    <button type="button" class="btn btn-secondary" disabled>
                         {{ 'Processing...' | trans }}
                     </button>
                 </div>
