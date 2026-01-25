@@ -1,6 +1,14 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import type { Page } from '@playwright/test';
-import { waitForAppReady, getPreviewFrame, waitForIdeviceEditionEnd } from '../../helpers/workarea-helpers';
+import {
+    getPreviewFrame,
+    waitForIdeviceEditionEnd,
+    addTextIdevice,
+    waitForTinyMCEReady,
+    setTinyMCEContent,
+    openPreviewAndWaitForContent,
+    selectFirstPage,
+    gotoWorkarea,
+} from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Text iDevice Advanced Features
@@ -12,177 +20,23 @@ import { waitForAppReady, getPreviewFrame, waitForIdeviceEditionEnd } from '../.
  * - Click interactions in preview iframe
  */
 
-/**
- * Helper to add text iDevice - expands the Information category first
- */
-async function addTextIdevice(page: Page): Promise<void> {
-    // Ensure a non-root page is selected first
-    const isPageSelected = await page.evaluate(() => {
-        const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
-        return !!selected;
-    });
-
-    if (!isPageSelected) {
-        const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-        await pageNode.scrollIntoViewIfNeeded();
-        await pageNode.click({ force: true });
-        await page.waitForTimeout(1000);
-    }
-
-    // Expand "Information and presentation" category
-    const infoCategory = page
-        .locator('.idevice_category')
-        .filter({
-            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-        })
-        .first();
-
-    if ((await infoCategory.count()) > 0) {
-        // Check if category is collapsed (has "off" class)
-        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-        if (isCollapsed) {
-            // Click on the .label to expand
-            const label = infoCategory.locator('.label');
-            await label.click();
-            await page.waitForTimeout(800);
-        }
-    }
-
-    // Wait for the category content to be visible
-    await page.waitForTimeout(500);
-
-    // Find the Text iDevice and click
-    const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
-    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await textIdevice.click();
-
-    // Wait for iDevice to appear in content area
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
-/**
- * Helper to wait for TinyMCE to be ready
- */
-async function waitForTinyMCE(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const editor = (window as any).tinymce?.activeEditor;
-            return !!editor && editor.initialized;
-        },
-        { timeout: 15000 },
-    );
-}
-
-/**
- * Helper to set TinyMCE content
- */
-async function setTinyMCEContent(page: Page, content: string): Promise<void> {
-    await page.evaluate(html => {
-        const editor = (window as any).tinymce?.activeEditor;
-        if (editor) {
-            editor.setContent(html);
-            editor.fire('change');
-            editor.fire('input');
-            editor.setDirty(true);
-        }
-    }, content);
-}
-
-/**
- * Helper to wait for Service Worker to be ready
- * The preview relies on the Service Worker to serve content
- */
-async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            // Check if SW registration promise exists and has completed
-            return (
-                app?._previewSwRegistration?.active?.state === 'activated' ||
-                navigator.serviceWorker?.controller !== null
-            );
-        },
-        { timeout },
-    );
-}
-
-/**
- * Helper to open preview panel and wait for content to load
- * Handles Service Worker initialization and panel visibility
- */
-async function openPreviewAndWaitForContent(page: Page, timeout = 30000): Promise<void> {
-    // First ensure Service Worker is ready
-    await waitForServiceWorker(page);
-
-    // Open the preview panel
-    const previewButton = page.locator('#head-bottom-preview');
-    await previewButton.click();
-
-    // Wait for preview panel to be visible
-    const previewPanel = page.locator('#previewsidenav');
-    await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
-
-    // Wait for iframe to exist
-    const previewIframe = page.locator('#preview-iframe');
-    await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
-
-    // Give time for preview generation to start
-    await page.waitForTimeout(3000);
-
-    // Click refresh button to force preview regeneration
-    const refreshBtn = page.locator(
-        '#previewsidenav button[title*="Refresh"], #previewsidenav button:has-text("refresh")',
-    );
-    if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await refreshBtn.click();
-        await page.waitForTimeout(3000);
-    }
-
-    // Wait for any content to be present in the iframe
-    const iframe = getPreviewFrame(page);
-    await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
-
-    // Wait for meaningful content to appear
-    await page.waitForFunction(
-        () => {
-            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
-            if (!iframe) return false;
-            try {
-                const doc = iframe.contentDocument || iframe.contentWindow?.document;
-                if (!doc || !doc.body) return false;
-                // Check if body has any meaningful content
-                const bodyHtml = doc.body.innerHTML || '';
-                return bodyHtml.length > 100 || doc.querySelector('article, .idevice_node, main, nav, .exe-page');
-            } catch {
-                return false;
-            }
-        },
-        { timeout },
-    );
-
-    // Additional wait for content to fully render
-    await page.waitForTimeout(1000);
-}
-
 test.describe('Text iDevice Advanced Features', () => {
     test.describe('Duration and Participants', () => {
         test('should display duration in preview when set in editor', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text Duration Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await waitForAppReady(page);
-
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
             // Wait for TinyMCE to initialize
-            await waitForTinyMCE(page);
+            await waitForTinyMCEReady(page);
 
             // Expand the "Information" fieldset to access duration inputs
             // The fieldset has legend with text "Information" or "Información"
@@ -262,19 +116,17 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'exe-dl Single Icon Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await waitForAppReady(page);
-
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
             // Wait for TinyMCE to initialize
-            await waitForTinyMCE(page);
+            await waitForTinyMCEReady(page);
 
             // Insert exe-dl definition list HTML
             const exeDlHtml = `
@@ -349,18 +201,16 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'exe-dl Toggle Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await waitForAppReady(page);
-
-            // Add a text iDevice with exe-dl content
+            // Select a non-root page and add a text iDevice with exe-dl content
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await waitForTinyMCE(page);
+            await waitForTinyMCEReady(page);
 
             const exeDlHtml = `
                 <dl class="exe-dl">
@@ -426,18 +276,16 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text Click Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await waitForAppReady(page);
-
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await waitForTinyMCE(page);
+            await waitForTinyMCEReady(page);
 
             // Add content with a clickable element
             const htmlContent = `
@@ -480,18 +328,16 @@ test.describe('Text iDevice Advanced Features', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text JSON Preservation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await waitForAppReady(page);
-
-            // Add a text iDevice
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
             await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await waitForTinyMCE(page);
+            await waitForTinyMCEReady(page);
 
             // Add test content
             const testContent = '<p>JSON preservation test content</p>';

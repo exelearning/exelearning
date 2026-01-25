@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -182,19 +183,10 @@ test.describe('Rubric iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Rubric Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a rubric iDevice
             await addRubricIdeviceFromPanel(page);
@@ -223,18 +215,9 @@ test.describe('Rubric iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Rubric Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a rubric iDevice and create new rubric
             await addRubricIdeviceFromPanel(page);
@@ -270,18 +253,9 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add, create and edit rubric
             await addRubricIdeviceFromPanel(page);
@@ -296,18 +270,7 @@ test.describe('Rubric iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -337,18 +300,9 @@ test.describe('Rubric iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add, create and edit rubric
             await addRubricIdeviceFromPanel(page);

@@ -1,7 +1,17 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 
+/**
+ * Share Modal Tests
+ *
+ * NOTE: These tests are skipped in static mode as they require server API
+ * for project creation, visibility changes, and collaboration features.
+ */
 test.describe('Share Modal', () => {
+    // Skip all share modal tests in static mode (requires server API)
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Server API for sharing');
+    });
     let shareModal: ShareModalPage;
 
     test.beforeEach(async ({ authenticatedPage }) => {

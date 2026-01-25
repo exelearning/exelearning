@@ -48,8 +48,10 @@ export default class Idevice {
 
     /**
      * config.xml translatable params
+     * Note: 'category' is NOT translated here - it must stay in English for matching
+     * with known category keys. Translation happens at display time in menuIdevicesCompose.
      */
-    configParamsTranslatables = ['category', 'title'];
+    configParamsTranslatables = ['title'];
 
     /**
      * Default values of config.xml params
@@ -207,9 +209,19 @@ export default class Idevice {
      * @returns {String}
      */
     getResourceServicePath(path) {
-        let pathServiceResources =
-            this.manager.app.api.endpoints.api_idevices_download_file_resources
-                .path;
+        // Static mode: bundled iDevice files are served directly
+        if (path.includes('/files/perm/idevices/')) {
+            return path;
+        }
+
+        // Check if endpoint exists (may not exist in static mode)
+        const endpoint =
+            this.manager.app.api.endpoints.api_idevices_download_file_resources;
+        if (!endpoint) {
+            return path; // Return as-is if no endpoint available
+        }
+
+        let pathServiceResources = endpoint.path;
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
         let pathServiceResourceContentCss = `${pathServiceResources}?resource=${pathParam}`;
@@ -220,7 +232,7 @@ export default class Idevice {
             pathServiceResources,
             pathSplit,
             pathParam,
-            finalUrl: pathServiceResourceContentCss
+            finalUrl: pathServiceResourceContentCss,
         });
 
         return pathServiceResourceContentCss;

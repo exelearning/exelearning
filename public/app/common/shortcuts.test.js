@@ -300,23 +300,23 @@ describe('Shortcuts', () => {
       expect(preventDefaultSpy).toHaveBeenCalled();
     });
 
-    it('should use offline remapping when installation-type is offline', () => {
-      document.body.setAttribute('installation-type', 'offline');
-      
-      const offlineBtn = document.createElement('button');
-      offlineBtn.id = 'navbar-button-save-offline';
-      offlineBtn.click = vi.fn();
-      document.body.appendChild(offlineBtn);
+    it('should use static remapping when installation-type is static', () => {
+      document.body.setAttribute('installation-type', 'static');
+
+      const staticBtn = document.createElement('button');
+      staticBtn.id = 'navbar-button-save-offline';
+      staticBtn.click = vi.fn();
+      document.body.appendChild(staticBtn);
 
       const event = new KeyboardEvent('keydown', {
         key: 's',
         ctrlKey: true,
       });
       shortcuts.isMac = false;
-      
+
       shortcuts.onKeyDown(event);
 
-      expect(offlineBtn.click).toHaveBeenCalled();
+      expect(staticBtn.click).toHaveBeenCalled();
       expect(mockBtn.click).not.toHaveBeenCalled();
     });
 

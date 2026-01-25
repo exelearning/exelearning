@@ -452,8 +452,12 @@ describe('FormProperties', () => {
             const label = formProperties.makeRowElementLabel('test-id', property);
 
             expect(label.tagName).toBe('LABEL');
-            expect(label.innerHTML).toBe('* Test Title');
+            expect(label.textContent).toBe('* Test Title');
             expect(label.getAttribute('for')).toBe('test-id');
+            // For required fields, the translatable text is wrapped in a span
+            const span = label.querySelector('span[data-i18n]');
+            expect(span).not.toBeNull();
+            expect(span.getAttribute('data-i18n')).toBe('Test Title');
         });
 
         it('should create label for non-required property', () => {

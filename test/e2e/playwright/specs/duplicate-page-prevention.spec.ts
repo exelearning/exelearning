@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../helpers/sync-helpers';
 
 /**
@@ -29,6 +29,11 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
 // preventing the race condition where multiple clients would create duplicate pages.
 test.describe('Duplicate Page Prevention', () => {
     test.setTimeout(120000); // 2 minutes per test
+
+    // Skip all tests in static mode (requires WebSocket collaboration)
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
 
     test('should have exactly 1 page when second client joins unsaved public project', async ({
         authenticatedPage,

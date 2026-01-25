@@ -179,7 +179,7 @@ export default class FormProperties {
             groupElementTitle.setAttribute('aria-controls', collapseId);
 
             let titleText =
-                "<span class='title-text'>" + topGroupTitle + '</span>';
+                "<span class='title-text'>" + _(topGroupTitle) + '</span>';
             const catKey = Object.keys(property.category || { '': '' })[0];
             if (catKey == this.cataloguingCategoryKey) {
                 if (property.required) {
@@ -377,10 +377,26 @@ export default class FormProperties {
 
     makeRowElementLabel(id, property) {
         const propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
-        if (property.required) propertyTitleText = '* ' + propertyTitleText;
-        propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+            }
+        }
+
         return propertyTitle;
     }
 
@@ -532,7 +548,7 @@ export default class FormProperties {
 
             const helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content', 'help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
 
             helpContainer.append(helpIcon, helpSpanText);
             return helpContainer;

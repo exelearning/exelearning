@@ -167,17 +167,18 @@ export default class Shortcuts {
   // ------------------------
 
   /** Global keydown handler */
-get isOffline() {
-  return (document.body.getAttribute('installation-type') || '').toLowerCase() === 'offline';
+get isStatic() {
+  const type = (document.body.getAttribute('installation-type') || '').toLowerCase();
+  return type === 'static';
 }
 
 getComboRemap() {
-  const off = this.isOffline;
+  const isStatic = this.isStatic;
   return {
     'mod+alt+n'   : 'navbar-button-new',
-    'mod+o'       : off ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
-    'mod+s'       : off ? 'navbar-button-save-offline'    : 'navbar-button-save',
-    'mod+shift+s' : off ? 'navbar-button-save-as-offline' : 'navbar-button-save-as',
+    'mod+o'       : isStatic ? 'navbar-button-open-offline'    : 'navbar-button-openuserodefiles',
+    'mod+s'       : isStatic ? 'navbar-button-save-offline'    : 'navbar-button-save',
+    'mod+shift+s' : isStatic ? 'navbar-button-save-as-offline' : 'navbar-button-save-as',
     'mod+alt+s'   : 'navbar-button-share',
     'mod+alt+t'   : 'navbar-button-styles',
     'mod+p'       : 'navbar-button-preview',

@@ -1992,6 +1992,76 @@ describe('IdeviceNode', () => {
 
             expect(spy).toHaveBeenCalled();
         });
+
+        it('calls typesetLatexInContent after loading content', async () => {
+            idevice.idevice = { componentType: 'html' };
+            vi.spyOn(idevice, 'exportProcessIdeviceHtml').mockResolvedValue({ init: 'true' });
+            const typesetSpy = vi.spyOn(idevice, 'typesetLatexInContent');
+
+            await idevice.generateContentExportView();
+
+            expect(typesetSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('typesetLatexInContent', () => {
+        beforeEach(() => {
+            idevice.ideviceBody = document.createElement('div');
+        });
+
+        it('does nothing if ideviceBody is null', () => {
+            idevice.ideviceBody = null;
+            idevice.typesetLatexInContent();
+            // Should not throw
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\(', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\[', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Display math: \\[x^2\\]';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains $$', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Math: $$x = 1$$';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('does not call MathJax when content has no LaTeX', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Plain text without formulas';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('does not call MathJax when MathJax is not defined', () => {
+            delete globalThis.MathJax;
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            // Should not throw
+            idevice.typesetLatexInContent();
+        });
     });
 
     describe('exportProcessIdeviceHtml', () => {

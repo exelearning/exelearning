@@ -115,3 +115,7 @@ public/app/dist/
 ###> claude-code ###
 .claude/settings.local.json
 ###< claude-code ###
+
+# Electron app generated content
+/app/dist/
+/app/node_modules/

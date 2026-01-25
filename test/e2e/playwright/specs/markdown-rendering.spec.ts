@@ -1,5 +1,12 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
-import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
+import {
+    waitForAppReady,
+    addTextIdevice,
+    waitForTinyMCEReady,
+    setTinyMCEContent,
+    selectFirstPage,
+    gotoWorkarea,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Markdown and Code Block Rendering
@@ -10,68 +17,6 @@ import type { Page } from '@playwright/test';
  * - Various programming language syntax highlighting
  */
 
-/**
- * Helper to add a text iDevice
- */
-async function addTextIdeviceFromPanel(page: Page): Promise<void> {
-    // Select a page in the navigation tree
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    await page.waitForTimeout(1000);
-
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    // Expand "Information and presentation" category if collapsed
-    const infoCategory = page
-        .locator('.idevice_category')
-        .filter({
-            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-        })
-        .first();
-
-    if ((await infoCategory.count()) > 0) {
-        const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-        if (isCollapsed) {
-            const label = infoCategory.locator('.label');
-            await label.click();
-            await page.waitForTimeout(800);
-        }
-    }
-
-    await page.waitForTimeout(500);
-
-    const textIdevice = page.locator('.idevice_item[id="text"]').first();
-    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-    await textIdevice.click();
-
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
-
 test.describe('Markdown and Code Block Rendering', () => {
     test.describe('Code Blocks', () => {
         test('should render code blocks with highlighted-code class in preview', async ({
@@ -81,32 +26,18 @@ test.describe('Markdown and Code Block Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Code Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
-            await waitForLoadingScreenHidden(page);
-
-            // Add a text iDevice
-            await addTextIdeviceFromPanel(page);
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Insert code block with highlighted-code class
             const codeBlockHtml = `
@@ -118,15 +49,7 @@ test.describe('Markdown and Code Block Rendering', () => {
 }</code></pre>
             `;
 
-            await page.evaluate(content => {
-                const editor = (window as any).tinymce?.activeEditor;
-                if (editor) {
-                    editor.setContent(content);
-                    editor.fire('change');
-                    editor.fire('input');
-                    editor.setDirty(true);
-                }
-            }, codeBlockHtml);
+            await setTinyMCEContent(page, codeBlockHtml);
 
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
@@ -187,31 +110,17 @@ test.describe('Markdown and Code Block Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Multi-Language Code Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
-            await waitForLoadingScreenHidden(page);
-
-            await addTextIdeviceFromPanel(page);
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Insert multiple code blocks with different languages
             const multiCodeHtml = `
@@ -228,13 +137,7 @@ print(greeting)</code></pre>
 &lt;/div&gt;</code></pre>
             `;
 
-            await page.evaluate(content => {
-                const editor = (window as any).tinymce?.activeEditor;
-                if (editor) {
-                    editor.setContent(content);
-                    editor.fire('change');
-                }
-            }, multiCodeHtml);
+            await setTinyMCEContent(page, multiCodeHtml);
 
             const saveBtn = block.locator('.btn-save-idevice');
             await saveBtn.click();
@@ -297,31 +200,17 @@ print(greeting)</code></pre>
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
-            await waitForLoadingScreenHidden(page);
-
-            await addTextIdeviceFromPanel(page);
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Try to find and click the CodeMagic button (code editor)
             // The button has tooltip "Advanced Code Editor (CodeMagic)" or similar
@@ -421,31 +310,17 @@ print(greeting)</code></pre>
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Inline Code Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
-            await waitForLoadingScreenHidden(page);
-
-            await addTextIdeviceFromPanel(page);
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 10000 });
 
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Insert text with inline code
             const inlineCodeHtml = `
@@ -453,13 +328,7 @@ print(greeting)</code></pre>
                 <p>The <code>const</code> keyword declares a constant variable.</p>
             `;
 
-            await page.evaluate(content => {
-                const editor = (window as any).tinymce?.activeEditor;
-                if (editor) {
-                    editor.setContent(content);
-                    editor.fire('change');
-                }
-            }, inlineCodeHtml);
+            await setTinyMCEContent(page, inlineCodeHtml);
 
             const saveBtn = block.locator('.btn-save-idevice');
             await saveBtn.click();

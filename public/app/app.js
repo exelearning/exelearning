@@ -18,11 +18,20 @@ import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
+// Core infrastructure - mode detection
+import { RuntimeConfig } from './core/RuntimeConfig.js';
+import { Capabilities } from './core/Capabilities.js';
+// DOM translation for static mode
+import DOMTranslator from './locate/domTranslator.js';
 
 export default class App {
     constructor(eXeLearning) {
         this.eXeLearning = eXeLearning;
         this.parseExelearningConfig();
+
+        // Detect and initialize static/offline mode
+        this.initializeModeDetection();
+
         this.api = new ApiCallManager(this);
         this.locale = new Locale(this);
         this.common = new Common(this);
@@ -48,16 +57,28 @@ export default class App {
      *
      */
     async init() {
+        // Initialize API (loads static data if in static mode)
+        await this.api.init();
+
+        // Register static mode adapters if needed
+        if (this.runtimeConfig?.isStaticMode()) {
+            await this._registerStaticModeAdapters();
+        }
+
         // Register preview Service Worker (for unified preview/export rendering)
         this.registerPreviewServiceWorker();
+
+        // Load api routes FIRST - required before any API calls
+        // (uses DataProvider in static mode)
+        await this.loadApiParameters();
+
+        // Load locale strings - required before initializing UI components
+        // that use _() for translations (modals, toasts, etc.)
+        await this.loadLocale();
         // Compose and initialized toasts
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
-        // Load api routes
-        await this.loadApiParameters();
-        // Load locale strings
-        await this.loadLocale();
         // Load idevices installed
         await this.loadIdevicesInstalled();
         // Load themes installed
@@ -100,9 +121,11 @@ export default class App {
         }
 
         // Check secure context (required for SW)
+        // app: protocol is treated as secure in Electron with registerSchemesAsPrivileged
         const isSecureContext =
             window.isSecureContext ||
             location.protocol === 'https:' ||
+            location.protocol === 'app:' ||
             location.hostname === 'localhost' ||
             location.hostname === '127.0.0.1';
 
@@ -118,18 +141,30 @@ export default class App {
 
         this._previewSwRegistrationPromise = (async () => {
             try {
-                // Check for existing registration
+                // Check for existing preview SW registration
+                // Note: In static mode, PWA SW (service-worker.js) may share the same scope
+                // We need to verify the registration is specifically for preview-sw.js
                 let registration = await navigator.serviceWorker.getRegistration(basePath);
 
-                if (registration?.active) {
+                // Check if existing registration is for preview-sw.js (not PWA SW)
+                const isPreviewSw =
+                    registration?.active?.scriptURL?.endsWith('preview-sw.js') ||
+                    registration?.installing?.scriptURL?.endsWith('preview-sw.js') ||
+                    registration?.waiting?.scriptURL?.endsWith('preview-sw.js');
+
+                if (registration?.active && isPreviewSw) {
                     await registration.update();
                     this._previewSwRegistration = registration;
                     await this._tryClaimClients(registration);
                     return registration;
                 }
 
-                // Register new Service Worker
-                registration = await navigator.serviceWorker.register(swPath, { scope: basePath });
+                // Register preview SW (will create a new registration or update existing)
+                // Use a unique scope suffix to avoid conflicts with PWA SW
+                const previewScope = basePath + 'viewer/';
+                registration = await navigator.serviceWorker.register(swPath, {
+                    scope: previewScope,
+                });
                 this._previewSwRegistration = registration;
 
                 // Wait for activation
@@ -230,18 +265,25 @@ export default class App {
     }
 
     /**
-     * Get the preview Service Worker controller
+     * Get the preview Service Worker
+     * Falls back to registration's active worker if page isn't controlled yet
+     * (happens on subsequent app runs before SW claims the page)
      * @returns {ServiceWorker|null} The active service worker or null
      */
     getPreviewServiceWorker() {
-        // First try the controller (for pages being controlled)
-        if (navigator.serviceWorker?.controller) {
-            return navigator.serviceWorker.controller;
+        // First check our stored registration - this is the authoritative source
+        // for the preview SW, especially in static mode where PWA SW may be the controller
+        if (this._previewSwRegistration?.active) {
+            return this._previewSwRegistration.active;
         }
-        // Fallback to registration.active (works even when page isn't controlled yet)
-        // This is needed when BASE_PATH is configured and clients.claim() hasn't
-        // made the page controlled yet
-        return this._previewSwRegistration?.active || null;
+
+        // Fallback: check if controller is the preview SW (not PWA SW)
+        const controller = navigator.serviceWorker?.controller;
+        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
+            return controller;
+        }
+
+        return null;
     }
 
     /**
@@ -256,9 +298,10 @@ export default class App {
             throw new Error('Service Workers not supported');
         }
 
-        // If already have a controller, return it
-        if (navigator.serviceWorker.controller) {
-            return navigator.serviceWorker.controller;
+        // If already have the preview SW as controller (check it's not PWA SW)
+        const controller = navigator.serviceWorker.controller;
+        if (controller?.scriptURL?.endsWith('preview-sw.js')) {
+            return controller;
         }
 
         // Wait for our registration to complete (it handles activation)
@@ -306,24 +349,49 @@ export default class App {
      * @returns {Promise<{fileCount: number}>} Promise that resolves when content is ready
      */
     async sendContentToPreviewSW(files, options = {}) {
+        // Wait for SW registration to complete if needed
+        if (this._previewSwRegistrationPromise) {
+            await this._previewSwRegistrationPromise;
+        }
+
         const sw = this.getPreviewServiceWorker();
         if (!sw) {
             throw new Error('Preview Service Worker not available');
         }
 
         return new Promise((resolve, reject) => {
-            // Set up message listener for response
-            const messageHandler = (event) => {
+            // Use MessageChannel for bi-directional communication
+            // This works even when SW is not the controller of the current page
+            const messageChannel = new MessageChannel();
+            let timeoutId;
+
+            // Listen for response on the channel
+            messageChannel.port1.onmessage = (event) => {
                 if (event.data?.type === 'CONTENT_READY') {
-                    // Content received by SW, now verify it can actually serve requests
+                    // Content received by SW, now verify it can serve requests
                     // This extra verification step handles Firefox's stricter event timing
-                    // between message events and fetch events in Service Workers
-                    sw.postMessage({ type: 'VERIFY_READY' });
+                    const verifyChannel = new MessageChannel();
+                    verifyChannel.port1.onmessage = (verifyEvent) => {
+                        clearTimeout(timeoutId);
+                        messageChannel.port1.close();
+                        verifyChannel.port1.close();
+                        if (verifyEvent.data?.ready) {
+                            resolve({ fileCount: verifyEvent.data.fileCount });
+                        } else {
+                            reject(
+                                new Error(
+                                    'SW content not ready after verification'
+                                )
+                            );
+                        }
+                    };
+                    sw.postMessage({ type: 'VERIFY_READY' }, [
+                        verifyChannel.port2,
+                    ]);
                 } else if (event.data?.type === 'READY_VERIFIED') {
-                    navigator.serviceWorker.removeEventListener(
-                        'message',
-                        messageHandler
-                    );
+                    // Direct response (when SW responds on same channel)
+                    clearTimeout(timeoutId);
+                    messageChannel.port1.close();
                     if (event.data.ready) {
                         resolve({ fileCount: event.data.fileCount });
                     } else {
@@ -333,17 +401,16 @@ export default class App {
                     }
                 }
             };
-            navigator.serviceWorker.addEventListener('message', messageHandler);
 
             // Collect transferable ArrayBuffers
-            const transferables = [];
+            const transferables = [messageChannel.port2];
             for (const value of Object.values(files)) {
                 if (value instanceof ArrayBuffer) {
                     transferables.push(value);
                 }
             }
 
-            // Send content to SW
+            // Send content to SW with MessageChannel port
             sw.postMessage(
                 {
                     type: 'SET_CONTENT',
@@ -353,11 +420,8 @@ export default class App {
             );
 
             // Timeout after 10 seconds
-            setTimeout(() => {
-                navigator.serviceWorker.removeEventListener(
-                    'message',
-                    messageHandler
-                );
+            timeoutId = setTimeout(() => {
+                messageChannel.port1.close();
                 reject(new Error('Timeout waiting for SW content ready'));
             }, 10000);
         });
@@ -500,6 +564,113 @@ export default class App {
         };
     }
 
+    /**
+     * Initialize mode detection based on runtime environment (static vs server)
+     * Called during constructor, before other managers are created
+     */
+    initializeModeDetection() {
+        // Use RuntimeConfig for mode detection (single source of truth)
+        this.runtimeConfig = RuntimeConfig.fromEnvironment();
+        this.capabilities = new Capabilities(this.runtimeConfig);
+
+        // Backward compatibility: store mode flags in config
+        const isStaticMode = this.runtimeConfig.isStaticMode();
+        this.eXeLearning.config.isStaticMode = isStaticMode;
+
+        if (isStaticMode) {
+            console.log('[App] Running in STATIC/OFFLINE mode');
+            // Ensure offline-related flags are set
+            this.eXeLearning.config.isOfflineInstallation = true;
+
+            // In static mode, detect basePath from current URL if not set
+            // This allows static builds to work when deployed in subdirectories
+            // (e.g., https://exelearning.pages.dev/pr-preview/pr-20/)
+            if (!this.eXeLearning.config.basePath) {
+                const pathname = window.location.pathname;
+                // Known SPA routes handled by the main index.html - these are NOT real subdirectories
+                // Query string (e.g., ?project=static-project) is in window.location.search, not pathname
+                const knownSpaRoutes = ['/workarea', '/login', '/viewer'];
+                const isKnownSpaRoute = knownSpaRoutes.some(
+                    (route) => pathname === route || pathname.startsWith(route + '/'),
+                );
+
+                let detectedBase;
+                if (isKnownSpaRoute) {
+                    // SPA route - static files are at root
+                    detectedBase = '';
+                } else {
+                    // Real subdirectory deployment (e.g., /pr-preview/pr-20/)
+                    // Remove index.html and trailing slashes to get the base directory
+                    detectedBase = pathname.replace(/\/index\.html$/i, '').replace(/\/+$/, '');
+                }
+                this.eXeLearning.config.basePath = detectedBase;
+
+                // Also update the symfony compatibility shim with detected basePath
+                if (window.eXeLearning.symfony) {
+                    window.eXeLearning.symfony.basePath = detectedBase;
+                }
+            }
+        }
+
+        // Log capabilities for debugging
+        console.log('[App] Capabilities:', {
+            collaboration: this.capabilities.collaboration.enabled,
+            remoteStorage: this.capabilities.storage.remote,
+            auth: this.capabilities.auth.required,
+        });
+    }
+
+    /**
+     * Register adapters for static/offline mode
+     * These adapters provide client-side implementations for features
+     * that normally require server API calls
+     * @private
+     */
+    async _registerStaticModeAdapters() {
+        try {
+            const { default: LinkValidationAdapter } = await import(
+                './adapters/LinkValidationAdapter.js'
+            );
+            this.api.setAdapters({
+                linkValidation: new LinkValidationAdapter(),
+            });
+            console.log('[App] Registered static mode adapters');
+        } catch (error) {
+            console.error('[App] Failed to register static mode adapters:', error);
+        }
+    }
+
+    /**
+     * Detect if the app should run in static (offline) mode
+     * @deprecated Use this.runtimeConfig.isStaticMode() or this.capabilities.storage.remote instead
+     * @returns {boolean}
+     */
+    detectStaticMode() {
+        // Use RuntimeConfig if available (new pattern)
+        if (this.runtimeConfig) {
+            return this.runtimeConfig.isStaticMode();
+        }
+
+        // Fallback for early initialization before RuntimeConfig is set
+        // Priority 1: Explicit static mode flag (set in static/index.html)
+        if (window.__EXE_STATIC_MODE__ === true) {
+            return true;
+        }
+
+        // Priority 2: File protocol (opened as local file)
+        if (window.location.protocol === 'file:') {
+            return true;
+        }
+
+        // Priority 3: No server URL configured
+        if (!this.eXeLearning.config.fullURL) {
+            return true;
+        }
+
+        // Default: server mode
+        return false;
+    }
+
     setupSessionMonitor() {
         const baseInterval = Number(
             this.eXeLearning.config.sessionCheckIntervalMs ||
@@ -624,9 +795,29 @@ export default class App {
     }
 
     /**
-     *
+     * Check if the app is running in static/offline mode.
+     * @deprecated Prefer using this.capabilities for feature checks
+     * @returns {boolean}
+     */
+    isStaticMode() {
+        // Use RuntimeConfig as primary source
+        if (this.runtimeConfig) {
+            return this.runtimeConfig.isStaticMode();
+        }
+        // Fallback to capabilities
+        return this.capabilities?.storage?.remote === false;
+    }
+
+    /**
+     * Load API parameters (routes, config) from server
+     * Skipped in static mode as there's no backend API
      */
     async loadApiParameters() {
+        // Skip in static mode - no backend API available
+        if (this.capabilities?.storage?.remote === false) {
+            console.log('[App] Static mode - skipping API parameters load');
+            return;
+        }
         await this.api.loadApiParameters();
     }
 
@@ -671,6 +862,25 @@ export default class App {
      */
     async loadLocale() {
         await this.locale.init();
+
+        // Initialize DOM translator for static mode
+        // This translates elements with data-i18n attributes after translations are loaded
+        if (this.runtimeConfig?.isStaticMode()) {
+            this._domTranslator = new DOMTranslator();
+            this._domTranslator.translateAll();
+            this._domTranslator.observeDOM();
+            console.log('[App] DOM translator initialized for static mode');
+        }
+    }
+
+    /**
+     * Re-translate all DOM elements (useful when language changes)
+     * Only applicable in static mode where DOMTranslator is used
+     */
+    refreshTranslations() {
+        if (this._domTranslator) {
+            this._domTranslator.refresh();
+        }
     }
 
     /**
@@ -707,25 +917,41 @@ export default class App {
      *
      */
     async check() {
+        // No server-side checks needed when remote storage is unavailable
+        if (!this.capabilities?.storage?.remote) {
+            return;
+        }
+
         // Check FILES_DIR
-        if (!this.eXeLearning.config.filesDirPermission.checked) {
+        if (!this.eXeLearning.config?.filesDirPermission?.checked) {
             let htmlBody = '';
-            this.eXeLearning.config.filesDirPermission.info.forEach((text) => {
+            const info = this.eXeLearning.config?.filesDirPermission?.info || [];
+            info.forEach((text) => {
                 htmlBody += `<p>${text}</p>`;
             });
-            this.modals.alert.show({
-                title: _('Permissions error'),
-                body: htmlBody,
-                contentId: 'error',
-            });
+            if (htmlBody) {
+                this.modals.alert.show({
+                    title: _('Permissions error'),
+                    body: htmlBody,
+                    contentId: 'error',
+                });
+            }
         }
     }
 
     /**
      * Show LOPDGDD modal if necessary
+     * Skip LOPD modal when auth is not required (guest access)
      *
      */
     async showModalLopd() {
+        // Skip LOPD modal when auth is not required (static/offline mode)
+        if (!this.capabilities?.auth?.required) {
+            await this.loadProject();
+            this.check();
+            return;
+        }
+
         if (!eXeLearning.user.acceptedLopd) {
             // Load modals content
             await this.project.loadModalsContent();
@@ -938,8 +1164,8 @@ export default class App {
             'eXeLearning %s is a development version. It is not for production use.'
         );
 
-        // Disable offline versions after DEMO_EXPIRATION_DATE
-        if ($('body').attr('installation-type') == 'offline') {
+        // Disable static versions after DEMO_EXPIRATION_DATE
+        if ($('body').attr('installation-type') == 'static') {
             msg = _('This is just a demo version. Not for real projects.');
             var expires = eXeLearning.expires;
             if (expires.length == 8) {
@@ -1119,10 +1345,25 @@ function __exeInstallBeforeUnloadOnce() {
 
 /**
  * Run eXe client on load
+ * In static mode, waits for project selection before initializing
  *
  */
 window.onload = function () {
     var eXeLearning = window.eXeLearning;
     eXeLearning.app = new App(eXeLearning);
+
+    // Static mode: wait for project selection (projectId will be set by welcome screen)
+    // Use RuntimeConfig for early detection (before app.capabilities is available)
+    const runtimeConfig = RuntimeConfig.fromEnvironment();
+    if (runtimeConfig.isStaticMode() && !eXeLearning.projectId) {
+        console.log('[App] Static mode: waiting for project selection...');
+        // Expose a function to start the app after project is selected
+        window.__startExeApp = function () {
+            console.log('[App] Starting app with project:', eXeLearning.projectId);
+            eXeLearning.app.init();
+        };
+        return;
+    }
+
     eXeLearning.app.init();
 };

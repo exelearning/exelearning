@@ -334,6 +334,137 @@ describe('TinyMCE 5 Settings', () => {
       expect(globalThis.$exeTinyMCE.getExtendedValidElements()).toBe('');
     });
 
+    describe('getStaticBasePath', () => {
+      let originalLocation;
+
+      beforeEach(() => {
+        originalLocation = window.location;
+      });
+
+      afterEach(() => {
+        // Restore original location
+        delete window.location;
+        window.location = originalLocation;
+      });
+
+      it('detects basePath from URL with /app/', () => {
+        delete window.location;
+        window.location = { pathname: '/dist/static/app/workarea.html' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('/dist/static');
+      });
+
+      it('detects basePath from URL with /libs/', () => {
+        delete window.location;
+        window.location = { pathname: '/my/deploy/libs/tinymce/plugin.js' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('/my/deploy');
+      });
+
+      it('returns empty string for root deployment with /app/', () => {
+        delete window.location;
+        window.location = { pathname: '/app/workarea.html' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('');
+      });
+
+      it('returns empty string for root deployment with /libs/', () => {
+        delete window.location;
+        window.location = { pathname: '/libs/tinymce/plugin.js' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('');
+      });
+
+      it('returns empty string when no known markers are found', () => {
+        delete window.location;
+        window.location = { pathname: '/some/other/path.html' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('');
+      });
+
+      it('handles deep subdirectory deployments', () => {
+        delete window.location;
+        window.location = { pathname: '/org/project/deploy/v1/app/editor.html' };
+        expect(globalThis.$exeTinyMCE.getStaticBasePath()).toBe('/org/project/deploy/v1');
+      });
+    });
+
+    describe('edicuatex URLs', () => {
+      let originalLocation;
+
+      beforeEach(() => {
+        originalLocation = window.location;
+      });
+
+      afterEach(() => {
+        delete window.location;
+        window.location = originalLocation;
+      });
+
+      it('uses getAssetURL for edicuatex in server mode', () => {
+        // Ensure not in static mode
+        globalThis.eXeLearning.config.isStaticMode = false;
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        expect(config.edicuatex_url).toBe('http://localhost/exelearning/v3.0.0/app/common/edicuatex/index.html');
+        expect(config.edicuatex_mathjax_url).toBe('http://localhost/exelearning/v3.0.0/app/common/exe_math/tex-mml-svg.js');
+      });
+
+      it('uses relative paths (./app/...) in static mode at root deployment', () => {
+        globalThis.eXeLearning.config.isStaticMode = true;
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+        // Root deployment - entry page is /index.html (no /app/ in path)
+        delete window.location;
+        window.location = { pathname: '/index.html' };
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        // Relative paths work regardless of entry point pathname
+        expect(config.edicuatex_url).toBe('./app/common/edicuatex/index.html');
+        expect(config.edicuatex_mathjax_url).toBe('./app/common/exe_math/tex-mml-svg.js');
+
+        // Reset
+        globalThis.eXeLearning.config.isStaticMode = false;
+      });
+
+      it('uses relative paths (./app/...) in static mode for subdirectory deployment', () => {
+        globalThis.eXeLearning.config.isStaticMode = true;
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+        // Subdirectory deployment - entry page is /dist/static/index.html (no /app/ in path)
+        delete window.location;
+        window.location = { pathname: '/dist/static/index.html' };
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        // Relative paths work regardless of subdirectory depth
+        // Browser resolves ./app/... → /dist/static/app/...
+        expect(config.edicuatex_url).toBe('./app/common/edicuatex/index.html');
+        // mathjax_url also uses relative path, resolved by edicuatex-tools.js with its own basePath detection
+        expect(config.edicuatex_mathjax_url).toBe('./app/common/exe_math/tex-mml-svg.js');
+
+        // Reset
+        globalThis.eXeLearning.config.isStaticMode = false;
+      });
+
+      it('uses relative paths (./app/...) for offline installation in subdirectory', () => {
+        globalThis.eXeLearning.config.isStaticMode = false;
+        globalThis.eXeLearning.config.isOfflineInstallation = true;
+        // Deep subdirectory deployment - entry page doesn't contain /app/ marker
+        delete window.location;
+        window.location = { pathname: '/web/exelearning/v1/index.html' };
+
+        globalThis.$exeTinyMCE.init('single', '#editor');
+        const config = globalThis.tinymce.init.mock.calls[0][0];
+
+        // Relative paths work regardless of subdirectory depth
+        expect(config.edicuatex_url).toBe('./app/common/edicuatex/index.html');
+        expect(config.edicuatex_mathjax_url).toBe('./app/common/exe_math/tex-mml-svg.js');
+
+        // Reset
+        globalThis.eXeLearning.config.isOfflineInstallation = false;
+      });
+    });
+
     it('file_browser_callback sets selected file value', () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];

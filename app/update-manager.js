@@ -315,4 +315,3 @@ function initAutoUpdater({ mainWindow, autoUpdater, logger = console, streamToFi
 }
 
 module.exports = { initAutoUpdater };
-

@@ -741,6 +741,26 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
+            // 9.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                        console.log(
+                            `[Html5Exporter] Added ${fontFiles.size} global font files for preview: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(
+                        `[Html5Exporter] Failed to fetch global font files for preview: ${meta.globalFont}`,
+                        e,
+                    );
+                }
+            }
+
             // 10. Add project assets
             await this.addAssetsToPreviewFiles(files, fileList);
 

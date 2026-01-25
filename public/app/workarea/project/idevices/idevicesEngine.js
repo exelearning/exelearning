@@ -1986,8 +1986,11 @@ export default class IdevicesEngine {
                     };
                 }
             }
-            // Fallback: try to get from structure node
-            const node = project?.structure?.getNodeById(pageIdOrProperties);
+            // Fallback: try to get from structure node (if getNodeById method exists)
+            const node =
+                typeof project?.structure?.getNodeById === 'function'
+                    ? project.structure.getNodeById(pageIdOrProperties)
+                    : null;
             if (node?.properties) {
                 return {
                     hidePageTitle: node.properties.hidePageTitle?.value,
@@ -2131,8 +2134,9 @@ export default class IdevicesEngine {
      * @param {Object} components
      */
     async loadComponentsPage(pagStructure) {
-        // Load components
-        pagStructure.forEach(async (block) => {
+        // Load components - use for...of to properly await async operations
+        // (forEach with async callbacks doesn't wait for completion)
+        for (const block of pagStructure) {
             // Create block
             let blockNode = this.newBlockNode(block, true);
             let blockContent = blockNode.blockContent;
@@ -2140,15 +2144,15 @@ export default class IdevicesEngine {
             blockContent.classList.add('loading');
             // Add block element to node container
             this.nodeContentElement.append(blockContent);
-            // Load Idevices in block
-            await block.odeComponentsSyncs.forEach(async (idevice) => {
+            // Load Idevices in block - await each iDevice creation
+            for (const idevice of block.odeComponentsSyncs) {
                 idevice.mode = 'export';
                 let ideviceNode = await this.createIdeviceInContent(
                     idevice,
                     blockContent
                 );
-            });
-        });
+            }
+        }
     }
 
     /**

@@ -162,7 +162,7 @@ describe('User Routes', () => {
 
             const body = await res.json();
             expect(body.userPreferences).toBeDefined();
-            expect(body.userPreferences.locale.value).toBe('es'); // default
+            expect(body.userPreferences.locale.value).toBe('en'); // default
             expect(body.userPreferences.theme.value).toBe('base'); // default
         });
 
@@ -524,7 +524,7 @@ describe('User Routes', () => {
             const body = await res.json();
             // Should return defaults even when query fails
             expect(body.userPreferences).toBeDefined();
-            expect(body.userPreferences.locale.value).toBe('es'); // default
+            expect(body.userPreferences.locale.value).toBe('en'); // default
         });
 
         it('should handle setPreference errors gracefully (logged but not propagated)', async () => {

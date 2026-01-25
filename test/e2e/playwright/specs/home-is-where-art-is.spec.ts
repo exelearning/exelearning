@@ -33,6 +33,7 @@ import {
     verifyIdeviceInEditor,
     verifyInPreview,
     getIdeviceFromYjs,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/more/home_is_where_art_is.elp');
@@ -46,8 +47,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Gallery Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -169,8 +169,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
 
             // Create project and navigate
             const projectUuid = await createProject(page, 'Gallery Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -230,8 +229,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Flipcards Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -289,8 +287,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Selecciona Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -360,8 +357,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Map Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -441,8 +437,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             });
 
             const projectUuid = await createProject(page, 'Full Import Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 

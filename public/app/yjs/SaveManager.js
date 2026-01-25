@@ -289,6 +289,63 @@ class SaveManager {
 
     // WebSocket handler reference for priority signaling
     this.wsHandler = null;
+
+    // Static mode detection (cached)
+    // Uses app.capabilities as single source of truth (derived from RuntimeConfig)
+    this._isStaticMode = null;
+  }
+
+  /**
+   * Check if running in static (offline) mode.
+   * Uses app.capabilities as single source of truth.
+   * @returns {boolean}
+   */
+  isStaticMode() {
+    if (this._isStaticMode === null) {
+      // Use capabilities as single source of truth (derived from RuntimeConfig)
+      const capabilities = window.eXeLearning?.app?.capabilities;
+      if (capabilities) {
+        // Static mode = no remote storage capability
+        this._isStaticMode = !capabilities.storage.remote;
+      } else {
+        // capabilities should always be available after app initialization
+        // Log warning if accessed too early
+        console.warn('[SaveManager] isStaticMode called before capabilities available');
+        this._isStaticMode = false;
+      }
+    }
+    return this._isStaticMode;
+  }
+
+  /**
+   * Handle save in static mode
+   * In static mode, Yjs auto-saves to IndexedDB. We show a toast
+   * informing the user to use File > Export to save their project.
+   *
+   * @param {Object} options - Save options
+   * @returns {{success: boolean, message: string}}
+   */
+  async _handleStaticModeSave(options = {}) {
+    const { silent = false } = options;
+
+    Logger.log('[SaveManager] Static mode: Project is auto-saved to browser storage');
+
+    if (!silent && eXeLearning?.app?.toasts) {
+      const toastData = {
+        title: typeof _ === 'function' ? _('Offline Mode') : 'Offline Mode',
+        body: typeof _ === 'function'
+          ? _('Your project is automatically saved in your browser. Use File > Export to download a copy.')
+          : 'Your project is automatically saved in your browser. Use File > Export to download a copy.',
+        icon: 'info',
+        remove: 5000,
+      };
+      eXeLearning.app.toasts.createToast(toastData);
+    }
+
+    return {
+      success: true,
+      message: 'Static mode: Project saved to IndexedDB (use Export to download)',
+    };
   }
 
   /**
@@ -711,6 +768,11 @@ class SaveManager {
    */
   async save(options = {}) {
     const { showProgress = true, silent = false } = options;
+
+    // Static mode: Show toast and return success (Yjs auto-saves to IndexedDB)
+    if (this.isStaticMode()) {
+      return this._handleStaticModeSave(options);
+    }
 
     if (this.isSaving) {
       console.warn('[SaveManager] Save already in progress');

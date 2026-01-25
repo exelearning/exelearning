@@ -5,12 +5,67 @@
 <meta name="robots" content="noindex" />
 <meta name="google" content="notranslate"/>
 <title>mindmaps for eXeLearning</title>
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/common.css">
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/app.css">
-<link rel="stylesheet" href="css/custom.css">
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/Aristo/jquery-ui-1.8.7.custom.css" />
-<link rel="stylesheet" href="../../../../../../../app/common/mindmaps/src/css/minicolors/jquery.miniColors.css">
-<script src="js/langs/all.js"></script>
+<script>
+// Compute base paths FIRST, before any resources load
+// This avoids browser speculative prefetching issues where resources
+// start loading before the <base> tag is set
+(function() {
+    var path = window.location.pathname;
+
+    // Compute editor base (for local css/, js/ resources)
+    var editorIndex = path.lastIndexOf('/editor/');
+    if (editorIndex === -1) {
+        // Fallback: if path ends with /editor (no trailing slash), add it
+        editorIndex = path.lastIndexOf('/editor');
+        if (editorIndex !== -1 && path.length === editorIndex + 7) {
+            path = path + '/';
+            editorIndex = path.lastIndexOf('/editor/');
+        }
+    }
+    var editorBase = editorIndex !== -1
+        ? path.substring(0, editorIndex + 8) // Include '/editor/'
+        : path.substring(0, path.lastIndexOf('/') + 1);
+
+    // Compute deployment base (for external /app/ resources)
+    var libsIndex = path.indexOf('/libs/');
+    var deployBase = libsIndex > 0 ? path.substring(0, libsIndex) : '';
+
+    // Store globally for use in body scripts
+    window.__EDITOR_BASE__ = editorBase;
+    window.__DEPLOY_BASE__ = deployBase;
+
+    // Create <base> tag for any remaining relative paths
+    var base = document.createElement('base');
+    base.href = editorBase;
+    document.head.appendChild(base);
+
+    // Load external CSS (mindmaps library) - uses deployBase for /app/ paths
+    var externalCss = [
+        '/app/common/mindmaps/src/css/common.css',
+        '/app/common/mindmaps/src/css/app.css',
+        '/app/common/mindmaps/src/css/Aristo/jquery-ui-1.8.7.custom.css',
+        '/app/common/mindmaps/src/css/minicolors/jquery.miniColors.css'
+    ];
+    externalCss.forEach(function(file) {
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = deployBase + file;
+        document.head.appendChild(link);
+    });
+
+    // Load local CSS - uses editorBase
+    var localLink = document.createElement('link');
+    localLink.rel = 'stylesheet';
+    localLink.href = editorBase + 'css/custom.css';
+    document.head.appendChild(localLink);
+
+    // Load langs script dynamically
+    var langsScript = document.createElement('script');
+    langsScript.src = editorBase + 'js/langs/all.js';
+    document.head.appendChild(langsScript);
+})();
+</script>
+<!-- CSS and initial JS loaded dynamically above to avoid speculative prefetch issues -->
 
 <script id="template-float-panel" type="text/x-jquery-tmpl">
 <div class="ui-widget ui-dialog ui-corner-all ui-widget-content float-panel no-select">
@@ -174,10 +229,21 @@
     </div>
   </div>
 
-  <script src="js/jquery.min.js"></script>
-  <script src="js/FileSaver.min.js"></script>
+  <!-- Load local JS with correct base path (dynamic loading avoids speculative prefetch) -->
+  <script>
+  (function() {
+      var base = window.__EDITOR_BASE__;
+      var scripts = ['js/jquery.min.js', 'js/FileSaver.min.js'];
+      scripts.forEach(function(src) {
+          document.write('<script src="' + base + src + '"><\/script>');
+      });
+  })();
+  </script>
 
-  <script src="../../../../../../../app/common/mindmaps/min/js/script.js"></script>
+  <!-- Load external mindmaps library -->
+  <script>
+  document.write('<script src="' + window.__DEPLOY_BASE__ + '/app/common/mindmaps/min/js/script.js"><\/script>');
+  </script>
   <!-- Use these scripts instead of /tools/mindmaps/min/js/script.js for developing:
   <script src="/tools/mindmaps/src/js/libs/jquery-ui-1.8.11.custom.min.js"></script>
   <script src="/tools/mindmaps/src/js/libs/dragscrollable.js"></script>
@@ -226,8 +292,15 @@
   <script src="/tools/mindmaps/src/js/FilePicker.js"></script>
   -->  
   
-  <script src="js/cropper.js"></script>
-  <script src="js/jquery-cropper.js"></script>
-  <script src="js/custom.js"></script>
+  <!-- Load remaining local JS -->
+  <script>
+  (function() {
+      var base = window.__EDITOR_BASE__;
+      var scripts = ['js/cropper.js', 'js/jquery-cropper.js', 'js/custom.js'];
+      scripts.forEach(function(src) {
+          document.write('<script src="' + base + src + '"><\/script>');
+      });
+  })();
+  </script>
 </body>
 </html>

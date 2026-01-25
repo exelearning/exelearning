@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -453,18 +454,9 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add an Interactive Video iDevice
             await addInteractiveVideoIdeviceFromPanel(page);
@@ -484,18 +476,9 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addInteractiveVideoIdeviceFromPanel(page);
@@ -524,18 +507,9 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Interactive Video Editor Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addInteractiveVideoIdeviceFromPanel(page);
@@ -565,18 +539,9 @@ test.describe('Interactive Video iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and upload video
             await addInteractiveVideoIdeviceFromPanel(page);
@@ -609,18 +574,7 @@ test.describe('Interactive Video iDevice', () => {
             await page.waitForTimeout(2000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -665,18 +619,9 @@ test.describe('Interactive Video iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and upload video
             await addInteractiveVideoIdeviceFromPanel(page);
@@ -718,18 +663,9 @@ test.describe('Interactive Video iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Symfony Shim Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Verify eXeLearning.symfony exists and has expected properties
             const symfonyShim = await page.evaluate(() => {

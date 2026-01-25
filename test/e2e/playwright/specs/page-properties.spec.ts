@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { changeTheme } from '../helpers/workarea-helpers';
+import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Properties
@@ -18,23 +18,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Page Visibility Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create two pages: "Visible Page" and "Hidden Page"
         const pageIds = await page.evaluate(() => {
@@ -98,23 +85,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'First Page Always Visible Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Get first page ID and set visibility=false
         await page.evaluate(() => {
@@ -158,23 +132,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Page Highlight Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create two pages: one highlighted, one not
         const pageIds = await page.evaluate(() => {
@@ -236,23 +197,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Hide Title Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create two pages: one with hidden title, one normal
         const pageIds = await page.evaluate(() => {
@@ -334,23 +282,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Hide Title Theme Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Set page title and hide it
         await page.evaluate(() => {
@@ -426,23 +361,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Custom Title Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create page and set custom title
         const pageIds = await page.evaluate(() => {
@@ -528,23 +450,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Parent Visibility Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create parent page, then child page
         const pageIds = await page.evaluate(() => {
@@ -618,23 +527,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'Combined Properties Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create three pages: Root, Hidden, and Highlighted
         const pageIds = await page.evaluate(() => {
@@ -708,23 +604,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'MathJax Property Persistence Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Set addMathJax property to true directly in metadata (Y.Map)
         await page.evaluate(() => {
@@ -773,23 +656,10 @@ test.describe('Page Properties', () => {
         const projectUuid = await createProject(page, 'MathJax Preview Effect Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Enable addMathJax option directly in metadata (Y.Map)
         // Use boolean true, not string 'true' - the exporter checks with strict equality

@@ -1,6 +1,6 @@
-import { test, expect } from '../../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
-import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { waitForLoadingScreen, waitForAppReady } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -8,6 +8,8 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that File Manager operations sync in real-time
  * between multiple clients connected to the same project via WebSocket.
+ *
+ * NOTE: These tests are skipped in static mode as they require WebSocket collaboration
  */
 
 /**
@@ -179,18 +181,17 @@ async function getFileCount(page: Page): Promise<number> {
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsBridge(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 test.describe('Collaborative File Manager', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
+
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
 
     test.describe('Real-Time Asset Rename Sync', () => {
         test('should sync file rename from Client A to Client B', async ({
@@ -209,7 +210,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A gets share URL and shares project
             const shareUrl = await getShareUrl(pageA);
@@ -311,7 +312,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A gets share URL and shares project
             const shareUrl = await getShareUrl(pageA);
@@ -399,7 +400,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Share and join
             const shareUrl = await getShareUrl(pageA);
@@ -516,7 +517,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and uploads files
             await openFileManager(pageA);
@@ -604,7 +605,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and creates a folder
             await openFileManager(pageA);
@@ -713,7 +714,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Share project BEFORE both open File Manager
             const shareUrl = await getShareUrl(pageA);
@@ -802,7 +803,7 @@ test.describe('Collaborative File Manager', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A opens File Manager and uploads a file
             await openFileManager(pageA);

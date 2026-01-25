@@ -189,6 +189,182 @@ describe('App utility methods', () => {
 
       window.location = originalLocation;
     });
+
+  });
+
+  describe('initializeModeDetection - basePath detection', () => {
+    it('detects basePath from URL in static mode when basePath is empty', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      // First parse the config, then detect mode
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+      // Also verify symfony shim gets the detected basePath
+      expect(window.eXeLearning.symfony.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects basePath from URL in static mode with trailing slash', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/app');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not override existing basePath in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":"/existing"}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/different/path/', protocol: 'https:', pathname: '/different/path/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      expect(window.eXeLearning.config.basePath).toBe('/existing');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('does not detect basePath in non-static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":false,"basePath":""}';
+      delete window.__EXE_STATIC_MODE__;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/app/', protocol: 'https:', pathname: '/app/' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // basePath should remain empty in non-static mode
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+    });
+
+    it('detects empty basePath for root deployment in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/index.html', protocol: 'https:', pathname: '/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // Root deployment should result in empty basePath
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /workarea SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // SPA route: /workarea is handled by index.html, not a real subdirectory
+      window.location = { href: 'https://example.com/workarea?project=test', protocol: 'https:', pathname: '/workarea' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /workarea is a known SPA route - basePath should be empty, not '/workarea'
+      expect(window.eXeLearning.config.basePath).toBe('');
+      expect(window.eXeLearning.symfony.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /login SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/login', protocol: 'https:', pathname: '/login' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /login is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects empty basePath for /viewer SPA route in static mode', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { href: 'https://example.com/viewer/index.html', protocol: 'https:', pathname: '/viewer/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // /viewer is a known SPA route - basePath should be empty
+      expect(window.eXeLearning.config.basePath).toBe('');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('detects real subdirectory basePath even with SPA-like segment in path', () => {
+      window.eXeLearning.user = '{"id":1}';
+      window.eXeLearning.config = '{"isOfflineInstallation":true,"basePath":""}';
+      window.__EXE_STATIC_MODE__ = true;
+
+      const originalLocation = window.location;
+      delete window.location;
+      // Real subdirectory that happens to contain 'workarea' but is not the SPA route
+      window.location = { href: 'https://example.com/pr-preview/pr-20/index.html', protocol: 'https:', pathname: '/pr-preview/pr-20/index.html' };
+
+      appInstance.parseExelearningConfig();
+      appInstance.initializeModeDetection();
+
+      // This is a real subdirectory, not a SPA route
+      expect(window.eXeLearning.config.basePath).toBe('/pr-preview/pr-20');
+
+      window.location = originalLocation;
+      delete window.__EXE_STATIC_MODE__;
+    });
   });
 
   describe('showProvisionalDemoWarning', () => {
@@ -231,10 +407,10 @@ describe('App utility methods', () => {
       expect(document.getElementById('eXeBetaWarning')).toBeNull();
     });
 
-    it('shows expiry message for expired offline demo', async () => {
+    it('shows expiry message for expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       window.eXeLearning.expires = '20200101'; // Past date
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
@@ -242,11 +418,11 @@ describe('App utility methods', () => {
       expect(document.querySelector('.expired')).not.toBeNull();
     });
 
-    it('shows days remaining for non-expired offline demo', async () => {
+    it('shows days remaining for non-expired static demo', async () => {
       window.eXeLearning.version = '4.0-alpha';
       // Set expiry to far future
       window.eXeLearning.expires = '20991231';
-      document.body.setAttribute('installation-type', 'offline');
+      document.body.setAttribute('installation-type', 'static');
       document.body.innerHTML = '<div id="node-content"></div>';
 
       await appInstance.showProvisionalDemoWarning();
@@ -663,6 +839,9 @@ describe('App utility methods', () => {
         info: ['Error 1', 'Error 2'],
       };
 
+      // Mock isStaticMode to return false so we test the normal check flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       await appInstance.check();
 
       expect(showSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -1070,6 +1249,9 @@ describe('App utility methods', () => {
       const hideSpy = vi.fn();
       const loadModalsContentSpy = vi.fn();
 
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
+
       appInstance.project = { loadModalsContent: loadModalsContentSpy };
       appInstance.interface = { loadingScreen: { hide: hideSpy } };
       appInstance.modals = {
@@ -1090,6 +1272,9 @@ describe('App utility methods', () => {
       window.eXeLearning.user = { acceptedLopd: true };
       const loadSpy = vi.fn();
       const checkSpy = vi.spyOn(appInstance, 'check').mockImplementation(() => {});
+
+      // Mock isStaticMode to return false so we test the normal LOPD flow
+      vi.spyOn(appInstance, 'isStaticMode').mockReturnValue(false);
 
       appInstance.project = { load: loadSpy };
 
@@ -1174,7 +1359,7 @@ describe('App utility methods', () => {
     it('sets up session monitor for online installation', () => {
       window.eXeLearning = {
         user: '{"id":1}',
-        config: '{"isOfflineInstallation":false,"basePath":""}',
+        config: '{"isOfflineInstallation":false,"basePath":"","fullURL":"http://localhost:8080"}',
       };
 
       const app = new App(window.eXeLearning);
@@ -1256,6 +1441,10 @@ describe('App utility methods', () => {
         writable: true,
         configurable: true,
       });
+
+      // Set up the preview SW registration on the app instance
+      // (getPreviewServiceWorker checks this first in static mode)
+      appInstance._previewSwRegistration = mockRegistration;
     });
 
     afterEach(() => {
@@ -1271,6 +1460,9 @@ describe('App utility methods', () => {
         writable: true,
         configurable: true,
       });
+      // Clean up app instance
+      appInstance._previewSwRegistration = null;
+      appInstance._previewSwRegistrationPromise = null;
     });
 
     describe('registerPreviewServiceWorker', () => {
@@ -1312,14 +1504,21 @@ describe('App utility methods', () => {
         await appInstance.registerPreviewServiceWorker();
 
         // Path derived from window.location.pathname (/ in jsdom)
-        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/' });
+        // Uses /viewer/ scope to avoid conflicts with PWA SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
       });
 
-      it('reuses existing registration if SW is already active', async () => {
-        // Simulate existing registration found with active SW
+      it('reuses existing registration if preview SW is already active', async () => {
+        // Simulate existing registration found with active PREVIEW SW
+        // (must have scriptURL ending with 'preview-sw.js' to be recognized)
         const existingReg = {
           ...mockRegistration,
-          active: { ...mockController, state: 'activated', postMessage: vi.fn() },
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/preview-sw.js',
+          },
           update: vi.fn().mockResolvedValue(undefined),
         };
         navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingReg);
@@ -1327,10 +1526,31 @@ describe('App utility methods', () => {
 
         await appInstance.registerPreviewServiceWorker();
 
-        // Should NOT call register since existing registration is available
+        // Should NOT call register since existing preview SW registration is available
         expect(registerSpy).not.toHaveBeenCalled();
         expect(appInstance._previewSwRegistration).toBe(existingReg);
         expect(existingReg.update).toHaveBeenCalled();
+      });
+
+      it('registers new SW when existing registration is for PWA SW not preview SW', async () => {
+        // Simulate existing registration found but for PWA SW (service-worker.js), not preview SW
+        const existingPwaReg = {
+          ...mockRegistration,
+          active: {
+            ...mockController,
+            state: 'activated',
+            postMessage: vi.fn(),
+            scriptURL: 'http://localhost/service-worker.js', // PWA SW, not preview SW
+          },
+          update: vi.fn().mockResolvedValue(undefined),
+        };
+        navigator.serviceWorker.getRegistration = vi.fn().mockResolvedValue(existingPwaReg);
+        const registerSpy = navigator.serviceWorker.register;
+
+        await appInstance.registerPreviewServiceWorker();
+
+        // Should call register because existing registration is for PWA SW, not preview SW
+        expect(registerSpy).toHaveBeenCalledWith('/preview-sw.js', { scope: '/viewer/' });
       });
 
       it('handles registration failure', async () => {
@@ -1462,12 +1682,13 @@ describe('App utility methods', () => {
         expect(result).toBe(mockController);
       });
 
-      it('returns null when serviceWorker is undefined', () => {
+      it('returns null when serviceWorker is undefined and no registration', () => {
         Object.defineProperty(navigator, 'serviceWorker', {
           value: undefined,
           writable: true,
           configurable: true,
         });
+        appInstance._previewSwRegistration = null;
 
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBeNull();
@@ -1496,6 +1717,15 @@ describe('App utility methods', () => {
 
         const result = appInstance.getPreviewServiceWorker();
         expect(result).toBeNull();
+      });
+
+      it('returns registration.active even when controller is PWA SW', () => {
+        // Simulate PWA SW as controller (no preview-sw.js in scriptURL)
+        navigator.serviceWorker.controller = { postMessage: vi.fn() }; // No scriptURL
+
+        // But we have the preview SW registration
+        const result = appInstance.getPreviewServiceWorker();
+        expect(result).toBe(mockController); // Returns from _previewSwRegistration.active
       });
     });
 
@@ -1576,20 +1806,36 @@ describe('App utility methods', () => {
         };
         const options = { openExternalLinksInNewWindow: true };
 
-        // Simulate CONTENT_READY then READY_VERIFIED response (two-phase handshake)
-        let messageHandler;
-        navigator.serviceWorker.addEventListener = vi.fn((event, handler) => {
-          if (event === 'message') {
-            messageHandler = handler;
-            // First: simulate CONTENT_READY response
+        // Track MessageChannel instances created
+        const messageChannels = [];
+
+        // Mock MessageChannel for SW communication - must be a proper constructor
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
+          const channel = {
+            port1: { onmessage: null, close: vi.fn() },
+            port2: { name: `port2-${messageChannels.length}` },
+          };
+          messageChannels.push(channel);
+          return channel;
+        };
+
+        // Capture the postMessage calls to trigger responses
+        mockController.postMessage = vi.fn((msg, transferables) => {
+          if (msg.type === 'SET_CONTENT') {
+            // Simulate CONTENT_READY response on first channel
             setTimeout(() => {
-              handler({ data: { type: 'CONTENT_READY', fileCount: 2 } });
-              // After CONTENT_READY, the code sends VERIFY_READY
-              // Then we respond with READY_VERIFIED
-              setTimeout(() => {
-                handler({ data: { type: 'READY_VERIFIED', ready: true, fileCount: 2 } });
-              }, 5);
+              messageChannels[0].port1.onmessage({
+                data: { type: 'CONTENT_READY', fileCount: 2 },
+              });
             }, 10);
+          } else if (msg.type === 'VERIFY_READY') {
+            // Simulate READY_VERIFIED response on verify channel (second channel)
+            setTimeout(() => {
+              messageChannels[1].port1.onmessage({
+                data: { ready: true, fileCount: 2 },
+              });
+            }, 5);
           }
         });
 
@@ -1601,22 +1847,32 @@ describe('App utility methods', () => {
             type: 'SET_CONTENT',
             data: { files, options },
           },
-          [files['index.html']], // ArrayBuffer should be in transferables
+          expect.arrayContaining([messageChannels[0].port2, files['index.html']]),
         );
-        expect(navigator.serviceWorker.removeEventListener).toHaveBeenCalled();
+        expect(messageChannels[0].port1.close).toHaveBeenCalled();
+
+        globalThis.MessageChannel = OriginalMessageChannel;
       });
 
       it('times out after 10 seconds', async () => {
         vi.useFakeTimers();
-        navigator.serviceWorker.addEventListener = vi.fn();
+
+        const mockPort1 = { onmessage: null, close: vi.fn() };
+        const mockPort2 = {};
+        const OriginalMessageChannel = globalThis.MessageChannel;
+        globalThis.MessageChannel = function MockMessageChannel() {
+          return { port1: mockPort1, port2: mockPort2 };
+        };
 
         const promise = appInstance.sendContentToPreviewSW({ 'test.html': 'html' });
 
         vi.advanceTimersByTime(10001);
 
         await expect(promise).rejects.toThrow('Timeout waiting for SW content ready');
+        expect(mockPort1.close).toHaveBeenCalled();
 
         vi.useRealTimers();
+        globalThis.MessageChannel = OriginalMessageChannel;
       });
     });
 

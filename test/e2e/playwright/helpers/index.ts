@@ -28,3 +28,4 @@ export * from './navigation-helpers';
 export * from './content-helpers';
 export * from './file-manager-helpers';
 export * from './editor-helpers';
+export * from './undo-redo-helpers';

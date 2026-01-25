@@ -776,6 +776,48 @@ describe('ResourceFetcher', () => {
     });
   });
 
+  describe('getLoadingChain', () => {
+    it('returns static mode chain when in static mode', () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = true;
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toEqual([
+        'Memory cache',
+        'User themes (Yjs)',
+        'IndexedDB user themes',
+        'Local ZIP bundles (/bundles/)',
+      ]);
+    });
+
+    it('returns online mode chain when not in static mode', () => {
+      const fetcher = new ResourceFetcher();
+      fetcher.isStaticMode = false;
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toEqual([
+        'Memory cache',
+        'User themes (Yjs)',
+        'IndexedDB user themes',
+        'IndexedDB server cache',
+        'Server ZIP bundles',
+        'Individual file fallback',
+      ]);
+    });
+
+    it('returns online mode chain by default', () => {
+      const fetcher = new ResourceFetcher();
+      // isStaticMode is undefined by default (falsy)
+
+      const chain = fetcher.getLoadingChain();
+
+      expect(chain).toContain('Server ZIP bundles');
+      expect(chain).toContain('Individual file fallback');
+    });
+  });
+
   describe('setResourceCache', () => {
     it('sets the resourceCache instance', () => {
       const fetcher = new ResourceFetcher();

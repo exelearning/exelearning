@@ -15,9 +15,11 @@ const Logger = window.AppLogger || console;
 export default class IdeviceBlockNode {
     constructor(parent, data) {
         this.engine = parent;
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         this.id = data.id
             ? data.id
-            : eXeLearning.app.api.parameters.generateNewItemKey;
+            : (eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey());
         // Use Yjs-style IDs when Yjs is enabled for consistency with Yjs structure
         const yjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
         this.blockId = data.blockId
@@ -56,13 +58,17 @@ export default class IdeviceBlockNode {
     emptyIcon = 'block';
 
     /**
-     * Idevice properties
+     * Block properties
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odePagStructureSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? app?.api?.staticData?.parameters?.odePagStructureSyncPropertiesConfig
+            : app?.api?.parameters?.odePagStructureSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params
@@ -345,7 +351,19 @@ export default class IdeviceBlockNode {
      */
     makeIconValueElement(icon) {
         let iconValue = document.createElement('img');
-        iconValue.setAttribute('src', icon.value);
+        let iconSrc = icon.value;
+        // In static mode, convert absolute paths to relative for subdirectory support
+        if (iconSrc.startsWith('/') && window.eXeLearning?.config) {
+            let config = window.eXeLearning.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                // Remove leading slash to make path relative to current location
+                iconSrc = '.' + iconSrc;
+            }
+        }
+        iconValue.setAttribute('src', iconSrc);
         iconValue.setAttribute('alt', icon.title);
         /* To review (icon.type?)
         switch (icon.type) {
@@ -948,13 +966,27 @@ export default class IdeviceBlockNode {
                 null,
                 assetManager
             );
-            const result = await exporter.exportAndDownload(odeBlockId, null);
-            if (!result.success) {
+            // Use exportComponent instead of exportAndDownload to support Electron save dialog
+            const result = await exporter.exportComponent(odeBlockId, null);
+            if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
                     body: result.error || _('Failed to export block'),
                     contentId: 'error',
                 });
+                return;
+            }
+
+            // Use downloadComponentFile for proper Electron support (always show Save As dialog)
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, result.filename, {
+                    typeKeySuffix: 'block',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
             }
         } catch (error) {
             console.error('[blockNode] Export failed:', error);

@@ -34,8 +34,17 @@
   // Get basePath and version from eXeLearning (set by pages.controller.ts)
   const getBasePath = () => window.eXeLearning?.config?.basePath || '';
   const getVersion = () => window.eXeLearning?.version || 'v1.0.0';
+  // Note: Direct __EXE_STATIC_MODE__ check required here because this runs very early,
+  // before App is initialized and capabilities are available
+  const isStaticMode = () => window.__EXE_STATIC_MODE__ === true;
   // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/yjs/yjs.min.js)
-  const assetPath = (path) => `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  // In static mode, use relative paths without version prefix
+  const assetPath = (path) => {
+    if (isStaticMode()) {
+      return `.${path.startsWith('/') ? path : '/' + path}`;
+    }
+    return `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  };
 
   // Paths are computed lazily to ensure eXeLearning globals are available
   const getLIBS_PATH = () => assetPath('/libs/yjs');

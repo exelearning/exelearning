@@ -282,20 +282,43 @@ describe('ProjectManager', () => {
 
     describe('helper methods', () => {
 
-    it('marks the installation as offline and exposes the project key', () => {
-        projectManager.offlineInstallation = true;
+    it('marks the installation as static when in static mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('static');
+        expect(button.innerHTML).toBe('save');
+        expect(button.getAttribute('title')).toBe('Save');
+    });
+
+    it('exposes project key for Electron when electronAPI is available', () => {
+        // Simulate Electron environment (electronAPI exists, static mode)
+        window.electronAPI = { test: true };
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
         projectManager.odeId = 'custom-project';
         const button = document.querySelector('#head-top-download-button');
 
         projectManager.setInstallationTypeAttribute();
 
-        expect(document.body.getAttribute('installation-type')).toBe('offline');
+        expect(document.body.getAttribute('installation-type')).toBe('static');
         expect(button.innerHTML).toBe('save');
         expect(button.getAttribute('title')).toBe('Save');
         expect(window.__currentProjectId).toBe('custom-project');
+
+        // Cleanup
+        delete window.electronAPI;
     });
 
-    it('marks the installation as online when the flag is false', () => {
+    it('marks the installation as online when in server mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => false,
+        };
         projectManager.offlineInstallation = false;
         const button = document.querySelector('#head-top-download-button');
 
@@ -303,6 +326,15 @@ describe('ProjectManager', () => {
 
         expect(document.body.getAttribute('installation-type')).toBe('online');
         expect(button.innerHTML).toBe('Download');
+    });
+
+    it('defaults to online when no runtimeConfig is available', () => {
+        projectManager.app.runtimeConfig = null;
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('online');
     });
 
     it('shows the save confirmation modal', () => {

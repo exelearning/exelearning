@@ -40,18 +40,22 @@ export default class ModalStyleManager extends Modal {
     show(themes) {
         // Set title
         this.titleDefault = _('Styles');
+        // Get config from appropriate source (static mode vs server mode)
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const configSource = isStaticMode
+            ? app?.api?.staticData?.parameters
+            : app?.api?.parameters;
         this.paramInstallThemes = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.canInstallThemes)
+            JSON.stringify(configSource?.canInstallThemes || false)
         );
         // Parameters of a theme that we will show in the information
         this.paramsInfo = JSON.parse(
-            JSON.stringify(eXeLearning.app.api.parameters.themeInfoFieldsConfig)
+            JSON.stringify(configSource?.themeInfoFieldsConfig || {})
         );
         // Parameters of a theme that we can edit
         this.paramsEdit = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.themeEditionFieldsConfig
-            )
+            JSON.stringify(configSource?.themeEditionFieldsConfig || {})
         );
         // Installed themes
         if (themes) this.themes = themes;

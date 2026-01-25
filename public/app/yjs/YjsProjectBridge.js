@@ -64,6 +64,11 @@ class YjsProjectBridge {
     this.authToken = authToken;
     this.isNewProject = options.isNewProject || false;
 
+    // Build config for YjsDocumentManager
+    // IMPORTANT: options.enableWebSocket and options.offline should be derived by the caller
+    // from app.capabilities (via RuntimeConfig) as single source of truth:
+    //   enableWebSocket: app.capabilities.collaboration.enabled
+    //   offline: !app.capabilities.collaboration.enabled
     const config = {
       wsUrl: options.wsUrl || this.getWebSocketUrl(),
       apiUrl: options.apiUrl || this.getApiUrl(),
@@ -2064,13 +2069,17 @@ class YjsProjectBridge {
     const stats = await importer.importFromFile(file, options);
 
     // Announce imported assets to server for peer-to-peer collaboration
-    if (stats && stats.assets > 0) {
+    // Skip only when collaboration is explicitly disabled (capabilities available and disabled)
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    const collaborationEnabled = !capabilities || capabilities.collaboration?.enabled;
+    if (stats && stats.assets > 0 && collaborationEnabled) {
       Logger.log(`[YjsProjectBridge] Announcing ${stats.assets} imported assets to peers...`);
       await this.announceAssets();
     }
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
+    // Theme import works in all modes - _checkAndImportTheme handles mode-specific behavior internally
     const clearExisting = options.clearExisting !== false; // default is true
     if (stats && stats.theme && clearExisting) {
       // Pass cached zip contents to avoid re-unzipping the file

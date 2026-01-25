@@ -510,6 +510,111 @@ describe('PreviewPanelManager', () => {
       // Should not open a new tab when SW is not available
       expect(mockOpen).not.toHaveBeenCalled();
     });
+
+    it('should derive basePath from pathname for subdirectory deployments', async () => {
+      // Mock SW availability
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      // Mock pathname for subdirectory deployment
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/pr-preview/pr-20/workarea',
+      };
+
+      await manager.extractToNewTab();
+
+      // Should derive base path from pathname and construct correct URL
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        '_blank'
+      );
+
+      // Restore location
+      window.location = originalLocation;
+    });
+
+    it('should handle workarea.html pathname correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/app/workarea.html',
+      };
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/app/viewer/index.html',
+        '_blank'
+      );
+
+      window.location = originalLocation;
+    });
+
+    it('should handle root workarea path correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'http://localhost:8080',
+        pathname: '/workarea',
+      };
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        'http://localhost:8080/viewer/index.html',
+        '_blank'
+      );
+
+      window.location = originalLocation;
+    });
+
+    it('should handle pathname with trailing slash correctly', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://example.com',
+        pathname: '/pr-preview/pr-20/workarea/',
+      };
+
+      await manager.extractToNewTab();
+
+      // Should NOT produce double slashes
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://example.com/pr-preview/pr-20/viewer/index.html',
+        '_blank'
+      );
+
+      window.location = originalLocation;
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
