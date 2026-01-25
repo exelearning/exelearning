@@ -736,6 +736,35 @@ describe('NavbarStyles', () => {
                 })
             );
         });
+
+        it('supports multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode('<theme><name>Multi Icon Theme</name></theme>'),
+                'icons/share.svg': new Uint8Array([1]),
+                'icons/download.png': new Uint8Array([2]),
+                'icons/animate.gif': new Uint8Array([3]),
+                'icons/photo.jpg': new Uint8Array([4]),
+                'icons/image.jpeg': new Uint8Array([5]),
+                'icons/modern.webp': new Uint8Array([6]),
+            });
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'multi_icon_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    icons: {
+                        share: expect.objectContaining({ id: 'share', value: 'icons/share.svg' }),
+                        download: expect.objectContaining({ id: 'download', value: 'icons/download.png' }),
+                        animate: expect.objectContaining({ id: 'animate', value: 'icons/animate.gif' }),
+                        photo: expect.objectContaining({ id: 'photo', value: 'icons/photo.jpg' }),
+                        image: expect.objectContaining({ id: 'image', value: 'icons/image.jpeg' }),
+                        modern: expect.objectContaining({ id: 'modern', value: 'icons/modern.webp' }),
+                    },
+                })
+            );
+        });
     });
 
     describe('removeTheme for user themes', () => {
