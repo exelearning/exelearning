@@ -472,6 +472,10 @@
             display: flex;
             flex-direction: column;
         }
+
+        .form-control.media-library-url{
+            width:auto;
+        }
     }
 
     /* Header with title, search, and close button aligned */
@@ -3786,6 +3790,10 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     padding: 6px 12px;
 }
 
+.media-library-footer-actions .btn[disabled] {
+    color: inherit;
+}
+
 .media-library-footer .btn .exe-icon {
     font-family: var(--icons-ff);
     font-size: 18px;
@@ -3803,7 +3811,14 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
     -webkit-font-smoothing: antialiased;
 }
 
+#modalFileManager .media-library-toolbar .btn-primary {
+    padding-left: 8px !important;
+}
+
+.media-library-toolbar .btn-primary .exe-icon,
 .media-library-footer .btn-primary .exe-icon,
+.media-library-footer .btn-danger,
+.media-library-footer .btn-danger[disabled],
 .media-library-footer .btn-danger .exe-icon {
     color: #fff;
 }
