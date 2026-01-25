@@ -361,7 +361,7 @@ test.describe('LaTeX Rendering', () => {
             // Click on the "Delimitadores" page in the navigation
             const delimitadoresPage = page
                 .locator('.nav-element-text .node-text-span')
-                .filter({ hasText: 'Delimitadores' });
+                .filter({ hasText: /^Delimitadores$/ });
             await expect(delimitadoresPage).toBeVisible({ timeout: 10000 });
             await delimitadoresPage.click();
 
