@@ -46,7 +46,7 @@ Every opened project receives a UUID session ID. The server maintains lightweigh
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     CLIENT (Browser)                           │
+│                     CLIENT (Browser)                            │
 ├─────────────────────────────────────────────────────────────────┤
 │  YjsDocumentManager (Y.Doc)                                     │
 │  ├── navigation (Y.Array) → pages, blocks, iDevices             │
