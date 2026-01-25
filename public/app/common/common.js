@@ -523,10 +523,22 @@ var $exe = {
                         this.height = r
                     }
                 }
-                $(this).mediaelementplayer();
+                // Disable the JavaScript player if the video has no .srt subtitles
+                if ($("track", this).length > 0) {
+                    var hasSrt = false;
+                    $("track", this).each(function() {
+                        if (typeof(this.src) == 'string') {
+                            if (this.src.endsWith('.srt')) {
+                                hasSrt = true;
+                            }
+                        }
+                    });
+                    if (hasSrt) $(this).mediaelementplayer();
+                }
             });
             $exe.loadMediaPlayer.isReady = true;
-            if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
+            // No JavaScript player in prettyPhoto
+            // if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
         }
     },
 
