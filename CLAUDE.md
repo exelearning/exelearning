@@ -46,9 +46,9 @@ Every opened project receives a UUID session ID. The server maintains lightweigh
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     CLIENT (Browser)                             │
+│                     CLIENT (Browser)                           │
 ├─────────────────────────────────────────────────────────────────┤
-│  YjsDocumentManager (Y.Doc)                                      │
+│  YjsDocumentManager (Y.Doc)                                     │
 │  ├── navigation (Y.Array) → pages, blocks, iDevices             │
 │  ├── metadata (Y.Map) → title, author, theme, etc.              │
 │  ├── assets (Y.Map) → file metadata                             │
@@ -58,12 +58,12 @@ Every opened project receives a UUID session ID. The server maintains lightweigh
                               │ WebSocket (Yjs sync) + REST API
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     SERVER (Bun/Elysia)                          │
+│                     SERVER (Bun/Elysia)                         │
 ├─────────────────────────────────────────────────────────────────┤
-│  SessionManager: lightweight metadata only (not document)        │
-│  WebSocket: stateless relay (does NOT store Y.Doc)               │
-│  Database: projects table + yjs_documents (binary snapshots)     │
-│  Filesystem: FILES_DIR/assets/{projectUuid}/                     │
+│  SessionManager: lightweight metadata only (not document)       │
+│  WebSocket: stateless relay (does NOT store Y.oc)               │
+│  Database: projects table + yjs_documents (binary snapshots)    │
+│  Filesystem: FILES_DIR/assets/{projectUuid}/                    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
