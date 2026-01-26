@@ -2425,4 +2425,148 @@ describe('NavbarFile', () => {
             delete window.PreviewExporter;
         });
     });
+
+    describe('openFileInputStatic', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should create file input element if not exists', () => {
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            expect(input).toBeDefined();
+            expect(input.type).toBe('file');
+            expect(input.accept).toBe('.elpx,.elp,.zip');
+        });
+
+        it('should reuse existing file input element', () => {
+            // Call twice
+            navbarFile.openFileInputStatic();
+            navbarFile.openFileInputStatic();
+
+            const inputs = document.querySelectorAll('#static-open-file-input');
+            expect(inputs.length).toBe(1);
+        });
+
+        it('should trigger click on file input', () => {
+            const clickSpy = vi.fn();
+            const mockInput = document.createElement('input');
+            mockInput.id = 'static-open-file-input';
+            mockInput.click = clickSpy;
+            document.body.appendChild(mockInput);
+
+            navbarFile.openFileInputStatic();
+
+            expect(clickSpy).toHaveBeenCalled();
+        });
+
+        it('should handle file selection with yjsBridge', async () => {
+            const mockYjsBridge = {
+                importFromElpx: vi.fn().mockResolvedValue({}),
+            };
+            eXeLearning.app.project._yjsBridge = mockYjsBridge;
+            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            // Simulate file selection
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
+                mockFile,
+                expect.objectContaining({ onProgress: expect.any(Function) })
+            );
+        });
+
+        it('should show error when yjsBridge is not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const alertShowSpy = vi.fn();
+            eXeLearning.app.modals = { alert: { show: alertShowSpy } };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(alertShowSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: expect.any(String),
+                    body: expect.stringContaining('Yjs bridge not initialized'),
+                })
+            );
+        });
+
+        it('should reset input value after file selection', async () => {
+            const mockYjsBridge = {
+                importFromElpx: vi.fn().mockResolvedValue({}),
+            };
+            eXeLearning.app.project._yjsBridge = mockYjsBridge;
+            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            // Note: Can't set input.value for file inputs (browser security)
+            // The handler resets e.target.value = '' after processing
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            // Verify the input value is empty (reset by the handler)
+            expect(input.value).toBe('');
+        });
+    });
+
+    describe('openUserOdeFilesEvent static mode', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should call openFileInputStatic in static mode', () => {
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).toHaveBeenCalled();
+        });
+
+        it('should not call openFileInputStatic when storage.remote is true', () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+            eXeLearning.app.modals.openUserOdeFiles = { show: vi.fn() };
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).not.toHaveBeenCalled();
+        });
+
+        it('should not call openFileInputStatic when capabilities is undefined', () => {
+            delete eXeLearning.app.capabilities;
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+            eXeLearning.app.modals.openUserOdeFiles = { show: vi.fn() };
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).not.toHaveBeenCalled();
+        });
+    });
 });

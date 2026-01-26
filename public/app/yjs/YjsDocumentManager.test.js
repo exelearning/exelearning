@@ -1912,4 +1912,143 @@ describe('YjsDocumentManager', () => {
       expect(console.error).toHaveBeenCalled();
     });
   });
+
+  describe('_validateIndexedDb', () => {
+    it('returns true when indexedDB is not available', async () => {
+      const originalIndexedDB = window.indexedDB;
+      delete window.indexedDB;
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      window.indexedDB = originalIndexedDB;
+    });
+
+    it('returns true when database does not exist', async () => {
+      // Mock indexedDB.open that succeeds with 'updates' store
+      const mockDb = {
+        objectStoreNames: { contains: () => true },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when database is missing updates store', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: (name) => name !== 'updates' },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('invalid-db');
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true on open error', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onerror?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('error-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true on upgrade needed (new database)', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        transaction: { abort: mock(() => {}) },
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onupgradeneeded?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('handles exception in objectStoreNames check', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: () => { throw new Error('Test error'); } },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('exception-db');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('IndexedDB error recovery', () => {
+    it('manager can be initialized and destroyed without crashing', async () => {
+      // Basic smoke test - manager should handle IndexedDB issues gracefully
+      const newManager = new YjsDocumentManager('test-project-recovery', {
+        wsUrl: 'wss://localhost/yjs',
+        apiUrl: '/api',
+        offline: true,
+      });
+
+      // Should not throw
+      await newManager.initialize();
+      await newManager.destroy();
+    });
+  });
 });

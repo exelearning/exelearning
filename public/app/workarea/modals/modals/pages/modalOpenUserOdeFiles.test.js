@@ -1787,4 +1787,85 @@ describe('modalOpenUserOdeFiles', () => {
       }
     });
   });
+
+  describe('largeFilesUpload static mode', () => {
+    it('should use YjsBridge.importFromElpx in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      // Note: second param is isImportIdevices (false), not filename
+      // Filename comes from file.name
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
+        mockFile,
+        expect.objectContaining({ onProgress: expect.any(Function) })
+      );
+    });
+
+    it('should call refreshAfterDirectImport after static mode import', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
+    });
+
+    it('should throw error when yjsBridge is not available in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      window.eXeLearning.app.project._yjsBridge = null;
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await expect(modal.largeFilesUpload(mockFile, false, false, false, false)).rejects.toThrow('Yjs bridge not initialized.');
+    });
+
+    it('should not use static mode when capabilities is undefined', async () => {
+      delete window.eXeLearning.app.capabilities;
+      // Set up mocks for regular upload path
+      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+        odeId: 'ode-123',
+        odeSession: 'session-123',
+      });
+      window.eXeLearning.app.project.openLoad = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should use API, not YjsBridge
+      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+    });
+
+    it('should not use static mode when storage.remote is true', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: true } };
+      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+        odeId: 'ode-123',
+        odeSession: 'session-123',
+      });
+      window.eXeLearning.app.project.openLoad = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should use API, not YjsBridge
+      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+    });
+  });
 });
