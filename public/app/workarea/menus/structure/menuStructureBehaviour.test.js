@@ -939,17 +939,29 @@ describe('MenuStructureBehaviour', () => {
                 behaviour.behaviour(true);
             });
 
+            // Helper to create a dropdown menu with proper aria-labelledby for document-level delegation
+            const createNavDropdownMenu = () => {
+                const dropdownMenu = document.createElement('ul');
+                dropdownMenu.className = 'dropdown-menu';
+                dropdownMenu.setAttribute('aria-labelledby', 'dropdownMenuButtonPagenode1');
+                document.body.appendChild(dropdownMenu);
+                return dropdownMenu;
+            };
+
+            afterEach(() => {
+                // Clean up dropdown menus appended to body
+                document.querySelectorAll('.dropdown-menu[aria-labelledby^="dropdownMenuButtonPage"]').forEach(el => el.remove());
+            });
+
             it('triggers file input on Import click', () => {
-                const dropdown = document.createElement('div');
-                dropdown.className = 'dropdown';
+                const dropdownMenu = createNavDropdownMenu();
                 const importItem = document.createElement('div');
                 importItem.className = 'dropdown-item action_import_idevices';
                 importItem.setAttribute('data-nav-id', 'node1');
-                dropdown.appendChild(importItem);
-                behaviour.menuNav.appendChild(dropdown);
+                dropdownMenu.appendChild(importItem);
 
                 const inputSpy = vi.spyOn(HTMLInputElement.prototype, 'click');
-                
+
                 if (!behaviour.menuNav.querySelector('input.local-ode-file-upload-input')) {
                     const input = document.createElement('input');
                     input.className = 'local-ode-file-upload-input';
@@ -957,76 +969,71 @@ describe('MenuStructureBehaviour', () => {
                 }
 
                 importItem.click();
-                
+
                 expect(behaviour.importTargetNodeId).toBe('node1');
                 expect(inputSpy).toHaveBeenCalled();
             });
 
-            it('calls cloneNodeAndReload on Clone click', () => {
-                const dropdown = document.createElement('div');
-                dropdown.className = 'dropdown';
+            it('calls cloneNodeAndReload on Clone click', async () => {
+                const dropdownMenu = createNavDropdownMenu();
                 const cloneItem = document.createElement('div');
                 cloneItem.className = 'dropdown-item action_clone';
                 cloneItem.setAttribute('data-nav-id', 'node1');
-                dropdown.appendChild(cloneItem);
-                behaviour.menuNav.appendChild(dropdown);
+                dropdownMenu.appendChild(cloneItem);
 
                 const cloneSpy = vi.spyOn(behaviour.structureEngine, 'cloneNodeAndReload').mockResolvedValue();
                 vi.spyOn(behaviour, 'showModalRenameNode').mockImplementation(() => {});
 
                 cloneItem.click();
-                
+
+                // Wait for the async clone operation
+                await new Promise(resolve => setTimeout(resolve, 10));
+
                 expect(cloneSpy).toHaveBeenCalledWith('node1');
             });
 
             it('calls showModalRemoveNode on Delete click', () => {
-                const dropdown = document.createElement('div');
-                dropdown.className = 'dropdown';
+                const dropdownMenu = createNavDropdownMenu();
                 const deleteItem = document.createElement('div');
                 deleteItem.className = 'dropdown-item action_delete';
                 deleteItem.setAttribute('data-nav-id', 'node1');
-                dropdown.appendChild(deleteItem);
-                behaviour.menuNav.appendChild(dropdown);
+                dropdownMenu.appendChild(deleteItem);
 
                 const removeSpy = vi.spyOn(behaviour, 'showModalRemoveNode').mockImplementation(() => {});
 
                 deleteItem.click();
-                
+
                 expect(removeSpy).toHaveBeenCalledWith('node1');
             });
-            
+
              it('calls showModalProperties on Properties click', () => {
-                const dropdown = document.createElement('div');
-                dropdown.className = 'dropdown';
+                const dropdownMenu = createNavDropdownMenu();
                 const settingsItem = document.createElement('div');
                 settingsItem.className = 'dropdown-item page-settings';
                 settingsItem.setAttribute('data-menunavid', 'node1');
-                dropdown.appendChild(settingsItem);
-                behaviour.menuNav.appendChild(dropdown);
+                dropdownMenu.appendChild(settingsItem);
 
                 const mockNode = { showModalProperties: vi.fn() };
                 vi.spyOn(behaviour.structureEngine, 'getNode').mockReturnValue(mockNode);
                 vi.spyOn(behaviour, 'mutationForModalProperties').mockImplementation(() => {});
 
                 settingsItem.click();
-                
+
                 expect(behaviour.structureEngine.getNode).toHaveBeenCalledWith('node1');
                 expect(mockNode.showModalProperties).toHaveBeenCalled();
             });
 
             it('calls showModalNewNode on Add Subpage click', () => {
-                const dropdown = document.createElement('div');
-                dropdown.className = 'dropdown';
+                const dropdownMenu = createNavDropdownMenu();
                 const addItem = document.createElement('div');
                 addItem.className = 'dropdown-item page-add';
                 addItem.setAttribute('data-parentnavid', 'node1');
-                dropdown.appendChild(addItem);
-                behaviour.menuNav.appendChild(dropdown);
+                dropdownMenu.appendChild(addItem);
 
                 const addSpy = vi.spyOn(behaviour, 'showModalNewNode').mockImplementation(() => {});
 
                 addItem.click();
-                
+
                 expect(addSpy).toHaveBeenCalledWith('node1');
             });
         });

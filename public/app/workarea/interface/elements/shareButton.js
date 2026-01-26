@@ -7,6 +7,7 @@ export default class ShareProjectButton {
         this.visibilityIcon = this.shareButton?.querySelector(
             '.share-visibility-indicator .medium-icon'
         );
+        this.shareText = this.shareButton?.querySelector('.button-share-text');
         this.currentVisibility = 'private'; // Default
     }
 
@@ -56,9 +57,15 @@ export default class ShareProjectButton {
         if (visibility === 'public') {
             this.visibilityIcon.classList.remove('share-icon');
             this.visibilityIcon.classList.add('shared-icon');
+            if (this.shareText) {
+                this.shareText.textContent = _('Shared');
+            }
         } else {
             this.visibilityIcon.classList.remove('shared-icon');
             this.visibilityIcon.classList.add('share-icon');
+            if (this.shareText) {
+                this.shareText.textContent = _('Share');
+            }
         }
     }
 
