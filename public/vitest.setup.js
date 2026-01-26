@@ -591,13 +591,9 @@ global.createMockAssetManager = (assets = []) => {
     // Check if asset exists
     hasAsset: vi.fn((id) => Promise.resolve(assetMap.has(id))),
 
-    // Resolve asset:// URL to blob URL
+    // Resolve asset:// URL to blob URL (format: asset://uuid.ext)
     resolveAssetURL: vi.fn((assetUrl) => {
-      // Handle both formats: uuid.ext (new) and uuid/path (legacy)
-      const urlPart = assetUrl.replace('asset://', '');
-      const id = urlPart.includes('/')
-        ? urlPart.split('/')[0]  // legacy: uuid/path
-        : urlPart.split('.')[0]; // new: uuid.ext
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       if (blobURLCache.has(id)) {
         return Promise.resolve(blobURLCache.get(id));
       }
@@ -612,13 +608,9 @@ global.createMockAssetManager = (assets = []) => {
       return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
     }),
 
-    // Resolve asset:// URL synchronously - supports both formats
+    // Resolve asset:// URL synchronously (format: asset://uuid.ext)
     resolveAssetURLSync: vi.fn((assetUrl) => {
-      // Handle both formats: uuid.ext (new) and uuid/path (legacy)
-      const urlPart = assetUrl.replace('asset://', '');
-      const id = urlPart.includes('/')
-        ? urlPart.split('/')[0]  // legacy: uuid/path
-        : urlPart.split('.')[0]; // new: uuid.ext
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       return blobURLCache.get(id) || null;
     }),
 
@@ -637,14 +629,9 @@ global.createMockAssetManager = (assets = []) => {
     uploadPendingAssets: vi.fn(() => Promise.resolve({ uploaded: 0, failed: 0, bytes: 0 })),
     downloadMissingAssetsFromServer: vi.fn(() => Promise.resolve({ downloaded: 0, failed: 0 })),
 
-    // Asset ID extraction - supports both formats
+    // Asset ID extraction (format: asset://uuid.ext)
     extractAssetId: vi.fn((assetUrl) => {
-      const path = assetUrl.replace('asset://', '');
-      // Handle both formats: uuid.ext (new) and uuid/path (legacy)
-      if (path.includes('/')) {
-        return path.split('/')[0]; // legacy: uuid/path
-      }
-      return path.split('.')[0]; // new: uuid.ext (or just uuid)
+      return assetUrl.replace('asset://', '').split('.')[0];
     }),
 
     // Statistics
