@@ -101,7 +101,9 @@ export default class ApiCallManager {
      *
      */
     async loadApiParameters() {
-        this.parameters = await this.getApiParameters();
+        // Get locale from config (set by server from user preference)
+        const locale = this.app?.eXeLearning?.config?.locale;
+        this.parameters = await this.getApiParameters(locale);
         for (var [key, data] of Object.entries(this.parameters.routes)) {
             this.endpoints[key] = {};
             this.endpoints[key].path = this.apiUrlBase + data.path;
@@ -118,14 +120,17 @@ export default class ApiCallManager {
      *
      * @returns {Promise<{routes: Object, userPreferencesConfig?: Object, odeProjectSyncPropertiesConfig?: Object}>}
      */
-    async getApiParameters() {
+    async getApiParameters(locale) {
         // Check static mode - return bundled data
         if (this._isStaticMode()) {
             return this._getStaticData('parameters') || { routes: {} };
         }
 
-        // Server mode - fetch from API
+        // Server mode - fetch from API with locale
         let url = this.apiUrlParameters;
+        if (locale) {
+            url += `?locale=${encodeURIComponent(locale)}`;
+        }
         return await this.func.get(url);
     }
 
