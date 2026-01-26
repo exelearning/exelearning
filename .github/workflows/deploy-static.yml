@@ -110,5 +110,5 @@ jobs:
           umbrella-dir: pr-preview
           action: auto
           qr-code: true
-          pages-base-url: exelearning-dev.netlify.app
+          pages-base-url: exelearning.dev
           wait-for-pages-deployment: false
