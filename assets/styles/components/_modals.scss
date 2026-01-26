@@ -338,7 +338,7 @@
             width: calc(100% - var(--margin-m));
         }
 
-        .badge.bg-primary,
+        .image-optimizer-content .badge.bg-primary,
         .form-range.image-optimizer-quality {
             filter: grayscale(1);
         }
@@ -3054,6 +3054,7 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
                         gap: 15px;
                         justify-content: flex-start;
                         align-items: center;
+                        padding: 10px 15px;
                         .username {
                             font-size: 15px;
                         }
