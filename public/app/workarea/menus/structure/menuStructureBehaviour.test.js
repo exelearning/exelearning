@@ -25,7 +25,7 @@ window.AppLogger = {
     error: vi.fn(),
 };
 
-import MenuStructureBehaviour from './menuStructureBehaviour.js';
+import MenuStructureBehaviour, { resetContextMenuDelegation } from './menuStructureBehaviour.js';
 
 const buildJqueryStub = () => {
     class JQueryLite {
@@ -156,8 +156,8 @@ describe('MenuStructureBehaviour', () => {
                             <span class="exe-icon">keyboard_arrow_down</span>
                             <div class="nav-element-text dropdown">
                                 <span class="node-text-span">Node 1</span>
-                                <button class="node-menu-button page-settings-trigger" data-menunavid="node-1" data-bs-toggle="dropdown"></button>
-                                <ul class="dropdown-menu">
+                                <button class="node-menu-button page-settings-trigger" id="dropdownMenuButtonPagenode-1" data-menunavid="node-1" data-bs-toggle="dropdown"></button>
+                                <ul class="dropdown-menu" aria-labelledby="dropdownMenuButtonPagenode-1">
                                     <li><button class="dropdown-item page-add" data-parentnavid="node-1">Add Subpage</button></li>
                                     <li><button class="dropdown-item action_clone" data-nav-id="node-1">Clone</button></li>
                                     <li><button class="dropdown-item action_delete" data-nav-id="node-1">Delete</button></li>
@@ -306,6 +306,8 @@ describe('MenuStructureBehaviour', () => {
         delete global.$;
         delete global.bootstrap;
         delete window.bootstrap;
+        // Reset module-level context menu delegation to prevent stale event listeners
+        resetContextMenuDelegation();
     });
 
     describe('behaviour', () => {
@@ -934,12 +936,7 @@ describe('MenuStructureBehaviour', () => {
              });
         });
         describe('Context Menu Actions', () => {
-            beforeEach(() => {
-                // Ensure context menu delegation is set up
-                behaviour.behaviour(true);
-            });
-
-            // Helper to create a dropdown menu with proper aria-labelledby for document-level delegation
+            // Helper to create a dropdown menu in body with proper aria-labelledby for document-level delegation
             const createNavDropdownMenu = () => {
                 const dropdownMenu = document.createElement('ul');
                 dropdownMenu.className = 'dropdown-menu';
@@ -947,6 +944,11 @@ describe('MenuStructureBehaviour', () => {
                 document.body.appendChild(dropdownMenu);
                 return dropdownMenu;
             };
+
+            beforeEach(() => {
+                // Ensure context menu delegation is set up
+                behaviour.behaviour(true);
+            });
 
             afterEach(() => {
                 // Clean up dropdown menus appended to body
@@ -986,10 +988,10 @@ describe('MenuStructureBehaviour', () => {
 
                 cloneItem.click();
 
-                // Wait for the async clone operation
-                await new Promise(resolve => setTimeout(resolve, 10));
-
-                expect(cloneSpy).toHaveBeenCalledWith('node1');
+                // Wait for async operation to complete
+                await vi.waitFor(() => {
+                    expect(cloneSpy).toHaveBeenCalledWith('node1');
+                });
             });
 
             it('calls showModalRemoveNode on Delete click', () => {
