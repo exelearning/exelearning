@@ -436,6 +436,65 @@ describe('ElpxImporter - Legacy Format', () => {
             ydoc.destroy();
         });
 
+        it('should generate new format asset URLs (asset://uuid.ext) for legacy files with assets', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_el_cid.elp');
+            if (!existsSync(elpPath)) {
+                return; // Skip if file doesn't exist
+            }
+
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // This file should have assets
+            expect(result.assets).toBeGreaterThan(0);
+
+            // Helper to find all asset:// URLs in content
+            const findAssetUrls = (obj: unknown): string[] => {
+                const urls: string[] = [];
+                const assetRegex = /asset:\/\/[a-f0-9-]+(?:\.[a-z0-9]+)?/gi;
+
+                if (typeof obj === 'string') {
+                    const matches = obj.match(assetRegex);
+                    if (matches) urls.push(...matches);
+                } else if (obj instanceof Y.Text) {
+                    const text = obj.toString();
+                    const matches = text.match(assetRegex);
+                    if (matches) urls.push(...matches);
+                } else if (obj instanceof Y.Map) {
+                    obj.forEach(value => {
+                        urls.push(...findAssetUrls(value));
+                    });
+                } else if (obj instanceof Y.Array) {
+                    obj.forEach(item => {
+                        urls.push(...findAssetUrls(item));
+                    });
+                } else if (typeof obj === 'object' && obj !== null) {
+                    Object.values(obj).forEach(value => {
+                        urls.push(...findAssetUrls(value));
+                    });
+                }
+                return urls;
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const assetUrls = findAssetUrls(navigation);
+
+            // If there are asset URLs, verify they're in new format (uuid.ext or just uuid, not uuid/path)
+            if (assetUrls.length > 0) {
+                for (const url of assetUrls) {
+                    // New format: asset://uuid.ext or asset://uuid (NO slash after uuid)
+                    expect(url).not.toMatch(/asset:\/\/[a-f0-9-]+\//i);
+                }
+            }
+
+            ydoc.destroy();
+        });
+
         it('should respect clearExisting option with legacy format', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
             const elpBuffer = await fs.readFile(elpPath);

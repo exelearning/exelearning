@@ -229,8 +229,8 @@ class YjsTinyMCEBinding {
     const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
     if (!assetManager) return html;
 
-    // Match asset:// URLs (format: asset://uuid/filename)
-    const assetUrlRegex = /asset:\/\/([a-f0-9-]+)\/[^"'\s)]+/gi;
+    // Match asset:// URLs in new format: asset://uuid.ext or asset://uuid
+    const assetUrlRegex = /asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+)?/gi;
 
     return html.replace(assetUrlRegex, (assetUrl, assetId) => {
       const blobUrl = assetManager.blobURLCache?.get(assetId);

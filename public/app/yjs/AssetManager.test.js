@@ -444,8 +444,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The key requirement is that the existing asset ID is used (no duplicate stored)
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The key requirement is that the existing asset ID is used with new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       expect(assetManager.putAsset).not.toHaveBeenCalled();
     });
 
@@ -476,8 +476,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The asset URL should be returned
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The asset URL should be returned in new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       // putAsset SHOULD be called to store blob for current project
       expect(assetManager.putAsset).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -5424,13 +5424,13 @@ describe('AssetManager updateAssetReferencesInYjs', () => {
   });
 
   it('processes pages and updates references', () => {
-    // Create mock Y.Text with actual content
+    // Create mock Y.Text with actual content using NEW FORMAT (asset://uuid.ext)
     const mockHtmlContent = {
-      _content: 'src="asset://asset-1/old.jpg"',
+      _content: 'src="asset://asset-1.jpg"',
       toString: function() { return this._content; },
       delete: function(start, length) { this._content = ''; },
       insert: function(pos, text) { this._content = text; },
-      length: 30
+      length: 25
     };
 
     // Create mock component with Y.Map behavior
