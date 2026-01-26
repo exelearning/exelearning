@@ -1824,48 +1824,83 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
     });
 
-    it('should throw error when yjsBridge is not available in static mode', async () => {
+    it('should fallback to legacy flow when yjsBridge is not available in static mode', async () => {
       window.eXeLearning.app.capabilities = { storage: { remote: false } };
       window.eXeLearning.app.project._yjsBridge = null;
 
+      // Mock legacy upload path
+      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
+        responseMessage: 'OK',
+        odeFileName: 'test.elpx',
+        odeFilePath: '/tmp/test.elpx',
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
-      await expect(modal.largeFilesUpload(mockFile, false, false, false, false)).rejects.toThrow('Yjs bridge not initialized.');
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      // Should log error and fallback to legacy flow
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[OpenFile] Error in direct client processing:',
+        expect.any(Error)
+      );
+      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
 
-    it('should not use static mode when capabilities is undefined', async () => {
+    it('should skip static mode when capabilities is undefined and use direct processing', async () => {
       delete window.eXeLearning.app.capabilities;
-      // Set up mocks for regular upload path
-      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
-        responseMessage: 'OK',
-        odeId: 'ode-123',
-        odeSession: 'session-123',
+
+      // Mock fetch for direct in-memory processing path
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
       });
-      window.eXeLearning.app.project.openLoad = vi.fn().mockResolvedValue();
+      window.fetch = mockFetch;
+
+      // Mock project reinitialize for direct processing
+      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use API, not YjsBridge
-      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+      // Should use fetch for direct processing, not legacy API
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/project/create-quick'),
+        expect.any(Object)
+      );
     });
 
-    it('should not use static mode when storage.remote is true', async () => {
+    it('should skip static mode when storage.remote is true and use direct processing', async () => {
       window.eXeLearning.app.capabilities = { storage: { remote: true } };
-      window.eXeLearning.app.api.postLocalLargeOdeFile = vi.fn().mockResolvedValue({
-        responseMessage: 'OK',
-        odeId: 'ode-123',
-        odeSession: 'session-123',
+
+      // Mock fetch for direct in-memory processing path
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
       });
-      window.eXeLearning.app.project.openLoad = vi.fn().mockResolvedValue();
+      window.fetch = mockFetch;
+
+      // Mock project reinitialize for direct processing
+      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use API, not YjsBridge
-      expect(window.eXeLearning.app.api.postLocalLargeOdeFile).toHaveBeenCalled();
+      // Should use fetch for direct processing, not static mode
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/project/create-quick'),
+        expect.any(Object)
+      );
     });
   });
 });
