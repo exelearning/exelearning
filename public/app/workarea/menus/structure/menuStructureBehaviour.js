@@ -200,18 +200,24 @@ export default class MenuStructureBehaviour {
         });
 
         // 3. Delegation for other Context Menu Actions (Import, Clone, Delete)
-        // Using a single listener on the menuNav to catch dropdown items
+        // Using document-level listener since dropdown menus are appended to body (data-bs-container="body")
         if (!this._contextMenuDelegationAdded) {
-            this.menuNav.addEventListener('click', (e) => {
+            document.addEventListener('click', (e) => {
+                // Only handle dropdown items from nav page menus (identified by aria-labelledby pattern)
                 const target = e.target.closest('.dropdown-item');
                 if (!target) return;
-                
+
+                // Check if this dropdown menu belongs to a nav page menu
+                const dropdownMenu = target.closest('.dropdown-menu[aria-labelledby^="dropdownMenuButtonPage"]');
+                if (!dropdownMenu) return;
+
                 // Stop propagation immediately if we hit a dropdown item!
                 e.stopPropagation();
 
-                // Helper to close dropdown
+                // Helper to close dropdown - find button via aria-labelledby
                 const closeDropdown = () => {
-                    const dropdownBtn = target.closest('.dropdown').querySelector('[data-bs-toggle="dropdown"]');
+                    const labelledBy = dropdownMenu.getAttribute('aria-labelledby');
+                    const dropdownBtn = labelledBy ? document.getElementById(labelledBy) : null;
                     if (dropdownBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
                         const dd = bootstrap.Dropdown.getInstance(dropdownBtn);
                         if (dd) dd.hide();
