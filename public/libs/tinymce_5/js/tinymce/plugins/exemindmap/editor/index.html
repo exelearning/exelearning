@@ -7,39 +7,52 @@
 <title>mindmaps for eXeLearning</title>
 <script>
 // Compute base paths FIRST, before any resources load
-// This avoids browser speculative prefetching issues where resources
-// start loading before the <base> tag is set
+// Pattern: handles both static mode (direct file path) and server mode (API endpoint)
 (function() {
     var path = window.location.pathname;
+    var deployBase, editorBase;
 
-    // Compute editor base (for local css/, js/ resources)
-    var editorIndex = path.lastIndexOf('/editor/');
-    if (editorIndex === -1) {
-        // Fallback: if path ends with /editor (no trailing slash), add it
-        editorIndex = path.lastIndexOf('/editor');
-        if (editorIndex !== -1 && path.length === editorIndex + 7) {
-            path = path + '/';
-            editorIndex = path.lastIndexOf('/editor/');
-        }
-    }
-    var editorBase = editorIndex !== -1
-        ? path.substring(0, editorIndex + 8) // Include '/editor/'
-        : path.substring(0, path.lastIndexOf('/') + 1);
-
-    // Compute deployment base (for external /app/ resources)
+    // Check if loaded via direct file path (static mode) or API endpoint (server mode)
     var libsIndex = path.indexOf('/libs/');
-    var deployBase = libsIndex > 0 ? path.substring(0, libsIndex) : '';
+    var isDirectPath = libsIndex !== -1;
+
+    if (isDirectPath) {
+        // Static mode: URL like /libs/tinymce_5/.../editor/index.html
+        deployBase = libsIndex > 0 ? path.substring(0, libsIndex) : '';
+
+        // Compute editor base for local resources
+        var editorIndex = path.lastIndexOf('/editor/');
+        if (editorIndex === -1) {
+            editorIndex = path.lastIndexOf('/editor');
+            if (editorIndex !== -1 && path.length === editorIndex + 7) {
+                path = path + '/';
+                editorIndex = path.lastIndexOf('/editor/');
+            }
+        }
+        editorBase = editorIndex !== -1
+            ? path.substring(0, editorIndex + 8)
+            : path.substring(0, path.lastIndexOf('/') + 1);
+
+        // Create <base> tag for relative paths
+        var base = document.createElement('base');
+        base.href = editorBase;
+        document.head.appendChild(base);
+    } else {
+        // Server mode: URL like /api/exemindmap-editor/index.html
+        // Use parent window config (handles BASE_PATH correctly)
+        try {
+            deployBase = window.parent.eXeLearning.symfony.fullURL || '';
+        } catch (e) {
+            deployBase = '';
+        }
+        editorBase = deployBase + '/api/exemindmap-editor/';
+    }
 
     // Store globally for use in body scripts
     window.__EDITOR_BASE__ = editorBase;
     window.__DEPLOY_BASE__ = deployBase;
 
-    // Create <base> tag for any remaining relative paths
-    var base = document.createElement('base');
-    base.href = editorBase;
-    document.head.appendChild(base);
-
-    // Load external CSS (mindmaps library) - uses deployBase for /app/ paths
+    // Load external CSS (mindmaps library)
     var externalCss = [
         '/app/common/mindmaps/src/css/common.css',
         '/app/common/mindmaps/src/css/app.css',
@@ -53,13 +66,13 @@
         document.head.appendChild(link);
     });
 
-    // Load local CSS - uses editorBase
+    // Load local CSS
     var localLink = document.createElement('link');
     localLink.rel = 'stylesheet';
     localLink.href = editorBase + 'css/custom.css';
     document.head.appendChild(localLink);
 
-    // Load langs script dynamically
+    // Load langs script
     var langsScript = document.createElement('script');
     langsScript.src = editorBase + 'js/langs/all.js';
     document.head.appendChild(langsScript);
