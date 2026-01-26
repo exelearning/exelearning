@@ -47,10 +47,12 @@ describe('Locale translations', () => {
     expect(document.querySelector('body').getAttribute('lang')).toBe('fr');
   });
 
-  it('loadTranslationsStrings populates strings via API', async () => {
+  it('loadTranslationsStrings populates strings via api', async () => {
     await locale.setLocaleLang('es');
     await locale.loadTranslationsStrings();
+
     expect(mockApp.api.getTranslations).toHaveBeenCalledWith('es');
+    // The result object is stored directly, with translations in the translations property
     expect(locale.strings.translations.hello).toBe('~Hola');
   });
 
@@ -86,7 +88,17 @@ describe('Locale translations', () => {
     expect(contentResult).toBe('file.elpx');
   });
 
-  it('loadContentTranslationsStrings stores content translations from the API', async () => {
+  it('window _ with idevice parameter uses idevice-specific translation', () => {
+    locale.strings = translations; // Already includes 'idevice.hello': 'Idevice Hola'
+
+    // Without idevice: uses getGUITranslation (removes ~ prefix)
+    expect(window._('hello')).toBe('Hola');
+
+    // With idevice: uses getTranslation with idevice support
+    expect(window._('hello', 'idevice')).toBe('Idevice Hola');
+  });
+
+  it('loadContentTranslationsStrings stores content translations from api', async () => {
     const contentPayload = {
       translations: {
         notes: 'Notas',
@@ -97,7 +109,8 @@ describe('Locale translations', () => {
     await locale.loadContentTranslationsStrings('en');
 
     expect(mockApp.api.getTranslations).toHaveBeenCalledWith('en');
-    expect(locale.c_strings).toBe(contentPayload);
+    // The result object is stored directly, with translations in the translations property
+    expect(locale.c_strings).toEqual({ translations: { notes: 'Notas' } });
   });
 
   it('getContentTranslation returns sanitized fallback when missing', () => {
@@ -108,5 +121,29 @@ describe('Locale translations', () => {
 
   it('getTranslation returns empty for non-string inputs', () => {
     expect(locale.getTranslation(123)).toBe('');
+  });
+
+  describe('init', () => {
+    it('should call setLocaleLang and loadTranslationsStrings', async () => {
+      const setLocaleLangSpy = vi.spyOn(locale, 'setLocaleLang').mockImplementation(() => {});
+      const loadTranslationsSpy = vi.spyOn(locale, 'loadTranslationsStrings').mockResolvedValue();
+
+      await locale.init();
+
+      expect(setLocaleLangSpy).toHaveBeenCalledWith('es');
+      expect(loadTranslationsSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('getGUITranslation edge cases', () => {
+    it('should return original string with escaped quotes removed when key not found', () => {
+      locale.strings = { translations: {} };
+      expect(locale.getGUITranslation('unknown key')).toBe('unknown key');
+    });
+
+    it('should handle string with quotes when key not found', () => {
+      locale.strings = { translations: {} };
+      expect(locale.getGUITranslation('text "quoted"')).toBe('text "quoted"');
+    });
   });
 });

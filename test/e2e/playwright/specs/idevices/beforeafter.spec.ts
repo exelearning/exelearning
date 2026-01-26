@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -251,19 +252,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'BeforeAfter Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -283,18 +272,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Multiple Pairs Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -340,18 +318,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Preview First Image Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -401,18 +368,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Navigation Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -484,18 +440,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Slider Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -542,18 +487,7 @@ test.describe('BeforeAfter iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a beforeafter iDevice
             await addBeforeAfterIdeviceFromPanel(page);
@@ -569,18 +503,7 @@ test.describe('BeforeAfter iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             await selectPageNode(page);

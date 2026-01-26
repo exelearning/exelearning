@@ -3448,6 +3448,32 @@ describe('YjsProjectBridge', () => {
       expect(bridge._checkAndImportTheme).not.toHaveBeenCalled();
     });
 
+    it('imports theme in static mode (storage.remote=false)', async () => {
+      const mockImporter = {
+        importFromFile: mock(() => Promise.resolve({ assets: 0, theme: 'custom-theme' })),
+      };
+      global.window.ElpxImporter = mock(function() { return mockImporter; });
+
+      // Set static mode capabilities (storage.remote = false)
+      global.window.eXeLearning = {
+        app: {
+          capabilities: {
+            storage: { remote: false },
+            collaboration: { enabled: false },
+          },
+        },
+      };
+
+      bridge._checkAndImportTheme = mock(() => Promise.resolve());
+
+      const file = new Blob(['test'], { type: 'application/zip' });
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      // Theme import should be called even in static mode
+      // Third argument is cachedZip (undefined when mockImporter doesn't return zipContents)
+      expect(bridge._checkAndImportTheme).toHaveBeenCalledWith('custom-theme', file, undefined);
+    });
+
     it('uses assetManager when available', async () => {
       const mockImporter = {
         importFromFile: mock(() => Promise.resolve({ assets: 0 })),

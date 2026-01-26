@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -107,19 +108,10 @@ test.describe('Text iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Text iDevice Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice using the panel
             await addTextIdeviceFromPanel(page);
@@ -148,18 +140,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add and edit text iDevice
             await addTextIdeviceFromPanel(page);
@@ -173,18 +156,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page (after reload, project shows metadata by default)
             const pageNode = page
@@ -207,18 +179,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -287,18 +250,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -411,18 +365,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'MindMap Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -487,8 +432,10 @@ test.describe('Text iDevice', () => {
             const editorDialog = page.locator('.tox-dialog').nth(1);
             await expect(editorDialog).toBeVisible({ timeout: 10000 });
 
-            // Find the mindmap editor iframe (served from /api/exemindmap-editor/)
-            const mindmapFrame = page.frameLocator('iframe[src*="exemindmap-editor"]');
+            // Find the mindmap editor iframe
+            // Server mode: /api/exemindmap-editor/index.html
+            // Static mode: ./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html
+            const mindmapFrame = page.frameLocator('iframe[src*="exemindmap"]');
 
             // Verify key UI elements are visible inside the iframe (NOT blank)
             // The mindmap editor should have toolbar and canvas elements
@@ -524,18 +471,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Formatting Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -579,18 +517,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Diagram Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -778,18 +707,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Update Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -916,18 +836,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid PreRender Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice with mermaid diagram
             await addTextIdeviceFromPanel(page);
@@ -1071,18 +982,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Recorder Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1196,18 +1098,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Asset URL Resolution Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1342,18 +1235,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Asset URL Resolution Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1416,18 +1300,9 @@ test.describe('Text iDevice', () => {
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1514,18 +1389,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1696,17 +1562,9 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
-            // 2. Wait for Yjs to initialize
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await gotoWorkarea(page, projectUuid);
+            // 2. Wait for app to initialize including Yjs
+            await waitForAppReady(page);
 
             // 3. Add text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1815,17 +1673,7 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(2000);
 
             // 16. Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
-            // 17. Wait for Yjs to reinitialize
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await reloadPage(page);
 
             // 18. Navigate to the page with the iDevice
             const pageNode = page
@@ -1856,17 +1704,9 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project
             const projectUuid = await createProject(page, 'Image Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
+            await gotoWorkarea(page, projectUuid);
             // 2. Wait for Yjs
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // 3. Add text iDevice
             await addTextIdeviceFromPanel(page);
@@ -1993,17 +1833,9 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Internal Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
+            await gotoWorkarea(page, projectUuid);
             // Wait for Yjs
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Add a second page to link to via JavaScript (not UI modal)
             const secondPageInfo = await page.evaluate(() => {
@@ -2203,17 +2035,9 @@ test.describe('Text iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Editor Internal Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
+            await gotoWorkarea(page, projectUuid);
             // Wait for Yjs
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Add a second page via JavaScript (not UI modal)
             const secondPageInfo = await page.evaluate(() => {
@@ -2407,18 +2231,9 @@ test.describe('Text iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text iDevice ELPX Link Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -2565,17 +2380,9 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Iframe Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
+            await gotoWorkarea(page, projectUuid);
             // Wait for Yjs to be ready
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // 2. Add a text iDevice
             await addTextIdeviceFromPanel(page);
@@ -2707,17 +2514,9 @@ test.describe('Text iDevice', () => {
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'ZIP HTML Embed Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-            await waitForLoadingScreenHidden(page);
-
+            await gotoWorkarea(page, projectUuid);
             // Wait for Yjs to be ready
-            await page.waitForFunction(
-                () => {
-                    return (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // 2. Add a text iDevice
             await addTextIdeviceFromPanel(page);

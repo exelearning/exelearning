@@ -33,15 +33,19 @@ export default class projectManager {
         await this.loadCurrentProject();
         // Load project properties
         await this.loadProjectProperties();
-        this.app.locale.loadContentTranslationsStrings(
-            this.properties.properties.pp_lang.value
-        );
         // Compose and initialized interface
         await this.loadInterface();
 
         // Initialize Yjs collaborative editing BEFORE loading structure
         // This ensures Yjs is the source of truth for document structure
         await this.initializeYjs();
+        // Reload content translations after Yjs metadata sync (pp_lang -> language).
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+        }
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
 
         // Load project visibility for share button
         if (this.app.interface?.shareButton) {
@@ -68,6 +72,18 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+
+        // Static mode: check for pending file import
+        const capabilities = this.app?.capabilities;
+        if (!capabilities?.storage?.remote && window.__pendingImportFile) {
+            Logger.log('[ProjectManager] Found pending import file, importing...');
+            const file = window.__pendingImportFile;
+            window.__pendingImportFile = null; // Clear it
+            this.importElp(file).catch(err => {
+                console.error('[ProjectManager] Failed to import pending file:', err);
+            });
+        }
+
         // Call the function to execute sorting and reordering
         //this.sortBlocksById(true);
         // Set offline atributtes
@@ -115,12 +131,12 @@ export default class projectManager {
                               eXeLearning?.config?.token ||
                               localStorage.getItem('authToken');
 
-            // Determine if we should use local-only mode (no WebSocket sync)
-            // Note: WebSocket works without auth in development - offline mode only for explicit offline installations
-            const localOnlyMode = this.offlineInstallation === true;
+            // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
+            // Note: this.offlineInstallation is a legacy field kept for backward compatibility
+            const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
 
-            if (localOnlyMode) {
-                Logger.log('[ProjectManager] Yjs local-only mode (offline installation)');
+            if (!collaborationEnabled) {
+                Logger.log('[ProjectManager] Yjs local-only mode (collaboration disabled)');
             } else {
                 Logger.log('[ProjectManager] Yjs collaborative mode (WebSocket + IndexedDB)');
             }
@@ -147,9 +163,9 @@ export default class projectManager {
                 Logger.log('[ProjectManager] Enabling Yjs mode for project:', projectId, isNewProject ? '(new)' : '(existing)');
                 await this.enableYjsMode(projectId, authToken, {
                     treeContainerId: 'structure-menu-nav',
-                    enableWebSocket: !localOnlyMode,  // Only enable WebSocket with auth
+                    enableWebSocket: collaborationEnabled,
                     enableIndexedDB: true,
-                    offline: localOnlyMode,
+                    offline: !collaborationEnabled,
                     isNewProject: isNewProject,  // Skip server load for new projects
                 });
                 Logger.log('[ProjectManager] Yjs collaborative editing enabled');
@@ -214,17 +230,19 @@ export default class projectManager {
                           eXeLearning?.config?.token ||
                           localStorage.getItem('authToken');
 
-        // Determine mode
-        const localOnlyMode = this.offlineInstallation === true;
+        // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
+        // Note: this.offlineInstallation is a legacy field kept for backward compatibility
+        // New code should use app.capabilities instead
+        const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
 
         // Create new bridge (constructor takes app, not projectId)
         this._yjsBridge = new YjsProjectBridge(this.app);
 
         // Initialize the bridge with projectUuid
         await this._yjsBridge.initialize(projectUuid, authToken, {
-            enableWebSocket: !localOnlyMode,
+            enableWebSocket: collaborationEnabled,
             enableIndexedDB: true,
-            offline: localOnlyMode,
+            offline: !collaborationEnabled,
             isNewProject: options.isNewProject,
             skipSyncWait: options.skipSyncWait ?? false,
         });
@@ -539,6 +557,9 @@ export default class projectManager {
         this.app.interface.loadingScreen.show();
         // Load project properties
         await this.loadProjectProperties();
+        await this.app.locale.loadContentTranslationsStrings(
+            this.properties.properties.pp_lang.value
+        );
         // Load structure data
         await this.loadStructureData();
         // Load title
@@ -1363,18 +1384,16 @@ export default class projectManager {
 
     /**
      * Set installation type attribute to body and elements
-     *
+     * Uses RuntimeConfig to differentiate between 'static' and 'server' modes
      */
     setInstallationTypeAttribute() {
-        if (this.offlineInstallation == true) {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'offline');
-            /* To review (see #432)
-            document.querySelector(
-                '#navbar-button-download-project',
-            ).innerHTML = 'Save';
-            */
+        const runtimeConfig = this.app.runtimeConfig;
+        const installationType = runtimeConfig?.isStaticMode() ? 'static' : 'online';
+
+        document.querySelector('body').setAttribute('installation-type', installationType);
+
+        // Static mode UI adjustments (save button label)
+        if (installationType === 'static') {
             document.querySelector('#head-top-download-button').innerHTML =
                 'save';
             document
@@ -1382,17 +1401,13 @@ export default class projectManager {
                 .setAttribute('title', _('Save'));
 
             // Expose a stable project key for Electron (per-project save path)
-            try {
-                window.__currentProjectId = this.odeId || 'default';
-            } catch (e) {
-                // Intentional: Electron global assignment may fail in browser
+            if (window.electronAPI) {
+                try {
+                    window.__currentProjectId = this.odeId || 'default';
+                } catch (e) {
+                    // Intentional: Electron global assignment may fail in browser
+                }
             }
-
-            // Offline Save As is now provided by a dedicated menu item
-        } else {
-            document
-                .querySelector('body')
-                .setAttribute('installation-type', 'online');
         }
     }
 
@@ -1498,7 +1513,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalAutosave(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip autosave in static mode - no server to save to
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -1507,7 +1526,7 @@ export default class projectManager {
             };
             this.intervalSaveOde = setInterval(() => {
                 this.app.api.postOdeAutosave(data);
-            }, this.app.api.parameters.autosaveIntervalTime * 1000);
+            }, (this.app.api?.parameters?.autosaveIntervalTime || 60) * 1000);
         }
     }
 
@@ -1516,7 +1535,11 @@ export default class projectManager {
      * @param {*} removePrev
      */
     async generateIntervalSessionExpiration(removePrev) {
-        if (this.app.api.parameters.autosaveOdeFilesFunction) {
+        // Skip session expiration in static mode - no server sessions
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
+        if (this.app.api?.parameters?.autosaveOdeFilesFunction) {
             if (removePrev) clearInterval(this.intervalSaveOde);
             let data = {
                 odeSessionId: this.odeSession,
@@ -2379,6 +2402,10 @@ export default class projectManager {
      *
      */
     async cleanPreviousAutosaves() {
+        // Skip in static mode - no server autosaves to clean
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) return;
+
         let params = { odeSessionId: this.odeSession };
         await this.app.api.postCleanAutosavesByUser(params);
     }

@@ -76,12 +76,13 @@ describe('NavbarStyles', () => {
                 <button id="dropdownStyles"></button>
                 <button id="navbar-button-styles"></button>
             </div>
+            <h1 class="styles-title">Styles</h1>
             <div id="styleslistContent">
                 <div id="exestylescontent"></div>
                 <div id="importedstylescontent"></div>
             </div>
-            <div id="exestylescontent-tab"></div>
-            <div id="importedstylescontent-tab"></div>
+            <div id="exestylescontent-tab">System</div>
+            <div id="importedstylescontent-tab">Imported</div>
             <div id="stylessidenav" class="sidenav"></div>
             <div id="sidenav-overlay"></div>
             <button id="stylessidenavclose"></button>
@@ -153,6 +154,23 @@ describe('NavbarStyles', () => {
             'site-1',
         ]);
         expect(navbarStyles.userThemes.map((t) => t.id)).toEqual(['user-1']);
+    });
+
+    it('translates static sidebar elements on initialization', () => {
+        // Verify that the translation function was called for sidebar elements
+        expect(global._).toHaveBeenCalledWith('Styles');
+        expect(global._).toHaveBeenCalledWith('System');
+        expect(global._).toHaveBeenCalledWith('Imported');
+
+        // Verify the elements have the translated text
+        const title = document.querySelector('.styles-title');
+        expect(title.textContent).toBe('Styles');
+
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        expect(systemTab.textContent).toBe('System');
+
+        const importedTab = document.querySelector('#importedstylescontent-tab');
+        expect(importedTab.textContent).toBe('Imported');
     });
 
     it('updates selected theme classes in both lists', () => {

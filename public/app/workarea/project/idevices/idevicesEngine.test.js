@@ -104,7 +104,14 @@ global.eXeLearning = {
         idevices: {
             getIdeviceInstalled: vi.fn((name) => {
                 if (name === 'text') {
-                    return { name: 'text', title: 'Text', cssClass: 'text', edition: true };
+                    return {
+                        name: 'text',
+                        title: 'Text',
+                        cssClass: 'text',
+                        edition: true,
+                        loadScriptsExport: vi.fn(() => []),
+                        loadStylesExport: vi.fn().mockResolvedValue([]),
+                    };
                 }
                 return null;
             }),
@@ -1971,7 +1978,11 @@ describe('IdevicesEngine', () => {
                 return null;
             });
             eXeLearning.app.idevices = {
-                getIdeviceInstalled: vi.fn(() => ({ id: 'text' })),
+                getIdeviceInstalled: vi.fn(() => ({
+                    id: 'text',
+                    loadScriptsExport: vi.fn(() => []),
+                    loadStylesExport: vi.fn().mockResolvedValue([]),
+                })),
             };
         });
 
@@ -2818,6 +2829,8 @@ describe('IdevicesEngine', () => {
                     name: 'text',
                     title: 'Text',
                     cssClass: 'text',
+                    loadScriptsExport: vi.fn(() => []),
+                    loadStylesExport: vi.fn().mockResolvedValue([]),
                 })),
             };
             vi.spyOn(engine, 'newBlockNode').mockReturnValue({

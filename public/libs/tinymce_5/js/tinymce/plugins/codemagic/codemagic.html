@@ -12,12 +12,16 @@
     (function() {
         var basePath = '';
         var version = '';
+        var isStaticMode = false;
         try {
             basePath = (parent && parent.eXeLearning && parent.eXeLearning.config && parent.eXeLearning.config.basePath) || '';
             version = (parent && parent.eXeLearning && parent.eXeLearning.version) || '';
+            // Detect static mode - no version prefix needed for static servers (they don't rewrite URLs)
+            isStaticMode = parent && parent.__EXE_STATIC_MODE__;
         } catch(e) {}
         var jqueryPath = '/libs/jquery/jquery.min.js';
-        var jqueryUrl = basePath ? basePath + '/' + version + jqueryPath : '/' + version + jqueryPath;
+        // In static mode, don't use version prefix; in online mode, use versioned URL
+        var jqueryUrl = isStaticMode ? (basePath + jqueryPath) : (basePath + '/' + version + jqueryPath);
         document.write('<script src="' + jqueryUrl + '"><\/script>');
     })();
 </script>

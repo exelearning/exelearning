@@ -5,47 +5,9 @@
  * then updates each to show valid (checkmark) or broken (X) status as validation completes.
  */
 
-import { test, expect, Page } from '@playwright/test';
-
-/**
- * Helper to add a text iDevice to the current page
- */
-async function addTextIdevice(page: Page): Promise<void> {
-    // Select a page (not root)
-    const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-    await pageNode.scrollIntoViewIfNeeded();
-    await pageNode.click({ force: true });
-    await page.waitForTimeout(1500);
-
-    // Try quick text button first
-    const quickTextButton = page
-        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
-        .first();
-    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
-        await quickTextButton.click();
-    } else {
-        // Expand "Information and presentation" category (accordion)
-        const infoCategory = page
-            .locator('#menu_idevices .accordion-item')
-            .filter({ hasText: /Information|Información/i })
-            .locator('.accordion-button');
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
-            if (isCollapsed) {
-                await infoCategory.first().click();
-                await page.waitForTimeout(500);
-            }
-        }
-
-        // Add a text iDevice - wait for it to be visible first
-        const textIdevice = page.locator('.idevice_item[id="text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-    }
-
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
-}
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
+import { Page } from '@playwright/test';
 
 /**
  * Helper to open the link validation modal
@@ -61,49 +23,17 @@ async function openLinkValidationModal(page: Page): Promise<void> {
     await linkValidationBtn.click();
 }
 
-/**
- * Helper to wait for workarea to be ready
- */
-async function waitForWorkarea(page: Page): Promise<void> {
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => window.eXeLearning?.app?.project?._yjsBridge !== undefined, {
-        timeout: 30000,
-    });
-
-    // Wait for loading screen to disappear
-    await page.waitForFunction(
-        () => {
-            const loadScreen = document.querySelector('#load-screen-main');
-            return !loadScreen || loadScreen.getAttribute('data-visible') === 'false';
-        },
-        { timeout: 15000 },
-    );
-}
-
 test.describe('Link Validation', () => {
-    test.beforeEach(async ({ page }) => {
-        // Login
-        await page.goto('/login');
-        await page.waitForLoadState('networkidle');
-        await page.fill('input[type="email"]', 'user@exelearning.net');
-        await page.fill('input[type="password"]', '1234');
-        await page.click('button[type="submit"]');
-        await page.waitForLoadState('networkidle');
-    });
-
-    test('should progressively validate links showing status', async ({ page }) => {
-        // Create project
-        const response = await page.request.post('/api/project/create-quick', {
-            data: { title: 'Link Validation Test' },
-        });
-        const { uuid } = await response.json();
+    test('should progressively validate links showing status', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Link Validation Test');
 
         // Navigate to workarea
-        await page.goto(`/workarea?project=${uuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
 
-        // Add text iDevice
+        // Select a page first, then add text iDevice
+        await selectFirstPage(page);
         await addTextIdevice(page);
 
         // Wait for TinyMCE editor to be fully ready (editor exists and is editable)
@@ -192,19 +122,16 @@ test.describe('Link Validation', () => {
         await expect(csvButton).toBeEnabled();
     });
 
-    test('should show progress bar during validation', async ({ page }) => {
-        // Create project
-        const response = await page.request.post('/api/project/create-quick', {
-            data: { title: 'Progress Bar Test' },
-        });
-        const { uuid } = await response.json();
+    test('should show progress bar during validation', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Progress Bar Test');
 
         // Navigate to workarea
-        await page.goto(`/workarea?project=${uuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
 
-        // Add text iDevice
+        // Select a page first, then add text iDevice
+        await selectFirstPage(page);
         await addTextIdevice(page);
 
         // Wait for TinyMCE editor to be ready
@@ -257,17 +184,13 @@ test.describe('Link Validation', () => {
         await expect(progressText).toContainText('Complete');
     });
 
-    test('should show "No links found" for empty content', async ({ page }) => {
-        // Create project
-        const response = await page.request.post('/api/project/create-quick', {
-            data: { title: 'Empty Content Test' },
-        });
-        const { uuid } = await response.json();
+    test('should show "No links found" for empty content', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'Empty Content Test');
 
         // Navigate to workarea (project starts with no content)
-        await page.goto(`/workarea?project=${uuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
 
         // Open link validation modal without adding any content
         await openLinkValidationModal(page);
@@ -279,19 +202,16 @@ test.describe('Link Validation', () => {
         await expect(modal.locator('text=No links found')).toBeVisible({ timeout: 10000 });
     });
 
-    test('should disable CSV button while validating', async ({ page }) => {
-        // Create project
-        const response = await page.request.post('/api/project/create-quick', {
-            data: { title: 'CSV Button Test' },
-        });
-        const { uuid } = await response.json();
+    test('should disable CSV button while validating', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        const uuid = await createProject(page, 'CSV Button Test');
 
         // Navigate to workarea
-        await page.goto(`/workarea?project=${uuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForWorkarea(page);
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
 
-        // Add text iDevice
+        // Select a page first, then add text iDevice
+        await selectFirstPage(page);
         await addTextIdevice(page);
 
         // Wait for TinyMCE editor to be fully ready

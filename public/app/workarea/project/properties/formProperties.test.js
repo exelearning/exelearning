@@ -452,8 +452,12 @@ describe('FormProperties', () => {
             const label = formProperties.makeRowElementLabel('test-id', property);
 
             expect(label.tagName).toBe('LABEL');
-            expect(label.innerHTML).toBe('* Test Title');
+            expect(label.textContent).toBe('* Test Title');
             expect(label.getAttribute('for')).toBe('test-id');
+            // For required fields, the translatable text is wrapped in a span
+            const span = label.querySelector('span[data-i18n]');
+            expect(span).not.toBeNull();
+            expect(span.getAttribute('data-i18n')).toBe('Test Title');
         });
 
         it('should create label for non-required property', () => {
@@ -1370,6 +1374,166 @@ describe('FormProperties', () => {
             formProperties.insertAfter(reference, newNode);
 
             expect(parent.children[1]).toBe(newNode);
+        });
+    });
+
+    describe('addRowsWithTabs', () => {
+        it('should create tab navigation with 3 tabs', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {
+                titleNode: {
+                    type: 'text',
+                    title: 'Title',
+                    value: 'Test',
+                    groups: { properties_package: 'Content metadata' },
+                    category: { properties: 'Properties' },
+                },
+            };
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const tabs = table.querySelectorAll('.project-properties-tab');
+            expect(tabs.length).toBe(3);
+        });
+
+        it('should create tab panes for each tab', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const panes = table.querySelectorAll('.project-properties-tab-pane');
+            expect(panes.length).toBe(3);
+        });
+
+        it('should set first tab as active by default', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const firstTab = table.querySelector('.project-properties-tab');
+            const firstPane = table.querySelector('.project-properties-tab-pane');
+            expect(firstTab.classList.contains('active')).toBe(true);
+            expect(firstPane.classList.contains('active')).toBe(true);
+        });
+
+        it('should have correct tab titles', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const tabs = table.querySelectorAll('.project-properties-tab');
+            expect(tabs[0].textContent).toBe('Content metadata');
+            expect(tabs[1].textContent).toBe('Export options');
+            expect(tabs[2].textContent).toBe('Custom code');
+        });
+
+        it('should have proper ARIA attributes on tabs', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {};
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const firstTab = table.querySelector('.project-properties-tab');
+            expect(firstTab.getAttribute('role')).toBe('tab');
+            expect(firstTab.getAttribute('aria-selected')).toBe('true');
+        });
+    });
+
+    describe('groupPropertiesByGroup', () => {
+        it('should group properties by their group key', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const properties = {
+                prop1: {
+                    groups: { properties_package: 'Package' },
+                },
+                prop2: {
+                    groups: { export: 'Export' },
+                },
+                prop3: {
+                    groups: { properties_package: 'Package' },
+                },
+            };
+
+            const grouped = formProperties.groupPropertiesByGroup(properties);
+
+            expect(grouped.get('properties_package').length).toBe(2);
+            expect(grouped.get('export').length).toBe(1);
+        });
+
+        it('should place properties without groups in __no_group__', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const properties = {
+                prop1: { groups: {} },
+                prop2: {},
+            };
+
+            const grouped = formProperties.groupPropertiesByGroup(properties);
+
+            expect(grouped.get('__no_group__').length).toBe(2);
+        });
+    });
+
+    describe('activateTab', () => {
+        it('should activate selected tab and deactivate others', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const tabsNav = document.createElement('div');
+            const tab1 = document.createElement('button');
+            tab1.classList.add('project-properties-tab', 'active');
+            const tab2 = document.createElement('button');
+            tab2.classList.add('project-properties-tab');
+            tabsNav.appendChild(tab1);
+            tabsNav.appendChild(tab2);
+
+            const tabContent = document.createElement('div');
+            const pane1 = document.createElement('div');
+            pane1.id = 'pane-1';
+            pane1.classList.add('project-properties-tab-pane', 'active');
+            const pane2 = document.createElement('div');
+            pane2.id = 'pane-2';
+            pane2.classList.add('project-properties-tab-pane');
+            tabContent.appendChild(pane1);
+            tabContent.appendChild(pane2);
+
+            formProperties.activateTab(tabsNav, tabContent, tab2, 'pane-2');
+
+            expect(tab1.classList.contains('active')).toBe(false);
+            expect(tab2.classList.contains('active')).toBe(true);
+            expect(pane1.classList.contains('active')).toBe(false);
+            expect(pane2.classList.contains('active')).toBe(true);
+        });
+
+        it('should update aria-selected attributes', () => {
+            const formProperties = new FormProperties(mockProperties);
+
+            const tabsNav = document.createElement('div');
+            const tab1 = document.createElement('button');
+            tab1.classList.add('project-properties-tab');
+            tab1.setAttribute('aria-selected', 'true');
+            const tab2 = document.createElement('button');
+            tab2.classList.add('project-properties-tab');
+            tab2.setAttribute('aria-selected', 'false');
+            tabsNav.appendChild(tab1);
+            tabsNav.appendChild(tab2);
+
+            const tabContent = document.createElement('div');
+            const pane = document.createElement('div');
+            pane.id = 'pane-2';
+            pane.classList.add('project-properties-tab-pane');
+            tabContent.appendChild(pane);
+
+            formProperties.activateTab(tabsNav, tabContent, tab2, 'pane-2');
+
+            expect(tab1.getAttribute('aria-selected')).toBe('false');
+            expect(tab2.getAttribute('aria-selected')).toBe('true');
         });
     });
 });

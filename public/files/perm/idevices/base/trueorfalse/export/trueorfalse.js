@@ -402,7 +402,7 @@ var $trueorfalse = {
             <div class="TOFP-QuestionDiv ${index % 2 ? 'TOFP-QuestionDivBlack' : ''} " data-number="${index}">
                <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div> 
                <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
-                    <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
+                    <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon sr-av">
                     <span>${msgs.msgSuggestion}</span>
                 </a>
                 <div class="TOFP-Suggestion TOFP-EHidden">

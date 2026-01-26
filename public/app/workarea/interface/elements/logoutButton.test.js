@@ -2,19 +2,27 @@ import LogoutButton from './logoutButton.js';
 
 describe('LogoutButton', () => {
   let logoutButton;
-  let mockButton;
+  let mockLogoutButton;
+  let mockExitButton;
   let mockPostCheckCurrentOdeUsers;
   let mockPostCloseSession;
   let mockSessionLogoutModal;
   let mockConfirmModal;
 
   beforeEach(() => {
-    // Mock DOM element
-    mockButton = {
+    // Mock DOM elements
+    mockLogoutButton = {
+      addEventListener: vi.fn(),
+    };
+    mockExitButton = {
       addEventListener: vi.fn(),
     };
 
-    vi.spyOn(document, 'querySelector').mockReturnValue(mockButton);
+    vi.spyOn(document, 'querySelector').mockImplementation((selector) => {
+      if (selector === '#head-bottom-logout-button') return mockLogoutButton;
+      if (selector === '#head-bottom-exit-button') return mockExitButton;
+      return null;
+    });
 
     // Mock translation function
     window._ = vi.fn((text) => text);
@@ -77,8 +85,16 @@ describe('LogoutButton', () => {
       expect(document.querySelector).toHaveBeenCalledWith('#head-bottom-logout-button');
     });
 
-    it('should store the button element reference', () => {
-      expect(logoutButton.logoutMenuHeadButton).toBe(mockButton);
+    it('should query the exit button element', () => {
+      expect(document.querySelector).toHaveBeenCalledWith('#head-bottom-exit-button');
+    });
+
+    it('should store the logout button element reference', () => {
+      expect(logoutButton.logoutMenuHeadButton).toBe(mockLogoutButton);
+    });
+
+    it('should store the exit button element reference', () => {
+      expect(logoutButton.exitMenuHeadButton).toBe(mockExitButton);
     });
   });
 
@@ -91,34 +107,38 @@ describe('LogoutButton', () => {
   });
 
   describe('addEventClick', () => {
-    it('should add click event listener to button', () => {
+    it('should add click event listener to logout button', () => {
       logoutButton.addEventClick();
-      expect(mockButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      expect(mockLogoutButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
     });
 
-    describe('offline mode (Electron)', () => {
+    it('should add click event listener to exit button', () => {
+      logoutButton.addEventClick();
+      expect(mockExitButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+
+    describe('exit button (Electron mode)', () => {
       let mockWindowClose;
 
       beforeEach(() => {
         mockWindowClose = vi.fn();
         window.close = mockWindowClose;
-        window.eXeLearning.config = { isOfflineInstallation: true };
       });
 
-      it('should call handleOfflineExit in offline mode', async () => {
+      it('should call handleOfflineExit when exit button is clicked', async () => {
         const spy = vi.spyOn(logoutButton, 'handleOfflineExit');
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockExitButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(spy).toHaveBeenCalled();
       });
 
-      it('should not call API in offline mode', async () => {
+      it('should not call API when exit button is clicked', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockExitButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(mockPostCheckCurrentOdeUsers).not.toHaveBeenCalled();
@@ -235,7 +255,7 @@ describe('LogoutButton', () => {
     it('should call postCheckCurrentOdeUsers with correct params', async () => {
       logoutButton.addEventClick();
 
-      const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+      const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
       await clickHandler(new Event('click'));
 
       expect(mockPostCheckCurrentOdeUsers).toHaveBeenCalledWith({
@@ -253,7 +273,7 @@ describe('LogoutButton', () => {
       it('should call postCloseSession when leaveSession is true', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(mockPostCloseSession).toHaveBeenCalledWith({
@@ -266,7 +286,7 @@ describe('LogoutButton', () => {
       it('should clear onbeforeunload handler', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         await vi.waitFor(() => {
@@ -277,7 +297,7 @@ describe('LogoutButton', () => {
       it('should redirect to logout page', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         await vi.waitFor(() => {
@@ -289,7 +309,7 @@ describe('LogoutButton', () => {
         window.location.pathname = '/my/custom/path/workarea';
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         await vi.waitFor(() => {
@@ -306,7 +326,7 @@ describe('LogoutButton', () => {
       it('should show session logout modal when askSave is true', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(mockSessionLogoutModal.show).toHaveBeenCalled();
@@ -315,7 +335,7 @@ describe('LogoutButton', () => {
       it('should not call postCloseSession', async () => {
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(mockPostCloseSession).not.toHaveBeenCalled();
@@ -331,7 +351,7 @@ describe('LogoutButton', () => {
         const spy = vi.spyOn(logoutButton, 'leaveEmptySession');
         logoutButton.addEventClick();
 
-        const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+        const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
         await clickHandler(new Event('click'));
 
         expect(spy).toHaveBeenCalledWith({
@@ -430,7 +450,7 @@ describe('LogoutButton', () => {
       mockPostCheckCurrentOdeUsers.mockResolvedValue({ leaveSession: true });
       logoutButton.init();
 
-      const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+      const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
       await clickHandler(new Event('click'));
 
       expect(mockPostCheckCurrentOdeUsers).toHaveBeenCalled();
@@ -444,7 +464,7 @@ describe('LogoutButton', () => {
       mockPostCheckCurrentOdeUsers.mockResolvedValue({ askSave: true });
       logoutButton.init();
 
-      const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+      const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
       await clickHandler(new Event('click'));
 
       expect(mockPostCheckCurrentOdeUsers).toHaveBeenCalled();
@@ -456,7 +476,7 @@ describe('LogoutButton', () => {
       mockPostCheckCurrentOdeUsers.mockResolvedValue({ leaveEmptySession: true });
       logoutButton.init();
 
-      const clickHandler = mockButton.addEventListener.mock.calls[0][1];
+      const clickHandler = mockLogoutButton.addEventListener.mock.calls[0][1];
       await clickHandler(new Event('click'));
 
       expect(mockConfirmModal.show).toHaveBeenCalled();

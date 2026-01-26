@@ -299,9 +299,19 @@ export default class Theme {
             return path;
         }
 
-        let pathServiceResources =
-            this.manager.app.api.endpoints.api_idevices_download_file_resources
-                .path;
+        // Static mode: bundled theme files in /files/perm/themes/ are served directly
+        if (path.includes('/files/perm/themes/')) {
+            return path;
+        }
+
+        // Check if endpoint exists (may not exist in static mode)
+        const endpoint =
+            this.manager.app.api.endpoints.api_idevices_download_file_resources;
+        if (!endpoint) {
+            return path; // Return as-is if no endpoint available
+        }
+
+        let pathServiceResources = endpoint.path;
         let pathSplit = path.split('/files/');
         let pathParam = pathSplit.length == 2 ? pathSplit[1] : path;
         pathParam = '/' + pathParam;

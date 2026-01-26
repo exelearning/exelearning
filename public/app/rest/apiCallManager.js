@@ -1,4 +1,5 @@
 import ApiCallBaseFunctions from './apiCallBaseFunctions.js';
+import { ServerDataProvider, StaticDataProvider } from '../core/providers/index.js';
 
 export default class ApiCallManager {
     constructor(app) {
@@ -8,6 +9,91 @@ export default class ApiCallManager {
         this.apiUrlParameters = `${this.apiUrlBase}${this.apiUrlBasePath}/api/parameter-management/parameters/data/list`;
         this.func = new ApiCallBaseFunctions();
         this.endpoints = {};
+        this.adapters = null;
+        this.staticData = null; // Internal cache for static mode data
+        this._dataProvider = null; // DataProvider instance (set during init)
+    }
+
+    /**
+     * Initialize API. In static mode, loads bundle.json and creates StaticDataProvider.
+     * In server mode, creates ServerDataProvider after endpoints are loaded.
+     * Must be called before using API methods in static mode.
+     */
+    async init() {
+        if (this._isStaticMode() && !this.staticData) {
+            await this._loadStaticBundle();
+            // Create StaticDataProvider with loaded data
+            this._dataProvider = new StaticDataProvider(this.staticData);
+            // Populate this.parameters from static data so UI code can use api.parameters consistently
+            this.parameters = this.staticData?.parameters || { routes: {} };
+        }
+    }
+
+    /**
+     * Initialize the ServerDataProvider after endpoints are loaded.
+     * Called from loadApiParameters() after server endpoints are available.
+     * @private
+     */
+    _initServerDataProvider() {
+        if (!this._isStaticMode() && !this._dataProvider) {
+            this._dataProvider = new ServerDataProvider(this.func, this.endpoints);
+        }
+    }
+
+    /**
+     * Load static bundle data from embedded or external source
+     * @private
+     */
+    async _loadStaticBundle() {
+        // Priority 1: window.__EXE_STATIC_DATA__ (injected by build)
+        if (window.__EXE_STATIC_DATA__) {
+            this.staticData = window.__EXE_STATIC_DATA__;
+            console.log('[ApiCallManager] Using window.__EXE_STATIC_DATA__');
+            return;
+        }
+
+        // Priority 2: fetch bundle.json (for dev)
+        // In static mode, bundle.json is always relative to the current HTML file
+        // Don't use basePath here as it may include subdirectory paths that cause double-path issues
+        try {
+            const bundleUrl = './data/bundle.json';
+            console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);
+            const response = await fetch(bundleUrl);
+            if (response.ok) {
+                this.staticData = await response.json();
+                console.log('[ApiCallManager] Loaded static data from bundle.json');
+                return;
+            }
+        } catch (e) {
+            console.warn('[ApiCallManager] Error loading static bundle:', e);
+        }
+
+        // Fallback: empty defaults
+        console.warn('[ApiCallManager] No static data source found, using empty defaults');
+        this.staticData = {
+            parameters: { routes: {} },
+            translations: { en: { translations: {} } },
+            idevices: { idevices: [] },
+            themes: { themes: [] },
+        };
+    }
+
+    /**
+     * Set adapters for the API call manager
+     * Used by the hexagonal architecture adapter pattern
+     * @param {Object} adapters - Map of adapter instances
+     */
+    setAdapters(adapters) {
+        this.adapters = adapters;
+    }
+
+    /**
+     * Get an adapter by name
+     * @param {string} name - Adapter name
+     * @returns {Object|null} The adapter or null
+     */
+    getAdapter(name) {
+        return this.adapters?.[name] || null;
     }
 
     /**
@@ -21,49 +107,108 @@ export default class ApiCallManager {
             this.endpoints[key].path = this.apiUrlBase + data.path;
             this.endpoints[key].methods = data.methods;
         }
+        // Initialize ServerDataProvider now that endpoints are available
+        this._initServerDataProvider();
     }
 
     /**
-     * Get symfony api endpoints parameters
+     * Get API parameters (mode-aware)
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{routes: Object, userPreferencesConfig?: Object, odeProjectSyncPropertiesConfig?: Object}>}
      */
     async getApiParameters() {
+        // Check static mode - return bundled data
+        if (this._isStaticMode()) {
+            return this._getStaticData('parameters') || { routes: {} };
+        }
+
+        // Server mode - fetch from API
         let url = this.apiUrlParameters;
         return await this.func.get(url);
     }
 
     /**
-     * Get app changelog text
+     * Get app changelog text (mode-aware)
+     * In static mode, fetches CHANGELOG.md from the static build.
+     * In server mode, fetches from the configured changelog URL.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getChangelogText() {
+        // Static mode - fetch CHANGELOG.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/CHANGELOG.md'));
+                return response.ok ? await response.text() : _('Changelog not available');
+            } catch (e) {
+                return _('Changelog not available');
+            }
+        }
+
+        // Server mode - fetch from configured URL
         let url = this.app.eXeLearning.config.changelogURL;
         url += '?version=' + eXeLearning.app.common.getVersionTimeStamp();
         return await this.func.getText(url);
     }
 
     /**
-     * Get upload limits configuration
+     * Get upload limits configuration (mode-aware)
+     * In static mode, returns sensible defaults (no server-imposed limits).
+     * In server mode, fetches from API endpoint.
      *
      * Returns the effective file upload size limit considering both
      * PHP limits and application configuration.
      *
-     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details: object}>}
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string, limitingFactor: string, details?: object}>}
      */
     async getUploadLimits() {
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            if (this._isStaticMode()) {
+                return this._dataProvider.getUploadLimits();
+            }
+            const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
+            return this._dataProvider.getUploadLimits(url);
+        }
+
+        // Fallback for initialization phase (before DataProvider is set up)
+        if (this._isStaticMode()) {
+            return {
+                maxFileSize: 100 * 1024 * 1024, // 100MB default
+                maxFileSizeFormatted: '100 MB',
+                limitingFactor: 'none',
+                details: {
+                    isStatic: true,
+                },
+            };
+        }
+
+        // Server mode - fetch from API
         const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/config/upload-limits`;
         return await this.func.get(url);
     }
 
     /**
-     * Get the third party code information
+     * Get the third party code information (mode-aware)
+     * In static mode, fetches libs/README.md from the static build.
+     * In server mode, fetches from the versioned URL path.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getThirdPartyCodeText() {
-        // Use basePath + version for proper cache busting
+        // Static mode - fetch libs/README.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/libs/README.md'));
+                return response.ok ? await response.text() : _('Information not available');
+            } catch (e) {
+                return _('Information not available');
+            }
+        }
+
+        // Server mode - use basePath + version for proper cache busting
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/README.md)
         const version = eXeLearning?.version || 'v1.0.0';
         let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/README.md';
@@ -71,12 +216,24 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get the list of licenses
+     * Get the list of licenses (mode-aware)
+     * In static mode, fetches libs/LICENSES.md from the static build.
+     * In server mode, fetches from the versioned URL path.
      *
-     * @returns
+     * @returns {Promise<string>}
      */
     async getLicensesList() {
-        // Use basePath + version for proper cache busting
+        // Static mode - fetch libs/LICENSES.md using composeUrl for correct base path
+        if (this._isStaticMode()) {
+            try {
+                const response = await fetch(this.app.composeUrl('/libs/LICENSES.md'));
+                return response.ok ? await response.text() : _('Information not available');
+            } catch (e) {
+                return _('Information not available');
+            }
+        }
+
+        // Server mode - use basePath + version for proper cache busting
         // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/LICENSES.md)
         const version = eXeLearning?.version || 'v1.0.0';
         let url = this.apiUrlBase + this.apiUrlBasePath + '/' + version + '/libs/LICENSES.md';
@@ -84,21 +241,49 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get idevices installed
+     * Get idevices installed (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{idevices: Array}>}
      */
     async getIdevicesInstalled() {
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getIdevices();
+        }
+
+        // Fallback for initialization phase
+        if (this._isStaticMode()) {
+            return this._getStaticData('idevices') || { idevices: [] };
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_idevices_installed.path;
         return await this.func.get(url);
     }
 
     /**
-     * Get themes installed
+     * Get themes installed (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @returns
+     * @returns {Promise<{themes: Array}>}
      */
     async getThemesInstalled() {
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getThemes();
+        }
+
+        // Fallback for initialization phase
+        if (this._isStaticMode()) {
+            return this._getStaticData('themes') || { themes: [] };
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_themes_installed.path;
         return await this.func.get(url);
     }
@@ -645,6 +830,12 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} - { responseMessage, links, totalLinks }
      */
     async extractLinksForValidation(params) {
+        // Use adapter if available (supports static mode)
+        const adapter = this.getAdapter('linkValidation');
+        if (adapter) {
+            return adapter.extractLinks(params);
+        }
+        // Fallback to direct API call (server mode)
         const url = `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/extract`;
         return await this.func.postJson(url, params);
     }
@@ -652,9 +843,15 @@ export default class ApiCallManager {
     /**
      * Get the URL for the link validation stream endpoint
      *
-     * @returns {string}
+     * @returns {string|null}
      */
     getLinkValidationStreamUrl() {
+        // Use adapter if available (supports static mode)
+        const adapter = this.getAdapter('linkValidation');
+        if (adapter) {
+            return adapter.getValidationStreamUrl();
+        }
+        // Fallback to direct URL (server mode)
         return `${this.apiUrlBase}${this.apiUrlBasePath}/api/ode-management/odes/session/brokenlinks/validate-stream`;
     }
 
@@ -717,13 +914,149 @@ export default class ApiCallManager {
 
     /**
      * Get ode used files
+     * In static mode, extracts from Yjs document
      *
      * @param {*} params
      * @returns
      */
     async getOdeSessionUsedFiles(params) {
+        // Use Yjs-based implementation in static mode
+        const isStaticMode = this.app?.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            return this._getUsedFilesFromYjs();
+        }
+        // Server mode: use API
         let url = this.endpoints.api_odes_session_get_used_files.path;
         return await this.func.postJson(url, params);
+    }
+
+    /**
+     * Extract used files from Yjs document by scanning all content.
+     * @private
+     * @returns {Promise<{responseMessage: string, usedFiles: Array}>}
+     */
+    async _getUsedFilesFromYjs() {
+        const projectManager = this.app?.project;
+        const bridge = projectManager?._yjsBridge;
+        const structureBinding = bridge?.structureBinding;
+        const assetManager = bridge?.assetManager;
+
+        if (!structureBinding) {
+            console.warn('[apiCallManager] _getUsedFilesFromYjs: No structureBinding available');
+            return { responseMessage: 'OK', usedFiles: [] };
+        }
+
+        const usedFiles = [];
+        const seenAssets = new Set();
+        const assetUsageMap = new Map();
+        const assetRegex = /asset:\/\/([a-f0-9-]+)/gi;
+
+        // Scan all content to find where each asset is used
+        const pages = structureBinding.getPages() || [];
+
+        for (const page of pages) {
+            const pageId = page.id;
+            const pageName = page.pageName || 'Page';
+            const blocks = structureBinding.getBlocks(pageId) || [];
+
+            for (const block of blocks) {
+                const blockName = block.blockName || '';
+                const components = structureBinding.getComponents(pageId, block.id) || [];
+
+                for (const component of components) {
+                    const ideviceType = component.ideviceType || '';
+                    const order = component.order || 0;
+
+                    let rawHtmlContent = '';
+                    let rawJsonProperties = '';
+
+                    if (component._ymap) {
+                        const rawHtml = component._ymap.get('htmlContent');
+                        if (rawHtml && typeof rawHtml.toString === 'function') {
+                            rawHtmlContent = rawHtml.toString();
+                        } else if (typeof rawHtml === 'string') {
+                            rawHtmlContent = rawHtml;
+                        }
+                        if (!rawHtmlContent) {
+                            const htmlView = component._ymap.get('htmlView');
+                            if (typeof htmlView === 'string') {
+                                rawHtmlContent = htmlView;
+                            }
+                        }
+                        const jsonProps = component._ymap.get('jsonProperties');
+                        if (typeof jsonProps === 'string') {
+                            rawJsonProperties = jsonProps;
+                        }
+                    }
+
+                    const contentToScan = rawHtmlContent + ' ' + rawJsonProperties;
+
+                    let match;
+                    while ((match = assetRegex.exec(contentToScan)) !== null) {
+                        const assetId = match[1];
+                        if (!assetUsageMap.has(assetId)) {
+                            assetUsageMap.set(assetId, {
+                                pageName,
+                                blockName,
+                                ideviceType: ideviceType.replace('Idevice', ''),
+                                order,
+                            });
+                        }
+                    }
+                    assetRegex.lastIndex = 0;
+                }
+            }
+        }
+
+        // Get all assets from AssetManager
+        if (assetManager) {
+            try {
+                const allAssets = assetManager.getAllAssetsMetadata?.() || [];
+
+                for (const asset of allAssets) {
+                    const assetId = asset.id || asset.uuid;
+                    if (!assetId) continue;
+
+                    const assetUrl = `asset://${assetId}`;
+                    if (seenAssets.has(assetUrl)) continue;
+                    seenAssets.add(assetUrl);
+
+                    const fileName = asset.name || asset.filename || assetId.substring(0, 8) + '...';
+                    const fileSize = asset.size ? this._formatFileSize(asset.size) : '';
+                    const usage = assetUsageMap.get(assetId);
+
+                    usedFiles.push({
+                        usedFiles: fileName,
+                        usedFilesPath: assetUrl,
+                        usedFilesSize: fileSize,
+                        pageNamesUsedFiles: usage?.pageName || '-',
+                        blockNamesUsedFiles: usage?.blockName || '-',
+                        typeComponentSyncUsedFiles: usage?.ideviceType || '-',
+                        orderComponentSyncUsedFiles: usage?.order || 0,
+                    });
+                }
+            } catch (e) {
+                console.debug('[apiCallManager] Could not get assets from AssetManager:', e);
+            }
+        }
+
+        return { responseMessage: 'OK', usedFiles };
+    }
+
+    /**
+     * Format file size in human-readable format.
+     * @private
+     */
+    _formatFileSize(bytes) {
+        if (!bytes || bytes === 0) return '';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let unitIndex = 0;
+        let size = bytes;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`;
     }
 
     /**
@@ -1120,14 +1453,30 @@ export default class ApiCallManager {
     }
 
     /**
-     * Get translations
+     * Get translations (mode-aware)
+     * Uses DataProvider abstraction for consistent mode handling.
+     * In static mode, returns data from bundled static data.
+     * In server mode, fetches from API endpoint.
      *
-     * @param {*} locale
-     * @returns
+     * @param {string} locale - Language code (e.g., 'en', 'es')
+     * @returns {Promise<{translations: Object}>}
      */
     async getTranslations(locale) {
+        const safeLocale = locale || 'en';
+
+        // Use DataProvider if available
+        if (this._dataProvider) {
+            return this._dataProvider.getTranslations(safeLocale);
+        }
+
+        // Fallback for initialization phase
+        if (this._isStaticMode()) {
+            return this._getStaticTranslations(safeLocale);
+        }
+
+        // Server mode - fetch from API
         let url = this.endpoints.api_translations_list_by_locale.path;
-        url = url.replace('{locale}', locale);
+        url = url.replace('{locale}', safeLocale);
         return await this.func.get(url);
     }
 
@@ -1922,6 +2271,14 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadFileResource(params) {
+        // Static mode - no server upload, return mock response for AssetManager handling
+        if (this._isStaticMode()) {
+            return {
+                savedPath: 'static-mode', // Truthy to trigger AssetManager logic
+                savedFilename: '',
+                savedThumbnailName: '',
+            };
+        }
         let url = this.endpoints.api_idevices_upload_file_resources.path;
         return await this.func.post(url, params);
     }
@@ -1933,6 +2290,14 @@ export default class ApiCallManager {
      * @returns
      */
     async postUploadLargeFileResource(params) {
+        // Static mode - no server upload, return mock response for AssetManager handling
+        if (this._isStaticMode()) {
+            return {
+                savedPath: 'static-mode', // Truthy to trigger AssetManager logic
+                savedFilename: '',
+                savedThumbnailName: '',
+            };
+        }
         let url = this.endpoints.api_idevices_upload_large_file_resources.path;
         return await this.func.fileSendPost(url, params);
     }
@@ -1998,6 +2363,14 @@ export default class ApiCallManager {
      * @returns {Promise<Object>} Response with project sharing info
      */
     async getProject(projectId) {
+        // Static mode - return default private visibility (no server available)
+        if (this._isStaticMode()) {
+            return {
+                responseMessage: 'OK',
+                project: { visibility: 'private' },
+            };
+        }
+
         const url = this._buildProjectUrl(projectId, '/sharing');
 
         const authToken =
@@ -2203,5 +2576,56 @@ export default class ApiCallManager {
             console.error('[API] transferProjectOwnership error:', error);
             return { responseMessage: 'ERROR', detail: error.message };
         }
+    }
+
+    /*******************************************************************************
+     * STATIC MODE HELPERS
+     * These methods enable ApiCallManager to work in both server and static modes.
+     * Consumer code uses the same api.X() calls regardless of mode.
+     *
+     * Mode detection uses app.capabilities (derived from RuntimeConfig) as single
+     * source of truth. Do NOT add fallbacks to window.__EXE_STATIC_MODE__ here.
+     *******************************************************************************/
+
+    /**
+     * Check if running in static (offline) mode.
+     * Uses app.capabilities as single source of truth (derived from RuntimeConfig).
+     * @private
+     * @returns {boolean}
+     */
+    _isStaticMode() {
+        return this.app?.capabilities?.storage?.remote === false;
+    }
+
+    /**
+     * Get static data by key
+     * Priority: window.__EXE_STATIC_DATA__ > internal cache
+     * @private
+     * @param {string} key - Data key ('idevices', 'themes', etc.)
+     * @returns {Object|null}
+     */
+    _getStaticData(key) {
+        return window.__EXE_STATIC_DATA__?.[key] ||
+               this.staticData?.[key] ||
+               null;
+    }
+
+    /**
+     * Get translations from static data
+     * @private
+     * @param {string} locale - Language code
+     * @returns {{translations: Object}}
+     */
+    _getStaticTranslations(locale) {
+        const data = window.__EXE_STATIC_DATA__?.translations ||
+                     this.staticData?.translations;
+
+        if (!data) {
+            return { translations: {} };
+        }
+
+        // Try exact locale, then base language, then 'en'
+        const baseLocale = locale.split('-')[0];
+        return data[locale] || data[baseLocale] || data.en || { translations: {} };
     }
 }

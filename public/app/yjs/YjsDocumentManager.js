@@ -24,7 +24,9 @@ class YjsDocumentManager {
    * @param {string} [config.wsUrl] - y-websocket server URL (defaults to same origin with /yjs path)
    * @param {string} [config.apiUrl='/api'] - REST API URL
    * @param {string} [config.token=null] - JWT token for authentication
-   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection
+   * @param {boolean} [config.offline=false] - If true, skip WebSocket connection.
+   *   Caller should derive this from app.capabilities.collaboration.enabled
+   *   (via RuntimeConfig) rather than checking window.__EXE_STATIC_MODE__ directly.
    */
   constructor(projectId, config = {}) {
     this.projectId = projectId;
@@ -135,37 +137,126 @@ class YjsDocumentManager {
 
     // Setup IndexedDB persistence (offline-first)
     const dbName = `exelearning-project-${this.projectId}`;
-    this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
 
-    // Wait for IndexedDB to sync (with timeout to prevent hanging)
-    // y-indexeddb may not fire 'synced' event in certain conditions (e.g., rapid reinit)
-    await new Promise((resolve) => {
-      let resolved = false;
-
-      const onSynced = () => {
-        if (resolved) return;
-        resolved = true;
-        Logger.log(`[YjsDocumentManager] Synced from IndexedDB for project ${this.projectId}`);
-        resolve();
-      };
-
-      // Check if already synced (may happen for empty/new databases)
-      if (this.indexedDBProvider.synced) {
-        onSynced();
-        return;
+    // Pre-validate IndexedDB schema to avoid runtime errors
+    // y-indexeddb expects specific object stores, and corrupted/old databases can cause errors
+    const isDbValid = await this._validateIndexedDb(dbName);
+    if (!isDbValid) {
+      Logger.warn(`[YjsDocumentManager] IndexedDB ${dbName} has invalid schema, deleting...`);
+      try {
+        await new Promise((resolve, reject) => {
+          const deleteReq = indexedDB.deleteDatabase(dbName);
+          deleteReq.onsuccess = () => resolve();
+          deleteReq.onerror = () => reject(deleteReq.error);
+          deleteReq.onblocked = () => resolve(); // Proceed anyway
+        });
+        Logger.log(`[YjsDocumentManager] Deleted invalid database ${dbName}`);
+      } catch (e) {
+        Logger.warn(`[YjsDocumentManager] Failed to delete invalid database:`, e);
       }
+    }
 
-      // Listen for synced event
-      this.indexedDBProvider.on('synced', onSynced);
+    // Try to create IndexedDB provider with error recovery
+    try {
+      this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
 
-      // Timeout after 3 seconds - IndexedDB sync should be fast
-      setTimeout(() => {
-        if (resolved) return;
-        resolved = true;
-        Logger.log(`[YjsDocumentManager] IndexedDB sync timeout for project ${this.projectId}, proceeding anyway`);
-        resolve();
-      }, 3000);
-    });
+      // Add persistent error handler for runtime errors (e.g., corrupted schema)
+      // This catches errors that occur during writes, not just initialization
+      this.indexedDBProvider.on('error', async (error) => {
+        Logger.warn(`[YjsDocumentManager] IndexedDB runtime error for project ${this.projectId}:`, error);
+        // If error is about missing object stores, the database schema is corrupted
+        if (error?.name === 'NotFoundError' || error?.message?.includes('object stores')) {
+          Logger.warn('[YjsDocumentManager] Database schema appears corrupted, disabling persistence');
+          // Destroy the provider to prevent further errors
+          if (this.indexedDBProvider) {
+            try {
+              await this.indexedDBProvider.destroy();
+            } catch (e) {
+              // Ignore destroy errors
+            }
+            this.indexedDBProvider = null;
+          }
+        }
+      });
+
+      // Wait for IndexedDB to sync (with timeout to prevent hanging)
+      // y-indexeddb may not fire 'synced' event in certain conditions (e.g., rapid reinit)
+      await new Promise((resolve, reject) => {
+        let resolved = false;
+
+        const onSynced = () => {
+          if (resolved) return;
+          resolved = true;
+          Logger.log(`[YjsDocumentManager] Synced from IndexedDB for project ${this.projectId}`);
+          resolve();
+        };
+
+        // Handle errors during sync
+        this.indexedDBProvider.on('error', (error) => {
+          if (resolved) return;
+          resolved = true;
+          Logger.warn(`[YjsDocumentManager] IndexedDB error for project ${this.projectId}:`, error);
+          reject(error);
+        });
+
+        // Check if already synced (may happen for empty/new databases)
+        if (this.indexedDBProvider.synced) {
+          onSynced();
+          return;
+        }
+
+        // Listen for synced event
+        this.indexedDBProvider.on('synced', onSynced);
+
+        // Timeout after 3 seconds - IndexedDB sync should be fast
+        setTimeout(() => {
+          if (resolved) return;
+          resolved = true;
+          Logger.log(`[YjsDocumentManager] IndexedDB sync timeout for project ${this.projectId}, proceeding anyway`);
+          resolve();
+        }, 3000);
+      });
+    } catch (indexedDbError) {
+      Logger.warn(`[YjsDocumentManager] IndexedDB initialization failed for project ${this.projectId}:`, indexedDbError);
+      Logger.warn('[YjsDocumentManager] Attempting to clear corrupted database and retry...');
+
+      // Try to delete the corrupted database
+      try {
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+        await new Promise((resolve, reject) => {
+          deleteRequest.onsuccess = () => {
+            Logger.log(`[YjsDocumentManager] Deleted corrupted database ${dbName}`);
+            resolve();
+          };
+          deleteRequest.onerror = () => reject(deleteRequest.error);
+          deleteRequest.onblocked = () => {
+            Logger.warn(`[YjsDocumentManager] Database deletion blocked for ${dbName}`);
+            resolve(); // Proceed anyway
+          };
+        });
+
+        // Retry with fresh database
+        this.indexedDBProvider = new IndexeddbPersistence(dbName, this.ydoc);
+
+        // Wait for sync with shorter timeout
+        await new Promise((resolve) => {
+          const timeout = setTimeout(() => resolve(), 2000);
+          this.indexedDBProvider.on('synced', () => {
+            clearTimeout(timeout);
+            Logger.log(`[YjsDocumentManager] Synced from fresh IndexedDB for project ${this.projectId}`);
+            resolve();
+          });
+          if (this.indexedDBProvider.synced) {
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+      } catch (deleteError) {
+        Logger.error(`[YjsDocumentManager] Failed to recover IndexedDB for project ${this.projectId}:`, deleteError);
+        // Proceed without IndexedDB persistence - data will only be in memory
+        this.indexedDBProvider = null;
+      }
+    }
 
     // Setup WebSocket provider (but don't connect yet)
     // Connection happens later via startWebSocketConnection() after message handlers are installed
@@ -192,7 +283,22 @@ class YjsDocumentManager {
       // This prevents duplicate pages when multiple clients join simultaneously
       if (this.config.offline && navigation.length === 0) {
         Logger.log('[YjsDocumentManager] Creating blank project structure (offline mode)');
-        this.createBlankProjectStructure();
+        try {
+          this.createBlankProjectStructure();
+        } catch (createError) {
+          // IndexedDB may throw if database schema is corrupted
+          Logger.warn('[YjsDocumentManager] Error creating blank structure, disabling IndexedDB:', createError);
+          if (this.indexedDBProvider) {
+            try {
+              await this.indexedDBProvider.destroy();
+            } catch (e) {
+              // Ignore
+            }
+            this.indexedDBProvider = null;
+          }
+          // Retry without persistence
+          this.createBlankProjectStructure();
+        }
       }
       // For online mode, YjsProjectBridge will call ensureBlankStructureIfEmpty() after sync
     }
@@ -487,6 +593,62 @@ class YjsDocumentManager {
       const r = Math.random() * 16 | 0;
       const v = c === 'x' ? r : (r & 0x3 | 0x8);
       return v.toString(16);
+    });
+  }
+
+  /**
+   * Validate IndexedDB schema before using it
+   * y-indexeddb expects 'updates' and 'custom' object stores
+   * @param {string} dbName - Database name to validate
+   * @returns {Promise<boolean>} true if valid or doesn't exist, false if invalid schema
+   * @private
+   */
+  async _validateIndexedDb(dbName) {
+    return new Promise((resolve) => {
+      // Check if IndexedDB is available
+      if (!window.indexedDB) {
+        resolve(true); // No IndexedDB, let the provider handle it
+        return;
+      }
+
+      // Try to open the database without specifying version (use existing version)
+      const openReq = indexedDB.open(dbName);
+
+      openReq.onerror = () => {
+        // If we can't open, let the provider try to create it fresh
+        resolve(true);
+      };
+
+      openReq.onsuccess = () => {
+        const db = openReq.result;
+        try {
+          // y-indexeddb requires 'updates' object store (and optionally 'custom')
+          const hasUpdates = db.objectStoreNames.contains('updates');
+          db.close();
+
+          if (!hasUpdates) {
+            // Database exists but doesn't have required object stores
+            Logger.warn(`[YjsDocumentManager] Database ${dbName} missing 'updates' object store`);
+            resolve(false);
+            return;
+          }
+
+          resolve(true);
+        } catch (e) {
+          db.close();
+          resolve(false);
+        }
+      };
+
+      openReq.onupgradeneeded = () => {
+        // Database doesn't exist yet or needs upgrade - this is fine
+        // Cancel the upgrade and let y-indexeddb handle creation
+        openReq.transaction?.abort();
+        resolve(true);
+      };
+
+      // Timeout in case something hangs
+      setTimeout(() => resolve(true), 2000);
     });
   }
 

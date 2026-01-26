@@ -122,7 +122,8 @@ export async function exportPageAndDownload(nodeId, structureEngine) {
     const url = window.URL.createObjectURL(blob);
 
     try {
-        await downloadComponentFile(url, filename, { typeKeySuffix: 'page' });
+        // alwaysAskLocation: true - In Electron, always show "Save As" dialog for page exports
+        await downloadComponentFile(url, filename, { typeKeySuffix: 'page', alwaysAskLocation: true });
     } finally {
         window.URL.revokeObjectURL(url);
     }

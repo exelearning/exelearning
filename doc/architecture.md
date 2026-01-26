@@ -20,6 +20,70 @@ eXeLearning follows a **browser-first architecture** where:
 3. **Content-addressable assets**: Same file content = same ID across all users
 4. **Dependency injection**: All services use DI pattern for testability
 
+### Runtime Modes (Server, Static, Embedded)
+
+eXeLearning supports two primary runtime modes and one optional embedding mode:
+
+| Mode | What runs | Persistence | Collaboration | Typical use |
+|------|-----------|-------------|---------------|-------------|
+| **Server (online)** | Bun + Elysia API + WebSocket | Server DB + client IndexedDB | Yes | Multi-user, hosted installs |
+| **Static (offline)** | Pure static assets (no API) | Client IndexedDB + file save/export | No | Desktop installers, static hosting |
+| **Embedded (iframe)** | Server or Static in iframe | Delegated to host via postMessage | Depends on mode | LMS, CMS, plugin embeds |
+
+**Static mode** is built from the online app by removing database and API dependencies to stay stateless. The build bundles required catalog data (iDevices, themes, translations, parameters) into `dist/static` and runs fully in the browser. It is generated with:
+
+```
+make build-static
+```
+
+This is the same runtime used by the current offline (installable) eXeLearning desktop app. It improves simplicity and performance by avoiding any server persistence.
+
+### Embedding Example (Static or Server)
+
+When eXeLearning runs inside an iframe, it can coordinate file operations with the host page via `postMessage`. The app announces readiness with `EXELEARNING_READY` and can request open/save operations. A minimal host integration:
+
+```html
+<iframe
+  id="exe"
+  src="https://your-host/exelearning/"
+  style="width: 100%; height: 100vh; border: 0;"
+></iframe>
+
+<script>
+  const iframe = document.getElementById('exe');
+
+  function postToExe(type, data = {}) {
+    const requestId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    iframe.contentWindow.postMessage({ type, requestId, ...data }, '*');
+    return requestId;
+  }
+
+  window.addEventListener('message', async (event) => {
+    const { type, requestId, bytes } = event.data || {};
+    if (!type) return;
+
+    if (type === 'EXELEARNING_READY') {
+      // Optional: set trusted origins or request info
+      postToExe('GET_PROJECT_INFO');
+    }
+
+    if (type === 'EXELEARNING_SAVE_REQUEST') {
+      // Host handles file persistence
+      // Example: upload bytes to your backend, then respond
+      event.source.postMessage({ type: 'EXELEARNING_SAVE_RESPONSE', requestId, path: 'project.elpx' }, event.origin);
+    }
+
+    if (type === 'EXELEARNING_OPEN_REQUEST') {
+      // Host provides bytes for a .elpx file (from disk or backend)
+      const fileBytes = new Uint8Array(); // replace with real data
+      event.source.postMessage({ type: 'EXELEARNING_OPEN_RESPONSE', requestId, bytes: fileBytes }, event.origin);
+    }
+  });
+</script>
+```
+
+For production, restrict origins and validate all messages (see `EmbeddedFileSystem` and `EmbeddingBridge` for supported message types and security checks).
+
 ## 2. Technology Stack
 
 | Component | Technology | Purpose |
@@ -703,7 +767,7 @@ ONLINE_THEMES_INSTALL=1    # 1 = enabled (default), 0 = disabled
 
 When disabled (`ONLINE_THEMES_INSTALL=0`):
 - Users cannot import external themes via the interface
-- Users cannot open .elpx files with embedded themes
+- Users cannot load custom embbeded themes in .elpx files
 
 ### 14.6 Why User Themes Are Client-Side
 
@@ -723,4 +787,3 @@ This design follows the same pattern as other user-specific data (like favorite 
 - [REST API](development/rest-api.md) - API endpoints
 - [Testing](development/testing.md) - Test patterns and coverage
 - [Creating Styles](development/styles.md) - How to create custom themes
-

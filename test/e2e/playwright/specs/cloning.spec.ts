@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -388,19 +389,10 @@ test.describe('Cloning Functionality', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Clone iDevice Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add text iDevice with unique content
             const uniqueContent = `Unique content to clone ${Date.now()}`;
@@ -446,18 +438,9 @@ test.describe('Cloning Functionality', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Clone Block Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add text iDevice with content
             const uniqueContent = `Block content to clone ${Date.now()}`;
@@ -500,18 +483,9 @@ test.describe('Cloning Functionality', () => {
                 const page = authenticatedPage;
 
                 const projectUuid = await createProject(page, 'Clone Page Test');
-                await page.goto(`/workarea?project=${projectUuid}`);
-                await page.waitForLoadState('networkidle');
+                await gotoWorkarea(page, projectUuid);
 
-                await page.waitForFunction(
-                    () => {
-                        const app = (window as any).eXeLearning?.app;
-                        return app?.project?._yjsBridge !== undefined;
-                    },
-                    { timeout: 30000 },
-                );
-
-                await waitForLoadingScreenHidden(page);
+                await waitForAppReady(page);
 
                 // Add text iDevice with content
                 const uniqueContent = `Page content to clone ${Date.now()}`;

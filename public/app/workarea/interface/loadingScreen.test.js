@@ -14,6 +14,9 @@ describe('LoadingScreen', () => {
         remove: vi.fn(),
       },
       setAttribute: vi.fn(),
+      style: {
+        display: '',
+      },
     };
 
     vi.spyOn(document, 'querySelector').mockReturnValue(mockElement);

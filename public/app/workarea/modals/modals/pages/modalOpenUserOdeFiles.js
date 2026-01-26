@@ -30,8 +30,18 @@ export default class modalOpenUserOdeFiles extends Modal {
     /**
      * Load upload limits from server
      * This is cached to avoid repeated API calls
+     * In static mode, uses default limits (no backend API)
      */
     async loadUploadLimits() {
+        // Skip API call in static mode
+        if (eXeLearning.app?.capabilities?.storage?.remote === false) {
+            this.uploadLimits = {
+                maxFileSize: 100 * 1024 * 1024, // 100MB default
+                maxFileSizeFormatted: '100 MB',
+            };
+            return;
+        }
+
         try {
             this.uploadLimits = await eXeLearning.app.api.getUploadLimits();
         } catch (error) {
@@ -1401,6 +1411,45 @@ export default class modalOpenUserOdeFiles extends Modal {
         if (!isImportIdevices && !isImportProperties) {
             try {
                 progressModal.setProcessingPhase('extracting');
+
+                // Static mode: skip API call and use ElpxImporter directly
+                // Note: Only trigger static mode if capabilities are available AND remote is explicitly false
+                const capabilities = eXeLearning?.app?.capabilities;
+                if (capabilities && !capabilities.storage.remote) {
+                    progressModal.hide();
+                    this.cleanupOrphanedBackdrops();
+
+                    // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
+                    const yjsBridge = eXeLearning.app.project._yjsBridge;
+                    if (!yjsBridge) {
+                        throw new Error('Yjs bridge not initialized.');
+                    }
+
+                    // Show inline progress in workarea (same as online mode)
+                    const importProgress = new ImportProgress();
+                    importProgress.show();
+
+                    try {
+                        Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
+                        await yjsBridge.importFromElpx(odeFile, {
+                            onProgress: (progress) => importProgress.update(progress)
+                        });
+
+                        importProgress.hide();
+
+                        // Refresh UI after import (without server calls)
+                        if (eXeLearning.app.project?.refreshAfterDirectImport) {
+                            await eXeLearning.app.project.refreshAfterDirectImport();
+                        }
+
+                        Logger.log('[OpenFile] Static mode import complete:', odeFileName);
+                    } catch (err) {
+                        // Ensure progress is hidden on error
+                        importProgress.hide();
+                        throw err;
+                    }
+                    return;
+                }
 
                 // Create a new project via API to get UUID
                 const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';

@@ -254,12 +254,10 @@ export default class ThemesManager {
      *
      */
     getThemeIcons() {
-        if (this.selected.icons) {
+        if (this.selected?.icons) {
             return this.selected.icons;
-        } else {
-            //return this.iconsDefault;
-            return {};
         }
+        return {};
     }
 
     /**

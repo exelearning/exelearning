@@ -27,7 +27,9 @@ describe('IdeviceList', () => {
       symfonyURL: 'http://localhost:8080',
       app: {
         api: {
-          getIdevicesInstalled: vi.fn(),
+          getIdevicesInstalled: vi.fn().mockResolvedValue({
+            idevices: [],
+          }),
           endpoints: {
             api_idevices_download_file_resources: {
               path: '/api/idevices/resources',

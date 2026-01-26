@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
@@ -7,11 +7,18 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
  * Real-Time Collaboration Tests
  * These tests verify that multiple clients can work on the same project simultaneously
  * with changes syncing in real-time via Yjs WebSocket
+ *
+ * NOTE: These tests are skipped in static mode as they require WebSocket collaboration
  */
 
 test.describe('Real-Time Collaboration', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(120000); // 2 minutes per test
+
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
 
     test.describe('Project Sharing Setup', () => {
         test('should allow second client to join via share URL', async ({

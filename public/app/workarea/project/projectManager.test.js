@@ -282,20 +282,43 @@ describe('ProjectManager', () => {
 
     describe('helper methods', () => {
 
-    it('marks the installation as offline and exposes the project key', () => {
-        projectManager.offlineInstallation = true;
+    it('marks the installation as static when in static mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('static');
+        expect(button.innerHTML).toBe('save');
+        expect(button.getAttribute('title')).toBe('Save');
+    });
+
+    it('exposes project key for Electron when electronAPI is available', () => {
+        // Simulate Electron environment (electronAPI exists, static mode)
+        window.electronAPI = { test: true };
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => true,
+        };
         projectManager.odeId = 'custom-project';
         const button = document.querySelector('#head-top-download-button');
 
         projectManager.setInstallationTypeAttribute();
 
-        expect(document.body.getAttribute('installation-type')).toBe('offline');
+        expect(document.body.getAttribute('installation-type')).toBe('static');
         expect(button.innerHTML).toBe('save');
         expect(button.getAttribute('title')).toBe('Save');
         expect(window.__currentProjectId).toBe('custom-project');
+
+        // Cleanup
+        delete window.electronAPI;
     });
 
-    it('marks the installation as online when the flag is false', () => {
+    it('marks the installation as online when in server mode', () => {
+        projectManager.app.runtimeConfig = {
+            isStaticMode: () => false,
+        };
         projectManager.offlineInstallation = false;
         const button = document.querySelector('#head-top-download-button');
 
@@ -303,6 +326,15 @@ describe('ProjectManager', () => {
 
         expect(document.body.getAttribute('installation-type')).toBe('online');
         expect(button.innerHTML).toBe('Download');
+    });
+
+    it('defaults to online when no runtimeConfig is available', () => {
+        projectManager.app.runtimeConfig = null;
+        const button = document.querySelector('#head-top-download-button');
+
+        projectManager.setInstallationTypeAttribute();
+
+        expect(document.body.getAttribute('installation-type')).toBe('online');
     });
 
     it('shows the save confirmation modal', () => {
@@ -1551,6 +1583,26 @@ describe('ProjectManager', () => {
             expect(projectManager.setInstallationTypeAttribute).toHaveBeenCalled();
         });
 
+        it('loads content translations after Yjs initialization', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+
+            await projectManager.load();
+
+            expect(projectManager.properties.loadPropertiesFromYjs).toHaveBeenCalled();
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language from properties', async () => {
+            projectManager._yjsEnabled = false;
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'es';
+
+            await projectManager.load();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('es');
+        });
+
         it('generates autosave interval when Yjs not enabled', async () => {
             projectManager._yjsEnabled = false;
             projectManager.offlineInstallation = true;
@@ -1611,12 +1663,14 @@ describe('ProjectManager', () => {
             projectManager.subscribeToSessionAndNotify = vi.fn().mockResolvedValue();
             projectManager.properties = {
                 formProperties: { remove: vi.fn() },
+                properties: { pp_lang: { value: 'en' } },
             };
             projectManager.structure = {
                 reloadStructureMenu: vi.fn().mockResolvedValue(),
             };
             mockApp.interface.loadingScreen = { show: vi.fn(), hide: vi.fn() };
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn().mockResolvedValue() };
             window.eXeLearning.app.modals.openuserodefiles = { close: vi.fn() };
         });
 
@@ -1648,6 +1702,23 @@ describe('ProjectManager', () => {
             expect(projectManager.loadStructureData).toHaveBeenCalled();
             expect(projectManager.loadModalsContent).toHaveBeenCalled();
             expect(projectManager.initialiceProject).toHaveBeenCalled();
+        });
+
+        it('loads content translations after loading properties', async () => {
+            projectManager.offlineInstallation = true;
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('en');
+        });
+
+        it('loads content translations with correct language', async () => {
+            projectManager.offlineInstallation = true;
+            projectManager.properties.properties.pp_lang.value = 'fr';
+
+            await projectManager.openLoad();
+
+            expect(mockApp.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('fr');
         });
     });
 

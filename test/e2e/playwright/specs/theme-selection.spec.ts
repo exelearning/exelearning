@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 test.describe('Theme Selection on ELP Import', () => {
     /**
@@ -17,25 +18,10 @@ test.describe('Theme Selection on ELP Import', () => {
         expect(projectUuid).toBeDefined();
 
         // 2. Navigate to the project
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for the app to fully initialize
-        await page.waitForFunction(
-            () => {
-                return (window as any).eXeLearning?.app?.project?._yjsEnabled;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to be hidden
-        await page.waitForFunction(
-            () => {
-                const loadingScreen = document.querySelector('#load-screen-main');
-                return loadingScreen?.getAttribute('data-visible') === 'false';
-            },
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // 3. Import a fixture .elpx file with a known theme ('base')
         const fixturePath = path.resolve(
@@ -110,8 +96,7 @@ test.describe('Theme Selection on ELP Import', () => {
 
         // Create a project
         const projectUuid = await createProject(page, 'Theme Check Project');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
         await page.waitForFunction(

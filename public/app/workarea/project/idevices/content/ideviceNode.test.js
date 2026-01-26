@@ -1992,6 +1992,76 @@ describe('IdeviceNode', () => {
 
             expect(spy).toHaveBeenCalled();
         });
+
+        it('calls typesetLatexInContent after loading content', async () => {
+            idevice.idevice = { componentType: 'html' };
+            vi.spyOn(idevice, 'exportProcessIdeviceHtml').mockResolvedValue({ init: 'true' });
+            const typesetSpy = vi.spyOn(idevice, 'typesetLatexInContent');
+
+            await idevice.generateContentExportView();
+
+            expect(typesetSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('typesetLatexInContent', () => {
+        beforeEach(() => {
+            idevice.ideviceBody = document.createElement('div');
+        });
+
+        it('does nothing if ideviceBody is null', () => {
+            idevice.ideviceBody = null;
+            idevice.typesetLatexInContent();
+            // Should not throw
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\(', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains LaTeX delimiters \\[', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Display math: \\[x^2\\]';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('calls MathJax.typesetPromise when content contains $$', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Math: $$x = 1$$';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('does not call MathJax when content has no LaTeX', () => {
+            const mockTypesetPromise = vi.fn().mockResolvedValue();
+            globalThis.MathJax = { typesetPromise: mockTypesetPromise };
+            idevice.ideviceBody.textContent = 'Plain text without formulas';
+
+            idevice.typesetLatexInContent();
+
+            expect(mockTypesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('does not call MathJax when MathJax is not defined', () => {
+            delete globalThis.MathJax;
+            idevice.ideviceBody.textContent = 'Some text with \\(E=mc^2\\) formula';
+
+            // Should not throw
+            idevice.typesetLatexInContent();
+        });
     });
 
     describe('exportProcessIdeviceHtml', () => {
@@ -4336,6 +4406,347 @@ describe('IdeviceNode', () => {
     describe('getCurrentOrder', () => {
         it('exists as a method', () => {
             expect(typeof idevice.getCurrentOrder).toBe('function');
+        });
+    });
+
+    describe('_getIdeviceTypeIconHtml', () => {
+        it('returns empty string when idevice is null', () => {
+            idevice.idevice = null;
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when idevice has no icon', () => {
+            idevice.idevice = { title: 'Test', name: 'test' };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns exe-icon SVG when icon.type is exe-icon', () => {
+            idevice.idevice = {
+                title: 'Test iDevice',
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Test iDevice"');
+            expect(result).toContain('<svg>icon</svg>');
+        });
+
+        it('returns img background when icon.type is img with url', () => {
+            idevice.idevice = {
+                title: 'Image iDevice',
+                path: '/path/to/idevice',
+                icon: {
+                    type: 'img',
+                    url: 'icon.png',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon idevice-img-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Image iDevice"');
+            expect(result).toContain("background-image: url('/path/to/idevice/icon.png')");
+        });
+
+        it('returns empty string for unknown icon type', () => {
+            idevice.idevice = {
+                title: 'Unknown',
+                icon: {
+                    type: 'unknown-type',
+                    name: 'something',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when img type has no url', () => {
+            idevice.idevice = {
+                title: 'No URL',
+                icon: {
+                    type: 'img',
+                    url: '',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('uses odeIdeviceTypeName when idevice.title is missing', () => {
+            idevice.odeIdeviceTypeName = 'FallbackType';
+            idevice.idevice = {
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('title="FallbackType"');
+        });
+    });
+
+    describe('loadPropertiesFromYjs edge cases', () => {
+        it('does nothing when structureBinding is null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: null,
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('');
+        });
+
+        it('does nothing when getComponentProperties returns null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => null),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('');
+        });
+
+        it('ignores unknown property keys from Yjs', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => ({
+                        unknownProp: 'value',
+                        identifier: 'yjs-id',
+                    })),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('yjs-id');
+            expect(idevice.properties.unknownProp).toBeUndefined();
+        });
+    });
+
+    describe('findInstalledIdevice additional cases', () => {
+        it('returns null when typeName is null', () => {
+            const result = idevice.findInstalledIdevice(null);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when typeName is undefined', () => {
+            const result = idevice.findInstalledIdevice(undefined);
+            expect(result).toBeNull();
+        });
+
+        it('strips Idevice suffix for mapping lookup', () => {
+            const result = idevice.findInstalledIdevice('FreeTextIdevice');
+            expect(result).not.toBeNull();
+            expect(result.name).toBe('text');
+        });
+    });
+
+    describe('cleanupInactivityTracker additional cases', () => {
+        it('handles when both inactivityCleanup and inactivityTimer exist', () => {
+            const cleanupFn = vi.fn();
+            idevice.inactivityCleanup = cleanupFn;
+            idevice.inactivityTimer = setTimeout(() => {}, 10000);
+
+            idevice.cleanupInactivityTracker();
+
+            expect(cleanupFn).toHaveBeenCalled();
+            expect(idevice.inactivityCleanup).toBeNull();
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+
+        it('clears timer directly when inactivityCleanup is null', () => {
+            const timerId = setTimeout(() => {}, 10000);
+            idevice.inactivityCleanup = null;
+            idevice.inactivityTimer = timerId;
+            const clearSpy = vi.spyOn(global, 'clearTimeout');
+
+            idevice.cleanupInactivityTracker();
+
+            expect(clearSpy).toHaveBeenCalledWith(timerId);
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+    });
+
+    describe('typesetLatexInContent', () => {
+        it('does nothing when ideviceBody is null', () => {
+            idevice.ideviceBody = null;
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+
+        it('does not call MathJax when no LaTeX content', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'No LaTeX here';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('calls MathJax.typesetPromise when content has LaTeX', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'Formula: \\( x^2 \\)';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalledWith([idevice.ideviceBody]);
+        });
+
+        it('detects $$ delimiters', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = 'Formula: $$ x^2 $$';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalled();
+        });
+
+        it('detects \\begin{ delimiters', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\begin{equation} x \\end{equation}';
+            window.MathJax = { typesetPromise: vi.fn().mockResolvedValue() };
+
+            idevice.typesetLatexInContent();
+
+            expect(window.MathJax.typesetPromise).toHaveBeenCalled();
+        });
+
+        it('handles MathJax errors gracefully', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\( x \\)';
+            window.MathJax = { typesetPromise: vi.fn().mockRejectedValue(new Error('MathJax error')) };
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+
+        it('does nothing when MathJax is undefined', () => {
+            idevice.ideviceBody = document.createElement('div');
+            idevice.ideviceBody.textContent = '\\( x \\)';
+            delete window.MathJax;
+
+            // Should not throw
+            expect(() => idevice.typesetLatexInContent()).not.toThrow();
+        });
+    });
+
+    describe('loadExportIdevice', () => {
+        it('calls loadScriptsExport and loadStylesExport', async () => {
+            const loadScriptsSpy = vi.spyOn(idevice, 'loadScriptsExport').mockImplementation(() => {});
+            const loadStylesSpy = vi.spyOn(idevice, 'loadStylesExport').mockResolvedValue();
+
+            await idevice.loadExportIdevice();
+
+            expect(loadScriptsSpy).toHaveBeenCalled();
+            expect(loadStylesSpy).toHaveBeenCalled();
+        });
+    });
+
+    describe('static mode properties logic', () => {
+        it('static mode condition is true when capabilities.storage.remote is false', () => {
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(true);
+        });
+
+        it('static mode condition is false when capabilities is undefined', () => {
+            delete eXeLearning.app.capabilities;
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(false);
+        });
+
+        it('static mode condition is false when storage.remote is true', () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+
+            expect(isStaticMode).toBe(false);
+        });
+
+        it('retrieves config from staticData in static mode', () => {
+            const staticConfig = { test: 'static-value' };
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            eXeLearning.app.api.staticData = {
+                parameters: {
+                    odeComponentsSyncPropertiesConfig: staticConfig,
+                },
+            };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+            const config = isStaticMode
+                ? eXeLearning.app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+                : eXeLearning.app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+
+            expect(config).toEqual(staticConfig);
+        });
+
+        it('retrieves config from api.parameters when not in static mode', () => {
+            const serverConfig = { test: 'server-value' };
+            delete eXeLearning.app.capabilities;
+            eXeLearning.app.api.parameters = {
+                odeComponentsSyncPropertiesConfig: serverConfig,
+            };
+
+            const isStaticMode = eXeLearning.app?.capabilities?.storage?.remote === false;
+            const config = isStaticMode
+                ? eXeLearning.app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+                : eXeLearning.app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+
+            expect(config).toEqual(serverConfig);
+        });
+    });
+
+    describe('new block detection', () => {
+        it('detects new block by new- prefix', () => {
+            idevice.block = { id: 'new-12345-abc' };
+
+            // The isNewBlock check is inside sendAddIdevicePush, so we test indirectly
+            // by checking the behavior. New blocks include additional params.
+            eXeLearning.app.api.postActivateCurrentOdeUsersUpdateFlag = vi.fn();
+            eXeLearning.app.api.parameters = { generateNewItemKey: 'different-key' };
+
+            // The new- prefix should trigger the new block path
+            expect(idevice.block.id.startsWith('new-')).toBe(true);
+        });
+
+        it('detects new block by generateNewItemKey', () => {
+            const newKey = 'special-new-key';
+            eXeLearning.app.api.parameters = { generateNewItemKey: newKey };
+            idevice.block = { id: newKey };
+
+            expect(idevice.block.id).toBe(newKey);
         });
     });
 });

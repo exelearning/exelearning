@@ -88,7 +88,11 @@ window.MathJax = window.MathJax || (function() {
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
         },
         options: {
-            // MathJax Configuration Options
+            // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
+            // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
+            ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
+            // Skip processing inside these HTML tags
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
         }
     };
 })();
@@ -188,12 +192,18 @@ var $exe = {
             var tit = e.innerHTML;
             var block = $(e).parent().parent();
             var code = $(".exe-math-code", block);
+            code = code.html();
+            // The SVG renderer generates SVG + MathML
+            if (code.indexOf('svg><math') != -1) {
+                code = code.split('svg><math');
+                code = '<math' + code[1];
+            }
             var a = window.open(tit);
             a.document.open("text/html");
             var html = '<!DOCTYPE html><html><head><title>' + tit + '</title>';
             html += '<style type="text/css">body{font:10pt/1.5 Verdana,Arial,Helvetica,sans-serif;margin:10pt;padding:0}</style>';
             html += '</head><body><pre><code>';
-            html += code.html();
+            html += code;
             html += '</code></pre></body></html>';
             a.document.write(html);
             a.document.close();
@@ -281,17 +291,38 @@ var $exe = {
     },
     // Mermaid options
     mermaid: {
-        // Mermaid script path
-        engine: (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) 
-            ? window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js' 
-            : ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js"),
+        // Mermaid script path - computed dynamically to handle static mode
+        engine: (function() {
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                return './app/common/mermaid/mermaid.min.js';
+            }
+            // Server mode: use versioned path
+            if (config?.baseURL !== undefined) {
+                return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            }
+            // Export mode
+            return ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js");
+        })(),
         reload_pending: false,
         initialized: false,
         loadMermaid: function () {
             // Dynamic path resolution
             var enginePath = this.engine;
-            if (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) {
-                enginePath = window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                enginePath = './app/common/mermaid/mermaid.min.js';
+            } else if (config?.baseURL !== undefined) {
+                // Server mode: use versioned path
+                enginePath = config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
             }
 
             if (typeof window.mermaid === 'undefined') {
@@ -523,10 +554,22 @@ var $exe = {
                         this.height = r
                     }
                 }
-                $(this).mediaelementplayer();
+                // Disable the JavaScript player if the video has no .srt subtitles
+                if ($("track", this).length > 0) {
+                    var hasSrt = false;
+                    $("track", this).each(function() {
+                        if (typeof(this.src) == 'string') {
+                            if (this.src.endsWith('.srt')) {
+                                hasSrt = true;
+                            }
+                        }
+                    });
+                    if (hasSrt) $(this).mediaelementplayer();
+                }
             });
             $exe.loadMediaPlayer.isReady = true;
-            if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
+            // No JavaScript player in prettyPhoto
+            // if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
         }
     },
 
@@ -1521,7 +1564,11 @@ var $exeDevices = {
                     }
                     if (!window.MathJax.loader) window.MathJax.loader = {};
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
-                    window.MathJax.loader.paths.mathjax = basePath;
+                    // In static mode, keep the pre-configured relative path
+                    var capabilities = window.eXeLearning?.app?.capabilities;
+                    if (capabilities?.storage?.remote) {
+                        window.MathJax.loader.paths.mathjax = basePath;
+                    }
                     var script = document.createElement('script');
                     script.src = self.engine;
                     script.async = true;

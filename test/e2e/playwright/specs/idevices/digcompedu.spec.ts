@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -161,19 +162,7 @@ test.describe('DigCompEdu iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'DigCompEdu Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add a DigCompEdu iDevice
             await addDigcompeduIdeviceFromPanel(page);
@@ -199,18 +188,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Selection Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -227,18 +205,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Filter Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -269,18 +236,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -315,18 +271,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Save Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -342,18 +287,7 @@ test.describe('DigCompEdu iDevice', () => {
             await page.waitForTimeout(1000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -385,18 +319,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Granularity Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -426,18 +349,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Panel Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -485,18 +397,7 @@ test.describe('DigCompEdu iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Summary Mode Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -547,18 +448,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Reset Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);
@@ -583,18 +473,7 @@ test.describe('DigCompEdu iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'DigCompEdu Search Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             await addDigcompeduIdeviceFromPanel(page);
             await waitForFrameworkDataLoaded(page);

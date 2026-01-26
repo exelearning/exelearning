@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00a99d">
+    <meta name="description" content="Create interactive educational content offline. Open source authoring tool for educators.">
+    <title>eXeLearning - Static Editor</title>
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./exelearning.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="eXeLearning">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="./libs/bootstrap/bootstrap.min.css">
+    <link rel="stylesheet" href="./style/workarea/main.css">
+    <link rel="stylesheet" href="./style/workarea/base.css">
+    <link rel="stylesheet" href="./style/workarea/custom.css">
+    <link rel="stylesheet" href="./app/common/exe_effects/exe_effects.css">
+    <link rel="stylesheet" href="./app/common/exe_games/exe_games.css">
+    <link rel="stylesheet" href="./app/common/exe_highlighter/exe_highlighter.css">
+    <link rel="stylesheet" href="./app/common/exe_lightbox/exe_lightbox.css">
+    <link rel="stylesheet" href="./app/common/exe_media/exe_media.css">
+    <link rel="stylesheet" href="./app/common/exe_wikipedia/exe_wikipedia.css">
+
+    <!-- Static mode overrides -->
+    <style>
+        /* Show exe-online menu items in static mode (they contain Open and Recent Projects) */
+        li.exe-online { display: list-item !important; }
+        /* Hide exe-online items that don't make sense in static mode (Save, Share, Logout) */
+        li.exe-online:has(#navbar-button-save),
+        li.exe-online:has(#navbar-button-share),
+        li.exe-online:has(#mobile-navbar-button-save),
+        li.exe-online:has(#head-bottom-logout-button) { display: none !important; }
+        /* Hide Exit button (for Electron only) and its divider in static mode */
+        li.exe-electron { display: none !important; }
+        li.dropdown-divider.exe-online.exe-electron { display: none !important; }
+        /* Avatar: show exe logo (exe-offline), hide user avatar (exe-online) */
+        #exeUserMenuToggler .exe-offline { display: inline-block !important; }
+        #exeUserMenuToggler .exe-online { display: none !important; }
+        /* Ensure icon sizes inside flex buttons */
+        #head-bottom-preview .small-icon {
+            min-width: 16px;
+            width: 16px;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body id="main">
+    <!-- Static Mode Configuration -->
+    <script>
+        // Static mode flag
+        window.__EXE_STATIC_MODE__ = true;
+
+        // Pre-bundled API data (loaded on demand from bundle.json)
+        window.__EXE_STATIC_DATA__ = null;
+
+        // eXeLearning configuration
+        window.__APP_ENV__ = "prod";
+        window.__APP_DEBUG__ = "0";
+        window.__APP_ONLINE_MODE__ = false;
+
+        // Get saved locale from localStorage (returns null if not saved)
+        function getSavedLocale() {
+            try {
+                const prefs = JSON.parse(localStorage.getItem('exe_user_preferences') || '{}');
+                // UserPreferences saves as { userPreferences: { locale: { value: 'eu' } } }
+                if (prefs.userPreferences?.locale?.value) return prefs.userPreferences.locale.value;
+                // Also check flat format { locale: 'eu' } for backwards compatibility
+                if (prefs.locale) return prefs.locale;
+            } catch (e) {}
+            return null; // No saved preference
+        }
+
+        // Get validated locale: saved > browser language (if available) > English
+        function getValidatedLocale(availableLocales) {
+            const saved = getSavedLocale();
+            if (saved && availableLocales.includes(saved)) {
+                return saved;
+            }
+            // Try browser language
+            const browserLang = navigator.language?.split('-')[0];
+            if (browserLang && availableLocales.includes(browserLang)) {
+                return browserLang;
+            }
+            // Default to English
+            return 'en';
+        }
+
+        // Preliminary locale (will be validated after bundle.json loads)
+        function getPreliminaryLocale() {
+            const saved = getSavedLocale();
+            if (saved) return saved;
+            return navigator.language?.split('-')[0] || 'en';
+        }
+
+        // UUID generation with fallback for non-secure contexts
+        function generateUUID() {
+            // Use crypto.randomUUID if available (secure contexts only)
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            // Fallback using crypto.getRandomValues (works in all contexts)
+            if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                );
+            }
+            // Last resort fallback using Math.random (not cryptographically secure)
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+        }
+
+        window.eXeLearning = {
+            version: "{{BUILD_VERSION}}",
+            expires: "",
+            extension: "elpx",
+            user: JSON.stringify({
+                id: 0,
+                username: "guest",
+                email: "guest@local",
+                roles: ["ROLE_USER"]
+            }),
+            config: JSON.stringify({
+                isOfflineInstallation: true,
+                isStaticMode: true,
+                locale: getSavedLocale(),
+                basePath: '',
+                baseURL: '.',
+                fullURL: '.',
+                yjsEnabled: true,
+                userStyles: false,
+                defaultTheme: 'base',
+                themeBaseType: 'base',
+                themeTypeBase: 'base',
+                themeTypeUser: 'user',
+                clientCallWaitingTime: 5000
+            }),
+            projectId: generateUUID()  // Set synchronously so app.bundle.js can start
+        };
+
+        // MathJax configuration with relative paths for static mode
+        // Must be defined BEFORE common.js loads to override version-based path detection
+        var externalExtensions = [
+            'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
+            'cases', 'centernot', 'color', 'colortbl', 'empheq', 'enclose',
+            'extpfeil', 'gensymb', 'html', 'mathtools', 'mhchem', 'noerrors',
+            'physics', 'tagformat', 'textcomp', 'unicode', 'upgreek', 'verb',
+            'setoptions'
+        ];
+        window.MathJax = {
+            tex: {
+                inlineMath: [["\\(", "\\)"]],
+                displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+                processEscapes: true,
+                tags: 'ams',
+                packages: { '[+]': externalExtensions }
+            },
+            loader: {
+                paths: { mathjax: './app/common/exe_math' },
+                load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
+            },
+            options: {
+                // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
+                // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
+                ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
+                // Skip processing inside these HTML tags
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+
+    <!-- Load Screen (visible by default in static mode) -->
+    <div id="load-screen-main" class="load-screen loading" data-testid="loading-main" data-visible="true">
+        <span>eXeLearning {{BUILD_VERSION}}</span>
+    </div>
+
+    <!-- Main Workarea Container (visible by default in static mode) -->
+    <div id="workarea" class="container-fluid d-flex flex-nowrap" data-preview-pinned="false">
+        <aside class="asideleft col-md-4 col-lg-3 bg-light vh-100">
+            <div class="content-info">
+                <div id="exe-title" class="title-not-editing">
+                    <h2 class="exe-title content" id="change_title">...</h2>
+                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
+                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Change title" data-i18n-title="Change title" aria-label="Change title" data-i18n-aria-label="Change title">
+                        <span class="exe-icon small-icon edit-icon-green"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="accordion" id="menus_content">
+                {{MENU_STRUCTURE_HTML}}
+                {{MENU_IDEVICES_HTML}}
+            </div>
+        </aside>
+        <main>
+            <header id="head">
+                <nav class="navbar bg-transparent">
+                    {{MENU_HEAD_TOP_HTML}}
+                    {{MENU_HEAD_BOTTOM_HTML}}
+                </nav>
+            </header>
+            <div id="main-content-wrapper" class="main-content-wrapper">
+                <section id="node-content-container" class="exe-content js flex-grow-1 d-flex flex-column">
+                    <div id="load-screen-node-content" class="load-screen hide" data-testid="loading-content" data-visible="false"></div>
+                    <div id="node-content" class="content" drop='["idevice","box"]' data-testid="node-content" data-ready="false">
+                        <div>
+                            <div id="header-node-content" class="header"></div>
+                            <h1 id="page-title-node-content" class="page-title" data-testid="page-title"></h1>
+                        </div>
+                    </div>
+                    <div id="idevices-bottom" class="idevices-bottom-menu" data-testid="idevices-quickbar"></div>
+                </section>
+                <aside id="preview-pinned-container" class="preview-pinned" aria-label="Preview" data-i18n-aria-label="Preview">
+                    <div class="preview-pinned-header">
+                        <h2 class="preview-pinned-title" data-i18n="Preview">Preview</h2>
+                        <div class="preview-pinned-actions">
+                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                                <span class="small-icon external-link-icon"></span>
+                            </button>
+                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
+                                <span class="small-icon unpin-icon"></span>
+                            </button>
+                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                                <span class="small-icon refresh-icon"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-pinned-body">
+                        <iframe id="preview-pinned-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
+                                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <!-- Preview Sidebar -->
+    <div id="previewsidenav-content" class="preview-panel-container">
+        <div id="preview-sidenav-overlay" class="sidenav-overlay"></div>
+        <aside id="previewsidenav" class="preview-sidenav" role="complementary">
+            <div class="preview-panel-header">
+                <h1 class="preview-title" data-i18n="Preview">Preview</h1>
+                <div class="preview-header-actions">
+                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                        <span class="small-icon external-link-icon"></span>
+                    </button>
+                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
+                        <span class="small-icon pin-icon"></span>
+                    </button>
+                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                        <span class="small-icon refresh-icon"></span>
+                    </button>
+                    <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close" data-i18n-aria-label="Close">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="preview-panel-body">
+                <iframe id="preview-iframe" class="preview-iframe" title="Content preview" data-i18n-title="Content preview"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads allow-popups allow-presentation"></iframe>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Styles Sidebar -->
+    <div id="stylessidenav-content" class="relative z-50 navbar-menu">
+        <div id="sidenav-overlay" class="sidenav-overlay"></div>
+        <aside id="stylessidenav" class="sidenav" role="complementary">
+            <div class="content-styles-header">
+                <h1 class="styles-title">Styles</h1>
+                <div id="stylessidenavclose" class="navbar-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M15 5L5 15M5 5L15 15" stroke="black" stroke-width="1.66667" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="content-tabs">
+                <ul class="nav nav-tabs" id="styleslist" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="exestylescontent-tab" data-bs-toggle="tab"
+                                data-bs-target="#exestylescontent" type="button" role="tab"
+                                aria-controls="exestylescontent" aria-selected="true">System</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="importedstylescontent-tab" data-bs-toggle="tab"
+                                data-bs-target="#importedstylescontent" type="button" role="tab"
+                                aria-controls="importedstylescontent" aria-selected="false">Imported</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="tab-content mt-3" id="styleslistContent">
+                <div class="tab-pane fade show active" id="exestylescontent" role="tabpanel" aria-labelledby="exestylescontent-tab"></div>
+                <div class="tab-pane fade" id="importedstylescontent" role="tabpanel" aria-labelledby="importedstylescontent-tab"></div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modals Container -->
+    <div class="modals-container">
+        {{MODALS_HTML}}
+    </div>
+
+    <!-- Toasts Container -->
+    <div class="toasts-container">
+        <div id="toastDefault" class="toast" role="alert" data-bs-autohide="false" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <span class="toast-icon exe-icon rounded me-2">info</span>
+                <strong class="toast-title me-auto"></strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close" data-i18n-aria-label="Close"></button>
+            </div>
+            <div class="toast-body"></div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="./libs/jquery/jquery.min.js"></script>
+    <script src="./libs/jquery-ui/jquery-ui.min.js"></script>
+    <script src="./libs/bootstrap/bootstrap.bundle.min.js"></script>
+    <script src="./libs/multi-dropdown.js"></script>
+    <script src="./libs/interact/interact.min.js"></script>
+    <script src="./libs/showdown/showdown.min.js"></script>
+    <script src="./libs/fflate/fflate.umd.js"></script>
+
+    <!-- Asset URL Resolver -->
+    <script src="./app/common/asset_url_resolver.js"></script>
+
+    <!-- eXeLearning Common -->
+    <script type="module" src="./app/common/app_common.js"></script>
+    <script src="./app/common/common_i18n.js"></script>
+    <script src="./app/common/common_edition.js"></script>
+    <script src="./app/common/common.js"></script>
+    <script src="./app/common/exe_effects/exe_effects.js"></script>
+    <script src="./app/common/exe_games/exe_games.js"></script>
+    <script src="./app/common/exe_highlighter/exe_highlighter.js"></script>
+    <script src="./app/common/exe_lightbox/exe_lightbox.js"></script>
+    <script src="./app/common/exe_media/exe_media.js"></script>
+    <script src="./app/common/exe_math/tex-mml-svg.js"></script>
+    <script src="./app/common/LatexPreRenderer.js"></script>
+    <script src="./app/common/MermaidPreRenderer.js"></script>
+    <script src="./app/common/fix_webm_duration/fix_webm_duration.js"></script>
+    <script src="./libs/abcjs/exe_abc_music.js"></script>
+
+    <!-- TinyMCE -->
+    <script src="./libs/tinymce_5/js/tinymce/tinymce.min.js"></script>
+    <script src="./app/editor/tinymce_5_settings.js"></script>
+
+    <!-- Yjs Collaborative Editing -->
+    <script src="./libs/yjs/yjs.min.js"></script>
+    <script src="./libs/yjs/y-indexeddb.min.js"></script>
+    <script src="./app/yjs/yjs-loader.js"></script>
+
+    <!-- Connection Monitor -->
+    <script type="module" src="./app/common/connectionMonitor.js"></script>
+
+    <!-- Static Mode Initialization -->
+    <script>
+        // Load static data bundle
+        async function loadStaticData() {
+            try {
+                const response = await fetch('./data/bundle.json');
+                window.__EXE_STATIC_DATA__ = await response.json();
+                console.log('[Static] Loaded bundle.json');
+            } catch (e) {
+                console.error('[Static] Failed to load bundle.json:', e);
+                window.__EXE_STATIC_DATA__ = {
+                    parameters: { routes: {} },
+                    translations: {},
+                    idevices: { idevices: [] },
+                    themes: { themes: [] }
+                };
+            }
+        }
+
+        // Initialize static mode - load bundle data and validate locale
+        async function initStaticMode() {
+            await loadStaticData();
+
+            // Validate and set locale after bundle.json is loaded
+            const localeOptions = window.__EXE_STATIC_DATA__?.parameters?.userPreferencesConfig?.locale?.options;
+            if (localeOptions) {
+                const availableLocales = Object.keys(localeOptions);
+                const validatedLocale = getValidatedLocale(availableLocales);
+
+                // Update the config with validated locale
+                // Note: config may be a string (before app.js runs) or object (after app.js parses it)
+                if (typeof window.eXeLearning.config === 'string') {
+                    const config = JSON.parse(window.eXeLearning.config);
+                    config.locale = validatedLocale;
+                    window.eXeLearning.config = JSON.stringify(config);
+                } else if (typeof window.eXeLearning.config === 'object') {
+                    window.eXeLearning.config.locale = validatedLocale;
+                }
+
+                console.log('[Static] Locale validated:', validatedLocale, '(browser:', navigator.language, ')');
+            }
+
+            // Setup File menu handlers after app bundle loads
+            setTimeout(() => {
+                setupFileMenuHandlers();
+            }, 100);
+        }
+
+        // Setup File menu handlers for static mode
+        function setupFileMenuHandlers() {
+            // File > New - create new blank project
+            const newBtn = document.getElementById('navbar-button-new');
+            if (newBtn) {
+                newBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (confirm('Create a new project? Unsaved changes will be lost.')) {
+                        window.newProject();
+                    }
+                });
+            }
+
+            // File > Open is handled by navbarFile.js openUserOdeFilesEvent()
+            // which detects __EXE_STATIC_MODE__ and uses openFileInputStatic()
+
+            // Populate Recent Projects menu
+            populateRecentProjects();
+        }
+
+        // Populate recent projects submenu
+        async function populateRecentProjects() {
+            const recentMenu = document.getElementById('navbar-dropdown-menu-recent-projects');
+            if (!recentMenu) return;
+
+            if (window.indexedDB?.databases) {
+                try {
+                    const dbs = await window.indexedDB.databases();
+                    const projects = dbs.filter(db => db.name?.startsWith('exelearning-project-'));
+
+                    if (projects.length > 0) {
+                        recentMenu.innerHTML = '';
+                        for (const db of projects.slice(0, 10)) {
+                            const uuid = db.name.replace('exelearning-project-', '');
+                            const li = document.createElement('li');
+                            li.innerHTML = `
+                                <a class="dropdown-item" href="#" onclick="event.preventDefault(); openProject('${uuid}')">
+                                    ${uuid.substring(0, 8)}...
+                                </a>
+                            `;
+                            recentMenu.appendChild(li);
+                        }
+                    } else {
+                        recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
+                    }
+                } catch (e) {
+                    console.log('[Static] Could not list IndexedDB databases');
+                    recentMenu.innerHTML = '<li class="dropdown-item text-muted">No recent projects</li>';
+                }
+            }
+        }
+
+        // Create new blank project
+        window.newProject = function() {
+            const uuid = generateUUID();
+            window.eXeLearning.projectId = uuid;
+            // Reload the page to start fresh
+            location.reload();
+        };
+
+        // Open existing project from recent list
+        window.openProject = async function(uuid) {
+            window.eXeLearning.projectId = uuid;
+            // Reload the page with the new project ID
+            location.reload();
+        };
+
+        // Delete project
+        window.deleteProject = async function(uuid) {
+            if (confirm('Delete this project? This cannot be undone.')) {
+                try {
+                    await new Promise((resolve, reject) => {
+                        const req = indexedDB.deleteDatabase('exelearning-project-' + uuid);
+                        req.onsuccess = resolve;
+                        req.onerror = reject;
+                    });
+                    await new Promise((resolve, reject) => {
+                        const req = indexedDB.deleteDatabase('exelearning-assets-' + uuid);
+                        req.onsuccess = resolve;
+                        req.onerror = reject;
+                    });
+                    populateRecentProjects();
+                } catch (e) {
+                    console.error('Failed to delete project:', e);
+                }
+            }
+        };
+
+        // Start initialization
+        initStaticMode();
+    </script>
+
+    <!-- Main Application Bundle -->
+    <script src="./app/app.bundle.js"></script>
+
+    <!-- Register Service Worker for PWA (only when installed as standalone app) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            // Only register SW when installed as PWA (standalone mode)
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches
+                       || window.navigator.standalone === true;  // iOS Safari
+
+            if (isPWA) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('./service-worker.js')
+                        .then(reg => console.log('[PWA] Service worker registered'))
+                        .catch(err => console.log('[PWA] Service worker registration failed:', err));
+                });
+            } else {
+                // Unregister any existing SW when not in PWA mode
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                    regs.forEach(reg => {
+                        if (reg.active?.scriptURL.includes('service-worker.js')) {
+                            reg.unregister();
+                            console.log('[Static] Service worker unregistered (not in PWA mode)');
+                        }
+                    });
+                });
+            }
+        }
+    </script>
+</body>
+</html>

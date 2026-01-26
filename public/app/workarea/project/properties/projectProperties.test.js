@@ -463,6 +463,12 @@ describe('ProjectProperties', () => {
             expect(projectProperties.mapPropertyToMetadataKey('pp_license')).toBe('license');
         });
 
+        it('should map pp_lang to language (special case)', () => {
+            const result = projectProperties.mapPropertyToMetadataKey('pp_lang');
+
+            expect(result).toBe('language');
+        });
+
         it('should return original key if no "pp_" prefix', () => {
             const result = projectProperties.mapPropertyToMetadataKey('title');
 

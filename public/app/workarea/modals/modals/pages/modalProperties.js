@@ -429,16 +429,31 @@ export default class ModalProperties extends Modal {
      * @returns
      */
     makeRowElementLabel(id, property) {
-        let propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
-        if (property.type != 'checkbox') {
-            propertyTitleText += ':';
-        }
-        if (property.required) {
-            propertyTitleText = '* ' + propertyTitleText;
-        }
-        propertyTitle.innerHTML = propertyTitleText;
+        const propertyTitle = document.createElement('label');
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+        const suffix = property.type != 'checkbox' ? ':' : '';
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText + suffix;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText + suffix;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+                // Store suffix in data attribute so DOMTranslator can append it
+                if (suffix) {
+                    propertyTitle.setAttribute('data-i18n-suffix', suffix);
+                }
+            }
+        }
 
         return propertyTitle;
     }

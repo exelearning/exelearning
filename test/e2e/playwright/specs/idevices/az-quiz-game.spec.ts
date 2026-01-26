@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
+import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -267,19 +268,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'AZ Quiz Add Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add an A-Z Quiz Game iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -299,18 +291,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'AZ Quiz Fill Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -335,18 +318,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'AZ Quiz Save Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);
@@ -373,18 +347,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Persist Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -396,18 +361,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await page.waitForTimeout(2000);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Navigate to the page
             const pageNode = page
@@ -452,18 +406,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             });
 
             const projectUuid = await createProject(page, 'AZ Quiz Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -501,18 +446,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Canvas Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -561,18 +497,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Letters Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -613,18 +540,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Start Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -659,18 +577,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Game Start Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -718,18 +627,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Answer Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -784,18 +684,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Error Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -849,18 +740,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Skip Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice and fill words
             await addAzQuizGameIdeviceFromPanel(page);
@@ -911,18 +793,9 @@ test.describe('A-Z Quiz Game iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Duration Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await waitForAppReady(page);
 
             // Add iDevice
             await addAzQuizGameIdeviceFromPanel(page);

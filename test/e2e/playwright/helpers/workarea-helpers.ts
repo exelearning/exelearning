@@ -65,36 +65,60 @@ export async function waitForLoadingScreen(page: Page, timeout = 30000): Promise
  * Open an ELP file via File menu -> Open
  * This opens the file as a new project (replacing the current one)
  *
+ * Supports both online mode (shows modal with file picker) and static mode
+ * (triggers file input directly without modal).
+ *
  * @param page - Playwright page
  * @param fixturePath - Absolute path to the ELP file
  * @param minPages - Minimum number of pages to wait for in navigation (default 1)
  */
 export async function openElpFile(page: Page, fixturePath: string, minPages = 1): Promise<void> {
+    // Detect if we're in static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
     // Open File menu dropdown
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Open option (not Import)
-    const openOption = page.locator('#navbar-button-openuserodefiles');
-    await openOption.waitFor({ state: 'visible', timeout: 5000 });
-    await openOption.click();
+    if (isStaticMode) {
+        // STATIC MODE: File input is triggered directly, no modal
+        // In static mode, #navbar-button-openuserodefiles has class "exe-online" which is hidden.
+        // Use #navbar-button-open-offline which is visible in static/offline mode.
+        // Setup file chooser BEFORE clicking (click triggers file input immediately)
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
 
-    // Wait for the Open modal to appear
-    const openModal = page.locator('#modalOpenUserOdeFiles');
-    await openModal.waitFor({ state: 'visible', timeout: 10000 });
+        const openOption = page.locator('#navbar-button-open-offline');
+        await openOption.waitFor({ state: 'visible', timeout: 5000 });
+        await openOption.click();
 
-    // Setup file chooser BEFORE clicking the upload button
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(fixturePath);
+    } else {
+        // ONLINE MODE: Open modal and use upload button
+        const openOption = page.locator('#navbar-button-openuserodefiles');
+        await openOption.waitFor({ state: 'visible', timeout: 5000 });
+        await openOption.click();
 
-    // Click "Select a file from your device" button in the modal
-    const uploadButton = openModal.locator('.ode-files-button-upload');
-    await uploadButton.waitFor({ state: 'visible', timeout: 5000 });
-    await uploadButton.click();
+        // Wait for the Open modal to appear
+        const openModal = page.locator('#modalOpenUserOdeFiles');
+        await openModal.waitFor({ state: 'visible', timeout: 10000 });
 
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+        // Setup file chooser BEFORE clicking the upload button
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
 
-    // Handle "Open without saving" confirmation dialog
+        // Click "Select a file from your device" button in the modal
+        const uploadButton = openModal.locator('.ode-files-button-upload');
+        await uploadButton.waitFor({ state: 'visible', timeout: 5000 });
+        await uploadButton.click();
+
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(fixturePath);
+    }
+
+    // Handle "Open without saving" confirmation dialog (both modes)
     await handleCloseWithoutSavingModal(page);
 
     // Wait for file to be processed - Yjs navigation has pages
@@ -116,6 +140,64 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
         minPages,
         { timeout: 90000 },
     );
+
+    // Wait for page count to stabilize (no changes for 3 seconds)
+    // This is critical for Firefox which may be slower to process large ELPs
+    await page.waitForFunction(
+        () => {
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const docManager = bridge.getDocumentManager();
+                if (!docManager || !docManager.initialized) return false;
+                const yDoc = docManager.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return false;
+
+                // Recursive count of all pages
+                const countPages = (pages: any): number => {
+                    let count = 0;
+                    if (!pages) return count;
+                    for (let i = 0; i < pages.length; i++) {
+                        count++;
+                        const pageMap = pages.get(i);
+                        const children = pageMap?.get('children');
+                        if (children) count += countPages(children);
+                    }
+                    return count;
+                };
+                const currentCount = countPages(navigation);
+
+                // Store/check the page count to detect stabilization
+                const win = window as any;
+                if (!win.__importPageCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                if (win.__importPageCount !== currentCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                // Page count stable for 3 seconds = import complete
+                return Date.now() - win.__importStableTime >= 3000;
+            } catch {
+                return false;
+            }
+        },
+        { timeout: 120000, polling: 500 },
+    );
+
+    // Clean up temporary window variables
+    await page.evaluate(() => {
+        const win = window as any;
+        delete win.__importPageCount;
+        delete win.__importStableTime;
+    });
 
     // Wait for loading screen to hide
     await waitForLoadingScreen(page, 30000);
@@ -145,16 +227,79 @@ export async function handleCloseWithoutSavingModal(page: Page): Promise<void> {
 
 /**
  * Save the current project
+ * - Online mode: Clicks save button, waits for server save to complete
+ * - Static mode: Data is auto-saved to IndexedDB, no action needed
  */
 export async function saveProject(page: Page): Promise<void> {
+    // Detect static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
+    if (isStaticMode) {
+        // In static mode, project data is automatically saved to IndexedDB
+        // No need to click save button (which would trigger download)
+        // Just wait briefly for any pending Yjs operations
+        await page.waitForTimeout(500);
+        return;
+    }
+
+    // Online mode: Click save and wait for completion
     await page.click('#head-top-save-button');
-    // Wait for save to complete
-    await page.waitForTimeout(2000);
+
+    // Wait for save to complete (button loses 'saving' class)
+    await page.waitForFunction(
+        () => {
+            const saveBtn = document.querySelector('#head-top-save-button');
+            return saveBtn && !saveBtn.classList.contains('saving');
+        },
+        { timeout: 30000 },
+    );
+
+    // Additional wait for async operations
+    await page.waitForTimeout(500);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Navigate to a project's workarea (unified for static/server modes)
+ *
+ * USE THIS INSTEAD OF: page.goto(`/workarea?project=${uuid}`)
+ *
+ * WHY: In static mode (PWA/Electron), there's no /workarea route and no project
+ * UUID concept - the project is pre-loaded. This helper handles both cases:
+ *
+ * - Static mode: Navigates to `/` and waits for app initialization
+ * - Server mode: Navigates to `/workarea?project=${uuid}` and waits for Yjs
+ *
+ * @example
+ * // BEFORE (only works in server mode):
+ * await page.goto(`/workarea?project=${projectUuid}`);
+ *
+ * // AFTER (works in both modes):
+ * await gotoWorkarea(page, projectUuid);
+ */
+export async function gotoWorkarea(page: Page, projectUuid: string): Promise<void> {
+    const isStaticMode = process.env.STATIC_MODE === 'true';
+
+    if (isStaticMode) {
+        // Static mode: workarea is pre-loaded at root, no /workarea route exists
+        await page.goto('/');
+        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, { timeout: 30000 });
+        await waitForLoadingScreen(page);
+        return; // CRITICAL: return here to prevent server mode code from executing
+    }
+
+    // Server mode: navigate to workarea with project UUID
+    await page.goto(`/workarea?project=${projectUuid}`);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
+    await waitForLoadingScreen(page);
+}
 
 /**
  * Navigate to a page by title in the navigation tree
@@ -367,8 +512,18 @@ export async function navigateInPreview(page: Page, linkText: string): Promise<v
  * @param ideviceType - iDevice type ID (e.g., 'text', 'rubric', 'flipcards')
  */
 export async function addIdevice(page: Page, ideviceType: string): Promise<void> {
-    // Ensure a non-root page is selected
-    await selectFirstPage(page);
+    // Check if root page is selected - fail with clear error
+    const isRootSelected = await page.evaluate(() => {
+        const selected = document.querySelector('.nav-element.selected');
+        return selected?.getAttribute('nav-id') === 'root';
+    });
+
+    if (isRootSelected) {
+        throw new Error(
+            'addIdevice: Cannot add iDevice to root page. ' +
+                'Call selectFirstPage(page) before addIdevice() to select a non-root page.',
+        );
+    }
 
     // Find the iDevice item - wait for it to be visible first
     const idevice = page.locator(`.idevice_item[id="${ideviceType}"], [data-testid="idevice-${ideviceType}"]`).first();
@@ -806,16 +961,17 @@ export async function enableSearchOption(page: Page): Promise<void> {
     // Wait for properties to appear in the content area
     await page.waitForTimeout(1000);
 
-    // Wait for the "Export options" section to be present in DOM
-    const exportSection = page.getByRole('button', { name: /Export options|Opciones de exportación/i }).first();
+    // Wait for the "Export options" tab to be present in DOM
+    // Project properties now use tabs instead of accordion (commit f4383b83)
+    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
 
-    // Scroll the export section into view if needed
-    await exportSection.scrollIntoViewIfNeeded({ timeout: 10000 });
+    // Scroll the export tab into view if needed
+    await exportTab.scrollIntoViewIfNeeded({ timeout: 10000 });
 
-    // Check if the export options section is expanded
-    const isExpanded = (await exportSection.getAttribute('aria-expanded')) === 'true';
-    if (!isExpanded) {
-        await exportSection.click();
+    // Check if the export options tab is selected
+    const isSelected = (await exportTab.getAttribute('aria-selected')) === 'true';
+    if (!isSelected) {
+        await exportTab.click();
         await page.waitForTimeout(500);
     }
 
@@ -851,11 +1007,20 @@ export async function enableSearchOption(page: Page): Promise<void> {
 
 /**
  * Clone the currently selected page in the navigation tree
+ * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
     const cloneBtn = page.locator('.button_nav_action.action_clone');
+    await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
+
+    // Close rename modal by pressing Escape
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+
+    // Wait for modal to close
+    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 }).catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -869,19 +1034,55 @@ export async function cloneCurrentPage(page: Page): Promise<void> {
  * @param pageIndex - Zero-based index of the page to select (default 0)
  */
 export async function selectPageByIndex(page: Page, pageIndex: number = 0): Promise<void> {
-    // Get all page nodes (excluding root)
-    const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
-    const count = await pageNodes.count();
+    const maxRetries = 3;
+    let lastError: Error | null = null;
 
-    if (count === 0) {
-        throw new Error('No pages found in navigation tree');
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // Re-query the DOM on each attempt to get fresh element references
+            const pageNodes = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
+
+            // Wait for at least one element to be attached
+            await pageNodes.first().waitFor({ state: 'attached', timeout: 10000 });
+
+            const count = await pageNodes.count();
+            if (count === 0) {
+                throw new Error('No pages found in navigation tree');
+            }
+
+            const targetIndex = Math.min(pageIndex, count - 1);
+            const targetNode = pageNodes.nth(targetIndex);
+
+            // Wait for target element to be attached
+            await targetNode.waitFor({ state: 'attached', timeout: 5000 });
+
+            // Small delay to let any DOM mutations settle
+            await page.waitForTimeout(100);
+
+            await targetNode.scrollIntoViewIfNeeded();
+            await targetNode.click({ force: true });
+
+            // Click succeeded, exit the retry loop
+            break;
+        } catch (error) {
+            lastError = error as Error;
+            const errorMessage = (error as Error).message || '';
+
+            // Retry on detachment errors, throw on other errors
+            if (errorMessage.includes('not attached') || errorMessage.includes('Element is not attached')) {
+                // Wait a bit before retrying to let DOM stabilize
+                await page.waitForTimeout(200);
+                continue;
+            }
+            throw error;
+        }
     }
 
-    const targetIndex = Math.min(pageIndex, count - 1);
-    const targetNode = pageNodes.nth(targetIndex);
+    // If we exhausted retries and still have an error, throw it
+    if (lastError?.message.includes('not attached')) {
+        throw lastError;
+    }
 
-    await targetNode.scrollIntoViewIfNeeded();
-    await targetNode.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Wait for page content area to be ready
@@ -1166,6 +1367,19 @@ export async function exportPage(page: Page, nodeId: string): Promise<Download> 
  * @param page - Playwright page
  */
 export async function addTextIdevice(page: Page): Promise<void> {
+    // Check if root page is selected - fail with clear error
+    const isRootSelected = await page.evaluate(() => {
+        const selected = document.querySelector('.nav-element.selected');
+        return selected?.getAttribute('nav-id') === 'root';
+    });
+
+    if (isRootSelected) {
+        throw new Error(
+            'addTextIdevice: Cannot add iDevice to root page. ' +
+                'Call selectFirstPage(page) before addTextIdevice() to select a non-root page.',
+        );
+    }
+
     // Expand "Information and presentation" category
     const infoCategory = page
         .locator('.idevice_category')
@@ -1451,4 +1665,194 @@ export async function getBlockId(page: Page, blockIndex: number = 0): Promise<st
         throw new Error(`Block at index ${blockIndex} does not have an id attribute`);
     }
     return blockId;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TINYMCE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Wait for TinyMCE editor to be fully initialized and ready
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForTinyMCEReady(page: Page, timeout = 15000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const editor = (window as any).tinymce?.activeEditor;
+            return !!editor && editor.initialized;
+        },
+        { timeout },
+    );
+}
+
+/**
+ * Set content in the active TinyMCE editor
+ *
+ * @param page - Playwright page
+ * @param content - HTML content to set
+ */
+export async function setTinyMCEContent(page: Page, content: string): Promise<void> {
+    await page.evaluate(html => {
+        const editor = (window as any).tinymce?.activeEditor;
+        if (editor) {
+            editor.setContent(html);
+            editor.fire('change');
+            editor.fire('input');
+            editor.setDirty(true);
+        }
+    }, content);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVICE WORKER HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Wait for Service Worker to be ready and activated
+ * The preview relies on the Service Worker to serve content
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time in milliseconds
+ */
+export async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
+    await page
+        .waitForFunction(
+            () => {
+                const app = (window as any).eXeLearning?.app;
+                return (
+                    app?._previewSwRegistration?.active?.state === 'activated' ||
+                    navigator.serviceWorker?.controller !== null
+                );
+            },
+            { timeout },
+        )
+        .catch(() => {
+            // Continue even if SW check times out - some browsers may not support SW
+        });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAGE RELOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Reload or refresh the page based on mode
+ * - Online mode: Full page reload (data persists on server)
+ * - Static mode: Refresh UI from Yjs without losing data (no server persistence)
+ *
+ * Use this instead of page.reload() in tests that verify data persistence,
+ * as static mode has no server to reload data from.
+ */
+export async function reloadPage(page: Page): Promise<void> {
+    const isStaticMode = await page.evaluate(() => {
+        return (window as any).eXeLearning?.app?.capabilities?.storage?.remote === false;
+    });
+
+    if (isStaticMode) {
+        // Static mode: Refresh UI from Yjs without page reload
+        // Data is already in memory/Yjs, just refresh the UI
+        await page.evaluate(async () => {
+            await (window as any).eXeLearning.app.project.refreshAfterDirectImport();
+        });
+        await waitForAppReady(page);
+    } else {
+        // Online mode: Full page reload (data is fetched from server)
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await waitForAppReady(page);
+    }
+}
+
+/**
+ * Open preview panel and wait for content to fully load
+ * Handles Service Worker initialization, panel visibility, and content rendering
+ *
+ * @param page - Playwright page
+ * @param timeout - Maximum wait time for content in milliseconds
+ */
+export async function openPreviewAndWaitForContent(page: Page, timeout = 30000): Promise<void> {
+    // First ensure Service Worker is ready
+    await waitForServiceWorker(page);
+
+    // Open the preview panel
+    const previewButton = page.locator('#head-bottom-preview');
+    await previewButton.click();
+
+    // Wait for preview panel to be visible
+    const previewPanel = page.locator('#previewsidenav');
+    await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+
+    // Wait for iframe to exist
+    const previewIframe = page.locator('#preview-iframe');
+    await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
+
+    // Give time for preview generation to start
+    await page.waitForTimeout(3000);
+
+    // Click refresh button to force preview regeneration if available
+    const refreshBtn = page.locator(
+        '#previewsidenav button[title*="Refresh"], #previewsidenav button:has-text("refresh")',
+    );
+    if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await refreshBtn.click();
+        await page.waitForTimeout(3000);
+    }
+
+    // Wait for any content to be present in the iframe
+    const iframe = getPreviewFrame(page);
+    await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
+
+    // Wait for meaningful content to appear
+    await page.waitForFunction(
+        () => {
+            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+            if (!iframe) return false;
+            try {
+                const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                if (!doc || !doc.body) return false;
+                const bodyHtml = doc.body.innerHTML || '';
+                return bodyHtml.length > 100 || doc.querySelector('article, .idevice_node, main, nav, .exe-page');
+            } catch {
+                return false;
+            }
+        },
+        { timeout },
+    );
+
+    // Additional wait for content to fully render
+    await page.waitForTimeout(1000);
+}
+
+/**
+ * Add a text iDevice with content and save it
+ * Combines adding the iDevice, setting TinyMCE content, and saving
+ *
+ * @param page - Playwright page
+ * @param content - HTML content to set in the iDevice
+ */
+export async function addTextIdeviceWithContent(page: Page, content: string): Promise<void> {
+    // Add the text iDevice
+    await addTextIdevice(page);
+
+    // Wait for TinyMCE to be ready
+    await waitForTinyMCEReady(page);
+
+    // Set the content
+    await setTinyMCEContent(page, content);
+
+    // Save the iDevice
+    const block = page.locator('#node-content article .idevice_node.text').last();
+    const saveBtn = block.locator('.btn-save-idevice');
+    await saveBtn.click();
+
+    // Wait for save to complete
+    await page.waitForFunction(
+        () => {
+            const idevice = document.querySelector('#node-content article .idevice_node.text');
+            return idevice && idevice.getAttribute('mode') !== 'edition';
+        },
+        { timeout: 20000 },
+    );
 }

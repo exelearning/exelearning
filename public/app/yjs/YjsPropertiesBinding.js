@@ -38,6 +38,9 @@ class YjsPropertiesBinding {
     // Observer for ALL title changes (syncs to header)
     this.titleSyncObserver = null;
 
+    // Observer for ALL language changes (reloads content translations)
+    this.languageSyncObserver = null;
+
     // Flag to prevent feedback loops
     this.isUpdatingFromYjs = false;
 
@@ -401,6 +404,9 @@ class YjsPropertiesBinding {
 
     // Setup separate observer for title sync to header (ALL changes, including 'user')
     this.setupTitleSyncObserver();
+
+    // Setup separate observer for language sync (reloads content translations)
+    this.setupLanguageSyncObserver();
   }
 
   /**
@@ -444,6 +450,50 @@ class YjsPropertiesBinding {
       if (window.eXeLearning?.app?.interface?.odeTitleElement?.checkTitleLineCount) {
         window.eXeLearning.app.interface.odeTitleElement.checkTitleLineCount();
       }
+    }
+  }
+
+  /**
+   * Setup observer to reload content translations when language changes
+   * This ensures iDevice custom texts use the correct language
+   */
+  setupLanguageSyncObserver() {
+    if (this.languageSyncObserver) return; // Already setup
+
+    this.languageSyncObserver = (event) => {
+      event.changes.keys.forEach((change, key) => {
+        if (key === 'language' && (change.action === 'add' || change.action === 'update')) {
+          this.syncLanguageToApp();
+        }
+      });
+    };
+
+    this.metadata.observe(this.languageSyncObserver);
+  }
+
+  /**
+   * Sync language from Yjs to app (reload content translations)
+   * Called on ALL language changes (including from form input)
+   */
+  async syncLanguageToApp() {
+    const language = this.metadata.get('language');
+    if (!language) return;
+
+    // Update pp_lang.value in project properties
+    const projectProperties = window.eXeLearning?.app?.project?.properties;
+    if (projectProperties?.properties?.pp_lang) {
+      const currentValue = projectProperties.properties.pp_lang.value;
+      if (currentValue !== language) {
+        projectProperties.properties.pp_lang.value = language;
+        Logger.log(`[YjsPropertiesBinding] Updated pp_lang.value: ${language}`);
+      }
+    }
+
+    // Reload content translations
+    const locale = window.eXeLearning?.app?.locale;
+    if (locale?.loadContentTranslationsStrings) {
+      await locale.loadContentTranslationsStrings(language);
+      Logger.log(`[YjsPropertiesBinding] Reloaded content translations for: ${language}`);
     }
   }
 
@@ -501,6 +551,12 @@ class YjsPropertiesBinding {
     if (this.titleSyncObserver) {
       this.metadata.unobserve(this.titleSyncObserver);
       this.titleSyncObserver = null;
+    }
+
+    // Remove language sync observer
+    if (this.languageSyncObserver) {
+      this.metadata.unobserve(this.languageSyncObserver);
+      this.languageSyncObserver = null;
     }
 
     this.formElement = null;
@@ -629,6 +685,12 @@ class YjsPropertiesBinding {
     if (this.titleSyncObserver) {
       this.metadata.unobserve(this.titleSyncObserver);
       this.titleSyncObserver = null;
+    }
+
+    // Remove language sync observer if still active
+    if (this.languageSyncObserver) {
+      this.metadata.unobserve(this.languageSyncObserver);
+      this.languageSyncObserver = null;
     }
 
     this.documentManager = null;

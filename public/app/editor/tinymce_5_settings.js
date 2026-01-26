@@ -121,6 +121,30 @@ var $exeTinyMCE = {
     },
 
     /**
+     * Detect the base path for static mode deployments.
+     * When deployed to a subdirectory (e.g., /dist/static/), we need to prepend
+     * this path to absolute URLs like /app/... and /libs/...
+     *
+     * Detection works by finding known path markers (/app/, /libs/) in the current pathname.
+     *
+     * @returns {string} The base path (e.g., '/dist/static') or empty string for root deployment
+     */
+    getStaticBasePath: function() {
+        var pathname = window.location.pathname;
+        // Look for /app/ to find where the static deployment ends
+        var appIndex = pathname.indexOf('/app/');
+        if (appIndex > 0) {
+            return pathname.substring(0, appIndex);
+        }
+        // Also check for /libs/ as fallback (some pages might be in libs/)
+        var libsIndex = pathname.indexOf('/libs/');
+        if (libsIndex > 0) {
+            return pathname.substring(0, libsIndex);
+        }
+        return '';
+    },
+
+    /**
      * Removes Bun-injected scripts from HTML content.
      * Bun injects scripts when serving HTML files for HMR (dev) and bundling (prod).
      *
@@ -285,8 +309,17 @@ var $exeTinyMCE = {
             rel_list: this.rel_list,
 
             // Math plugin
-            edicuatex_url: this.getAssetURL(this.edicuatex_url),
-            edicuatex_mathjax_url: this.getAssetURL(this.edicuatex_mathjax_url),
+            // In static/offline mode, use RELATIVE paths (./app/...) which work regardless of subdirectory depth
+            // The browser resolves ./app/... relative to the current document location
+            // e.g., at /dist/static/index.html → ./app/... resolves to /dist/static/app/...
+            // e.g., at /index.html → ./app/... resolves to /app/...
+            // In server mode, use getAssetURL() to add version for cache busting
+            edicuatex_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
+                ? './app/common/edicuatex/index.html'
+                : this.getAssetURL(this.edicuatex_url),
+            edicuatex_mathjax_url: (eXeLearning.config?.isStaticMode || eXeLearning.config?.isOfflineInstallation)
+                ? './app/common/exe_math/tex-mml-svg.js'
+                : this.getAssetURL(this.edicuatex_mathjax_url),
 
             // Images
             image_advtab: true,

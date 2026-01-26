@@ -1,4 +1,5 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
+import { waitForAppReady, addTextIdevice, selectFirstPage, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * Block Icon Selection Modal Tests
@@ -13,7 +14,10 @@ test.describe('Block Icon Selection Modal', () => {
     test('should display icons correctly in the block icon selection modal', async ({
         authenticatedPage,
         createProject,
-    }) => {
+    }, testInfo) => {
+        // Skip in static mode - requires server to create projects and add iDevices
+        skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
+
         const page = authenticatedPage;
 
         // Create a new project
@@ -21,64 +25,14 @@ test.describe('Block Icon Selection Modal', () => {
         expect(projectUuid).toBeDefined();
 
         // Navigate to workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
-        // Wait for Yjs initialization
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
+        // Wait for app initialization
+        await waitForAppReady(page);
 
-        // Wait for loading screen to be hidden
-        await waitForLoadingScreenHidden(page);
-
-        // Select a page (not root) to be able to add iDevices
-        const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-        await pageNode.scrollIntoViewIfNeeded();
-        await pageNode.click({ force: true });
-        await page.waitForTimeout(1500);
-
-        // Wait for page content area to be ready
-        await page.waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                return nodeContent !== null;
-            },
-            { timeout: 10000 },
-        );
-
-        // Add a text iDevice to create a block
-        // First expand the "Information" category where the text iDevice is located
-        const infoCategory = page
-            .locator('.idevice_category')
-            .filter({ has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }) })
-            .first();
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-            if (isCollapsed) {
-                await infoCategory.locator('.label').click();
-                await page.waitForTimeout(800);
-            }
-        }
-
-        // Click text iDevice
-        const textIdevice = page.locator('.idevice_item[id="text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-
-        // Wait for iDevice to appear in content area
-        await page.waitForFunction(
-            () => {
-                const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
-                return idevices.length > 0;
-            },
-            { timeout: 15000 },
-        );
+        // Select a non-root page and add a text iDevice to create a block
+        await selectFirstPage(page);
+        await addTextIdevice(page);
 
         // Wait a moment for the UI to stabilize
         await page.waitForTimeout(1000);
@@ -128,7 +82,10 @@ test.describe('Block Icon Selection Modal', () => {
         expect(emptyIconId).toBe('0'); // Empty icon should have id "0"
     });
 
-    test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }) => {
+    test('should return icons with proper ThemeIcon structure from API', async ({ authenticatedPage }, testInfo) => {
+        // Skip in static mode - requires server API endpoints
+        skipInStaticMode(test, testInfo, 'Requires server API endpoints');
+
         const page = authenticatedPage;
 
         // Directly call the themes API and verify icon structure

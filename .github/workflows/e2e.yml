@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        browser: [chromium, firefox]
+        browser: [chromium, firefox, static]
 
     steps:
       - name: Checkout code
@@ -47,12 +47,15 @@ jobs:
         run: make bundle
 
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        run: |
+          if [ "${{ matrix.browser }}" = "static" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install --with-deps ${{ matrix.browser }}
+          fi
 
       - name: E2E Tests (${{ matrix.browser }})
-        run: |
-          set -e
-          npx playwright test --project=${{ matrix.browser }}
+        run: make test-e2e-${{ matrix.browser }}
 
       - name: Upload Playwright Report
         if: always()

@@ -9,13 +9,13 @@
   width: 26em;
 }
 
-#websiteIdeviceForm .text1 {
+#websiteIdeviceForm .wif_text1 {
   font-weight: bold;
   padding-top: 0%;
   margin-bottom: 5px;
 }
 
-#websiteIdeviceForm .text2 {
+#websiteIdeviceForm .wif_text2 {
   display: block;
   font-size: 0.9em;
   margin-top: 0.4em;

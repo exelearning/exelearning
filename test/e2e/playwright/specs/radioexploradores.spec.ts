@@ -12,83 +12,10 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
+import { openElpFile, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 
 const ELP_FIXTURE = 'radioexploradores.elp';
-
-/**
- * Open the ELP fixture via File menu -> Open
- * This opens the file as a new project (replacing the current one)
- */
-async function openElpFixture(page: Page): Promise<void> {
-    const fixturePath = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
-
-    // Open File menu
-    await page.locator('#dropdownFile').click();
-    await page.waitForTimeout(300);
-
-    // Click Open option (not Import)
-    const openOption = page.locator('#navbar-button-openuserodefiles');
-    await expect(openOption).toBeVisible({ timeout: 5000 });
-    await openOption.click();
-
-    // Wait for the Open modal to appear
-    const openModal = page.locator('#modalOpenUserOdeFiles');
-    await expect(openModal).toBeVisible({ timeout: 10000 });
-
-    // Setup file chooser BEFORE clicking the upload button
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-
-    // Click "Select a file from your device" button in the modal
-    const uploadButton = openModal.locator('.ode-files-button-upload');
-    await expect(uploadButton).toBeVisible({ timeout: 5000 });
-    await uploadButton.click();
-
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
-
-    // Handle "Open without saving" confirmation dialog - it appears when opening a file
-    // while another project is already open
-    const sessionLogoutModal = page.locator('#modalSessionLogout');
-    try {
-        await sessionLogoutModal.waitFor({ state: 'visible', timeout: 5000 });
-        const openWithoutSavingBtn = sessionLogoutModal.locator('button.session-logout-without-save');
-        await openWithoutSavingBtn.click();
-    } catch {
-        // Modal didn't appear - that's fine, continue
-    }
-
-    // Wait for file to be processed - Yjs navigation has pages
-    await page.waitForFunction(
-        () => {
-            try {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                if (!bridge) return false;
-                const docManager = bridge.getDocumentManager();
-                if (!docManager || !docManager.initialized) return false;
-                const yDoc = docManager.getDoc();
-                if (!yDoc) return false;
-                const navigation = yDoc.getArray('navigation');
-                return navigation && navigation.length >= 1;
-            } catch {
-                // Document may be reinitializing, wait and retry
-                return false;
-            }
-        },
-        { timeout: 90000 },
-    );
-
-    // Wait for loading screen to hide
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-
-    // Wait for import progress overlay to disappear (if present)
-    await page.waitForFunction(() => !document.querySelector('#import-progress-overlay'), { timeout: 30000 });
-
-    // Additional wait for all handlers to complete
-    await page.waitForTimeout(3000);
-}
+const FIXTURE_PATH = path.resolve(__dirname, `../../../fixtures/more/${ELP_FIXTURE}`);
 
 /**
  * Get iDevice data directly from Yjs by searching for component type
@@ -186,20 +113,11 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
             // Open ELP
-            await openElpFixture(page);
+            await openElpFile(page, FIXTURE_PATH);
 
             // Get relate data directly from Yjs
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
@@ -226,20 +144,11 @@ test.describe('radioexploradores.elp Import Tests', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Relate Edit Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
             // Open ELP
-            await openElpFixture(page);
+            await openElpFile(page, FIXTURE_PATH);
 
             // Find which page contains the relate iDevice
             const pageWithRelate = await page.evaluate(() => {
@@ -332,20 +241,11 @@ test.describe('radioexploradores.elp Import Tests', () => {
             });
 
             const projectUuid = await createProject(page, 'Full Import Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge !== undefined, {
-                timeout: 30000,
-            });
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
 
             // Open ELP
-            await openElpFixture(page);
+            await openElpFile(page, FIXTURE_PATH);
 
             // Wait for processing
             await page.waitForTimeout(3000);
