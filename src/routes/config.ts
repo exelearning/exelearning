@@ -703,10 +703,11 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
 
     // GET /api/parameter-management/parameters/data/list - Get ALL parameters (expected by frontend)
     // Applies translations based on Accept-Language header
-    .get('/api/parameter-management/parameters/data/list', async ({ request }) => {
-        // Detect locale from Accept-Language header
+    .get('/api/parameter-management/parameters/data/list', async ({ request, query }) => {
+        // Prioritize locale query param (from user preference), then Accept-Language header
+        const localeParam = (query as { locale?: string })?.locale;
         const acceptLanguage = request.headers.get('accept-language');
-        const locale = detectLocaleFromHeader(acceptLanguage);
+        const locale = localeParam || detectLocaleFromHeader(acceptLanguage);
         const canInstallThemes = await getSettingBoolean(
             defaultDb,
             'ONLINE_THEMES_INSTALL',
