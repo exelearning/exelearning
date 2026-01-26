@@ -432,8 +432,10 @@ test.describe('Text iDevice', () => {
             const editorDialog = page.locator('.tox-dialog').nth(1);
             await expect(editorDialog).toBeVisible({ timeout: 10000 });
 
-            // Find the mindmap editor iframe (served from /api/exemindmap-editor/)
-            const mindmapFrame = page.frameLocator('iframe[src*="exemindmap-editor"]');
+            // Find the mindmap editor iframe
+            // Server mode: /api/exemindmap-editor/index.html
+            // Static mode: ./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html
+            const mindmapFrame = page.frameLocator('iframe[src*="exemindmap"]');
 
             // Verify key UI elements are visible inside the iframe (NOT blank)
             // The mindmap editor should have toolbar and canvas elements
