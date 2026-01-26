@@ -4408,4 +4408,186 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.getCurrentOrder).toBe('function');
         });
     });
+
+    describe('_getIdeviceTypeIconHtml', () => {
+        it('returns empty string when idevice is null', () => {
+            idevice.idevice = null;
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when idevice has no icon', () => {
+            idevice.idevice = { title: 'Test', name: 'test' };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns exe-icon SVG when icon.type is exe-icon', () => {
+            idevice.idevice = {
+                title: 'Test iDevice',
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Test iDevice"');
+            expect(result).toContain('<svg>icon</svg>');
+        });
+
+        it('returns img background when icon.type is img with url', () => {
+            idevice.idevice = {
+                title: 'Image iDevice',
+                path: '/path/to/idevice',
+                icon: {
+                    type: 'img',
+                    url: 'icon.png',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('<div class="idevice-type-icon idevice-img-icon');
+            expect(result).toContain('exe-app-tooltip');
+            expect(result).toContain('title="Image iDevice"');
+            expect(result).toContain("background-image: url('/path/to/idevice/icon.png')");
+        });
+
+        it('returns empty string for unknown icon type', () => {
+            idevice.idevice = {
+                title: 'Unknown',
+                icon: {
+                    type: 'unknown-type',
+                    name: 'something',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('returns empty string when img type has no url', () => {
+            idevice.idevice = {
+                title: 'No URL',
+                icon: {
+                    type: 'img',
+                    url: '',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toBe('');
+        });
+
+        it('uses odeIdeviceTypeName when idevice.title is missing', () => {
+            idevice.odeIdeviceTypeName = 'FallbackType';
+            idevice.idevice = {
+                icon: {
+                    type: 'exe-icon',
+                    name: '<svg>icon</svg>',
+                },
+            };
+
+            const result = idevice._getIdeviceTypeIconHtml();
+
+            expect(result).toContain('title="FallbackType"');
+        });
+    });
+
+    describe('loadPropertiesFromYjs edge cases', () => {
+        it('does nothing when structureBinding is null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: null,
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('');
+        });
+
+        it('does nothing when getComponentProperties returns null', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => null),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('');
+        });
+
+        it('ignores unknown property keys from Yjs', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                structureBinding: {
+                    getComponentProperties: vi.fn(() => ({
+                        unknownProp: 'value',
+                        identifier: 'yjs-id',
+                    })),
+                },
+            };
+
+            idevice.loadPropertiesFromYjs();
+
+            expect(idevice.properties.identifier.value).toBe('yjs-id');
+            expect(idevice.properties.unknownProp).toBeUndefined();
+        });
+    });
+
+    describe('findInstalledIdevice additional cases', () => {
+        it('returns null when typeName is null', () => {
+            const result = idevice.findInstalledIdevice(null);
+            expect(result).toBeNull();
+        });
+
+        it('returns null when typeName is undefined', () => {
+            const result = idevice.findInstalledIdevice(undefined);
+            expect(result).toBeNull();
+        });
+
+        it('strips Idevice suffix for mapping lookup', () => {
+            const result = idevice.findInstalledIdevice('FreeTextIdevice');
+            expect(result).not.toBeNull();
+            expect(result.name).toBe('text');
+        });
+    });
+
+    describe('cleanupInactivityTracker additional cases', () => {
+        it('handles when both inactivityCleanup and inactivityTimer exist', () => {
+            const cleanupFn = vi.fn();
+            idevice.inactivityCleanup = cleanupFn;
+            idevice.inactivityTimer = setTimeout(() => {}, 10000);
+
+            idevice.cleanupInactivityTracker();
+
+            expect(cleanupFn).toHaveBeenCalled();
+            expect(idevice.inactivityCleanup).toBeNull();
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+
+        it('clears timer directly when inactivityCleanup is null', () => {
+            const timerId = setTimeout(() => {}, 10000);
+            idevice.inactivityCleanup = null;
+            idevice.inactivityTimer = timerId;
+            const clearSpy = vi.spyOn(global, 'clearTimeout');
+
+            idevice.cleanupInactivityTracker();
+
+            expect(clearSpy).toHaveBeenCalledWith(timerId);
+            expect(idevice.inactivityTimer).toBeNull();
+        });
+    });
 });

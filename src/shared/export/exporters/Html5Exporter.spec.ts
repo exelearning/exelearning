@@ -1977,6 +1977,144 @@ describe('Html5Exporter', () => {
         });
     });
 
+    describe('detectFavicon', () => {
+        it('should prioritize favicon.ico over favicon.png', () => {
+            // Create theme files with both ico and png
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.ico', new Uint8Array([1, 2, 3]));
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            // Access protected method via indexing
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            // Should prefer .ico over .png
+            expect(result).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+
+        it('should return png favicon when ico is not present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toEqual({ path: 'theme/img/favicon.png', type: 'image/png' });
+        });
+
+        it('should return null when no favicon is present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('style.css', new Uint8Array([1, 2, 3]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('prepareThemeData', () => {
+        it('should extract root-level CSS and JS files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('style.js', Buffer.from('// js'));
+                files.set('extra.css', Buffer.from('/* extra */'));
+                files.set('subfolder/nested.css', Buffer.from('/* nested */'));
+                files.set('subfolder/nested.js', Buffer.from('// nested js'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('test-theme');
+
+            // Should only include root-level CSS/JS files (no path separator)
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeRootFiles).toContain('extra.css');
+            // Should NOT include nested files
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.css');
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.js');
+        });
+
+        it('should use fallback when theme fetch fails', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                throw new Error('Theme not found');
+            };
+
+            const result = await (exporter as any).prepareThemeData('nonexistent-theme');
+
+            // Should use fallback files
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeFilesMap).toBeNull();
+            expect(result.faviconInfo).toBeNull();
+        });
+
+        it('should detect favicon from theme files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('img/favicon.ico', Buffer.from('ico-data'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('theme-with-favicon');
+
+            expect(result.faviconInfo).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+    });
+
+    describe('Combined LaTeX and Mermaid CSS', () => {
+        it('should append both LaTeX and Mermaid CSS when both are rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssContent).toContain('.exe-math-rendered');
+            expect(cssContent).toContain('.exe-mermaid-rendered');
+        });
+
+        it('should append both LaTeX and Mermaid CSS in generateForPreview', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const decoder = new TextDecoder();
+            const cssText = decoder.decode(baseCss as Uint8Array);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssText).toContain('.exe-math-rendered');
+            expect(cssText).toContain('.exe-mermaid-rendered');
+        });
+    });
+
     describe('Icon Resolution via setThemeIconFiles', () => {
         it('should configure IdeviceRenderer with theme icon files', async () => {
             // Override fetchTheme to include icon files

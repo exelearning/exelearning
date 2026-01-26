@@ -2232,4 +2232,197 @@ describe('NavbarFile', () => {
             expect(result.error).toContain('bad');
         });
     });
+
+    describe('checkAndShowNewFromTemplateButton static mode', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should skip fetch when capabilities.storage.remote is false', async () => {
+            // Set up static mode (no remote storage)
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            global.fetch = vi.fn();
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Should NOT call fetch when in static mode
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should proceed to fetch when capabilities is undefined', async () => {
+            // No capabilities defined (legacy mode)
+            delete eXeLearning.app.capabilities;
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ templates: [] }),
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Should call fetch when capabilities is not defined
+            expect(global.fetch).toHaveBeenCalled();
+        });
+
+        it('should proceed to fetch when storage.remote is true', async () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ templates: [] }),
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            expect(global.fetch).toHaveBeenCalled();
+        });
+
+        it('should handle non-ok API response', async () => {
+            delete eXeLearning.app.capabilities;
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Button should stay hidden on 404
+            expect(li.classList.contains('d-none')).toBe(true);
+        });
+    });
+
+    describe('null button safety in set*Event methods', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        // Tests for methods that have explicit null checks in the source code
+        it('setSettingsEvent should return early when button is null', () => {
+            navbarFile.settingsButton = null;
+            expect(() => navbarFile.setSettingsEvent()).not.toThrow();
+        });
+
+        it('setShareEvent should return early when button is null', () => {
+            navbarFile.shareButton = null;
+            expect(() => navbarFile.setShareEvent()).not.toThrow();
+        });
+
+        it('setOpenOfflineEvent should return early when button is null', () => {
+            navbarFile.openOfflineButton = null;
+            expect(() => navbarFile.setOpenOfflineEvent()).not.toThrow();
+        });
+
+        it('setUploadPlatformEvent should not throw when both buttons are null', () => {
+            navbarFile.uploadPlatformButton = null;
+            navbarFile.finishButton = null;
+            expect(() => navbarFile.setUploadPlatformEvent()).not.toThrow();
+        });
+
+        it('setDownloadProjectAsEvent should return early when button is null', () => {
+            navbarFile.downloadProjectAsButton = null;
+            expect(() => navbarFile.setDownloadProjectAsEvent()).not.toThrow();
+        });
+
+        it('setSaveProjectOfflineEvent should return early when button is null', () => {
+            navbarFile.saveOfflineButton = null;
+            expect(() => navbarFile.setSaveProjectOfflineEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5AsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5AsButton = null;
+            expect(() => navbarFile.setExportHTML5AsEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5FolderAsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5FolderAsButton = null;
+            expect(() => navbarFile.setExportHTML5FolderAsEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5SPAsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5SPAsButton = null;
+            expect(() => navbarFile.setExportHTML5SPAsEvent()).not.toThrow();
+        });
+
+        it('setExportPrintEvent should return early when button is null', () => {
+            navbarFile.exportPrintButton = null;
+            expect(() => navbarFile.setExportPrintEvent()).not.toThrow();
+        });
+
+        it('setExportSCORM12AsEvent should return early when button is null', () => {
+            navbarFile.exportSCORM12AsButton = null;
+            expect(() => navbarFile.setExportSCORM12AsEvent()).not.toThrow();
+        });
+
+        it('setExportSCORM2004AsEvent should return early when button is null', () => {
+            navbarFile.exportSCORM2004AsButton = null;
+            expect(() => navbarFile.setExportSCORM2004AsEvent()).not.toThrow();
+        });
+
+        it('setExportIMSAsEvent should return early when button is null', () => {
+            navbarFile.exportIMSAsButton = null;
+            expect(() => navbarFile.setExportIMSAsEvent()).not.toThrow();
+        });
+
+        it('setExportEPUB3AsEvent should return early when button is null', () => {
+            navbarFile.exportEPUB3AsButton = null;
+            expect(() => navbarFile.setExportEPUB3AsEvent()).not.toThrow();
+        });
+
+        it('setExportXmlPropertiesAsEvent should return early when button is null', () => {
+            navbarFile.exportXmlPropertiesAsButton = null;
+            expect(() => navbarFile.setExportXmlPropertiesAsEvent()).not.toThrow();
+        });
+
+        it('setImportElpEvent should return early when button is null', () => {
+            navbarFile.importElpButton = null;
+            expect(() => navbarFile.setImportElpEvent()).not.toThrow();
+        });
+    });
+
+    describe('openClientPreview additional edge cases', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should return false when yjsBridge is null', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = null;
+
+            const result = await navbarFile.openClientPreview();
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false when documentManager is null', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = { documentManager: null };
+
+            const result = await navbarFile.openClientPreview();
+
+            expect(result).toBe(false);
+        });
+
+        it('should work without toast when toasts.createToast is unavailable', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {},
+                assetCache: new Map(),
+            };
+            eXeLearning.app.toasts.createToast = null;
+
+            // Mock PreviewExporter with preview method that returns success
+            window.PreviewExporter = vi.fn().mockImplementation(() => ({
+                preview: vi.fn().mockResolvedValue({
+                    success: true,
+                }),
+            }));
+
+            // This should not throw even though createToast is null
+            const result = await navbarFile.openClientPreview();
+
+            // Function returns true after successful preview
+            expect(result).toBe(true);
+
+            delete window.PreviewExporter;
+        });
+    });
 });

@@ -178,5 +178,198 @@ describe('WebFileSystem', () => {
         it('should throw for unsupported type', async () => {
             await expect(adapter._toBlob('string')).rejects.toThrow('Unsupported data type');
         });
+
+        it('should use custom mimeType when provided', async () => {
+            const data = new Uint8Array([1, 2, 3]);
+            const result = await adapter._toBlob(data, 'application/zip');
+            expect(result).toBeInstanceOf(Blob);
+            expect(result.type).toBe('application/zip');
+        });
+
+        it('should use default mimeType when not provided', async () => {
+            const data = new Uint8Array([1, 2, 3]);
+            const result = await adapter._toBlob(data);
+            expect(result.type).toBe('application/octet-stream');
+        });
+
+        it('should throw for null data', async () => {
+            await expect(adapter._toBlob(null)).rejects.toThrow('Unsupported data type');
+        });
+
+        it('should throw for number data', async () => {
+            await expect(adapter._toBlob(123)).rejects.toThrow('Unsupported data type');
+        });
+    });
+
+    describe('open', () => {
+        let createElement;
+        let mockInput;
+
+        beforeEach(() => {
+            mockInput = {
+                type: '',
+                accept: '',
+                onchange: null,
+                oncancel: null,
+                click: vi.fn(),
+            };
+            createElement = vi.spyOn(document, 'createElement').mockReturnValue(mockInput);
+        });
+
+        afterEach(() => {
+            createElement.mockRestore();
+        });
+
+        it('should create file input and trigger click', async () => {
+            // Start the open() promise but don't await it yet
+            const openPromise = adapter.open(['.elp', '.elpx']);
+
+            // File input should have been created and clicked
+            expect(createElement).toHaveBeenCalledWith('input');
+            expect(mockInput.type).toBe('file');
+            expect(mockInput.accept).toBe('.elp,.elpx');
+            expect(mockInput.click).toHaveBeenCalled();
+
+            // Simulate file selection
+            const mockFile = new File([new Uint8Array([1, 2, 3])], 'test.elp', { type: 'application/octet-stream' });
+            mockInput.onchange({
+                target: { files: [mockFile] },
+            });
+
+            const result = await openPromise;
+            expect(result.success).toBe(true);
+            expect(result.name).toBe('test.elp');
+            expect(result.data).toBeInstanceOf(Uint8Array);
+        });
+
+        it('should add dots to extensions without them', async () => {
+            const openPromise = adapter.open(['elp', 'elpx']);
+
+            expect(mockInput.accept).toBe('.elp,.elpx');
+
+            // Cancel to complete the promise
+            mockInput.oncancel();
+            await openPromise;
+        });
+
+        it('should handle cancel event', async () => {
+            const openPromise = adapter.open(['.elp']);
+
+            mockInput.oncancel();
+
+            const result = await openPromise;
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Canceled by user');
+        });
+
+        it('should handle no file selected', async () => {
+            const openPromise = adapter.open(['.elp']);
+
+            mockInput.onchange({
+                target: { files: [] },
+            });
+
+            const result = await openPromise;
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('No file selected');
+        });
+
+        it('should handle null files array', async () => {
+            const openPromise = adapter.open(['.elp']);
+
+            mockInput.onchange({
+                target: { files: null },
+            });
+
+            const result = await openPromise;
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('No file selected');
+        });
+
+        it('should handle file read error', async () => {
+            const openPromise = adapter.open(['.elp']);
+
+            const mockFile = {
+                name: 'test.elp',
+                arrayBuffer: vi.fn().mockRejectedValue(new Error('Read error')),
+            };
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            mockInput.onchange({
+                target: { files: [mockFile] },
+            });
+
+            const result = await openPromise;
+            expect(result.success).toBe(false);
+            expect(result.error).toBe('Read error');
+            consoleSpy.mockRestore();
+        });
+
+        it('should not set accept if no extensions provided', async () => {
+            const openPromise = adapter.open([]);
+
+            // Empty array - should not set accept
+            expect(mockInput.accept).toBe('');
+
+            mockInput.oncancel();
+            await openPromise;
+        });
+
+        it('should not set accept if extensions is null', async () => {
+            const openPromise = adapter.open(null);
+
+            expect(mockInput.accept).toBe('');
+
+            mockInput.oncancel();
+            await openPromise;
+        });
+    });
+
+    describe('_download', () => {
+        it('should revoke blob URL after delay', async () => {
+            vi.useFakeTimers();
+
+            const data = new Uint8Array([1, 2, 3]);
+            const blobUrl = 'blob:test-url';
+            const createObjectURL = vi.fn().mockReturnValue(blobUrl);
+            const revokeObjectURL = vi.fn();
+            window.URL.createObjectURL = createObjectURL;
+            window.URL.revokeObjectURL = revokeObjectURL;
+
+            const link = { click: vi.fn(), style: {} };
+            vi.spyOn(document, 'createElement').mockReturnValue(link);
+            vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
+            vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+
+            await adapter._download(data, 'test.txt');
+
+            expect(revokeObjectURL).not.toHaveBeenCalled();
+
+            vi.advanceTimersByTime(10000);
+
+            expect(revokeObjectURL).toHaveBeenCalledWith(blobUrl);
+
+            vi.useRealTimers();
+        });
+
+        it('should handle mimeType option', async () => {
+            const data = new Uint8Array([1, 2, 3]);
+            const createObjectURL = vi.fn().mockReturnValue('blob:test');
+            window.URL.createObjectURL = createObjectURL;
+            window.URL.revokeObjectURL = vi.fn();
+
+            const link = { click: vi.fn(), style: {} };
+            vi.spyOn(document, 'createElement').mockReturnValue(link);
+            vi.spyOn(document.body, 'appendChild').mockImplementation(() => {});
+            vi.spyOn(document.body, 'removeChild').mockImplementation(() => {});
+
+            const toBlobSpy = vi.spyOn(adapter, '_toBlob');
+
+            await adapter._download(data, 'test.zip', { mimeType: 'application/zip' });
+
+            expect(toBlobSpy).toHaveBeenCalledWith(data, 'application/zip');
+
+            toBlobSpy.mockRestore();
+        });
     });
 });

@@ -1919,6 +1919,434 @@ describe('App utility methods', () => {
   });
 });
 
+describe('refreshTranslations', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+  });
+
+  it('calls _domTranslator.refresh when domTranslator exists', () => {
+    const mockRefresh = vi.fn();
+    appInstance._domTranslator = { refresh: mockRefresh };
+
+    appInstance.refreshTranslations();
+
+    expect(mockRefresh).toHaveBeenCalled();
+  });
+
+  it('does nothing when _domTranslator is null', () => {
+    appInstance._domTranslator = null;
+
+    // Should not throw
+    expect(() => appInstance.refreshTranslations()).not.toThrow();
+  });
+
+  it('does nothing when _domTranslator is undefined', () => {
+    appInstance._domTranslator = undefined;
+
+    // Should not throw
+    expect(() => appInstance.refreshTranslations()).not.toThrow();
+  });
+});
+
+describe('_waitForController edge cases', () => {
+  let appInstance;
+  let originalServiceWorker;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    originalServiceWorker = navigator.serviceWorker;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('resolves immediately when controller already exists', async () => {
+    const mockController = { postMessage: vi.fn() };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: mockController,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const result = await appInstance._waitForController(1000);
+
+    expect(result).toBe(mockController);
+  });
+
+  it('resolves when controllerchange event fires', async () => {
+    const mockController = { postMessage: vi.fn() };
+    let controllerChangeCallback;
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        addEventListener: vi.fn((event, cb) => {
+          if (event === 'controllerchange') {
+            controllerChangeCallback = cb;
+          }
+        }),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const promise = appInstance._waitForController(5000);
+
+    // Simulate controller becoming available
+    navigator.serviceWorker.controller = mockController;
+    controllerChangeCallback();
+
+    const result = await promise;
+    expect(result).toBe(mockController);
+    expect(navigator.serviceWorker.removeEventListener).toHaveBeenCalledWith('controllerchange', controllerChangeCallback);
+  });
+
+  it('rejects on timeout and cleans up event listener', async () => {
+    vi.useFakeTimers();
+
+    let controllerChangeCallback;
+    const removeEventListenerSpy = vi.fn();
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        addEventListener: vi.fn((event, cb) => {
+          if (event === 'controllerchange') {
+            controllerChangeCallback = cb;
+          }
+        }),
+        removeEventListener: removeEventListenerSpy,
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    const promise = appInstance._waitForController(100);
+
+    vi.advanceTimersByTime(150);
+
+    await expect(promise).rejects.toThrow('Controller timeout');
+    expect(removeEventListenerSpy).toHaveBeenCalledWith('controllerchange', controllerChangeCallback);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('registerPreviewServiceWorker secure context checks', () => {
+  let appInstance;
+  let originalServiceWorker;
+  let originalIsSecureContext;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    originalServiceWorker = navigator.serviceWorker;
+    originalIsSecureContext = window.isSecureContext;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: originalIsSecureContext,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('registers SW when protocol is app: (Electron)', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    const mockRegistration = {
+      active: { postMessage: vi.fn(), state: 'activated' },
+      installing: null,
+      addEventListener: vi.fn(),
+    };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn().mockResolvedValue(mockRegistration),
+        getRegistration: vi.fn().mockResolvedValue(null),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'app:', hostname: 'app', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+
+  it('registers SW when hostname is 127.0.0.1', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    const mockRegistration = {
+      active: { postMessage: vi.fn(), state: 'activated' },
+      installing: null,
+      addEventListener: vi.fn(),
+    };
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn().mockResolvedValue(mockRegistration),
+        getRegistration: vi.fn().mockResolvedValue(null),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'http:', hostname: '127.0.0.1', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+
+  it('returns null in non-secure context without allowed protocols', async () => {
+    Object.defineProperty(window, 'isSecureContext', { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: {
+        controller: null,
+        register: vi.fn(),
+        getRegistration: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { protocol: 'http:', hostname: 'example.com', pathname: '/' };
+
+    const result = await appInstance.registerPreviewServiceWorker();
+
+    expect(result).toBeNull();
+    expect(navigator.serviceWorker.register).not.toHaveBeenCalled();
+    window.location = originalLocation;
+  });
+});
+
+describe('sendContentToPreviewSW READY_VERIFIED path', () => {
+  let appInstance;
+  let mockController;
+  let originalServiceWorker;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    mockController = { postMessage: vi.fn() };
+    originalServiceWorker = navigator.serviceWorker;
+
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: { controller: mockController },
+      writable: true,
+      configurable: true,
+    });
+    appInstance._previewSwRegistration = { active: mockController };
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    Object.defineProperty(navigator, 'serviceWorker', {
+      value: originalServiceWorker,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('resolves directly on READY_VERIFIED response without verify step', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        // SW responds directly with READY_VERIFIED on same channel
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'READY_VERIFIED', ready: true, fileCount: 1 },
+          });
+        }, 10);
+      }
+    });
+
+    const result = await appInstance.sendContentToPreviewSW(files);
+
+    expect(result.fileCount).toBe(1);
+    expect(messageChannels[0].port1.close).toHaveBeenCalled();
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+
+  it('rejects when READY_VERIFIED returns not ready', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'READY_VERIFIED', ready: false, fileCount: 0 },
+          });
+        }, 10);
+      }
+    });
+
+    await expect(appInstance.sendContentToPreviewSW(files)).rejects.toThrow('SW content not ready after verification');
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+
+  it('rejects when VERIFY_READY returns not ready', async () => {
+    const files = { 'index.html': '<html></html>' };
+    const messageChannels = [];
+    const OriginalMessageChannel = globalThis.MessageChannel;
+
+    globalThis.MessageChannel = function MockMessageChannel() {
+      const channel = {
+        port1: { onmessage: null, close: vi.fn() },
+        port2: {},
+      };
+      messageChannels.push(channel);
+      return channel;
+    };
+
+    mockController.postMessage = vi.fn((msg) => {
+      if (msg.type === 'SET_CONTENT') {
+        setTimeout(() => {
+          messageChannels[0].port1.onmessage({
+            data: { type: 'CONTENT_READY', fileCount: 1 },
+          });
+        }, 10);
+      } else if (msg.type === 'VERIFY_READY') {
+        setTimeout(() => {
+          messageChannels[1].port1.onmessage({
+            data: { ready: false, fileCount: 0 },
+          });
+        }, 5);
+      }
+    });
+
+    await expect(appInstance.sendContentToPreviewSW(files)).rejects.toThrow('SW content not ready after verification');
+
+    globalThis.MessageChannel = OriginalMessageChannel;
+  });
+});
+
+describe('bindElectronDownloadToasts exception handling', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    delete window.electronAPI;
+    document.body.innerHTML = '';
+  });
+
+  it('handles exception in download handler gracefully', () => {
+    let downloadCallback;
+    window.electronAPI = {
+      onDownloadDone: (cb) => { downloadCallback = cb; },
+    };
+    appInstance.toasts = {
+      createToast: vi.fn(() => { throw new Error('Toast creation failed'); }),
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    appInstance.bindElectronDownloadToasts();
+
+    // Should not throw even when toast creation fails
+    expect(() => downloadCallback({ ok: true, path: '/test/path.elpx' })).toThrow('Toast creation failed');
+  });
+});
+
 describe('Module-level event handlers', () => {
   beforeEach(() => {
     // Setup window.eXeLearning for module-level tests

@@ -185,6 +185,29 @@ describe('modalOpenUserOdeFiles', () => {
       expect(modal.uploadLimits.maxFileSize).toBe(100 * 1024 * 1024);
       expect(modal.uploadLimits.maxFileSizeFormatted).toBe('100 MB');
     });
+
+    it('should use static mode defaults when capabilities.storage.remote is false', async () => {
+      // Clear any calls from modal construction
+      window.eXeLearning.app.api.getUploadLimits.mockClear();
+
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).not.toHaveBeenCalled();
+      expect(modal.uploadLimits.maxFileSize).toBe(100 * 1024 * 1024);
+      expect(modal.uploadLimits.maxFileSizeFormatted).toBe('100 MB');
+    });
+
+    it('should call API when capabilities.storage.remote is true', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: true } };
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalled();
+    });
+
+    it('should call API when capabilities is undefined', async () => {
+      delete window.eXeLearning.app.capabilities;
+      await modal.loadUploadLimits();
+      expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalled();
+    });
   });
 
   describe('validateFileSize', () => {
