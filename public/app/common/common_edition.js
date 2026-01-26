@@ -732,7 +732,12 @@ var $exeDevicesEdition = {
                     // Load user's default AI preference and select it
                     if (window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
                         const defaultAI = eXeLearning.app.user.preferences.preferences.defaultAI.value;
-                        $iaSelect.val(defaultAI);
+                        if ($iaSelect.find(`option[value="${defaultAI}"]`).length) {
+                            $iaSelect.val(defaultAI);
+                        } else {
+                            // Fallback to the first option when the saved value is invalid
+                            $iaSelect.val($iaSelect.find('option').first().val());
+                        }
                     }
 
                     // Save preference when user changes the AI selection
@@ -827,6 +832,10 @@ var $exeDevicesEdition = {
                         }
                         const encodedPrompt = encodeURIComponent(prompt.trim());
                         const baseUrl = $iaSelect.val();
+                        if (!baseUrl) {
+                            alert(_('Please select an AI assistant.'));
+                            return;
+                        }
                         const url = `${baseUrl}${encodedPrompt}`;
                         window.open(url, '_blank');
                     });

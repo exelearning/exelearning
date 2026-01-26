@@ -1050,6 +1050,32 @@ describe('common_edition.js', () => {
       expect($('#eXeEIASelect').val()).toBe('https://claude.ai/new?q=');
     });
 
+    it('falls back to default when saved preference is invalid', () => {
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                defaultAI: { value: 'https://invalid.ai/?q=' }
+              },
+              apiSaveProperties: vi.fn()
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      expect($('#eXeEIASelect').val()).toBe('https://chatgpt.com/?q=');
+    });
+
     it('uses default (ChatGPT) when no user preference is set', () => {
       // Setup eXeLearning global without defaultAI preference
       globalThis.eXeLearning = {
