@@ -919,12 +919,15 @@ class AssetManager {
       return 0;
     }
 
-    // Build the old and new reference patterns
-    // Handle URL-encoded filenames as well
-    const oldRef = `asset://${assetId}/${oldFilename}`;
-    const newRef = `asset://${assetId}/${newFilename}`;
-    const oldRefEncoded = `asset://${assetId}/${encodeURIComponent(oldFilename)}`;
-    const newRefEncoded = `asset://${assetId}/${encodeURIComponent(newFilename)}`;
+    // Build the old and new reference patterns using getAssetUrl
+    // New format: asset://uuid.ext - no filename in URL, so rename doesn't affect references
+    const oldRef = this.getAssetUrl(assetId, oldFilename);
+    const newRef = this.getAssetUrl(assetId, newFilename);
+    // For backwards compatibility with legacy format (asset://uuid/filename)
+    const oldRefLegacy = `asset://${assetId}/${oldFilename}`;
+    const newRefLegacy = `asset://${assetId}/${newFilename}`;
+    const oldRefLegacyEncoded = `asset://${assetId}/${encodeURIComponent(oldFilename)}`;
+    const newRefLegacyEncoded = `asset://${assetId}/${encodeURIComponent(newFilename)}`;
 
     let updatedCount = 0;
 
@@ -947,15 +950,19 @@ class AssetManager {
 
         if (!content) return;
 
-        // Check if this content contains the old reference
-        if (!content.includes(oldRef) && !content.includes(oldRefEncoded)) {
+        // Check if this content contains any old reference (new or legacy format)
+        const hasOldRef = content.includes(oldRef) || content.includes(oldRefLegacy) || content.includes(oldRefLegacyEncoded);
+        if (!hasOldRef) {
           return;
         }
 
-        // Replace all occurrences
+        // Replace all occurrences (both new and legacy formats -> new format)
         let newContent = content;
+        // New format: asset://uuid.ext
         newContent = newContent.split(oldRef).join(newRef);
-        newContent = newContent.split(oldRefEncoded).join(newRefEncoded);
+        // Legacy formats: asset://uuid/filename -> new format
+        newContent = newContent.split(oldRefLegacy).join(newRef);
+        newContent = newContent.split(oldRefLegacyEncoded).join(newRef);
 
         // Update the Y.Text
         if (htmlContent instanceof Y.Text) {
@@ -1852,7 +1859,7 @@ class AssetManager {
           Logger.log(`[AssetManager] Updated folderPath for existing asset: ${assetId}`);
         }
         Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
-        return `asset://${assetId}/${existing.filename || file.name}`;
+        return this.getAssetUrl(assetId, existing.filename || file.name);
       }
 
       // Asset exists but blob is NOT for current project (or no blob at all)

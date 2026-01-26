@@ -74,8 +74,11 @@ class YjsTinyMCEBinding {
 
       // Check cache first
       if (assetManager?.blobURLCache) {
-        const parts = url.replace('asset://', '').split('/');
-        const assetId = parts[0];
+        // Handle both formats: uuid.ext (new) and uuid/path (legacy)
+        const urlPart = url.replace('asset://', '');
+        const assetId = urlPart.includes('/')
+          ? urlPart.split('/')[0]  // legacy: uuid/path
+          : urlPart.split('.')[0]; // new: uuid.ext (or just uuid if no extension)
         if (assetManager.blobURLCache.has(assetId)) {
           return assetManager.blobURLCache.get(assetId);
         }
