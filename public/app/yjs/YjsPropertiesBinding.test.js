@@ -837,4 +837,142 @@ describe('YjsPropertiesBinding', () => {
       expect(select.dataset.legacyValue).toBeUndefined();
     });
   });
+
+  describe('syncLanguageToApp', () => {
+    beforeEach(() => {
+      // Setup eXeLearning mock with locale and project properties
+      window.eXeLearning = {
+        app: {
+          locale: {
+            loadContentTranslationsStrings: mock(() => Promise.resolve()),
+          },
+          project: {
+            properties: {
+              properties: {
+                pp_lang: { value: 'en' },
+              },
+            },
+          },
+          interface: {
+            odeTitleElement: {
+              checkTitleLineCount: mock(() => undefined),
+            },
+          },
+        },
+      };
+    });
+
+    it('updates pp_lang.value when language changes', async () => {
+      binding.metadata.set('language', 'es');
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.project.properties.properties.pp_lang.value).toBe('es');
+    });
+
+    it('calls loadContentTranslationsStrings with new language', async () => {
+      binding.metadata.set('language', 'fr');
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('fr');
+    });
+
+    it('does nothing if language is not set', async () => {
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).not.toHaveBeenCalled();
+    });
+
+    it('handles missing project properties gracefully', async () => {
+      window.eXeLearning.app.project = null;
+      binding.metadata.set('language', 'de');
+
+      // Should not throw
+      await binding.syncLanguageToApp();
+
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('de');
+    });
+
+    it('handles missing locale gracefully', async () => {
+      window.eXeLearning.app.locale = null;
+      binding.metadata.set('language', 'it');
+
+      // Should not throw
+      await binding.syncLanguageToApp();
+    });
+
+    it('skips update if pp_lang.value already matches', async () => {
+      window.eXeLearning.app.project.properties.properties.pp_lang.value = 'es';
+      binding.metadata.set('language', 'es');
+
+      await binding.syncLanguageToApp();
+
+      // Still calls loadContentTranslationsStrings (translations may need refresh)
+      expect(window.eXeLearning.app.locale.loadContentTranslationsStrings).toHaveBeenCalledWith('es');
+    });
+  });
+
+  describe('setupLanguageSyncObserver', () => {
+    it('sets up languageSyncObserver', () => {
+      expect(binding.languageSyncObserver).toBeNull();
+
+      binding.setupLanguageSyncObserver();
+
+      expect(binding.languageSyncObserver).toBeDefined();
+      expect(typeof binding.languageSyncObserver).toBe('function');
+    });
+
+    it('does not setup twice if already exists', () => {
+      binding.setupLanguageSyncObserver();
+      const firstObserver = binding.languageSyncObserver;
+
+      binding.setupLanguageSyncObserver();
+
+      expect(binding.languageSyncObserver).toBe(firstObserver);
+    });
+
+    it('observer calls syncLanguageToApp on language change', async () => {
+      const syncSpy = spyOn(binding, 'syncLanguageToApp').mockImplementation(() => Promise.resolve());
+      binding.setupLanguageSyncObserver();
+
+      // Trigger a language change
+      binding.metadata.set('language', 'pt');
+
+      // Wait for observer to be called
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(syncSpy).toHaveBeenCalled();
+    });
+
+    it('observer ignores non-language metadata changes', async () => {
+      const syncSpy = spyOn(binding, 'syncLanguageToApp').mockImplementation(() => Promise.resolve());
+      binding.setupLanguageSyncObserver();
+
+      // Trigger a non-language change
+      binding.metadata.set('title', 'New Title');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(syncSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('languageSyncObserver cleanup', () => {
+    it('unbindForm removes languageSyncObserver', () => {
+      binding.bindForm(mockFormElement);
+      expect(binding.languageSyncObserver).toBeDefined();
+
+      binding.unbindForm();
+
+      expect(binding.languageSyncObserver).toBeNull();
+    });
+
+    it('destroy removes languageSyncObserver', () => {
+      binding.setupLanguageSyncObserver();
+      expect(binding.languageSyncObserver).toBeDefined();
+
+      binding.destroy();
+
+      expect(binding.languageSyncObserver).toBeNull();
+    });
+  });
 });
