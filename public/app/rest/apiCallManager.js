@@ -53,9 +53,10 @@ export default class ApiCallManager {
         }
 
         // Priority 2: fetch bundle.json (for dev)
+        // In static mode, bundle.json is always relative to the current HTML file
+        // Don't use basePath here as it may include subdirectory paths that cause double-path issues
         try {
-            const basePath = this.apiUrlBasePath || '';
-            const bundleUrl = `${basePath}/data/bundle.json`.replace(/^\/+/, './');
+            const bundleUrl = './data/bundle.json';
             console.log(`[ApiCallManager] Fetching static data from ${bundleUrl}`);
             const response = await fetch(bundleUrl);
             if (response.ok) {
