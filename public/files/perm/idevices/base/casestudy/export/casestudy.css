@@ -14,10 +14,10 @@
     margin-bottom: 1em;
 }
 
-.caseStudyContent .CSP-FeedbackText {
+.caseStudyContent .CSP-ActivityDiv {
     margin-bottom: 2.5em;
 }
 
-.caseStudyContent .CSP-Activities .CSP-ActivityDiv:last-child .CSP-FeedbackText {
+.caseStudyContent .CSP-Activities .CSP-ActivityDiv:last-child {
     margin-bottom: 0;
 }

@@ -324,11 +324,12 @@
     font-size: 13px;
     font-family: monospace;
     color: var(--bs-gray-700, #495057);
+    width: auto!important;
 }
 
 #share-copy-button {
     border-radius: 0 8px 8px 0;
-    padding: 8px 16px;
+    padding: 3px 16px;
     display: flex;
     align-items: center;
     gap: 6px;

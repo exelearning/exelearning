@@ -116,13 +116,13 @@ async function enableSearchOption(page: Page): Promise<void> {
     await propertiesButton.click();
     await page.waitForTimeout(1000);
 
-    // Expand "Export options" section
-    const exportSection = page.getByRole('button', { name: /Export options|Opciones de exportación/i }).first();
-    await exportSection.scrollIntoViewIfNeeded({ timeout: 10000 });
+    // Select "Export options" tab (project properties now use tabs instead of accordion)
+    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
+    await exportTab.scrollIntoViewIfNeeded({ timeout: 10000 });
 
-    const isExpanded = (await exportSection.getAttribute('aria-expanded')) === 'true';
-    if (!isExpanded) {
-        await exportSection.click();
+    const isSelected = (await exportTab.getAttribute('aria-selected')) === 'true';
+    if (!isSelected) {
+        await exportTab.click();
         await page.waitForTimeout(500);
     }
 

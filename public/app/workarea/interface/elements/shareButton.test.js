@@ -10,13 +10,16 @@ describe('ShareProjectButton', () => {
   beforeEach(() => {
     // Mock DOM elements
     mockVisibilityIcon = {
-      textContent: '',
+      classList: {
+        add: vi.fn(),
+        remove: vi.fn(),
+      },
     };
 
     mockButton = {
       addEventListener: vi.fn(),
       querySelector: vi.fn((selector) => {
-        if (selector === '.share-visibility-icon') return mockVisibilityIcon;
+        if (selector === '.share-visibility-indicator .medium-icon') return mockVisibilityIcon;
         return null;
       }),
     };
@@ -77,7 +80,7 @@ describe('ShareProjectButton', () => {
     });
 
     it('should query visibility icon', () => {
-      expect(mockButton.querySelector).toHaveBeenCalledWith('.share-visibility-icon');
+      expect(mockButton.querySelector).toHaveBeenCalledWith('.share-visibility-indicator .medium-icon');
       expect(shareButton.visibilityIcon).toBe(mockVisibilityIcon);
     });
 
@@ -160,14 +163,16 @@ describe('ShareProjectButton', () => {
       expect(shareButton.currentVisibility).toBe('public');
     });
 
-    it('should set public icon when visibility is public', () => {
+    it('should set shared-icon class when visibility is public', () => {
       shareButton.updateVisibilityPill('public');
-      expect(mockVisibilityIcon.textContent).toBe('public');
+      expect(mockVisibilityIcon.classList.remove).toHaveBeenCalledWith('share-icon');
+      expect(mockVisibilityIcon.classList.add).toHaveBeenCalledWith('shared-icon');
     });
 
-    it('should set lock icon when visibility is private', () => {
+    it('should set share-icon class when visibility is private', () => {
       shareButton.updateVisibilityPill('private');
-      expect(mockVisibilityIcon.textContent).toBe('lock');
+      expect(mockVisibilityIcon.classList.remove).toHaveBeenCalledWith('shared-icon');
+      expect(mockVisibilityIcon.classList.add).toHaveBeenCalledWith('share-icon');
     });
 
     it('should return early if visibilityIcon is null', () => {
@@ -323,7 +328,8 @@ describe('ShareProjectButton', () => {
 
       await shareButton.loadVisibilityFromProject();
 
-      expect(mockVisibilityIcon.textContent).toBe('public');
+      expect(mockVisibilityIcon.classList.remove).toHaveBeenCalledWith('share-icon');
+      expect(mockVisibilityIcon.classList.add).toHaveBeenCalledWith('shared-icon');
       expect(shareButton.currentVisibility).toBe('public');
     });
   });

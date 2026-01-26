@@ -10,7 +10,7 @@
 // The New eXeLearning
 if(imgPreloader.width==0||imgPreloader.height==0){imgPreloader.width=450;imgPreloader.height=450}
 // / The New eXeLearning
-f=l(imgPreloader.width,imgPreloader.height),s()},imgPreloader.onerror=function(){alert(_("Image cannot be loaded. Make sure the path is correct and the image exists.")),e.prettyPhoto.close()},imgPreloader.src=pp_images[set_position];break;case"youtube":
+f=l(imgPreloader.width,imgPreloader.height),s()},imgPreloader.onerror=function(){alert("Image cannot be loaded. Make sure the path is correct and the image exists."),e.prettyPhoto.close()},imgPreloader.src=pp_images[set_position];break;case"youtube":
 // The New eXeLearning (issue #439)
 var startTime = "";
 var _url = pp_images[set_position];

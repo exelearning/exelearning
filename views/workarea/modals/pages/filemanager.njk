@@ -15,7 +15,7 @@
                     <button type="button" class="btn btn-primary media-library-upload-btn">
                         <span class="exe-icon">add</span> {{ 'Add files' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-newfolder-btn" title="{{ 'New folder' | trans }}">
+                    <button type="button" class="btn btn-secondary media-library-newfolder-btn" title="{{ 'New folder' | trans }}">
                         <span class="exe-icon">create_new_folder</span>
                     </button>
                     <input type="file" class="media-library-upload-input" accept="image/*,video/*,audio/*,.pdf,.zip,.elp,.elpx" multiple style="display:none;">
@@ -64,12 +64,12 @@
 
                 <div class="media-library-container">
                     <div class="media-library-main">
-                        <div class="media-library-breadcrumbs">
+                        <div class="media-library-breadcrumbs ps-2">
                             <span class="breadcrumb-item" data-path="" title="{{ 'Root' | trans }}">
                                 <span class="exe-icon">home</span>
                             </span>
                         </div>
-                        <div class="media-library-search-indicator d-none">
+                        <div class="media-library-search-indicator ps-2 d-none">
                             <span class="breadcrumb-home exe-icon" title="{{ 'Go to root' | trans }}">home</span>
                             <span class="breadcrumb-separator">/</span>
                             <span>{{ 'Search results for' | trans }}: <strong class="search-term"></strong></span>
@@ -153,7 +153,7 @@
                                     <label>{{ 'URL:' | trans }}</label>
                                     <div class="input-group input-group-sm">
                                         <input type="text" class="form-control media-library-url" readonly>
-                                        <button type="button" class="btn btn-outline-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
+                                        <button type="button" class="btn btn-secondary media-library-copy-url-btn" title="{{ 'Copy URL' | trans }}">
                                             <span class="exe-icon">content_copy</span>
                                         </button>
                                     </div>
@@ -168,22 +168,22 @@
                     <button type="button" class="btn btn-danger media-library-delete-btn" disabled>
                         <span class="exe-icon">delete</span> {{ 'Delete' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-rename-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-rename-btn" disabled>
                         <span class="exe-icon">edit</span> {{ 'Rename' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-duplicate-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-duplicate-btn" disabled>
                         <span class="exe-icon">content_copy</span> {{ 'Duplicate' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-move-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-move-btn" disabled>
                         <span class="exe-icon">drive_file_move</span> {{ 'Move' | trans }}
                     </button>
-                    <button type="button" class="btn btn-outline-secondary media-library-download-btn" disabled>
+                    <button type="button" class="btn btn-secondary media-library-download-btn" disabled>
                         <span class="exe-icon">download</span> {{ 'Download' | trans }}
                     </button>
 
                     <!-- Dropdown More Options -->
                     <div class="dropdown d-inline-block">
-                        <button type="button" class="btn btn-outline-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
+                        <button type="button" class="btn btn-secondary media-library-more-btn dropdown-toggle" data-bs-toggle="dropdown" disabled>
                             <span class="exe-icon">more_horiz</span>
                         </button>
                         <ul class="dropdown-menu">

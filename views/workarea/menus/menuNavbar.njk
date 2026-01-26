@@ -69,12 +69,8 @@
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
                     {% if config.platformIntegration %}
-                        <li class="dropdown dropend exe-advanced">
-                            <a class="dropdown-item dropdown-toggle" href="#" id="dropdownUploadTo" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.upload_to or 'Upload to' }}</a>
-                            <ul class="dropdown-menu" aria-labelledby="dropdownUploadTo">
-                                <li><a id="navbar-button-uploadtoplatform" class="dropdown-item" href="#">{{ config.platformName }}</a></li>
-                            </ul>
-                        </li>
+                        <li class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" id="navbar-button-uploadtoplatform" href="#"><span class="small-icon upload-cloud-icon-green"></span> {{ 'Send to %s' | trans({ s: config.platformName }) }}</a></li>
                     {% endif %}
                     <li class="dropdown dropend exe-advanced d-none">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownProperties" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ t.metadata or 'Metadata' }}</a>
@@ -93,8 +89,8 @@
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ t.idevice_manager or 'iDevice manager' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> {{ t.resources_report or 'Resources report' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  {{ t.link_validation or 'Link validation' }}</a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon image-icon-green"></span> {{ t.file_manager or 'File manager' }}</a></li>
-                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon"></span> {{ t.image_optimizer or 'Image optimizer' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-filemanager" href="#"><span class="small-icon folder-icon-green"></span> {{ t.file_manager or 'File manager' }}</a></li>
+                    <li><a class="dropdown-item exe-advanced" id="navbar-button-imageoptimizer" href="#"><span class="small-icon image-icon-green"></span> {{ t.image_optimizer or 'Image optimizer' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item" id="navbar-button-styles" href="#" data-shortcut="Mod+Alt+T" aria-keyshortcuts="Control+Alt+T Meta+Alt+T"><span class="small-icon styles-icon"></span> {{ t.styles or 'Styles' }}</a></li>
                     <li class="dropdown-divider"></li>
