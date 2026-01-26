@@ -96,9 +96,14 @@ async function editBlockTitle(page: Page, blockIndex: number, newTitle: string):
     const titleEl = header.locator('.box-title').first();
     await titleEl.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Triple-click to select all text (this properly registers in Yjs when replaced)
-    // Using triple-click instead of el.textContent = '' which bypasses input events
-    await titleEl.click({ clickCount: 3 });
+    // Focus the element first
+    await titleEl.click();
+    await page.waitForTimeout(100);
+
+    // Select all text using Ctrl+A (more reliable across browsers than triple-click)
+    // Firefox has issues with triple-click selection in contenteditable elements
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control';
+    await page.keyboard.press(`${modifier}+a`);
 
     // Small wait to ensure selection is registered
     await page.waitForTimeout(100);
