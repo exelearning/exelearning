@@ -439,7 +439,7 @@ describe('ProjectManager', () => {
             // The code uses eXeLearning.app.modals.alert.show (global), not mockApp
             expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
                 title: 'Info',
-                body: 'You are editing an iDevice. Please close it before continuing',
+                body: 'Unsaved changes detected. Save your iDevice before continuing.',
             });
         });
     });
