@@ -367,8 +367,8 @@ export default class IdeviceNode {
                 if (isLockedByOther) {
                     const lockInfo = this.getLockInfo();
                     const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
-                    const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
-                    lockIndicator = `<span class="lock-indicator" style="color: ${lockUserColor}; font-size: 10px; margin-left: 4px;" title="${_('Editing by')} ${lockUserName}">🔒 ${lockUserName}</span>`;
+                    // const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
+                    lockIndicator = `<span class="lock-indicator visually-hidden">${lockUserName}</span>`;
                 }
                 // Set the Minify iDevice icon
                 let minifyIdeviceIcon = 'chevron-down-icon-green';
@@ -1720,25 +1720,12 @@ export default class IdeviceNode {
 
         // Create placeholder HTML
         const placeholderHtml = `
-            <div class="idevice-locked-placeholder" style="
-                background-color: #f8f9fa;
-                border: 2px dashed ${userColor};
-                border-radius: 8px;
-                padding: 30px 20px;
-                text-align: center;
-                min-height: 100px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
-            ">
-                <span style="font-size: 24px;">🔒</span>
+            <div class="idevice-locked-placeholder">
                 <p style="margin: 0; color: #666; font-size: 14px;">
                     ${_('Being edited by')}
-                    <strong style="color: ${userColor};">${userName}</strong>
+                    <strong>${userName}</strong>
                 </p>
-                <p style="margin: 0; color: #999; font-size: 12px;">
+                <p>
                     ${_('Content will appear when saved')}
                 </p>
             </div>

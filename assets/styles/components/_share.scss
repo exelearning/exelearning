@@ -18,7 +18,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: 500px;
+        max-width:92%;
+        min-width: 300px;
     }
 
     .modal-body {
@@ -30,6 +31,12 @@
         font-weight: 600;
         margin-bottom: 12px;
         color: var(--bs-gray-700, #495057);
+    }
+
+    @media (min-width: 992px) {
+        .modal-content {
+            min-width: 500px;
+        }
     }
 }
 
