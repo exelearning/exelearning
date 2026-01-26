@@ -803,7 +803,7 @@ export default class NavbarFile {
                 name: dirName,
                 dirName: dirName,
                 displayName: themeName,
-                title: themeName,
+                title: getValue('title') || themeName,
                 type: 'user',
                 version: getValue('version') || '1.0',
                 author: getValue('author') || '',

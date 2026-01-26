@@ -13067,6 +13067,154 @@
         <source>Project Properties</source>
         <target>Project Properties</target>
       </trans-unit>
+      <trans-unit id="send_to_platform_001" resname="Send to %s">
+        <source>Send to %s</source>
+        <target>Send to %s</target>
+      </trans-unit>
+      <trans-unit id="finish_001" resname="Finish">
+        <source>Finish</source>
+        <target>Finish</target>
+      </trans-unit>
+      <trans-unit id="xqscva0" resname="eXeLearning content (.elpx)">
+        <source>eXeLearning content (.elpx)</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xi83vg1" resname="Private">
+        <source>Private</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v0x32h4" resname="Public">
+        <source>Public</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fjgplkp" resname="Add subpage">
+        <source>Add subpage</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="hyfhfn1" resname="Page options">
+        <source>Page options</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="zvk8pjb" resname="Admin Panel">
+        <source>Admin Panel</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="h3ssahq" resname="Dashboard">
+        <source>Dashboard</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="44mwfl3" resname="Users">
+        <source>Users</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="fq2n7js" resname="Extensions">
+        <source>Extensions</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rtfgdte" resname="Back to Workarea">
+        <source>Back to Workarea</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="qncs2cr" resname="Total Users">
+        <source>Total Users</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jy28gzb" resname="Active Users">
+        <source>Active Users</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="deg1yek" resname="Total Projects">
+        <source>Total Projects</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k64iihe" resname="Active Projects">
+        <source>Active Projects</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="xn6rb25" resname="User Management">
+        <source>User Management</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r5vi5bs" resname="Create User">
+        <source>Create User</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="iqijjtg" resname="Roles">
+        <source>Roles</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="j5zdlk5" resname="Status">
+        <source>Status</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="z7gkvzj" resname="Active">
+        <source>Active</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pq5yujn" resname="Inactive">
+        <source>Inactive</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="lfxd0sb" resname="Are you sure you want to delete this user?">
+        <source>Are you sure you want to delete this user?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="6vzr5yx" resname="Installed">
+        <source>Installed</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gxqwrug" resname="Available">
+        <source>Available</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="wf6nxc4" resname="Install">
+        <source>Install</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="r32qmdp" resname="Uninstall">
+        <source>Uninstall</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ro1b5dv" resname="Deactivate">
+        <source>Deactivate</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="w4r0ozg" resname="Download File">
+        <source>Download File</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="898azpm" resname="Play/Pause">
+        <source>Play/Pause</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="22p1c2n" resname="Mute Toggle">
+        <source>Mute Toggle</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="888i2el" resname="Captions/Subtitles">
+        <source>Captions/Subtitles</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="3os67yi" resname="Turn off Fullscreen">
+        <source>Turn off Fullscreen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="k0io8gn" resname="Go Fullscreen">
+        <source>Go Fullscreen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="23b7n7x" resname="Unmute">
+        <source>Unmute</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="uhfpzlh" resname="Mute">
+        <source>Mute</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="rfuatga" resname="Download Video">
+        <source>Download Video</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

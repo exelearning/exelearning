@@ -231,7 +231,7 @@ function parseThemeConfig(
             name: getValue('name') || themeId,
             dirName: themeId,
             displayName: getValue('name') || themeId,
-            title: getValue('name') || themeId,
+            title: getValue('title') || themeId,
             url: themeBasePath,
             preview: previewPath,
             type,

@@ -67,7 +67,10 @@ describe('ModalShare', () => {
         <div id="share-people-list"></div>
       </div>
       <div id="share-general-access-section">
-        <select id="share-visibility-select">
+        <img id="share-visibility-icon" src="/icons/lock.svg" alt="" width="16" height="16">
+        <select id="share-visibility-select"
+                data-icon-private="/icons/exe-lock-icon-green.svg"
+                data-icon-public="/icons/exe-globe-icon-green.svg">
             <option value="private">Private</option>
             <option value="public">Public</option>
         </select>
@@ -230,6 +233,37 @@ describe('ModalShare', () => {
 
       expect(modal.visibilitySelect.disabled).toBe(true);
     });
+
+    it('should update icon when rendering visibility section', () => {
+      modal.projectData = { visibility: 'public' };
+      modal.currentUserIsOwner = true;
+
+      modal.renderVisibilitySection();
+
+      expect(modal.visibilityIcon.src).toContain('exe-globe-icon-green.svg');
+    });
+  });
+
+  describe('updateVisibilityIcon', () => {
+    it('should set public icon when visibility is public', () => {
+      modal.updateVisibilityIcon('public');
+      expect(modal.visibilityIcon.src).toContain('exe-globe-icon-green.svg');
+    });
+
+    it('should set private icon when visibility is private', () => {
+      modal.updateVisibilityIcon('private');
+      expect(modal.visibilityIcon.src).toContain('exe-lock-icon-green.svg');
+    });
+
+    it('should handle missing visibilityIcon gracefully', () => {
+      modal.visibilityIcon = null;
+      expect(() => modal.updateVisibilityIcon('public')).not.toThrow();
+    });
+
+    it('should handle missing visibilitySelect gracefully', () => {
+      modal.visibilitySelect = null;
+      expect(() => modal.updateVisibilityIcon('public')).not.toThrow();
+    });
   });
 
   describe('renderLinkSection', () => {
@@ -366,6 +400,39 @@ describe('ModalShare', () => {
       expect(saveToServer).toHaveBeenCalled();
       expect(window.eXeLearning.app.api.updateProjectVisibility).toHaveBeenCalled();
       expect(modal.projectData.visibility).toBe('public');
+    });
+
+    it('should revert visibility and icon when API returns error', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updateProjectVisibility.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+        detail: 'Failed to update',
+      });
+      const updateIconSpy = vi.spyOn(modal, 'updateVisibilityIcon');
+
+      await modal.handleVisibilityChange('public');
+
+      expect(modal.visibilitySelect.value).toBe('private');
+      expect(updateIconSpy).toHaveBeenCalledWith('private');
+    });
+
+    it('should revert visibility and icon when API throws exception', async () => {
+      modal.currentUserIsOwner = true;
+      modal.projectData = { visibility: 'private', uuid: 'proj-123' };
+      window.eXeLearning.app.project.odeId = 'proj-123';
+      window.eXeLearning.app.api.updateProjectVisibility.mockRejectedValueOnce(
+        new Error('Network error')
+      );
+      const updateIconSpy = vi.spyOn(modal, 'updateVisibilityIcon');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await modal.handleVisibilityChange('public');
+
+      expect(modal.visibilitySelect.value).toBe('private');
+      expect(updateIconSpy).toHaveBeenCalledWith('private');
+      consoleErrorSpy.mockRestore();
     });
   });
 

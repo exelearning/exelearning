@@ -12993,6 +12993,158 @@
         <source>Adds additional information to the main title.</source>
         <target>~Adiciona informações adicionais ao título principal.</target>
       </trans-unit>
+      <trans-unit id="send_to_platform_001" resname="Send to %s">
+        <source>Send to %s</source>
+        <target>~Enviar para %s</target>
+      </trans-unit>
+      <trans-unit id="finish_001" resname="Finish">
+        <source>Finish</source>
+        <target>~Concluir</target>
+      </trans-unit>
+      <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
+        <source>eXeLearning content (.elpx)</source>
+        <target>~Conteúdo eXeLearning (.elpx)</target>
+      </trans-unit>
+      <trans-unit id="l0zhbcx" resname="Project Properties">
+        <source>Project Properties</source>
+        <target>~Propriedades do projeto</target>
+      </trans-unit>
+      <trans-unit id="0v6ignb" resname="Private">
+        <source>Private</source>
+        <target>~Privado</target>
+      </trans-unit>
+      <trans-unit id="eenusd4" resname="Public">
+        <source>Public</source>
+        <target>~Público</target>
+      </trans-unit>
+      <trans-unit id="gpqv2n0" resname="Add subpage">
+        <source>Add subpage</source>
+        <target>~Adicionar subpágina</target>
+      </trans-unit>
+      <trans-unit id="s4fafe4" resname="Page options">
+        <source>Page options</source>
+        <target>~Opções da página</target>
+      </trans-unit>
+      <trans-unit id="t6gx1zg" resname="Admin Panel">
+        <source>Admin Panel</source>
+        <target>~Painel de administração</target>
+      </trans-unit>
+      <trans-unit id="97v8o0o" resname="Dashboard">
+        <source>Dashboard</source>
+        <target>~Painel de controlo</target>
+      </trans-unit>
+      <trans-unit id="rg4ghhn" resname="Users">
+        <source>Users</source>
+        <target>~Utilizadores</target>
+      </trans-unit>
+      <trans-unit id="9n8g103" resname="Extensions">
+        <source>Extensions</source>
+        <target>~Extensões</target>
+      </trans-unit>
+      <trans-unit id="is2c65e" resname="Back to Workarea">
+        <source>Back to Workarea</source>
+        <target>~Voltar à área de trabalho</target>
+      </trans-unit>
+      <trans-unit id="ido9zkb" resname="Total Users">
+        <source>Total Users</source>
+        <target>~Total de utilizadores</target>
+      </trans-unit>
+      <trans-unit id="97zb4ob" resname="Active Users">
+        <source>Active Users</source>
+        <target>~Utilizadores ativos</target>
+      </trans-unit>
+      <trans-unit id="qsnxt4j" resname="Total Projects">
+        <source>Total Projects</source>
+        <target>~Total de projetos</target>
+      </trans-unit>
+      <trans-unit id="62o4xbm" resname="Active Projects">
+        <source>Active Projects</source>
+        <target>~Projetos ativos</target>
+      </trans-unit>
+      <trans-unit id="thx7n6r" resname="User Management">
+        <source>User Management</source>
+        <target>~Gestão de utilizadores</target>
+      </trans-unit>
+      <trans-unit id="7fgea8i" resname="Create User">
+        <source>Create User</source>
+        <target>~Criar utilizador</target>
+      </trans-unit>
+      <trans-unit id="e6y5yhc" resname="Roles">
+        <source>Roles</source>
+        <target>~Funções</target>
+      </trans-unit>
+      <trans-unit id="me3hgwd" resname="Status">
+        <source>Status</source>
+        <target>~Estado</target>
+      </trans-unit>
+      <trans-unit id="riwysa5" resname="Active">
+        <source>Active</source>
+        <target>~Ativo</target>
+      </trans-unit>
+      <trans-unit id="rpczs42" resname="Inactive">
+        <source>Inactive</source>
+        <target>~Inativo</target>
+      </trans-unit>
+      <trans-unit id="scb0g0f" resname="Are you sure you want to delete this user?">
+        <source>Are you sure you want to delete this user?</source>
+        <target>~Tem a certeza de que quer eliminar este utilizador?</target>
+      </trans-unit>
+      <trans-unit id="206lr7c" resname="Installed">
+        <source>Installed</source>
+        <target>~Instalado</target>
+      </trans-unit>
+      <trans-unit id="kheuv6b" resname="Available">
+        <source>Available</source>
+        <target>~Disponível</target>
+      </trans-unit>
+      <trans-unit id="780lvnb" resname="Install">
+        <source>Install</source>
+        <target>~Instalar</target>
+      </trans-unit>
+      <trans-unit id="jbuazkh" resname="Uninstall">
+        <source>Uninstall</source>
+        <target>~Desinstalar</target>
+      </trans-unit>
+      <trans-unit id="8q7x8kf" resname="Deactivate">
+        <source>Deactivate</source>
+        <target>~Desativar</target>
+      </trans-unit>
+      <trans-unit id="gzolll2" resname="Download File">
+        <source>Download File</source>
+        <target>~Descarregar ficheiro</target>
+      </trans-unit>
+      <trans-unit id="3o5e6xn" resname="Play/Pause">
+        <source>Play/Pause</source>
+        <target>~Reproduzir/Pausar</target>
+      </trans-unit>
+      <trans-unit id="zwn29lg" resname="Mute Toggle">
+        <source>Mute Toggle</source>
+        <target>~Silenciar/Ativar som</target>
+      </trans-unit>
+      <trans-unit id="0q5vhca" resname="Captions/Subtitles">
+        <source>Captions/Subtitles</source>
+        <target>~Legendas</target>
+      </trans-unit>
+      <trans-unit id="vhzfvis" resname="Turn off Fullscreen">
+        <source>Turn off Fullscreen</source>
+        <target>~Desativar ecrã completo</target>
+      </trans-unit>
+      <trans-unit id="hj9pm4k" resname="Go Fullscreen">
+        <source>Go Fullscreen</source>
+        <target>~Ecrã completo</target>
+      </trans-unit>
+      <trans-unit id="axjjt28" resname="Unmute">
+        <source>Unmute</source>
+        <target>~Ativar som</target>
+      </trans-unit>
+      <trans-unit id="0nqn4fr" resname="Mute">
+        <source>Mute</source>
+        <target>~Silenciar</target>
+      </trans-unit>
+      <trans-unit id="yiopv0y" resname="Download Video">
+        <source>Download Video</source>
+        <target>~Descarregar vídeo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

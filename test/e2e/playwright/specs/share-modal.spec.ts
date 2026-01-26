@@ -28,7 +28,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.waitForLoadState('networkidle');
 
             // Click share button (pill button in header)
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             // Wait for modal to open
@@ -45,7 +45,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -62,7 +62,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -85,7 +85,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -117,7 +117,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -143,7 +143,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -159,7 +159,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -185,7 +185,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -207,7 +207,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -222,7 +222,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -244,7 +244,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -268,7 +268,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();
@@ -292,7 +292,7 @@ test.describe('Share Modal', () => {
             await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
             await authenticatedPage.waitForLoadState('networkidle');
 
-            const shareButton = authenticatedPage.locator('.btn-share-pill, [data-action="share"]');
+            const shareButton = authenticatedPage.locator('#head-top-share-button');
             await shareButton.click();
 
             await shareModal.waitForOpen();

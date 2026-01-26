@@ -331,7 +331,25 @@ describe('common.js $exe helpers', () => {
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
-      it('processes unprocessed audio elements', () => {
+      it('processes unprocessed audio elements with .srt subtitles', () => {
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        // Add a track element with .srt subtitles (required for mediaelementplayer to be called)
+        const track = document.createElement('track');
+        track.src = 'subtitles.srt';
+        track.kind = 'subtitles';
+        audio.appendChild(track);
+        document.body.appendChild(audio);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should be called because there's an .srt subtitle
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('does not call mediaelementplayer for audio without .srt subtitles', () => {
         const audio = document.createElement('audio');
         audio.className = 'mediaelement';
         audio.src = 'test.mp3';
@@ -339,8 +357,8 @@ describe('common.js $exe helpers', () => {
 
         global.$exe.loadMediaPlayer.init();
 
-        // mediaelementplayer should be called
-        expect(mockMediaelementplayer).toHaveBeenCalled();
+        // mediaelementplayer should NOT be called because there are no .srt subtitles
+        expect(mockMediaelementplayer).not.toHaveBeenCalled();
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
