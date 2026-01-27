@@ -223,6 +223,18 @@
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
+*   Files: /public/files/perm/fonts/global/andika/*.woff2
+    *   Copyright: SIL International
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/fonts/global/nunito/*.woff2
+    *   Copyright: Vernon Adams, with Reserved Font Name "Nunito".
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/fonts/global/opendyslexic/*.woff2
+    *   Copyright: Abbie Gonzalez
+    *   License: SIL Open Font License version 1.1
+*   Files: /public/files/perm/fonts/global/playwrite-es/*.woff2
+    *   Copyright: TypeTogether, Veronika Burian, José Scaglione
+    *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/idevices/base/interactive-video/edition/editor/fonts/* (Open Sans Font)
     *   Copyright: The Open Sans Project Authors. Designed by Steve Matteson
     *   License: SIL Open Font License version 1.1
@@ -259,10 +271,10 @@
 *   Files: /public/libs/abcjs/\*
     *   Copyright: Paul Rosen and Gregory Dyke, under the GNU GPL v3 license.
     *   License: MIT
-*   File: /public/libs/bootstrap/\*
+*   Files: /public/libs/bootstrap/\*
     *   Copyright: The Bootstrap Authors / Twitter, Inc.
     *   License: MIT
-*   File: /public/libs/fflate/\*
+*   Files: /public/libs/fflate/\*
     *   Copyright: 101arrowz
     *   License: MIT
 *   File: /public/libs/interact/\*
@@ -274,7 +286,7 @@
 *   File: /public/libs/jquery-ui/jquery-ui.min.js
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
-*   File: /public/libs/pixo/*
+*   Files: /public/libs/pixo/*
     *   Copyright: Lee Robinson
     *   License: MIT
 *   Files: /public/libs/showdown/* (Showdown v2)
