@@ -667,10 +667,17 @@ export default class StructureNode {
             if (success) {
                 Logger.log('[StructureNode] Saved properties via Yjs:', this.id);
 
+                // Update visual properties in the navigation menu
+                const needsMenuReload = properties.titleNode !== undefined || properties.highlight !== undefined;
+
                 // Rename node if titleNode changed
                 if (properties.titleNode) {
                     this.pageName = properties.titleNode;
-                    this.structure.renameNodeAndReload(this.id, properties.titleNode);
+                }
+
+                // Reload structure menu if visual properties changed
+                if (needsMenuReload) {
+                    await this.structure.resetStructureData(this.id);
                 }
 
                 // Reload page content to reflect changes

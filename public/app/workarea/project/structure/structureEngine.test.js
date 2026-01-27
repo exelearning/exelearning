@@ -557,7 +557,7 @@ describe('StructureEngine', () => {
   });
 
   describe('setDataFromYjs', () => {
-    it('processes data and reloads menu with selection', () => {
+    it('fetches full data from Yjs and reloads menu with selection', () => {
       const navElement = document.createElement('div');
       navElement.className = 'nav-element';
       navElement.setAttribute('nav-id', 'page-1');
@@ -568,12 +568,22 @@ describe('StructureEngine', () => {
         compose: vi.fn()
       };
 
+      // Mock getStructureFromYjs to return complete data with properties
+      const fullYjsData = [{
+        id: 'page-1',
+        pageName: 'Page 1',
+        odeNavStructureSyncProperties: { highlight: { value: true } }
+      }];
+      const getStructureSpy = vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue(fullYjsData);
       const processSpy = vi.spyOn(engine, 'processStructureData').mockImplementation(() => {});
       const reloadSpy = vi.spyOn(engine, 'reloadStructureMenu').mockResolvedValue();
 
+      // Call with partial data - setDataFromYjs should ignore it and use getStructureFromYjs
       engine.setDataFromYjs([{ id: 'page-1', pageName: 'Page 1' }]);
 
-      expect(processSpy).toHaveBeenCalled();
+      // Verify it used getStructureFromYjs to get full data
+      expect(getStructureSpy).toHaveBeenCalled();
+      expect(processSpy).toHaveBeenCalledWith(fullYjsData);
       expect(reloadSpy).toHaveBeenCalledWith('page-1');
     });
   });

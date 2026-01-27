@@ -23,6 +23,7 @@ describe('StructureNode', () => {
             updateNodesStructure: mock(() => {}),
             renameNodeAndReload: mock(() => {}),
             reloadStructureMenu: mock(() => {}),
+            resetStructureData: mock(() => {}),
             project: {
                 idevices: {
                     loadApiIdevicesInPage: mock(() => {}),
@@ -1052,13 +1053,31 @@ describe('StructureNode', () => {
             expect(response.responseMessage).toBe('OK');
         });
 
-        it('renames and reloads when titleNode is updated', async () => {
+        it('resets structure data when titleNode is updated', async () => {
             const node = new StructureNode(mockStructure, nodeData);
 
             await node.savePropertiesViaYjs({ titleNode: 'New Yjs Title' });
 
             expect(node.pageName).toBe('New Yjs Title');
-            expect(mockStructure.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'New Yjs Title');
+            expect(mockStructure.resetStructureData).toHaveBeenCalledWith('node-1');
+            expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+        });
+
+        it('resets structure data when highlight is updated', async () => {
+            const node = new StructureNode(mockStructure, nodeData);
+
+            await node.savePropertiesViaYjs({ highlight: 'true' });
+
+            expect(mockStructure.resetStructureData).toHaveBeenCalledWith('node-1');
+            expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+        });
+
+        it('does not reset structure data when non-visual properties are updated', async () => {
+            const node = new StructureNode(mockStructure, nodeData);
+
+            await node.savePropertiesViaYjs({ author: 'New Author' });
+
+            expect(mockStructure.resetStructureData).not.toHaveBeenCalled();
             expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
         });
 

@@ -187,7 +187,7 @@ export default class structureEngine {
 
     /**
      * Set structure data from Yjs (called by YjsProjectBridge on sync)
-     * @param {Array} data
+     * @param {Array} data - Raw data from Yjs (may not include full properties)
      */
     setDataFromYjs(data) {
         // Preserve current selection before re-rendering
@@ -197,7 +197,9 @@ export default class structureEngine {
             ? nodeSelected.getAttribute('nav-id')
             : null;
 
-        this.dataJson = data;
+        // Use getStructureFromYjs() to ensure we get complete data with properties
+        // The passed `data` parameter may not include odeNavStructureSyncProperties
+        this.dataJson = this.getStructureFromYjs();
         this.processStructureData(this.dataJson);
         // Re-render the structure menu if available, preserving selection
         if (this.menuStructureCompose) {
@@ -323,9 +325,7 @@ export default class structureEngine {
             const structureData = this.getStructureFromYjs();
             this.processStructureData(structureData);
             this.openNode(idSelect);
-            Logger.log('[StructureEngine] About to call reloadStructureMenu with:', idSelect);
             await this.reloadStructureMenu(idSelect);
-            Logger.log('[StructureEngine] reloadStructureMenu completed');
             return;
         }
 
