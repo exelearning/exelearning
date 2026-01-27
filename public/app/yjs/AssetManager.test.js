@@ -444,8 +444,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The key requirement is that the existing asset ID is used (no duplicate stored)
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The key requirement is that the existing asset ID is used with new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       expect(assetManager.putAsset).not.toHaveBeenCalled();
     });
 
@@ -476,8 +476,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The asset URL should be returned
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The asset URL should be returned in new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       // putAsset SHOULD be called to store blob for current project
       expect(assetManager.putAsset).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -5371,6 +5371,42 @@ describe('AssetManager renameAsset', () => {
 
     expect(updateSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg', 'new-name.jpg');
   });
+
+  it('calls getAssetUrl when updating references during rename', async () => {
+    // Set up window.eXeLearning and window.Y for updateAssetReferencesInYjs
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+    window.eXeLearning = {
+      app: {
+        project: {
+          _yjsBridge: mockYjsBridge
+        }
+      }
+    };
+
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    // Spy on getAssetUrl to verify it's called when updating references
+    const getAssetUrlSpy = vi.spyOn(assetManager, 'getAssetUrl');
+
+    await assetManager.renameAsset('asset-1', 'new-name.png');
+
+    // Verify getAssetUrl was called for building old and new references
+    expect(getAssetUrlSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg');
+    expect(getAssetUrlSpy).toHaveBeenCalledWith('asset-1', 'new-name.png');
+
+    window.Y = originalY;
+    delete window.eXeLearning;
+  });
 });
 
 describe('AssetManager updateAssetReferencesInYjs', () => {
@@ -5424,13 +5460,13 @@ describe('AssetManager updateAssetReferencesInYjs', () => {
   });
 
   it('processes pages and updates references', () => {
-    // Create mock Y.Text with actual content
+    // Create mock Y.Text with actual content using NEW FORMAT (asset://uuid.ext)
     const mockHtmlContent = {
-      _content: 'src="asset://asset-1/old.jpg"',
+      _content: 'src="asset://asset-1.jpg"',
       toString: function() { return this._content; },
       delete: function(start, length) { this._content = ''; },
       insert: function(pos, text) { this._content = text; },
-      length: 30
+      length: 25
     };
 
     // Create mock component with Y.Map behavior
@@ -5535,6 +5571,44 @@ describe('AssetManager updateAssetReferencesInYjs', () => {
     const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
 
     expect(result).toBe(0);
+    window.Y = originalY;
+  });
+
+  it('calls getAssetUrl to build old and new reference patterns', () => {
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => ({
+          forEach: () => {}
+        })),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    // Spy on getAssetUrl to verify it's called with correct arguments
+    const getAssetUrlSpy = vi.spyOn(assetManager, 'getAssetUrl');
+
+    assetManager.updateAssetReferencesInYjs('test-uuid-123', 'old-image.jpg', 'new-image.png');
+
+    // Verify getAssetUrl was called for both old and new filenames
+    expect(getAssetUrlSpy).toHaveBeenCalledTimes(2);
+    expect(getAssetUrlSpy).toHaveBeenNthCalledWith(1, 'test-uuid-123', 'old-image.jpg');
+    expect(getAssetUrlSpy).toHaveBeenNthCalledWith(2, 'test-uuid-123', 'new-image.png');
+
+    // Verify the returned URLs are in the correct format
+    const oldRef = assetManager.getAssetUrl('test-uuid-123', 'old-image.jpg');
+    const newRef = assetManager.getAssetUrl('test-uuid-123', 'new-image.png');
+    expect(oldRef).toBe('asset://test-uuid-123.jpg');
+    expect(newRef).toBe('asset://test-uuid-123.png');
+
     window.Y = originalY;
   });
 });

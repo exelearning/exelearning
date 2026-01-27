@@ -388,6 +388,16 @@ describe('MenuStructureCompose', () => {
             expect(settingsButton.getAttribute('data-menunavid')).toBe('test-node');
         });
 
+        it('should configure dropdown trigger with fixed positioning strategy', () => {
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const dropdownTrigger = result.querySelector('.page-settings-trigger');
+            expect(dropdownTrigger).not.toBeNull();
+            const popperConfig = dropdownTrigger.getAttribute('data-bs-popper-config');
+            expect(popperConfig).not.toBeNull();
+            const config = JSON.parse(popperConfig);
+            expect(config.strategy).toBe('fixed');
+        });
+
         it('should not contain settings button for root node', () => {
             mockNode.id = 'root';
             const result = menuStructureCompose.makeNodeTextElement(mockNode);

@@ -436,6 +436,65 @@ describe('ElpxImporter - Legacy Format', () => {
             ydoc.destroy();
         });
 
+        it('should generate new format asset URLs (asset://uuid.ext) for legacy files with assets', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_el_cid.elp');
+            if (!existsSync(elpPath)) {
+                return; // Skip if file doesn't exist
+            }
+
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // This file should have assets
+            expect(result.assets).toBeGreaterThan(0);
+
+            // Helper to find all asset:// URLs in content
+            const findAssetUrls = (obj: unknown): string[] => {
+                const urls: string[] = [];
+                const assetRegex = /asset:\/\/[a-f0-9-]+(?:\.[a-z0-9]+)?/gi;
+
+                if (typeof obj === 'string') {
+                    const matches = obj.match(assetRegex);
+                    if (matches) urls.push(...matches);
+                } else if (obj instanceof Y.Text) {
+                    const text = obj.toString();
+                    const matches = text.match(assetRegex);
+                    if (matches) urls.push(...matches);
+                } else if (obj instanceof Y.Map) {
+                    obj.forEach(value => {
+                        urls.push(...findAssetUrls(value));
+                    });
+                } else if (obj instanceof Y.Array) {
+                    obj.forEach(item => {
+                        urls.push(...findAssetUrls(item));
+                    });
+                } else if (typeof obj === 'object' && obj !== null) {
+                    Object.values(obj).forEach(value => {
+                        urls.push(...findAssetUrls(value));
+                    });
+                }
+                return urls;
+            };
+
+            const navigation = ydoc.getArray('navigation');
+            const assetUrls = findAssetUrls(navigation);
+
+            // If there are asset URLs, verify they're in new format (uuid.ext or just uuid, not uuid/path)
+            if (assetUrls.length > 0) {
+                for (const url of assetUrls) {
+                    // New format: asset://uuid.ext or asset://uuid (NO slash after uuid)
+                    expect(url).not.toMatch(/asset:\/\/[a-f0-9-]+\//i);
+                }
+            }
+
+            ydoc.destroy();
+        });
+
         it('should respect clearExisting option with legacy format', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
             const elpBuffer = await fs.readFile(elpPath);
@@ -720,6 +779,375 @@ describe('ElpxImporter - Legacy Format', () => {
             const htmlView = component.get('htmlView') as string;
             expect(htmlView).toContain('Question');
             expect(htmlView).toContain('feedback');
+
+            ydoc.destroy();
+        });
+    });
+});
+
+describe('ElpxImporter - findAssetUrlForPath coverage', () => {
+    let testDir: string;
+
+    beforeEach(() => {
+        testDir = path.join('/tmp', `elp-asset-url-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+        if (!existsSync(testDir)) {
+            mkdirSync(testDir, { recursive: true });
+        }
+    });
+
+    afterEach(() => {
+        if (existsSync(testDir)) {
+            rmSync(testDir, { recursive: true, force: true });
+        }
+    });
+
+    describe('findAssetUrlForPath via convertAssetPathsInObject', () => {
+        it('should convert resources/ path with exact match in assetMap', async () => {
+            // Create a legacy XML with a gallery iDevice that has image paths in properties
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test Gallery"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.galleryidevice.GalleryIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Gallery"/>
+              <string role="key" value="images"/>
+              <list>
+                <instance class="exe.engine.galleryidevice.GalleryImage" reference="4">
+                  <dictionary>
+                    <string role="key" value="_imageResource"/>
+                    <instance class="exe.engine.resource.Resource" reference="5">
+                      <dictionary>
+                        <string role="key" value="_storageName"/>
+                        <unicode value="image1.jpg"/>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Create ZIP contents with the asset
+            const imageData = new Uint8Array([255, 216, 255, 224]); // JPEG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'resources/image1.jpg': imageData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+
+            // Asset extraction creates multiple mappings for lookup flexibility
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+            expect(result.pages).toBe(1);
+
+            ydoc.destroy();
+        });
+
+        it('should convert resources/ path by stripping prefix when asset stored at root', async () => {
+            // Legacy ELP files store assets at root level but reference them as resources/filename
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;img src=&quot;resources/photo.png&quot; /&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Asset stored at root level (legacy format)
+            const imageData = new Uint8Array([137, 80, 78, 71]); // PNG header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'photo.png': imageData, // Root level asset
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+
+            // Asset extraction creates multiple mappings for lookup flexibility
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Verify the HTML content was converted to use asset:// URL
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const htmlView = component.get('htmlView') as string;
+
+            // Should contain asset:// URL, not resources/ path
+            expect(htmlView).toContain('asset://');
+            expect(htmlView).not.toContain('resources/photo.png');
+
+            ydoc.destroy();
+        });
+
+        it('should convert resources/ path by filename-only match', async () => {
+            // Test case where assetMap has 'subfolder/image.png' but we search for 'resources/image.png'
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;img src=&quot;resources/document.pdf&quot; /&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Asset stored in subdirectory - filename-only match should find it
+            const pdfData = new Uint8Array([37, 80, 68, 70]); // PDF header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'resources/files/document.pdf': pdfData, // Nested in subdirectory
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+
+            // Asset extraction creates multiple mappings for lookup flexibility
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Verify the HTML content was converted to use asset:// URL
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const htmlView = component.get('htmlView') as string;
+
+            // Should contain asset:// URL
+            expect(htmlView).toContain('asset://');
+
+            ydoc.destroy();
+        });
+
+        it('should handle files without extension in resources directory', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;a href=&quot;resources/LICENSE&quot;&gt;License&lt;/a&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            // Asset without extension in resources/ directory
+            const textData = new TextEncoder().encode('MIT License...');
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'resources/LICENSE': textData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            const result = await importer.importFromZipContents(zipContents);
+
+            // Files in resources/ directory are extracted as assets regardless of extension
+            // The MEDIA_EXTENSIONS check only applies to root-level files
+            expect(result.assets).toBeGreaterThanOrEqual(1);
+
+            // Verify the file without extension generates an asset:// URL without extension
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const htmlView = component.get('htmlView') as string;
+
+            // Should contain asset:// URL for the file without extension
+            expect(htmlView).toContain('asset://');
+
+            ydoc.destroy();
+        });
+
+        it('should generate new format URLs (asset://uuid.ext) for all asset path lookups', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;img src=&quot;resources/test.gif&quot; /&gt;&lt;img src=&quot;resources/other.webp&quot; /&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const gifData = new Uint8Array([71, 73, 70, 56]); // GIF header
+            const webpData = new Uint8Array([82, 73, 70, 70]); // WEBP header
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'resources/test.gif': gifData,
+                'resources/other.webp': webpData,
+            };
+
+            const ydoc = new Y.Doc();
+            const assetHandler = new FileSystemAssetHandler(testDir);
+            const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+            await importer.importFromZipContents(zipContents);
+
+            // Get the HTML content and verify asset URLs are in new format
+            const navigation = ydoc.getArray('navigation');
+            const page = navigation.get(0) as Y.Map<unknown>;
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            const block = blocks.get(0) as Y.Map<unknown>;
+            const components = block.get('components') as Y.Array<unknown>;
+            const component = components.get(0) as Y.Map<unknown>;
+            const htmlView = component.get('htmlView') as string;
+
+            // Verify URLs are in new format: asset://uuid.ext (no slash after uuid)
+            const assetUrlRegex = /asset:\/\/[a-z0-9./]+/gi;
+            const assetUrls = htmlView.match(assetUrlRegex) || [];
+            expect(assetUrls.length).toBeGreaterThan(0);
+
+            for (const url of assetUrls) {
+                // New format should NOT have slash after uuid: asset://uuid/something
+                // Instead it should be asset://uuid.ext or asset://path.ext
+                expect(url).not.toMatch(/asset:\/\/[a-f0-9-]{36}\//i);
+            }
 
             ydoc.destroy();
         });

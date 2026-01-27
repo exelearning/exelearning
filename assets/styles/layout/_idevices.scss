@@ -763,6 +763,18 @@ article.box {
             margin-bottom: 20px;
             width: 100%;
         }
+        .idevice-locked-placeholder{
+            border-radius:16px;
+            padding:10px;
+            text-align: center;
+            color: var(--gray-500);
+            border:1px dashed var(--info-bordercolor);
+            background:var(--info-background);
+            pointer-events: none;
+        }
+        .idevice-locked-placeholder p:last-of-type {
+            font-size: .9em;
+        }
     }
 
     .idevice_node[mode="edition"] {

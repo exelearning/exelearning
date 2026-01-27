@@ -2506,7 +2506,7 @@ export default class projectManager {
             eXeLearning.app.modals.alert.show({
                 title: _('Info'),
                 body: _(
-                    'You are editing an iDevice. Please close it before continuing'
+                    'Unsaved changes detected. Save your iDevice before continuing.'
                 ),
             });
             return true;

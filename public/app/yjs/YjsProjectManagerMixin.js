@@ -595,7 +595,9 @@ const YjsProjectManagerMixin = {
         if (str == null || typeof str !== 'string') return '';
         for (const [originalPath, assetInfo] of assetMap.entries()) {
           const { id: assetId, filename: assetFileName } = assetInfo;
-          const assetUrl = `asset://${assetId}/${assetFileName}`;
+          // Generate new format asset URL: asset://uuid.ext
+          const ext = assetFileName?.includes('.') ? assetFileName.split('.').pop().toLowerCase() : '';
+          const assetUrl = ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
           const fileName = originalPath.split('/').pop();
           str = str.split(`{{context_path}}/${originalPath}`).join(assetUrl);
           str = str.split(originalPath).join(assetUrl);

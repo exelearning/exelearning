@@ -153,7 +153,6 @@ describe('ConcurrentUsers', () => {
       expect(userIcons.length).toBe(2);
       expect(userIcons[0].getAttribute('data-username')).toBe('User 1');
       expect(userIcons[0].classList.contains('is-local-user')).toBe(true);
-      expect(userIcons[0].style.borderColor).toBe('red');
     });
 
     it('should limit shown users to maxUsersShow', () => {

@@ -919,12 +919,10 @@ class AssetManager {
       return 0;
     }
 
-    // Build the old and new reference patterns
-    // Handle URL-encoded filenames as well
-    const oldRef = `asset://${assetId}/${oldFilename}`;
-    const newRef = `asset://${assetId}/${newFilename}`;
-    const oldRefEncoded = `asset://${assetId}/${encodeURIComponent(oldFilename)}`;
-    const newRefEncoded = `asset://${assetId}/${encodeURIComponent(newFilename)}`;
+    // Build the old and new reference patterns using getAssetUrl
+    // Format: asset://uuid.ext - no filename in URL, so rename doesn't affect references
+    const oldRef = this.getAssetUrl(assetId, oldFilename);
+    const newRef = this.getAssetUrl(assetId, newFilename);
 
     let updatedCount = 0;
 
@@ -948,14 +946,12 @@ class AssetManager {
         if (!content) return;
 
         // Check if this content contains the old reference
-        if (!content.includes(oldRef) && !content.includes(oldRefEncoded)) {
+        if (!content.includes(oldRef)) {
           return;
         }
 
         // Replace all occurrences
-        let newContent = content;
-        newContent = newContent.split(oldRef).join(newRef);
-        newContent = newContent.split(oldRefEncoded).join(newRefEncoded);
+        const newContent = content.split(oldRef).join(newRef);
 
         // Update the Y.Text
         if (htmlContent instanceof Y.Text) {
@@ -1852,7 +1848,7 @@ class AssetManager {
           Logger.log(`[AssetManager] Updated folderPath for existing asset: ${assetId}`);
         }
         Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
-        return `asset://${assetId}/${existing.filename || file.name}`;
+        return this.getAssetUrl(assetId, existing.filename || file.name);
       }
 
       // Asset exists but blob is NOT for current project (or no blob at all)

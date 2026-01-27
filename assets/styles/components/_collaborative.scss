@@ -160,6 +160,7 @@
         padding: 8px;
         border-radius: 8px;
         background-color: var(--gray-50, #f9fafb);
+        border: 1px solid var(--gray-200);
 
         &.is-local-user {
             background-color: var(--brand-primary-50, #eff6ff);
@@ -174,6 +175,10 @@
 
             .user-page-info {
                 color: var(--gray-500, #6b7280);
+            }
+            .badge.bg-primary {
+                background: var(--brand-primary) !important;
+                margin-top: .5em;
             }
         }
     }
@@ -190,6 +195,8 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.02em;
+    position: relative;
+    top: 1px;
 }
 
 // Avatar initials fallback styling
