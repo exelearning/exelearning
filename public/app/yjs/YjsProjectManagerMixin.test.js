@@ -1203,6 +1203,158 @@ describe('YjsProjectManagerMixin', () => {
       // Navigation should have been cleared (delete called)
       expect(mockNavigation.length).toBe(0);
     });
+
+    it('replaces asset paths with new format URLs (asset://uuid.ext)', async () => {
+      const mockNavigation = new global.window.Y.Array();
+
+      // Setup proper mocks for asset import
+      global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+      global.Blob = class MockBlob {
+        constructor(chunks, options) {
+          this.type = options?.type || '';
+          this.size = chunks[0]?.length || 0;
+        }
+      };
+      global.File = class MockFile extends global.Blob {
+        constructor(chunks, name, options) {
+          super(chunks, options);
+          this.name = name;
+        }
+      };
+
+      // Track the URL returned by insertImage and the filename used in URL generation
+      let capturedFilename = '';
+      const mockAssetManager = {
+        insertImage: mock((file) => {
+          capturedFilename = file.name;
+          // Generate new format URL based on file extension
+          const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+          const url = ext ? `asset://mock-uuid.${ext}` : 'asset://mock-uuid';
+          return Promise.resolve(url);
+        }),
+        preloadAllAssets: mock(() => Promise.resolve()),
+      };
+
+      mockBridge.getAssetManager = mock(() => mockAssetManager);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Test Page',
+            blocks: [
+              {
+                id: 'block-1',
+                name: 'Block 1',
+                idevices: [
+                  {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    htmlView: '<img src="{{context_path}}/resources/photo.jpg">',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      // Assets with base64 encoded content
+      const assets = [
+        {
+          path: 'resources/photo.jpg',
+          base64: 'dGVzdA==', // "test" in base64
+          mime: 'image/jpeg',
+        },
+      ];
+
+      const result = await projectManager.importConvertedStructure(structure, assets);
+
+      expect(result).toBeDefined();
+      expect(result.assets).toBe(1);
+
+      // Verify insertImage was called with correct filename
+      expect(mockAssetManager.insertImage).toHaveBeenCalled();
+      expect(capturedFilename).toBe('photo.jpg');
+    });
+
+    it('handles assets without file extension', async () => {
+      const mockNavigation = new global.window.Y.Array();
+
+      global.atob = (str) => Buffer.from(str, 'base64').toString('binary');
+      global.Blob = class MockBlob {
+        constructor(chunks, options) {
+          this.type = options?.type || '';
+          this.size = chunks[0]?.length || 0;
+        }
+      };
+      global.File = class MockFile extends global.Blob {
+        constructor(chunks, name, options) {
+          super(chunks, options);
+          this.name = name;
+        }
+      };
+
+      let capturedFilename = '';
+      const mockAssetManager = {
+        insertImage: mock((file) => {
+          capturedFilename = file.name;
+          const ext = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+          const url = ext ? `asset://mock-uuid.${ext}` : 'asset://mock-uuid';
+          return Promise.resolve(url);
+        }),
+        preloadAllAssets: mock(() => Promise.resolve()),
+      };
+
+      mockBridge.getAssetManager = mock(() => mockAssetManager);
+      mockBridge.getDocumentManager = mock(() => ({
+        getNavigation: () => mockNavigation,
+      }));
+
+      await projectManager.enableYjsMode(123, 'token');
+
+      const structure = {
+        pages: [
+          {
+            id: 'page-1',
+            title: 'Test Page',
+            blocks: [
+              {
+                id: 'block-1',
+                name: 'Block 1',
+                idevices: [
+                  {
+                    id: 'comp-1',
+                    type: 'FreeTextIdevice',
+                    htmlView: '<a href="{{context_path}}/resources/README">Link</a>',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
+
+      const assets = [
+        {
+          path: 'resources/README',
+          base64: 'dGVzdA==',
+          mime: 'text/plain',
+        },
+      ];
+
+      const result = await projectManager.importConvertedStructure(structure, assets);
+
+      expect(result.assets).toBe(1);
+      // Verify the filename extracted correctly (no extension)
+      expect(capturedFilename).toBe('README');
+    });
+
   });
 
   describe('isApplied', () => {

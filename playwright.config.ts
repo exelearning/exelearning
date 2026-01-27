@@ -133,14 +133,14 @@ export default defineConfig({
             name: 'chromium',
             use: {
                 ...devices['Desktop Chrome'],
-                baseURL: 'http://localhost:3001',
+                baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
             },
         },
         {
             name: 'firefox',
             use: {
                 ...devices['Desktop Firefox'],
-                baseURL: 'http://localhost:3001',
+                baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
                 serviceWorkers: 'allow',
             },
         },

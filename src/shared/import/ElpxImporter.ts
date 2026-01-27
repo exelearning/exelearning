@@ -1598,10 +1598,17 @@ export class ElpxImporter {
      * but referenced with resources/ prefix in iDevice properties
      */
     private findAssetUrlForPath(assetPath: string): string | null {
+        // Helper to generate new format asset URL: asset://uuid.ext
+        const buildAssetUrl = (assetId: string, filename: string): string => {
+            const ext = filename.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
+            return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        };
+
         // Try exact match first
         if (this.assetMap.has(assetPath)) {
             const assetId = this.assetMap.get(assetPath)!;
-            return `asset://${assetId}/${assetPath.split('/').pop()}`;
+            const filename = assetPath.split('/').pop() || '';
+            return buildAssetUrl(assetId, filename);
         }
 
         // Try without resources/ prefix (legacy format stores assets at root)
@@ -1609,7 +1616,8 @@ export class ElpxImporter {
             const pathWithoutPrefix = assetPath.substring('resources/'.length);
             if (this.assetMap.has(pathWithoutPrefix)) {
                 const assetId = this.assetMap.get(pathWithoutPrefix)!;
-                return `asset://${assetId}/${pathWithoutPrefix.split('/').pop()}`;
+                const filename = pathWithoutPrefix.split('/').pop() || '';
+                return buildAssetUrl(assetId, filename);
             }
         }
 
@@ -1618,7 +1626,7 @@ export class ElpxImporter {
         if (filename) {
             for (const [path, assetId] of this.assetMap.entries()) {
                 if (path === filename || path.endsWith('/' + filename)) {
-                    return `asset://${assetId}/${filename}`;
+                    return buildAssetUrl(assetId, filename);
                 }
             }
         }

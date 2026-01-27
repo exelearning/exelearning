@@ -427,7 +427,8 @@ describe('ComponentImporter', () => {
       const content = '<img src="asset://old-uuid-123/image.jpg">';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('<img src="asset://new-uuid-456/image.jpg">');
+      // New format: asset://uuid.ext (extension from filename in assetMap path)
+      expect(result).toBe('<img src="asset://new-uuid-456.jpg">');
     });
 
     it('should return unchanged content when no assets match', () => {
@@ -660,11 +661,12 @@ describe('ComponentImporter', () => {
       const importer = new ComponentImporter(docManager, null);
       importer.assetMap = assetMap;
 
-      // Asset URL without suffix - should extract filename from assetMap path
+      // Asset URL without suffix - should extract extension from assetMap path
       const content = 'url: asset://old-uuid-123';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('url: asset://new-uuid-456/image.jpg');
+      // New format: asset://uuid.ext
+      expect(result).toBe('url: asset://new-uuid-456.jpg');
     });
 
     it('should handle multiple asset URLs in content', () => {
@@ -680,7 +682,8 @@ describe('ComponentImporter', () => {
       const content = '<img src="asset://uuid-1/img1.jpg"><img src="asset://uuid-2/img2.png">';
       const result = importer.convertAssetPaths(content);
 
-      expect(result).toBe('<img src="asset://new-1/img1.jpg"><img src="asset://new-2/img2.png">');
+      // New format: asset://uuid.ext
+      expect(result).toBe('<img src="asset://new-1.jpg"><img src="asset://new-2.png">');
     });
 
     it('should handle non-string content', () => {

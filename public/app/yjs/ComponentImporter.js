@@ -285,19 +285,20 @@ class ComponentImporter {
 
   /**
    * Convert asset:// URLs with original UUIDs to new asset UUIDs
+   * Supports both formats:
+   * - New format: asset://uuid.ext
+   * - Legacy format: asset://uuid/path/filename
    * @param {string} content - HTML content with asset:// URLs
-   * @returns {string} Content with converted URLs
+   * @returns {string} Content with converted URLs (always new format)
    */
   convertAssetPaths(content) {
     if (!content || typeof content !== 'string') return content;
 
-    // The exported content has asset://originalUuid/filename format
-    // The assetMap maps originalPath (content/resources/uuid/filename) to new asset ID
-    // We need to convert asset://oldUuid/filename to asset://newUuid/filename
-
-    // First, collect all asset://uuid patterns from content
+    // Match both formats:
+    // - New format: asset://uuid.ext
+    // - Legacy format: asset://uuid/path/filename
     // UUID pattern matches both standard UUIDs and test IDs like "old-uuid-123"
-    const assetPattern = /asset:\/\/([a-zA-Z0-9_-]+)(\/[^"'\s)]+)?/gi;
+    const assetPattern = /asset:\/\/([a-zA-Z0-9_-]+)(\.[a-z0-9]+|\/[^"'\s)]+)?/gi;
     let match;
     const replacements = new Map();
 
@@ -311,15 +312,14 @@ class ComponentImporter {
       for (const [originalPath, newAssetId] of this.assetMap.entries()) {
         // Check if this originalPath contains our old UUID
         if (originalPath.includes(oldUuid)) {
-          // Extract filename from originalPath if suffix is empty
-          // suffix can be undefined when URL is just "asset://uuid" without "/filename"
-          let newSuffix = suffix || '';
-          if (!newSuffix) {
-            const parts = originalPath.split('/');
-            newSuffix = '/' + parts[parts.length - 1];
-          }
-          // Use (suffix || '') to avoid "undefined" string in key
-          replacements.set(`asset://${oldUuid}${suffix || ''}`, `asset://${newAssetId}${newSuffix}`);
+          // Extract filename from originalPath to get extension
+          const parts = originalPath.split('/');
+          const filename = parts[parts.length - 1];
+          // Generate new format URL: asset://uuid.ext
+          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+          const newUrl = ext ? `asset://${newAssetId}.${ext}` : `asset://${newAssetId}`;
+          // Map old URL (any format) to new URL
+          replacements.set(`asset://${oldUuid}${suffix || ''}`, newUrl);
           break;
         }
       }
