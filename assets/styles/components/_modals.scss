@@ -240,6 +240,7 @@
     }
 
     .modal-content {
+        position: relative; // Required for modal-toasts-container positioning
         width: max-content;
         min-width: 250px;
         padding-top: 8px;
