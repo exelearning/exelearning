@@ -29,7 +29,7 @@ eXeLearning 3+ is a modern re-implementation of the original eXeLearning authori
 
 The new code has been created within the collaboration between the MEFPD and the regional educational administrations of Andalucía and Extremadura. The revision and further developments of eXe 3.0 are carried out also with the participation of other regional administrations (Canarias, Madrid, Comunidad Valenciana and Galicia).
 
-This version is built with modern technologies (Bun, Elysia, Kysely) and provides an accessible and up-to-date user interface for creating interactive educational content.
+The current 4.0 release has been fully rewritten in TypeScript with Bun, Elysia, and Kysely based on the 3.0 codebase, completely replacing the Symfony + PHP backend with one built on Bun, Elysia, and Kysely, and provides an accessible and up-to-date user interface for creating interactive educational content
 
 ### Key Features
 
@@ -44,7 +44,7 @@ This version is built with modern technologies (Bun, Elysia, Kysely) and provide
 * Modern and accessible interface built with [Bootstrap](https://getbootstrap.com/)
 * Multiple authentication methods (Password, CAS, OpenID Connect)
 * Compatible with MySQL, PostgreSQL, and SQLite databases
-* Offline installers supported via [Electron](https://www.electronjs.org/) and [nativePHP](https://nativephp.com/)
+* Offline installers supported via [Electron](https://www.electronjs.org/)
 
 ## Quick Start
 
@@ -67,6 +67,8 @@ make up-local
 ```
 
 This will install dependencies, build assets, and start eXeLearning at `http://localhost:8080` with hot reload.
+
+### Desktop Installation
 
 Offline installers for Linux, Windows and macOS are also available on the [Releases page](https://github.com/exelearning/exelearning/releases).
 
@@ -91,6 +93,27 @@ make up-local
 This will install dependencies, build assets, and start the development server at `http://localhost:8080` with hot reload.
 
 More development tools, options, and real-time collaboration info are documented in the `doc/` folder. See also [Architecture Documentation](./doc/architecture.md).
+
+### Useful Makefile Commands
+
+The project includes a Makefile to simplify development tasks:
+
+```
+make up-local         # Start development server (installs deps + hot reload)
+make up               # Start with Docker
+make test-unit        # Run unit tests
+make test-integration # Run integration tests
+make test-frontend    # Run frontend tests (Vitest)
+make test-e2e         # Run E2E tests (Playwright)
+make lint             # Run linter
+make fix              # Auto-fix linting issues
+```
+
+To see all available commands, run:
+
+```
+make help
+```
 
 
 ## Usage
@@ -128,27 +151,6 @@ Contributions are what make the open source community such an amazing place to l
 5. Open a Pull Request
 
 See our [versioning guide](./doc/development/version-control.md) for details about our Git workflow.
-
-### Useful Makefile Commands
-
-The project includes a Makefile to simplify development tasks:
-
-```
-make up-local         # Start development server (installs deps + hot reload)
-make up               # Start with Docker
-make test-unit        # Run unit tests
-make test-integration # Run integration tests
-make test-frontend    # Run frontend tests (Vitest)
-make test-e2e         # Run E2E tests (Playwright)
-make lint             # Run linter
-make fix              # Auto-fix linting issues
-```
-
-To see all available commands, run:
-
-```
-make help
-```
 
 ## Documentation
 
