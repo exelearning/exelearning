@@ -1020,7 +1020,8 @@ describe('YjsTinyMCEBinding', () => {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
       };
 
-      const html = '<img src="asset://a1b2c3d4-e5f6-7890/image.png">';
+      // New format: asset://uuid.ext
+      const html = '<img src="asset://a1b2c3d4-e5f6-7890.png">';
       const result = binding.convertAssetUrlsToBlobUrls(html);
 
       expect(result).toBe('<img src="blob:http://localhost:8081/abc123">');
@@ -1040,7 +1041,8 @@ describe('YjsTinyMCEBinding', () => {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
       };
 
-      const html = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/a.png"><img src="asset://11111111-2222-3333-4444-555555555555/b.jpg">';
+      // New format: asset://uuid.ext
+      const html = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.png"><img src="asset://11111111-2222-3333-4444-555555555555.jpg">';
       const result = binding.convertAssetUrlsToBlobUrls(html);
 
       expect(result).toContain('blob:http://localhost:8081/abc');
@@ -1059,12 +1061,12 @@ describe('YjsTinyMCEBinding', () => {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
       };
 
-      // Use valid hex UUID format
-      const html = '<img src="asset://abcd1234-5678-90ab-cdef-123456789abc/image.png">';
+      // New format: asset://uuid.ext
+      const html = '<img src="asset://abcd1234-5678-90ab-cdef-123456789abc.png">';
       const result = binding.convertAssetUrlsToBlobUrls(html);
 
       expect(result).toBe(html); // Unchanged
-      expect(resolveAssetURL).toHaveBeenCalledWith('asset://abcd1234-5678-90ab-cdef-123456789abc/image.png');
+      expect(resolveAssetURL).toHaveBeenCalledWith('asset://abcd1234-5678-90ab-cdef-123456789abc.png');
 
       delete window.eXeLearning;
     });
@@ -1080,12 +1082,197 @@ describe('YjsTinyMCEBinding', () => {
         app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
       };
 
-      const html = '<img src="asset://ABCD1234-5678-90AB-CDEF-123456789ABC/image.png">';
+      // New format: asset://uuid.ext
+      const html = '<img src="asset://ABCD1234-5678-90AB-CDEF-123456789ABC.png">';
       const result = binding.convertAssetUrlsToBlobUrls(html);
 
       expect(result).toBe('<img src="blob:http://localhost:8081/upper">');
 
       delete window.eXeLearning;
+    });
+
+    it('converts new format asset URLs (uuid.ext) to blob URLs', () => {
+      const mockAssetManager = {
+        blobURLCache: new Map([
+          ['a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'blob:http://localhost:8081/newformat'],
+        ]),
+      };
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
+      };
+
+      // New format: asset://uuid.ext (no filename path)
+      const html = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.png">';
+      const result = binding.convertAssetUrlsToBlobUrls(html);
+
+      expect(result).toBe('<img src="blob:http://localhost:8081/newformat">');
+
+      delete window.eXeLearning;
+    });
+
+    it('handles new format URLs with various extensions', () => {
+      const mockAssetManager = {
+        blobURLCache: new Map([
+          ['11111111-2222-3333-4444-555555555555', 'blob:http://localhost:8081/jpg'],
+          ['aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', 'blob:http://localhost:8081/pdf'],
+        ]),
+      };
+      window.eXeLearning = {
+        app: { project: { _yjsBridge: { assetManager: mockAssetManager } } },
+      };
+
+      const html = '<img src="asset://11111111-2222-3333-4444-555555555555.jpg"><a href="asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee.pdf">PDF</a>';
+      const result = binding.convertAssetUrlsToBlobUrls(html);
+
+      expect(result).toContain('blob:http://localhost:8081/jpg');
+      expect(result).toContain('blob:http://localhost:8081/pdf');
+
+      delete window.eXeLearning;
+    });
+  });
+
+  describe('_setupAssetUrlObserver', () => {
+    let observerCallback;
+    let localMockEditor;
+    let localMockBody;
+    let localBinding;
+
+    beforeEach(() => {
+      // Mock MutationObserver
+      global.MutationObserver = class {
+        constructor(callback) {
+          observerCallback = callback;
+        }
+        observe() {}
+        disconnect() {}
+      };
+
+      localMockBody = document.createElement('div');
+
+      // Create a proper mock editor with all required methods
+      localMockEditor = {
+        _content: '<p>test</p>',
+        _listeners: {},
+        selection: {
+          getBookmark: mock(() => ({ id: 'bookmark-1' })),
+          moveToBookmark: mock(() => undefined),
+          getRng: mock(() => ({
+            startContainer: localMockBody,
+            startOffset: 0,
+            endContainer: localMockBody,
+            endOffset: 0,
+          })),
+        },
+        getContent: mock(function () {
+          return this._content;
+        }),
+        setContent: mock(function (content) {
+          this._content = content;
+        }),
+        getBody: mock(() => localMockBody),
+        on: mock(function (event, callback) {
+          if (!this._listeners[event]) {
+            this._listeners[event] = [];
+          }
+          this._listeners[event].push(callback);
+        }),
+        off: mock(function (event, callback) {
+          if (this._listeners[event]) {
+            this._listeners[event] = this._listeners[event].filter((cb) => cb !== callback);
+          }
+        }),
+        fire: mock(function (event) {
+          if (this._listeners[event]) {
+            this._listeners[event].forEach((cb) => cb());
+          }
+        }),
+      };
+
+      window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: {
+                blobURLCache: new Map([
+                  ['test-uuid-1234', 'blob:http://localhost/resolved'],
+                ]),
+                resolveAssetURL: mock(() => Promise.resolve('blob:http://localhost/async-resolved')),
+              },
+            },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      if (localBinding) {
+        localBinding.destroy();
+        localBinding = null;
+      }
+      delete window.eXeLearning;
+      delete global.MutationObserver;
+    });
+
+    it('extracts asset ID from new format URL (uuid.ext) and resolves from cache', async () => {
+      const ytext = createYText('<p>test</p>');
+      // Correct argument order: (editor, yText, options)
+      localBinding = new YjsTinyMCEBinding(localMockEditor, ytext, {});
+
+      // Simulate adding an img element with new format URL
+      const img = document.createElement('img');
+      img.src = 'asset://test-uuid-1234.jpg';
+      localMockBody.appendChild(img);
+
+      // Trigger the observer
+      observerCallback([{
+        addedNodes: [img],
+      }]);
+
+      // Wait for async resolution
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // The image src should be updated to blob URL
+      expect(img.src).toBe('blob:http://localhost/resolved');
+    });
+
+    it('extracts asset ID correctly from new format without extension', async () => {
+      window.eXeLearning.app.project._yjsBridge.assetManager.blobURLCache.set(
+        'no-ext-uuid-5678',
+        'blob:http://localhost/no-ext'
+      );
+
+      const ytext = createYText('<p>test</p>');
+      localBinding = new YjsTinyMCEBinding(localMockEditor, ytext, {});
+
+      const img = document.createElement('img');
+      img.src = 'asset://no-ext-uuid-5678';
+      localMockBody.appendChild(img);
+
+      observerCallback([{
+        addedNodes: [img],
+      }]);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(img.src).toBe('blob:http://localhost/no-ext');
+    });
+
+    it('falls back to resolveAssetURL when not in cache', async () => {
+      const ytext = createYText('<p>test</p>');
+      localBinding = new YjsTinyMCEBinding(localMockEditor, ytext, {});
+
+      const img = document.createElement('img');
+      img.src = 'asset://unknown-uuid.png';
+      localMockBody.appendChild(img);
+
+      observerCallback([{
+        addedNodes: [img],
+      }]);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.resolveAssetURL)
+        .toHaveBeenCalledWith('asset://unknown-uuid.png');
     });
   });
 });

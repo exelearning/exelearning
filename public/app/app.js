@@ -1153,6 +1153,8 @@ export default class App {
      */
     async showProvisionalDemoWarning() {
         if (
+            eXeLearning.version.indexOf('-nightly') === -1 &&
+            eXeLearning.version.indexOf('-pr') === -1 &&
             eXeLearning.version.indexOf('-alpha') === -1 &&
             eXeLearning.version.indexOf('-beta') === -1 &&
             eXeLearning.version.indexOf('-rc') === -1

@@ -2070,14 +2070,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                             const metadata = assetId ? assetMetadata[assetId] : null;
 
                             // Use filename from metadata if available, otherwise use UUID
-                            let fileName: string;
-                            if (metadata?.filename) {
-                                fileName = metadata.filename;
-                            } else {
-                                // Fallback: extract from URL path or use UUID
-                                const urlParts = filePath.replace('asset://', '').split('/');
-                                fileName = urlParts.length > 1 ? urlParts[urlParts.length - 1] : assetId;
-                            }
+                            // Format: asset://uuid.ext - filename comes from metadata only
+                            const fileName = metadata?.filename || assetId;
 
                             // Use size from metadata if available
                             let fileSize: string;

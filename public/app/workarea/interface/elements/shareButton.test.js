@@ -4,10 +4,14 @@ describe('ShareProjectButton', () => {
   let shareButton;
   let mockButton;
   let mockVisibilityIcon;
+  let mockShareText;
   let mockCheckOpenIdevice;
   let mockShareModal;
 
   beforeEach(() => {
+    // Mock i18n function
+    window._ = vi.fn((str) => str);
+
     // Mock DOM elements
     mockVisibilityIcon = {
       classList: {
@@ -16,10 +20,15 @@ describe('ShareProjectButton', () => {
       },
     };
 
+    mockShareText = {
+      textContent: 'Share',
+    };
+
     mockButton = {
       addEventListener: vi.fn(),
       querySelector: vi.fn((selector) => {
         if (selector === '.share-visibility-indicator .medium-icon') return mockVisibilityIcon;
+        if (selector === '.button-share-text') return mockShareText;
         return null;
       }),
     };
@@ -68,6 +77,7 @@ describe('ShareProjectButton', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     delete window.eXeLearning;
+    delete window._;
   });
 
   describe('constructor', () => {
@@ -82,6 +92,11 @@ describe('ShareProjectButton', () => {
     it('should query visibility icon', () => {
       expect(mockButton.querySelector).toHaveBeenCalledWith('.share-visibility-indicator .medium-icon');
       expect(shareButton.visibilityIcon).toBe(mockVisibilityIcon);
+    });
+
+    it('should query share text element', () => {
+      expect(mockButton.querySelector).toHaveBeenCalledWith('.button-share-text');
+      expect(shareButton.shareText).toBe(mockShareText);
     });
 
     it('should initialize currentVisibility to private', () => {
@@ -175,8 +190,25 @@ describe('ShareProjectButton', () => {
       expect(mockVisibilityIcon.classList.add).toHaveBeenCalledWith('share-icon');
     });
 
+    it('should update text to Shared when visibility is public', () => {
+      shareButton.updateVisibilityPill('public');
+      expect(window._).toHaveBeenCalledWith('Shared');
+      expect(mockShareText.textContent).toBe('Shared');
+    });
+
+    it('should update text to Share when visibility is private', () => {
+      shareButton.updateVisibilityPill('private');
+      expect(window._).toHaveBeenCalledWith('Share');
+      expect(mockShareText.textContent).toBe('Share');
+    });
+
     it('should return early if visibilityIcon is null', () => {
       shareButton.visibilityIcon = null;
+      expect(() => shareButton.updateVisibilityPill('public')).not.toThrow();
+    });
+
+    it('should not throw if shareText is null', () => {
+      shareButton.shareText = null;
       expect(() => shareButton.updateVisibilityPill('public')).not.toThrow();
     });
   });

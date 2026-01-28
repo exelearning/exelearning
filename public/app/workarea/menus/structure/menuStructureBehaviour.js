@@ -11,6 +11,24 @@ import { exportPageAndDownload } from './pageExportHelper.js';
 // Use global AppLogger for debug-controlled logging
 const Logger = (typeof window !== 'undefined' && window.AppLogger) || console;
 
+// Module-level flag to ensure only one document-level context menu listener is added
+let _contextMenuDelegationAdded = false;
+// Store the current handler reference so it can be called with the active instance
+let _contextMenuHandler = null;
+let _activeMenuStructureBehaviour = null;
+
+/**
+ * Reset the context menu delegation state (for testing purposes)
+ */
+export function resetContextMenuDelegation() {
+    if (_contextMenuHandler) {
+        document.removeEventListener('click', _contextMenuHandler);
+        _contextMenuHandler = null;
+    }
+    _contextMenuDelegationAdded = false;
+    _activeMenuStructureBehaviour = null;
+}
+
 export default class MenuStructureBehaviour {
     constructor(structureEngine) {
         this.structureEngine = structureEngine;
@@ -200,18 +218,31 @@ export default class MenuStructureBehaviour {
         });
 
         // 3. Delegation for other Context Menu Actions (Import, Clone, Delete)
-        // Using a single listener on the menuNav to catch dropdown items
-        if (!this._contextMenuDelegationAdded) {
-            this.menuNav.addEventListener('click', (e) => {
+        // Using document-level listener since dropdown menus are appended to body (data-bs-container="body")
+        // Update the active instance reference so the handler always uses the current behaviour
+        _activeMenuStructureBehaviour = this;
+
+        if (!_contextMenuDelegationAdded) {
+            _contextMenuHandler = (e) => {
+                // Only handle dropdown items from nav page menus (identified by aria-labelledby pattern)
                 const target = e.target.closest('.dropdown-item');
                 if (!target) return;
-                
+
+                // Check if this dropdown menu belongs to a nav page menu
+                const dropdownMenu = target.closest('.dropdown-menu[aria-labelledby^="dropdownMenuButtonPage"]');
+                if (!dropdownMenu) return;
+
+                // Use the active behaviour instance
+                const self = _activeMenuStructureBehaviour;
+                if (!self) return;
+
                 // Stop propagation immediately if we hit a dropdown item!
                 e.stopPropagation();
 
-                // Helper to close dropdown
+                // Helper to close dropdown - find button via aria-labelledby
                 const closeDropdown = () => {
-                    const dropdownBtn = target.closest('.dropdown').querySelector('[data-bs-toggle="dropdown"]');
+                    const labelledBy = dropdownMenu.getAttribute('aria-labelledby');
+                    const dropdownBtn = labelledBy ? document.getElementById(labelledBy) : null;
                     if (dropdownBtn && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
                         const dd = bootstrap.Dropdown.getInstance(dropdownBtn);
                         if (dd) dd.hide();
@@ -225,12 +256,12 @@ export default class MenuStructureBehaviour {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
                     const nodeId = target.getAttribute('data-nav-id');
                     if (nodeId) {
-                        this.importTargetNodeId = nodeId; 
-                        const input = this.menuNav.querySelector('input.local-ode-file-upload-input');
+                        self.importTargetNodeId = nodeId;
+                        const input = self.menuNav.querySelector('input.local-ode-file-upload-input');
                         if (input) input.click();
                     }
                 }
-                
+
                 // Clone Page
                 if (target.classList.contains('action_clone')) {
                     e.stopPropagation();
@@ -239,8 +270,8 @@ export default class MenuStructureBehaviour {
                     const nodeId = target.getAttribute('data-nav-id');
                     if (nodeId) {
                          // User requested revert: Clone directly, then Rename.
-                         this.structureEngine.cloneNodeAndReload(nodeId).then(() => {
-                             this.showModalRenameNode();
+                         self.structureEngine.cloneNodeAndReload(nodeId).then(() => {
+                             self.showModalRenameNode();
                          });
                     }
                 }
@@ -252,7 +283,7 @@ export default class MenuStructureBehaviour {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
                     const nodeId = target.getAttribute('data-nav-id');
                     if (nodeId) {
-                        exportPageAndDownload(nodeId, this.structureEngine).catch(
+                        exportPageAndDownload(nodeId, self.structureEngine).catch(
                             (error) => {
                                 console.error(
                                     '[MenuStructure] Page export failed:',
@@ -276,19 +307,19 @@ export default class MenuStructureBehaviour {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
                     const nodeId = target.getAttribute('data-nav-id');
                     if (nodeId) {
-                        this.showModalRemoveNode(nodeId);
+                        self.showModalRemoveNode(nodeId);
                     }
                 }
-                
+
                 // Properties
                 if (target.classList.contains('page-settings')) {
                      e.stopPropagation();
                      closeDropdown();
                      const nodeId = target.getAttribute('data-menunavid');
-                     let node = this.structureEngine.getNode(nodeId);
+                     let node = self.structureEngine.getNode(nodeId);
                      if (node) {
                         node.showModalProperties();
-                        this.mutationForModalProperties();
+                        self.mutationForModalProperties();
                      }
                 }
 
@@ -298,10 +329,11 @@ export default class MenuStructureBehaviour {
                      closeDropdown();
                      if (eXeLearning.app.project.checkOpenIdevice()) return;
                      const parentNodeId = target.getAttribute('data-parentnavid');
-                     this.showModalNewNode(parentNodeId);
+                     self.showModalNewNode(parentNodeId);
                 }
-            });
-            this._contextMenuDelegationAdded = true;
+            };
+            document.addEventListener('click', _contextMenuHandler);
+            _contextMenuDelegationAdded = true;
         }
     }
 

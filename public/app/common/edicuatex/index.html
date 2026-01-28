@@ -4,57 +4,16 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>EdiCuaTeX - LaTeX Equation Editor</title>
-    <script>
-    // Compute base paths FIRST, before any resources load
-    // This avoids browser speculative prefetching issues where resources
-    // are fetched before the <base> tag is set, causing 404 errors
-    (function() {
-        var path = window.location.pathname;
-
-        // Find the edicuatex directory in the path
-        var edicuatexIndex = path.indexOf('/edicuatex/');
-        if (edicuatexIndex === -1) {
-            // Fallback: if path ends with /edicuatex (no trailing slash)
-            var lastIndex = path.lastIndexOf('/edicuatex');
-            if (lastIndex !== -1 && path.length === lastIndex + 10) {
-                path = path + '/';
-                edicuatexIndex = path.indexOf('/edicuatex/');
-            }
-        }
-
-        var edicuatexBase = edicuatexIndex !== -1
-            ? path.substring(0, edicuatexIndex + 11) // Include '/edicuatex/'
-            : path.substring(0, path.lastIndexOf('/') + 1);
-
-        // Store globally for use in body scripts
-        window.__EDICUATEX_BASE__ = edicuatexBase;
-
-        // Create <base> tag
-        var base = document.createElement('base');
-        base.href = edicuatexBase;
-        document.head.appendChild(base);
-
-        // Load CSS dynamically to avoid speculative prefetch issues
-        var link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = edicuatexBase + 'css/edicuatex.css';
-        document.head.appendChild(link);
-
-        // Load head scripts using document.write for SYNCHRONOUS loading
-        // This ensures edicuatex-tools.js (which defines translations) loads
-        // before the language files that depend on it
-        var headScripts = [
-            'js/edicuatex-tools.js',
-            'lang/en.js',
-            'lang/es.js',
-            'lang/ca.js'
-        ];
-        headScripts.forEach(function(src) {
-            document.write('<script src="' + edicuatexBase + src + '"><\/script>');
-        });
-    })();
-    </script>
-    <!-- CSS and scripts are loaded dynamically above to avoid browser speculative prefetching -->
+    <!-- Load translation tools and MathJax -->
+    <script src="js/edicuatex-tools.js"></script>
+    <!-- Default language (en) -->
+    <script src="lang/en.js"></script>
+    <!-- Available translations (they will be used instead of en or eXe's if possible) -->
+    <script src="lang/es.js"></script>
+    <script src="lang/ca.js"></script>
+    <!-- EdiCuaTeX CSS file -->
+    <link rel="stylesheet" href="css/edicuatex.css">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
 </head>
 
 <body>
@@ -199,15 +158,7 @@
             </div>
         </div>
     </div>
-    <!-- Load body scripts dynamically using the computed base path -->
-    <script>
-    (function() {
-        var base = window.__EDICUATEX_BASE__;
-        var scripts = ['js/DOMPurify/purify.min.js', 'js/edicuatex.js'];
-        scripts.forEach(function(src) {
-            document.write('<script src="' + base + src + '"><\/script>');
-        });
-    })();
-    </script>
+    <script src="js/DOMPurify/purify.min.js"></script>
+    <script src="js/edicuatex.js"></script>
 </body>
 </html>

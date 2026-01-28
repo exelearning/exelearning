@@ -74,8 +74,8 @@ class YjsTinyMCEBinding {
 
       // Check cache first
       if (assetManager?.blobURLCache) {
-        const parts = url.replace('asset://', '').split('/');
-        const assetId = parts[0];
+        // Format: asset://uuid.ext
+        const assetId = url.replace('asset://', '').split('.')[0];
         if (assetManager.blobURLCache.has(assetId)) {
           return assetManager.blobURLCache.get(assetId);
         }
@@ -229,8 +229,8 @@ class YjsTinyMCEBinding {
     const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
     if (!assetManager) return html;
 
-    // Match asset:// URLs (format: asset://uuid/filename)
-    const assetUrlRegex = /asset:\/\/([a-f0-9-]+)\/[^"'\s)]+/gi;
+    // Match asset:// URLs in new format: asset://uuid.ext or asset://uuid
+    const assetUrlRegex = /asset:\/\/([a-f0-9-]+)(?:\.[a-z0-9]+)?/gi;
 
     return html.replace(assetUrlRegex, (assetUrl, assetId) => {
       const blobUrl = assetManager.blobURLCache?.get(assetId);
