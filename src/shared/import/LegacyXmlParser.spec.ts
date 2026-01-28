@@ -492,6 +492,286 @@ describe('LegacyXmlParser', () => {
         });
     });
 
+    describe('findAllNodes - unique node handling', () => {
+        it('should include inline node definitions even when appearing after parentNode key', () => {
+            // This tests the fix for nodes defined inline within parentNode fields
+            // Previously these were incorrectly filtered out, causing missing pages
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child Page 1"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="10">
+                  <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node" reference="4">
+                      <dictionary>
+                        <string role="key" value="_title"/>
+                        <unicode value="Inline Defined Page"/>
+                        <string role="key" value="parent"/>
+                        <reference key="2"/>
+                        <string role="key" value="idevices"/>
+                        <list/>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Should find the inline defined page (reference 4)
+            const inlinePage = result.pages.find(p => p.title === 'Inline Defined Page');
+            expect(inlinePage).toBeDefined();
+            expect(result.pages.length).toBeGreaterThanOrEqual(3);
+        });
+
+        it('should skip duplicate node references', () => {
+            // When a node is defined once and referenced multiple times,
+            // it should only appear once in the result
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child Page"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child Page Duplicate"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Should only have one page with reference 3 (the first one)
+            const childPages = result.pages.filter(p => p.id === 'page-3');
+            expect(childPages.length).toBe(1);
+            expect(childPages[0].title).toBe('Child Page');
+        });
+    });
+
+    describe('page ordering', () => {
+        it('should sort children by document order (position)', () => {
+            // Children should be sorted by their position in the XML document
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="First Child"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="4">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Second Child"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="5">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Third Child"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // After flattening with root convention, children become top-level
+            // and should maintain their document order
+            const firstChild = result.pages.find(p => p.title === 'First Child');
+            const secondChild = result.pages.find(p => p.title === 'Second Child');
+            const thirdChild = result.pages.find(p => p.title === 'Third Child');
+
+            expect(firstChild).toBeDefined();
+            expect(secondChild).toBeDefined();
+            expect(thirdChild).toBeDefined();
+
+            // Positions should be sequential after flattening
+            expect(firstChild!.position).toBeLessThan(secondChild!.position);
+            expect(secondChild!.position).toBeLessThan(thirdChild!.position);
+        });
+
+        it('should reassign sequential positions after flattening', () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child A"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="children"/>
+              <list>
+                <instance class="exe.engine.node.Node" reference="4">
+                  <dictionary>
+                    <string role="key" value="_title"/>
+                    <unicode value="Grandchild"/>
+                    <string role="key" value="parent"/>
+                    <reference key="3"/>
+                    <string role="key" value="idevices"/>
+                    <list/>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+          <instance class="exe.engine.node.Node" reference="5">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child B"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // All positions should be sequential integers starting from 0
+            for (let i = 0; i < result.pages.length; i++) {
+                expect(result.pages[i].position).toBe(i);
+            }
+        });
+
+        it('should sort root pages by document order', () => {
+            // When there are multiple root pages (no single root to flatten),
+            // they should be sorted by their position in the document
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="First Root"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Verify pages are present and have sequential positions
+            expect(result.pages.length).toBeGreaterThanOrEqual(1);
+            expect(result.pages[0].position).toBe(0);
+        });
+    });
+
     describe('internal link conversion', () => {
         it('should convert exe-node: links to page IDs', () => {
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
