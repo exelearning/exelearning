@@ -36,8 +36,9 @@ const projectRoot = path.resolve(import.meta.dir, '..');
 const outputDir = path.join(projectRoot, 'dist/static');
 
 // Read version from environment variable or package.json
+// VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const buildVersion = process.env.APP_VERSION || `v${packageJson.version}`;
+const buildVersion = process.env.VERSION || process.env.APP_VERSION || `v${packageJson.version}`;
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
