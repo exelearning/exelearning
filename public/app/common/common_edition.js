@@ -740,13 +740,8 @@ var $exeDevicesEdition = {
                         }
                     }
 
-                    // Save preference when user changes the AI selection
-                    $iaSelect.off('change.defaultAI').on('change.defaultAI', function() {
-                        const selectedAI = $(this).val();
-                        if (window.eXeLearning?.app?.user?.preferences) {
-                            eXeLearning.app.user.preferences.apiSaveProperties({ defaultAI: selectedAI });
-                        }
-                    });
+                    // Do not persist changes here; preferences are managed in the user preferences UI.
+                    $iaSelect.off('change.defaultAI');
 
                     $saveButton.hide();
                     $textQuestionsArea.hide();

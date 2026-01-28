@@ -1102,7 +1102,7 @@ describe('common_edition.js', () => {
       expect($('#eXeEIASelect').val()).toBe('https://chatgpt.com/?q=');
     });
 
-    it('saves preference when user changes the AI selection', () => {
+    it('does not save preference when user changes the AI selection', () => {
       const apiSavePropertiesMock = vi.fn();
 
       globalThis.eXeLearning = {
@@ -1130,8 +1130,8 @@ describe('common_edition.js', () => {
       // Change the select value
       $('#eXeEIASelect').val('https://www.perplexity.ai/search?q=').trigger('change');
 
-      // Verify apiSaveProperties was called with the new value
-      expect(apiSavePropertiesMock).toHaveBeenCalledWith({ defaultAI: 'https://www.perplexity.ai/search?q=' });
+      // Verify apiSaveProperties was not called
+      expect(apiSavePropertiesMock).not.toHaveBeenCalled();
     });
 
     it('handles missing eXeLearning global gracefully', () => {
