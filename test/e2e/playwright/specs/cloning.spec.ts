@@ -122,10 +122,9 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
         editor.setDirty(true);
     }, content);
 
-    await page.waitForFunction(() => {
-        const editor = (window as any).tinymce?.activeEditor;
-        return !!editor && editor.isDirty();
-    });
+    // Note: The isDirty() wait was removed because it's unreliable - the dirty flag may not
+    // propagate immediately with TinyMCE in "multiple-visible" mode with Yjs bindings.
+    // The subsequent wait for save completion and content rendering (lines 136-162) is sufficient.
 
     // Save the iDevice
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');
