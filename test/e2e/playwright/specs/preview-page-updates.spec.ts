@@ -1,4 +1,5 @@
-import { test, expect, Page } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Preview Page Updates
@@ -11,24 +12,6 @@ import { test, expect, Page } from '../fixtures/auth.fixture';
  * 2. Page reorder: Pages must be sorted by hierarchical 'order' field
  */
 
-/**
- * Helper function to wait for Service Worker to be ready
- * Firefox takes longer to register and activate the SW
- */
-async function waitForServiceWorker(page: Page, timeout = 15000): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            // Check if SW registration promise exists and has completed
-            return (
-                app?._previewSwRegistration?.active?.state === 'activated' ||
-                navigator.serviceWorker?.controller !== null
-            );
-        },
-        { timeout },
-    );
-}
-
 test.describe('Preview Page Updates', () => {
     test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
@@ -37,23 +20,10 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Preview Title Update Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize including Yjs
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to hide
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Get the first page info from Yjs
         const pageInfo = await page.evaluate(() => {
@@ -114,23 +84,10 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Title Fields Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Get first page ID
         const pageId = await page.evaluate(() => {
@@ -203,23 +160,10 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Page Order Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create multiple pages via Yjs using addPage (correct method)
         const pageNames = ['First Page', 'Second Page', 'Third Page'];
@@ -278,23 +222,10 @@ test.describe('Preview Page Updates', () => {
         const projectUuid = await createProject(page, 'Page Movement Test');
 
         // Navigate to the project workarea
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app to fully initialize
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge?.structureBinding !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen
-        await page.waitForFunction(
-            () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-            { timeout: 30000 },
-        );
+        await waitForAppReady(page);
 
         // Create pages A, B, C using correct method
         const pageIds = await page.evaluate(() => {

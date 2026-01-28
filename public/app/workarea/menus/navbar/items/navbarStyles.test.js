@@ -76,12 +76,13 @@ describe('NavbarStyles', () => {
                 <button id="dropdownStyles"></button>
                 <button id="navbar-button-styles"></button>
             </div>
+            <h1 class="styles-title">Styles</h1>
             <div id="styleslistContent">
                 <div id="exestylescontent"></div>
                 <div id="importedstylescontent"></div>
             </div>
-            <div id="exestylescontent-tab"></div>
-            <div id="importedstylescontent-tab"></div>
+            <div id="exestylescontent-tab">System</div>
+            <div id="importedstylescontent-tab">Imported</div>
             <div id="stylessidenav" class="sidenav"></div>
             <div id="sidenav-overlay"></div>
             <button id="stylessidenavclose"></button>
@@ -153,6 +154,23 @@ describe('NavbarStyles', () => {
             'site-1',
         ]);
         expect(navbarStyles.userThemes.map((t) => t.id)).toEqual(['user-1']);
+    });
+
+    it('translates static sidebar elements on initialization', () => {
+        // Verify that the translation function was called for sidebar elements
+        expect(global._).toHaveBeenCalledWith('Styles');
+        expect(global._).toHaveBeenCalledWith('System');
+        expect(global._).toHaveBeenCalledWith('Imported');
+
+        // Verify the elements have the translated text
+        const title = document.querySelector('.styles-title');
+        expect(title.textContent).toBe('Styles');
+
+        const systemTab = document.querySelector('#exestylescontent-tab');
+        expect(systemTab.textContent).toBe('System');
+
+        const importedTab = document.querySelector('#importedstylescontent-tab');
+        expect(importedTab.textContent).toBe('Imported');
     });
 
     it('updates selected theme classes in both lists', () => {
@@ -732,6 +750,35 @@ describe('NavbarStyles', () => {
                             value: 'icons/icon1.png',
                             _relativePath: 'icons/icon1.png',
                         },
+                    },
+                })
+            );
+        });
+
+        it('supports multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
+            window.fflate.unzipSync.mockReturnValue({
+                'config.xml': new TextEncoder().encode('<theme><name>Multi Icon Theme</name></theme>'),
+                'icons/share.svg': new Uint8Array([1]),
+                'icons/download.png': new Uint8Array([2]),
+                'icons/animate.gif': new Uint8Array([3]),
+                'icons/photo.jpg': new Uint8Array([4]),
+                'icons/image.jpeg': new Uint8Array([5]),
+                'icons/modern.webp': new Uint8Array([6]),
+            });
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalledWith(
+                'multi_icon_theme',
+                expect.any(Uint8Array),
+                expect.objectContaining({
+                    icons: {
+                        share: expect.objectContaining({ id: 'share', value: 'icons/share.svg' }),
+                        download: expect.objectContaining({ id: 'download', value: 'icons/download.png' }),
+                        animate: expect.objectContaining({ id: 'animate', value: 'icons/animate.gif' }),
+                        photo: expect.objectContaining({ id: 'photo', value: 'icons/photo.jpg' }),
+                        image: expect.objectContaining({ id: 'image', value: 'icons/image.jpeg' }),
+                        modern: expect.objectContaining({ id: 'modern', value: 'icons/modern.webp' }),
                     },
                 })
             );

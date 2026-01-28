@@ -268,7 +268,7 @@ describe('pageExportHelper', () => {
             expect(downloadComponentFile).toHaveBeenCalledWith(
                 'blob:mock-url',
                 'Test_Page.elpx',
-                { typeKeySuffix: 'page' }
+                { typeKeySuffix: 'page', alwaysAskLocation: true }
             );
         });
 

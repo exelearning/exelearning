@@ -214,11 +214,13 @@ describe('Theme', () => {
       expect(result).toContain('resource=//themes/test/style.css');
     });
 
-    it('should extract path after /files/', () => {
+    it('should return static mode theme paths directly', () => {
+      // Static mode: paths containing /files/perm/themes/ are served directly
       const path = 'http://localhost/files/perm/themes/modern/base.css';
       const result = theme.getResourceServicePath(path);
 
-      expect(result).toBe('/api/resources?resource=/perm/themes/modern/base.css');
+      // Paths to bundled theme files are returned as-is for static mode
+      expect(result).toBe('http://localhost/files/perm/themes/modern/base.css');
     });
 
     it('should return site theme paths directly without resource service', () => {

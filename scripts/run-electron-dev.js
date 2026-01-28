@@ -15,7 +15,7 @@ try {
   electronPath = fs.existsSync(fallback) ? fallback : isWin ? 'electron.cmd' : 'electron';
 }
 
-const args = ['.'];
+const args = ['./app'];
 const env = {
   ...process.env,
   EXELEARNING_DEBUG_MODE: process.env.EXELEARNING_DEBUG_MODE || '1',

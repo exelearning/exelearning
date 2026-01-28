@@ -125,9 +125,17 @@ export default class ImageOptimizerManager {
 
         return new Promise((resolve, reject) => {
             try {
-                // Get the base path for the worker
-                const basePath = window.eXeLearning?.basePath || '';
-                this.worker = new Worker(`${basePath}/app/workarea/utils/ImageOptimizerWorker.js`);
+                // Get base path, handling static mode subdirectory deployments
+                let basePath = window.eXeLearning?.basePath || '';
+                if (!basePath) {
+                    // In static mode, derive basePath from current document location
+                    // This handles subdirectory deployments like /pr-preview/pr-20/
+                    const pathname = window.location.pathname;
+                    // Remove workarea.html or workarea/ to get the base directory
+                    basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
+                }
+                const workerUrl = `${basePath}/app/workarea/utils/ImageOptimizerWorker.js`;
+                this.worker = new Worker(workerUrl);
 
                 this.worker.onmessage = (event) => {
                     this.handleWorkerMessage(event.data);

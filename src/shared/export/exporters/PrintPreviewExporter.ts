@@ -133,7 +133,9 @@ export class PrintPreviewExporter {
         const basePath = options.basePath || '';
         const version = options.version || 'v1.0.0';
         const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-        return `${baseUrl}${basePath}/${version}/${cleanPath}`;
+        // Avoid double slashes when basePath ends with /
+        const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+        return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
     }
 
     /**

@@ -219,6 +219,135 @@ describe('Yjs Document Routes', () => {
             expect(body.success).toBe(true);
         });
 
+        it('should read title from X-Project-Title header', async () => {
+            let savedTitle: string | undefined;
+            const mockDeps = createMockDependencies();
+            mockDeps.queries.updateProjectTitle = async (_db: any, _projectId: number, title: string) => {
+                savedTitle = title;
+            };
+            const routes = createYjsRoutes(mockDeps);
+            const testApp = new Elysia().use(routes);
+
+            const testData = new Uint8Array([1, 2, 3]);
+            const res = await testApp.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Project-Title': 'My%20Custom%20Title',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedTitle).toBe('My Custom Title');
+        });
+
+        it('should decode URL-encoded special characters in title header', async () => {
+            let savedTitle: string | undefined;
+            const mockDeps = createMockDependencies();
+            mockDeps.queries.updateProjectTitle = async (_db: any, _projectId: number, title: string) => {
+                savedTitle = title;
+            };
+            const routes = createYjsRoutes(mockDeps);
+            const testApp = new Elysia().use(routes);
+
+            const testData = new Uint8Array([1, 2, 3]);
+            // Title with special characters: "Título con ñ y émojis 🎉"
+            const encodedTitle = encodeURIComponent('Título con ñ y émojis 🎉');
+            const res = await testApp.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Project-Title': encodedTitle,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedTitle).toBe('Título con ñ y émojis 🎉');
+        });
+
+        it('should use existing project title when header is empty', async () => {
+            let savedTitle: string | undefined;
+            const mockDeps = createMockDependencies();
+            mockDeps.queries.updateProjectTitle = async (_db: any, _projectId: number, title: string) => {
+                savedTitle = title;
+            };
+            const routes = createYjsRoutes(mockDeps);
+            const testApp = new Elysia().use(routes);
+
+            const testData = new Uint8Array([1, 2, 3]);
+            const res = await testApp.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Project-Title': '',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // Should use the existing project title from mockProject
+            expect(savedTitle).toBe('Test Project');
+        });
+
+        it('should use existing project title when header is missing', async () => {
+            let savedTitle: string | undefined;
+            const mockDeps = createMockDependencies();
+            mockDeps.queries.updateProjectTitle = async (_db: any, _projectId: number, title: string) => {
+                savedTitle = title;
+            };
+            const routes = createYjsRoutes(mockDeps);
+            const testApp = new Elysia().use(routes);
+
+            const testData = new Uint8Array([1, 2, 3]);
+            const res = await testApp.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        // No X-Project-Title header
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // Should use the existing project title from mockProject
+            expect(savedTitle).toBe('Test Project');
+        });
+
+        it('should trim whitespace from title', async () => {
+            let savedTitle: string | undefined;
+            const mockDeps = createMockDependencies();
+            mockDeps.queries.updateProjectTitle = async (_db: any, _projectId: number, title: string) => {
+                savedTitle = title;
+            };
+            const routes = createYjsRoutes(mockDeps);
+            const testApp = new Elysia().use(routes);
+
+            const testData = new Uint8Array([1, 2, 3]);
+            const res = await testApp.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    method: 'POST',
+                    body: testData,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'X-Project-Title': '%20%20Trimmed%20Title%20%20',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedTitle).toBe('Trimmed Title');
+        });
+
         it('should store snapshot data correctly', async () => {
             const testData = new Uint8Array([100, 200, 255]);
 

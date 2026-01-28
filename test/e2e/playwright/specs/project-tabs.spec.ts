@@ -1,10 +1,12 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { OpenProjectModalPage } from '../pages/open-project-modal.page';
 
 test.describe('Open Project Modal - Tabs', () => {
     let openProjectModal: OpenProjectModalPage;
 
-    test.beforeEach(async ({ authenticatedPage }) => {
+    // Skip all tests in static mode (requires server for project management)
+    test.beforeEach(async ({ authenticatedPage }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Project tabs require server features');
         openProjectModal = new OpenProjectModalPage(authenticatedPage);
     });
 

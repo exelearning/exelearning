@@ -615,8 +615,8 @@ var $azquizgame = {
         $('#roscoLinkAudio-' + instance).on('click', function (e) {
             e.preventDefault();
             const audio = mOptions.wordsGame[mOptions.activeWord].audio;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.stopSound();
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $('#roscoLinkFullScreen-' + instance).on(
@@ -920,7 +920,7 @@ var $azquizgame = {
         $('#roscoPMessages-' + instance)
             .text(msg)
             .css('color', $azquizgame.colors.blackl);
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#roscoLinkAudio-' + instance).hide();
         $('#roscoShowWords-' + instance).show();
     },
@@ -1010,13 +1010,10 @@ var $azquizgame = {
 
         if (mWord.audio.length > 4) $('#roscoLinkAudio-' + instance).show();
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (mWord.audio.trim().length > 4)
-            $exeDevices.iDevice.gamification.media.playSound(
-                mWord.audio.trim(),
-                mOptions
-            );
+            $exeDevices.iDevice.gamification.media.playSound(mWord.audio.trim());
 
         if (mOptions.modeBoard)
             $('#roscoDivModeBoard-' + instance)

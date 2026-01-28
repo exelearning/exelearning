@@ -1,24 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
+import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-
-/**
- * Helper function to wait for app initialization
- */
-async function waitForAppReady(page: Page): Promise<void> {
-    await page.waitForLoadState('networkidle');
-
-    // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, {
-        timeout: 30000,
-    });
-
-    // Wait for loading screen to disappear
-    await page.waitForFunction(
-        () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-        { timeout: 30000 },
-    );
-}
 
 /**
  * Helper function to open styles panel and navigate to Imported tab
@@ -95,7 +78,7 @@ test.describe('Theme Yjs Cleanup', () => {
         // 1. Create project and navigate
         console.log('[Test] Creating project...');
         const projectUuid = await createProject(page, 'Theme Yjs Cleanup Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
         console.log('[Test] Project ready');
 
@@ -164,7 +147,7 @@ test.describe('Theme Yjs Cleanup', () => {
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Re-select Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // 2. Upload and select user theme
@@ -215,7 +198,7 @@ test.describe('Theme Yjs Cleanup', () => {
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Switch Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
+        await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
         // 2. Upload first theme

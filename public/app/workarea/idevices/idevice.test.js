@@ -142,15 +142,15 @@ describe('Idevice', () => {
   });
 
   describe('configParamsTranslatables', () => {
-    it('contains category and title', () => {
+    it('contains only title (category is NOT translated for matching purposes)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.configParamsTranslatables).toContain('category');
       expect(idevice.configParamsTranslatables).toContain('title');
+      expect(idevice.configParamsTranslatables).not.toContain('category');
     });
 
-    it('has exactly 2 items', () => {
+    it('has exactly 1 item', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.configParamsTranslatables).toHaveLength(2);
+      expect(idevice.configParamsTranslatables).toHaveLength(1);
     });
   });
 
@@ -212,23 +212,25 @@ describe('Idevice', () => {
       expect(idevice.version).toBe('2.0');
     });
 
-    it('translates translatable params', () => {
+    it('translates translatable params (only title, not category)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       expect(window._).toHaveBeenCalledWith('Text', 'text-idevice');
-      expect(window._).toHaveBeenCalledWith('Basic', 'text-idevice');
+      // Category is NOT translated - it stays in English for matching
+      expect(window._).not.toHaveBeenCalledWith('Basic', 'text-idevice');
     });
 
-    it('sets translated values for category and title', () => {
+    it('sets translated value for title but NOT for category', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       expect(idevice.title).toBe('translated:Text');
-      expect(idevice.category).toBe('translated:Basic');
+      // Category stays in English for matching with known category keys
+      expect(idevice.category).toBe('Basic');
     });
   });
 
   describe('isTranslatable', () => {
-    it('returns true for category', () => {
+    it('returns false for category (kept in English for matching)', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
-      expect(idevice.isTranslatable('category')).toBe(true);
+      expect(idevice.isTranslatable('category')).toBe(false);
     });
 
     it('returns true for title', () => {
@@ -363,14 +365,15 @@ describe('Idevice', () => {
   });
 
   describe('getResourceServicePath', () => {
-    it('constructs service path with resource parameter', () => {
+    it('returns path as-is for static mode iDevice paths', () => {
+      // Static mode: paths containing /files/perm/idevices/ are served directly
       const idevice = new Idevice(mockManager, mockIdeviceData);
       const result = idevice.getResourceServicePath('/files/perm/idevices/test/style.css');
 
-      expect(result).toBe('/api/idevices/resources?resource=perm/idevices/test/style.css');
+      expect(result).toBe('/files/perm/idevices/test/style.css');
     });
 
-    it('handles paths without /files/ prefix', () => {
+    it('handles paths without /files/ prefix via API', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
       const result = idevice.getResourceServicePath('some/other/path.js');
 
@@ -380,12 +383,12 @@ describe('Idevice', () => {
     it('returns correct path for various inputs', () => {
       const idevice = new Idevice(mockManager, mockIdeviceData);
 
-      // Test with /files/ prefix
+      // Test with /files/perm/idevices/ prefix - static mode returns as-is
       expect(idevice.getResourceServicePath('/files/perm/idevices/text/style.css')).toBe(
-        '/api/idevices/resources?resource=perm/idevices/text/style.css'
+        '/files/perm/idevices/text/style.css'
       );
 
-      // Test empty input
+      // Test empty input - goes through API
       expect(idevice.getResourceServicePath('')).toBe('/api/idevices/resources?resource=');
     });
   });

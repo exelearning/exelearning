@@ -532,8 +532,11 @@ export default class PreviewPanelManager {
             // Refresh SW content before opening new tab
             await this.refreshWithServiceWorker();
 
-            // Build the viewer URL
-            const basePath = eXeLearning?.app?.getBasePath?.() || '';
+            // Build the viewer URL - derive base path from current URL for subdirectory deployments
+            const pathname = window.location.pathname;
+            // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
+            // Also remove any trailing slash to avoid double slashes
+            const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
 
             // Open in new tab

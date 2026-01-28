@@ -163,8 +163,9 @@ var $eXeFlipCards = {
     },
 
     loadDataGame: function (data, sthis) {
-        const json = data.text(),
-            mOptions =
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+        const mOptions =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json),
             $imagesLink = $('.flipcards-LinkImages', sthis),
             $audiosLink = $('.flipcards-LinkAudios', sthis),
@@ -239,12 +240,9 @@ var $eXeFlipCards = {
         mOptions.cardsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.cardsGame,
-                mOptions.percentajeCards
+                mOptions.percentajeCards,
+                mOptions.randomCards
             );
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame
-        );
-        mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
         mOptions.numberCards = mOptions.cardsGame.length;
         mOptions.realNumberCards = mOptions.numberCards;
 
@@ -268,7 +266,6 @@ var $eXeFlipCards = {
                 $eXeFlipCards.hasLATEX = true;
             }
         }
-
         mOptions.fullscreen = false;
         return mOptions;
     },
@@ -584,7 +581,7 @@ var $eXeFlipCards = {
         mOptions.gameActived = false;
         mOptions.gameOver = true;
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#flcdsCubierta-' + instance).show();
         $eXeFlipCards.showScoreGame(type, instance);
@@ -633,7 +630,7 @@ var $eXeFlipCards = {
 
         clearInterval(mOptions.counterClock);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#flcdsStartLevels-' + instance).hide();
         $('#flcdsCubierta-' + instance).hide();
@@ -861,17 +858,19 @@ var $eXeFlipCards = {
     showActivity: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
         mOptions.active = 0;
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.cardsGame
-        );
-        mOptions.cardsGame = mOptions.randomCards ? al : mOptions.cardsGame;
-
+    
+        if(mOptions.randomCards){
+            mOptions.cardsGame =
+            $exeDevices.iDevice.gamification.helpers.shuffleAds(
+                mOptions.cardsGame
+            );
+        }
         if (mOptions.type === 2)
             mOptions.cardsGame = $eXeFlipCards.activeGameMode(instance);
         else if (mOptions.type === 3)
             mOptions.cardsGame = $eXeFlipCards.activeMemory(instance);
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         mOptions.type < 3
             ? $eXeFlipCards.addCards(mOptions.cardsGame, instance)
@@ -939,7 +938,7 @@ var $eXeFlipCards = {
                         instance
                     );
                 }
-                $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+                $exeDevices.iDevice.gamification.media.stopSound();
                 $eXeFlipCards.checkAudio($(this), 1000, instance);
                 $eXeFlipCards.checkFullImage($(this));
             });
@@ -959,7 +958,7 @@ var $eXeFlipCards = {
 
     nextCard: function (instance) {
         const mOptions = $eXeFlipCards.options[instance];
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (mOptions.active < mOptions.cardsGame.length - 1) {
             mOptions.active++;
@@ -1015,7 +1014,7 @@ var $eXeFlipCards = {
             mOptions.visiteds.push($card.data('number'));
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         if (mOptions.isScorm === 1 && mOptions.type < 2) {
             $eXeFlipCards.sendScore(true, instance);
@@ -1214,7 +1213,7 @@ var $eXeFlipCards = {
         mOptions.gameStarted = false;
         mOptions.gameOver = true;
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
 
         $('#flcdsPNumber-' + instance).text('0');
 
@@ -1347,8 +1346,10 @@ var $eXeFlipCards = {
     addCardsMemory: function (instance, cardsGame) {
         const mOptions = $eXeFlipCards.options[instance];
         let cards = '';
-        cardsGame =
-            $exeDevices.iDevice.gamification.helpers.shuffleAds(cardsGame);
+        if (mOptions.randomCards === true) {
+            cardsGame =
+                $exeDevices.iDevice.gamification.helpers.shuffleAds(cardsGame);
+        }
         $('#flcdsMultimedia-' + instance)
             .find('.FLCDSP-CardContainerMemory')
             .remove();
@@ -1658,8 +1659,7 @@ var $eXeFlipCards = {
             const audioId = this.dataset.audio;
             if (audioId && audioId.length > 3) {
                 $exeDevices.iDevice.gamification.media.playSound(
-                    audioId,
-                    mOptions
+                    audioId
                 );
             } else {
                 console.warn('Audio inválido en el enlace:', this);
@@ -1722,7 +1722,7 @@ var $eXeFlipCards = {
             $cc = $(cc),
             maxsel = 1;
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         if (
             !mOptions.gameActived ||
             !mOptions.gameStarted ||
@@ -1755,7 +1755,7 @@ var $eXeFlipCards = {
             $cc.find('.FLCDSP-LinkAudioMemoryBig').data('audio') ||
             '';
         if (sound.length > 3) {
-            $exeDevices.iDevice.gamification.media.playSound(sound, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(sound);
         }
 
         $card.addClass('FLCDSP-CardActiveMemory');
@@ -1862,8 +1862,7 @@ var $eXeFlipCards = {
             if (typeof audioBK != 'undefined' && audioBK.length > 3) {
                 setTimeout(function () {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        audioBK,
-                        mOptions
+                        audioBK
                     );
                 }, time);
                 $(card).find('.FLCDSP-LinkAudioBack').show();
@@ -1872,8 +1871,7 @@ var $eXeFlipCards = {
             if (typeof audio != 'undefined' && audio.length > 3) {
                 setTimeout(function () {
                     $exeDevices.iDevice.gamification.media.playSound(
-                        audio,
-                        mOptions
+                        audio
                     );
                 }, time);
                 $(card).find('.FLCDSP-LinkAudio').show();

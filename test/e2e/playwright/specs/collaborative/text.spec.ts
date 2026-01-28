@@ -1,6 +1,6 @@
-import { test, expect } from '../../fixtures/collaboration.fixture';
+import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync, waitForTextInContent } from '../../helpers/sync-helpers';
-import { waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { waitForLoadingScreen, waitForAppReady } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -8,19 +8,15 @@ import type { Page } from '@playwright/test';
  *
  * These tests verify that text iDevice content (including images) syncs
  * in real-time between multiple users connected to the same project.
+ *
+ * NOTE: These tests are skipped in static mode as they require WebSocket collaboration
  */
 
 /**
  * Helper to wait for Yjs bridge initialization
  */
 async function waitForYjsBridge(page: Page): Promise<void> {
-    await page.waitForFunction(
-        () => {
-            const app = (window as any).eXeLearning?.app;
-            return app?.project?._yjsBridge !== undefined;
-        },
-        { timeout: 30000 },
-    );
+    await waitForAppReady(page);
 }
 
 /**
@@ -204,6 +200,11 @@ test.describe('Collaborative Text iDevice', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
 
+    // Skip all collaboration tests in static mode
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'WebSocket collaboration');
+    });
+
     test.describe('Text and Image Sync', () => {
         test('should sync text iDevice with image content between users', async ({
             authenticatedPage,
@@ -221,7 +222,7 @@ test.describe('Collaborative Text iDevice', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A makes project public and gets share URL BEFORE adding content
             // (so Client B can join and observe real-time sync)
@@ -303,7 +304,7 @@ test.describe('Collaborative Text iDevice', () => {
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
             await waitForYjsBridge(pageA);
-            await waitForLoadingScreenHidden(pageA);
+            await waitForLoadingScreen(pageA);
 
             // Client A adds a text iDevice and types content
             await addTextIdeviceFromPanel(pageA);

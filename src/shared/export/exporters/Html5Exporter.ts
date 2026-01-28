@@ -82,6 +82,9 @@ export class Html5Exporter extends BaseExporter {
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
             }
 
+            // Configure iDevice renderer with theme files for icon resolution
+            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
             // Override favicon if provided in options
             const faviconInfo = html5Options?.faviconPath
                 ? { path: html5Options.faviconPath, type: html5Options.faviconType || 'image/x-icon' }
@@ -435,6 +438,8 @@ export class Html5Exporter extends BaseExporter {
             pageFilenameMap,
             // Asset URL transformation map
             assetExportPathMap,
+            // Application version for generator meta tag
+            version: meta.exelearningVersion,
         });
     }
 
@@ -558,6 +563,9 @@ export class Html5Exporter extends BaseExporter {
                 themeRootFiles,
                 faviconInfo: detectedFavicon,
             } = await this.prepareThemeData(themeName);
+
+            // Configure iDevice renderer with theme files for icon resolution
+            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
             // Override favicon if provided in options
             const faviconInfo = options?.faviconPath
@@ -730,6 +738,26 @@ export class Html5Exporter extends BaseExporter {
                     }
                 } catch {
                     // Many iDevices don't have extra files - this is normal
+                }
+            }
+
+            // 9.5. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                        console.log(
+                            `[Html5Exporter] Added ${fontFiles.size} global font files for preview: ${meta.globalFont}`,
+                        );
+                    }
+                } catch (e) {
+                    console.warn(
+                        `[Html5Exporter] Failed to fetch global font files for preview: ${meta.globalFont}`,
+                        e,
+                    );
                 }
             }
 

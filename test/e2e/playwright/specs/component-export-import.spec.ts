@@ -1,10 +1,11 @@
-import { test, expect, waitForLoadingScreenHidden } from '../fixtures/auth.fixture';
+import { test, expect } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { unzipSync } from '../../../../src/shared/export';
 import {
     waitForAppReady,
+    waitForLoadingScreen,
     openElpFile,
     navigateToPageByTitle,
     getPreviewFrame,
@@ -24,6 +25,7 @@ import {
     getBlockIconName,
     getBlockId,
     waitForThemeIconsLoaded,
+    gotoWorkarea,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -62,19 +64,10 @@ test.describe('Component Export/Import', () => {
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Component Export Import Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        await waitForLoadingScreenHidden(page);
+        await waitForAppReady(page);
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
@@ -180,18 +173,9 @@ test.describe('Component Export/Import', () => {
 
         // Create project with text iDevice
         const projectUuid = await createProject(page, 'Block Export Format Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        await waitForLoadingScreenHidden(page);
+        await waitForAppReady(page);
 
         // Add text iDevice
         await selectPageByIndex(page, 0);
@@ -224,18 +208,9 @@ test.describe('Component Export/Import', () => {
 
         // Create project with text iDevice
         const projectUuid = await createProject(page, 'iDevice Export Format Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        await waitForLoadingScreenHidden(page);
+        await waitForAppReady(page);
 
         // Add text iDevice
         await selectPageByIndex(page, 0);
@@ -281,19 +256,10 @@ test.describe('Component Export/Import', () => {
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'iDevice Image Import Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
+        await gotoWorkarea(page, projectUuid);
 
         // Wait for app initialization
-        await page.waitForFunction(
-            () => {
-                const app = (window as any).eXeLearning?.app;
-                return app?.project?._yjsBridge !== undefined;
-            },
-            { timeout: 30000 },
-        );
-
-        await waitForLoadingScreenHidden(page);
+        await waitForAppReady(page);
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
@@ -568,7 +534,6 @@ test.describe('Component Export/Import with Images', () => {
 
         // 2. Navigate to "Inicio" page (first page)
         await navigateToPageByTitle(page, 'Inicio');
-        await page.waitForTimeout(1500);
 
         // 3. Get the block and iDevice IDs
         const { blockId, ideviceId } = await getBlockAndIdeviceIdsByIndex(page, 0);
@@ -599,14 +564,11 @@ test.describe('Component Export/Import with Images', () => {
 
         // 6. Create a NEW project for import
         const newProjectUuid = await createProject(page, 'Block Import Test - Images');
-        await page.goto(`/workarea?project=${newProjectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, newProjectUuid);
+        await waitForLoadingScreen(page);
 
         // 7. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
 
         // 8. Import the block file
         await importComponent(page, blockFilePath);
@@ -694,10 +656,8 @@ test.describe('Component Export/Import with Images', () => {
 
         // 6. Create a NEW project for import
         const newProjectUuid = await createProject(page, 'iDevice Import Test - 3 Images');
-        await page.goto(`/workarea?project=${newProjectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, newProjectUuid);
+        await waitForLoadingScreen(page);
 
         // 7. Select the first page
         await selectPageByIndex(page, 0);
@@ -769,10 +729,8 @@ test.describe('Component Export/Import with Images', () => {
 
         // 4. Create a NEW project for import
         const newProjectUuid = await createProject(page, 'Preview Image Test');
-        await page.goto(`/workarea?project=${newProjectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, newProjectUuid);
+        await waitForLoadingScreen(page);
 
         // 5. Select the first page and import the block
         await selectPageByIndex(page, 0);
@@ -874,10 +832,8 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Block Icon Export Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, projectUuid);
+        await waitForLoadingScreen(page);
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
@@ -959,10 +915,8 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 1. Create first project and add block with icon
         const projectUuid1 = await createProject(page, 'Block Icon Export Source');
-        await page.goto(`/workarea?project=${projectUuid1}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, projectUuid1);
+        await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
@@ -1000,10 +954,8 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 2. Create a NEW project for import
         const projectUuid2 = await createProject(page, 'Block Icon Import Target');
-        await page.goto(`/workarea?project=${projectUuid2}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, projectUuid2);
+        await waitForLoadingScreen(page);
 
         // 3. Select page and import the block
         await selectPageByIndex(page, 0);
@@ -1058,10 +1010,8 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 1. Create project and add block WITHOUT setting an icon
         const projectUuid1 = await createProject(page, 'Block No Icon Export');
-        await page.goto(`/workarea?project=${projectUuid1}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, projectUuid1);
+        await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);
@@ -1094,10 +1044,8 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 2. Create new project and import
         const projectUuid2 = await createProject(page, 'Block No Icon Import');
-        await page.goto(`/workarea?project=${projectUuid2}`);
-        await page.waitForLoadState('networkidle');
-        await waitForAppReady(page);
-        await waitForLoadingScreenHidden(page);
+        await gotoWorkarea(page, projectUuid2);
+        await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
         await page.waitForTimeout(1000);

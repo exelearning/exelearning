@@ -2,6 +2,9 @@
  * ELP Convert Command
  * Convert eXeLearning v2.x (.elp) file to v3.0 (.elpx) format
  *
+ * Uses the unified import system (ElpxImporter -> Yjs -> YjsDocumentAdapter)
+ * to ensure parity with web-based exports.
+ *
  * Usage:
  *   bun cli elp:convert <input> <output> [options]
  *   bun cli elp:convert - <output> < input.elp
@@ -14,11 +17,16 @@ import { getString, getBoolean, hasHelp } from '../utils/args';
 import { colors } from '../utils/output';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
+import * as Y from 'yjs';
+
+// Import shared import system (new unified approach)
+import { ElpxImporter, FileSystemAssetHandler } from '../../shared/import';
 
 // Import shared export system
 import {
-    ElpDocumentAdapter,
+    ServerYjsDocumentWrapper,
+    YjsDocumentAdapter,
     FileSystemResourceProvider,
     FileSystemAssetProvider,
     FflateZipProvider,
@@ -187,12 +195,36 @@ export async function execute(
             }
         }
 
-        // Create document adapter from ELP file
-        if (debug) {
-            console.log(`[DEBUG] Loading ELP file: ${inputPath}`);
+        // Create extraction directory for assets
+        const extractDir = path.join('/tmp', `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+        if (!existsSync(extractDir)) {
+            mkdirSync(extractDir, { recursive: true });
         }
 
-        const document = await ElpDocumentAdapter.fromElpFile(inputPath);
+        if (debug) {
+            console.log(`[DEBUG] Loading ELP file: ${inputPath}`);
+            console.log(`[DEBUG] Extract directory: ${extractDir}`);
+        }
+
+        // Read the ELP file
+        const elpBuffer = await fs.readFile(inputPath);
+
+        // Create Y.Doc and import using ElpxImporter
+        // This uses the same import code as the browser, ensuring parity
+        const ydoc = new Y.Doc();
+        const assetHandler = new FileSystemAssetHandler(extractDir);
+        const importer = new ElpxImporter(ydoc, assetHandler);
+
+        const importResult = await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+        if (debug) {
+            console.log(`[DEBUG] Import complete: ${importResult.pages} pages, ${importResult.assets} assets`);
+        }
+
+        // Wrap Y.Doc for export using YjsDocumentAdapter
+        // This is the same adapter used by the browser export
+        const wrapper = new ServerYjsDocumentWrapper(ydoc, 'cli-convert');
+        const document = new YjsDocumentAdapter(wrapper);
         const meta = document.getMetadata();
 
         if (debug) {
@@ -203,12 +235,12 @@ export async function execute(
         }
 
         // Create providers
+        // Pass extractDir to resourceProvider so it can find embedded themes
         const publicDir = path.resolve(process.cwd(), process.env.PUBLIC_DIR || 'public');
-        const resourceProvider = new FileSystemResourceProvider(publicDir);
+        const resourceProvider = new FileSystemResourceProvider(publicDir, extractDir);
 
-        // Get the extracted ELP directory path from the adapter
-        const extractedPath = document.extractedPath || path.dirname(inputPath);
-        const assetProvider = new FileSystemAssetProvider(extractedPath);
+        // Use the extraction directory for assets
+        const assetProvider = new FileSystemAssetProvider(extractDir);
 
         const zipProvider = new FflateZipProvider();
 
@@ -256,9 +288,12 @@ export async function execute(
         }
 
         // Clean up extracted directory
-        if (document.extractedPath) {
-            await fs.rm(document.extractedPath, { recursive: true, force: true }).catch(() => {});
+        if (extractDir) {
+            await fs.rm(extractDir, { recursive: true, force: true }).catch(() => {});
         }
+
+        // Clean up Y.Doc
+        wrapper.destroy();
 
         if (debug) {
             console.log(`[DEBUG] Conversion completed: ${outputPath}`);

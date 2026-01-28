@@ -16,12 +16,13 @@ export default class ThemeList {
     }
 
     /**
-     * Load themes from api
+     * Load themes from API (works in both static and server modes)
      *
      * @returns {Array}
      */
     async loadThemesInstalled() {
         this.installed = {};
+        // Use ApiCallManager which handles both static and server modes internally
         let installedThemesJSON =
             await this.manager.app.api.getThemesInstalled();
         if (installedThemesJSON && installedThemesJSON.themes) {
@@ -34,12 +35,13 @@ export default class ThemeList {
     }
 
     /**
-     * Load theme from api
+     * Load specific theme from API
      *
      * @param {*} themeId
      * @returns {Array}
      */
     async loadThemeInstalled(themeId) {
+        // Use ApiCallManager which handles both static and server modes internally
         let installedThemesJSON =
             await this.manager.app.api.getThemesInstalled();
         if (installedThemesJSON && installedThemesJSON.themes) {

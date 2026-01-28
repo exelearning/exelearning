@@ -88,7 +88,11 @@ window.MathJax = window.MathJax || (function() {
             load: externalExtensions.map(function(ext) { return '[tex]/' + ext; })
         },
         options: {
-            // MathJax Configuration Options
+            // Exclude navbar dropdown menus from MathJax processing (File, Edit, etc.)
+            // Note: nav-element is NOT excluded - page titles with LaTeX must be processed
+            ignoreHtmlClass: 'tex2jax_ignore|dropdown-menu|dropdown-item|modal',
+            // Skip processing inside these HTML tags
+            skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
         }
     };
 })();
@@ -188,12 +192,18 @@ var $exe = {
             var tit = e.innerHTML;
             var block = $(e).parent().parent();
             var code = $(".exe-math-code", block);
+            code = code.html();
+            // The SVG renderer generates SVG + MathML
+            if (code.indexOf('svg><math') != -1) {
+                code = code.split('svg><math');
+                code = '<math' + code[1];
+            }
             var a = window.open(tit);
             a.document.open("text/html");
             var html = '<!DOCTYPE html><html><head><title>' + tit + '</title>';
             html += '<style type="text/css">body{font:10pt/1.5 Verdana,Arial,Helvetica,sans-serif;margin:10pt;padding:0}</style>';
             html += '</head><body><pre><code>';
-            html += code.html();
+            html += code;
             html += '</code></pre></body></html>';
             a.document.write(html);
             a.document.close();
@@ -203,6 +213,21 @@ var $exe = {
             $("body").addClass("exe-auto-math"); // Always load it
             var math = $(".exe-math");
             var mathjax = false;
+
+            // Check if content is pre-rendered (SVG+MathML)
+            // Pre-rendered LaTeX uses class "exe-math-rendered"
+            // If ALL LaTeX is pre-rendered and no explicit exe-math-engine elements exist,
+            // no need for MathJax library (similar pattern to Mermaid pre-rendering)
+            var hasPreRendered = $(".exe-math-rendered").length > 0;
+            var hasExplicitEngine = $(".exe-math-engine").length > 0;
+
+            if (hasPreRendered && !hasExplicitEngine) {
+                // Content was pre-rendered to SVG+MathML, no need for MathJax library
+                // Still create links for code/image access if needed
+                $exe.math.createLinks(math);
+                return;
+            }
+
             if (math.length > 0 || $("body").hasClass("exe-auto-math")) {
                 if ($("body").hasClass("exe-auto-math")) {
                     var hasLatex = /(?:\\\(|\\\[|\\begin\{.*?})/.test($('body').html());
@@ -266,17 +291,38 @@ var $exe = {
     },
     // Mermaid options
     mermaid: {
-        // Mermaid script path
-        engine: (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) 
-            ? window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js' 
-            : ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js"),
+        // Mermaid script path - computed dynamically to handle static mode
+        engine: (function() {
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                return './app/common/mermaid/mermaid.min.js';
+            }
+            // Server mode: use versioned path
+            if (config?.baseURL !== undefined) {
+                return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            }
+            // Export mode
+            return ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js");
+        })(),
         reload_pending: false,
         initialized: false,
         loadMermaid: function () {
             // Dynamic path resolution
             var enginePath = this.engine;
-            if (typeof window.eXeLearning !== 'undefined' && window.eXeLearning.config) {
-                enginePath = window.eXeLearning.config.baseURL + window.eXeLearning.config.basePath + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+            var config = window.eXeLearning?.config;
+            if (typeof config === 'string') {
+                try { config = JSON.parse(config); } catch(e) { config = null; }
+            }
+            // Static mode: use relative path without version prefix
+            if (config?.isStaticMode || config?.isOfflineInstallation) {
+                enginePath = './app/common/mermaid/mermaid.min.js';
+            } else if (config?.baseURL !== undefined) {
+                // Server mode: use versioned path
+                enginePath = config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
             }
 
             if (typeof window.mermaid === 'undefined') {
@@ -508,10 +554,22 @@ var $exe = {
                         this.height = r
                     }
                 }
-                $(this).mediaelementplayer();
+                // Disable the JavaScript player if the video has no .srt subtitles
+                if ($("track", this).length > 0) {
+                    var hasSrt = false;
+                    $("track", this).each(function() {
+                        if (typeof(this.src) == 'string') {
+                            if (this.src.endsWith('.srt')) {
+                                hasSrt = true;
+                            }
+                        }
+                    });
+                    if (hasSrt) $(this).mediaelementplayer();
+                }
             });
             $exe.loadMediaPlayer.isReady = true;
-            if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
+            // No JavaScript player in prettyPhoto
+            // if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
         }
     },
 
@@ -1506,7 +1564,11 @@ var $exeDevices = {
                     }
                     if (!window.MathJax.loader) window.MathJax.loader = {};
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
-                    window.MathJax.loader.paths.mathjax = basePath;
+                    // In static mode, keep the pre-configured relative path
+                    var capabilities = window.eXeLearning?.app?.capabilities;
+                    if (capabilities?.storage?.remote) {
+                        window.MathJax.loader.paths.mathjax = basePath;
+                    }
                     var script = document.createElement('script');
                     script.src = self.engine;
                     script.async = true;
@@ -1662,28 +1724,82 @@ var $exeDevices = {
 
                 },
 
-                stopSound: function (game) {
-                    if (typeof game !== 'object' || game === null) return;
-                    if (game.playerAudio && typeof game.playerAudio.pause === "function") {
-                        game.playerAudio.pause();
-                        game.playerAudio.currentTime = 0;
+                playerAudio: null,
+                currentAudioUrl: null,
+                playSound: async function (selectedFile) {
+                    if (!selectedFile || typeof selectedFile !== 'string') {
+                        console.error('playSound: Invalid audio URL');
+                        return;
                     }
+
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        this.playerAudio &&
+                        this.currentAudioUrl === selectedFile &&
+                        !this.playerAudio.paused
+                    ) {
+                        this.stopSound();
+                        return;
+                    }
+
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound();
+
+                    let audioUrl = selectedFile;
+
+                    // Extract URL from Google Drive if applicable
+                    if (
+                        typeof $exeDevices !== 'undefined' &&
+                        $exeDevices.iDevice?.gamification?.media?.extractURLGD
+                    ) {
+                        audioUrl = $exeDevices.iDevice.gamification.media.extractURLGD(audioUrl);
+                    }
+
+                    // Store the original URL for comparison
+                    this.currentAudioUrl = selectedFile;
+
+                    // Create and play the audio
+                    this.playerAudio = new Audio(audioUrl);
+                    this.playerAudio
+                        .play()
+                        .catch((error) => console.error('playSound: Error playing audio:', error));
                 },
 
-                playSound: function (selectedFile, game) {
+                /**
+                 * Stop the currently playing audio
+                 */
+                stopSound: function () {
+                    if (this.playerAudio && typeof this.playerAudio.pause === 'function') {
+                        this.playerAudio.pause();
+                        this.playerAudio = null;
+                    }
+                    this.currentAudioUrl = null;
+                },
+                playSound1: function (selectedFile, game) {
                     if (typeof game !== 'object' || game === null) return;
+                    if (!selectedFile || typeof selectedFile !== 'string') return;
+
                     selectedFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 
-                    if (game.playerAudio && !game.playerAudio.paused) {
-                        game.playerAudio.pause();
+                    // If the same audio is playing, stop it (toggle behavior)
+                    if (
+                        game.playerAudio &&
+                        game.currentAudioUrl === selectedFile &&
+                        !game.playerAudio.paused
+                    ) {
+                        this.stopSound(game);
+                        return;
                     }
 
-                    if (!game.playerAudio || game.playerAudio.src !== selectedFile) {
-                        game.playerAudio = new Audio(selectedFile);
-                        game.playerAudio.play().catch(error => console.error("Error playing audio:", error));
-                    } else if (game.playerAudio.paused) {
-                        game.playerAudio.play().catch(error => console.error("Error playing audio:", error));
-                    }
+                    // Stop any currently playing audio before playing new one
+                    this.stopSound(game);
+
+                    // Store the URL for comparison
+                    game.currentAudioUrl = selectedFile;
+
+                    // Create and play the audio
+                    game.playerAudio = new Audio(selectedFile);
+                    game.playerAudio.play().catch(error => console.error("playSound: Error playing audio:", error));
                 },
 
                 startVideo: function (id, start, end, game, type, instance, updateTimerDisplayLocal) {
@@ -2002,22 +2118,21 @@ var $exeDevices = {
                     return `${formattedMinutes}:${formattedSeconds}`;
                 },
 
-                getQuestions: function (questions, percentage) {
+                getQuestions: function (questions, percentage, random) {
                     const totalQuestions = questions.length;
 
-                    if (percentage >= 100) return questions;
+                    if (percentage >= 100 && !random) return questions;
 
                     const num = Math.max(1, Math.round((percentage * totalQuestions) / 100));
 
                     if (num >= totalQuestions) return questions;
 
                     const indices = Array.from({ length: totalQuestions }, (_, i) => i);
-                    $exeDevices.iDevice.gamification.helpers.shuffleAds(indices);
+                    if (random) {
+                        $exeDevices.iDevice.gamification.helpers.shuffleAds(indices);
+                    }
 
-                    const selectedIndices = indices.slice(0, num).sort((a, b) => a - b),
-                        selectedQuestions = selectedIndices.map(index => questions[index]);
-
-                    return selectedQuestions;
+                    return indices.slice(0, num).map(index => questions[index]);
                 },
                 removeTags: (str) => {
                     const wrapper = $("<div></div>").html(str);

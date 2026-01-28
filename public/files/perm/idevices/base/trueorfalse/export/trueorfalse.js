@@ -186,18 +186,12 @@ var $trueorfalse = {
             data.gameStarted = true;
             data.showSlider = false;
         }
-        if (data.percentageQuestions < 100) {
-            data.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.getQuestions(
-                    data.questionsGame,
-                    data.percentageQuestions
-                );
-        } else if (data.questionsRandom) {
-            data.questionsGame =
-                $exeDevices.iDevice.gamification.helpers.shuffleAds(
-                    data.questionsGame
-                );
-        }
+        data.questionsGame =
+            $exeDevices.iDevice.gamification.helpers.getQuestions(
+                data.questionsGame,
+                data.percentageQuestions,
+                data.questionsRandom
+            );
         data.numberQuestions = data.questionsGame.length;
         data.current = 0;
 
@@ -408,7 +402,7 @@ var $trueorfalse = {
             <div class="TOFP-QuestionDiv ${index % 2 ? 'TOFP-QuestionDivBlack' : ''} " data-number="${index}">
                <div class="TOFP-Question">${$trueorfalse.replaceDirPath(question.question, instance)}</div> 
                <a href="#" class="TOFP-ShowSuggestion ${!question.suggestion.trim() ? 'TOFP-EHidden' : ''}">
-                    <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon">
+                    <img src="${mOptions.idevicePath}tofshowsuggestion.png" alt="${msgs.msgSuggestion}" class="TOFP-SuggestionIcon sr-av">
                     <span>${msgs.msgSuggestion}</span>
                 </a>
                 <div class="TOFP-Suggestion TOFP-EHidden">

@@ -1,6 +1,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
+import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * Helper function to wait for app initialization
@@ -115,8 +116,7 @@ test.describe('Theme Persistence Across Projects', () => {
         expect(projectA).toBeDefined();
 
         // 2. Navigate to first project
-        await page.goto(`/workarea?project=${projectA}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectA);
         console.log('[Test] First project ready');
 
         // 3. Upload a theme via styles panel
@@ -164,8 +164,7 @@ test.describe('Theme Persistence Across Projects', () => {
         expect(projectB).toBeDefined();
 
         // 7. Navigate to second project
-        await page.goto(`/workarea?project=${projectB}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectB);
         console.log('[Test] Second project ready');
 
         // 8. Check IndexedDB directly after navigation
@@ -219,8 +218,7 @@ test.describe('Theme Persistence Across Projects', () => {
 
         // Create and navigate to project
         const projectUuid = await createProject(page, 'IndexedDB Theme Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectUuid);
 
         // Upload a theme
         await uploadTheme(page, 'test-theme.zip');
@@ -256,14 +254,12 @@ test.describe('Theme Persistence Across Projects', () => {
 
         // First, create a project and upload a theme
         const projectA = await createProject(page, 'Theme Init Test A');
-        await page.goto(`/workarea?project=${projectA}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectA);
         await uploadTheme(page, 'test-theme.zip');
 
         // Create a new project
         const projectB = await createProject(page, 'Theme Init Test B');
-        await page.goto(`/workarea?project=${projectB}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectB);
 
         // Check if user themes were loaded during initialization
         const themesLoaded = await page.evaluate(() => {
@@ -297,8 +293,7 @@ test.describe('Theme Persistence Across Projects', () => {
 
         // Create project
         const projectUuid = await createProject(page, 'Theme Icons Test');
-        await page.goto(`/workarea?project=${projectUuid}`);
-        await waitForAppReady(page);
+        await gotoWorkarea(page, projectUuid);
 
         // Upload theme with icons
         console.log('[Test] Uploading theme with icons...');

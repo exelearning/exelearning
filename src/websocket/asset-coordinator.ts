@@ -29,6 +29,7 @@ import {
     AssetCoordinatorStats,
     PriorityUpdateData,
     NavigationHintData,
+    UploadSessionCreateData,
 } from './types';
 import type { Database, Project, Asset } from '../db/types';
 import {
@@ -44,6 +45,11 @@ import {
     type PreemptResult,
     type QueueStats,
 } from '../services/asset-priority-queue';
+import {
+    uploadSessionManager as defaultUploadSessionManager,
+    MAX_BATCH_BYTES,
+    MAX_BATCH_FILES,
+} from '../services/upload-session-manager';
 
 const DEBUG = process.env.APP_DEBUG === '1';
 
@@ -64,6 +70,8 @@ const ASSET_MESSAGE_TYPES: AssetMessageType[] = [
     'bulk-upload-progress',
     'priority-update',
     'navigation-hint',
+    // Upload session messages
+    'upload-session-create',
 ];
 
 /**
@@ -81,6 +89,7 @@ export interface AssetCoordinatorDeps {
         getStats: (projectId: string) => QueueStats;
         peekNextUpload: (projectId: string) => PriorityQueueRequest | null;
     };
+    uploadSessionManager?: typeof defaultUploadSessionManager;
     generateId?: () => string;
 }
 
@@ -106,6 +115,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         findProjectByUuid = defaultFindProjectByUuid,
         findAssetByClientId = defaultFindAssetByClientId,
         priorityQueue = defaultPriorityQueue,
+        uploadSessionManager = defaultUploadSessionManager,
         generateId = randomUUID,
     } = deps;
 
@@ -113,6 +123,13 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     const assetAvailability = new Map<string, Map<string, Set<string>>>();
     const clientSockets = new Map<string, Map<string, WsWebSocket>>();
     const pendingRequests = new Map<string, PendingRequest[]>();
+
+    /**
+     * Extract error message from unknown error type
+     */
+    function getErrorMessage(err: unknown): string {
+        return err instanceof Error ? err.message : String(err);
+    }
 
     /**
      * Check if a message is an asset-related message
@@ -155,7 +172,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             const binaryMessage = encodeAssetMessage(message);
             socket.send(binaryMessage);
         } catch (err: unknown) {
-            const errMessage = err instanceof Error ? err.message : String(err);
+            const errMessage = getErrorMessage(err);
             console.error(`[AssetCoordinator] Failed to send to ${clientId}:`, errMessage);
         }
     }
@@ -172,7 +189,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             try {
                 socket.send(binaryMessage);
             } catch (err: unknown) {
-                const errMessage = err instanceof Error ? err.message : String(err);
+                const errMessage = getErrorMessage(err);
                 console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
             }
         });
@@ -191,7 +208,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 try {
                     socket.send(binaryMessage);
                 } catch (err: unknown) {
-                    const errMessage = err instanceof Error ? err.message : String(err);
+                    const errMessage = getErrorMessage(err);
                     console.error(`[AssetCoordinator] Failed to broadcast to ${cId}:`, errMessage);
                 }
             }
@@ -462,7 +479,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 return;
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = getErrorMessage(error);
             console.error(`[AssetCoordinator] Error checking database for asset ${assetId}:`, errorMessage);
         }
 
@@ -606,7 +623,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                         try {
                             socket.send(binaryMessage);
                         } catch (err: unknown) {
-                            const errMessage = err instanceof Error ? err.message : String(err);
+                            const errMessage = getErrorMessage(err);
                             console.error(`[AssetCoordinator] Failed to notify ${otherClientId}:`, errMessage);
                         }
                     }
@@ -670,7 +687,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 }
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = getErrorMessage(error);
             console.error(`[AssetCoordinator] Error checking asset ${assetId}:`, errorMessage);
         }
 
@@ -766,7 +783,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                 }
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = getErrorMessage(error);
             console.error(`[AssetCoordinator] Error checking navigation assets:`, errorMessage);
         }
 
@@ -784,6 +801,141 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         // Request upload from peers for missing assets
         for (const assetId of missingAssets) {
             await requestUploadFromPeerWithPriority(projectUuid, assetId, clientId, PRIORITY.HIGH);
+        }
+    }
+
+    /**
+     * Handle upload session create request from client
+     * Creates a session token and sets up progress callbacks
+     */
+    async function handleUploadSessionCreate(
+        projectUuid: string,
+        clientId: string,
+        data: UploadSessionCreateData | undefined,
+    ): Promise<void> {
+        try {
+            if (!data || !data.projectId || typeof data.totalFiles !== 'number') {
+                console.warn(`[AssetCoordinator] Invalid upload session create from ${clientId}`);
+                return;
+            }
+
+            const { totalFiles, totalBytes, manifest } = data;
+
+            // Always log upload session requests for debugging
+            console.log(
+                `[AssetCoordinator] Upload session create: ${totalFiles} files, ` +
+                    `${(totalBytes / (1024 * 1024)).toFixed(1)} MB from ${clientId.substring(0, 8)}... ` +
+                    `project=${projectUuid.substring(0, 8)}...`,
+            );
+
+            // Get project to resolve numeric ID
+            const project = await findProjectByUuid(db, projectUuid);
+            if (!project) {
+                console.error(`[AssetCoordinator] Project not found for upload session: ${projectUuid}`);
+                sendToClient(projectUuid, clientId, {
+                    type: 'upload-session-ready',
+                    projectId: projectUuid,
+                    data: {
+                        sessionToken: '',
+                        expiresAt: 0,
+                        config: {
+                            maxBatchSize: 0,
+                            maxBatchBytes: 0,
+                            endpoints: { batch: '', cancel: '' },
+                        },
+                        error: 'Project not found',
+                    },
+                });
+                return;
+            }
+
+            // Get user ID from first client connection (they must be authenticated to have a socket)
+            // For now, we'll use a placeholder - in production this would come from JWT token
+            // The userId is used for session validation but the actual auth is via the session token
+            const userId = project.user_id || 0;
+
+            // Create session (async due to jose JWT library)
+            const { sessionToken, expiresAt } = await uploadSessionManager.createSession({
+                projectId: projectUuid,
+                projectIdNum: project.id,
+                userId,
+                clientId,
+                totalFiles,
+                totalBytes,
+            });
+
+            // Extract sessionId from token for callback registration
+            const sessionPayload = await uploadSessionManager.validateSession(sessionToken);
+            if (!sessionPayload) {
+                console.error(`[AssetCoordinator] Failed to validate newly created session token`);
+                return;
+            }
+
+            // Register progress callback to send WebSocket messages
+            uploadSessionManager.onProgress(sessionPayload.sessionId, progress => {
+                sendToClient(projectUuid, clientId, {
+                    type: 'upload-file-progress',
+                    projectId: projectUuid,
+                    data: progress,
+                });
+            });
+
+            // Register batch complete callback
+            uploadSessionManager.onBatchComplete(sessionPayload.sessionId, result => {
+                sendToClient(projectUuid, clientId, {
+                    type: 'upload-batch-complete',
+                    projectId: projectUuid,
+                    data: result,
+                });
+            });
+
+            // Send session ready message
+            sendToClient(projectUuid, clientId, {
+                type: 'upload-session-ready',
+                projectId: projectUuid,
+                data: {
+                    sessionToken,
+                    expiresAt,
+                    config: {
+                        maxBatchSize: MAX_BATCH_FILES,
+                        maxBatchBytes: MAX_BATCH_BYTES,
+                        endpoints: {
+                            batch: `/api/upload-session/${sessionToken}/batch`,
+                            cancel: `/api/upload-session/${sessionToken}`,
+                        },
+                    },
+                },
+            });
+
+            // Always log success for debugging
+            console.log(
+                `[AssetCoordinator] Upload session created for ${clientId.substring(0, 8)}..., ` +
+                    `expires at ${new Date(expiresAt).toISOString()}`,
+            );
+        } catch (error) {
+            // Catch any uncaught errors to prevent server crash
+            console.error('[AssetCoordinator] CRITICAL ERROR in handleUploadSessionCreate:', error);
+            console.error('[AssetCoordinator] Stack:', error instanceof Error ? error.stack : 'No stack');
+
+            // Try to send error response to client
+            try {
+                sendToClient(projectUuid, clientId, {
+                    type: 'upload-session-ready',
+                    projectId: projectUuid,
+                    data: {
+                        sessionToken: '',
+                        expiresAt: 0,
+                        config: {
+                            maxBatchSize: 0,
+                            maxBatchBytes: 0,
+                            endpoints: { batch: '', cancel: '' },
+                        },
+                        error: error instanceof Error ? error.message : 'Internal server error',
+                    },
+                });
+            } catch (sendError) {
+                console.error('[AssetCoordinator] Failed to send error response:', sendError);
+            }
         }
     }
 
@@ -887,11 +1039,18 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
                     await handleNavigationHint(projectUuid, clientId, data as NavigationHintData);
                     break;
 
+                case 'upload-session-create':
+                    console.log(
+                        `[AssetCoordinator] Handling upload-session-create from ${clientId.substring(0, 8)}...`,
+                    );
+                    await handleUploadSessionCreate(projectUuid, clientId, data as UploadSessionCreateData);
+                    break;
+
                 default:
                     console.warn(`[AssetCoordinator] Unknown message type: ${type}`);
             }
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorMessage = getErrorMessage(error);
             console.error(`[AssetCoordinator] Error handling message type ${type}:`, errorMessage);
         }
     }

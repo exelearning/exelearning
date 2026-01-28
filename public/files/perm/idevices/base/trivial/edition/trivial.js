@@ -678,9 +678,9 @@ var $exeDevice = {
         });
 
         p.audio = p.audio && p.audio != 'undefined' ? p.audio : '';
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         if (p.type != 2 && p.audio.trim().length > 4) {
-            $exeDevice.playSound(p.audio.trim());
+            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#trivialEURLAudio').val(p.audio);
@@ -1960,7 +1960,7 @@ var $exeDevice = {
         }
 
         p.audio = $('#trivialEURLAudio').val();
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         p.soundVideo = $('#trivialECheckSoundVideo').is(':checked') ? 1 : 0;
         p.imageVideo = $('#trivialECheckImageVideo').is(':checked') ? 1 : 0;
@@ -2933,16 +2933,14 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#trivialEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#trivialEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 

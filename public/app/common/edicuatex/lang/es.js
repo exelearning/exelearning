@@ -5,6 +5,8 @@ $i18n['es'] = {
     'Create mathematical formulas visually, copy them or download them as images.': 'Crea fórmulas matemáticas visualmente, cópialas o descárgalas como imágenes.',
     'Educational Applications Laboratory': 'Laboratorio de Aplicaciones Educativas',
     'Application created by Juan José de Haro': 'Aplicación creada por Juan José de Haro',
+    'Code license:': 'Licencia del código:',
+    'Content:': 'Contenido:',
     // === INDEX.HTML - MAIN HEADER & FOOTERSEARCH & TOOLBAR ===
     'Menus': 'Menús',
     'Search by description or code (e.g.: fraction, \\int)...': 'Buscar por descripción o código (ej: fracción, \\int)...',
@@ -23,6 +25,10 @@ $i18n['es'] = {
     'Copy': 'Copiar',
     'Delete': 'Borrar',
     'Code copied!': '¡Código copiado!',
+    'Send to host': 'Enviar a la app',
+    'Sent!': '¡Enviado!',
+    'Missing or invalid origin.': 'Falta el parámetro origin o es inválido.',
+    'No host window available.': 'No hay ventana de destino disponible.',
     // === INDEX.HTML - MAIN HEADER & FOOTERPREVIEW PANEL ===
     'Preview': 'Previsualización',
     'View image': 'Ver imagen',

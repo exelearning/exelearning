@@ -236,6 +236,66 @@ describe('AssetWebSocketHandler', () => {
     });
   });
 
+  describe('_decodeBinaryAssetPayload', () => {
+    it('returns null for empty bytes', () => {
+      const result = handler._decodeBinaryAssetPayload(new Uint8Array(0));
+      expect(result).toBeNull();
+    });
+
+    it('returns null for bytes without 0xFF prefix', () => {
+      const bytes = new Uint8Array([0x00, 0x01, 0x02]);
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns null for bytes with 0xFF but invalid JSON', () => {
+      const bytes = new Uint8Array([0xff, 0x00, 0x01, 0x02]);
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns null for valid JSON but non-asset message type', () => {
+      const json = JSON.stringify({ type: 'unknown-type', data: {} });
+      const jsonBytes = new TextEncoder().encode(json);
+      const bytes = new Uint8Array(1 + jsonBytes.length);
+      bytes[0] = 0xff;
+      bytes.set(jsonBytes, 1);
+
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).toBeNull();
+    });
+
+    it('returns parsed message for valid asset message', () => {
+      const message = { type: 'awareness-update', data: { availableAssets: ['a1'] } };
+      const json = JSON.stringify(message);
+      const jsonBytes = new TextEncoder().encode(json);
+      const bytes = new Uint8Array(1 + jsonBytes.length);
+      bytes[0] = 0xff;
+      bytes.set(jsonBytes, 1);
+
+      const result = handler._decodeBinaryAssetPayload(bytes);
+      expect(result).not.toBeNull();
+      expect(result.parsed.type).toBe('awareness-update');
+      expect(result.parsed.data.availableAssets).toEqual(['a1']);
+    });
+
+    it('handles all asset message types', () => {
+      const types = ['asset-ready', 'upload-request', 'priority-ack', 'upload-session-ready'];
+
+      for (const type of types) {
+        const json = JSON.stringify({ type, data: {} });
+        const jsonBytes = new TextEncoder().encode(json);
+        const bytes = new Uint8Array(1 + jsonBytes.length);
+        bytes[0] = 0xff;
+        bytes.set(jsonBytes, 1);
+
+        const result = handler._decodeBinaryAssetPayload(bytes);
+        expect(result).not.toBeNull();
+        expect(result.parsed.type).toBe(type);
+      }
+    });
+  });
+
   describe('_handleStatus', () => {
     it('handles connected status', async () => {
       handler._setupMessageHandler = mock(() => undefined);

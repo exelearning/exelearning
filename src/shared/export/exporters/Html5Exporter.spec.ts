@@ -1976,4 +1976,298 @@ describe('Html5Exporter', () => {
             expect(files.has('index.html')).toBe(true);
         });
     });
+
+    describe('detectFavicon', () => {
+        it('should prioritize favicon.ico over favicon.png', () => {
+            // Create theme files with both ico and png
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.ico', new Uint8Array([1, 2, 3]));
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            // Access protected method via indexing
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            // Should prefer .ico over .png
+            expect(result).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+
+        it('should return png favicon when ico is not present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('img/favicon.png', new Uint8Array([4, 5, 6]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toEqual({ path: 'theme/img/favicon.png', type: 'image/png' });
+        });
+
+        it('should return null when no favicon is present', () => {
+            const themeFiles = new Map<string, Uint8Array>();
+            themeFiles.set('style.css', new Uint8Array([1, 2, 3]));
+
+            const result = (exporter as any).detectFavicon(themeFiles);
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('prepareThemeData', () => {
+        it('should extract root-level CSS and JS files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('style.js', Buffer.from('// js'));
+                files.set('extra.css', Buffer.from('/* extra */'));
+                files.set('subfolder/nested.css', Buffer.from('/* nested */'));
+                files.set('subfolder/nested.js', Buffer.from('// nested js'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('test-theme');
+
+            // Should only include root-level CSS/JS files (no path separator)
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeRootFiles).toContain('extra.css');
+            // Should NOT include nested files
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.css');
+            expect(result.themeRootFiles).not.toContain('subfolder/nested.js');
+        });
+
+        it('should use fallback when theme fetch fails', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                throw new Error('Theme not found');
+            };
+
+            const result = await (exporter as any).prepareThemeData('nonexistent-theme');
+
+            // Should use fallback files
+            expect(result.themeRootFiles).toContain('style.css');
+            expect(result.themeRootFiles).toContain('style.js');
+            expect(result.themeFilesMap).toBeNull();
+            expect(result.faviconInfo).toBeNull();
+        });
+
+        it('should detect favicon from theme files', async () => {
+            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('img/favicon.ico', Buffer.from('ico-data'));
+                return files;
+            };
+
+            const result = await (exporter as any).prepareThemeData('theme-with-favicon');
+
+            expect(result.faviconInfo).toEqual({ path: 'theme/img/favicon.ico', type: 'image/x-icon' });
+        });
+    });
+
+    describe('Combined LaTeX and Mermaid CSS', () => {
+        it('should append both LaTeX and Mermaid CSS when both are rendered', async () => {
+            await exporter.export({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = zip.files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+            const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssContent).toContain('.exe-math-rendered');
+            expect(cssContent).toContain('.exe-mermaid-rendered');
+        });
+
+        it('should append both LaTeX and Mermaid CSS in generateForPreview', async () => {
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async (html: string) => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                }),
+                preRenderMermaid: async (html: string) => ({
+                    html,
+                    hasMermaid: true,
+                    mermaidRendered: true,
+                    count: 1,
+                }),
+            });
+
+            const baseCss = files.get('content/css/base.css');
+            expect(baseCss).toBeDefined();
+
+            const decoder = new TextDecoder();
+            const cssText = decoder.decode(baseCss as Uint8Array);
+
+            // Should contain both LaTeX and Mermaid CSS
+            expect(cssText).toContain('.exe-math-rendered');
+            expect(cssText).toContain('.exe-mermaid-rendered');
+        });
+    });
+
+    describe('Icon Resolution via setThemeIconFiles', () => {
+        it('should configure IdeviceRenderer with theme icon files', async () => {
+            // Override fetchTheme to include icon files
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+                files.set('icons/check.png', Buffer.from('png-data'));
+                files.set('icons/star.gif', Buffer.from('gif-data'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // Verify icon files are copied to theme/icons/
+            expect(zip.files.has('theme/icons/activity.svg')).toBe(true);
+            expect(zip.files.has('theme/icons/check.png')).toBe(true);
+            expect(zip.files.has('theme/icons/star.gif')).toBe(true);
+        });
+
+        it('should only resolve image files from icons/ folder', async () => {
+            // Override fetchTheme to include various file types
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/info.svg', Buffer.from('<svg></svg>'));
+                files.set('icons/readme.txt', Buffer.from('text file')); // Not an image
+                files.set('icons/config.json', Buffer.from('{}')); // Not an image
+                return files;
+            };
+
+            await exporter.export();
+
+            // Only SVG should be in theme/icons/ as an image file
+            expect(zip.files.has('theme/icons/info.svg')).toBe(true);
+            // Non-image files should still be copied (they're in the theme)
+            expect(zip.files.has('theme/icons/readme.txt')).toBe(true);
+        });
+
+        it('should handle theme with no icon files', async () => {
+            // Override fetchTheme with no icons
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('style.js', Buffer.from('// js'));
+                return files;
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            // Should work fine without icons
+        });
+
+        it('should map icon baseName to filename with extension', async () => {
+            // Create a page with a block that has an icon using baseName
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'lightbulb', // baseName without extension
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+
+            // Override fetchTheme to return icon with extension
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/lightbulb.svg', Buffer.from('<svg></svg>'));
+                return files;
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            // The generated HTML should have the resolved icon name with extension
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/lightbulb.svg');
+        });
+
+        it('should handle multiple icon formats in different themes', async () => {
+            // Test that the same icon baseName can resolve to different extensions
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'star', // baseName
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+
+            // Theme with PNG icon
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/star.png', Buffer.from('png-data'));
+                return files;
+            };
+
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Should resolve to PNG (whatever the theme provides)
+            expect(indexHtml).toContain('theme/icons/star.png');
+        });
+
+        it('should support all common image extensions for icon resolution', async () => {
+            // Override fetchTheme with various image formats
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* css */'));
+                files.set('icons/icon1.svg', Buffer.from('svg'));
+                files.set('icons/icon2.png', Buffer.from('png'));
+                files.set('icons/icon3.gif', Buffer.from('gif'));
+                files.set('icons/icon4.jpg', Buffer.from('jpg'));
+                files.set('icons/icon5.jpeg', Buffer.from('jpeg'));
+                files.set('icons/icon6.webp', Buffer.from('webp'));
+                return files;
+            };
+
+            await exporter.export();
+
+            // All image formats should be included
+            expect(zip.files.has('theme/icons/icon1.svg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon2.png')).toBe(true);
+            expect(zip.files.has('theme/icons/icon3.gif')).toBe(true);
+            expect(zip.files.has('theme/icons/icon4.jpg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon5.jpeg')).toBe(true);
+            expect(zip.files.has('theme/icons/icon6.webp')).toBe(true);
+        });
+    });
 });

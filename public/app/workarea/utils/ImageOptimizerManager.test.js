@@ -789,6 +789,63 @@ describe('ImageOptimizerManager', () => {
             expect(workerConstructorSpy).toHaveBeenCalledWith('/custom/app/workarea/utils/ImageOptimizerWorker.js');
         });
 
+        it('should derive basePath from pathname for static mode subdirectory deployments', async () => {
+            // Simulate static mode where basePath is empty
+            window.eXeLearning.basePath = '';
+
+            // Mock window.location.pathname for subdirectory deployment
+            const originalPathname = window.location.pathname;
+            Object.defineProperty(window, 'location', {
+                value: {
+                    ...window.location,
+                    pathname: '/pr-preview/pr-20/workarea',
+                },
+                configurable: true,
+            });
+
+            // Simulate ready message
+            mockWorker.addEventListener.mockImplementation((event, handler, options) => {
+                if (event === 'message') {
+                    setTimeout(() => handler({ data: { type: 'ready' } }), 0);
+                }
+            });
+
+            const promise = manager.initWorker();
+            await promise;
+
+            // Should derive path from pathname, removing /workarea
+            expect(workerConstructorSpy).toHaveBeenCalledWith('/pr-preview/pr-20/app/workarea/utils/ImageOptimizerWorker.js');
+
+            // Restore original pathname
+            Object.defineProperty(window, 'location', {
+                value: { ...window.location, pathname: originalPathname },
+                configurable: true,
+            });
+        });
+
+        it('should handle workarea.html pathname in static mode', async () => {
+            window.eXeLearning.basePath = '';
+
+            Object.defineProperty(window, 'location', {
+                value: {
+                    ...window.location,
+                    pathname: '/subdir/workarea.html',
+                },
+                configurable: true,
+            });
+
+            mockWorker.addEventListener.mockImplementation((event, handler, options) => {
+                if (event === 'message') {
+                    setTimeout(() => handler({ data: { type: 'ready' } }), 0);
+                }
+            });
+
+            const promise = manager.initWorker();
+            await promise;
+
+            expect(workerConstructorSpy).toHaveBeenCalledWith('/subdir/app/workarea/utils/ImageOptimizerWorker.js');
+        });
+
         it('should reject on worker error', async () => {
             mockWorker.addEventListener.mockImplementation(() => {});
 

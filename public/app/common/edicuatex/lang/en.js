@@ -5,6 +5,8 @@ $i18n['eXe'] = {
     'Create mathematical formulas visually, copy them or download them as images.': _('Create mathematical formulas visually, copy them or download them as images.'),
     'Educational Applications Laboratory': _('Educational Applications Laboratory'),
     'Application created by Juan José de Haro': _('Application created by Juan José de Haro'),
+    'Code license:': _('Code license:'),
+    'Content:': _('Content:'),
     // === INDEX.HTML - MAIN HEADER & FOOTERSEARCH & TOOLBAR ===
     'Menus': _('Menus'),
     'Search by description or code (e.g.: fraction, \\int)...': _('Search by description or code (e.g.: fraction, \\int)...'),
@@ -23,6 +25,10 @@ $i18n['eXe'] = {
     'Copy': _('Copy'),
     'Delete': _('Delete'),
     'Code copied!': _('Code copied!'),
+    'Send to host': _('Send to host'),
+    'Sent!': _('Sent!'),
+    'Missing or invalid origin.': _('Missing or invalid origin.'),
+    'No host window available.': _('No host window available.'),
     // === INDEX.HTML - MAIN HEADER & FOOTERPREVIEW PANEL ===
     'Preview': _('Preview'),
     'View image': _('View image'),

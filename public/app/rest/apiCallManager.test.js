@@ -1668,10 +1668,536 @@ describe('ApiCallManager', () => {
     it('should return correct stream url', () => {
       apiManager.apiUrlBase = 'http://localhost';
       apiManager.apiUrlBasePath = '/exelearning';
-      
+
       const url = apiManager.getLinkValidationStreamUrl();
-      
+
       expect(url).toBe('http://localhost/exelearning/api/ode-management/odes/session/brokenlinks/validate-stream');
+    });
+  });
+
+  describe('static mode', () => {
+    describe('_isStaticMode', () => {
+      it('should detect static mode from capabilities.storage.remote = false', () => {
+        mockApp.capabilities = { storage: { remote: false } };
+
+        const result = apiManager._isStaticMode();
+
+        expect(result).toBe(true);
+      });
+
+      it('should return false when storage.remote is true', () => {
+        mockApp.capabilities = { storage: { remote: true } };
+
+        const result = apiManager._isStaticMode();
+
+        expect(result).toBe(false);
+      });
+
+      it('should return false when capabilities are missing', () => {
+        mockApp.capabilities = null;
+
+        const result = apiManager._isStaticMode();
+
+        expect(result).toBe(false);
+      });
+
+      it('should return false when storage is missing', () => {
+        mockApp.capabilities = {};
+
+        const result = apiManager._isStaticMode();
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('init', () => {
+      beforeEach(() => {
+        mockApp.capabilities = { storage: { remote: false } };
+      });
+
+      it('should use window.__EXE_STATIC_DATA__ when available', async () => {
+        window.__EXE_STATIC_DATA__ = {
+          parameters: { routes: { test: { path: '/test' } } },
+          translations: { en: { translations: { hello: 'Hello' } } },
+          idevices: { idevices: [{ id: 'text' }] },
+          themes: { themes: [{ id: 'base' }] },
+        };
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(apiManager.staticData).toBe(window.__EXE_STATIC_DATA__);
+        expect(apiManager.parameters).toEqual(window.__EXE_STATIC_DATA__.parameters);
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('window.__EXE_STATIC_DATA__'));
+
+        delete window.__EXE_STATIC_DATA__;
+        logSpy.mockRestore();
+      });
+
+      it('should load bundle.json when __EXE_STATIC_DATA__ is not available', async () => {
+        const mockBundleData = {
+          parameters: { routes: { api_test: { path: '/api/test' } } },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        };
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockBundleData),
+        });
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(global.fetch).toHaveBeenCalledWith('./data/bundle.json');
+        expect(apiManager.staticData).toEqual(mockBundleData);
+        expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('bundle.json'));
+        logSpy.mockRestore();
+      });
+
+      it('should use empty defaults when bundle.json fetch fails', async () => {
+        global.fetch = vi.fn().mockResolvedValueOnce({ ok: false, status: 404 });
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(apiManager.staticData).toEqual({
+          parameters: { routes: {} },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        });
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No static data source'));
+        warnSpy.mockRestore();
+      });
+
+      it('should use empty defaults when bundle.json throws error', async () => {
+        global.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        expect(apiManager.staticData).toEqual({
+          parameters: { routes: {} },
+          translations: { en: { translations: {} } },
+          idevices: { idevices: [] },
+          themes: { themes: [] },
+        });
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Error loading static bundle'),
+          expect.any(Error)
+        );
+        warnSpy.mockRestore();
+      });
+
+      it('should skip loading when not in static mode', async () => {
+        mockApp.capabilities = { storage: { remote: true } };
+        global.fetch = vi.fn();
+
+        await apiManager.init();
+
+        expect(global.fetch).not.toHaveBeenCalled();
+        expect(apiManager.staticData).toBeNull();
+      });
+
+      it('should not reload if already initialized', async () => {
+        window.__EXE_STATIC_DATA__ = { parameters: { routes: {} } };
+        apiManager.staticData = window.__EXE_STATIC_DATA__;
+        const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await apiManager.init();
+
+        // Should not log again since data is already loaded
+        expect(logSpy).not.toHaveBeenCalled();
+        delete window.__EXE_STATIC_DATA__;
+        logSpy.mockRestore();
+      });
+    });
+
+    describe('getApiParameters in static mode', () => {
+      it('should return static data parameters', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        apiManager.staticData = { parameters: { routes: { test: { path: '/test' } } } };
+
+        const result = await apiManager.getApiParameters();
+
+        expect(result).toEqual({ routes: { test: { path: '/test' } } });
+        expect(mockFunc.get).not.toHaveBeenCalled();
+      });
+
+      it('should return empty routes if static data missing', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        apiManager.staticData = {};
+
+        const result = await apiManager.getApiParameters();
+
+        expect(result).toEqual({ routes: {} });
+      });
+    });
+
+    describe('getChangelogText in static mode', () => {
+      it('should fetch from composeUrl path', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        mockApp.composeUrl = vi.fn((path) => `/app${path}`);
+        global.fetch = vi.fn().mockResolvedValueOnce({
+          ok: true,
+          text: () => Promise.resolve('# Changelog'),
+        });
+
+        const result = await apiManager.getChangelogText();
+
+        expect(mockApp.composeUrl).toHaveBeenCalledWith('/CHANGELOG.md');
+        expect(global.fetch).toHaveBeenCalledWith('/app/CHANGELOG.md');
+        expect(result).toBe('# Changelog');
+      });
+
+      it('should return fallback when fetch fails', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        mockApp.composeUrl = vi.fn((path) => `/app${path}`);
+        global.fetch = vi.fn().mockRejectedValueOnce(new Error('Network error'));
+        global._ = vi.fn((s) => s);
+
+        const result = await apiManager.getChangelogText();
+
+        expect(result).toBe('Changelog not available');
+      });
+    });
+
+    describe('getUploadLimits in static mode', () => {
+      it('should return default limits when DataProvider is set', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        apiManager._dataProvider = {
+          getUploadLimits: vi.fn().mockResolvedValue({
+            maxFileSize: 100 * 1024 * 1024,
+            maxFileSizeFormatted: '100 MB',
+            limitingFactor: 'none',
+          }),
+        };
+
+        const result = await apiManager.getUploadLimits();
+
+        expect(result.maxFileSize).toBe(100 * 1024 * 1024);
+        expect(result.limitingFactor).toBe('none');
+      });
+
+      it('should return fallback defaults before DataProvider init', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        apiManager._dataProvider = null;
+
+        const result = await apiManager.getUploadLimits();
+
+        expect(result.maxFileSize).toBe(100 * 1024 * 1024);
+        expect(result.maxFileSizeFormatted).toBe('100 MB');
+        expect(result.details.isStatic).toBe(true);
+      });
+    });
+
+    describe('getOdeSessionUsedFiles in static mode', () => {
+      it('should call _getUsedFilesFromYjs when in static mode', async () => {
+        mockApp.capabilities = { storage: { remote: false } };
+        const spy = vi.spyOn(apiManager, '_getUsedFilesFromYjs').mockResolvedValue({
+          responseMessage: 'OK',
+          usedFiles: [{ usedFiles: 'test.jpg' }],
+        });
+
+        const result = await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+        expect(spy).toHaveBeenCalled();
+        expect(result.usedFiles).toHaveLength(1);
+        spy.mockRestore();
+      });
+
+      it('should call API when not in static mode', async () => {
+        mockApp.capabilities = { storage: { remote: true } };
+        apiManager.endpoints.api_odes_session_get_used_files = { path: 'http://localhost/used-files' };
+
+        await apiManager.getOdeSessionUsedFiles({ id: 1 });
+
+        expect(mockFunc.postJson).toHaveBeenCalledWith('http://localhost/used-files', { id: 1 });
+      });
+    });
+  });
+
+  describe('_getUsedFilesFromYjs', () => {
+    it('should return empty array when structureBinding is not available', async () => {
+      mockApp.project = { _yjsBridge: {} };
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result).toEqual({ responseMessage: 'OK', usedFiles: [] });
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('No structureBinding'));
+      warnSpy.mockRestore();
+    });
+
+    it('should extract assets from htmlContent', async () => {
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return '<img src="asset://abc-123/test.jpg">';
+          if (key === 'jsonProperties') return '{}';
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1', pageName: 'Page One' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1', blockName: 'Block' }]),
+        getComponents: vi.fn(() => [{
+          id: 'comp-1',
+          ideviceType: 'TextIdevice',
+          order: 1,
+          _ymap: mockYmap,
+        }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: 'abc-123', name: 'test.jpg', size: 1024 },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.responseMessage).toBe('OK');
+      expect(result.usedFiles).toHaveLength(1);
+      expect(result.usedFiles[0].usedFiles).toBe('test.jpg');
+      expect(result.usedFiles[0].usedFilesPath).toBe('asset://abc-123');
+      expect(result.usedFiles[0].pageNamesUsedFiles).toBe('Page One');
+    });
+
+    it('should extract assets from jsonProperties', async () => {
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return '';
+          if (key === 'jsonProperties') return '{"textArea":"<img src=\\"asset://def-456/photo.png\\">"}';
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1', pageName: 'Page' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1', blockName: '' }]),
+        getComponents: vi.fn(() => [{ id: 'comp-1', _ymap: mockYmap }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: 'def-456', name: 'photo.png', size: 2048 },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.usedFiles).toHaveLength(1);
+      expect(result.usedFiles[0].usedFilesPath).toBe('asset://def-456');
+    });
+
+    it('should extract assets from htmlView fallback', async () => {
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return null;
+          if (key === 'htmlView') return '<img src="asset://ghi-789/image.gif">';
+          if (key === 'jsonProperties') return null;
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1' }]),
+        getComponents: vi.fn(() => [{ id: 'comp-1', _ymap: mockYmap }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { uuid: 'ghi-789', filename: 'image.gif' },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.usedFiles).toHaveLength(1);
+      expect(result.usedFiles[0].usedFilesPath).toBe('asset://ghi-789');
+    });
+
+    it('should handle Y.Text objects in htmlContent', async () => {
+      const mockYText = {
+        toString: vi.fn(() => '<img src="asset://ytext-id/doc.pdf">'),
+      };
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return mockYText;
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1' }]),
+        getComponents: vi.fn(() => [{ id: 'comp-1', _ymap: mockYmap }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: 'ytext-id', name: 'doc.pdf' },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(mockYText.toString).toHaveBeenCalled();
+      expect(result.usedFiles[0].usedFilesPath).toBe('asset://ytext-id');
+    });
+
+    it('should handle assets without usage context', async () => {
+      const structureBinding = {
+        getPages: vi.fn(() => []),
+        getBlocks: vi.fn(() => []),
+        getComponents: vi.fn(() => []),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: 'orphan-123', name: 'orphan.jpg', size: 512 },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.usedFiles).toHaveLength(1);
+      expect(result.usedFiles[0].pageNamesUsedFiles).toBe('-');
+      expect(result.usedFiles[0].blockNamesUsedFiles).toBe('-');
+      expect(result.usedFiles[0].typeComponentSyncUsedFiles).toBe('-');
+    });
+
+    it('should deduplicate assets by URL', async () => {
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return '<img src="asset://dup-id/img.jpg"><img src="asset://dup-id/img.jpg">';
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1' }]),
+        getComponents: vi.fn(() => [{ id: 'comp-1', _ymap: mockYmap }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: 'dup-id', name: 'img.jpg', size: 100 },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.usedFiles).toHaveLength(1);
+    });
+
+    it('should handle assetManager errors gracefully', async () => {
+      const structureBinding = {
+        getPages: vi.fn(() => []),
+        getBlocks: vi.fn(() => []),
+        getComponents: vi.fn(() => []),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => {
+          throw new Error('IndexedDB error');
+        }),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+      const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.responseMessage).toBe('OK');
+      expect(result.usedFiles).toEqual([]);
+      expect(debugSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Could not get assets'),
+        expect.any(Error)
+      );
+      debugSpy.mockRestore();
+    });
+
+    it('should strip Idevice suffix from type', async () => {
+      // Use valid UUID format (regex expects [a-f0-9-]+)
+      const assetId = 'aabbccdd-1234-5678-9abc-def012345678';
+      const mockYmap = {
+        get: vi.fn((key) => {
+          if (key === 'htmlContent') return `<img src="asset://${assetId}/img.jpg">`;
+          return null;
+        }),
+      };
+      const structureBinding = {
+        getPages: vi.fn(() => [{ id: 'page-1' }]),
+        getBlocks: vi.fn(() => [{ id: 'block-1' }]),
+        getComponents: vi.fn(() => [{
+          id: 'comp-1',
+          ideviceType: 'FreeTextIdevice',
+          order: 2,
+          _ymap: mockYmap,
+        }]),
+      };
+      const assetManager = {
+        getAllAssetsMetadata: vi.fn(() => [
+          { id: assetId, name: 'img.jpg' },
+        ]),
+      };
+      mockApp.project = {
+        _yjsBridge: { structureBinding, assetManager },
+      };
+
+      const result = await apiManager._getUsedFilesFromYjs();
+
+      expect(result.usedFiles[0].typeComponentSyncUsedFiles).toBe('FreeText');
+    });
+  });
+
+  describe('_formatFileSize', () => {
+    it('should return empty string for 0 bytes', () => {
+      expect(apiManager._formatFileSize(0)).toBe('');
+    });
+
+    it('should return empty string for null/undefined', () => {
+      expect(apiManager._formatFileSize(null)).toBe('');
+      expect(apiManager._formatFileSize(undefined)).toBe('');
+    });
+
+    it('should format bytes', () => {
+      expect(apiManager._formatFileSize(500)).toBe('500.0 B');
+      expect(apiManager._formatFileSize(1)).toBe('1.0 B');
+    });
+
+    it('should format kilobytes', () => {
+      expect(apiManager._formatFileSize(1024)).toBe('1.0 KB');
+      expect(apiManager._formatFileSize(1536)).toBe('1.5 KB');
+      expect(apiManager._formatFileSize(10240)).toBe('10.0 KB');
+    });
+
+    it('should format megabytes', () => {
+      expect(apiManager._formatFileSize(1024 * 1024)).toBe('1.0 MB');
+      expect(apiManager._formatFileSize(5 * 1024 * 1024)).toBe('5.0 MB');
+      expect(apiManager._formatFileSize(1.5 * 1024 * 1024)).toBe('1.5 MB');
+    });
+
+    it('should format gigabytes', () => {
+      expect(apiManager._formatFileSize(1024 * 1024 * 1024)).toBe('1.0 GB');
+      expect(apiManager._formatFileSize(2.5 * 1024 * 1024 * 1024)).toBe('2.5 GB');
+    });
+
+    it('should cap at GB for very large files', () => {
+      const terabyte = 1024 * 1024 * 1024 * 1024;
+      expect(apiManager._formatFileSize(terabyte)).toBe('1024.0 GB');
     });
   });
 });

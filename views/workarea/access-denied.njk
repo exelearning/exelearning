@@ -1,39 +1,36 @@
-{% extends "base.njk" %}
-
-{% block title %}{{ 'Access Denied' | trans }} - eXeLearning{% endblock %}
+{% extends 'base.njk' %}
 
 {% block stylesheets %}
     <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
-    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
-    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/base.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/login.css' | asset }}">
+    <style>.error-page-logo{top: -7%;}</style>
 {% endblock %}
 
-{% block javascripts %}
-    <script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
-{% endblock %}
+{% block title %}{{ 'error.access_denied' | trans }} - eXeLearning{% endblock %}
 
-{% block id %}access-denied-page{% endblock %}
 {% block body %}
-    <div class="container d-flex flex-column align-items-center justify-content-center vh-100">
-        <div class="text-center">
-            <div class="mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" class="text-danger" viewBox="0 0 16 16">
-                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
-                </svg>
-            </div>
-            <h1 class="display-5 text-danger mb-3">{{ 'Access Denied' | trans }}</h1>
-            <p class="lead text-muted mb-4">
-                {{ "You don't have permission to access this project." | trans }}<br>
-                {{ 'This project is private and only the owner or collaborators can view it.' | trans }}
-            </p>
-            <div class="d-flex gap-3 justify-content-center">
-                <a href="{{ basePath }}/workarea" class="btn btn-primary">
-                    {{ 'Create New Project' | trans }}
-                </a>
-                <a href="{{ basePath }}/login" class="btn btn-outline-secondary">
-                    {{ 'Back to Login' | trans }}
-                </a>
-            </div>
-        </div>
+<section class="error-page bg-white vh-100 d-flex justify-content-center align-items-center flex-column" id="access-denied-tpl">
+    <div class="error-page-logo position-relative">
+        <img src="{{ '/images/logo.svg' | asset }}" width="100" height="92" alt="eXeLearning">
     </div>
+    <h1 class="mb-5">{{ 'error.access_denied' | trans }}</h1>
+    <h2 class="visually-hidden">{{ 'Error' | trans }}</h2>
+
+    <div class="show mb-5 bg-light py-3 px-4 rounded-3" role="alert">
+        {{ 'error.access_denied_message' | trans }}
+    </div>
+
+    <div class="d-flex gap-3 justify-content-center">
+        <a href="{{ basePath }}/workarea" class="btn btn-primary">{{ 'error.create_new_project' | trans }}</a>
+        <a href="{{ basePath }}/login" class="btn btn-secondary">{{ 'error.back_to_login' | trans }}</a>
+    </div>
+</section>
+
+<script>
+  if (window.location.hash && window.location.hash === "#_=_") {
+      history.replaceState("", document.title, window.location.pathname + window.location.search);
+  }
+</script>
+
+<script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
 {% endblock %}

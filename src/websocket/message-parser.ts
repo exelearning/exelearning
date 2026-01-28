@@ -26,6 +26,20 @@ const ASSET_MESSAGE_TYPES: Set<string> = new Set([
     'request-prefetch',
     'asset-available',
     'bulk-upload-complete',
+    // Priority queue messages
+    'priority-update',
+    'priority-ack',
+    'navigation-hint',
+    'preempt-upload',
+    'resume-upload',
+    'slot-available',
+    'request-sync-state',
+    'access-revoked',
+    // Upload session messages
+    'upload-session-create',
+    'upload-session-ready',
+    'upload-file-progress',
+    'upload-batch-complete',
 ]);
 
 /**

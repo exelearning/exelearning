@@ -112,7 +112,7 @@ export default class FormProperties {
         propertiesTableElement.classList.add('exe-table-content');
         propertiesTableElement.classList.add('pb-1');
 
-        this.addRowsFlatWithSectionTitles(properties, propertiesTableElement);
+        this.addRowsWithTabs(properties, propertiesTableElement);
 
         // No save button - changes sync automatically via Yjs
         formContentElement.append(propertiesTableElement);
@@ -120,6 +120,166 @@ export default class FormProperties {
         setTimeout(() => element.classList.remove('loading'), 100);
 
         return element;
+    }
+
+    /**
+     * Create tabs structure for properties grouped by sections
+     */
+    addRowsWithTabs(properties, table) {
+        // Define tab configuration
+        const tabConfig = [
+            { key: 'properties_package', title: _('Content metadata') },
+            { key: 'export', title: _('Export options') },
+            { key: 'custom_code', title: _('Custom code') },
+        ];
+
+        // Create tabs navigation
+        const tabsNav = document.createElement('div');
+        tabsNav.classList.add('project-properties-tabs');
+        tabsNav.setAttribute('role', 'tablist');
+
+        // Create tab content container
+        const tabContent = document.createElement('div');
+        tabContent.classList.add('project-properties-tab-content');
+
+        // Group properties by their group key
+        const groupedProperties = this.groupPropertiesByGroup(properties);
+
+        // Create tabs and content panes
+        tabConfig.forEach((tab, index) => {
+            const isActive = index === 0;
+            const tabId = `props-tab-${tab.key}`;
+            const paneId = `props-pane-${tab.key}`;
+
+            // Create tab button
+            const tabButton = document.createElement('button');
+            tabButton.type = 'button';
+            tabButton.classList.add('project-properties-tab');
+            if (isActive) tabButton.classList.add('active');
+            tabButton.setAttribute('role', 'tab');
+            tabButton.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            tabButton.setAttribute('aria-controls', paneId);
+            tabButton.setAttribute('data-tab-target', paneId);
+            tabButton.id = tabId;
+            tabButton.textContent = tab.title;
+
+            // Tab click behavior
+            tabButton.addEventListener('click', () => {
+                this.activateTab(tabsNav, tabContent, tabButton, paneId);
+            });
+
+            tabsNav.appendChild(tabButton);
+
+            // Create tab pane
+            const tabPane = document.createElement('div');
+            tabPane.classList.add('project-properties-tab-pane');
+            if (isActive) tabPane.classList.add('active');
+            tabPane.setAttribute('role', 'tabpanel');
+            tabPane.setAttribute('aria-labelledby', tabId);
+            tabPane.id = paneId;
+
+            // Add properties for this group
+            const groupProperties = groupedProperties.get(tab.key) || [];
+            this.addPropertiesToPane(groupProperties, tabPane);
+
+            tabContent.appendChild(tabPane);
+        });
+
+        table.appendChild(tabsNav);
+        table.appendChild(tabContent);
+    }
+
+    /**
+     * Group properties by their group key
+     */
+    groupPropertiesByGroup(properties) {
+        const grouped = new Map();
+        let propertiesArray = Object.entries(properties);
+
+        // Sort properties
+        propertiesArray = propertiesArray.sort((a, b) => {
+            if (
+                a[1].multipleId &&
+                b[1].multipleId &&
+                a[1].multipleId === b[1].multipleId
+            ) {
+                if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
+            } else if (
+                a[1].multipleId &&
+                b[1].multipleId &&
+                a[1].prefix === b[1].prefix
+            ) {
+                if (a[1].multipleIndex === b[1].multipleIndex) {
+                    if (a[1].index === b[1].index) return 0;
+                    return a[1].index > b[1].index ? 1 : -1;
+                } else {
+                    if (a[1].multipleIndex === b[1].multipleIndex) return 0;
+                    return a[1].multipleIndex > b[1].multipleIndex ? 1 : -1;
+                }
+            } else {
+                return 0;
+            }
+        });
+
+        for (const [key, property] of propertiesArray) {
+            let groupKey = '__no_group__';
+            if (property.groups && Object.keys(property.groups).length) {
+                groupKey = Object.keys(property.groups)[0];
+            }
+
+            if (!grouped.has(groupKey)) {
+                grouped.set(groupKey, []);
+            }
+            grouped.get(groupKey).push([key, property]);
+        }
+
+        return grouped;
+    }
+
+    /**
+     * Add properties to a tab pane
+     */
+    addPropertiesToPane(propertiesArray, pane) {
+        const container = document.createElement('div');
+        container.classList.add(
+            'properties-group',
+            'properties-body-container',
+            'form-properties'
+        );
+
+        for (const [key, property] of propertiesArray) {
+            const propertyRow = this.makeRowElement(key, property);
+            if (propertyRow) container.appendChild(propertyRow);
+        }
+
+        pane.appendChild(container);
+    }
+
+    /**
+     * Activate a tab and show its content pane
+     */
+    activateTab(tabsNav, tabContent, activeButton, activePaneId) {
+        // Deactivate all tabs
+        tabsNav.querySelectorAll('.project-properties-tab').forEach((tab) => {
+            tab.classList.remove('active');
+            tab.setAttribute('aria-selected', 'false');
+        });
+
+        // Deactivate all panes
+        tabContent.querySelectorAll('.project-properties-tab-pane').forEach((pane) => {
+            pane.classList.remove('active');
+        });
+
+        // Activate selected tab
+        activeButton.classList.add('active');
+        activeButton.setAttribute('aria-selected', 'true');
+
+        // Activate selected pane
+        const activePane = tabContent.querySelector(`#${activePaneId}`);
+        if (activePane) {
+            activePane.classList.add('active');
+        }
     }
     addRowsFlatWithSectionTitles(properties, table) {
         let propertiesArray = Object.entries(properties);
@@ -179,7 +339,7 @@ export default class FormProperties {
             groupElementTitle.setAttribute('aria-controls', collapseId);
 
             let titleText =
-                "<span class='title-text'>" + topGroupTitle + '</span>';
+                "<span class='title-text'>" + _(topGroupTitle) + '</span>';
             const catKey = Object.keys(property.category || { '': '' })[0];
             if (catKey == this.cataloguingCategoryKey) {
                 if (property.required) {
@@ -377,10 +537,26 @@ export default class FormProperties {
 
     makeRowElementLabel(id, property) {
         const propertyTitle = document.createElement('label');
-        let propertyTitleText = property.title;
-        if (property.required) propertyTitleText = '* ' + propertyTitleText;
-        propertyTitle.innerHTML = propertyTitleText;
         propertyTitle.setAttribute('for', id);
+
+        // Translate the property title
+        const translatedText = _(property.title);
+
+        if (property.required) {
+            // For required fields, use a span so DOMTranslator doesn't overwrite the asterisk
+            propertyTitle.textContent = '* ';
+            const textSpan = document.createElement('span');
+            textSpan.setAttribute('data-i18n', property.title);
+            textSpan.textContent = translatedText;
+            propertyTitle.appendChild(textSpan);
+        } else {
+            // For non-required fields, translate the label directly
+            propertyTitle.textContent = translatedText;
+            if (property.title) {
+                propertyTitle.setAttribute('data-i18n', property.title);
+            }
+        }
+
         return propertyTitle;
     }
 
@@ -532,7 +708,7 @@ export default class FormProperties {
 
             const helpSpanText = document.createElement('span');
             helpSpanText.classList.add('help-content', 'help-hidden');
-            helpSpanText.innerHTML = property.help;
+            helpSpanText.innerHTML = _(property.help);
 
             helpContainer.append(helpIcon, helpSpanText);
             return helpContainer;

@@ -331,7 +331,25 @@ describe('common.js $exe helpers', () => {
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
-      it('processes unprocessed audio elements', () => {
+      it('processes unprocessed audio elements with .srt subtitles', () => {
+        const audio = document.createElement('audio');
+        audio.className = 'mediaelement';
+        audio.src = 'test.mp3';
+        // Add a track element with .srt subtitles (required for mediaelementplayer to be called)
+        const track = document.createElement('track');
+        track.src = 'subtitles.srt';
+        track.kind = 'subtitles';
+        audio.appendChild(track);
+        document.body.appendChild(audio);
+
+        global.$exe.loadMediaPlayer.init();
+
+        // mediaelementplayer should be called because there's an .srt subtitle
+        expect(mockMediaelementplayer).toHaveBeenCalled();
+        expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
+      });
+
+      it('does not call mediaelementplayer for audio without .srt subtitles', () => {
         const audio = document.createElement('audio');
         audio.className = 'mediaelement';
         audio.src = 'test.mp3';
@@ -339,8 +357,8 @@ describe('common.js $exe helpers', () => {
 
         global.$exe.loadMediaPlayer.init();
 
-        // mediaelementplayer should be called
-        expect(mockMediaelementplayer).toHaveBeenCalled();
+        // mediaelementplayer should NOT be called because there are no .srt subtitles
+        expect(mockMediaelementplayer).not.toHaveBeenCalled();
         expect(global.$exe.loadMediaPlayer.isReady).toBe(true);
       });
 
@@ -724,6 +742,93 @@ describe('common.js $exe helpers', () => {
       const code = document.querySelector('.exe-math-code').innerHTML;
       expect(code).toContain('\\[');
     });
+
+    it('init skips MathJax loading when only pre-rendered elements exist', () => {
+      // Pre-rendered LaTeX content (produced by LatexPreRenderer)
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+      const createLinksSpy = vi.spyOn(global.$exe.math, 'createLinks');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+      // createLinks should still be called
+      expect(createLinksSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      createLinksSpy.mockRestore();
+    });
+
+    it('init loads MathJax when exe-math-engine elements exist alongside pre-rendered', () => {
+      // Both pre-rendered and explicit engine elements
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\frac{1}{2}">
+          <svg><text>1/2</text></svg>
+        </span>
+        <div class="exe-math exe-math-engine"><div class="exe-math-code">x^2</div></div>
+      `;
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded because exe-math-engine exists
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init does not skip MathJax when no pre-rendered elements but LaTeX in body', () => {
+      // Raw LaTeX without pre-rendering
+      document.body.innerHTML = '<p>\\(x^2\\)</p>';
+      // Mock MathJax to avoid errors when callback is invoked
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      // MathJax SHOULD be loaded for raw LaTeX
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
+
+    it('init returns early for pre-rendered content without loading MathJax', () => {
+      // Verify that the regex in $('body').html() is not falsely triggered by data-latex attributes
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\(x^2\\)">
+          <svg><text>x²</text></svg>
+        </span>
+        <span class="exe-math-rendered" data-latex="\\[\\frac{a}{b}\\]">
+          <svg><text>a/b</text></svg>
+        </span>
+      `;
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax');
+
+      global.$exe.math.init();
+
+      // MathJax should NOT be loaded even though data-latex contains LaTeX patterns
+      // The fix detects pre-rendered elements and skips the regex check on HTML
+      expect(loadMathJaxSpy).not.toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+    });
   });
 });
 
@@ -1012,12 +1117,6 @@ describe('common.js $exeDevices', () => {
       expect(result.sort((a, b) => a - b)).toEqual(original);
     });
 
-    it('decrypt handles malformed input gracefully', () => {
-      const helpers = getHelpers();
-      expect(helpers.decrypt(undefined)).toBe('');
-      expect(helpers.decrypt('null')).toBe('');
-    });
-
     it('getQuestions returns all questions for 100 percent', () => {
       const helpers = getHelpers();
       const questions = ['a', 'b', 'c', 'd', 'e'];
@@ -1030,6 +1129,44 @@ describe('common.js $exeDevices', () => {
       const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
       const result = helpers.getQuestions(questions, 30);
       expect(result.length).toBe(3);
+    });
+
+    it('getQuestions with random=false preserves original order', () => {
+      const helpers = getHelpers();
+      const questions = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+      const result = helpers.getQuestions(questions, 50, false);
+      expect(result.length).toBe(5);
+      // Should return first 5 questions in original order
+      expect(result).toEqual(['a', 'b', 'c', 'd', 'e']);
+    });
+
+    it('getQuestions with random=true returns randomized subset', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times to verify randomization produces different results
+      const results = new Set();
+      for (let i = 0; i < 20; i++) {
+        const result = helpers.getQuestions(questions, 50, true);
+        expect(result.length).toBe(5);
+        // All elements should be from original array
+        result.forEach(q => expect(questions).toContain(q));
+        results.add(result.join(','));
+      }
+      // With 20 iterations, we should get at least 2 different orderings
+      expect(results.size).toBeGreaterThan(1);
+    });
+
+    it('getQuestions with random=true can include elements from any position', () => {
+      const helpers = getHelpers();
+      const questions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      // Run multiple times and collect all selected elements
+      const selectedElements = new Set();
+      for (let i = 0; i < 50; i++) {
+        const result = helpers.getQuestions(questions, 30, true);
+        result.forEach(q => selectedElements.add(q));
+      }
+      // Should eventually select elements from later positions (not just first 3)
+      expect(selectedElements.size).toBeGreaterThan(3);
     });
 
     it('removeTags handles empty strings', () => {
@@ -1291,23 +1428,27 @@ describe('common.js $exeDevices', () => {
       expect(media.getIDYoutube('')).toBe('');
     });
 
-    it('stopSound does not throw for null game', () => {
+    it('stopSound does not throw when playerAudio is null', () => {
       const media = getMedia();
-      expect(() => media.stopSound(null)).not.toThrow();
+      media.playerAudio = null;
+      expect(() => media.stopSound()).not.toThrow();
     });
 
     it('stopSound pauses audio player', () => {
       const media = getMedia();
-      const mockPlayer = { pause: vi.fn(), currentTime: 0 };
-      const game = { playerAudio: mockPlayer };
-      media.stopSound(game);
-      expect(mockPlayer.pause).toHaveBeenCalled();
-      expect(mockPlayer.currentTime).toBe(0);
+      const mockPause = vi.fn();
+      media.playerAudio = { pause: mockPause };
+      media.currentAudioUrl = 'test.mp3';
+      media.stopSound();
+      expect(mockPause).toHaveBeenCalled();
+      expect(media.playerAudio).toBeNull();
+      expect(media.currentAudioUrl).toBeNull();
     });
 
-    it('playSound does not throw for null game', () => {
+    it('playSound does not throw for invalid input', () => {
       const media = getMedia();
-      expect(() => media.playSound('test.mp3', null)).not.toThrow();
+      expect(() => media.playSound(null)).not.toThrow();
+      expect(() => media.playSound(123)).not.toThrow();
     });
 
     it('stopVideo does not throw for null game', () => {
@@ -1391,9 +1532,11 @@ describe('common.js $exeDevices', () => {
 
     it('stopSound handles missing playerAudio', () => {
       const media = getMedia();
-      const game = {};
-      media.stopSound(game);
-      expect(game.playerAudio).toBeUndefined();
+      media.playerAudio = undefined;
+      media.currentAudioUrl = 'test.mp3';
+      media.stopSound();
+      expect(media.playerAudio).toBeUndefined();
+      expect(media.currentAudioUrl).toBeNull();
     });
 
     it('getURLAudioMediaTeca returns false for non-mediateca URLs', () => {
@@ -1471,9 +1614,9 @@ describe('common.js $exeDevices', () => {
       vi.restoreAllMocks();
     });
 
-    it('playSound does not throw for null game', () => {
+    it('playSound does not throw for invalid URL', () => {
       const media = getMedia();
-      expect(() => media.playSound('test.mp3', null)).not.toThrow();
+      expect(() => media.playSound(null)).not.toThrow();
     });
 
     it('startVideo handles local player type', () => {
@@ -1498,6 +1641,129 @@ describe('common.js $exeDevices', () => {
       const game = { player: mockPlayer };
       media.stopVideo(game);
       expect(mockPlayer.pauseVideo).toHaveBeenCalled();
+    });
+
+    describe('playSound (toggle behavior)', () => {
+      it('logs error for invalid audio URL', async () => {
+        const media = getMedia();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        await media.playSound(null);
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+
+        await media.playSound(123);
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Invalid audio URL');
+
+        consoleSpy.mockRestore();
+      });
+
+      it('creates and plays audio for valid URL', async () => {
+        const media = getMedia();
+        const mockPlay = vi.fn().mockResolvedValue();
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor(url) {
+            this.url = url;
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('test.mp3');
+
+        expect(mockPlay).toHaveBeenCalled();
+        expect(media.currentAudioUrl).toBe('test.mp3');
+        expect(media.playerAudio.url).toBe('test.mp3');
+        global.Audio = originalAudio;
+      });
+
+      it('stops playing audio if same URL is played again (toggle)', async () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        media.playerAudio = { pause: mockPause, paused: false };
+        media.currentAudioUrl = 'test.mp3';
+
+        await media.playSound('test.mp3');
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('stops current audio before playing different URL', async () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        const mockPlay = vi.fn().mockResolvedValue();
+        media.playerAudio = { pause: mockPause, paused: false };
+        media.currentAudioUrl = 'old.mp3';
+
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor(url) {
+            this.url = url;
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('new.mp3');
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.currentAudioUrl).toBe('new.mp3');
+        global.Audio = originalAudio;
+      });
+
+      it('handles play error gracefully', async () => {
+        const media = getMedia();
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const mockPlay = vi.fn().mockRejectedValue(new Error('Play failed'));
+        const originalAudio = global.Audio;
+        global.Audio = class MockAudio {
+          constructor() {
+            this.play = mockPlay;
+          }
+        };
+
+        await media.playSound('test.mp3');
+
+        // Wait for promise rejection to be handled
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(consoleSpy).toHaveBeenCalledWith('playSound: Error playing audio:', expect.any(Error));
+        consoleSpy.mockRestore();
+        global.Audio = originalAudio;
+      });
+    });
+
+    describe('stopSound (no game parameter)', () => {
+      it('pauses and clears playerAudio when playing', () => {
+        const media = getMedia();
+        const mockPause = vi.fn();
+        media.playerAudio = { pause: mockPause };
+        media.currentAudioUrl = 'test.mp3';
+
+        media.stopSound();
+
+        expect(mockPause).toHaveBeenCalled();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('handles null playerAudio gracefully', () => {
+        const media = getMedia();
+        media.playerAudio = null;
+        media.currentAudioUrl = null;
+
+        expect(() => media.stopSound()).not.toThrow();
+        expect(media.playerAudio).toBeNull();
+        expect(media.currentAudioUrl).toBeNull();
+      });
+
+      it('handles playerAudio without pause method', () => {
+        const media = getMedia();
+        media.playerAudio = {};
+        media.currentAudioUrl = 'test.mp3';
+
+        expect(() => media.stopSound()).not.toThrow();
+        expect(media.currentAudioUrl).toBeNull();
+      });
     });
   });
 

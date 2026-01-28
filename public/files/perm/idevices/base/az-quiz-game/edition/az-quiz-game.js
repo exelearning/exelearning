@@ -790,7 +790,7 @@ var $exeDevice = {
             return true;
         }
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         words.every((word, index) => {
             if (word !== '' && urls[index] !== '' && alts[index] === '') {
@@ -1365,7 +1365,7 @@ var $exeDevice = {
                 if (!selectedFile) {
                     eXe.app.alert(_('Supported formats') + ': mp3, ogg, wav');
                 } else if (selectedFile.length > 4) {
-                    $exeDevice.playSound(selectedFile);
+                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
 
                 // Sincroniza icono activo/inactivo
@@ -1396,7 +1396,7 @@ var $exeDevice = {
             if (!selectedFile) {
                 eXe.app.alert(_('Supported formats') + ": mp3', 'ogg', 'wav'");
             } else if (selectedFile.length > 4) {
-                $exeDevice.playSound(selectedFile);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1428,7 +1428,7 @@ var $exeDevice = {
                         parseFloat($panel.find('.roscoXImageEdition').val()) ||
                         0;
 
-                    $exeDevice.stopSound();
+                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
                     $exeDevice.showImage(img, url, x, y, alt, 0);
 
                     // Sincroniza icono activo/inactivo también aquí
@@ -1458,7 +1458,7 @@ var $exeDevice = {
 
         $('#roscoDataWord a.roscoLinkClose').on('click', function (e) {
             e.preventDefault();
-            $exeDevice.stopSound();
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
             const $container = $(this).closest('.roscoWordMutimediaEdition');
             const hasImage =
                 $.trim($container.find('.roscoURLImageEdition').val() || '')
@@ -1913,7 +1913,7 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 

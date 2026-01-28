@@ -1524,6 +1524,344 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('_validateIndexedDb', () => {
+    it('returns true when IndexedDB is not available', async () => {
+      const originalIDB = global.window.indexedDB;
+      global.window.indexedDB = undefined;
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      global.window.indexedDB = originalIDB;
+    });
+
+    it('returns true when database open fails', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null };
+          setTimeout(() => req.onerror?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true when database has updates object store', async () => {
+      const mockDB = {
+        objectStoreNames: { contains: mock((name) => name === 'updates') },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns false when database lacks updates object store', async () => {
+      const mockDB = {
+        objectStoreNames: { contains: mock(() => false) },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(false);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns true on upgrade needed (new database)', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = {
+            onerror: null,
+            onsuccess: null,
+            onupgradeneeded: null,
+            transaction: { abort: mock(() => {}) },
+          };
+          setTimeout(() => req.onupgradeneeded?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when objectStoreNames check throws', async () => {
+      const mockDB = {
+        objectStoreNames: {
+          contains: mock(() => { throw new Error('Access error'); }),
+        },
+        close: mock(() => {}),
+      };
+      global.window.indexedDB = {
+        open: mock(() => {
+          const req = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+          setTimeout(() => req.onsuccess?.(), 0);
+          return req;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(false);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
+
+    it('returns true after timeout', async () => {
+      global.window.indexedDB = {
+        open: mock(() => {
+          // Never fires any callback - simulates hanging
+          return { onerror: null, onsuccess: null, onupgradeneeded: null };
+        }),
+      };
+
+      // Override setTimeout for faster test
+      const originalSetTimeout = global.setTimeout;
+      global.setTimeout = (fn, ms) => originalSetTimeout(fn, 10);
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      global.setTimeout = originalSetTimeout;
+    });
+  });
+
+  describe('_handleVisibilityChange', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+    });
+
+    it('does nothing when tab is hidden', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true });
+      manager.wsProvider = { wsconnected: false, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when wsProvider is null', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      manager.wsProvider = null;
+
+      // Should not throw
+      manager._handleVisibilityChange();
+    });
+
+    it('does nothing when already connected', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      manager.wsProvider = { wsconnected: true, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).not.toHaveBeenCalled();
+    });
+
+    it('reconnects when tab becomes visible and not connected', () => {
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', writable: true });
+      const emitSpy = spyOn(manager, 'emit');
+      manager.wsProvider = { wsconnected: false, connect: mock(() => {}), disconnect: () => {}, destroy: () => {} };
+
+      manager._handleVisibilityChange();
+
+      expect(manager.wsProvider.connect).toHaveBeenCalled();
+      expect(emitSpy).toHaveBeenCalledWith('connectionChange', { connected: false, reconnecting: true });
+    });
+  });
+
+  describe('dirty tracking with system origin', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('does not mark dirty for system origin updates', () => {
+      const markDirtySpy = spyOn(manager, 'markDirty');
+
+      // Simulate system origin update (like initialization)
+      manager.ydoc.transact(() => {
+        const metadata = manager.ydoc.getMap('metadata');
+        metadata.set('test', 'value');
+      }, 'system');
+
+      expect(markDirtySpy).not.toHaveBeenCalled();
+    });
+
+    it('marks dirty for non-system origin updates', () => {
+      // markDirty is called in the update handler
+      const markDirtySpy = spyOn(manager, 'markDirty');
+
+      // Simulate user update (not system origin)
+      manager.ydoc.transact(() => {
+        const metadata = manager.ydoc.getMap('metadata');
+        metadata.set('test', 'value');
+      }, null);
+
+      expect(markDirtySpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('locking with lockManager', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+    });
+
+    it('requestLock delegates to lockManager', () => {
+      const mockLockManager = {
+        requestLock: mock(() => true),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.requestLock('comp-123');
+
+      expect(mockLockManager.requestLock).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(true);
+    });
+
+    it('releaseLock delegates to lockManager', () => {
+      const mockLockManager = {
+        releaseLock: mock(() => {}),
+      };
+      manager.lockManager = mockLockManager;
+
+      manager.releaseLock('comp-123');
+
+      expect(mockLockManager.releaseLock).toHaveBeenCalledWith('comp-123');
+    });
+
+    it('isLocked delegates to lockManager', () => {
+      const mockLockManager = {
+        isLocked: mock(() => true),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.isLocked('comp-123');
+
+      expect(mockLockManager.isLocked).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(true);
+    });
+
+    it('getLockInfo delegates to lockManager', () => {
+      const lockInfo = { user: { name: 'Test' }, clientId: 123, timestamp: Date.now() };
+      const mockLockManager = {
+        getLockInfo: mock(() => lockInfo),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.getLockInfo('comp-123');
+
+      expect(mockLockManager.getLockInfo).toHaveBeenCalledWith('comp-123');
+      expect(result).toBe(lockInfo);
+    });
+
+    it('requestLock returns false when lockManager denies lock', () => {
+      const mockLockManager = {
+        requestLock: mock(() => false),
+      };
+      manager.lockManager = mockLockManager;
+
+      const result = manager.requestLock('comp-123');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('save status events', () => {
+    beforeEach(async () => {
+      await manager.initialize();
+      manager.config.offline = false;
+    });
+
+    it('emits saving status at start of save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.isDirty = true;
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer();
+
+      const savingCall = callback.mock.calls.find(c => c[0].status === 'saving');
+      expect(savingCall).toBeDefined();
+    });
+
+    it('emits saved status on successful save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1, 2])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ version: '1.0' }),
+        })
+      );
+
+      await manager.saveToServer();
+
+      const savedCall = callback.mock.calls.find(c => c[0].status === 'saved');
+      expect(savedCall).toBeDefined();
+      expect(savedCall[0].isDirty).toBe(false);
+    });
+
+    it('emits error status on failed save', async () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.Y = { encodeStateAsUpdate: mock(() => new Uint8Array([1])) };
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
+      );
+
+      await expect(manager.saveToServer()).rejects.toThrow();
+
+      const errorCall = callback.mock.calls.find(c => c[0].status === 'error');
+      expect(errorCall).toBeDefined();
+      expect(errorCall[0].error).toBeDefined();
+    });
+
+    it('markClean emits saved status with timestamp', () => {
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+      manager.isDirty = true;
+
+      manager.markClean();
+
+      expect(callback).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'saved',
+        isDirty: false,
+        savedAt: expect.any(Date),
+      }));
+    });
+  });
+
   describe('destroy with options', () => {
     beforeEach(async () => {
       await manager.initialize();
@@ -1572,6 +1910,145 @@ describe('YjsDocumentManager', () => {
       // Should not throw
       await manager.destroy({ saveBeforeDestroy: true });
       expect(console.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('_validateIndexedDb', () => {
+    it('returns true when indexedDB is not available', async () => {
+      const originalIndexedDB = window.indexedDB;
+      delete window.indexedDB;
+
+      const result = await manager._validateIndexedDb('test-db');
+
+      expect(result).toBe(true);
+      window.indexedDB = originalIndexedDB;
+    });
+
+    it('returns true when database does not exist', async () => {
+      // Mock indexedDB.open that succeeds with 'updates' store
+      const mockDb = {
+        objectStoreNames: { contains: () => true },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when database is missing updates store', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: (name) => name !== 'updates' },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('invalid-db');
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true on open error', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onerror?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('error-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true on upgrade needed (new database)', async () => {
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        transaction: { abort: mock(() => {}) },
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onupgradeneeded?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('new-db');
+
+      expect(result).toBe(true);
+    });
+
+    it('handles exception in objectStoreNames check', async () => {
+      const mockDb = {
+        objectStoreNames: { contains: () => { throw new Error('Test error'); } },
+        close: mock(() => {}),
+      };
+      const mockOpenRequest = {
+        onerror: null,
+        onsuccess: null,
+        onupgradeneeded: null,
+        result: mockDb,
+      };
+
+      window.indexedDB = {
+        open: mock(() => {
+          setTimeout(() => mockOpenRequest.onsuccess?.(), 0);
+          return mockOpenRequest;
+        }),
+      };
+
+      const result = await manager._validateIndexedDb('exception-db');
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('IndexedDB error recovery', () => {
+    it('manager can be initialized and destroyed without crashing', async () => {
+      // Basic smoke test - manager should handle IndexedDB issues gracefully
+      const newManager = new YjsDocumentManager('test-project-recovery', {
+        wsUrl: 'wss://localhost/yjs',
+        apiUrl: '/api',
+        offline: true,
+      });
+
+      // Should not throw
+      await newManager.initialize();
+      await newManager.destroy();
     });
   });
 });

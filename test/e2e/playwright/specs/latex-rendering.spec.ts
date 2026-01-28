@@ -1,7 +1,18 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import * as path from 'path';
 import type { Page } from '@playwright/test';
-import { waitForAppReady, openElpFile, waitForPreviewContent, getPreviewFrame } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    openElpFile,
+    waitForPreviewContent,
+    getPreviewFrame,
+    addTextIdevice,
+    waitForTinyMCEReady,
+    saveProject,
+    reloadPage,
+    selectFirstPage,
+    gotoWorkarea,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for LaTeX Rendering
@@ -54,18 +65,18 @@ async function enableMathJaxViaUI(page: Page): Promise<void> {
     const nodeContent = page.locator('#node-content');
     await expect(nodeContent).toBeVisible({ timeout: 10000 });
 
-    // Wait for the "Export options" section to be present in DOM
-    // Use getByRole to find the button more reliably
-    const exportSection = page.getByRole('button', { name: /Export options|Opciones de exportación/i }).first();
+    // Wait for the "Export options" tab to be present in DOM
+    // Project properties now use tabs instead of accordion (commit f4383b83)
+    const exportTab = page.getByRole('tab', { name: /Export options|Opciones de exportación/i }).first();
 
-    // Scroll the export section into view if needed
-    await exportSection.scrollIntoViewIfNeeded({ timeout: 10000 });
-    await expect(exportSection).toBeVisible({ timeout: 5000 });
+    // Scroll the export tab into view if needed
+    await exportTab.scrollIntoViewIfNeeded({ timeout: 10000 });
+    await expect(exportTab).toBeVisible({ timeout: 5000 });
 
-    // Check if the export options section is expanded
-    const isExpanded = (await exportSection.getAttribute('aria-expanded')) === 'true';
-    if (!isExpanded) {
-        await exportSection.click();
+    // Check if the export options tab is selected
+    const isSelected = (await exportTab.getAttribute('aria-selected')) === 'true';
+    if (!isSelected) {
+        await exportTab.click();
         await page.waitForTimeout(500);
     }
 
@@ -121,8 +132,7 @@ test.describe('LaTeX Rendering', () => {
             const projectUuid = await createProject(page, 'LaTeX Editor Test');
 
             // Navigate to the project workarea
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             // Wait for app to fully initialize
             await waitForAppReady(page);
@@ -237,8 +247,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Check');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', { timeout: 30000 });
 
@@ -264,8 +273,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -300,8 +308,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Error Check');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -350,8 +357,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Delimitadores Page Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -361,7 +367,7 @@ test.describe('LaTeX Rendering', () => {
             // Click on the "Delimitadores" page in the navigation
             const delimitadoresPage = page
                 .locator('.nav-element-text .node-text-span')
-                .filter({ hasText: 'Delimitadores' });
+                .filter({ hasText: /^Delimitadores$/ });
             await expect(delimitadoresPage).toBeVisible({ timeout: 10000 });
             await delimitadoresPage.click();
 
@@ -577,8 +583,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Option Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -639,8 +644,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Config Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -706,63 +710,23 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'MathJax Runtime Render Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Enable addMathJax via the Project Properties UI toggle
             await enableMathJaxViaUI(page);
 
-            // Select a page node to add iDevice (must NOT be root)
-            const pageNode = page.locator('.nav-element-text:not([data-node-id="root"])').first();
-            await expect(pageNode).toBeVisible({ timeout: 10000 });
-            await pageNode.click();
-            await page.waitForTimeout(1000);
-
-            // Expand "Information and presentation" category
-            const infoCategory = page
-                .locator('.idevice_category')
-                .filter({
-                    has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-                })
-                .first();
-            if ((await infoCategory.count()) > 0) {
-                const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-                if (isCollapsed) {
-                    await infoCategory.locator('.label').click();
-                    await page.waitForTimeout(500);
-                }
-            }
-
-            // Add a text iDevice
-            const textIdevice = page.locator('.idevice_item[id="text"]').first();
-            await expect(textIdevice).toBeVisible({ timeout: 5000 });
-            await textIdevice.click();
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             // Wait for text iDevice to appear
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 15000 });
 
             // Wait for TinyMCE to initialize
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Set content with raw LaTeX (display and inline math)
             const contentWithLatex = `
@@ -867,8 +831,7 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Duplicate Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
@@ -948,61 +911,20 @@ test.describe('LaTeX Rendering', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'LaTeX Multiple Identical Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Select a page node to add iDevice (must NOT be root - root cannot have iDevices)
-            // Use data-node-id attribute to exclude root
-            const pageNode = page.locator('.nav-element-text:not([data-node-id="root"])').first();
-            await expect(pageNode).toBeVisible({ timeout: 10000 });
-            await pageNode.click();
-            await page.waitForTimeout(1000);
-
-            // Expand "Information and presentation" category to find text iDevice
-            const infoCategory = page
-                .locator('.idevice_category')
-                .filter({
-                    has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
-                })
-                .first();
-            if ((await infoCategory.count()) > 0) {
-                const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
-                if (isCollapsed) {
-                    await infoCategory.locator('.label').click();
-                    await page.waitForTimeout(500);
-                }
-            }
-
-            // Add a text iDevice
-            const textIdevice = page.locator('.idevice_item[id="text"]').first();
-            await expect(textIdevice).toBeVisible({ timeout: 5000 });
-            await textIdevice.click();
+            // Select a non-root page and add a text iDevice
+            await selectFirstPage(page);
+            await addTextIdevice(page);
 
             // Wait for text iDevice to appear
             const block = page.locator('#node-content article .idevice_node.text').first();
             await block.waitFor({ timeout: 15000 });
 
             // Wait for TinyMCE to initialize
-            await page.waitForFunction(
-                () => {
-                    const editor = (window as any).tinymce?.activeEditor;
-                    return !!editor && editor.initialized;
-                },
-                { timeout: 15000 },
-            );
+            await waitForTinyMCEReady(page);
 
             // Set content with DUPLICATE LaTeX expressions (the exact scenario that caused corruption)
             const contentWithDuplicateLatex = `
@@ -1131,327 +1053,314 @@ test.describe('LaTeX Rendering', () => {
     });
 
     test.describe('LaTeX in Project Title', () => {
-        test('should render LaTeX in project title and show it in Open dialog after save', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
-
-            // Create a new project
-            const projectUuid = await createProject(page, 'LaTeX Title Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app to fully initialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
-
-            // Enable MathJax for runtime rendering via UI toggle
-            await enableMathJaxViaUI(page);
-
-            // Set LaTeX title directly via Yjs metadata (more reliable than UI interaction)
-            const latexTitle = '\\(\\LaTeX\\)';
-            await page.evaluate(title => {
-                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
-                const metadata = bridge.documentManager.getMetadata();
-                const ydoc = bridge.documentManager.getDoc();
-
-                // Set title in Yjs metadata (key is 'title', not 'pp_title')
-                ydoc.transact(() => {
-                    metadata.set('title', title);
-                    metadata.set('modifiedAt', Date.now());
-                }, ydoc.clientID);
-
-                // Trigger UI update
-                if ((window as any).eXeLearning.app.interface?.odeTitleElement) {
-                    (window as any).eXeLearning.app.interface.odeTitleElement.setTitle();
-                }
-            }, latexTitle);
-
-            // Wait for MathJax to render in the title
-            await page.waitForTimeout(2000);
-
-            // Verify LaTeX renders in the page title (h2.exe-title or #change_title)
-            const pageTitleElement = page.locator('h2.exe-title, #change_title').first();
-            await expect(pageTitleElement).toBeVisible({ timeout: 10000 });
-
-            // Check if MathJax rendered the LaTeX in the page title
-            const titleRenderCheck = await pageTitleElement.evaluate(el => {
-                const mjxContainer = el.querySelector('mjx-container');
-                const hasSvg = el.querySelector('mjx-container svg') !== null;
-                const hasLatexText =
-                    el.textContent?.includes('L') && el.textContent?.includes('T') && el.textContent?.includes('X');
-                const rawLatex = el.textContent?.includes('\\(') || false;
-                const mjxJax = mjxContainer?.getAttribute('jax');
-                // Check for the characteristic LaTeX logo styling (stacked letters)
-                const hasLatexLogo = el.querySelector('mjx-container mjx-mpadded, mjx-container mpadded') !== null;
-
-                return {
-                    hasMjxContainer: mjxContainer !== null,
-                    hasSvg,
-                    hasLatexText,
-                    rawLatex,
-                    mjxJax: mjxJax || null,
-                    hasLatexLogo,
-                    innerHTML: el.innerHTML.substring(0, 500),
-                };
+        test.describe('Open Dialog', () => {
+            // Skip in static mode - Open dialog requires server storage
+            test.beforeAll(async ({}, testInfo) => {
+                skipInStaticMode(test, testInfo, 'Open dialog requires server storage');
             });
 
-            // Assert: MathJax should have rendered in the page title
-            expect(titleRenderCheck.hasMjxContainer).toBe(true);
-            // Assert: Should have SVG content (visual rendering)
-            expect(titleRenderCheck.hasSvg).toBe(true);
-            // Assert: MathJax should use SVG output
-            expect(titleRenderCheck.mjxJax).toBe('SVG');
-            // Assert: Should contain LaTeX text characters (L, A, T, E, X)
-            expect(titleRenderCheck.hasLatexText).toBe(true);
-            // Assert: Raw LaTeX should NOT be visible (should be rendered)
-            expect(titleRenderCheck.rawLatex).toBe(false);
+            test('should render LaTeX in project title and show it in Open dialog after save', async ({
+                authenticatedPage,
+                createProject,
+            }) => {
+                const page = authenticatedPage;
 
-            // Save the project
-            const saveButton = page.locator('#head-top-save-button');
-            await expect(saveButton).toBeVisible({ timeout: 5000 });
-            await saveButton.click();
+                // Create a new project
+                const projectUuid = await createProject(page, 'LaTeX Title Test');
+                await gotoWorkarea(page, projectUuid);
 
-            // Wait for save to complete
-            await page.waitForTimeout(3000);
+                // Enable MathJax for runtime rendering via UI toggle
+                await enableMathJaxViaUI(page);
 
-            // Verify save was successful by checking for any save indicators
-            const saveSuccess = await page.evaluate(() => {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                const metadata = bridge?.documentManager?.getMetadata();
-                // Note: title is stored with key 'title', not 'pp_title'
-                const title = metadata?.get('title');
-                return {
-                    hasTitle: title !== undefined,
-                    titleValue: title || null,
-                };
-            });
+                // Set LaTeX title directly via Yjs metadata (more reliable than UI interaction)
+                const latexTitle = '\\(\\LaTeX\\)';
+                await page.evaluate(title => {
+                    const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                    const metadata = bridge.documentManager.getMetadata();
+                    const ydoc = bridge.documentManager.getDoc();
 
-            // Assert: Title should be saved in metadata
-            expect(saveSuccess.hasTitle).toBe(true);
-            expect(saveSuccess.titleValue).toBe(latexTitle);
+                    // Set title in Yjs metadata (key is 'title', not 'pp_title')
+                    ydoc.transact(() => {
+                        metadata.set('title', title);
+                        metadata.set('modifiedAt', Date.now());
+                    }, ydoc.clientID);
 
-            // Now open the "Open file" dialog to verify LaTeX title appears there
-            const fileMenu = page.locator('#dropdownFile');
-            await expect(fileMenu).toBeVisible({ timeout: 10000 });
-            await fileMenu.click();
-
-            await page.waitForTimeout(300);
-
-            const openOption = page.locator('#navbar-button-openuserodefiles');
-            await expect(openOption).toBeVisible({ timeout: 5000 });
-            await openOption.click();
-
-            // Wait for the Open modal to appear
-            const openModal = page.locator('#modalOpenUserOdeFiles');
-            await expect(openModal).toBeVisible({ timeout: 10000 });
-
-            // Wait for the file list to load
-            await page.waitForTimeout(2000);
-
-            // Find the project in the list by looking for the LaTeX rendered title
-            // The title should be in .ode-title or .ode-file-title element
-            const projectRow = openModal.locator('article.ode-row').first();
-            await expect(projectRow).toBeVisible({ timeout: 10000 });
-
-            // Check if LaTeX is rendered in the Open dialog
-            const openDialogCheck = await openModal.evaluate(modal => {
-                // Find all title elements in the file list
-                const titleElements = modal.querySelectorAll('.ode-title, .ode-file-title');
-                let foundLatexTitle = false;
-                let hasMjxInTitle = false;
-                let hasSvgInTitle = false;
-                let titleDataFilename: string | null = null;
-
-                for (const titleEl of titleElements) {
-                    const dataFilename = titleEl.getAttribute('data-filename');
-                    if (dataFilename?.includes('\\(') || dataFilename?.includes('LaTeX')) {
-                        titleDataFilename = dataFilename;
-                        foundLatexTitle = true;
-                        hasMjxInTitle = titleEl.querySelector('mjx-container') !== null;
-                        hasSvgInTitle = titleEl.querySelector('mjx-container svg') !== null;
-                        break;
+                    // Trigger UI update
+                    if ((window as any).eXeLearning.app.interface?.odeTitleElement) {
+                        (window as any).eXeLearning.app.interface.odeTitleElement.setTitle();
                     }
-                    // Also check if already rendered
-                    const mjx = titleEl.querySelector('mjx-container');
-                    if (mjx) {
-                        hasMjxInTitle = true;
-                        hasSvgInTitle = titleEl.querySelector('mjx-container svg') !== null;
-                        foundLatexTitle = true;
-                        break;
+                }, latexTitle);
+
+                // Wait for MathJax to render in the title
+                await page.waitForTimeout(2000);
+
+                // Verify LaTeX renders in the page title (h2.exe-title or #change_title)
+                const pageTitleElement = page.locator('h2.exe-title, #change_title').first();
+                await expect(pageTitleElement).toBeVisible({ timeout: 10000 });
+
+                // Check if MathJax rendered the LaTeX in the page title
+                const titleRenderCheck = await pageTitleElement.evaluate(el => {
+                    const mjxContainer = el.querySelector('mjx-container');
+                    const hasSvg = el.querySelector('mjx-container svg') !== null;
+                    const hasLatexText =
+                        el.textContent?.includes('L') && el.textContent?.includes('T') && el.textContent?.includes('X');
+                    const rawLatex = el.textContent?.includes('\\(') || false;
+                    const mjxJax = mjxContainer?.getAttribute('jax');
+                    // Check for the characteristic LaTeX logo styling (stacked letters)
+                    const hasLatexLogo = el.querySelector('mjx-container mjx-mpadded, mjx-container mpadded') !== null;
+
+                    return {
+                        hasMjxContainer: mjxContainer !== null,
+                        hasSvg,
+                        hasLatexText,
+                        rawLatex,
+                        mjxJax: mjxJax || null,
+                        hasLatexLogo,
+                        innerHTML: el.innerHTML.substring(0, 500),
+                    };
+                });
+
+                // Assert: MathJax should have rendered in the page title
+                expect(titleRenderCheck.hasMjxContainer).toBe(true);
+                // Assert: Should have SVG content (visual rendering)
+                expect(titleRenderCheck.hasSvg).toBe(true);
+                // Assert: MathJax should use SVG output
+                expect(titleRenderCheck.mjxJax).toBe('SVG');
+                // Assert: Should contain LaTeX text characters (L, A, T, E, X)
+                expect(titleRenderCheck.hasLatexText).toBe(true);
+                // Assert: Raw LaTeX should NOT be visible (should be rendered)
+                expect(titleRenderCheck.rawLatex).toBe(false);
+
+                // Save the project
+                await saveProject(page);
+
+                // Verify save was successful by checking for any save indicators
+                const saveSuccess = await page.evaluate(() => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    const metadata = bridge?.documentManager?.getMetadata();
+                    // Note: title is stored with key 'title', not 'pp_title'
+                    const title = metadata?.get('title');
+                    return {
+                        hasTitle: title !== undefined,
+                        titleValue: title || null,
+                    };
+                });
+
+                // Assert: Title should be saved in metadata
+                expect(saveSuccess.hasTitle).toBe(true);
+                expect(saveSuccess.titleValue).toBe(latexTitle);
+
+                // Now open the "Open file" dialog to verify LaTeX title appears there
+                const fileMenu = page.locator('#dropdownFile');
+                await expect(fileMenu).toBeVisible({ timeout: 10000 });
+                await fileMenu.click();
+
+                await page.waitForTimeout(300);
+
+                const openOption = page.locator('#navbar-button-openuserodefiles');
+                await expect(openOption).toBeVisible({ timeout: 5000 });
+                await openOption.click();
+
+                // Wait for the Open modal to appear
+                const openModal = page.locator('#modalOpenUserOdeFiles');
+                await expect(openModal).toBeVisible({ timeout: 10000 });
+
+                // Wait for the file list to load
+                await page.waitForTimeout(2000);
+
+                // Find the project in the list by looking for the LaTeX rendered title
+                // The title should be in .ode-title or .ode-file-title element
+                const projectRow = openModal.locator('article.ode-row').first();
+                await expect(projectRow).toBeVisible({ timeout: 10000 });
+
+                // Check if LaTeX is rendered in the Open dialog
+                const openDialogCheck = await openModal.evaluate(modal => {
+                    // Find all title elements in the file list
+                    const titleElements = modal.querySelectorAll('.ode-title, .ode-file-title');
+                    let foundLatexTitle = false;
+                    let hasMjxInTitle = false;
+                    let hasSvgInTitle = false;
+                    let titleDataFilename: string | null = null;
+
+                    for (const titleEl of titleElements) {
+                        const dataFilename = titleEl.getAttribute('data-filename');
+                        if (dataFilename?.includes('\\(') || dataFilename?.includes('LaTeX')) {
+                            titleDataFilename = dataFilename;
+                            foundLatexTitle = true;
+                            hasMjxInTitle = titleEl.querySelector('mjx-container') !== null;
+                            hasSvgInTitle = titleEl.querySelector('mjx-container svg') !== null;
+                            break;
+                        }
+                        // Also check if already rendered
+                        const mjx = titleEl.querySelector('mjx-container');
+                        if (mjx) {
+                            hasMjxInTitle = true;
+                            hasSvgInTitle = titleEl.querySelector('mjx-container svg') !== null;
+                            foundLatexTitle = true;
+                            break;
+                        }
                     }
+
+                    return {
+                        foundLatexTitle,
+                        hasMjxInTitle,
+                        hasSvgInTitle,
+                        titleDataFilename,
+                        totalTitles: titleElements.length,
+                    };
+                });
+
+                // Assert: Should find the project with LaTeX title
+                expect(openDialogCheck.foundLatexTitle).toBe(true);
+                // Assert: MathJax should render in the Open dialog title
+                expect(openDialogCheck.hasMjxInTitle).toBe(true);
+                // Assert: Should have SVG content
+                expect(openDialogCheck.hasSvgInTitle).toBe(true);
+
+                // Close the modal
+                const closeModalBtn = openModal.locator('button.btn-close, [data-bs-dismiss="modal"]').first();
+                if ((await closeModalBtn.count()) > 0) {
+                    await closeModalBtn.click();
+                } else {
+                    await page.keyboard.press('Escape');
                 }
 
-                return {
-                    foundLatexTitle,
-                    hasMjxInTitle,
-                    hasSvgInTitle,
-                    titleDataFilename,
-                    totalTitles: titleElements.length,
-                };
-            });
+                // Verify MathJax is enabled before opening preview
+                const mathJaxEnabledBeforePreview = await page.evaluate(() => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    const metadata = bridge?.documentManager?.getMetadata();
+                    return {
+                        addMathJax: metadata?.get('addMathJax'),
+                        title: metadata?.get('title'),
+                    };
+                });
+                console.log('[LaTeX Title Test] MathJax status before preview:', mathJaxEnabledBeforePreview);
 
-            // Assert: Should find the project with LaTeX title
-            expect(openDialogCheck.foundLatexTitle).toBe(true);
-            // Assert: MathJax should render in the Open dialog title
-            expect(openDialogCheck.hasMjxInTitle).toBe(true);
-            // Assert: Should have SVG content
-            expect(openDialogCheck.hasSvgInTitle).toBe(true);
+                // Capture console messages from the iframe
+                const consoleMessages: string[] = [];
+                page.on('console', msg => {
+                    if (msg.type() === 'error' || msg.text().toLowerCase().includes('mathjax')) {
+                        consoleMessages.push(`[${msg.type()}] ${msg.text()}`);
+                    }
+                });
 
-            // Close the modal
-            const closeModalBtn = openModal.locator('button.btn-close, [data-bs-dismiss="modal"]').first();
-            if ((await closeModalBtn.count()) > 0) {
-                await closeModalBtn.click();
-            } else {
-                await page.keyboard.press('Escape');
-            }
+                const previewButton = page.locator('#head-bottom-preview');
+                await previewButton.click();
 
-            // Verify MathJax is enabled before opening preview
-            const mathJaxEnabledBeforePreview = await page.evaluate(() => {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                const metadata = bridge?.documentManager?.getMetadata();
-                return {
-                    addMathJax: metadata?.get('addMathJax'),
-                    title: metadata?.get('title'),
-                };
-            });
-            console.log('[LaTeX Title Test] MathJax status before preview:', mathJaxEnabledBeforePreview);
+                const previewPanel = page.locator('#previewsidenav');
+                await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Capture console messages from the iframe
-            const consoleMessages: string[] = [];
-            page.on('console', msg => {
-                if (msg.type() === 'error' || msg.text().toLowerCase().includes('mathjax')) {
-                    consoleMessages.push(`[${msg.type()}] ${msg.text()}`);
-                }
-            });
+                const iframe = page.frameLocator('#preview-iframe');
 
-            const previewButton = page.locator('#head-bottom-preview');
-            await previewButton.click();
+                // Wait for preview content to load first
+                await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
+                await iframe.locator('header, h1, h2').first().waitFor({ state: 'attached', timeout: 10000 });
 
-            const previewPanel = page.locator('#previewsidenav');
-            await expect(previewPanel).toBeVisible({ timeout: 15000 });
+                // Wait for MathJax to render the title in the preview header
+                // MathJax SHOULD process all LaTeX in the page, including the header
+                // Use waitForFunction to poll for mjx-container in the title
+                const previewTitleCheck = await iframe.locator('body').evaluate(async body => {
+                    // Wait for MathJax to finish processing (poll for up to 10 seconds)
+                    const maxWait = 10000;
+                    const pollInterval = 200;
+                    let elapsed = 0;
 
-            const iframe = page.frameLocator('#preview-iframe');
+                    while (elapsed < maxWait) {
+                        const titleElements = body.querySelectorAll(
+                            'h1.package-title, h2.exe-title, .exe-title, header h1, header h2',
+                        );
+                        for (const titleEl of titleElements) {
+                            const mjx = titleEl.querySelector('mjx-container');
+                            if (mjx) {
+                                // MathJax has rendered!
+                                return {
+                                    hasMjxInPreview: true,
+                                    hasSvgInPreview: titleEl.querySelector('mjx-container svg') !== null,
+                                    rawLatexInTitle: false,
+                                    mjxJax: mjx.getAttribute('jax'),
+                                    titleHtml: titleEl.innerHTML.substring(0, 300),
+                                };
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, pollInterval));
+                        elapsed += pollInterval;
+                    }
 
-            // Wait for preview content to load first
-            await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
-            await iframe.locator('header, h1, h2').first().waitFor({ state: 'attached', timeout: 10000 });
-
-            // Wait for MathJax to render the title in the preview header
-            // MathJax SHOULD process all LaTeX in the page, including the header
-            // Use waitForFunction to poll for mjx-container in the title
-            const previewTitleCheck = await iframe.locator('body').evaluate(async body => {
-                // Wait for MathJax to finish processing (poll for up to 10 seconds)
-                const maxWait = 10000;
-                const pollInterval = 200;
-                let elapsed = 0;
-
-                while (elapsed < maxWait) {
+                    // MathJax didn't render - collect info for debugging
                     const titleElements = body.querySelectorAll(
                         'h1.package-title, h2.exe-title, .exe-title, header h1, header h2',
                     );
+                    let rawLatexInTitle = false;
+                    let titleHtml = '';
+                    const allTitles: string[] = [];
                     for (const titleEl of titleElements) {
-                        const mjx = titleEl.querySelector('mjx-container');
-                        if (mjx) {
-                            // MathJax has rendered!
-                            return {
-                                hasMjxInPreview: true,
-                                hasSvgInPreview: titleEl.querySelector('mjx-container svg') !== null,
-                                rawLatexInTitle: false,
-                                mjxJax: mjx.getAttribute('jax'),
-                                titleHtml: titleEl.innerHTML.substring(0, 300),
-                            };
+                        const text = titleEl.textContent || '';
+                        allTitles.push(`${titleEl.tagName}.${titleEl.className}: "${text.substring(0, 50)}"`);
+                        if (text.includes('\\(') || text.includes('\\LaTeX')) {
+                            rawLatexInTitle = true;
+                        }
+                        titleHtml = titleEl.innerHTML.substring(0, 300);
+                    }
+
+                    // Check if MathJax script is loaded
+                    const mathJaxLoaded = typeof (window as any).MathJax !== 'undefined';
+                    const mathJaxReady = mathJaxLoaded && typeof (window as any).MathJax.typesetPromise === 'function';
+
+                    // Get MathJax status
+                    let mathJaxStatus = 'not loaded';
+                    if (mathJaxLoaded) {
+                        const mj = (window as any).MathJax;
+                        mathJaxStatus = `loaded, startup: ${mj.startup ? 'exists' : 'missing'}, typesetPromise: ${typeof mj.typesetPromise}`;
+                        if (mj.startup) {
+                            mathJaxStatus += `, document: ${mj.startup.document ? 'exists' : 'missing'}`;
+                            mathJaxStatus += `, promise: ${mj.startup.promise ? 'exists' : 'missing'}`;
                         }
                     }
-                    await new Promise(r => setTimeout(r, pollInterval));
-                    elapsed += pollInterval;
+
+                    // Get the header HTML to see what's there
+                    const headerEl = body.querySelector('header.main-header, .main-header, header');
+                    const headerHtml = headerEl ? headerEl.innerHTML.substring(0, 500) : 'No header found';
+
+                    // Check for any mjx-container anywhere in the body
+                    const anyMjxInBody = body.querySelectorAll('mjx-container').length;
+
+                    // Check if MathJax config script exists in head
+                    const scripts = Array.from(document.querySelectorAll('script')).map(
+                        s => s.src || s.textContent?.substring(0, 100),
+                    );
+                    const hasMathJaxConfig = scripts.some(s => s?.includes('MathJax'));
+
+                    return {
+                        hasMjxInPreview: false,
+                        hasSvgInPreview: false,
+                        rawLatexInTitle,
+                        mathJaxLoaded,
+                        mathJaxReady,
+                        mathJaxStatus,
+                        titleHtml,
+                        allTitles,
+                        headerHtml,
+                        anyMjxInBody,
+                        hasMathJaxConfig,
+                        scripts: scripts.filter(s => s?.includes('MathJax') || s?.includes('tex-mml')),
+                    };
+                });
+
+                // Debug: Log what we found
+                console.log('[LaTeX Title Test] Preview check result:', JSON.stringify(previewTitleCheck, null, 2));
+                console.log('[LaTeX Title Test] Console messages:', consoleMessages);
+
+                // Assert: LaTeX content should be present in preview (either rendered or raw)
+                // Note: MathJax rendering in preview depends on library loading which may fail in test environment
+                // The key is that the LaTeX content is PRESERVED in the preview
+                const latexInPreview = previewTitleCheck.hasMjxInPreview || previewTitleCheck.rawLatexInTitle;
+                expect(latexInPreview).toBe(true);
+
+                // If MathJax rendered, verify it has SVG
+                if (previewTitleCheck.hasMjxInPreview) {
+                    expect(previewTitleCheck.hasSvgInPreview).toBe(true);
                 }
-
-                // MathJax didn't render - collect info for debugging
-                const titleElements = body.querySelectorAll(
-                    'h1.package-title, h2.exe-title, .exe-title, header h1, header h2',
-                );
-                let rawLatexInTitle = false;
-                let titleHtml = '';
-                const allTitles: string[] = [];
-                for (const titleEl of titleElements) {
-                    const text = titleEl.textContent || '';
-                    allTitles.push(`${titleEl.tagName}.${titleEl.className}: "${text.substring(0, 50)}"`);
-                    if (text.includes('\\(') || text.includes('\\LaTeX')) {
-                        rawLatexInTitle = true;
-                    }
-                    titleHtml = titleEl.innerHTML.substring(0, 300);
-                }
-
-                // Check if MathJax script is loaded
-                const mathJaxLoaded = typeof (window as any).MathJax !== 'undefined';
-                const mathJaxReady = mathJaxLoaded && typeof (window as any).MathJax.typesetPromise === 'function';
-
-                // Get MathJax status
-                let mathJaxStatus = 'not loaded';
-                if (mathJaxLoaded) {
-                    const mj = (window as any).MathJax;
-                    mathJaxStatus = `loaded, startup: ${mj.startup ? 'exists' : 'missing'}, typesetPromise: ${typeof mj.typesetPromise}`;
-                    if (mj.startup) {
-                        mathJaxStatus += `, document: ${mj.startup.document ? 'exists' : 'missing'}`;
-                        mathJaxStatus += `, promise: ${mj.startup.promise ? 'exists' : 'missing'}`;
-                    }
-                }
-
-                // Get the header HTML to see what's there
-                const headerEl = body.querySelector('header.main-header, .main-header, header');
-                const headerHtml = headerEl ? headerEl.innerHTML.substring(0, 500) : 'No header found';
-
-                // Check for any mjx-container anywhere in the body
-                const anyMjxInBody = body.querySelectorAll('mjx-container').length;
-
-                // Check if MathJax config script exists in head
-                const scripts = Array.from(document.querySelectorAll('script')).map(
-                    s => s.src || s.textContent?.substring(0, 100),
-                );
-                const hasMathJaxConfig = scripts.some(s => s?.includes('MathJax'));
-
-                return {
-                    hasMjxInPreview: false,
-                    hasSvgInPreview: false,
-                    rawLatexInTitle,
-                    mathJaxLoaded,
-                    mathJaxReady,
-                    mathJaxStatus,
-                    titleHtml,
-                    allTitles,
-                    headerHtml,
-                    anyMjxInBody,
-                    hasMathJaxConfig,
-                    scripts: scripts.filter(s => s?.includes('MathJax') || s?.includes('tex-mml')),
-                };
             });
-
-            // Debug: Log what we found
-            console.log('[LaTeX Title Test] Preview check result:', JSON.stringify(previewTitleCheck, null, 2));
-            console.log('[LaTeX Title Test] Console messages:', consoleMessages);
-
-            // Assert: LaTeX content should be present in preview (either rendered or raw)
-            // Note: MathJax rendering in preview depends on library loading which may fail in test environment
-            // The key is that the LaTeX content is PRESERVED in the preview
-            const latexInPreview = previewTitleCheck.hasMjxInPreview || previewTitleCheck.rawLatexInTitle;
-            expect(latexInPreview).toBe(true);
-
-            // If MathJax rendered, verify it has SVG
-            if (previewTitleCheck.hasMjxInPreview) {
-                expect(previewTitleCheck.hasSvgInPreview).toBe(true);
-            }
         });
 
         test('should preserve LaTeX title after reload', async ({ authenticatedPage, createProject }) => {
@@ -1459,21 +1368,9 @@ test.describe('LaTeX Rendering', () => {
 
             // Create a new project with LaTeX title directly via API/metadata
             const projectUuid = await createProject(page, 'LaTeX Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
+            await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await waitForAppReady(page);
 
             // Enable MathJax for runtime rendering via UI toggle
             await enableMathJaxViaUI(page);
@@ -1501,27 +1398,10 @@ test.describe('LaTeX Rendering', () => {
             await page.waitForTimeout(1500);
 
             // Save the project
-            const saveButton = page.locator('#head-top-save-button');
-            await saveButton.click();
-            await page.waitForTimeout(3000);
+            await saveProject(page);
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app to reinitialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await page.waitForFunction(
-                () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
-                { timeout: 30000 },
-            );
+            await reloadPage(page);
 
             // Wait for MathJax to render
             await page.waitForTimeout(2000);

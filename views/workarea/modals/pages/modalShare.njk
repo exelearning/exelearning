@@ -36,12 +36,22 @@
                 {# General Access Section #}
                 <div id="share-general-access-section" class="mb-4">
                     <h6>{{ 'General access' | trans }}</h6>
-                    <select id="share-visibility-select"
-                            class="form-select"
-                            aria-label="{{ 'General access' | trans }}">
-                        <option value="private">🔒 {{ 'Restricted (Private)' | trans }}</option>
-                        <option value="public">🌐 {{ 'Anyone with the link (Public)' | trans }}</option>
-                    </select>
+                    <div class="share-visibility-wrapper d-flex align-items-center gap-2">
+                        <img id="share-visibility-icon"
+                             src="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
+                             alt=""
+                             width="16"
+                             height="16"
+                             aria-hidden="true">
+                        <select id="share-visibility-select"
+                                class="form-select flex-grow-1"
+                                aria-label="{{ 'General access' | trans }}"
+                                data-icon-private="{{ basePath }}/style/workarea/images/icons/exe-lock-icon-green.svg"
+                                data-icon-public="{{ basePath }}/style/workarea/images/icons/exe-globe-icon-green.svg">
+                            <option value="private">{{ 'Restricted (Private)' | trans }}</option>
+                            <option value="public">{{ 'Anyone with the link (Public)' | trans }}</option>
+                        </select>
+                    </div>
                     <small id="share-visibility-help" class="form-text text-muted d-none">
                         {{ 'Anyone who has the link can view and edit in real time' | trans }}
                     </small>

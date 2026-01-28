@@ -29,6 +29,7 @@ export default class ModalShare extends Modal {
 
         this.generalAccessSection = this.modalElement.querySelector('#share-general-access-section');
         this.visibilitySelect = this.modalElement.querySelector('#share-visibility-select');
+        this.visibilityIcon = this.modalElement.querySelector('#share-visibility-icon');
         this.visibilityHelp = this.modalElement.querySelector('#share-visibility-help');
 
         this.linkInput = this.modalElement.querySelector('#share-link-input');
@@ -323,10 +324,11 @@ export default class ModalShare extends Modal {
     renderVisibilitySection() {
         if (!this.projectData || !this.visibilitySelect) return;
 
-        this.updateVisibilityOptionLabels();
-
         // Set current visibility
         this.visibilitySelect.value = this.projectData.visibility || 'public';
+
+        // Update the icon to match current visibility
+        this.updateVisibilityIcon(this.projectData.visibility || 'public');
 
         // Only owner can change visibility
         this.visibilitySelect.disabled = !this.currentUserIsOwner;
@@ -336,20 +338,19 @@ export default class ModalShare extends Modal {
     }
 
     /**
-     * Ensure visibility option labels include icons and no public/private suffix.
+     * Update the visibility icon based on current selection
+     * @param {string} visibility - 'public' or 'private'
      */
-    updateVisibilityOptionLabels() {
-        if (!this.visibilitySelect) return;
+    updateVisibilityIcon(visibility) {
+        if (!this.visibilityIcon || !this.visibilitySelect) return;
 
-        const privateOption = this.visibilitySelect.querySelector(
-            'option[value="private"]'
-        );
-        const publicOption = this.visibilitySelect.querySelector(
-            'option[value="public"]'
-        );
+        const iconSrc = visibility === 'public'
+            ? this.visibilitySelect.dataset.iconPublic
+            : this.visibilitySelect.dataset.iconPrivate;
 
-        if (privateOption) privateOption.textContent = '🔒 Restricted (Private)';
-        if (publicOption) publicOption.textContent = '🌐 Anyone with the link (Public)';
+        if (iconSrc) {
+            this.visibilityIcon.src = iconSrc;
+        }
     }
 
     /**
@@ -591,6 +592,7 @@ export default class ModalShare extends Modal {
             if (response.responseMessage === 'OK') {
                 this.projectData.visibility = newVisibility;
                 this.updateVisibilityHelp(newVisibility);
+                this.updateVisibilityIcon(newVisibility);
 
                 const message =
                     newVisibility === 'public'
@@ -605,11 +607,13 @@ export default class ModalShare extends Modal {
             } else {
                 this.showError(response.detail || _('Failed to update visibility'));
                 this.visibilitySelect.value = this.projectData.visibility;
+                this.updateVisibilityIcon(this.projectData.visibility);
             }
         } catch (error) {
             console.error('Failed to update visibility:', error);
             this.showError(_('Failed to update visibility'));
             this.visibilitySelect.value = this.projectData.visibility;
+            this.updateVisibilityIcon(this.projectData.visibility);
         }
     }
 

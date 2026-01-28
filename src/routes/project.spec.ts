@@ -4740,7 +4740,7 @@ describe('Project Routes', () => {
             expect(body.usedFiles).toBeDefined();
         });
 
-        it('should extract filename from asset URL path when no metadata', async () => {
+        it('should fallback to asset UUID when no metadata', async () => {
             const assetId = 'c3d4e5f6-7890-12ab-cdef-345678901234';
             const res = await app.handle(
                 new Request('http://localhost/api/ode-management/odes/session/usedfiles', {
@@ -4749,7 +4749,7 @@ describe('Project Routes', () => {
                     body: JSON.stringify({
                         idevices: [
                             {
-                                html: `<img src="asset://${assetId}/my-image.png">`,
+                                html: `<img src="asset://${assetId}.png">`,
                                 pageName: 'Page 1',
                                 blockName: 'Block 1',
                             },
@@ -4761,8 +4761,8 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.usedFiles.length).toBe(1);
-            // Should extract filename from URL path
-            expect(body.usedFiles[0].usedFiles).toBe('my-image.png');
+            // Without metadata, filename should fallback to UUID
+            expect(body.usedFiles[0].usedFiles).toBe(assetId);
             expect(body.usedFiles[0].usedFilesSize).toBe('Stored in browser');
         });
 

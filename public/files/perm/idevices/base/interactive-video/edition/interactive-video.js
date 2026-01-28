@@ -523,12 +523,25 @@ var $exeDevice = {
             $(
                 '#modalGenericIframeContainer,#modalGenericIframeContainerCSS'
             ).remove();
-            const editorURL =
-                eXeLearning.symfony.baseURL +
-                eXeLearning.symfony.basePath +
-                '/api/idevices/download-file-resources?resource=' +
-                filePath +
-                'editor/index.html';
+
+            // Check for static mode (no server available)
+            const config = window.eXeLearning?.config;
+            const isStaticMode = config?.isStaticMode || config?.isOfflineInstallation ||
+                                 window.__EXE_STATIC_MODE__ || window.electronAPI;
+
+            let editorURL;
+            if (isStaticMode) {
+                // Use relative path for static/offline mode
+                editorURL = './files/perm/idevices/base/interactive-video/edition/editor/index.html';
+            } else {
+                // Use API endpoint for server mode
+                editorURL =
+                    eXeLearning.symfony.baseURL +
+                    eXeLearning.symfony.basePath +
+                    '/api/idevices/download-file-resources?resource=' +
+                    filePath +
+                    'editor/index.html';
+            }
             var css = `
     	<style id="modalGenericIframeContainerCSS">
           .modal-fullscreen .modal-header,

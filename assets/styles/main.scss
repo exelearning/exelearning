@@ -40,8 +40,8 @@ body[mode="advanced"] .exe-simplified {
     display: none !important;
 }
 
-/* eXe Mode */
-body[installation-type="offline"] .exe-online,
+/* eXe Mode - Installation type visibility */
+body[installation-type="static"] .exe-online,
 body[installation-type="online"] .exe-offline {
     display: none !important;
 }
@@ -55,6 +55,10 @@ body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idev
     border-radius: 0 !important;
     border: none !important;
     background: none !important;
+}
+/* Saving issues in the TinyMCE Templates dialog in full-screen mode. */
+body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]):has(.tox-dialog.tox-dialog--width-lg) .idevice_actions {
+    z-index:1000;
 }
 
 body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idevice_actions [data-bs-toggle='dropdown'],

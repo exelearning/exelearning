@@ -1,6 +1,8 @@
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
 
+import ImportProgress from '../../../interface/importProgress.js';
+
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
 export default class NavbarFile {
@@ -35,6 +37,8 @@ export default class NavbarFile {
         this.uploadPlatformButton = this.menu.navbar.querySelector(
             '#navbar-button-uploadtoplatform'
         );
+        // Finish button in header (alternative to uploadPlatformButton)
+        this.finishButton = document.querySelector('#head-top-finish-button');
         this.openUserOdeFilesButton = this.menu.navbar.querySelector(
             '#navbar-button-openuserodefiles'
         );
@@ -191,6 +195,13 @@ export default class NavbarFile {
      * and show the "New from Template" button if so
      */
     async checkAndShowNewFromTemplateButton() {
+        // Templates require server API - skip when no remote storage
+        // Note: Only skip if capabilities are available AND remote is explicitly false
+        const capabilities = eXeLearning?.app?.capabilities;
+        if (capabilities && !capabilities.storage.remote) {
+            return;
+        }
+
         try {
             // Get current locale from eXeLearning config or default to 'en'
             const locale = eXeLearning?.config?.locale || 'en';
@@ -332,14 +343,20 @@ export default class NavbarFile {
     /**
      * Upload ELP to platform
      * File -> Upload to -> platform
-     *
+     * Also handles the Finish button in the header
      */
     setUploadPlatformEvent() {
+        const handler = () => {
+            if (eXeLearning.app.project.checkOpenIdevice()) return;
+            this.uploadPlatformEvent();
+        };
+
         if (this.uploadPlatformButton) {
-            this.uploadPlatformButton.addEventListener('click', () => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.uploadPlatformEvent();
-            });
+            this.uploadPlatformButton.addEventListener('click', handler);
+        }
+
+        if (this.finishButton) {
+            this.finishButton.addEventListener('click', handler);
         }
     }
 
@@ -1463,6 +1480,14 @@ export default class NavbarFile {
      *
      */
     openUserOdeFilesEvent() {
+        // Static mode: use client-side file input directly (no server storage)
+        // Note: Only trigger static mode if capabilities are available AND remote is explicitly false
+        const capabilities = eXeLearning?.app?.capabilities;
+        if (capabilities && !capabilities.storage.remote) {
+            this.openFileInputStatic();
+            return;
+        }
+
         if (eXeLearning.config.isOfflineInstallation === true) {
             // Electron offline: use native dialog so we know the real path
             if (
@@ -1525,6 +1550,76 @@ export default class NavbarFile {
                 eXeLearning.app.modals.openuserodefiles.show(response);
             });
         }
+    }
+
+    /**
+     * Opens file input for static mode (PWA/offline)
+     * Uses ElpxImporter directly without server APIs
+     */
+    openFileInputStatic() {
+        // Create or reuse a hidden file input
+        let fileInput = document.getElementById('static-open-file-input');
+        if (!fileInput) {
+            fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'static-open-file-input';
+            fileInput.accept = '.elpx,.elp,.zip';
+            fileInput.style.display = 'none';
+            document.body.appendChild(fileInput);
+
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                    // Show inline progress in workarea
+                    const importProgress = new ImportProgress();
+                    importProgress.show();
+
+                    try {
+                        // Get the Yjs bridge - required for static mode
+                        const yjsBridge = eXeLearning.app.project._yjsBridge;
+                        if (!yjsBridge) {
+                            throw new Error(
+                                'Yjs bridge not initialized. Please wait for the editor to load.'
+                            );
+                        }
+
+                        // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
+                        Logger.log('[Static] Importing file:', file.name);
+                        await yjsBridge.importFromElpx(file, {
+                            onProgress: (progress) => importProgress.update(progress)
+                        });
+
+                        importProgress.hide();
+
+                        // Refresh UI after import (without server calls)
+                        if (eXeLearning.app.project?.refreshAfterDirectImport) {
+                            await eXeLearning.app.project.refreshAfterDirectImport();
+                        }
+
+                        Logger.log('[Static] Import complete:', file.name);
+                    } catch (err) {
+                        importProgress.hide();
+                        console.error('[Static] Failed to import file:', err);
+                        if (eXeLearning.app.modals?.alert) {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('Error opening'),
+                                body: err.message || String(err),
+                                contentId: 'error',
+                            });
+                        } else {
+                            alert(
+                                _('Failed to open project: ') +
+                                    (err.message || err)
+                            );
+                        }
+                    }
+                }
+                // Reset for next use
+                e.target.value = '';
+            });
+        }
+
+        fileInput.click();
     }
 
     /**

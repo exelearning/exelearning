@@ -64,6 +64,11 @@ class YjsProjectBridge {
     this.authToken = authToken;
     this.isNewProject = options.isNewProject || false;
 
+    // Build config for YjsDocumentManager
+    // IMPORTANT: options.enableWebSocket and options.offline should be derived by the caller
+    // from app.capabilities (via RuntimeConfig) as single source of truth:
+    //   enableWebSocket: app.capabilities.collaboration.enabled
+    //   offline: !app.capabilities.collaboration.enabled
     const config = {
       wsUrl: options.wsUrl || this.getWebSocketUrl(),
       apiUrl: options.apiUrl || this.getApiUrl(),
@@ -94,13 +99,15 @@ class YjsProjectBridge {
       // Connect AssetManager to Yjs bridge for metadata storage
       this.assetManager.setYjsBridge(this);
       await this.assetManager.init();
-      // Preload all assets from IndexedDB into memory cache
+      // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
-      Logger.log(`[YjsProjectBridge] AssetManager initialized with Yjs metadata, preloaded ${preloadedAssetCount} assets`);
+      Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
     }
 
-    // Create legacy asset cache (for backward compatibility)
-    this.assetCache = new window.AssetCacheManager(projectId);
+    // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
+    // Assets are now stored in memory via AssetManager.blobCache
+    // The property is kept as null for backward compatibility with any code checking for it
+    this.assetCache = null;
 
     // Create ResourceCache for persistent caching of themes, libraries, iDevices
     if (window.ResourceCache) {
@@ -179,6 +186,25 @@ class YjsProjectBridge {
         await this.assetWebSocketHandler.announceAssetAvailability();
       }
 
+      // Download missing assets from server (blobs not in memory after page reload)
+      // This is critical for in-memory storage: blobs are lost on refresh but metadata syncs from Yjs
+      if (this.assetManager) {
+        const apiBaseUrl = config.apiUrl || `${window.location.origin}/api`;
+        const token = authToken || '';
+        if (token && projectId) {
+          // Don't await - download in background to avoid blocking UI
+          this.assetManager.downloadMissingAssets(apiBaseUrl, token)
+            .then(downloaded => {
+              if (downloaded > 0) {
+                Logger.log(`[YjsProjectBridge] Downloaded ${downloaded} missing assets from server`);
+              }
+            })
+            .catch(err => {
+              console.warn('[YjsProjectBridge] Failed to download missing assets:', err);
+            });
+        }
+      }
+
       // Create ConnectionMonitor for connection failure handling
       if (window.ConnectionMonitor) {
         this.connectionMonitor = new window.ConnectionMonitor({
@@ -198,6 +224,12 @@ class YjsProjectBridge {
         apiUrl: config.apiUrl,
         token: authToken,
       });
+
+      // Connect SaveManager to WebSocket handler for optimized upload sessions
+      if (this.assetWebSocketHandler) {
+        this.saveManager.setWebSocketHandler(this.assetWebSocketHandler);
+      }
+
       Logger.log('[YjsProjectBridge] SaveManager initialized');
     }
 
@@ -988,11 +1020,14 @@ class YjsProjectBridge {
     const undoRedoContainer = document.createElement('div');
     undoRedoContainer.id = 'yjs-undo-redo';
     undoRedoContainer.className = 'yjs-undo-redo';
+    // Use formatShortcut() to display platform-appropriate shortcuts (⌘Z on Mac, Ctrl+Z elsewhere)
+    const undoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+z') : 'Ctrl+Z';
+    const redoShortcut = typeof formatShortcut === 'function' ? formatShortcut('mod+shift+z') : 'Ctrl+Shift+Z';
     undoRedoContainer.innerHTML = `
-      <button class="btn btn-sm btn-undo" title="${_('Undo')} (Ctrl+Z)" disabled>
+      <button class="btn btn-sm btn-undo" title="${_('Undo')} (${undoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">undo</span>
       </button>
-      <button class="btn btn-sm btn-redo" title="${_('Redo')} (Ctrl+Shift+Z)" disabled>
+      <button class="btn btn-sm btn-redo" title="${_('Redo')} (${redoShortcut})" disabled>
         <span class="auto-icon" aria-hidden="true">redo</span>
       </button>
     `;
@@ -2034,16 +2069,21 @@ class YjsProjectBridge {
     const stats = await importer.importFromFile(file, options);
 
     // Announce imported assets to server for peer-to-peer collaboration
-    if (stats && stats.assets > 0) {
+    // Skip only when collaboration is explicitly disabled (capabilities available and disabled)
+    const capabilities = window.eXeLearning?.app?.capabilities;
+    const collaborationEnabled = !capabilities || capabilities.collaboration?.enabled;
+    if (stats && stats.assets > 0 && collaborationEnabled) {
       Logger.log(`[YjsProjectBridge] Announcing ${stats.assets} imported assets to peers...`);
       await this.announceAssets();
     }
 
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
+    // Theme import works in all modes - _checkAndImportTheme handles mode-specific behavior internally
     const clearExisting = options.clearExisting !== false; // default is true
     if (stats && stats.theme && clearExisting) {
-      await this._checkAndImportTheme(stats.theme, file);
+      // Pass cached zip contents to avoid re-unzipping the file
+      await this._checkAndImportTheme(stats.theme, file, stats.zipContents);
     }
 
     return stats;
@@ -2066,9 +2106,10 @@ class YjsProjectBridge {
    *
    * @param {string} themeName - Name of the theme from the package
    * @param {File} file - The original .elpx file to check for /theme/ folder
+   * @param {Record<string, Uint8Array>} [cachedZip] - Pre-extracted ZIP contents (avoids re-unzipping)
    * @private
    */
-  async _checkAndImportTheme(themeName, file) {
+  async _checkAndImportTheme(themeName, file, cachedZip = null) {
     if (!themeName) return;
 
     Logger.log(`[YjsProjectBridge] Checking theme: ${themeName}`);
@@ -2111,13 +2152,22 @@ class YjsProjectBridge {
 
     // Theme not installed - check if package has /theme/ folder
     try {
-      const fflateLib = window.fflate;
-      if (!fflateLib) {
-        throw new Error('fflate library not loaded');
+      let zip;
+      if (cachedZip) {
+        // Use cached zip from import (avoids re-unzipping large files)
+        zip = cachedZip;
+        Logger.log('[YjsProjectBridge] Using cached zip contents for theme check');
+      } else {
+        // Fallback: unzip file (should rarely happen now)
+        const fflateLib = window.fflate;
+        if (!fflateLib) {
+          throw new Error('fflate library not loaded');
+        }
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Data = new Uint8Array(arrayBuffer);
+        zip = fflateLib.unzipSync(uint8Data);
+        Logger.log('[YjsProjectBridge] Unzipped file for theme check (fallback path)');
       }
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Data = new Uint8Array(arrayBuffer);
-      const zip = fflateLib.unzipSync(uint8Data);
       const themeConfig = zip['theme/config.xml'];
 
       if (!themeConfig) {

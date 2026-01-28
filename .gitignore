@@ -109,8 +109,13 @@ release/
 # Generated bundles
 public/app/app.bundle.js
 public/app/yjs/exporters.bundle.js
+public/app/yjs/importers.bundle.js
 public/app/dist/
 
 ###> claude-code ###
 .claude/settings.local.json
 ###< claude-code ###
+
+# Electron app generated content
+/app/dist/
+/app/node_modules/

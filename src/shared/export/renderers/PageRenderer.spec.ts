@@ -533,17 +533,17 @@ describe('PageRenderer', () => {
     describe('renderFooterSection', () => {
         it('should render footer with license', () => {
             const html = renderer.renderFooterSection({
-                license: 'CC-BY-SA',
-                licenseUrl: 'https://example.com/license',
+                license: 'creative commons: attribution - share alike 4.0',
+                licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/',
             });
 
             expect(html).toContain('<footer id="siteFooter">');
             expect(html).toContain('<div id="siteFooterContent">');
             expect(html).toContain('id="packageLicense"');
             expect(html).toContain('class="license-label">Licencia: </span>');
-            // formatLicenseText converts CC-BY-SA to full display text
-            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0</a>');
-            expect(html).toContain('href="https://example.com/license"');
+            // formatLicenseText returns displayName with short code suffix
+            expect(html).toContain('class="license">creative commons: attribution - share alike 4.0 (BY-SA)</a>');
+            expect(html).toContain('href="https://creativecommons.org/licenses/by-sa/4.0/"');
         });
 
         it('should render correct license class for different licenses', () => {
@@ -558,7 +558,8 @@ describe('PageRenderer', () => {
                     name: 'creative commons: attribution - non derived work - non commercial 4.0',
                     class: 'cc cc-by-nc-nd',
                 },
-                { name: 'public domain', class: 'cc cc-0' },
+                { name: 'creative commons: cc0 1.0', class: 'cc cc-0' },
+                { name: 'public domain', class: '' },
             ];
 
             for (const lic of licenses) {
@@ -897,14 +898,15 @@ describe('PageRenderer', () => {
             expect(html).toBe('');
         });
 
-        it('should render empty href when licenseUrl not provided', () => {
+        it('should render span instead of link when licenseUrl not provided', () => {
             const html = renderer.renderLicense({
                 author: 'Test Author',
                 license: 'CC-BY-SA',
             });
 
-            // No default URL - href should be empty when not provided
-            expect(html).toContain('href=""');
+            // No URL - should render span instead of anchor
+            expect(html).not.toContain('href=');
+            expect(html).toContain('<span>CC-BY-SA</span>');
         });
     });
 
@@ -1460,6 +1462,136 @@ describe('PageRenderer', () => {
             });
 
             expect(head).toContain('../libs/exe_highlighter/exe_highlighter.js');
+        });
+    });
+
+    describe('icon resolution via IdeviceRenderer.setThemeIconFiles', () => {
+        it('should resolve icon names when IdeviceRenderer is configured with theme files', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/activity.svg', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity', // baseName without extension
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = configuredRenderer.render(page, options);
+
+            // Should resolve icon name to filename with extension
+            expect(html).toContain('theme/icons/activity.svg');
+        });
+
+        it('should render icon without extension when IdeviceRenderer has no theme files configured', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'share', // baseName without extension
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = renderer.render(page, options);
+
+            // Should use iconName as-is since no theme files configured
+            expect(html).toContain('theme/icons/share');
+        });
+
+        it('should resolve icons in renderPageContent', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/check.png', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Test Block',
+                        order: 0,
+                        components: [],
+                        iconName: 'check',
+                    },
+                ],
+            });
+
+            // Use renderPageContent directly
+            const content = configuredRenderer.renderPageContent(page, '');
+
+            // Should resolve icon name
+            expect(content).toContain('theme/icons/check.png');
+        });
+
+        it('should resolve multiple icons in the same page', () => {
+            // Create and configure IdeviceRenderer with theme files
+            const { IdeviceRenderer } = require('./IdeviceRenderer');
+            const ideviceRenderer = new IdeviceRenderer();
+            const themeFilesMap = new Map<string, unknown>();
+            themeFilesMap.set('icons/info.svg', new Uint8Array(0));
+            themeFilesMap.set('icons/warning.png', new Uint8Array(0));
+            ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // Create PageRenderer with configured IdeviceRenderer
+            const configuredRenderer = new PageRenderer(ideviceRenderer);
+
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block 1',
+                        order: 0,
+                        components: [],
+                        iconName: 'info',
+                    },
+                    {
+                        id: 'block-2',
+                        name: 'Block 2',
+                        order: 1,
+                        components: [],
+                        iconName: 'warning',
+                    },
+                ],
+            });
+
+            const options = createDefaultOptions({
+                allPages: [page],
+            });
+
+            const html = configuredRenderer.render(page, options);
+
+            // Both icons should be resolved
+            expect(html).toContain('theme/icons/info.svg');
+            expect(html).toContain('theme/icons/warning.png');
         });
     });
 });

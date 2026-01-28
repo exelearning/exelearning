@@ -51,10 +51,9 @@ export default class IdeviceNode {
         this.checkDeviceLoadInterval = null;
         // Time (ms) of loop
         this.interval = 100;
-        // Number of loops
-        this.checkDeviceLoadNumMax = Math.round(
-            this.engine.clientCallWaitingTime / this.interval
-        );
+        // Number of loops (default to 5000ms / 100ms = 50 iterations if not configured)
+        const waitingTime = this.engine.clientCallWaitingTime || 5000;
+        this.checkDeviceLoadNumMax = Math.round(waitingTime / this.interval);
         // Check if is valid
         this.checkIsValid();
 
@@ -75,12 +74,16 @@ export default class IdeviceNode {
 
     /**
      * Idevice properties
+     * In static mode, get from API's static data cache; in server mode, use api.parameters
      */
-    properties = JSON.parse(
-        JSON.stringify(
-            eXeLearning.app.api.parameters.odeComponentsSyncPropertiesConfig
-        )
-    );
+    properties = (() => {
+        const app = eXeLearning.app;
+        const isStaticMode = app?.capabilities?.storage?.remote === false;
+        const config = isStaticMode
+            ? app?.api?.staticData?.parameters?.odeComponentsSyncPropertiesConfig
+            : app?.api?.parameters?.odeComponentsSyncPropertiesConfig;
+        return JSON.parse(JSON.stringify(config || {}));
+    })();
 
     /**
      * Api params
@@ -364,8 +367,8 @@ export default class IdeviceNode {
                 if (isLockedByOther) {
                     const lockInfo = this.getLockInfo();
                     const lockUserName = lockInfo?.lockUserName || this.lockUserName || _('Another user');
-                    const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
-                    lockIndicator = `<span class="lock-indicator" style="color: ${lockUserColor}; font-size: 10px; margin-left: 4px;" title="${_('Editing by')} ${lockUserName}">🔒 ${lockUserName}</span>`;
+                    // const lockUserColor = lockInfo?.lockUserColor || this.lockUserColor || '#999';
+                    lockIndicator = `<span class="lock-indicator visually-hidden">${lockUserName}</span>`;
                 }
                 // Set the Minify iDevice icon
                 let minifyIdeviceIcon = 'chevron-down-icon-green';
@@ -1392,13 +1395,27 @@ export default class IdeviceNode {
                 null,
                 assetManager
             );
-            const result = await exporter.exportAndDownload(odeBlockId, odeIdeviceId);
-            if (!result.success) {
+            // Use exportComponent instead of exportAndDownload to support Electron save dialog
+            const result = await exporter.exportComponent(odeBlockId, odeIdeviceId);
+            if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
                     body: result.error || _('Failed to export iDevice'),
                     contentId: 'error',
                 });
+                return;
+            }
+
+            // Use downloadComponentFile for proper Electron support (always show Save As dialog)
+            const blob = new Blob([result.data], { type: 'application/zip' });
+            const url = window.URL.createObjectURL(blob);
+            try {
+                await downloadComponentFile(url, result.filename, {
+                    typeKeySuffix: 'idevice',
+                    alwaysAskLocation: true,
+                });
+            } finally {
+                window.URL.revokeObjectURL(url);
             }
         } catch (error) {
             console.error('[ideviceNode] Export failed:', error);
@@ -1457,6 +1474,7 @@ export default class IdeviceNode {
                 break;
             case 'export':
                 this.restartExeIdeviceValue();
+                await this.loadExportIdevice();
                 await this.ideviceInitExport();
                 break;
         }
@@ -1465,6 +1483,16 @@ export default class IdeviceNode {
         setTimeout(() => {
             this.makeIdeviceButtonsElement();
         }, 100);
+    }
+
+    /**
+     * Load export scripts and styles for this iDevice
+     * Similar to loadEditionIdevice() but for export mode
+     */
+    async loadExportIdevice() {
+        // Load idevice export files (scripts and styles)
+        this.loadScriptsExport();
+        await this.loadStylesExport();
     }
 
     /*********************************
@@ -1692,25 +1720,12 @@ export default class IdeviceNode {
 
         // Create placeholder HTML
         const placeholderHtml = `
-            <div class="idevice-locked-placeholder" style="
-                background-color: #f8f9fa;
-                border: 2px dashed ${userColor};
-                border-radius: 8px;
-                padding: 30px 20px;
-                text-align: center;
-                min-height: 100px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
-            ">
-                <span style="font-size: 24px;">🔒</span>
+            <div class="idevice-locked-placeholder">
                 <p style="margin: 0; color: #666; font-size: 14px;">
                     ${_('Being edited by')}
-                    <strong style="color: ${userColor};">${userName}</strong>
+                    <strong>${userName}</strong>
                 </p>
-                <p style="margin: 0; color: #999; font-size: 12px;">
+                <p>
                     ${_('Content will appear when saved')}
                 </p>
             </div>
@@ -1744,7 +1759,29 @@ export default class IdeviceNode {
                 response = await this.exportProcessIdeviceHtml();
                 break;
         }
+
+        // Typeset LaTeX in iDevice content after loading
+        this.typesetLatexInContent();
+
         return response;
+    }
+
+    /**
+     * Typeset LaTeX formulas in the iDevice content using MathJax
+     * Called after content is loaded into the DOM
+     */
+    typesetLatexInContent() {
+        if (!this.ideviceBody) return;
+
+        // Check if content contains LaTeX delimiters
+        const content = this.ideviceBody.textContent || '';
+        if (/(?:\\\(|\\\[|\\begin\{|\$\$)/.test(content)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([this.ideviceBody]).catch(err => {
+                    Logger.log('[IdeviceNode] MathJax typeset error:', err);
+                });
+            }
+        }
     }
 
     /**
@@ -2034,9 +2071,10 @@ export default class IdeviceNode {
         eXeLearning.app.api.postActivateCurrentOdeUsersUpdateFlag(params2);
         let params = ['odeComponentsSyncId', 'odePagStructureSyncId'];
         // Check if new block (not yet saved in the database)
-        if (
-            this.block.id == eXeLearning.app.api.parameters.generateNewItemKey
-        ) {
+        // In static mode, check if ID starts with 'new-' prefix
+        const isNewBlock = this.block.id?.toString().startsWith('new-') ||
+            this.block.id == eXeLearning.app?.api?.parameters?.generateNewItemKey;
+        if (isNewBlock) {
             params = params.concat([
                 'odeVersionId',
                 'odeSessionId',
@@ -2155,9 +2193,11 @@ export default class IdeviceNode {
             'odeIdeviceTypeName',
         ];
         // Generate new block
+        // In static mode, generate a unique ID locally
+        const generateNewKey = () => `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         let blockData = {
             odePagStructureSyncId:
-                eXeLearning.app.api.parameters.generateNewItemKey,
+                eXeLearning.app?.api?.parameters?.generateNewItemKey || generateNewKey(),
             iconName: '', //this.idevice.icon.name,
             blockName: this.idevice.title,
         };
@@ -2543,6 +2583,37 @@ export default class IdeviceNode {
             }
         }
 
+        // Also create asset for client-side display (same as apiUploadFile)
+        const assetManager = eXeLearning.app?.project?._yjsBridge?.assetManager;
+        if (assetManager && response?.savedPath) {
+            try {
+                // Extract file from FormData
+                const file = formData.get('file');
+                if (file instanceof File) {
+                    const assetUrl = await assetManager.insertImage(file);
+                    if (assetUrl && assetUrl.startsWith('asset://')) {
+                        response.savedPath = '';
+                        response.savedFilename = assetUrl;
+                        response.savedThumbnailName = assetUrl;
+
+                        const blobUrl =
+                            await assetManager.resolveAssetURL(assetUrl);
+                        if (blobUrl) {
+                            response.previewUrl = blobUrl;
+                        }
+                        Logger.log(
+                            `[IdeviceNode] Created asset for large file upload: ${assetUrl}`
+                        );
+                    }
+                }
+            } catch (e) {
+                Logger.warn(
+                    '[IdeviceNode] Failed to create asset from large file upload:',
+                    e
+                );
+            }
+        }
+
         return response;
     }
 
@@ -2862,6 +2933,10 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when exiting edition mode
+        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
+            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        }
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();
         // Desactivate user flags
@@ -2941,6 +3016,10 @@ export default class IdeviceNode {
      */
     edition() {
         clearInterval(this.checkDeviceLoadInterval);
+        // Stop any playing audio when entering edition mode
+        if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice?.gamification?.media?.stopSound) {
+            $exeDevices.iDevice.gamification.media.stopSound();
+        }
         if (this.engine.mode == 'view') {
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');

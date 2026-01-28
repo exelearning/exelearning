@@ -151,13 +151,6 @@ export default class ConcurrentUsers {
             nodeConcurrentUser.title = user.email;
         }
 
-        // Add color border to indicate user color
-        if (user.color) {
-            nodeConcurrentUser.style.borderColor = user.color;
-            nodeConcurrentUser.style.borderWidth = '2px';
-            nodeConcurrentUser.style.borderStyle = 'solid';
-        }
-
         // Mark local user
         if (user.isLocal) {
             nodeConcurrentUser.classList.add('is-local-user');
@@ -165,7 +158,7 @@ export default class ConcurrentUsers {
 
         const usernameElement = document.createElement('span');
         usernameElement.classList.add('username');
-        usernameElement.innerHTML = user.name || 'User';
+        usernameElement.innerHTML = user.name || _('User');
 
         // Check if guest user
         const isGuest = isGuestAccount(user.email);
@@ -272,7 +265,7 @@ export default class ConcurrentUsers {
             if (user.selectedPageId) {
                 const pageInfo = document.createElement('span');
                 pageInfo.classList.add('user-page-info');
-                pageInfo.textContent = `📄 Viewing page`;
+                pageInfo.textContent = _("Viewing page");
                 infoElement.appendChild(pageInfo);
             }
 

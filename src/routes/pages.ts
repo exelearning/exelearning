@@ -701,6 +701,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 // Unified config object (replaces legacy 'symfony' object)
                 const config = {
+                    // Version for cache busting in preview and asset URLs
+                    version: getAppVersion(),
                     // Platform settings
                     platformName: platformName,
                     platformType: 'standalone',

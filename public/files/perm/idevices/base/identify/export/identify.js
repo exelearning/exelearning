@@ -380,17 +380,12 @@ var $eXeIdentifica = {
         mOptions.questionsGame =
             $exeDevices.iDevice.gamification.helpers.getQuestions(
                 mOptions.questionsGame,
-                mOptions.percentajeQuestions
+                mOptions.percentajeQuestions,
+                mOptions.questionsRamdon
             );
         for (let i = 0; i < mOptions.questionsGame.length; i++) {
             mOptions.scoreTotal += 1;
         }
-        const al = $exeDevices.iDevice.gamification.helpers.shuffleAds(
-            mOptions.questionsGame
-        );
-        mOptions.questionsGame = mOptions.questionsRamdon
-            ? al
-            : mOptions.questionsGame;
         mOptions.numberQuestions = mOptions.questionsGame.length;
         return mOptions;
     },
@@ -519,8 +514,7 @@ var $eXeIdentifica = {
                 mOptions.questionsGame[mOptions.activeQuestion].audio || ''
             ).trim();
             if (!audio || audio.length <= 4) return;
-            $exeDevices.iDevice.gamification.media.stopSound(mOptions);
-            $exeDevices.iDevice.gamification.media.playSound(audio, mOptions);
+            $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
         $gameContainerClue.on('click', '.IDFP-LinkClue', function (e) {
@@ -961,7 +955,7 @@ var $eXeIdentifica = {
         mOptions.gameStarted = false;
         $eXeIdentifica.showCluesLinks(0, instance);
         $('#idfLinkAudio-' + instance).hide();
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         $('#idfCursor-' + instance).hide();
 
         let message = mOptions.msgs.msgGameEnd;
@@ -1105,7 +1099,7 @@ var $eXeIdentifica = {
             );
         }
 
-        $exeDevices.iDevice.gamification.media.stopSound(mOptions);
+        $exeDevices.iDevice.gamification.media.stopSound();
         const hasAudio = q.audio && q.audio.trim().length > 4;
         if (hasAudio) {
             $(`#idfLinkAudio-${instance}`).show();

@@ -1223,4 +1223,94 @@ describe('Asset Coordinator Service (DI)', () => {
             stringThrowingCoordinator.cleanupProject('string-error-project');
         });
     });
+
+    describe('Upload Session Messages', () => {
+        beforeEach(() => {
+            mockDeps = createMockDeps({
+                findProjectByUuid: async (_db: any, uuid: string) => {
+                    if (uuid === 'upload-session-project') {
+                        return { id: 42, uuid: 'upload-session-project', user_id: 1 };
+                    }
+                    return undefined;
+                },
+            });
+            coordinator = createAssetCoordinator(mockDeps);
+        });
+
+        it('should handle upload-session-create with valid data', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('upload-session-project', 'client-upload', socket);
+
+            await coordinator.handleMessage('upload-session-project', 'client-upload', {
+                type: 'upload-session-create',
+                data: {
+                    projectId: 'upload-session-project',
+                    totalFiles: 10,
+                    totalBytes: 5000,
+                    manifest: [{ clientId: 'asset-1', filename: 'test.jpg', size: 1000, mimeType: 'image/jpeg' }],
+                },
+            });
+
+            // Should send upload-session-ready response
+            expect(socket.messages.length).toBeGreaterThan(0);
+            const lastMessage = socket.messages[socket.messages.length - 1];
+            const decoded = JSON.parse(new TextDecoder().decode(lastMessage.slice(1)));
+            expect(decoded.type).toBe('upload-session-ready');
+            expect(decoded.data.sessionToken).toBeDefined();
+            expect(decoded.data.expiresAt).toBeGreaterThan(Date.now());
+
+            coordinator.cleanupProject('upload-session-project');
+        });
+
+        it('should handle upload-session-create with invalid data', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('upload-session-project', 'client-invalid', socket);
+
+            // Missing required fields
+            await coordinator.handleMessage('upload-session-project', 'client-invalid', {
+                type: 'upload-session-create',
+                data: {},
+            });
+
+            // Should not crash, just log warning
+            coordinator.cleanupProject('upload-session-project');
+        });
+
+        it('should handle upload-session-create with undefined data', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('upload-session-project', 'client-undef', socket);
+
+            await coordinator.handleMessage('upload-session-project', 'client-undef', {
+                type: 'upload-session-create',
+                data: undefined,
+            });
+
+            // Should not crash
+            coordinator.cleanupProject('upload-session-project');
+        });
+
+        it('should handle upload-session-create for non-existent project', async () => {
+            const socket = createMockSocket();
+            coordinator.registerClient('non-existent-project', 'client-missing', socket);
+
+            await coordinator.handleMessage('non-existent-project', 'client-missing', {
+                type: 'upload-session-create',
+                data: {
+                    projectId: 'non-existent-project',
+                    totalFiles: 5,
+                    totalBytes: 1000,
+                    manifest: [],
+                },
+            });
+
+            // Should send error response
+            expect(socket.messages.length).toBeGreaterThan(0);
+            const lastMessage = socket.messages[socket.messages.length - 1];
+            const decoded = JSON.parse(new TextDecoder().decode(lastMessage.slice(1)));
+            expect(decoded.type).toBe('upload-session-ready');
+            expect(decoded.data.error).toBeDefined();
+
+            coordinator.cleanupProject('non-existent-project');
+        });
+    });
 });

@@ -156,12 +156,35 @@ else
 	bun run dev:local
 endif
 
-# Start full app: Elysia backend + Electron
+# Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
 run-app: check-bun deps css bundle
-	@echo "Launching eXeLearning App (Electron + Elysia)..."
-	@bun run build:standalone
-	@bun run dev:app
+	@echo "Building static files..."
+	@bun scripts/build-static-bundle.ts
+	@echo "Copying static files to app/..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
+	@echo "Launching eXeLearning App (Electron)..."
+	@bun run electron
+
+# Build static distribution (PWA mode, no server required)
+# Usage: make build-static
+.PHONY: build-static
+build-static: check-bun deps css bundle
+	@echo "Building static distribution..."
+	@bun run build:static
+	@echo "Static distribution built at dist/static/"
+
+# Build static distribution and serve it
+# Usage: make up-static [PORT=8080]
+.PHONY: up-static
+up-static: build-static
+	@echo ""
+	@echo "============================================================"
+	@echo "  Serving static distribution at http://localhost:$${PORT:-8080}"
+	@echo "  Press Ctrl+C to stop"
+	@echo "============================================================"
+	@echo ""
+	@bunx serve dist/static -p $${PORT:-8080}
 
 
 # =============================================================================
@@ -500,7 +523,7 @@ TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
 .PHONY: test-unit
-test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverage and 90% threshold
+test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
 	@FORCE_COLOR=1 $(TEST_ENV) bun test:unit > /tmp/exe-coverage.txt 2>&1; \
 	test_exit=$$?; \
@@ -509,11 +532,11 @@ test-unit: check-bun check-tests check-env ## Run unit tests (src/) with coverag
 	bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 .PHONY: test-integration
-test-integration: check-bun check-env ## Run integration tests
+test-integration: check-bun check-env bundle ## Run integration tests
 	$(TEST_ENV) bun test:integration
 
 .PHONY: test-frontend
-test-frontend: check-bun check-env ## Run frontend tests (with Vitest + happy-dom) with coverage
+test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
 	bun test:frontend
 
 .PHONY: test-unit-ci
@@ -528,16 +551,38 @@ test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
 	bunx playwright test --project=chromium
 
 .PHONY: test-e2e
-test-e2e: test-e2e-chromium ## Run Playwright E2E tests (alias for test-e2e-chromium)
+test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 	bunx playwright test --ui
 
 .PHONY: test-e2e-firefox
-test-e2e-firefox: check-env ## Run Playwright E2E tests with Firefox
+test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
 	bunx playwright test --project=firefox
 
+.PHONY: test-e2e-static
+test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
+	@echo ""
+	@echo "============================================================"
+	@echo "  E2E Tests against Static Build"
+	@echo "============================================================"
+	@echo ""
+	@echo "Running Playwright tests (server managed by Playwright)..."
+	@echo ""
+	@bunx playwright test --project=static; \
+	test_exit=$$?; \
+	echo ""; \
+	if [ $$test_exit -eq 0 ]; then \
+		echo "============================================================"; \
+		echo "  Static E2E Tests PASSED"; \
+		echo "============================================================"; \
+	else \
+		echo "============================================================"; \
+		echo "  Static E2E Tests FAILED"; \
+		echo "============================================================"; \
+	fi; \
+	exit $$test_exit
 
 # =============================================================================
 # DATABASE-SPECIFIC E2E TESTS
@@ -689,10 +734,20 @@ endif
 	$(eval PACKAGE_VERSION := $(patsubst v%,%,$(VERSION)))
 	$(eval PACKAGE_VERSION := $(strip $(PACKAGE_VERSION)))
 	@echo "Packaging version $(VERSION) (npm version: $(PACKAGE_VERSION))..."
+	@echo "Building static files..."
+	@bun run build:static
+	@echo "Copying static files to app/dist/static..."
+	@rm -rf app/dist/static && mkdir -p app/dist && cp -r dist/static app/dist/static
+	@echo "Updating version in package.json files..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
-	bun run package:app $(if $(PUBLISH),-- --publish $(PUBLISH),)
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='$(PACKAGE_VERSION)'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
+	@echo "Installing app dependencies..."
+	@cd app && npm install --production
+	@echo "Building Electron package..."
+	npm run electron:pack $(if $(PUBLISH),-- --publish $(PUBLISH),)
 	@echo "Restoring version to 0.0.0-alpha..."
 	@bun -e "let pkg=require('./package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+	@bun -e "let pkg=require('./app/package.json'); pkg.version='0.0.0-alpha'; require('fs').writeFileSync('app/package.json', JSON.stringify(pkg, null, 2));"
 	@echo "Package created successfully with version $(VERSION)"
 
 
@@ -800,71 +855,95 @@ help:
 	@echo "eXeLearning Development Commands"
 	@echo ""
 	@echo "Docker:"
-	@echo "  make up              Start Docker (dev mode by default)"
-	@echo "  make up APP_ENV=prod Start Docker (prod mode)"
-	@echo "  make upd             Start Docker detached"
-	@echo "  make down            Stop Docker"
-	@echo "  make pull            Pull latest Docker images"
-	@echo "  make shell           Shell into container"
-	@echo "  make logs            View container logs"
+	@echo "  make build           Build Docker image"
 	@echo "  make clean           Stop and remove volumes"
 	@echo "  make destroy         Remove everything (containers, images, node_modules)"
+	@echo "  make down            Stop Docker"
+	@echo "  make logs            View container logs"
+	@echo "  make pull            Pull latest Docker images"
+	@echo "  make shell           Shell into container"
+	@echo "  make up              Start Docker (dev mode by default)"
+	@echo "  make up APP_ENV=prod Start Docker (prod mode)"
+	@echo "  make up-mariadb      Start Docker with MariaDB"
+	@echo "  make up-postgres     Start Docker with PostgreSQL"
+	@echo "  make upd             Start Docker detached"
 	@echo ""
 	@echo "Local:"
+	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
+	@echo "  make clean-local           Clean local data (database + assets)"
+	@echo "  make css                   Build CSS only"
+	@echo "  make deps                  Install dependencies"
+	@echo "  make run-app               Start Electron + backend (desktop app)"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
-	@echo "  make run-app               Start Electron + backend (desktop app)"
-	@echo "  make bundle                Build all assets (TS + CSS + JS bundle)"
-	@echo "  make deps                  Install dependencies"
+	@echo "  make build-static          Build static distribution (PWA mode)"
+	@echo "  make up-static             Build and serve static distribution (PWA mode)"
+	@echo "  make up-static PORT=3000   Same, but on custom port"
 	@echo ""
 	@echo "CLI Commands:"
-	@echo "  make create-user EMAIL=x PASSWORD=y USER_ID=z   Create a new user"
-	@echo "  make promote-admin EMAIL=x                      Grant ROLE_ADMIN"
-	@echo "  make demote-admin EMAIL=x                       Remove ROLE_ADMIN"
-	@echo "  make grant-role EMAIL=x ROLE=y                  Add role to user"
-	@echo "  make revoke-role EMAIL=x ROLE=y                 Remove role from user"
-	@echo "  make generate-jwt EMAIL=x [TTL=3600]              Generate JWT token"
-	@echo "  make tmp-cleanup [MAX_AGE=86400]                Clean temp files"
-	@echo "  make translations [LOCALE=es]                   Extract/clean translations"
-	@echo "  make update-licenses [DRY_RUN=1]               Update license info"
+	@echo "  make cli ARGS='...'                           Generic CLI access"
+	@echo "  make create-user EMAIL=x PASSWORD=y USER_ID=z Create a new user"
+	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
+	@echo "  make generate-jwt EMAIL=x [TTL=3600]          Generate JWT token"
+	@echo "  make grant-role EMAIL=x ROLE=y                Add role to user"
+	@echo "  make promote-admin EMAIL=x                    Grant ROLE_ADMIN"
+	@echo "  make revoke-role EMAIL=x ROLE=y               Remove role from user"
+	@echo "  make tmp-cleanup [MAX_AGE=86400]              Clean temp files"
+	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
+	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"
-	@echo "  make convert-elp INPUT=x OUTPUT=y               Convert ELP v2.x to v3.0 (elpx)"
-	@echo "  make export-elpx FORMAT=x INPUT=y OUTPUT=z      Export to any format"
-	@echo "  make export-html5 INPUT=x OUTPUT=y              Export to HTML5"
-	@echo "  make export-html5-sp INPUT=x OUTPUT=y           Export to HTML5 single-page"
-	@echo "  make export-scorm12 INPUT=x OUTPUT=y            Export to SCORM 1.2"
-	@echo "  make export-scorm2004 INPUT=x OUTPUT=y          Export to SCORM 2004"
-	@echo "  make export-ims INPUT=x OUTPUT=y                Export to IMS Content Package"
-	@echo "  make export-epub3 INPUT=x OUTPUT=y              Export to EPUB3"
+	@echo "  make convert-elp INPUT=x OUTPUT=y             Convert ELP v2.x to v3.0 (elpx)"
+	@echo "  make export-elpx FORMAT=x INPUT=y OUTPUT=z    Export to any format"
+	@echo "  make export-epub3 INPUT=x OUTPUT=y            Export to EPUB3"
+	@echo "  make export-html5 INPUT=x OUTPUT=y            Export to HTML5"
+	@echo "  make export-html5-sp INPUT=x OUTPUT=y         Export to HTML5 single-page"
+	@echo "  make export-ims INPUT=x OUTPUT=y              Export to IMS Content Package"
+	@echo "  make export-scorm12 INPUT=x OUTPUT=y          Export to SCORM 1.2"
+	@echo "  make export-scorm2004 INPUT=x OUTPUT=y        Export to SCORM 2004"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test            Run all tests"
-	@echo "  make test-unit       Run unit tests"
-	@echo "  make test-frontend   Run frontend tests"
-	@echo "  make test-watch      Run tests in watch mode"
-	@echo "  make test-e2e        Run Playwright E2E tests (Chromium)"
+	@echo "  make check-coverage     Check 90% coverage threshold"
+	@echo "  make check-tests        Check test file coverage requirements"
+	@echo "  make test               Run all tests"
+	@echo "  make test-clean         Clean test artifacts"
+	@echo "  make test-frontend      Run frontend tests (Vitest)"
+	@echo "  make test-integration   Run integration tests"
+	@echo "  make test-unit          Run unit tests with coverage"
+	@echo "  make test-unit-ci       Run unit tests with lcov for CI"
+	@# TODO: Implement test-watch target
+	@# @echo "  make test-watch         Run tests in watch mode"
+	@echo ""
+	@echo "E2E Testing (Playwright):"
+	@echo "  make down-e2e           Clean up E2E Docker containers"
+	@echo "  make test-e2e           Run E2E tests (Chromium)"
 	@echo "  make test-e2e-chromium  Run E2E tests with Chromium"
 	@echo "  make test-e2e-firefox   Run E2E tests with Firefox"
+	@echo "  make test-e2e-static    Run E2E tests against static build"
+	@echo "  make test-e2e-mariadb   Run E2E tests with MariaDB backend"
+	@echo "  make test-e2e-postgres  Run E2E tests with PostgreSQL backend"
+	@echo "  make test-e2e-sqlite    Run E2E tests with SQLite backend"
+	@echo "  make test-e2e-ui        Run E2E tests with Playwright UI"
 	@echo ""
 	@echo "Legacy (Core2 Duo / No Bun):"
-	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"
-	@echo "  make down-legacy            Stop legacy server"
 	@echo "  make clean-legacy           Stop and remove legacy volumes"
-	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
-	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
+	@echo "  make down-legacy            Stop legacy server"
 	@echo "  make fix-legacy             Fix lint issues using npm"
+	@echo "  make lint-legacy            Run lint using npm (no Bun required)"
+	@echo "  make test-frontend-legacy   Run frontend tests with Node.js + coverage"
+	@echo "  make up-legacy              Start legacy server with Node.js (Docker)"
 	@echo ""
 	@echo "Linting (Biome):"
-	@echo "  make lint            Run lint on all files"
 	@echo "  make fix             Fix all lint issues"
-	@echo "  make lint-ts         Lint TypeScript source (src/)"
-	@echo "  make fix-ts          Fix TypeScript linting issues"
-	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make fix-js          Fix JavaScript linting issues"
-	@echo "  make lint-tests      Lint test files"
 	@echo "  make fix-tests       Fix test linting issues"
+	@echo "  make fix-ts          Fix TypeScript linting issues"
 	@echo "  make format          Format code with Biome"
+	@echo "  make format-check    Check formatting without fixing"
+	@echo "  make lint            Run lint on all files"
+	@echo "  make lint-js         Lint JavaScript (public/app/)"
+	@echo "  make lint-tests      Lint test files"
+	@echo "  make lint-ts         Lint TypeScript source (src/)"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package VERSION=1.0.0                    Build release"

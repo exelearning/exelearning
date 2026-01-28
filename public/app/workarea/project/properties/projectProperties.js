@@ -16,12 +16,26 @@ export default class ProjectProperties {
      * Load project properties
      */
     async load() {
+        const app = eXeLearning.app;
+        const isStaticMode = app.capabilities?.storage?.remote === false;
+
+        // Get configs from appropriate source
+        let propertiesConfigSource;
+        let cataloguingConfigSource;
+
+        if (isStaticMode) {
+            // Static mode: get from API (uses internal static data cache)
+            const apiParams = await app.api.getApiParameters();
+            propertiesConfigSource = apiParams?.odeProjectSyncPropertiesConfig || {};
+            cataloguingConfigSource = apiParams?.odeProjectSyncCataloguingConfig || {};
+        } else {
+            // Server mode: use api.parameters
+            propertiesConfigSource = app.api?.parameters?.odeProjectSyncPropertiesConfig || {};
+            cataloguingConfigSource = app.api?.parameters?.odeProjectSyncCataloguingConfig || {};
+        }
+
         // Properties - Package [base]
-        this.propertiesConfig = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.odeProjectSyncPropertiesConfig
-            )
-        );
+        this.propertiesConfig = JSON.parse(JSON.stringify(propertiesConfigSource));
         this.properties = {};
         for (let [category, properties] of Object.entries(
             this.propertiesConfig
@@ -30,12 +44,9 @@ export default class ProjectProperties {
                 this.properties[key] = property;
             }
         }
+
         // Properties - Cataloguing [lom/lom-es]
-        this.cataloguingConfig = JSON.parse(
-            JSON.stringify(
-                eXeLearning.app.api.parameters.odeProjectSyncCataloguingConfig
-            )
-        );
+        this.cataloguingConfig = JSON.parse(JSON.stringify(cataloguingConfigSource));
         this.cataloguing = {};
         for (let [category, properties] of Object.entries(
             this.cataloguingConfig
@@ -98,6 +109,9 @@ export default class ProjectProperties {
      * @returns {string} - e.g., 'title'
      */
     mapPropertyToMetadataKey(propertyKey) {
+        if (propertyKey === 'pp_lang') {
+            return 'language';
+        }
         // Remove pp_ prefix if present
         if (propertyKey.startsWith('pp_')) {
             return propertyKey.substring(3);

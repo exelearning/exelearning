@@ -420,7 +420,7 @@ var $exeDevice = {
         $('#puzzleEURLAudioClue').val(puzzle.audioClue);
         $('#puzzleECluePuzzle').val(puzzle.clue);
 
-        $exeDevice.stopSound();
+        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
     initPuzzles: function () {
         $exeDevice.active = 0;
@@ -1114,8 +1114,7 @@ var $exeDevice = {
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevice.stopSound();
-                $exeDevice.playSound(url);
+                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },

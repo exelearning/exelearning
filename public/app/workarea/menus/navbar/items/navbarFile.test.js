@@ -441,6 +441,48 @@ describe('NavbarFile', () => {
             expect(mockButtons.uploadPlatformButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
+        it('setUploadPlatformEvent should add click listener to finishButton when it exists', () => {
+            const finishButton = document.createElement('button');
+            finishButton.id = 'head-top-finish-button';
+            finishButton.addEventListener = vi.fn();
+            navbarFile.finishButton = finishButton;
+
+            navbarFile.setUploadPlatformEvent();
+
+            expect(finishButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setUploadPlatformEvent should not add listener to finishButton when it is null', () => {
+            navbarFile.finishButton = null;
+            navbarFile.setUploadPlatformEvent();
+            // Should not throw and uploadPlatformButton listener should still be added
+            expect(mockButtons.uploadPlatformButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+        });
+
+        it('setUploadPlatformEvent handler should return early if idevice is open', () => {
+            global.eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            const uploadEventSpy = vi.spyOn(navbarFile, 'uploadPlatformEvent');
+
+            navbarFile.setUploadPlatformEvent();
+            const handler = mockButtons.uploadPlatformButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(global.eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
+            expect(uploadEventSpy).not.toHaveBeenCalled();
+        });
+
+        it('setUploadPlatformEvent handler should call uploadPlatformEvent when no idevice is open', () => {
+            global.eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            const uploadEventSpy = vi.spyOn(navbarFile, 'uploadPlatformEvent').mockImplementation(() => {});
+
+            navbarFile.setUploadPlatformEvent();
+            const handler = mockButtons.uploadPlatformButton.addEventListener.mock.calls[0][1];
+            handler();
+
+            expect(global.eXeLearning.app.project.checkOpenIdevice).toHaveBeenCalled();
+            expect(uploadEventSpy).toHaveBeenCalled();
+        });
+
         it('setOpenUserOdeFilesEvent should add click listener', () => {
             navbarFile.setOpenUserOdeFilesEvent();
             expect(mockButtons.openUserOdeFilesButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
@@ -2188,6 +2230,343 @@ describe('NavbarFile', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('bad');
+        });
+    });
+
+    describe('checkAndShowNewFromTemplateButton static mode', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should skip fetch when capabilities.storage.remote is false', async () => {
+            // Set up static mode (no remote storage)
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            global.fetch = vi.fn();
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Should NOT call fetch when in static mode
+            expect(global.fetch).not.toHaveBeenCalled();
+        });
+
+        it('should proceed to fetch when capabilities is undefined', async () => {
+            // No capabilities defined (legacy mode)
+            delete eXeLearning.app.capabilities;
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ templates: [] }),
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Should call fetch when capabilities is not defined
+            expect(global.fetch).toHaveBeenCalled();
+        });
+
+        it('should proceed to fetch when storage.remote is true', async () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ templates: [] }),
+            });
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            expect(global.fetch).toHaveBeenCalled();
+        });
+
+        it('should handle non-ok API response', async () => {
+            delete eXeLearning.app.capabilities;
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+            const li = document.createElement('li');
+            li.classList.add('d-none');
+            li.appendChild(mockButtons.newFromTemplateButton);
+            navbarElement.appendChild(li);
+
+            await navbarFile.checkAndShowNewFromTemplateButton();
+
+            // Button should stay hidden on 404
+            expect(li.classList.contains('d-none')).toBe(true);
+        });
+    });
+
+    describe('null button safety in set*Event methods', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        // Tests for methods that have explicit null checks in the source code
+        it('setSettingsEvent should return early when button is null', () => {
+            navbarFile.settingsButton = null;
+            expect(() => navbarFile.setSettingsEvent()).not.toThrow();
+        });
+
+        it('setShareEvent should return early when button is null', () => {
+            navbarFile.shareButton = null;
+            expect(() => navbarFile.setShareEvent()).not.toThrow();
+        });
+
+        it('setOpenOfflineEvent should return early when button is null', () => {
+            navbarFile.openOfflineButton = null;
+            expect(() => navbarFile.setOpenOfflineEvent()).not.toThrow();
+        });
+
+        it('setUploadPlatformEvent should not throw when both buttons are null', () => {
+            navbarFile.uploadPlatformButton = null;
+            navbarFile.finishButton = null;
+            expect(() => navbarFile.setUploadPlatformEvent()).not.toThrow();
+        });
+
+        it('setDownloadProjectAsEvent should return early when button is null', () => {
+            navbarFile.downloadProjectAsButton = null;
+            expect(() => navbarFile.setDownloadProjectAsEvent()).not.toThrow();
+        });
+
+        it('setSaveProjectOfflineEvent should return early when button is null', () => {
+            navbarFile.saveOfflineButton = null;
+            expect(() => navbarFile.setSaveProjectOfflineEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5AsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5AsButton = null;
+            expect(() => navbarFile.setExportHTML5AsEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5FolderAsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5FolderAsButton = null;
+            expect(() => navbarFile.setExportHTML5FolderAsEvent()).not.toThrow();
+        });
+
+        it('setExportHTML5SPAsEvent should return early when button is null', () => {
+            navbarFile.exportHTML5SPAsButton = null;
+            expect(() => navbarFile.setExportHTML5SPAsEvent()).not.toThrow();
+        });
+
+        it('setExportPrintEvent should return early when button is null', () => {
+            navbarFile.exportPrintButton = null;
+            expect(() => navbarFile.setExportPrintEvent()).not.toThrow();
+        });
+
+        it('setExportSCORM12AsEvent should return early when button is null', () => {
+            navbarFile.exportSCORM12AsButton = null;
+            expect(() => navbarFile.setExportSCORM12AsEvent()).not.toThrow();
+        });
+
+        it('setExportSCORM2004AsEvent should return early when button is null', () => {
+            navbarFile.exportSCORM2004AsButton = null;
+            expect(() => navbarFile.setExportSCORM2004AsEvent()).not.toThrow();
+        });
+
+        it('setExportIMSAsEvent should return early when button is null', () => {
+            navbarFile.exportIMSAsButton = null;
+            expect(() => navbarFile.setExportIMSAsEvent()).not.toThrow();
+        });
+
+        it('setExportEPUB3AsEvent should return early when button is null', () => {
+            navbarFile.exportEPUB3AsButton = null;
+            expect(() => navbarFile.setExportEPUB3AsEvent()).not.toThrow();
+        });
+
+        it('setExportXmlPropertiesAsEvent should return early when button is null', () => {
+            navbarFile.exportXmlPropertiesAsButton = null;
+            expect(() => navbarFile.setExportXmlPropertiesAsEvent()).not.toThrow();
+        });
+
+        it('setImportElpEvent should return early when button is null', () => {
+            navbarFile.importElpButton = null;
+            expect(() => navbarFile.setImportElpEvent()).not.toThrow();
+        });
+    });
+
+    describe('openClientPreview additional edge cases', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should return false when yjsBridge is null', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = null;
+
+            const result = await navbarFile.openClientPreview();
+
+            expect(result).toBe(false);
+        });
+
+        it('should return false when documentManager is null', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = { documentManager: null };
+
+            const result = await navbarFile.openClientPreview();
+
+            expect(result).toBe(false);
+        });
+
+        it('should work without toast when toasts.createToast is unavailable', async () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            eXeLearning.app.project._yjsBridge = {
+                documentManager: {},
+                assetCache: new Map(),
+            };
+            eXeLearning.app.toasts.createToast = null;
+
+            // Mock PreviewExporter with preview method that returns success
+            window.PreviewExporter = vi.fn().mockImplementation(() => ({
+                preview: vi.fn().mockResolvedValue({
+                    success: true,
+                }),
+            }));
+
+            // This should not throw even though createToast is null
+            const result = await navbarFile.openClientPreview();
+
+            // Function returns true after successful preview
+            expect(result).toBe(true);
+
+            delete window.PreviewExporter;
+        });
+    });
+
+    describe('openFileInputStatic', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should create file input element if not exists', () => {
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            expect(input).toBeDefined();
+            expect(input.type).toBe('file');
+            expect(input.accept).toBe('.elpx,.elp,.zip');
+        });
+
+        it('should reuse existing file input element', () => {
+            // Call twice
+            navbarFile.openFileInputStatic();
+            navbarFile.openFileInputStatic();
+
+            const inputs = document.querySelectorAll('#static-open-file-input');
+            expect(inputs.length).toBe(1);
+        });
+
+        it('should trigger click on file input', () => {
+            const clickSpy = vi.fn();
+            const mockInput = document.createElement('input');
+            mockInput.id = 'static-open-file-input';
+            mockInput.click = clickSpy;
+            document.body.appendChild(mockInput);
+
+            navbarFile.openFileInputStatic();
+
+            expect(clickSpy).toHaveBeenCalled();
+        });
+
+        it('should handle file selection with yjsBridge', async () => {
+            const mockYjsBridge = {
+                importFromElpx: vi.fn().mockResolvedValue({}),
+            };
+            eXeLearning.app.project._yjsBridge = mockYjsBridge;
+            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            // Simulate file selection
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
+                mockFile,
+                expect.objectContaining({ onProgress: expect.any(Function) })
+            );
+        });
+
+        it('should show error when yjsBridge is not available', async () => {
+            eXeLearning.app.project._yjsBridge = null;
+            const alertShowSpy = vi.fn();
+            eXeLearning.app.modals = { alert: { show: alertShowSpy } };
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            expect(alertShowSpy).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: expect.any(String),
+                    body: expect.stringContaining('Yjs bridge not initialized'),
+                })
+            );
+        });
+
+        it('should reset input value after file selection', async () => {
+            const mockYjsBridge = {
+                importFromElpx: vi.fn().mockResolvedValue({}),
+            };
+            eXeLearning.app.project._yjsBridge = mockYjsBridge;
+            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+            navbarFile.openFileInputStatic();
+
+            const input = document.getElementById('static-open-file-input');
+            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+            Object.defineProperty(input, 'files', { value: [mockFile] });
+            // Note: Can't set input.value for file inputs (browser security)
+            // The handler resets e.target.value = '' after processing
+            await input.dispatchEvent(new Event('change'));
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 10));
+
+            // Verify the input value is empty (reset by the handler)
+            expect(input.value).toBe('');
+        });
+    });
+
+    describe('openUserOdeFilesEvent static mode', () => {
+        beforeEach(() => {
+            navbarFile = new NavbarFile(mockMenu);
+        });
+
+        it('should call openFileInputStatic in static mode', () => {
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).toHaveBeenCalled();
+        });
+
+        it('should not call openFileInputStatic when storage.remote is true', () => {
+            eXeLearning.app.capabilities = { storage: { remote: true } };
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+            eXeLearning.app.modals.openUserOdeFiles = { show: vi.fn() };
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).not.toHaveBeenCalled();
+        });
+
+        it('should not call openFileInputStatic when capabilities is undefined', () => {
+            delete eXeLearning.app.capabilities;
+            const staticSpy = vi.spyOn(navbarFile, 'openFileInputStatic').mockImplementation(() => {});
+            eXeLearning.app.modals.openUserOdeFiles = { show: vi.fn() };
+
+            navbarFile.openUserOdeFilesEvent();
+
+            expect(staticSpy).not.toHaveBeenCalled();
         });
     });
 });

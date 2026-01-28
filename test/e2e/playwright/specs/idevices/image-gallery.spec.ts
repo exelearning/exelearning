@@ -1,7 +1,13 @@
-import { test, expect, waitForLoadingScreenHidden } from '../../fixtures/auth.fixture';
+import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
-import { getPreviewFrame, waitForPreviewContent } from '../../helpers/workarea-helpers';
+import {
+    getPreviewFrame,
+    waitForPreviewContent,
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+} from '../../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Image Gallery iDevice
@@ -122,19 +128,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add an image-gallery iDevice using the panel
             await addImageGalleryFromPanel(page);
@@ -162,18 +156,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -238,18 +221,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -273,18 +245,7 @@ test.describe('Image Gallery iDevice', () => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -323,18 +284,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -397,18 +347,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -480,18 +419,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -591,19 +519,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // 1. Create project and navigate
             const projectUuid = await createProject(page, 'Image Gallery Modify Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // 2. Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -738,18 +654,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Create project
             const projectUuid = await createProject(page, 'Image Gallery Persistence Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -824,18 +729,7 @@ test.describe('Image Gallery iDevice', () => {
             await page.waitForTimeout(2000); // Wait for save to complete
 
             // Reload the page
-            await page.reload();
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app to reinitialize
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await reloadPage(page);
 
             // Wait for the tree to be populated (using role="tree" which is more reliable)
             await page.waitForSelector('[role="tree"]', { timeout: 15000 });
@@ -944,14 +838,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Helper function to wait for app initialization and select page
             async function waitForAppAndSelectPage(): Promise<void> {
-                await page.waitForFunction(
-                    () => {
-                        const app = (window as any).eXeLearning?.app;
-                        return app?.project?._yjsBridge !== undefined;
-                    },
-                    { timeout: 30000 },
-                );
-                await waitForLoadingScreenHidden(page);
+                await waitForAppReady(page);
 
                 // Wait for the tree to be populated
                 await page.waitForSelector('[role="tree"]', { timeout: 15000 });
@@ -1146,17 +1033,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // ============ STEP 1: Create project and add two images ============
             const projectUuid = await createProject(page, 'Image Gallery Multi-Modify Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);
@@ -1187,8 +1064,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 1 complete: Two images added and saved');
 
             // ============ STEP 2: Reload and verify both images display ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);
@@ -1200,8 +1076,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 3 complete: First image modified');
 
             // ============ STEP 4: Reload and verify both images still display ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);
@@ -1212,8 +1087,7 @@ test.describe('Image Gallery iDevice', () => {
             console.log('Step 5 complete: Second image modified');
 
             // ============ STEP 6: Final reload and verification ============
-            await page.reload();
-            await page.waitForLoadState('networkidle');
+            await reloadPage(page);
             await waitForAppAndSelectPage();
 
             await verifyImagesLoadCorrectly(2);
@@ -1318,18 +1192,7 @@ test.describe('Image Gallery iDevice', () => {
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Folder Depth Test');
-            await page.goto(`/workarea?project=${projectUuid}`);
-            await page.waitForLoadState('networkidle');
-
-            // Wait for app initialization
-            await page.waitForFunction(
-                () => {
-                    const app = (window as any).eXeLearning?.app;
-                    return app?.project?._yjsBridge !== undefined;
-                },
-                { timeout: 30000 },
-            );
-            await waitForLoadingScreenHidden(page);
+            await gotoWorkarea(page, projectUuid);
 
             // Add image-gallery iDevice
             await addImageGalleryFromPanel(page);

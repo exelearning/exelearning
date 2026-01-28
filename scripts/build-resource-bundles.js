@@ -259,6 +259,8 @@ function buildCommonLibsBundle(manifest) {
     'exe_lightbox',
     'exe_powered_logo',
     'exe_elpx_download',
+    'exe_math',      // MathJax (only included when addMathJax=true or LaTeX detected)
+    'exe_atools',    // Accessibility toolbar (only included when addAccessibilityToolbar=true)
   ];
 
   const allFiles = [];
