@@ -621,6 +621,153 @@ describe('YjsLoader', () => {
     });
   });
 
+  describe('static mode path building', () => {
+    let loadedUrls;
+    let originalCreateElement;
+
+    beforeEach(() => {
+      // Reset loader state
+      window.YjsLoader.loaded = false;
+      window.YjsLoader.loading = false;
+      window.YjsLoader._loadPromise = null;
+
+      // Enable static mode
+      window.__EXE_STATIC_MODE__ = true;
+
+      // Set up Y and fflate to skip their loading phases
+      window.Y = { Doc: function() {} };
+      window.fflate = { zipSync: function() {} };
+
+      // Set up eXeLearning config with version
+      window.eXeLearning = {
+        config: { basePath: '' },
+        version: 'v0.0.0-alpha',
+      };
+
+      // Track URLs passed to appendChild
+      loadedUrls = [];
+
+      // Save original createElement
+      originalCreateElement = document.createElement.bind(document);
+
+      // Mock createElement to capture script elements
+      document.createElement.mockImplementation((tag) => {
+        if (tag === 'script') {
+          return {
+            src: '',
+            async: false,
+            onload: null,
+            onerror: null,
+          };
+        }
+        return originalCreateElement(tag);
+      });
+
+      // Override querySelector to return null (scripts not loaded yet)
+      document.querySelector.mockReturnValue(null);
+
+      // Capture all script URLs attempted to be loaded
+      document.head.appendChild.mockImplementation((script) => {
+        if (script.src) {
+          loadedUrls.push(script.src);
+        }
+        queueMicrotask(() => {
+          if (script.onload) script.onload();
+        });
+        return script;
+      });
+    });
+
+    afterEach(async () => {
+      // Clean up static mode flag
+      delete window.__EXE_STATIC_MODE__;
+
+      // Ensure any pending load promise is settled
+      if (window.YjsLoader._loadPromise) {
+        try {
+          await window.YjsLoader._loadPromise;
+        } catch {
+          // Expected - load will fail because YjsModules isn't defined
+        }
+      }
+      window.YjsLoader._loadPromise = null;
+      window.YjsLoader.loaded = false;
+      window.YjsLoader.loading = false;
+    });
+
+    it('static mode uses relative paths with version query string', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for enough URLs to be collected
+      const startTime = Date.now();
+      while (loadedUrls.length < 1 && Date.now() - startTime < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // In static mode, paths should be relative with version query string
+      // Format: ./{path}?v={version}
+      // For '/app/yjs/importers.bundle.js' → './app/yjs/importers.bundle.js?v=v0.0.0-alpha'
+      const staticModeUrl = loadedUrls.find((url) =>
+        url.includes('./app/yjs/importers.bundle.js?v=v0.0.0-alpha')
+      );
+      expect(staticModeUrl).toBeDefined();
+    });
+
+    it('static mode adds version query string to all dynamically loaded scripts', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for URLs to be collected
+      const startTime = Date.now();
+      while (loadedUrls.length < 8 && Date.now() - startTime < 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // All URLs in static mode should have the version query string
+      const urlsWithVersion = loadedUrls.filter((url) => url.includes('?v=v0.0.0-alpha'));
+      expect(urlsWithVersion.length).toBeGreaterThan(0);
+
+      // Verify some specific URLs have the version
+      const hasYjsModuleWithVersion = loadedUrls.some((url) =>
+        url.includes('YjsDocumentManager.js?v=v0.0.0-alpha') ||
+        url.includes('./app/yjs/YjsDocumentManager.js?v=v0.0.0-alpha')
+      );
+      expect(hasYjsModuleWithVersion).toBe(true);
+    });
+
+    it('static mode uses relative paths starting with ./', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for URLs to be collected
+      const startTime = Date.now();
+      while (loadedUrls.length < 1 && Date.now() - startTime < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // In static mode, all paths should start with './'
+      const relativeUrls = loadedUrls.filter((url) => url.startsWith('./'));
+      expect(relativeUrls.length).toBeGreaterThan(0);
+    });
+
+    it('static mode does not use path-based versioning', async () => {
+      const loadPromise = window.YjsLoader.load();
+      loadPromise.catch(() => {}); // Handle any rejection
+
+      // Wait for URLs to be collected
+      const startTime = Date.now();
+      while (loadedUrls.length < 1 && Date.now() - startTime < 500) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // In static mode, paths should NOT include /v0.0.0-alpha/ in the path
+      // Instead, version should be in query string
+      const pathVersionedUrls = loadedUrls.filter((url) => url.includes('/v0.0.0-alpha/'));
+      expect(pathVersionedUrls.length).toBe(0);
+    });
+  });
+
   describe('sequential and parallel loading', () => {
     it('loadScriptsSequentially concept - last group loads sequentially', () => {
       // The loader uses loadScriptsSequentially for the last group

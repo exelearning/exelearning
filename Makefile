@@ -167,11 +167,11 @@ run-app: check-bun deps css bundle
 	@bun run electron
 
 # Build static distribution (PWA mode, no server required)
-# Usage: make build-static
+# Usage: make build-static [VERSION=v1.0.0]
 .PHONY: build-static
 build-static: check-bun deps css bundle
 	@echo "Building static distribution..."
-	@bun run build:static
+	@$(if $(VERSION),VERSION=$(VERSION) ,)bun run build:static
 	@echo "Static distribution built at dist/static/"
 
 # Build static distribution and serve it
@@ -876,7 +876,7 @@ help:
 	@echo "  make run-app               Start Electron + backend (desktop app)"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
-	@echo "  make build-static          Build static distribution (PWA mode)"
+	@echo "  make build-static [VERSION=v1.0.0]  Build static distribution (PWA mode)"
 	@echo "  make up-static             Build and serve static distribution (PWA mode)"
 	@echo "  make up-static PORT=3000   Same, but on custom port"
 	@echo ""

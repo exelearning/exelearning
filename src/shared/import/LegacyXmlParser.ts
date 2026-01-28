@@ -452,33 +452,39 @@ export class LegacyXmlParser {
 
     /**
      * Find all Node instances in the document
+     *
+     * Legacy XML may define Node instances inline within parentNode fields.
+     * These inline definitions are often the ONLY definition of those nodes,
+     * so we must include all unique nodes (by reference), not filter them out.
+     *
+     * This matches the PHP behavior in OdeXmlUtil.php:1109-1140 which uses
+     * all exe.engine.node.Node instances without filtering.
      */
     private findAllNodes(): Element[] {
         if (!this.xmlDoc) return [];
 
         const allNodes = this.getElementsByAttribute(this.xmlDoc, 'instance', 'class', 'exe.engine.node.Node');
+        const seenRefs = new Set<string>();
+        const result: Element[] = [];
 
-        // Filter out parentNode references embedded in fields/idevices
-        return allNodes.filter(nodeEl => {
-            const prevSibling = nodeEl.previousSibling;
-            // Walk back through text nodes to find actual element
-            let prev: Node | null = prevSibling;
-            while (prev && prev.nodeType !== 1) {
-                prev = prev.previousSibling;
-            }
-            const prevElement = prev as Element | null;
+        for (const nodeEl of allNodes) {
+            const ref = nodeEl.getAttribute('reference');
+            if (!ref) continue;
 
-            if (
-                prevElement?.tagName === 'string' &&
-                prevElement.getAttribute('role') === 'key' &&
-                prevElement.getAttribute('value') === 'parentNode'
-            ) {
-                const ref = nodeEl.getAttribute('reference');
-                this.logger.log(`[LegacyXmlParser] Skipping parentNode reference=${ref} (not a real page)`);
-                return false;
+            // Only skip if we've already included this exact reference
+            if (seenRefs.has(ref)) {
+                this.logger.log(`[LegacyXmlParser] Skipping duplicate node reference=${ref}`);
+                continue;
             }
-            return true;
-        });
+
+            seenRefs.add(ref);
+            result.push(nodeEl);
+        }
+
+        this.logger.log(
+            `[LegacyXmlParser] Found ${result.length} unique nodes (from ${allNodes.length} total instances)`,
+        );
+        return result;
     }
 
     /**
@@ -653,6 +659,15 @@ export class LegacyXmlParser {
             }
         });
 
+        // 3. Sort children and root pages by document order (position)
+        // This ensures pages appear in the order they were defined in the XML
+        pageMap.forEach(page => {
+            if (page.children && page.children.length > 0) {
+                page.children.sort((a, b) => a.position - b.position);
+            }
+        });
+        rootPages.sort((a, b) => a.position - b.position);
+
         // Apply root node flattening convention
         const { shouldFlatten, rootPage } = this.shouldFlattenRootChildren(rootPages);
         let flatPages: LegacyPage[];
@@ -662,6 +677,11 @@ export class LegacyXmlParser {
             flatPages = [];
             this.flattenPages(rootPages, flatPages, null);
         }
+
+        // Reassign positions sequentially after flattening
+        flatPages.forEach((page, index) => {
+            page.position = index;
+        });
 
         // Detect and apply node reordering
         const nodesChangeRef = this.detectNodeReorderMap();

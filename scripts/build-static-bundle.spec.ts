@@ -14,6 +14,7 @@ import {
     buildApiParameters,
     generatePwaManifestContent,
     generateServiceWorkerContent,
+    appendVersionToUrls,
     LOCALES,
     LOCALE_NAMES,
     PACKAGE_LOCALES,
@@ -21,6 +22,150 @@ import {
     type IdeviceConfig,
     type ApiParameters,
 } from './build-static-bundle';
+
+// =============================================================================
+// appendVersionToUrls tests
+// =============================================================================
+
+describe('appendVersionToUrls', () => {
+    it('should add version query string to script src', () => {
+        const html = '<script src="./app/app.bundle.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script src="./app/app.bundle.js?v=v1.0.0"></script>');
+    });
+
+    it('should add version query string to link href', () => {
+        const html = '<link rel="stylesheet" href="./style/main.css">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<link rel="stylesheet" href="./style/main.css?v=v1.0.0">');
+    });
+
+    it('should handle multiple assets in same HTML', () => {
+        const html = '<script src="./a.js"></script><link href="./b.css">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script src="./a.js?v=v1.0.0"></script><link href="./b.css?v=v1.0.0">');
+    });
+
+    it('should skip external HTTPS URLs', () => {
+        const html = '<script src="https://cdn.example.com/lib.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip external HTTP URLs', () => {
+        const html = '<script src="http://cdn.example.com/lib.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip protocol-relative URLs', () => {
+        const html = '<script src="//cdn.example.com/lib.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip data URLs', () => {
+        const html = '<img src="data:image/gif;base64,R0lGODlhAQABAA==">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip anchor-only hrefs', () => {
+        const html = '<a href="#section">Link</a>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip empty src/href attributes', () => {
+        const html = '<script src=""></script><link href="">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should append to existing query string with &', () => {
+        const html = '<script src="./app.js?debug=true"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script src="./app.js?debug=true&v=v1.0.0"></script>');
+    });
+
+    it('should skip URLs already containing ?v= parameter', () => {
+        const html = '<script src="./app.js?v=existing"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should skip URLs already containing &v= parameter', () => {
+        const html = '<script src="./app.js?debug=true&v=existing"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should handle root-relative paths', () => {
+        const html = '<script src="/files/perm/idevices/text.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script src="/files/perm/idevices/text.js?v=v1.0.0"></script>');
+    });
+
+    it('should handle paths without leading dot or slash', () => {
+        const html = '<script src="app/bundle.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script src="app/bundle.js?v=v1.0.0"></script>');
+    });
+
+    it('should handle version string with special characters', () => {
+        const html = '<script src="./app.js"></script>';
+        const result = appendVersionToUrls(html, 'v0.0.0-alpha');
+        expect(result).toBe('<script src="./app.js?v=v0.0.0-alpha"></script>');
+    });
+
+    it('should handle single quotes in attributes', () => {
+        const html = "<script src='./app.js'></script>";
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe("<script src='./app.js?v=v1.0.0'></script>");
+    });
+
+    it('should skip template placeholders with {{}}', () => {
+        const html = '<script src="{{basePath}}/app.js"></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should handle img src attributes', () => {
+        const html = '<img src="./images/logo.png">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<img src="./images/logo.png?v=v1.0.0">');
+    });
+
+    it('should handle link with rel=icon', () => {
+        const html = '<link rel="icon" href="./favicon.ico">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<link rel="icon" href="./favicon.ico?v=v1.0.0">');
+    });
+
+    it('should handle link with rel=manifest', () => {
+        const html = '<link rel="manifest" href="./manifest.json">';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<link rel="manifest" href="./manifest.json?v=v1.0.0">');
+    });
+
+    it('should handle complex HTML with multiple attributes', () => {
+        const html = '<script type="module" src="./app.js" defer></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe('<script type="module" src="./app.js?v=v1.0.0" defer></script>');
+    });
+
+    it('should not modify non-src/href attributes', () => {
+        const html = '<div data-src="./image.png"></div>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+
+    it('should handle whitespace in URLs', () => {
+        const html = '<script src="  "></script>';
+        const result = appendVersionToUrls(html, 'v1.0.0');
+        expect(result).toBe(html);
+    });
+});
 
 // =============================================================================
 // parseXlfContent tests

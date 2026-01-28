@@ -38,12 +38,19 @@
   // before App is initialized and capabilities are available
   const isStaticMode = () => window.__EXE_STATIC_MODE__ === true;
   // URL pattern: {basePath}/{version}/path (e.g., /web/exelearning/v0.0.0-alpha/libs/yjs/yjs.min.js)
-  // In static mode, use relative paths without version prefix
+  // In static mode, use relative paths (version query string added separately)
   const assetPath = (path) => {
     if (isStaticMode()) {
       return `.${path.startsWith('/') ? path : '/' + path}`;
     }
     return `${getBasePath()}/${getVersion()}${path.startsWith('/') ? path : '/' + path}`;
+  };
+  // Add version query string for cache busting (only used in static mode)
+  const addVersionQueryString = (url) => {
+    if (isStaticMode()) {
+      return `${url}?v=${getVersion()}`;
+    }
+    return url;
   };
 
   // Paths are computed lazily to ensure eXeLearning globals are available
@@ -113,18 +120,21 @@
    */
   function loadScript(src) {
     return new Promise((resolve, reject) => {
-      // Check if already loaded
-      const existing = document.querySelector(`script[src="${src}"]`);
+      // Add version query string for cache busting in static mode
+      const finalSrc = addVersionQueryString(src);
+
+      // Check if already loaded (use finalSrc for consistency)
+      const existing = document.querySelector(`script[src="${finalSrc}"]`);
       if (existing) {
         resolve();
         return;
       }
 
       const script = document.createElement('script');
-      script.src = src;
+      script.src = finalSrc;
       script.async = false;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`Failed to load: ${src}`));
+      script.onerror = () => reject(new Error(`Failed to load: ${finalSrc}`));
       document.head.appendChild(script);
     });
   }

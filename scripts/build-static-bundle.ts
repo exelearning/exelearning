@@ -36,8 +36,9 @@ const projectRoot = path.resolve(import.meta.dir, '..');
 const outputDir = path.join(projectRoot, 'dist/static');
 
 // Read version from environment variable or package.json
+// VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const buildVersion = process.env.VERSION || `v${packageJson.version}`;
+const buildVersion = process.env.VERSION || process.env.APP_VERSION || `v${packageJson.version}`;
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
@@ -55,6 +56,57 @@ export function getBuildVersion(): string {
 
 export function getBuildHash(): string {
     return buildHash;
+}
+
+/**
+ * Appends version query string to local asset URLs in HTML content.
+ * Skips external URLs, data URLs, template placeholders, and already versioned URLs.
+ *
+ * @param html - The HTML content to process
+ * @param version - The version string to append (e.g., 'v1.0.0')
+ * @returns HTML with version query strings appended to local asset URLs
+ */
+export function appendVersionToUrls(html: string, version: string): string {
+    // Pattern to match src="..." or href="..." attributes (but not data-src, etc.)
+    // Uses negative lookbehind (?<!-) to ensure we don't match hyphenated attributes
+    // Captures: attribute name (src/href), quote char, and URL value
+    const attrPattern = /(?<![-\w])(src|href)=(["'])([^"']*)\2/g;
+
+    return html.replace(attrPattern, (match, attr, quote, url) => {
+        // Skip empty URLs
+        if (!url || url.trim() === '') {
+            return match;
+        }
+
+        // Skip external URLs (http://, https://, //)
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+            return match;
+        }
+
+        // Skip data URLs
+        if (url.startsWith('data:')) {
+            return match;
+        }
+
+        // Skip anchor-only hrefs
+        if (url.startsWith('#')) {
+            return match;
+        }
+
+        // Skip template placeholders ({{...}})
+        if (url.includes('{{') || url.includes('}}')) {
+            return match;
+        }
+
+        // Skip URLs that already have a version parameter (?v= or &v=)
+        if (/[?&]v=/.test(url)) {
+            return match;
+        }
+
+        // Append version: use & if URL already has query string, otherwise use ?
+        const separator = url.includes('?') ? '&' : '?';
+        return `${attr}=${quote}${url}${separator}v=${version}${quote}`;
+    });
 }
 
 /**
@@ -1011,6 +1063,10 @@ function generateStaticHtml(bundleData: object): string {
     html = html.replace('{{MENU_HEAD_TOP_HTML}}', generateMenuHeadTopHtml());
     html = html.replace('{{MENU_HEAD_BOTTOM_HTML}}', generateMenuHeadBottomHtml());
     html = html.replace('{{MODALS_HTML}}', generateModalsHtml());
+
+    // Post-process: ensure all local URLs have version query string for cache busting
+    // This handles both template URLs and dynamically generated content from .njk files
+    html = appendVersionToUrls(html, buildVersion);
 
     return html;
 }
