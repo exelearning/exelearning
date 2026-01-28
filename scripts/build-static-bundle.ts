@@ -71,8 +71,8 @@ function getDateString(): string {
 /**
  * Resolve version based on input type:
  * - Semver (vX.X.X, vX.X.X-rc1) → use directly
- * - "main" or "master" → v0.0.0-nightly-FECHA
- * - Other (branch name) → v0.0.0-<branch>-FECHA
+ * - "main" or "master" → v0.0.0-nightly-YYYYMMDDHHMM
+ * - Other (branch name) → v0.0.0-<branch>-YYYYMMDDHHMM
  */
 export function resolveVersion(input: string | undefined): string {
     // Default to package.json version if no input
