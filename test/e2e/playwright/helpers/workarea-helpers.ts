@@ -1856,3 +1856,103 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
         { timeout: 20000 },
     );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROJECT DOWNLOAD/EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Download project as ELPX file.
+ * In static mode, clicks the save button which triggers a download (saveButton.js calls downloadProjectEvent).
+ * In online mode, enables advanced mode, opens File menu, navigates nested dropdown, and clicks Download ELPX.
+ *
+ * @param page - Playwright page
+ * @returns The Download object for the exported file
+ */
+export async function downloadProject(page: Page): Promise<Download> {
+    // Close any open dialogs or modals first
+    const tinyMceDialog = page.locator('.tox-dialog');
+    if (await tinyMceDialog.isVisible().catch(() => false)) {
+        const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
+        if (await cancelBtn.isVisible().catch(() => false)) {
+            await cancelBtn.click();
+            await page.waitForTimeout(300);
+        }
+    }
+
+    const fileManagerModal = page.locator('#modalFileManager');
+    if (await fileManagerModal.isVisible().catch(() => false)) {
+        const closeBtn = fileManagerModal.locator('.btn-close, button[data-bs-dismiss="modal"]').first();
+        if (await closeBtn.isVisible().catch(() => false)) {
+            await closeBtn.click();
+            await fileManagerModal.waitFor({ state: 'hidden', timeout: 5000 });
+        }
+    }
+
+    // Detect static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
+    // Wait for download event
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+
+    if (isStaticMode) {
+        // STATIC MODE: The save button triggers download in offline mode
+        // (see saveButton.js: downloadProjectEvent() is called when isOfflineInstallation is true)
+        const saveBtn = page.locator('#head-top-save-button');
+        await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await saveBtn.click();
+    } else {
+        // ONLINE MODE: Navigate through File menu dropdown
+        // Enable advanced mode to make download button visible
+        await page.evaluate(() => {
+            document.querySelector('body')?.setAttribute('mode', 'advanced');
+        });
+        await page.waitForTimeout(300);
+
+        // Open File menu dropdown
+        await page.locator('#dropdownFile').click();
+        await page.waitForTimeout(300);
+
+        // Click "Download as" submenu to open nested dropdown (Bootstrap dropend)
+        const downloadAsSubmenu = page.locator('#dropdownExportAs').first();
+        await downloadAsSubmenu.waitFor({ state: 'visible', timeout: 5000 });
+        await downloadAsSubmenu.click();
+        await page.waitForTimeout(300);
+
+        // Click Download project as ELPX
+        const downloadBtn = page.locator('#navbar-button-download-project').first();
+        await downloadBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await downloadBtn.click();
+    }
+
+    return await downloadPromise;
+}
+
+/**
+ * List filenames inside a ZIP buffer.
+ * Uses fflate to parse the ZIP and return file names.
+ *
+ * @param buffer - The ZIP file buffer
+ * @returns Array of file paths in the ZIP
+ */
+export async function listZipContents(buffer: Buffer): Promise<string[]> {
+    const fflate = await import('fflate');
+    const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer;
+    const unzipped = fflate.unzipSync(data);
+    return Object.keys(unzipped);
+}
+
+/**
+ * Check if a ZIP contains a file with the given name (or path ending with name).
+ *
+ * @param buffer - The ZIP file buffer
+ * @param filename - The filename to search for
+ * @returns true if file exists in ZIP
+ */
+export async function zipContainsFile(buffer: Buffer, filename: string): Promise<boolean> {
+    const files = await listZipContents(buffer);
+    return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
+}
