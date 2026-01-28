@@ -457,11 +457,12 @@
                 }
                 &.nav-element-highlighted:not(.selected) {
                     > .nav-element-text {
-                        color: var(--brand-primary);
+                        color: var(--brand-primary-dark);
+                        font-weight: 600;
                     }
 
                     /* Icon for the highlighted element itself */
-                    > .page-icon {
+                    .page-icon {
                         background-image: url("images/icons/exe-page-icon-green.svg");
                     }
 
