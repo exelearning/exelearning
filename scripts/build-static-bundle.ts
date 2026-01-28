@@ -39,6 +39,18 @@ const outputDir = path.join(projectRoot, 'dist/static');
 // VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
 
+// =============================================================================
+// VERSION RESOLUTION
+// =============================================================================
+// The version is resolved automatically based on the input type:
+// - Semver tags (v3.0.2, v3.0.2-rc1) → used directly for releases
+// - "main"/"master" → v0.0.0-nightly-YYYYMMDDHHMM for nightly builds
+// - Other strings (branch names, PR numbers) → v0.0.0-<name>-YYYYMMDDHHMM for previews
+//
+// This allows CI/CD to simply pass VERSION=main or VERSION=pr123 without
+// generating the full version string, keeping workflow files simple.
+// =============================================================================
+
 /**
  * Check if a string is a valid semver version (with optional prerelease)
  * Matches: v1.0.0, v1.0.0-rc1, v1.0.0-beta.2, v1.0.0-alpha+build123
