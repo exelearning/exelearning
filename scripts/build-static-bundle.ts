@@ -98,7 +98,14 @@ export function resolveVersion(input: string | undefined): string {
     return `v0.0.0-${sanitizedBranch}-${dateStr}`;
 }
 
-const buildVersion = resolveVersion(process.env.VERSION || process.env.APP_VERSION);
+// Parse --version= from CLI arguments (e.g., --version=main)
+const versionArg = process.argv.find(arg => arg.startsWith('--version='))?.split('=')[1];
+const versionInput = versionArg || process.env.VERSION || process.env.APP_VERSION;
+const buildVersion = resolveVersion(versionInput);
+
+// Log version resolution for CI/CD debugging
+const versionSource = versionArg ? 'CLI' : (process.env.VERSION ? 'VERSION env' : (process.env.APP_VERSION ? 'APP_VERSION env' : 'default'));
+console.log(`[Version] Input: ${versionInput || '(none)'} (${versionSource}) → Output: ${buildVersion}`);
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
