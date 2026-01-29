@@ -1053,22 +1053,24 @@ describe('StructureNode', () => {
             expect(response.responseMessage).toBe('OK');
         });
 
-        it('resets structure data when titleNode is updated', async () => {
+        it('renames node and reloads when titleNode is updated', async () => {
             const node = new StructureNode(mockStructure, nodeData);
 
             await node.savePropertiesViaYjs({ titleNode: 'New Yjs Title' });
 
             expect(node.pageName).toBe('New Yjs Title');
-            expect(mockStructure.resetStructureData).toHaveBeenCalledWith('node-1');
+            expect(mockStructure.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'New Yjs Title');
             expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
         });
 
-        it('resets structure data when highlight is updated', async () => {
+        it('resets structure data when highlight is updated (not renameNodeAndReload)', async () => {
             const node = new StructureNode(mockStructure, nodeData);
 
             await node.savePropertiesViaYjs({ highlight: 'true' });
 
             expect(mockStructure.resetStructureData).toHaveBeenCalledWith('node-1');
+            // renameNodeAndReload should NOT be called when only highlight changes
+            expect(mockStructure.renameNodeAndReload).not.toHaveBeenCalled();
             expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
         });
 
@@ -1079,6 +1081,30 @@ describe('StructureNode', () => {
 
             expect(mockStructure.resetStructureData).not.toHaveBeenCalled();
             expect(mockProject.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(true);
+        });
+
+        it('handles empty properties object and skips idevices reload', async () => {
+            const node = new StructureNode(mockStructure, nodeData);
+
+            const response = await node.savePropertiesViaYjs({});
+
+            expect(mockYjsBridge.structureBinding.updatePageProperties).toHaveBeenCalledWith('node-1', {});
+            expect(mockStructure.resetStructureData).not.toHaveBeenCalled();
+            // Empty properties should NOT trigger idevices reload
+            expect(mockProject.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+            expect(response.responseMessage).toBe('OK');
+        });
+
+        it('handles titleNode and highlight together - uses renameNodeAndReload', async () => {
+            const node = new StructureNode(mockStructure, nodeData);
+
+            await node.savePropertiesViaYjs({ titleNode: 'New Title', highlight: 'true' });
+
+            expect(node.pageName).toBe('New Title');
+            // When both titleNode and highlight change, renameNodeAndReload is called (not resetStructureData)
+            expect(mockStructure.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'New Title');
+            // resetStructureData should NOT be called when titleNode is present (to avoid double reload)
+            expect(mockStructure.resetStructureData).not.toHaveBeenCalled();
         });
 
         it('shows warning when bridge not available', async () => {

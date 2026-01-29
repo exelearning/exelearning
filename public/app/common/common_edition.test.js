@@ -978,6 +978,223 @@ describe('common_edition.js', () => {
     });
   });
 
+  describe('defaultAI preference', () => {
+    let originalAlert;
+    let originalEXeLearning;
+    let originalWindowEXeLearning;
+    let originalWindowOpen;
+
+    beforeEach(() => {
+      originalAlert = global.alert;
+      originalEXeLearning = globalThis.eXeLearning;
+      originalWindowEXeLearning = typeof window !== 'undefined' ? window.eXeLearning : undefined;
+      originalWindowOpen = typeof window !== 'undefined' ? window.open : undefined;
+      global.alert = vi.fn();
+
+      document.body.innerHTML = `
+        <textarea id="eXeEPromptArea"></textarea>
+        <textarea id="eXeEQuestionsArea"></textarea>
+        <textarea id="eXeEQuestionsIA"></textarea>
+        <div id="eXeEIADiv"></div>
+        <div id="eXeEAddArea" style="display:none"></div>
+        <button id="eXeESaveButton"></button>
+        <button id="eXeEIAButton"></button>
+        <button id="eXeECopyButton"></button>
+        <button id="eXeEOpenChatGPTButton"></button>
+        <button id="eXeGameAddQuestion"></button>
+        <a id="eXeETabQuestions" class="active"></a>
+        <a id="eXeETabPrompt"></a>
+        <a id="eXeETabIA"></a>
+        <select id="eXeEIASelect">
+          <option value="https://chatgpt.com/?q=">ChatGPT</option>
+          <option value="https://claude.ai/new?q=">Claude</option>
+          <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
+        </select>
+      `;
+    });
+
+    afterEach(() => {
+      global.alert = originalAlert;
+      globalThis.eXeLearning = originalEXeLearning;
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = originalWindowEXeLearning;
+        window.open = originalWindowOpen;
+      }
+    });
+
+    it('loads user defaultAI preference and selects the correct option', () => {
+      // Setup eXeLearning global with user preferences
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                defaultAI: { value: 'https://claude.ai/new?q=' }
+              },
+              apiSaveProperties: vi.fn()
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      // Verify the select has the correct value
+      expect($('#eXeEIASelect').val()).toBe('https://claude.ai/new?q=');
+    });
+
+    it('falls back to default when saved preference is invalid', () => {
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                defaultAI: { value: 'https://invalid.ai/?q=' }
+              },
+              apiSaveProperties: vi.fn()
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      expect($('#eXeEIASelect').val()).toBe('https://chatgpt.com/?q=');
+    });
+
+    it('uses default (ChatGPT) when no user preference is set', () => {
+      // Setup eXeLearning global without defaultAI preference
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {},
+              apiSaveProperties: vi.fn()
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      // Default should remain ChatGPT (first option)
+      expect($('#eXeEIASelect').val()).toBe('https://chatgpt.com/?q=');
+    });
+
+    it('does not save preference when user changes the AI selection', () => {
+      const apiSavePropertiesMock = vi.fn();
+
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                defaultAI: { value: 'https://chatgpt.com/?q=' }
+              },
+              apiSaveProperties: apiSavePropertiesMock
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      // Change the select value
+      $('#eXeEIASelect').val('https://www.perplexity.ai/search?q=').trigger('change');
+
+      // Verify apiSaveProperties was not called
+      expect(apiSavePropertiesMock).not.toHaveBeenCalled();
+    });
+
+    it('handles missing eXeLearning global gracefully', () => {
+      // Remove eXeLearning global
+      delete globalThis.eXeLearning;
+      if (typeof window !== 'undefined') {
+        delete window.eXeLearning;
+      }
+
+      const saveQuestionsMock = vi.fn();
+
+      // Should not throw an error
+      expect(() => {
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+      }).not.toThrow();
+
+      // Select should still have default value
+      expect($('#eXeEIASelect').val()).toBe('https://chatgpt.com/?q=');
+    });
+
+    it('openChatGPTButton uses the selected AI URL', () => {
+      globalThis.eXeLearning = {
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                defaultAI: { value: 'https://claude.ai/new?q=' }
+              },
+              apiSaveProperties: vi.fn()
+            }
+          },
+          api: {
+            getGenerateQuestions: vi.fn()
+          }
+        }
+      };
+      if (typeof window !== 'undefined') {
+        window.eXeLearning = globalThis.eXeLearning;
+      }
+
+      // Mock window.open
+      const windowOpenMock = vi.fn();
+      if (typeof window !== 'undefined') {
+        window.open = windowOpenMock;
+      }
+
+      const saveQuestionsMock = vi.fn();
+      globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+
+      // Set a prompt
+      $('#eXeEPromptArea').val('Test prompt');
+
+      // Click the send button
+      $('#eXeEOpenChatGPTButton').trigger('click');
+
+      // Verify window.open was called with Claude URL
+      expect(windowOpenMock).toHaveBeenCalledWith(
+        'https://claude.ai/new?q=Test%20prompt',
+        '_blank'
+      );
+    });
+  });
+
   describe('filePicker', () => {
     it('init creates buttons for file pickers', () => {
       document.body.innerHTML = `

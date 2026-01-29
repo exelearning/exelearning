@@ -1,4 +1,5 @@
 import StructureNode from './structureNode.js';
+import { convertPropertiesToApiFormat } from '../../../yjs/utils/propertyTransformers.js';
 
 // Use global AppLogger for debug-controlled logging
 const Logger = window.AppLogger || console;
@@ -160,14 +161,10 @@ export default class structureEngine {
                 pageOrder = 0;
             }
 
-            // Convert Yjs properties to expected format: { key: { value: X } }
-            let odeNavStructureSyncProperties = null;
-            if (page.properties && typeof page.properties === 'object') {
-                odeNavStructureSyncProperties = {};
-                for (const [key, value] of Object.entries(page.properties)) {
-                    odeNavStructureSyncProperties[key] = { value: value };
-                }
-            }
+            // Convert Yjs flat properties to API schema format: { key: { value: X } }
+            // The wrapper allows properties to carry additional metadata (type, heritable)
+            // which is merged from the config layer in StructureNode
+            const odeNavStructureSyncProperties = convertPropertiesToApiFormat(page.properties);
 
             return {
                 id: page.id,
@@ -187,7 +184,7 @@ export default class structureEngine {
 
     /**
      * Set structure data from Yjs (called by YjsProjectBridge on sync)
-     * @param {Array} data - Raw data from Yjs (may not include full properties)
+     * @param {Array} data - Structure data including odeNavStructureSyncProperties
      */
     setDataFromYjs(data) {
         // Preserve current selection before re-rendering
@@ -197,13 +194,15 @@ export default class structureEngine {
             ? nodeSelected.getAttribute('nav-id')
             : null;
 
-        // Use getStructureFromYjs() to ensure we get complete data with properties
-        // The passed `data` parameter may not include odeNavStructureSyncProperties
-        this.dataJson = this.getStructureFromYjs();
+        // Data format: Array of page objects with odeNavStructureSyncProperties in API schema format
+        // { key: { value: X } } - wrapper allows merging with config metadata in StructureNode
+        this.dataJson = data;
         this.processStructureData(this.dataJson);
         // Re-render the structure menu if available, preserving selection
         if (this.menuStructureCompose) {
             this.reloadStructureMenu(selectedNavId);
+        } else {
+            Logger.warn('[StructureEngine] setDataFromYjs: menuStructureCompose not available, skipping menu reload');
         }
     }
 

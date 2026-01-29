@@ -164,6 +164,7 @@ describe('User Routes', () => {
             expect(body.userPreferences).toBeDefined();
             expect(body.userPreferences.locale.value).toBe('en'); // default
             expect(body.userPreferences.theme.value).toBe('base'); // default
+            expect(body.userPreferences.defaultAI.value).toBe('https://chatgpt.com/?q='); // default
         });
 
         it('should handle JSON-wrapped preference values', async () => {
@@ -225,6 +226,7 @@ describe('User Routes', () => {
                         theme: 'dark',
                         locale: 'en',
                         advancedMode: 'false',
+                        defaultAI: 'https://claude.ai/new?q=',
                     }),
                     headers: {
                         'Content-Type': 'application/json',
@@ -237,6 +239,7 @@ describe('User Routes', () => {
             expect(savedPreferences.get('1')?.get('theme')).toBe('dark');
             expect(savedPreferences.get('1')?.get('locale')).toBe('en');
             expect(savedPreferences.get('1')?.get('advancedMode')).toBe('false');
+            expect(savedPreferences.get('1')?.get('defaultAI')).toBe('https://claude.ai/new?q=');
         });
 
         it('should handle object values by stringifying', async () => {
