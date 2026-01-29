@@ -491,8 +491,11 @@ export default class ModalProperties extends Modal {
                 if (name === 'visibility' && this.isFirstPage) {
                     input.checked = true;
                     input.disabled = true;
+                    input.setAttribute('readonly', '');
+                    input.setAttribute('aria-disabled', 'true');
                     item.setAttribute('title', _('First page is always visible in export'));
-                    item.classList.add('disabled');
+                    item.classList.add('toggle-disabled');
+                    control.classList.add('toggle-disabled');
                 }
 
                 const visual = document.createElement('span');

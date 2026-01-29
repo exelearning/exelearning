@@ -205,6 +205,12 @@
                     filter: grayscale(.3);
                     cursor: not-allowed;
                 }
+                // Disabled toggle item (e.g., first page visibility)
+                .toggle-disabled {
+                    opacity: .6;
+                    pointer-events: none;
+                    cursor: not-allowed;
+                }
 
                 [property="pp_title"],
                 [property="pp_lang"],
