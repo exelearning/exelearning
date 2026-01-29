@@ -2214,6 +2214,34 @@ class YjsStructureBinding {
    * @param {Object} properties - Properties to update
    * @returns {boolean} true if updated successfully
    */
+  /**
+   * Check if a page is the first page in the navigation (by order)
+   * @param {string} pageId
+   * @returns {boolean}
+   */
+  isFirstPage(pageId) {
+    const navigation = this.manager.getNavigation();
+    if (!navigation || navigation.length === 0) return false;
+
+    // Get all root-level pages (parentId is null) and sort by order
+    const rootPages = [];
+    for (let i = 0; i < navigation.length; i++) {
+      const page = navigation.get(i);
+      if (!page.get('parentId')) {
+        rootPages.push({
+          id: page.get('id'),
+          order: page.get('order') ?? i,
+        });
+      }
+    }
+
+    if (rootPages.length === 0) return false;
+
+    // Sort by order to find the first page
+    rootPages.sort((a, b) => a.order - b.order);
+    return rootPages[0].id === pageId;
+  }
+
   updatePageProperties(pageId, properties) {
     const pageMap = this.getPageMap(pageId);
     if (!pageMap) {
@@ -2225,6 +2253,16 @@ class YjsStructureBinding {
 
     // Checkbox fields that should be converted to boolean
     const checkboxFields = ['hidePageTitle', 'editableInPage', 'visibility', 'highlight'];
+
+    // First page visibility cannot be disabled - always force to true
+    const isFirstPage = this.isFirstPage(pageId);
+    if (isFirstPage && properties.visibility !== undefined) {
+      const visibilityValue = properties.visibility;
+      if (visibilityValue === false || visibilityValue === 'false' || visibilityValue === '0') {
+        Logger.log(`[YjsStructureBinding] Ignoring visibility=false for first page ${pageId}`);
+        delete properties.visibility;
+      }
+    }
 
     this.manager.getDoc().transact(() => {
       let propsMap = pageMap.get('properties');

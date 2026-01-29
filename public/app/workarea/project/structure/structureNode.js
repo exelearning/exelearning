@@ -819,6 +819,34 @@ export default class StructureNode {
      * PROPERTIES */
 
     /**
+     * Check if this is the first page (by order among root-level pages)
+     * @returns {boolean}
+     */
+    isFirstPage() {
+        // Use Yjs binding if available
+        if (this.isYjsEnabled()) {
+            const bridge = eXeLearning.app.project._yjsBridge;
+            if (bridge?.structureBinding?.isFirstPage) {
+                return bridge.structureBinding.isFirstPage(this.id);
+            }
+        }
+
+        // Fallback: Check structure data (legacy mode)
+        // Get all root-level pages (no parent or parent is 'root')
+        const rootPages = this.structure.data.filter(
+            (node) => !node.parent || node.parent === 'root'
+        );
+
+        if (rootPages.length === 0) return false;
+
+        // Sort by order
+        rootPages.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        // Check if this page is the first
+        return rootPages[0].id === this.id;
+    }
+
+    /**
      * Show modal for editing page properties
      */
     showModalProperties() {
@@ -830,6 +858,7 @@ export default class StructureNode {
             title: _('Page properties'),
             contentId: 'page-properties',
             properties: this.properties,
+            isFirstPage: this.isFirstPage(),
         });
     }
 }

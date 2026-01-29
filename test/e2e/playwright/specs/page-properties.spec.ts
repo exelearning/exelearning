@@ -75,14 +75,11 @@ test.describe('Page Properties', () => {
         await expect(visibleLink).toBeVisible();
     });
 
-    test('first page should always be visible regardless of visibility setting', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
+    test('first page visibility toggle should be disabled', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
         // Create a new project
-        const projectUuid = await createProject(page, 'First Page Always Visible Test');
+        const projectUuid = await createProject(page, 'First Page Visibility Test');
 
         // Navigate to the project workarea
         await gotoWorkarea(page, projectUuid);
@@ -90,21 +87,87 @@ test.describe('Page Properties', () => {
         // Wait for app to fully initialize
         await waitForAppReady(page);
 
-        // Get first page ID and set visibility=false
+        // Rename first page for clarity
         await page.evaluate(() => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
             const project = (window as any).eXeLearning.app.project;
             const nav = bridge.documentManager.getNavigation();
             const firstId = nav.get(0).get('id');
+            project.renamePageViaYjs(firstId, 'First Page');
+        });
 
-            // Rename for clarity
+        await page.waitForTimeout(300);
+
+        // Right-click on first page to open context menu
+        const firstPageElement = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
+        await firstPageElement.click({ button: 'right' });
+
+        // Click on Properties menu item
+        const propertiesMenuItem = page.locator('.dropdown-menu.show .dropdown-item').filter({
+            hasText: /Properties|Propiedades/i,
+        });
+        await propertiesMenuItem.click();
+
+        // Wait for properties modal
+        await page.waitForSelector('#modalProperties.show', { state: 'visible', timeout: 10000 });
+
+        // Find the visibility checkbox
+        const visibilityCheckbox = page.locator('#modalProperties input[property="visibility"]');
+
+        // Verify it's disabled (first page cannot have visibility disabled)
+        await expect(visibilityCheckbox).toBeDisabled();
+
+        // Verify it's checked (visibility is true)
+        await expect(visibilityCheckbox).toBeChecked();
+
+        // Verify the toggle item has a title attribute explaining why it's disabled
+        const toggleItem = page.locator('#modalProperties input[property="visibility"]').locator('xpath=ancestor::span[contains(@class, "toggle-item")]');
+        await expect(toggleItem).toHaveAttribute('title', /first page|always visible/i);
+
+        // Close the modal
+        await page.locator('#modalProperties .btn-close, #modalProperties button.close').click();
+        await page.waitForSelector('#modalProperties', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    });
+
+    test('first page visibility cannot be set to false via Yjs', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+
+        // Create a new project
+        const projectUuid = await createProject(page, 'First Page Visibility Protection Test');
+
+        // Navigate to the project workarea
+        await gotoWorkarea(page, projectUuid);
+
+        // Wait for app to fully initialize
+        await waitForAppReady(page);
+
+        // Try to set visibility=false on first page - should be ignored
+        const result = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const project = (window as any).eXeLearning.app.project;
+            const nav = bridge.documentManager.getNavigation();
+            const firstId = nav.get(0).get('id');
+
+            // Rename first page for clarity
             project.renamePageViaYjs(firstId, 'First Page');
 
-            // Try to hide it
+            // Create second page
+            bridge.structureBinding.addPage('Second Page', null);
+
+            // Try to hide the first page - should be ignored
             bridge.structureBinding.updatePageProperties(firstId, { visibility: false });
 
-            return firstId;
+            // Get the actual visibility value from Yjs
+            const pageMap = bridge.structureBinding.getPageMap(firstId);
+            const propsMap = pageMap?.get('properties');
+            return {
+                visibility: propsMap?.get('visibility'),
+                firstId,
+            };
         });
+
+        // Visibility should NOT have been set to false (either true or undefined)
+        expect(result.visibility).not.toBe(false);
 
         await page.waitForTimeout(300);
 
@@ -117,9 +180,13 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // First page should STILL be visible even with visibility=false
+        // First page should STILL be visible (visibility=false was ignored)
         const firstLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'First Page' });
         await expect(firstLink).toBeVisible();
+
+        // Second page should also be visible
+        const secondLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Second Page' });
+        await expect(secondLink).toBeVisible();
     });
 
     test('highlight property should add highlighted-link class to nav', async ({

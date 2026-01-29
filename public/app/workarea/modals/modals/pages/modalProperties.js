@@ -27,6 +27,7 @@ export default class ModalProperties extends Modal {
         setTimeout(() => {
             data = data ? data : {};
             this.node = data.node ? data.node : null;
+            this.isFirstPage = data.isFirstPage || false;
             let title = data.title ? data.title : this.titleDefault;
             let contentId = data.contentId ? data.contentId : null;
             let properties = data.properties ? data.properties : {};
@@ -485,6 +486,14 @@ export default class ModalProperties extends Modal {
                 input.setAttribute('data-type', 'checkbox');
                 input.classList.add('property-value', 'toggle-input');
                 input.checked = property.value == 'true' ? true : false;
+
+                // Disable visibility toggle for first page - first page must always be visible
+                if (name === 'visibility' && this.isFirstPage) {
+                    input.checked = true;
+                    input.disabled = true;
+                    item.setAttribute('title', _('First page is always visible in export'));
+                    item.classList.add('disabled');
+                }
 
                 const visual = document.createElement('span');
                 visual.classList.add('toggle-visual');
