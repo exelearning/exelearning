@@ -1608,6 +1608,58 @@ describe('ModalFilemanager', () => {
 
         expect(loadSpy).not.toHaveBeenCalled();
       });
+
+      it('should refresh sidebar when selectedAsset exists and is found after reload', async () => {
+        const testAsset = { id: 'asset-1', filename: 'test.jpg', mime: 'image/jpeg' };
+        const updatedAsset = { id: 'asset-1', filename: 'test-updated.jpg', mime: 'image/jpeg' };
+        modal.selectedAsset = testAsset;
+        modal.assets = [updatedAsset];
+
+        const showSidebarSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+        vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+        const event = { transaction: { local: false } };
+        modal._handleYjsAssetsChange(event);
+
+        // Wait for the .then() callback to execute
+        await vi.waitFor(() => {
+          expect(showSidebarSpy).toHaveBeenCalledWith(updatedAsset);
+        });
+
+        expect(modal.selectedAsset).toBe(updatedAsset);
+      });
+
+      it('should not refresh sidebar when no selectedAsset', async () => {
+        modal.selectedAsset = null;
+        modal.assets = [{ id: 'asset-1', filename: 'test.jpg', mime: 'image/jpeg' }];
+
+        const showSidebarSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+        vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+        const event = { transaction: { local: false } };
+        modal._handleYjsAssetsChange(event);
+
+        // Wait a tick for the .then() to complete
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(showSidebarSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not refresh sidebar when selectedAsset not found in updated assets', async () => {
+        modal.selectedAsset = { id: 'deleted-asset', filename: 'deleted.jpg', mime: 'image/jpeg' };
+        modal.assets = [{ id: 'other-asset', filename: 'other.jpg', mime: 'image/jpeg' }];
+
+        const showSidebarSpy = vi.spyOn(modal, 'showSidebarContent').mockResolvedValue();
+        vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+        const event = { transaction: { local: false } };
+        modal._handleYjsAssetsChange(event);
+
+        // Wait a tick for the .then() to complete
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        expect(showSidebarSpy).not.toHaveBeenCalled();
+      });
     });
 
     describe('close unsubscribes from Yjs', () => {

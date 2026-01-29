@@ -691,33 +691,36 @@ test.describe('Interactive Video iDevice', () => {
         });
     });
 
-    test.describe('Symfony Compatibility Shim', () => {
-        test('should have eXeLearning.symfony defined after page load', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
+    test.describe('Configuration API', () => {
+        test('should have eXeLearning.config defined after page load', async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;
 
-            const projectUuid = await createProject(page, 'Symfony Shim Test');
+            const projectUuid = await createProject(page, 'Config API Test');
             await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
 
-            // Verify eXeLearning.symfony exists and has expected properties
-            const symfonyShim = await page.evaluate(() => {
-                const symfony = (window as any).eXeLearning?.symfony;
+            // Verify eXeLearning.config exists and has expected properties
+            const configAPI = await page.evaluate(() => {
+                const config = (window as any).eXeLearning?.config;
                 return {
-                    exists: symfony !== undefined,
-                    hasBaseURL: symfony?.baseURL !== undefined,
-                    hasBasePath: symfony?.basePath !== undefined,
-                    hasFullURL: symfony?.fullURL !== undefined,
+                    exists: config !== undefined,
+                    hasBaseURL: config?.baseURL !== undefined,
+                    hasBasePath: config?.basePath !== undefined,
+                    hasFullURL: config?.fullURL !== undefined,
                 };
             });
 
-            expect(symfonyShim.exists).toBe(true);
-            expect(symfonyShim.hasBaseURL).toBe(true);
-            expect(symfonyShim.hasBasePath).toBe(true);
-            expect(symfonyShim.hasFullURL).toBe(true);
+            expect(configAPI.exists).toBe(true);
+            expect(configAPI.hasBaseURL).toBe(true);
+            expect(configAPI.hasBasePath).toBe(true);
+            expect(configAPI.hasFullURL).toBe(true);
+
+            // Verify resolveAssetUrl function is available (via eXeLearningAssetResolver)
+            const hasResolveAssetUrl = await page.evaluate(() => {
+                return typeof (window as any).eXeLearningAssetResolver?.resolve === 'function';
+            });
+            expect(hasResolveAssetUrl).toBe(true);
         });
     });
 });

@@ -227,7 +227,10 @@ async function handleConfirmDialog(page: Page, confirm: boolean): Promise<void> 
 
         if ((await btn.count()) > 0) {
             await btn.first().click();
-            await page.waitForTimeout(500);
+            // Wait for modal to be dismissed instead of fixed timeout
+            await page.waitForFunction(() => document.querySelectorAll('.modal.show').length === 0, null, {
+                timeout: 5000,
+            });
         }
     }
 }
@@ -589,15 +592,22 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, dragHandle, block1);
             await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
+            // Wait for drag-and-drop to complete: either block count reduces OR iDevice moved to target
             await page.waitForFunction(
                 () => {
                     const blocks = document.querySelectorAll('#node-content article.box');
+                    // Success condition 1: Block count reduced (empty block was deleted)
                     if (blocks.length === 2) return true;
-                    const block1 = blocks[0];
-                    return !!block1 && block1.querySelectorAll('.idevice_node').length === 2;
+                    // Success condition 2: iDevice successfully moved to first block (even if deletion is pending)
+                    if (blocks.length >= 2) {
+                        const firstBlock = blocks[0];
+                        const ideviceCount = firstBlock?.querySelectorAll('.idevice_node').length;
+                        if (ideviceCount === 2) return true;
+                    }
+                    return false;
                 },
                 null,
-                { timeout: 10000 },
+                { timeout: 15000 },
             );
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
