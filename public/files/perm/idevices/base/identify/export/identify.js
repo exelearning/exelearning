@@ -166,7 +166,7 @@ var $eXeIdentifica = {
                         </div>
                         <div class="IDFP-Media">
                             <a href="#" id="idfLinkAudio-${instance}" class="IDFP-LinkAudio" title="${msgs.msgAudio}" style="position:absolute;top:8px;right:8px;z-index:1000;display:none;">
-                                <img src="${path}exequextaudio.png" class="IDFP-Audio" alt="Audio">
+                                <img src="${path}exequextaudio.svg" class="IDFP-Audio" alt="Audio">
                             </a>
                             <div id="idfCardDraw-${instance}" class="IDFP-CardDraw">
                                 <div class="IDFP-card">
@@ -181,7 +181,7 @@ var $eXeIdentifica = {
                                                 <img src="" id="idfBackImage-${instance}" class="IDFP-Image IDFP-Image-Back" alt="" />
                                                 <img class="IDFP-Cursor IDFP-Cursor-Back" id="idfBackCursor-${instance}" src="${path}exequextcursor.gif" alt="Cursor" />
                                                 <a href="#" class="IDFP-LinkAudio IDFP-LinkAudio-Back" id="idfBackAudio-${instance}" title="Audio">
-                                                    <img src="${path}exequextaudio.png" class="IDFP-Audio" alt="Audio">
+                                                    <img src="${path}exequextaudio.svg" class="IDFP-Audio" alt="Audio">
                                                 </a>
                                             </div>
                                             <div class="IDFP-AuthorLicence" id="idfAuthorLicence-${instance}">

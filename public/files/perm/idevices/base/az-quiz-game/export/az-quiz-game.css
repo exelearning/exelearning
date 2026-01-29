@@ -403,7 +403,7 @@
 }
 
 .rosco-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: cover;
     cursor: pointer;
 }
@@ -741,22 +741,22 @@ a.rosco-WordsClose:hover {
 }
 
 .exeQuextIcons-RoscoRows {
-    background: url(exequextrosco.png) no-repeat;
+    background: url(exequextrosco.svg) no-repeat;
     background-size: cover
 }
 
 .exeQuextIcons-RoscoCanvas {
-    background: url(exequextroscorows.png) no-repeat;
+    background: url(exequextroscorows.svg) no-repeat;
     background-size: cover
 }
 
 .exeQuextIcons-OneRound {
-    background: url(exequextone.png);
+    background: url(exequextone.svg);
     background-size: cover;
 }
 
 .exeQuextIcons-TwoRounds {
-    background: url(exequexttwo.png) no-repeat;
+    background: url(exequexttwo.svg) no-repeat;
     background-size: cover;
 }
 

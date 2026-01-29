@@ -949,7 +949,7 @@ a.ADVNP-ModeBoardShow {
 }
 
 .exeQuextIcons-Preview {
-    background-image: url(exequextsq.png);
+    background-image: url(exequextsq.svg);
     background-size: 100% 100%;
 }
 
@@ -964,7 +964,7 @@ a.ADVNP-ModeBoardShow {
 }
 
 .exeQuextIcons-Reload {
-    background-image: url(exequextreload.png);
+    background-image: url(exequextreload.svg);
     background-size: 100% 100%;
 }
 
@@ -1049,7 +1049,7 @@ a.ADVNP-ModeBoardShow {
 }
 
 .ADVNP-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 
