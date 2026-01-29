@@ -437,11 +437,11 @@ describe('GlobalSearchModal', () => {
         it('should scroll iDevice into view and add highlight class', async () => {
             vi.useFakeTimers();
 
-            // Create mock iDevice element
-            const ideviceEl = document.createElement('article');
-            ideviceEl.setAttribute('data-idevice-id', 'comp-1');
-            ideviceEl.id = 'node-content';
+            // Create mock iDevice element with id (iDevices have id=odeIdeviceId)
             document.body.innerHTML = '<div id="node-content"></div>';
+            const ideviceEl = document.createElement('article');
+            ideviceEl.id = 'comp-1';
+            ideviceEl.classList.add('idevice_node');
             document.getElementById('node-content').appendChild(ideviceEl);
 
             const scrollSpy = vi.spyOn(ideviceEl, 'scrollIntoView').mockImplementation(() => {});
@@ -458,9 +458,11 @@ describe('GlobalSearchModal', () => {
         it('should remove highlight class after timeout', async () => {
             vi.useFakeTimers();
 
-            const ideviceEl = document.createElement('article');
-            ideviceEl.setAttribute('data-idevice-id', 'comp-1');
+            // Create mock iDevice element with id (iDevices have id=odeIdeviceId)
             document.body.innerHTML = '<div id="node-content"></div>';
+            const ideviceEl = document.createElement('article');
+            ideviceEl.id = 'comp-1';
+            ideviceEl.classList.add('idevice_node');
             document.getElementById('node-content').appendChild(ideviceEl);
 
             modal.scrollToIdevice('comp-1');
