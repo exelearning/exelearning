@@ -372,7 +372,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         const isCurrent = page.id === currentPageId;
         const hasChildren = children.length > 0;
         const isAncestor = this.isAncestorOf(page.id, currentPageId, allPages);
-        const isFirstPage = page.id === allPages[0]?.id;
+        const firstVisiblePage = this.getFirstVisiblePage(allPages);
+        const isFirstPage = firstVisiblePage && page.id === firstVisiblePage.id;
 
         // Build li class attribute
         const liClass = isCurrent ? ' class="active"' : isAncestor ? ' class="current-page-parent"' : '';
@@ -420,18 +421,12 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
     /**
      * Check if a page is visible in export
-     * First page is always visible regardless of visibility setting.
      * If a parent is hidden, all its children are also hidden.
      * @param page - Page to check
      * @param allPages - All pages
      * @returns True if page should be visible
      */
     isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
-        // First page is always visible
-        if (page.id === allPages[0]?.id) {
-            return true;
-        }
-
         // Check this page's visibility property
         if (this.isFalsyProperty(page.properties?.visibility)) {
             return false;
@@ -455,6 +450,21 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      */
     getVisiblePages(pages: ExportPage[]): ExportPage[] {
         return pages.filter(page => this.isPageVisible(page, pages));
+    }
+
+    /**
+     * Get the first visible page in the list
+     * This page will become index.html in exports
+     * @param allPages - All pages
+     * @returns First visible page or null if all pages are hidden
+     */
+    getFirstVisiblePage(allPages: ExportPage[]): ExportPage | null {
+        for (const page of allPages) {
+            if (this.isPageVisible(page, allPages)) {
+                return page;
+            }
+        }
+        return null;
     }
 
     /**
@@ -504,7 +514,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        const isFirstPage = page.id === allPages[0]?.id;
+        const firstVisiblePage = this.getFirstVisiblePage(allPages);
+        const isFirstPage = firstVisiblePage && page.id === firstVisiblePage.id;
         if (isFirstPage) {
             return basePath ? `${basePath}index.html` : 'index.html';
         }
@@ -655,6 +666,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     /**
      * Render navigation buttons (prev/next links)
      * Outputs English text with data-i18n attributes for runtime translation via $exe_i18n.
+     * Only navigates between visible pages.
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
@@ -668,14 +680,17 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         _language: string = 'en',
         pageFilenameMap?: Map<string, string>,
     ): string {
-        const currentIndex = allPages.findIndex(p => p.id === page.id);
-        const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
-        const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
+        // Use only visible pages for navigation
+        const visiblePages = this.getVisiblePages(allPages);
+        const currentIndex = visiblePages.findIndex(p => p.id === page.id);
+        const prevPage = currentIndex > 0 ? visiblePages[currentIndex - 1] : null;
+        const nextPage = currentIndex < visiblePages.length - 1 ? visiblePages[currentIndex + 1] : null;
 
         const parts: string[] = ['<div class="nav-buttons">'];
 
         // Previous button
         if (prevPage) {
+            // Use allPages for getPageLink to ensure correct index.html resolution
             const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
             parts.push(
                 `<a href="${link}" title="Previous" class="nav-button nav-button-left"><span>Previous</span></a>`,
@@ -686,6 +701,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
         // Next button
         if (nextPage) {
+            // Use allPages for getPageLink to ensure correct index.html resolution
             const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
             parts.push(`<a href="${link}" title="Next" class="nav-button nav-button-right"><span>Next</span></a>`);
         } else {
@@ -786,6 +802,7 @@ ${userFooterHtml}</div></footer>`;
 
     /**
      * Generate search data JSON for client-side search functionality
+     * Only includes visible pages.
      * @param allPages - All pages in the project
      * @param _basePath - Base path for URLs (unused but kept for API compatibility)
      * @param pageFilenameMap - Map of page IDs to unique filenames (optional, handles title collisions)
@@ -793,12 +810,14 @@ ${userFooterHtml}</div></footer>`;
      */
     generateSearchData(allPages: ExportPage[], _basePath: string, pageFilenameMap?: Map<string, string>): string {
         const pagesData: Record<string, unknown> = {};
+        const visiblePages = this.getVisiblePages(allPages);
+        const firstVisiblePage = this.getFirstVisiblePage(allPages);
 
-        for (let i = 0; i < allPages.length; i++) {
-            const page = allPages[i];
-            const isIndex = i === 0;
-            const prevPage = i > 0 ? allPages[i - 1] : null;
-            const nextPage = i < allPages.length - 1 ? allPages[i + 1] : null;
+        for (let i = 0; i < visiblePages.length; i++) {
+            const page = visiblePages[i];
+            const isIndex = firstVisiblePage && page.id === firstVisiblePage.id;
+            const prevPage = i > 0 ? visiblePages[i - 1] : null;
+            const nextPage = i < visiblePages.length - 1 ? visiblePages[i + 1] : null;
 
             // Use unique filename from map if available, otherwise generate from title
             const mapFilename = pageFilenameMap?.get(page.id);

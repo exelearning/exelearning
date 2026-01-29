@@ -366,12 +366,13 @@ describe('ImsExporter', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle empty pages', async () => {
+        it('should throw error when all pages are hidden (empty pages)', async () => {
             document = new MockDocument({}, []);
             exporter = new ImsExporter(document, resources, assets, zip);
 
             const result = await exporter.export();
-            expect(result.success).toBe(true);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('All pages are hidden');
         });
 
         it('should handle theme fetch failure', async () => {

@@ -74,6 +74,10 @@ export class ElpxExporter extends Html5Exporter {
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
+            // Get first visible page for index.html
+            // ELPX exports ALL pages (for re-import), but first visible page becomes index.html
+            const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
+
             // =========================================================================
             // SECTION 1: Generate HTML5 content (same as Html5Exporter)
             // =========================================================================
@@ -81,14 +85,16 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1.1 Generate HTML pages
+            // 1.1 Generate HTML pages (ALL pages for ELPX, including hidden ones)
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
+                // First visible page becomes index.html, others go to html/ directory
+                const isIndex = firstVisiblePage && page.id === firstVisiblePage.id;
                 const html = this.generatePageHtml(
                     page,
                     pages,
                     meta,
-                    i === 0,
+                    isIndex,
                     i,
                     themeRootFiles,
                     faviconInfo,
@@ -96,7 +102,7 @@ export class ElpxExporter extends Html5Exporter {
                 );
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
+                const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
                 this.zip.addFile(pageFilename, html);
             }
 

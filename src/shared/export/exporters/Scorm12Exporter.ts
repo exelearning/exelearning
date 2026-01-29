@@ -49,11 +49,19 @@ export class Scorm12Exporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Get visible pages and first visible page for index.html
+            const visiblePages = this.pageRenderer.getVisiblePages(pages);
+            const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
+
+            if (!firstVisiblePage) {
+                throw new Error('Export failed: All pages are hidden. At least one page must be visible.');
+            }
+
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
-            // Initialize generators
-            this.manifestGenerator = new Scorm12ManifestGenerator(projectId, pages, {
+            // Initialize generators with visible pages only
+            this.manifestGenerator = new Scorm12ManifestGenerator(projectId, visiblePages, {
                 title: meta.title || 'eXeLearning',
                 language: meta.language || 'en',
                 author: meta.author || '',
@@ -77,14 +85,15 @@ export class Scorm12Exporter extends Html5Exporter {
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1. Generate HTML pages (with SCORM support and optional LaTeX pre-rendering)
+            // Only export visible pages
             let latexWasRendered = false;
 
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                const isIndex = i === 0;
+            for (let i = 0; i < visiblePages.length; i++) {
+                const page = visiblePages[i];
+                const isIndex = page.id === firstVisiblePage.id;
                 let html = this.generateScormPageHtml(
                     page,
-                    pages,
+                    pages, // Pass all pages for navigation context
                     meta,
                     isIndex,
                     themeRootFiles,
@@ -291,9 +300,9 @@ export class Scorm12Exporter extends Html5Exporter {
             // Export options - SCORM specific overrides
             // SCORM/IMS exports don't use client-side search - LMS handles navigation
             addSearchBox: false,
-            // Force page counter for SCORM
+            // Force page counter for SCORM (count visible pages only)
             addPagination: true,
-            totalPages: allPages.length,
+            totalPages: this.pageRenderer.getVisiblePages(allPages).length,
             currentPageIndex: pageIndex ?? 0,
             // SCORM-specific options
             isScorm: true,

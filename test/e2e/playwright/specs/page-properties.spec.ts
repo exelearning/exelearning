@@ -75,14 +75,11 @@ test.describe('Page Properties', () => {
         await expect(visibleLink).toBeVisible();
     });
 
-    test('first page should always be visible regardless of visibility setting', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
+    test('first page should be hidden when visibility=false', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
         // Create a new project
-        const projectUuid = await createProject(page, 'First Page Always Visible Test');
+        const projectUuid = await createProject(page, 'First Page Visibility Test');
 
         // Navigate to the project workarea
         await gotoWorkarea(page, projectUuid);
@@ -90,17 +87,20 @@ test.describe('Page Properties', () => {
         // Wait for app to fully initialize
         await waitForAppReady(page);
 
-        // Get first page ID and set visibility=false
+        // Create a second page so we have something visible after hiding the first
         await page.evaluate(() => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
             const project = (window as any).eXeLearning.app.project;
             const nav = bridge.documentManager.getNavigation();
             const firstId = nav.get(0).get('id');
 
-            // Rename for clarity
+            // Rename first page for clarity
             project.renamePageViaYjs(firstId, 'First Page');
 
-            // Try to hide it
+            // Create second page (will become index.html when first is hidden)
+            bridge.structureBinding.addPage('Second Page', null);
+
+            // Hide the first page
             bridge.structureBinding.updatePageProperties(firstId, { visibility: false });
 
             return firstId;
@@ -117,9 +117,13 @@ test.describe('Page Properties', () => {
 
         const iframe = page.frameLocator('#preview-iframe');
 
-        // First page should STILL be visible even with visibility=false
+        // First page should NOT be visible when visibility=false
         const firstLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'First Page' });
-        await expect(firstLink).toBeVisible();
+        await expect(firstLink).toHaveCount(0);
+
+        // Second page should be visible and serve as the index
+        const secondLink = iframe.locator('#siteNav a, nav a').filter({ hasText: 'Second Page' });
+        await expect(secondLink).toBeVisible();
     });
 
     test('highlight property should add highlighted-link class to nav', async ({

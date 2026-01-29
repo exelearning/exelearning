@@ -322,10 +322,11 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Get page link (index.html for first page, id.html for others)
+     * Get page link (index.html for first visible page, id.html for others)
      */
     getPageLink(page: ExportPage, allPages: ExportPage[], extension = '.html'): string {
-        if (page.id === allPages[0]?.id) {
+        const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(allPages);
+        if (firstVisiblePage && page.id === firstVisiblePage.id) {
             return `index${extension}`;
         }
         return `${page.id}${extension}`;
@@ -579,7 +580,7 @@ export abstract class BaseExporter {
     /**
      * Build a map of page IDs to unique filenames
      * Handles collisions by incrementing trailing numbers or appending -1, -2, etc.
-     * First page is always index.html, others are {sanitized-title}.html
+     * First visible page is always index.html, others are {sanitized-title}.html
      *
      * For filenames ending with a number (e.g., "new-page-1"), collisions increment
      * that number (e.g., "new-page-2", "new-page-3") instead of appending another number.
@@ -588,12 +589,11 @@ export abstract class BaseExporter {
         const filenameMap = new Map<string, string>();
         const usedFilenames = new Set<string>();
         const maxAttempts = 20;
+        const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
 
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
-
-            if (i === 0) {
-                // First page is always index.html
+        for (const page of pages) {
+            // First visible page is always index.html
+            if (firstVisiblePage && page.id === firstVisiblePage.id) {
                 filenameMap.set(page.id, 'index.html');
                 usedFilenames.add('index.html');
                 continue;
@@ -637,18 +637,20 @@ export abstract class BaseExporter {
     /**
      * Build a map of page IDs to their export URLs
      * Used for internal link (exe-node:) conversion
+     * Only includes visible pages
      */
     protected buildPageUrlMap(pages: ExportPage[]): Map<string, { url: string; urlFromSubpage: string }> {
         const map = new Map<string, { url: string; urlFromSubpage: string }>();
         const filenameMap = this.buildPageFilenameMap(pages);
+        const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
+        const visiblePages = this.pageRenderer.getVisiblePages(pages);
 
-        for (let i = 0; i < pages.length; i++) {
-            const page = pages[i];
+        for (const page of visiblePages) {
             const filename = filenameMap.get(page.id) || 'page.html';
-            const isFirstPage = i === 0;
+            const isFirstPage = firstVisiblePage && page.id === firstVisiblePage.id;
 
             if (isFirstPage) {
-                // First page is index.html
+                // First visible page is index.html
                 map.set(page.id, {
                     url: 'index.html',
                     urlFromSubpage: '../index.html',

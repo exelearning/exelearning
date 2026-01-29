@@ -492,7 +492,7 @@ describe('Scorm2004Exporter Integration', () => {
     });
 
     describe('Error handling', () => {
-        it('should handle empty pages gracefully', async () => {
+        it('should throw error when all pages are hidden (empty pages)', async () => {
             const emptyStructure: ParsedOdeStructure = {
                 meta: { title: 'Empty', author: '', language: 'en', theme: 'base' },
                 pages: [],
@@ -507,8 +507,9 @@ describe('Scorm2004Exporter Integration', () => {
             const exporter = new Scorm2004Exporter(document, resources, assets, zip);
             const result = await exporter.export();
 
-            // Should still produce a package (even if minimal)
-            expect(result.success).toBe(true);
+            // Should fail because there are no visible pages
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('All pages are hidden');
         });
     });
 });

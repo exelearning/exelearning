@@ -1104,13 +1104,13 @@ describe('PageRenderer', () => {
     });
 
     describe('page visibility', () => {
-        it('should always show first page regardless of visibility setting', () => {
+        it('should hide first page when visibility is false', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First', properties: { visibility: false } }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
             ];
 
-            expect(renderer.isPageVisible(pages[0], pages)).toBe(true);
+            expect(renderer.isPageVisible(pages[0], pages)).toBe(false);
         });
 
         it('should hide page when visibility is false', () => {
@@ -1175,6 +1175,56 @@ describe('PageRenderer', () => {
 
             expect(visible.length).toBe(2);
             expect(visible.map(p => p.id)).toEqual(['page-1', 'page-3']);
+        });
+
+        it('should get first visible page correctly', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'Hidden First', properties: { visibility: false } }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+
+            const firstVisible = renderer.getFirstVisiblePage(pages);
+
+            expect(firstVisible).not.toBeNull();
+            expect(firstVisible?.id).toBe('page-2');
+        });
+
+        it('should return null for getFirstVisiblePage when all pages hidden', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'Hidden', properties: { visibility: false } }),
+                createTestPage({ id: 'page-2', title: 'Also Hidden', properties: { visibility: false } }),
+            ];
+
+            const firstVisible = renderer.getFirstVisiblePage(pages);
+
+            expect(firstVisible).toBeNull();
+        });
+
+        it('should return index.html for first visible page in getPageLink', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'Hidden', properties: { visibility: false } }),
+                createTestPage({ id: 'page-2', title: 'First Visible' }),
+            ];
+
+            // page-2 should get index.html since page-1 is hidden
+            const link = renderer.getPageLink(pages[1], pages, '');
+            expect(link).toBe('index.html');
+        });
+
+        it('should skip hidden pages in nav buttons', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Hidden', properties: { visibility: false } }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+
+            // Nav buttons from page-1 should link to page-3 (skipping hidden page-2)
+            const html = renderer.renderNavButtons(pages[0], pages, '');
+
+            // Next button should link to page-3, not the hidden page
+            expect(html).toContain('html/third.html');
+            expect(html).not.toContain('html/hidden.html');
         });
     });
 

@@ -372,12 +372,13 @@ describe('Page Properties Integration', () => {
                 },
             ];
 
-            // First page is always visible
-            expect(renderer.isPageVisible(allPages[0], allPages)).toBe(true);
+            // First page can now be hidden
+            expect(renderer.isPageVisible(allPages[0], allPages)).toBe(false);
 
-            // But second page with visibility false should be hidden
-            allPages.unshift({ id: 'p0', title: 'First', parentId: null, order: 0, blocks: [], properties: {} });
-            expect(renderer.isPageVisible(allPages[1], allPages)).toBe(false);
+            // Add a visible page and verify it becomes the first visible
+            allPages.push({ id: 'p2', title: 'Second', parentId: null, order: 1, blocks: [], properties: {} });
+            expect(renderer.isPageVisible(allPages[1], allPages)).toBe(true);
+            expect(renderer.getFirstVisiblePage(allPages)?.id).toBe('p2');
         });
 
         it('should hide child pages when parent is hidden', () => {
@@ -428,20 +429,30 @@ describe('Page Properties Integration', () => {
             expect(navHtml).toContain('Page 3');
         });
 
-        it('should keep first page visible even with visibility=false', () => {
+        it('should hide first page when visibility=false', () => {
             const renderer = new PageRenderer();
             const allPages: ExportPage[] = [
                 {
                     id: 'p1',
-                    title: 'First Page (Always Visible)',
+                    title: 'First Page (Hidden)',
                     parentId: null,
                     order: 0,
                     blocks: [],
                     properties: { visibility: false },
                 },
+                {
+                    id: 'p2',
+                    title: 'Second Page (Visible)',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: {},
+                },
             ];
 
-            expect(renderer.isPageVisible(allPages[0], allPages)).toBe(true);
+            expect(renderer.isPageVisible(allPages[0], allPages)).toBe(false);
+            expect(renderer.isPageVisible(allPages[1], allPages)).toBe(true);
+            expect(renderer.getFirstVisiblePage(allPages)?.id).toBe('p2');
         });
 
         it('should exclude hidden pages in preview navigation', async () => {

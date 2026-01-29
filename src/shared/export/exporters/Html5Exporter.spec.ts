@@ -379,12 +379,13 @@ describe('Html5Exporter', () => {
     });
 
     describe('Error Handling', () => {
-        it('should handle empty pages array', async () => {
+        it('should throw error when all pages are hidden (empty pages)', async () => {
             document = new MockDocument({}, []);
             exporter = new Html5Exporter(document, resources, assets, zip);
 
             const result = await exporter.export();
-            expect(result.success).toBe(true);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('All pages are hidden');
         });
 
         it('should handle export with metadata only (no title)', async () => {
@@ -1609,14 +1610,11 @@ describe('Html5Exporter', () => {
             }
         });
 
-        it('should handle empty pages array', async () => {
+        it('should throw error for preview when all pages are hidden', async () => {
             document = new MockDocument({}, []);
             exporter = new Html5Exporter(document, resources, assets, zip);
 
-            const files = await exporter.generateForPreview();
-
-            // Should still generate theme and library files
-            expect(files.size).toBeGreaterThan(0);
+            await expect(exporter.generateForPreview()).rejects.toThrow('All pages are hidden');
         });
 
         it('should handle theme fetch failure gracefully', async () => {

@@ -62,6 +62,14 @@ export class Html5Exporter extends BaseExporter {
             // Note: exe-package:elp transformation now happens in PageRenderer.renderPageContent()
             pages = await this.preprocessPagesForExport(pages);
 
+            // Get visible pages and first visible page for index.html
+            const visiblePages = this.pageRenderer.getVisiblePages(pages);
+            const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
+
+            if (!firstVisiblePage) {
+                throw new Error('Export failed: All pages are hidden. At least one page must be visible.');
+            }
+
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
@@ -94,18 +102,20 @@ export class Html5Exporter extends BaseExporter {
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
+            // Only export visible pages
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
+            for (let i = 0; i < visiblePages.length; i++) {
+                const page = visiblePages[i];
+                const isIndex = page.id === firstVisiblePage.id;
                 let html = this.generatePageHtml(
                     page,
-                    pages,
+                    pages, // Pass all pages for navigation context
                     meta,
-                    i === 0,
-                    i,
+                    isIndex,
+                    i, // Page index within visible pages
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
@@ -170,9 +180,9 @@ export class Html5Exporter extends BaseExporter {
                     }
                 }
 
-                // First page is index.html, others go in html/ directory using unique filenames
+                // First visible page is index.html, others go in html/ directory using unique filenames
                 const filename = pageFilenameMap.get(page.id) || 'page.html';
-                const pageFilename = i === 0 ? 'index.html' : `html/${filename}`;
+                const pageFilename = isIndex ? 'index.html' : `html/${filename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
 
@@ -326,17 +336,19 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 12. Add all HTML pages to ZIP (with manifest script only on pages with download-source-file)
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
+            // Only add visible pages
+            for (let i = 0; i < visiblePages.length; i++) {
+                const page = visiblePages[i];
+                const isIndex = page.id === firstVisiblePage.id;
                 const pageFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const filename = i === 0 ? 'index.html' : `html/${pageFilename}`;
+                const filename = isIndex ? 'index.html' : `html/${pageFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
 
                 // Only add manifest script to pages that have download-source-file iDevice or exe-package:elp link
                 // Note: pageHasDownloadSourceFile works correctly because exe-package:elp is not transformed
                 // in the pages data (transformation happens in PageRenderer during HTML rendering)
                 if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
-                    const basePath = i === 0 ? '' : '../';
+                    const basePath = isIndex ? '' : '../';
                     const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
                     html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
                 }
@@ -547,6 +559,14 @@ export class Html5Exporter extends BaseExporter {
             // Pre-process pages: add filenames to asset URLs, convert internal links
             pages = await this.preprocessPagesForExport(pages);
 
+            // Get visible pages and first visible page for index.html
+            const visiblePages = this.pageRenderer.getVisiblePages(pages);
+            const firstVisiblePage = this.pageRenderer.getFirstVisiblePage(pages);
+
+            if (!firstVisiblePage) {
+                throw new Error('Preview failed: All pages are hidden. At least one page must be visible.');
+            }
+
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
@@ -576,18 +596,20 @@ export class Html5Exporter extends BaseExporter {
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
+            // Only generate visible pages
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
+            for (let i = 0; i < visiblePages.length; i++) {
+                const page = visiblePages[i];
+                const isIndex = page.id === firstVisiblePage.id;
                 let html = this.generatePageHtml(
                     page,
-                    pages,
+                    pages, // Pass all pages for navigation context
                     meta,
-                    i === 0,
-                    i,
+                    isIndex,
+                    i, // Page index within visible pages
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
@@ -635,8 +657,9 @@ export class Html5Exporter extends BaseExporter {
                 }
 
                 // Use unique filenames from the map (handles collisions)
+                // First visible page is index.html
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
+                const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
                 pageHtmlMap.set(pageFilename, html);
             }
 
@@ -775,16 +798,17 @@ export class Html5Exporter extends BaseExporter {
                 addFile('libs/elpx-manifest.js', manifestJs);
             }
 
-            // 12. Add all HTML pages
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
+            // 12. Add all HTML pages (only visible pages)
+            for (let i = 0; i < visiblePages.length; i++) {
+                const page = visiblePages[i];
+                const isIndex = page.id === firstVisiblePage.id;
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
+                const filename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
 
                 // Only add manifest script to pages that have download-source-file iDevice
                 if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
-                    const basePath = i === 0 ? '' : '../';
+                    const basePath = isIndex ? '' : '../';
                     const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
                     html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
                 }

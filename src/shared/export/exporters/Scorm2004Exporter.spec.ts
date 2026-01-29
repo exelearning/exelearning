@@ -382,12 +382,13 @@ describe('Scorm2004Exporter', () => {
             expect(zip.files.has('libs/SCORM_API_wrapper.js')).toBe(true);
         });
 
-        it('should handle empty pages', async () => {
+        it('should throw error when all pages are hidden (empty pages)', async () => {
             document = new MockDocument({}, []);
             exporter = new Scorm2004Exporter(document, resources, assets, zip);
 
             const result = await exporter.export();
-            expect(result.success).toBe(true);
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('All pages are hidden');
         });
     });
 
