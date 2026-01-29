@@ -537,7 +537,16 @@ export default class ModalFilemanager extends Modal {
         Logger.log(`[MediaLibrary] Remote Yjs asset change detected`);
 
         // Reload assets from Yjs (fast - metadata only from memory)
-        this.loadAssets();
+        this.loadAssets().then(async () => {
+            // If a file is selected, refresh the sidebar with updated data
+            if (this.selectedAsset) {
+                const updatedAsset = this.assets.find(a => a.id === this.selectedAsset.id);
+                if (updatedAsset) {
+                    this.selectedAsset = updatedAsset;
+                    await this.showSidebarContent(updatedAsset);
+                }
+            }
+        });
     }
 
 

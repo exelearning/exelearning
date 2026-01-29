@@ -764,7 +764,7 @@ export class Html5Exporter extends BaseExporter {
             // 10. Add project assets
             await this.addAssetsToPreviewFiles(files, fileList);
 
-            // 11. Generate ELPX manifest file if download-source-file is used
+            // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used
             if (needsElpxDownload && fileList) {
                 for (const [htmlFile] of pageHtmlMap) {
                     if (!fileList.includes(htmlFile)) {
@@ -773,6 +773,20 @@ export class Html5Exporter extends BaseExporter {
                 }
                 const manifestJs = this.generateElpxManifestFile(fileList);
                 addFile('libs/elpx-manifest.js', manifestJs);
+
+                // Ensure ELPX download libraries are present (may not be detected by library detector)
+                const elpxLibFiles = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];
+                const missingLibs = elpxLibFiles.filter(f => !files.has(`libs/${f}`));
+                if (missingLibs.length > 0) {
+                    try {
+                        const libContents = await this.resources.fetchLibraryFiles(missingLibs);
+                        for (const [libPath, content] of libContents) {
+                            addFile(`libs/${libPath}`, content);
+                        }
+                    } catch {
+                        // Library files not available - continue anyway
+                    }
+                }
             }
 
             // 12. Add all HTML pages
@@ -782,11 +796,17 @@ export class Html5Exporter extends BaseExporter {
                 const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
                 let html = pageHtmlMap.get(filename) || '';
 
-                // Only add manifest script to pages that have download-source-file iDevice
+                // Only add ELPX download scripts to pages that have download-source-file iDevice or exe-package:elp links
                 if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
                     const basePath = i === 0 ? '' : '../';
+                    // Library scripts must be loaded before the manifest script
+                    const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
+                    const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
                     const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
-                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
+                    html = html.replace(
+                        /<\/body>/i,
+                        `${fflateScript}\n${elpxDownloadScript}\n${manifestScriptTag}\n</body>`,
+                    );
                 }
                 const encoder = new TextEncoder();
                 files.set(filename, encoder.encode(html));
