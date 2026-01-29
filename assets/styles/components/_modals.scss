@@ -2803,8 +2803,6 @@
         .toggle-input:checked + .toggle-visual { background: var(--brand-primary, #0BA1A1); }
         .toggle-input:checked + .toggle-visual::after { transform: translateX(16px); }
         .toggle-input:disabled + .toggle-visual { opacity: .5; filter: grayscale(.3); cursor: not-allowed; }
-        // Disabled toggle item (e.g., first page visibility)
-        .toggle-disabled { opacity: .6; pointer-events: none; cursor: not-allowed; }
     }
     .form-properties[modal-content-id="idevice-properties"],
     .form-properties[modal-content-id="block-properties"] {
