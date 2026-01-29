@@ -389,11 +389,14 @@ export default class ModalProperties extends Modal {
             propertyTitle.classList.add('toggle-label');
 
             const item = propertyValue;
-            item.style.cursor = 'pointer';
-
             const toggleInput = item.querySelector('.toggle-input');
+            const isDisabled = toggleInput.disabled;
+
+            // Set cursor based on disabled state
+            item.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+
             item.addEventListener('click', (e) => {
-                if (e.target !== toggleInput) {
+                if (e.target !== toggleInput && !toggleInput.disabled) {
                     e.preventDefault();
                     toggleInput.checked = !toggleInput.checked;
                     toggleInput.dispatchEvent(
@@ -404,8 +407,10 @@ export default class ModalProperties extends Modal {
             propertyRow.append(propertyValue);
             propertyRow.append(propertyTitle);
 
-            propertyTitle.style.cursor = 'pointer';
+            // Set cursor based on disabled state
+            propertyTitle.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
             propertyTitle.addEventListener('click', (e) => {
+                if (toggleInput.disabled) return;
                 e.preventDefault();
                 toggleInput.checked = !toggleInput.checked;
                 toggleInput.dispatchEvent(
