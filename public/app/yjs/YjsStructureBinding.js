@@ -490,6 +490,9 @@ class YjsStructureBinding {
         }
       }, this.manager.getDoc().clientID);
 
+      // Ensure first page is visible after move
+      this._ensureFirstPageVisible();
+
       Logger.log(`[YjsStructureBinding] Moved page ${pageId} to parent ${normalizedParentId}, index ${newIndex}`);
       return true;
     } catch (error) {
@@ -586,6 +589,9 @@ class YjsStructureBinding {
       previous.pageMap.set('order', tempOrder);
     }, this.manager.getDoc().clientID);
 
+    // Ensure first page is visible after move
+    this._ensureFirstPageVisible();
+
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} up (swapped with ${previous.id})`);
     return true;
   }
@@ -613,6 +619,9 @@ class YjsStructureBinding {
       current.pageMap.set('order', next.order);
       next.pageMap.set('order', tempOrder);
     }, this.manager.getDoc().clientID);
+
+    // Ensure first page is visible after move
+    this._ensureFirstPageVisible();
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} down (swapped with ${next.id})`);
     return true;
@@ -661,6 +670,9 @@ class YjsStructureBinding {
         }
       }
     }, this.manager.getDoc().clientID);
+
+    // Ensure first page is visible after move
+    this._ensureFirstPageVisible();
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} left (to parent ${grandparentId})`);
     return true;
@@ -768,6 +780,9 @@ class YjsStructureBinding {
         }
       }
     }, this.manager.getDoc().clientID);
+
+    // Ensure first page is visible after move
+    this._ensureFirstPageVisible();
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} to target ${targetId}`);
     return true;
@@ -2242,6 +2257,64 @@ class YjsStructureBinding {
     return rootPages[0].id === pageId;
   }
 
+  /**
+   * Notify user that first page visibility cannot be disabled
+   * @private
+   */
+  _notifyFirstPageVisibilityProtected() {
+    if (typeof window !== 'undefined' && window.eXeLearning?.app?.toasts) {
+      window.eXeLearning.app.toasts.createToast({
+        title: typeof _ === 'function' ? _('Visible in export') : 'Visible in export',
+        body: typeof _ === 'function'
+          ? _('The first page is always visible in the export')
+          : 'The first page is always visible in the export',
+        icon: 'info',
+        remove: 4000
+      });
+    }
+  }
+
+  /**
+   * Ensures the first page is visible. Called after page movements.
+   * If the new first page was hidden, it forces visibility to true.
+   * @private
+   */
+  _ensureFirstPageVisible() {
+    const navigation = this.manager.getNavigation();
+    if (!navigation || navigation.length === 0) return;
+
+    // Find the first root page by order
+    let firstPage = null;
+    let firstOrder = Infinity;
+
+    for (let i = 0; i < navigation.length; i++) {
+      const page = navigation.get(i);
+      if (!page.get('parentId')) {
+        const order = page.get('order') ?? i;
+        if (order < firstOrder) {
+          firstOrder = order;
+          firstPage = page;
+        }
+      }
+    }
+
+    if (!firstPage) return;
+
+    // Check if visibility is false
+    const props = firstPage.get('properties');
+    if (props && typeof props.get === 'function') {
+      const visibility = props.get('visibility');
+      if (visibility === false) {
+        // Force visibility to true
+        this.manager.getDoc().transact(() => {
+          props.set('visibility', true);
+        });
+        // Notify user
+        this._notifyFirstPageVisibilityProtected();
+      }
+    }
+  }
+
   updatePageProperties(pageId, properties) {
     const pageMap = this.getPageMap(pageId);
     if (!pageMap) {
@@ -2261,6 +2334,7 @@ class YjsStructureBinding {
       if (visibilityValue === false || visibilityValue === 'false' || visibilityValue === '0') {
         Logger.log(`[YjsStructureBinding] Ignoring visibility=false for first page ${pageId}`);
         delete properties.visibility;
+        this._notifyFirstPageVisibilityProtected();
       }
     }
 

@@ -313,6 +313,361 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('isFirstPage', () => {
+    it('returns true for first root page by order', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const pageMap2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Second Page',
+        parentId: null,
+        order: 1,
+      });
+      pageMap2.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap2]);
+
+      expect(binding.isFirstPage('page-1')).toBe(true);
+    });
+
+    it('returns false for non-first root page', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const pageMap2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Second Page',
+        parentId: null,
+        order: 1,
+      });
+      pageMap2.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap2]);
+
+      expect(binding.isFirstPage('page-2')).toBe(false);
+    });
+
+    it('returns false for child pages', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const childPage = createYMap({
+        id: 'child-1',
+        pageId: 'child-1',
+        pageName: 'Child Page',
+        parentId: 'page-1',
+        order: 0,
+      });
+      childPage.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([childPage]);
+
+      expect(binding.isFirstPage('child-1')).toBe(false);
+    });
+
+    it('handles empty navigation', () => {
+      expect(binding.isFirstPage('non-existent')).toBe(false);
+    });
+
+    it('handles pages without explicit order (uses index)', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        // No order set
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const pageMap2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Second Page',
+        parentId: null,
+        // No order set
+      });
+      pageMap2.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap2]);
+
+      // First page in array should be considered first page
+      expect(binding.isFirstPage('page-1')).toBe(true);
+      expect(binding.isFirstPage('page-2')).toBe(false);
+    });
+
+    it('correctly identifies first page when orders are not sequential', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'Page 1',
+        parentId: null,
+        order: 5,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const pageMap2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Page 2',
+        parentId: null,
+        order: 2,  // Lower order, so this is the first page
+      });
+      pageMap2.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap2]);
+
+      expect(binding.isFirstPage('page-2')).toBe(true);
+      expect(binding.isFirstPage('page-1')).toBe(false);
+    });
+  });
+
+  describe('updatePageProperties - first page visibility protection', () => {
+    let mockToast;
+
+    beforeEach(() => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      const pageMap2 = createYMap({
+        id: 'page-2',
+        pageId: 'page-2',
+        pageName: 'Second Page',
+        parentId: null,
+        order: 1,
+      });
+      pageMap2.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap2]);
+
+      // Mock the toast system
+      mockToast = mock(() => undefined);
+      window.eXeLearning = {
+        app: {
+          toasts: {
+            createToast: mockToast,
+          },
+        },
+      };
+      window._ = mock((key) => key);
+    });
+
+    it('ignores visibility=false for first page', () => {
+      binding.updatePageProperties('page-1', { visibility: false });
+
+      const page = binding.getPage('page-1');
+      // visibility should not be set to false
+      expect(page.properties?.visibility).not.toBe(false);
+    });
+
+    it('ignores visibility="false" string for first page', () => {
+      binding.updatePageProperties('page-1', { visibility: 'false' });
+
+      const page = binding.getPage('page-1');
+      expect(page.properties?.visibility).not.toBe(false);
+    });
+
+    it('ignores visibility="0" for first page', () => {
+      binding.updatePageProperties('page-1', { visibility: '0' });
+
+      const page = binding.getPage('page-1');
+      expect(page.properties?.visibility).not.toBe(false);
+    });
+
+    it('allows visibility=true for first page', () => {
+      binding.updatePageProperties('page-1', { visibility: true });
+
+      const page = binding.getPage('page-1');
+      expect(page.properties?.visibility).toBe(true);
+    });
+
+    it('allows visibility=false for non-first pages', () => {
+      binding.updatePageProperties('page-2', { visibility: false });
+
+      const page = binding.getPage('page-2');
+      expect(page.properties?.visibility).toBe(false);
+    });
+
+    it('shows toast when visibility=false is ignored for first page', () => {
+      binding.updatePageProperties('page-1', { visibility: false });
+
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        icon: 'info',
+      }));
+    });
+
+    it('does not show toast when setting other properties for first page', () => {
+      binding.updatePageProperties('page-1', { hidePageTitle: true });
+
+      expect(mockToast).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_ensureFirstPageVisible', () => {
+    let mockToast;
+
+    beforeEach(() => {
+      mockToast = mock(() => undefined);
+      window.eXeLearning = {
+        app: {
+          toasts: {
+            createToast: mockToast,
+          },
+        },
+      };
+      window._ = mock((key) => key);
+    });
+
+    it('sets visibility to true if first page was hidden', () => {
+      // Create a page with visibility=false
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      const props = new window.Y.Map();
+      props.set('visibility', false);
+      pageMap.set('properties', props);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      // Call the method
+      binding._ensureFirstPageVisible();
+
+      // Check visibility is now true
+      expect(props.get('visibility')).toBe(true);
+    });
+
+    it('shows toast when first page visibility is corrected', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      const props = new window.Y.Map();
+      props.set('visibility', false);
+      pageMap.set('properties', props);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      binding._ensureFirstPageVisible();
+
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        icon: 'info',
+      }));
+    });
+
+    it('does nothing if first page is already visible', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      const props = new window.Y.Map();
+      props.set('visibility', true);
+      pageMap.set('properties', props);
+      mockDocManager.getNavigation().push([pageMap]);
+
+      binding._ensureFirstPageVisible();
+
+      expect(mockToast).not.toHaveBeenCalled();
+    });
+
+    it('does nothing if first page has no properties', () => {
+      const pageMap = createYMap({
+        id: 'page-1',
+        pageId: 'page-1',
+        pageName: 'First Page',
+        parentId: null,
+        order: 0,
+      });
+      pageMap.set('blocks', createYArray());
+      mockDocManager.getNavigation().push([pageMap]);
+
+      binding._ensureFirstPageVisible();
+
+      expect(mockToast).not.toHaveBeenCalled();
+    });
+
+    it('handles empty navigation', () => {
+      // No pages in navigation
+      binding._ensureFirstPageVisible();
+
+      // Should not throw and not call toast
+      expect(mockToast).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_notifyFirstPageVisibilityProtected', () => {
+    it('calls toast with correct parameters', () => {
+      const mockToast = mock(() => undefined);
+      window.eXeLearning = {
+        app: {
+          toasts: {
+            createToast: mockToast,
+          },
+        },
+      };
+      window._ = mock((key) => key);
+
+      binding._notifyFirstPageVisibilityProtected();
+
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Visible in export',
+        body: 'The first page is always visible in the export',
+        icon: 'info',
+        remove: 4000,
+      });
+    });
+
+    it('does nothing when toast system is not available', () => {
+      window.eXeLearning = {};
+
+      // Should not throw
+      binding._notifyFirstPageVisibilityProtected();
+    });
+
+    it('does nothing when window.eXeLearning is undefined', () => {
+      delete window.eXeLearning;
+
+      // Should not throw
+      binding._notifyFirstPageVisibilityProtected();
+    });
+  });
+
   describe('movePage', () => {
     beforeEach(() => {
       ['Page 1', 'Page 2', 'Page 3'].forEach((name, i) => {

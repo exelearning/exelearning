@@ -11253,6 +11253,10 @@
         <source>Visible in export</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="fpv.info" resname="The first page is always visible in the export">
+        <source>The first page is always visible in the export</source>
+        <target></target>
+      </trans-unit>
       <trans-unit id="fE2HH6r" resname="Visibility type">
         <source>Visibility type</source>
         <target></target>

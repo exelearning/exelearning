@@ -402,6 +402,9 @@ export default class ModalProperties extends Modal {
                     toggleInput.dispatchEvent(
                         new Event('change', { bubbles: true })
                     );
+                } else if (item.getAttribute('data-first-page-visibility') === 'true') {
+                    // Show toast for first page visibility protection
+                    this._showFirstPageVisibilityToast();
                 }
             });
             propertyRow.append(propertyValue);
@@ -497,7 +500,8 @@ export default class ModalProperties extends Modal {
                     input.checked = true;
                     input.disabled = true;
                     input.setAttribute('aria-disabled', 'true');
-                    item.setAttribute('title', _('First page is always visible in export'));
+                    // Mark item for toast notification on click
+                    item.setAttribute('data-first-page-visibility', 'true');
                 }
 
                 const visual = document.createElement('span');
@@ -724,5 +728,20 @@ export default class ModalProperties extends Modal {
             newNode,
             referenceNode.nextSibling
         );
+    }
+
+    /**
+     * Show toast notification for first page visibility protection
+     * @private
+     */
+    _showFirstPageVisibilityToast() {
+        if (window.eXeLearning?.app?.toasts) {
+            window.eXeLearning.app.toasts.createToast({
+                title: _('Visible in export'),
+                body: _('The first page is always visible in the export'),
+                icon: 'info',
+                remove: 4000
+            });
+        }
     }
 }

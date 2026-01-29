@@ -171,9 +171,153 @@ describe('ModalProperties', () => {
         p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' }
       };
       modal.setBodyElement(modal.makeBodyElement(properties));
-      
+
       await modal.saveAction();
       expect(mockNode.apiSaveProperties).toHaveBeenCalled();
+    });
+  });
+
+  describe('first page visibility toggle', () => {
+    it('disables visibility checkbox for first page', () => {
+      modal.isFirstPage = true;
+      const prop = { type: 'checkbox', value: 'true' };
+      const el = modal.makeRowValueElement('id', 'visibility', prop);
+      const input = el.querySelector('input');
+      expect(input.disabled).toBe(true);
+      expect(input.checked).toBe(true);
+    });
+
+    it('keeps visibility checkbox enabled for non-first page', () => {
+      modal.isFirstPage = false;
+      const prop = { type: 'checkbox', value: 'false' };
+      const el = modal.makeRowValueElement('id', 'visibility', prop);
+      const input = el.querySelector('input');
+      expect(input.disabled).toBe(false);
+      expect(input.checked).toBe(false);
+    });
+
+    it('sets data-first-page-visibility attribute when disabled', () => {
+      modal.isFirstPage = true;
+      const prop = { type: 'checkbox', value: 'true' };
+      const el = modal.makeRowValueElement('id', 'visibility', prop);
+      expect(el.getAttribute('data-first-page-visibility')).toBe('true');
+    });
+
+    it('does not set data-first-page-visibility for non-visibility checkbox', () => {
+      modal.isFirstPage = true;
+      const prop = { type: 'checkbox', value: 'false' };
+      const el = modal.makeRowValueElement('id', 'otherProperty', prop);
+      expect(el.getAttribute('data-first-page-visibility')).toBeNull();
+    });
+
+    it('sets cursor to not-allowed when toggle is disabled', () => {
+      modal.isFirstPage = true;
+      const properties = {
+        visibility: { title: 'Visibility', type: 'checkbox', value: 'true', category: 'C1' }
+      };
+      const body = modal.makeBodyElement(properties);
+      const item = body.querySelector('.toggle-item');
+      expect(item.style.cursor).toBe('not-allowed');
+    });
+
+    it('does not toggle checkbox when clicking disabled item', () => {
+      modal.isFirstPage = true;
+      const properties = {
+        visibility: { title: 'Visibility', type: 'checkbox', value: 'true', category: 'C1' }
+      };
+      modal.setBodyElement(modal.makeBodyElement(properties));
+      const input = modal.modalElementBody.querySelector('.toggle-input');
+      const item = modal.modalElementBody.querySelector('.toggle-item');
+
+      // Simulate click
+      item.click();
+
+      // Should still be checked (disabled, so click has no effect on toggle)
+      expect(input.checked).toBe(true);
+    });
+
+    it('shows toast when clicking disabled visibility toggle for first page', () => {
+      const mockToast = vi.fn();
+      window.eXeLearning = {
+        app: {
+          common: {
+            generateId: vi.fn().mockReturnValue('123'),
+          },
+          toasts: {
+            createToast: mockToast,
+          },
+        },
+      };
+
+      modal.isFirstPage = true;
+      const properties = {
+        visibility: { title: 'Visibility', type: 'checkbox', value: 'true', category: 'C1' }
+      };
+      modal.setBodyElement(modal.makeBodyElement(properties));
+      const item = modal.modalElementBody.querySelector('.toggle-item');
+
+      // Simulate click
+      item.click();
+
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({
+        icon: 'info',
+      }));
+    });
+  });
+
+  describe('show with isFirstPage', () => {
+    it('sets isFirstPage from data parameter', () => {
+      vi.useFakeTimers();
+      modal.show({ isFirstPage: true, properties: {} });
+      vi.advanceTimersByTime(500);
+      expect(modal.isFirstPage).toBe(true);
+      vi.useRealTimers();
+    });
+
+    it('defaults isFirstPage to false when not provided', () => {
+      vi.useFakeTimers();
+      modal.show({ properties: {} });
+      vi.advanceTimersByTime(500);
+      expect(modal.isFirstPage).toBe(false);
+      vi.useRealTimers();
+    });
+  });
+
+  describe('_showFirstPageVisibilityToast', () => {
+    it('calls toast with correct parameters', () => {
+      const mockToast = vi.fn();
+      window.eXeLearning = {
+        app: {
+          common: {
+            generateId: vi.fn().mockReturnValue('123'),
+          },
+          toasts: {
+            createToast: mockToast,
+          },
+        },
+      };
+
+      modal._showFirstPageVisibilityToast();
+
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Visible in export',
+        body: 'The first page is always visible in the export',
+        icon: 'info',
+        remove: 4000,
+      });
+    });
+
+    it('does nothing when toast system is not available', () => {
+      window.eXeLearning = {
+        app: {
+          common: {
+            generateId: vi.fn().mockReturnValue('123'),
+          },
+        },
+      };
+
+      // Should not throw
+      expect(() => modal._showFirstPageVisibilityToast()).not.toThrow();
     });
   });
 });
