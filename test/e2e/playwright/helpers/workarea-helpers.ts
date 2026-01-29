@@ -1367,18 +1367,8 @@ export async function exportPage(page: Page, nodeId: string): Promise<Download> 
  * @param page - Playwright page
  */
 export async function addTextIdevice(page: Page): Promise<void> {
-    // Check if root page is selected - fail with clear error
-    const isRootSelected = await page.evaluate(() => {
-        const selected = document.querySelector('.nav-element.selected');
-        return selected?.getAttribute('nav-id') === 'root';
-    });
-
-    if (isRootSelected) {
-        throw new Error(
-            'addTextIdevice: Cannot add iDevice to root page. ' +
-                'Call selectFirstPage(page) before addTextIdevice() to select a non-root page.',
-        );
-    }
+    // Ensure a non-root page is selected first (like addIdevice does)
+    await selectFirstPage(page);
 
     // Expand "Information and presentation" category
     const infoCategory = page
@@ -1522,8 +1512,10 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     const iconBtn = block.locator('header.box-head button.box-icon').first();
     await iconBtn.click();
 
-    // 2. Wait for icon picker modal
-    await page.waitForSelector('.option-block-icon', { timeout: 10000 });
+    // 2. Wait for icon picker modal to be shown and icons to be loaded
+    await page.locator('.modal.show').waitFor({ state: 'visible', timeout: 10000 });
+    // Wait for icons to be attached (using waitForSelector which waits for DOM attachment by default)
+    await page.waitForSelector('.option-block-icon', { state: 'attached', timeout: 10000 });
 
     // 3. Verify the icon at the requested index exists
     const iconCount = await page.locator('.option-block-icon').count();
@@ -1546,9 +1538,37 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     const saveBtn = page.locator('.modal.show button.btn.button-primary').first();
     await saveBtn.click();
 
-    // 6. Wait for modal to close
-    await page.waitForFunction(() => !document.querySelector('.modal.show .option-block-icon'), { timeout: 5000 });
-    await page.waitForTimeout(500);
+    // 6. Wait for modal to close completely
+    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 });
+    // Small delay to ensure Bootstrap modal transition completes
+    await page.waitForTimeout(300);
+
+    // 7. Wait for icon to be fully rendered in the DOM
+    if (iconIndex === 0) {
+        // Wait for empty icon state (SVG placeholder)
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const iconBtn = block.querySelector('header.box-head button.box-icon');
+                return iconBtn?.classList.contains('exe-no-icon') || iconBtn?.querySelector('svg') !== null;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    } else {
+        // Wait for icon image to be loaded
+        await page.waitForFunction(
+            idx => {
+                const block = document.querySelectorAll('#node-content article.box')[idx] as HTMLElement;
+                if (!block) return false;
+                const img = block.querySelector('header.box-head button.box-icon img') as HTMLImageElement;
+                return img?.complete && img.naturalWidth > 0;
+            },
+            blockIndex,
+            { timeout: 5000 },
+        );
+    }
 }
 
 /**
@@ -1855,4 +1875,104 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
         },
         { timeout: 20000 },
     );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROJECT DOWNLOAD/EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Download project as ELPX file.
+ * In static mode, clicks the save button which triggers a download (saveButton.js calls downloadProjectEvent).
+ * In online mode, enables advanced mode, opens File menu, navigates nested dropdown, and clicks Download ELPX.
+ *
+ * @param page - Playwright page
+ * @returns The Download object for the exported file
+ */
+export async function downloadProject(page: Page): Promise<Download> {
+    // Close any open dialogs or modals first
+    const tinyMceDialog = page.locator('.tox-dialog');
+    if (await tinyMceDialog.isVisible().catch(() => false)) {
+        const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
+        if (await cancelBtn.isVisible().catch(() => false)) {
+            await cancelBtn.click();
+            await page.waitForTimeout(300);
+        }
+    }
+
+    const fileManagerModal = page.locator('#modalFileManager');
+    if (await fileManagerModal.isVisible().catch(() => false)) {
+        const closeBtn = fileManagerModal.locator('.btn-close, button[data-bs-dismiss="modal"]').first();
+        if (await closeBtn.isVisible().catch(() => false)) {
+            await closeBtn.click();
+            await fileManagerModal.waitFor({ state: 'hidden', timeout: 5000 });
+        }
+    }
+
+    // Detect static mode (no remote storage capability)
+    const isStaticMode = await page.evaluate(() => {
+        const capabilities = (window as any).eXeLearning?.app?.capabilities;
+        return capabilities && !capabilities.storage?.remote;
+    });
+
+    // Wait for download event
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+
+    if (isStaticMode) {
+        // STATIC MODE: The save button triggers download in offline mode
+        // (see saveButton.js: downloadProjectEvent() is called when isOfflineInstallation is true)
+        const saveBtn = page.locator('#head-top-save-button');
+        await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await saveBtn.click();
+    } else {
+        // ONLINE MODE: Navigate through File menu dropdown
+        // Enable advanced mode to make download button visible
+        await page.evaluate(() => {
+            document.querySelector('body')?.setAttribute('mode', 'advanced');
+        });
+        await page.waitForTimeout(300);
+
+        // Open File menu dropdown
+        await page.locator('#dropdownFile').click();
+        await page.waitForTimeout(300);
+
+        // Click "Download as" submenu to open nested dropdown (Bootstrap dropend)
+        const downloadAsSubmenu = page.locator('#dropdownExportAs').first();
+        await downloadAsSubmenu.waitFor({ state: 'visible', timeout: 5000 });
+        await downloadAsSubmenu.click();
+        await page.waitForTimeout(300);
+
+        // Click Download project as ELPX
+        const downloadBtn = page.locator('#navbar-button-download-project').first();
+        await downloadBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await downloadBtn.click();
+    }
+
+    return await downloadPromise;
+}
+
+/**
+ * List filenames inside a ZIP buffer.
+ * Uses fflate to parse the ZIP and return file names.
+ *
+ * @param buffer - The ZIP file buffer
+ * @returns Array of file paths in the ZIP
+ */
+export async function listZipContents(buffer: Buffer): Promise<string[]> {
+    const fflate = await import('fflate');
+    const data = buffer instanceof Buffer ? new Uint8Array(buffer) : buffer;
+    const unzipped = fflate.unzipSync(data);
+    return Object.keys(unzipped);
+}
+
+/**
+ * Check if a ZIP contains a file with the given name (or path ending with name).
+ *
+ * @param buffer - The ZIP file buffer
+ * @param filename - The filename to search for
+ * @returns true if file exists in ZIP
+ */
+export async function zipContainsFile(buffer: Buffer, filename: string): Promise<boolean> {
+    const files = await listZipContents(buffer);
+    return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
 }

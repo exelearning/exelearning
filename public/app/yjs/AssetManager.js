@@ -2529,6 +2529,26 @@ class AssetManager {
             }
           }
         }
+
+        // =====================================================================
+        // FIX FOR v3.0 ELP BUG: custom/ folder asset detection
+        //
+        // In eXeLearning v3.0 (PHP/Symfony), the File Manager stored user-uploaded
+        // assets in the custom/ folder. These files need to be detected during import.
+        //
+        // IMPORTANT: There's also a filename normalization bug where:
+        // - Files in custom/ keep original names with SPACES (e.g., "11 A1.png")
+        // - XML references use UNDERSCORES (e.g., "11_A1.png")
+        // This is handled by adding normalized path mappings below.
+        // =====================================================================
+        if (!shouldInclude) {
+          const isCustomFolderFile = relativePath.startsWith('custom/') &&
+                                     !relativePath.endsWith('/');
+          if (isCustomFolderFile) {
+            shouldInclude = true;
+            Logger.log(`[AssetManager] Detected custom/ folder asset: ${relativePath}`);
+          }
+        }
       }
 
       if (shouldInclude) {
@@ -2614,6 +2634,19 @@ class AssetManager {
         await this.putAsset(asset);
         assetMap.set(path, assetId);
 
+        // =====================================================================
+        // FIX FOR v3.0 ELP BUG: Normalized filename mapping
+        //
+        // v3.0 had a bug where files uploaded via File Manager kept spaces in
+        // filenames on disk (e.g., "11 A1.png") but XML references used
+        // underscores (e.g., "11_A1.png"). We add BOTH mappings so lookups work.
+        // =====================================================================
+        if (path.startsWith('custom/') && path.includes(' ')) {
+          const normalizedPath = path.replace(/ /g, '_');
+          assetMap.set(normalizedPath, assetId);
+          Logger.log(`[AssetManager] Added normalized mapping: ${normalizedPath} → ${assetId.substring(0, 8)}...`);
+        }
+
         Logger.log(`[AssetManager] Extracted ${path} → ${assetId.substring(0, 8)}... (folder: ${folderPath || 'root'})`);
       } catch (e) {
         console.error(`[AssetManager] Failed to extract ${path}:`, e);
@@ -2669,6 +2702,38 @@ class AssetManager {
         for (const [path, assetId] of assetMap.entries()) {
           if (path.endsWith(shortPath)) {
             return this.getAssetUrl(assetId, pathParts[pathParts.length - 1]);
+          }
+        }
+      }
+
+      // =====================================================================
+      // FIX FOR v3.0 ELP BUG: Try custom/ folder lookup
+      //
+      // v3.0 XML references like "uuid/11_A1.png" may actually map to
+      // "custom/11 A1.png" (with space). Try multiple lookup strategies.
+      // =====================================================================
+
+      // Strategy 1: Try with custom/ prefix
+      const customPath = 'custom/' + filename;
+      if (assetMap.has(customPath)) {
+        return this.getAssetUrl(assetMap.get(customPath), filename);
+      }
+
+      // Strategy 2: Try denormalized (underscores → spaces) in custom/
+      const denormalizedFilename = filename.replace(/_/g, ' ');
+      if (denormalizedFilename !== filename) {
+        const customDenormalized = 'custom/' + denormalizedFilename;
+        if (assetMap.has(customDenormalized)) {
+          return this.getAssetUrl(assetMap.get(customDenormalized), denormalizedFilename);
+        }
+      }
+
+      // Strategy 3: Search custom/ folder for matching denormalized filename
+      for (const [mapPath, assetId] of assetMap.entries()) {
+        if (mapPath.startsWith('custom/')) {
+          const mapFilename = mapPath.split('/').pop();
+          if (mapFilename === denormalizedFilename || mapFilename === filename) {
+            return this.getAssetUrl(assetId, mapFilename);
           }
         }
       }

@@ -3101,6 +3101,54 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('random-folder/document.pdf')).toBe(false);
     });
   });
+
+  describe('v3.0 ELP custom/ folder support', () => {
+    it('extracts assets from custom/ folder', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+        'custom/photo.jpg': new Uint8Array([5, 6, 7, 8]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.has('custom/image.png')).toBe(true);
+      expect(assetMap.has('custom/photo.jpg')).toBe(true);
+    });
+
+    it('creates normalized filename mapping for files with spaces', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/11 A1.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      // Both the original path (with space) and normalized path (with underscore) should exist
+      expect(assetMap.has('custom/11 A1.png')).toBe(true);
+      expect(assetMap.has('custom/11_A1.png')).toBe(true);
+      // Both mappings should point to the same asset ID
+      expect(assetMap.get('custom/11 A1.png')).toBe(assetMap.get('custom/11_A1.png'));
+    });
+
+    it('does not create normalized mapping for files without spaces', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      // Only original path should exist, no underscore variant since there are no spaces
+      expect(assetMap.has('custom/image.png')).toBe(true);
+      expect(assetMap.size).toBe(1);
+    });
+
+    it('ignores custom/ directory entries (not files)', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/': new Uint8Array([]), // directory entry
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.has('custom/')).toBe(false);
+      expect(assetMap.has('custom/image.png')).toBe(true);
+    });
+  });
 });
 
 describe('convertContextPathToAssetRefs', () => {
@@ -3199,6 +3247,104 @@ describe('convertContextPathToAssetRefs', () => {
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
     expect(result).toBe(html);
     expect(console.warn).toHaveBeenCalled();
+  });
+
+  describe('v3.0 ELP custom/ folder support', () => {
+    it('finds asset in custom/ folder by filename', () => {
+      const assetMap = new Map([['custom/image.png', 'uuid-custom']]);
+      const html = '<img src="{{context_path}}/someid/image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toBe('<img src="asset://uuid-custom.png">');
+    });
+
+    it('finds custom/ asset when XML uses underscores but file has spaces', () => {
+      // Simulate the v3.0 bug: file stored as "11 A1.png" but XML references "11_A1.png"
+      const assetMap = new Map([
+        ['custom/11 A1.png', 'uuid-space'],
+        ['custom/11_A1.png', 'uuid-space'], // normalized mapping added during extraction
+      ]);
+      const html = '<img src="{{context_path}}/20251211173343CEGCIN/11_A1.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-space');
+    });
+
+    it('finds custom/ asset via denormalization when no normalized mapping exists', () => {
+      // Test the denormalization fallback (underscores → spaces)
+      const assetMap = new Map([
+        ['custom/file with spaces.png', 'uuid-denorm'],
+      ]);
+      const html = '<img src="{{context_path}}/someid/file_with_spaces.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-denorm');
+    });
+
+    it('searches custom/ folder for matching filename', () => {
+      const assetMap = new Map([
+        ['custom/my image.jpg', 'uuid-search'],
+      ]);
+      const html = '<img src="{{context_path}}/randomuuid/my_image.jpg">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-search');
+    });
+
+    it('finds asset in custom/ subfolder via loop when denormalized filename matches', () => {
+      // This tests Strategy 3: files in SUBFOLDERS of custom/
+      // Strategy 1 (custom/ + filename) won't match because actual path has subfolder
+      // Strategy 2 (custom/ + denormalized) won't match for same reason
+      // Strategy 3 loops through all custom/ entries and finds the match
+      const assetMap = new Map([
+        ['custom/2024/my image.png', 'uuid-subfolder'],
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/my_image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-subfolder');
+    });
+
+    it('finds asset in custom/ deep subfolder via Strategy 3 loop with denormalized match', () => {
+      // Tests Strategy 3 with deeply nested subfolder - ensures loop iterates through entries
+      // The space/underscore difference prevents earlier strategies from matching
+      const assetMap = new Map([
+        ['custom/year/month/day/my file.png', 'uuid-deep'],
+      ]);
+      const html = '<img src="{{context_path}}/uuid123/my_file.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-deep');
+    });
+
+    it('iterates through mixed entries in Strategy 3 loop and only matches custom/', () => {
+      // Tests that Strategy 3 loop correctly:
+      // 1. Iterates through entries (including non-custom/)
+      // 2. Only matches entries that start with 'custom/'
+      // 3. Matches via denormalized filename comparison
+      const assetMap = new Map([
+        ['resources/wrong file.png', 'uuid-wrong1'],       // not custom/, should skip
+        ['other/wrong file.png', 'uuid-wrong2'],           // not custom/, should skip
+        ['custom/2024/target file.png', 'uuid-target'],    // custom/, denormalized match
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/target_file.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-target');
+    });
+
+    it('skips non-custom/ entries in Strategy 3 loop and returns null when no match', () => {
+      // Ensure the loop only considers custom/ entries and returns null if none match
+      spyOn(console, 'warn').mockImplementation(() => {});
+      const assetMap = new Map([
+        ['resources/my image.png', 'uuid-resources'], // not in custom/
+        ['other/my image.png', 'uuid-other'], // not in custom/
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/my_image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      // Should NOT find a match since neither entry is in custom/
+      expect(result).toBe(html);
+      expect(console.warn).toHaveBeenCalled();
+    });
   });
 });
 
