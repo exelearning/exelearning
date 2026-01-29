@@ -38,7 +38,74 @@ const outputDir = path.join(projectRoot, 'dist/static');
 // Read version from environment variable or package.json
 // VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const buildVersion = process.env.VERSION || process.env.APP_VERSION || `v${packageJson.version}`;
+
+// =============================================================================
+// VERSION RESOLUTION
+// =============================================================================
+// The version is resolved automatically based on the input type:
+// - Semver tags (v3.0.2, v3.0.2-rc1) → used directly for releases
+// - "main"/"master" → v0.0.0-nightly-YYYYMMDDHHMM for nightly builds
+// - Other strings (branch names, PR numbers) → v0.0.0-<name>-YYYYMMDDHHMM for previews
+//
+// This allows CI/CD to simply pass VERSION=main or VERSION=pr123 without
+// generating the full version string, keeping workflow files simple.
+// =============================================================================
+
+/**
+ * Check if a string is a valid semver version (with optional prerelease)
+ * Matches: v1.0.0, v1.0.0-rc1, v1.0.0-beta.2, v1.0.0-alpha+build123
+ */
+export function isSemver(version: string): boolean {
+    // Semver regex: optional v + major.minor.patch + optional prerelease/build metadata
+    return /^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/.test(version);
+}
+
+/**
+ * Generate date string for version: YYYYMMDDHHMM
+ */
+function getDateString(): string {
+    const now = new Date();
+    return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Resolve version based on input type:
+ * - Semver (vX.X.X, vX.X.X-rc1) → use directly
+ * - "main" or "master" → v0.0.0-nightly-YYYYMMDDHHMM
+ * - Other (branch name) → v0.0.0-<branch>-YYYYMMDDHHMM
+ */
+export function resolveVersion(input: string | undefined): string {
+    // Default to package.json version if no input
+    if (!input) {
+        return `v${packageJson.version}`;
+    }
+
+    // Semver: use directly
+    if (isSemver(input)) {
+        return input.startsWith('v') ? input : `v${input}`;
+    }
+
+    const dateStr = getDateString();
+
+    // Main branch: nightly
+    if (input === 'main' || input === 'master') {
+        return `v0.0.0-nightly-${dateStr}`;
+    }
+
+    // Other branch: include branch name
+    // Sanitize branch name (replace invalid chars with -)
+    const sanitizedBranch = input.replace(/[^a-zA-Z0-9.-]/g, '-').replace(/-+/g, '-');
+    return `v0.0.0-${sanitizedBranch}-${dateStr}`;
+}
+
+// Parse --version= from CLI arguments (e.g., --version=main)
+const versionArg = process.argv.find(arg => arg.startsWith('--version='))?.split('=')[1];
+const versionInput = versionArg || process.env.VERSION || process.env.APP_VERSION;
+const buildVersion = resolveVersion(versionInput);
+
+// Log version resolution for CI/CD debugging
+const versionSource = versionArg ? 'CLI' : (process.env.VERSION ? 'VERSION env' : (process.env.APP_VERSION ? 'APP_VERSION env' : 'default'));
+console.log(`[Version] Input: ${versionInput || '(none)'} (${versionSource}) → Output: ${buildVersion}`);
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
