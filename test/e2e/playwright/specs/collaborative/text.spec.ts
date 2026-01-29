@@ -2,6 +2,7 @@ import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fix
 import { waitForYjsSync, waitForTextInContent } from '../../helpers/sync-helpers';
 import { waitForLoadingScreen, waitForAppReady } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
+import { addTextIdevice, navigateToPageByTitle } from '../../helpers/workarea-helpers';
 
 /**
  * Collaborative Text iDevice Tests
@@ -17,82 +18,6 @@ import type { Page } from '@playwright/test';
  */
 async function waitForYjsBridge(page: Page): Promise<void> {
     await waitForAppReady(page);
-}
-
-/**
- * Helper to add a text iDevice from the panel
- */
-async function addTextIdeviceFromPanel(page: Page): Promise<void> {
-    // Select first PAGE node (not the root project node)
-    const pageNodeSelectors = [
-        '.nav-element-text:has-text("New page")',
-        '.nav-element-text:has-text("Nueva página")',
-        '[data-testid="nav-node-text"]',
-        '.structure-tree li .nav-element-text',
-    ];
-
-    let pageSelected = false;
-    for (const selector of pageNodeSelectors) {
-        const element = page.locator(selector).first();
-        if ((await element.count()) > 0) {
-            try {
-                await element.click({ force: true, timeout: 5000 });
-                pageSelected = true;
-                break;
-            } catch {
-                // Try next selector
-            }
-        }
-    }
-
-    if (!pageSelected) {
-        const treeItem = page.locator('#menu_structure .structure-tree li').first();
-        if ((await treeItem.count()) > 0) {
-            await treeItem.click({ force: true });
-        }
-    }
-
-    await page.waitForTimeout(1000);
-
-    // Wait for content area to be ready
-    await page
-        .waitForFunction(
-            () => {
-                const nodeContent = document.querySelector('#node-content');
-                const metadata = document.querySelector('#properties-node-content-form');
-                return nodeContent && (!metadata || !metadata.closest('.show'));
-            },
-            { timeout: 10000 },
-        )
-        .catch(() => {});
-
-    // Add text iDevice via quick button or panel
-    const quickTextButton = page
-        .locator('[data-testid="quick-idevice-text"], .quick-idevice-btn[data-idevice="text"]')
-        .first();
-    if ((await quickTextButton.count()) > 0 && (await quickTextButton.isVisible())) {
-        await quickTextButton.click();
-    } else {
-        const infoCategory = page
-            .locator('#menu_idevices .accordion-item')
-            .filter({ hasText: /Information|Información/i })
-            .locator('.accordion-button');
-
-        if ((await infoCategory.count()) > 0) {
-            const isCollapsed = await infoCategory.first().evaluate(el => el.classList.contains('collapsed'));
-            if (isCollapsed) {
-                await infoCategory.first().click();
-                await page.waitForTimeout(500);
-            }
-        }
-
-        const textIdevice = page.locator('.idevice_item[id="text"], [data-testid="idevice-text"]').first();
-        await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
-        await textIdevice.click();
-    }
-
-    // Wait for iDevice to appear
-    await page.locator('#node-content article .idevice_node.text').first().waitFor({ timeout: 15000 });
 }
 
 /**
@@ -237,7 +162,7 @@ test.describe('Collaborative Text iDevice', () => {
             await waitForYjsSync(pageB);
 
             // Client A adds a text iDevice
-            await addTextIdeviceFromPanel(pageA);
+            await addTextIdevice(pageA);
 
             // Wait for TinyMCE to be ready
             await pageA.waitForSelector('.tox-menubar', { timeout: 15000 });
@@ -307,17 +232,14 @@ test.describe('Collaborative Text iDevice', () => {
             await waitForLoadingScreen(pageA);
 
             // Client A adds a text iDevice and types content
-            await addTextIdeviceFromPanel(pageA);
+            await addTextIdevice(pageA);
             await pageA.waitForSelector('.tox-menubar', { timeout: 15000 });
 
             const uniqueText = `Text-only collaborative content ${Date.now()}`;
             await typeInTinyMCE(pageA, uniqueText);
             await saveTextIdevice(pageA);
 
-            // Wait for content to be saved to Yjs
-            await pageA.waitForTimeout(2000);
-
-            // Verify content is visible on Client A
+            // Wait for content to be visible on Client A (verifies save completed)
             await expect(pageA.locator('#node-content')).toContainText(uniqueText, { timeout: 10000 });
 
             // Client A makes project public and shares
@@ -327,17 +249,12 @@ test.describe('Collaborative Text iDevice', () => {
             await joinSharedProject(pageB, shareUrl);
             await waitForYjsSync(pageB);
 
-            // Wait for Yjs document to sync
-            await pageB.waitForTimeout(3000);
-
-            // Client B navigates to the page with the iDevice
-            const pageNode = pageB
-                .locator('.nav-element-text')
-                .filter({ hasText: /New page|Nueva página/i })
-                .first();
-            if ((await pageNode.count()) > 0) {
-                await pageNode.click({ force: true });
-                await pageB.waitForTimeout(1500);
+            // Client B navigates to the page with the iDevice using centralized helper
+            try {
+                await navigateToPageByTitle(pageB, 'New page');
+            } catch {
+                // Try Spanish version
+                await navigateToPageByTitle(pageB, 'Nueva página');
             }
 
             // Verify Client B sees the text content

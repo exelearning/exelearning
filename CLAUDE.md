@@ -312,6 +312,24 @@ import {
 - `openPreviewPanel(page)` / `getPreviewFrame(page)` - Preview operations
 - `addIdevice(page, type)` / `saveIdevice(page, id)` - iDevice operations
 
+### Running E2E Tests
+
+**Online version (dev server):**
+```bash
+bun x playwright test --project=chromium test/e2e/playwright/specs/my-test.spec.ts
+```
+
+**Static version (built app):**
+```bash
+make build-static
+bun x playwright test --project=static test/e2e/playwright/specs/my-test.spec.ts
+```
+
+**Best practices:**
+- **Always review existing E2E tests** in `test/e2e/playwright/specs/` before writing new ones
+- **Use helper functions** from `workarea-helpers.ts` to simplify tests and avoid code duplication
+- Prefer reusing patterns from similar existing tests
+
 ### UI Element Selectors
 
 ```javascript
