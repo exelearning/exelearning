@@ -96,17 +96,11 @@ test.describe('Page Properties', () => {
             project.renamePageViaYjs(firstId, 'First Page');
         });
 
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(500);
 
-        // Right-click on first page to open context menu
-        const firstPageElement = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
-        await firstPageElement.click({ button: 'right' });
-
-        // Click on Properties menu item
-        const propertiesMenuItem = page.locator('.dropdown-menu.show .dropdown-item').filter({
-            hasText: /Properties|Propiedades/i,
-        });
-        await propertiesMenuItem.click();
+        // Double-click on the first page text to open properties modal
+        const firstPageText = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
+        await firstPageText.dblclick();
 
         // Wait for properties modal
         await page.waitForSelector('#modalProperties.show', { state: 'visible', timeout: 10000 });
@@ -121,11 +115,13 @@ test.describe('Page Properties', () => {
         await expect(visibilityCheckbox).toBeChecked();
 
         // Verify the toggle item has a title attribute explaining why it's disabled
-        const toggleItem = page.locator('#modalProperties input[property="visibility"]').locator('xpath=ancestor::span[contains(@class, "toggle-item")]');
+        const toggleItem = page
+            .locator('#modalProperties input[property="visibility"]')
+            .locator('xpath=ancestor::span[contains(@class, "toggle-item")]');
         await expect(toggleItem).toHaveAttribute('title', /first page|always visible/i);
 
-        // Close the modal
-        await page.locator('#modalProperties .btn-close, #modalProperties button.close').click();
+        // Close the modal (click Cancel button which has specific test-id)
+        await page.locator('[data-testid="close-properties-button"]').click();
         await page.waitForSelector('#modalProperties', { state: 'hidden', timeout: 5000 }).catch(() => {});
     });
 
