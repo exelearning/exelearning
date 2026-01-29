@@ -1355,6 +1355,56 @@ describe('StructureNode', () => {
         });
     });
 
+    describe('isFirstPage', () => {
+        it('returns true when node is first root-level page by order', () => {
+            const node1 = new StructureNode(mockStructure, { id: 'first', order: 0 });
+            const node2 = new StructureNode(mockStructure, { id: 'second', order: 1 });
+            node1.parent = null;
+            node2.parent = null;
+
+            mockStructure.data = [node2, node1]; // Deliberately out of order in array
+
+            expect(node1.isFirstPage()).toBe(true);
+            expect(node2.isFirstPage()).toBe(false);
+        });
+
+        it('returns false for child pages even with lowest order', () => {
+            const node1 = new StructureNode(mockStructure, { id: 'root-page', order: 1 });
+            const node2 = new StructureNode(mockStructure, { id: 'child-page', order: 0 });
+            node1.parent = null;
+            node2.parent = 'root-page';
+
+            mockStructure.data = [node1, node2];
+
+            expect(node1.isFirstPage()).toBe(true);
+            expect(node2.isFirstPage()).toBe(false);
+        });
+
+        it('uses Yjs binding when available', () => {
+            mockProject._yjsEnabled = true;
+            mockProject._yjsBridge = {
+                structureBinding: {
+                    isFirstPage: mock(() => true),
+                },
+            };
+
+            const node = new StructureNode(mockStructure, { id: 'test-page' });
+            const result = node.isFirstPage();
+
+            expect(result).toBe(true);
+            expect(mockProject._yjsBridge.structureBinding.isFirstPage).toHaveBeenCalledWith('test-page');
+        });
+
+        it('falls back to structure data when Yjs not available', () => {
+            mockProject._yjsEnabled = false;
+            const node1 = new StructureNode(mockStructure, { id: 'first', order: 0 });
+            node1.parent = null;
+            mockStructure.data = [node1];
+
+            expect(node1.isFirstPage()).toBe(true);
+        });
+    });
+
     describe('showModalProperties', () => {
         it('loads properties from Yjs before showing modal', () => {
             const node = new StructureNode(mockStructure, nodeData);
@@ -1375,6 +1425,7 @@ describe('StructureNode', () => {
                 title: 'Page properties',
                 contentId: 'page-properties',
                 properties: node.properties,
+                isFirstPage: expect.any(Boolean),
             });
         });
     });
