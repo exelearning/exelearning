@@ -590,6 +590,12 @@ export default class MenuStructureCompose {
                 node.properties.visibility.value
             );
         }
+        // highlight - add class when page is highlighted
+        // Note: value can be boolean true or string 'true' depending on source (Yjs vs config)
+        const highlightValue = node.properties.highlight?.value;
+        if (highlightValue === 'true' || highlightValue === true) {
+            nodeElement.classList.add('nav-element-highlighted');
+        }
     }
 
     /* TO-DO: revert to previous version id no hyerarchy tree used. */

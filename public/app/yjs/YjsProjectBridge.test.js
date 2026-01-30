@@ -2327,6 +2327,28 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('logs warning and returns early when structureBinding is null', () => {
+      bridge.structureBinding = null;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
+    });
+
+    it('logs warning and returns early when structureBinding is undefined', () => {
+      bridge.structureBinding = undefined;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
+    });
+
     it('converts pages to legacy format', () => {
       bridge.structureBinding = {
         getPages: mock(() => [
@@ -2361,6 +2383,81 @@ describe('YjsProjectBridge', () => {
 
       // Should not throw
       bridge.syncStructureToLegacy();
+    });
+
+    it('includes page properties in legacy data', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          {
+            id: 'page-1',
+            pageName: 'Test',
+            parentId: null,
+            order: 0,
+            properties: { highlight: true, titleNode: 'Custom Title' }
+          },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toEqual({
+        highlight: { value: true },
+        titleNode: { value: 'Custom Title' }
+      });
+    });
+
+    it('handles pages without properties', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0 },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
+    });
+
+    it('handles array as properties (returns null)', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0, properties: ['not', 'an', 'object'] },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
     });
   });
 

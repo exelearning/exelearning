@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import {
     waitForAppReady,
@@ -157,6 +157,11 @@ async function editPageName(page: Page, pageIndex: number, newName: string): Pro
 // getBlockIconSrc, blockHasEmptyIcon, changeBlockIcon
 
 test.describe('Undo/Redo iDevice Title - Issue #956', () => {
+    // Skip in static mode - requires server to create projects and Yjs undo manager
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires server for project creation and Yjs undo');
+    });
+
     test('should visually update block title after undo without page reload', async ({
         authenticatedPage,
         createProject,
@@ -328,6 +333,11 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
 });
 
 test.describe('Undo/Redo Page Title - Issue #956', () => {
+    // Skip in static mode - requires server to create projects and Yjs undo manager
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires server for project creation and Yjs undo');
+    });
+
     test('should visually update page title after undo without page reload', async ({
         authenticatedPage,
         createProject,
@@ -430,6 +440,11 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
 });
 
 test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
+    // Skip in static mode - requires server to create projects and Yjs undo manager
+    test.beforeEach(async ({}, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires server for project creation and Yjs undo');
+    });
+
     test('should visually update block icon after undo without page reload', async ({
         authenticatedPage,
         createProject,

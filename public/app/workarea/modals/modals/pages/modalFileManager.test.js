@@ -40,6 +40,9 @@ describe('ModalFilemanager', () => {
         },
         modals: {
           alert: { show: vi.fn() }
+        },
+        toasts: {
+          createToast: vi.fn()
         }
       }
     };
@@ -782,7 +785,9 @@ describe('ModalFilemanager', () => {
 
       await modal.duplicateSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalledWith('Please enter a valid filename');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Please enter a valid filename', modal: true })
+      );
       expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
     });
 
@@ -799,7 +804,9 @@ describe('ModalFilemanager', () => {
 
       await modal.duplicateSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalledWith('A file with this name already exists in this folder');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'A file with this name already exists in this folder', modal: true })
+      );
       expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
     });
 
@@ -825,7 +832,9 @@ describe('ModalFilemanager', () => {
 
       await modal.duplicateSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalledWith('Could not read file');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Could not read file', modal: true })
+      );
       expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
     });
   });
@@ -1144,9 +1153,10 @@ describe('ModalFilemanager', () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: null };
       modal.assetManager.getAsset = vi.fn().mockResolvedValue(null);
       vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       await modal.extractZipAsset();
-      expect(alertSpy).toHaveBeenCalled();
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Could not read ZIP file', modal: true })
+      );
     });
 
     it('should show error if fflate is not available', async () => {
@@ -1154,9 +1164,10 @@ describe('ModalFilemanager', () => {
       vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
       const originalFflate = window.fflate;
       window.fflate = undefined;
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       await modal.extractZipAsset();
-      expect(alertSpy).toHaveBeenCalled();
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'ZIP extraction is not available', modal: true })
+      );
       window.fflate = originalFflate;
     });
 
@@ -1173,7 +1184,6 @@ describe('ModalFilemanager', () => {
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['zipdata']) };
       vi.spyOn(window, 'prompt').mockReturnValue('test');
-      vi.spyOn(window, 'alert').mockImplementation(() => {});
       modal.assetManager.insertImage = vi.fn().mockResolvedValue({ id: 'new-id' });
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
 
@@ -1192,13 +1202,14 @@ describe('ModalFilemanager', () => {
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['bad']) };
       vi.spyOn(window, 'prompt').mockReturnValue('test');
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await modal.extractZipAsset();
 
       expect(consoleSpy).toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalled();
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Failed to extract ZIP file', modal: true })
+      );
     });
 
     it('should detect ZIP by extension when mime is not set', async () => {
@@ -1927,22 +1938,24 @@ describe('ModalFilemanager', () => {
 
       it('should reject invalid folder names', async () => {
         window.prompt.mockReturnValue('invalid/name');
-        window.alert = vi.fn();
 
         await modal.createNewFolder();
 
-        expect(window.alert).toHaveBeenCalled();
+        expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+          expect.objectContaining({ modal: true })
+        );
         expect(modal.createdFolders.size).toBe(0);
       });
 
       it('should reject duplicate folder names', async () => {
         modal.folders = ['existing'];
         window.prompt.mockReturnValue('existing');
-        window.alert = vi.fn();
 
         await modal.createNewFolder();
 
-        expect(window.alert).toHaveBeenCalled();
+        expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+          expect.objectContaining({ body: 'A folder with this name already exists.', modal: true })
+        );
         expect(modal.createdFolders.size).toBe(0);
       });
 
@@ -2545,11 +2558,12 @@ describe('ModalFilemanager', () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
       window.prompt.mockReturnValue('invalid/name');
-      window.alert = vi.fn();
 
       await modal.renameSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalled();
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ modal: true })
+      );
       expect(modal.assetManager.renameFolder).not.toHaveBeenCalled();
     });
 
@@ -2594,12 +2608,13 @@ describe('ModalFilemanager', () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
       window.prompt.mockReturnValue('new-name');
-      window.alert = vi.fn();
       modal.assetManager.renameFolder.mockRejectedValue(new Error('Rename failed'));
 
       await modal.renameSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalled();
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Failed to rename folder', modal: true })
+      );
     });
   });
 
@@ -2900,15 +2915,16 @@ describe('ModalFilemanager', () => {
       modal.createdFolders = new Set();
       modal.loadAssets = vi.fn().mockResolvedValue();
       modal.showSidebarEmpty = vi.fn();
-      window.alert = vi.fn();
     });
 
-    it('should alert if no destination selected', async () => {
+    it('should show toast if no destination selected', async () => {
       modal.selectedMoveTarget = null;
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('Please select a destination folder');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Please select a destination folder', modal: true })
+      );
     });
 
     it('should hide picker if assetManager is missing', async () => {
@@ -2921,17 +2937,19 @@ describe('ModalFilemanager', () => {
       expect(modal.hideFolderPicker).toHaveBeenCalled();
     });
 
-    it('should alert if folder is already in destination', async () => {
+    it('should show toast if folder is already in destination', async () => {
       modal.selectedFolderPath = 'parent/myfolder';
       modal.selectedFolder = 'myfolder';
       modal.selectedMoveTarget = 'parent';
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('Folder is already in this location');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Folder is already in this location', modal: true })
+      );
     });
 
-    it('should alert if destination has folder with same name', async () => {
+    it('should show toast if destination has folder with same name', async () => {
       modal.selectedFolderPath = 'source/myfolder';
       modal.selectedFolder = 'myfolder';
       modal.selectedMoveTarget = 'dest';
@@ -2939,7 +2957,9 @@ describe('ModalFilemanager', () => {
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('A folder with this name already exists in the destination.');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'A folder with this name already exists in the destination.', modal: true })
+      );
     });
 
     it('should move folder successfully', async () => {
@@ -2955,14 +2975,16 @@ describe('ModalFilemanager', () => {
       expect(modal.loadAssets).toHaveBeenCalled();
     });
 
-    it('should alert if file is already in destination folder', async () => {
+    it('should show toast if file is already in destination folder', async () => {
       modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'current' };
       modal.selectedFolderPath = null;
       modal.selectedMoveTarget = 'current';
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('File is already in this folder');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'File is already in this folder', modal: true })
+      );
     });
 
     it('should move file successfully', async () => {
@@ -2986,7 +3008,9 @@ describe('ModalFilemanager', () => {
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('Failed to move folder');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Failed to move folder', modal: true })
+      );
     });
 
     it('should handle file move error', async () => {
@@ -2997,7 +3021,9 @@ describe('ModalFilemanager', () => {
 
       await modal.confirmMove();
 
-      expect(window.alert).toHaveBeenCalledWith('Failed to move file');
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Failed to move file', modal: true })
+      );
     });
 
     it('should hide picker if no asset selected when moving file', async () => {
@@ -3618,21 +3644,18 @@ describe('ModalFilemanager', () => {
       window.prompt = originalPrompt;
     });
 
-    it('should show alert when blob cannot be retrieved', async () => {
+    it('should show toast when blob cannot be retrieved', async () => {
       modal.selectedAsset = { id: 'a1', filename: 'test.jpg', mime: 'image/jpeg' };
       modal.assets = [];
 
       // No blob anywhere
       modal.assetManager.getAsset.mockResolvedValue(null);
 
-      const originalAlert = window.alert;
-      window.alert = vi.fn();
-
       await modal.duplicateSelectedAsset();
 
-      expect(window.alert).toHaveBeenCalled();
-
-      window.alert = originalAlert;
+      expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
+        expect.objectContaining({ body: 'Could not read file', modal: true })
+      );
     });
   });
 

@@ -455,7 +455,24 @@
                         }
                     }
                 }
-                > .nav-element[is-parent="true"] {
+                &.nav-element-highlighted:not(.selected) {
+                    > .nav-element-text {
+                        color: var(--brand-primary);
+                        font-weight: 600;
+                    }
+
+                    /* Icon for the highlighted element itself */
+                    .page-icon {
+                        background-image: url("images/icons/exe-page-icon-green.svg");
+                    }
+
+                    /* Children must NOT show icons */
+                    .nav-element .page-icon {
+                        background-image: none;
+                        display: none;
+                    }
+                }
+                .nav-element[is-parent="true"] {
                     > :is(.nav-element-text, .exe-icon) {
                         &:after {
                             display: none;
