@@ -735,13 +735,25 @@ export default class ModalFilemanager extends Modal {
 
         // Validate folder name
         if (!this.isValidFolderName(name)) {
-            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
         // Check if folder already exists
         if (this.folders.includes(name)) {
-            alert(_('A folder with this name already exists.'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('A folder with this name already exists.'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
             return;
         }
 
@@ -1955,7 +1967,13 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to delete folder:', err);
-                alert(_('Failed to delete folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to delete folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
@@ -1981,7 +1999,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to delete asset:', err);
-            alert(_('Failed to delete file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to delete file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2000,13 +2024,25 @@ export default class ModalFilemanager extends Modal {
 
             // Validate folder name
             if (!this.isValidFolderName(newName)) {
-                alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 5000
+                });
                 return;
             }
 
             // Check if folder with same name already exists in parent
             if (this.folders.includes(newName)) {
-                alert(_('A folder with this name already exists.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A folder with this name already exists.'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2048,7 +2084,13 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to rename folder:', err);
-                alert(_('Failed to rename folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to rename folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
@@ -2063,7 +2105,13 @@ export default class ModalFilemanager extends Modal {
 
         // Validate filename
         if (!this.isValidFolderName(newName)) {
-            alert(_('Invalid filename. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid filename. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
@@ -2087,7 +2135,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to rename asset:', err);
-            alert(_('Failed to rename file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to rename file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2265,7 +2319,13 @@ export default class ModalFilemanager extends Modal {
             }
 
             if (!blob) {
-                alert(_('Could not read file'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Could not read file'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2287,14 +2347,26 @@ export default class ModalFilemanager extends Modal {
             // Validate the name
             const trimmedName = newName.trim();
             if (!trimmedName) {
-                alert(_('Please enter a valid filename'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Please enter a valid filename'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
             // Check if name already exists (case-insensitive)
             const existingSet = new Set(existingNames.map(n => n.toLowerCase()));
             if (existingSet.has(trimmedName.toLowerCase())) {
-                alert(_('A file with this name already exists in this folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A file with this name already exists in this folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2310,7 +2382,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to duplicate asset:', err);
-            alert(_('Failed to duplicate file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to duplicate file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2445,7 +2523,13 @@ export default class ModalFilemanager extends Modal {
      */
     async confirmMove() {
         if (this.selectedMoveTarget === null || this.selectedMoveTarget === undefined) {
-            alert(_('Please select a destination folder'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Please select a destination folder'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
             return;
         }
 
@@ -2467,7 +2551,13 @@ export default class ModalFilemanager extends Modal {
             const currentParent = parts.join('/');
 
             if (currentParent === destinationPath) {
-                alert(_('Folder is already in this location'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: _('Folder is already in this location'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 3000
+                });
                 return;
             }
 
@@ -2475,7 +2565,13 @@ export default class ModalFilemanager extends Modal {
             const newPath = destinationPath ? `${destinationPath}/${folderName}` : folderName;
             const existingFolders = this.deriveSubfolders(this.assets, destinationPath);
             if (existingFolders.includes(folderName)) {
-                alert(_('A folder with this name already exists in the destination.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('A folder with this name already exists in the destination.'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2494,7 +2590,13 @@ export default class ModalFilemanager extends Modal {
                 await this.loadAssets();
             } catch (err) {
                 console.error('[MediaLibrary] Failed to move folder:', err);
-                alert(_('Failed to move folder'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Failed to move folder'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
             }
             return;
         }
@@ -2508,7 +2610,13 @@ export default class ModalFilemanager extends Modal {
         const currentPath = this.selectedAsset.folderPath || '';
 
         if (currentPath === destinationPath) {
-            alert(_('File is already in this folder'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Info'),
+                body: _('File is already in this folder'),
+                icon: 'info',
+                modal: true,
+                remove: 3000
+            });
             return;
         }
 
@@ -2522,7 +2630,13 @@ export default class ModalFilemanager extends Modal {
             await this.loadAssets();
         } catch (err) {
             console.error('[MediaLibrary] Failed to move asset:', err);
-            alert(_('Failed to move file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to move file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
         }
     }
 
@@ -2629,7 +2743,13 @@ export default class ModalFilemanager extends Modal {
             // Copy URL to clipboard as fallback
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(assetUrl);
-                alert(_('Asset URL copied to clipboard'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Success'),
+                    body: _('Asset URL copied to clipboard'),
+                    icon: 'check',
+                    modal: true,
+                    remove: 3000
+                });
             }
         }
     }
@@ -2739,7 +2859,13 @@ export default class ModalFilemanager extends Modal {
 
         // Validate folder name
         if (targetFolder && !this.isValidFolderName(targetFolder)) {
-            alert(_('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Invalid folder name. Avoid special characters like / \\ : * ? " < > |'),
+                icon: 'error',
+                modal: true,
+                remove: 5000
+            });
             return;
         }
 
@@ -2758,13 +2884,25 @@ export default class ModalFilemanager extends Modal {
             }
 
             if (!blob) {
-                alert(_('Could not read ZIP file'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('Could not read ZIP file'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
             // Check if fflate is available
             if (!window.fflate) {
-                alert(_('ZIP extraction is not available'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Error'),
+                    body: _('ZIP extraction is not available'),
+                    icon: 'error',
+                    modal: true,
+                    remove: 4000
+                });
                 return;
             }
 
@@ -2844,16 +2982,40 @@ export default class ModalFilemanager extends Modal {
 
             // Notify user
             if (skippedCount > 0) {
-                alert(_('Extracted %1 files. %2 files were skipped.').replace('%1', extractedCount).replace('%2', skippedCount));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Extraction complete'),
+                    body: _('Extracted %1 files. %2 files were skipped.').replace('%1', extractedCount).replace('%2', skippedCount),
+                    icon: 'info',
+                    modal: true,
+                    remove: 5000
+                });
             } else if (extractedCount > 0) {
-                alert(_('Extracted %1 files successfully.').replace('%1', extractedCount));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Success'),
+                    body: _('Extracted %1 files successfully.').replace('%1', extractedCount),
+                    icon: 'check',
+                    modal: true,
+                    remove: 4000
+                });
             } else {
-                alert(_('No files were extracted from the ZIP.'));
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: _('No files were extracted from the ZIP.'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 4000
+                });
             }
 
         } catch (err) {
             console.error('[MediaLibrary] Failed to extract ZIP:', err);
-            alert(_('Failed to extract ZIP file'));
+            eXeLearning.app.toasts.createToast({
+                title: _('Error'),
+                body: _('Failed to extract ZIP file'),
+                icon: 'error',
+                modal: true,
+                remove: 4000
+            });
 
             // Restore button state
             if (this.moreBtn) {

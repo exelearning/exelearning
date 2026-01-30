@@ -10,6 +10,7 @@ import * as migration000 from './000_legacy_symfony';
 import * as migration001 from './001_initial';
 import * as migration002 from './002_asset_folder_path';
 import * as migration003 from './003_user_id_length';
+import * as migration004 from './004_fix_user_foreign_keys';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -20,6 +21,7 @@ const migrations: Record<string, Migration> = {
     '001_initial': migration001,
     '002_asset_folder_path': migration002,
     '003_user_id_length': migration003,
+    '004_fix_user_foreign_keys': migration004,
 };
 
 // ============================================================================

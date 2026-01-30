@@ -1576,10 +1576,26 @@ class YjsProjectBridge {
    * Sync Yjs structure to legacy structure engine
    */
   syncStructureToLegacy() {
+    if (!this.structureBinding) {
+      console.warn('[YjsProjectBridge] Cannot sync structure: structureBinding not initialized');
+      return;
+    }
+
     const pages = this.structureBinding.getPages();
     const legacyData = [];
 
     for (const page of pages) {
+      // Convert Yjs flat properties to API schema format: { key: { value: X } }
+      // The wrapper allows properties to carry additional metadata (type, heritable)
+      // which is merged from the config layer in StructureNode
+      let odeNavStructureSyncProperties = null;
+      if (page.properties && typeof page.properties === 'object' && !Array.isArray(page.properties)) {
+        odeNavStructureSyncProperties = {};
+        for (const [key, value] of Object.entries(page.properties)) {
+          odeNavStructureSyncProperties[key] = { value };
+        }
+      }
+
       legacyData.push({
         id: page.id,
         pageId: page.id,
@@ -1587,6 +1603,7 @@ class YjsProjectBridge {
         parent: page.parentId || 'root',
         order: page.order,
         icon: 'edit_note',
+        odeNavStructureSyncProperties,
       });
     }
 

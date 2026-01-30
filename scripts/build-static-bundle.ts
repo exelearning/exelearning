@@ -832,6 +832,7 @@ function generateModalsHtml(): string {
         'pages/modalShare.njk',
         'pages/printpreview.njk',
         'pages/imageoptimizer.njk',
+        'pages/globalsearch.njk',
     ];
 
     let modalsHtml = '';
@@ -915,6 +916,20 @@ export function buildApiParameters(): ApiParameters {
                 title: 'Version control',
                 value: 'true',
                 type: 'checkbox',
+                category: 'General settings',
+            },
+            defaultAI: {
+                title: 'Default AI Assistant',
+                help: 'Select the AI that will be selected by default when editing iDevices.',
+                value: 'https://chatgpt.com/?q=',
+                type: 'select',
+                options: {
+                    'https://chatgpt.com/?q=': 'ChatGPT',
+                    'https://claude.ai/new?q=': 'Claude',
+                    'https://www.perplexity.ai/search?q=': 'Perplexity',
+                    'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
+                    'https://grok.com/?q=': 'Grok',
+                },
                 category: 'General settings',
             },
         },

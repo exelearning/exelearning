@@ -764,6 +764,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     resources_report: trans('Resources report', {}, locale),
                     link_validation: trans('Link validation', {}, locale),
                     file_manager: trans('File manager', {}, locale),
+                    image_optimizer: trans('Image optimizer', {}, locale),
+                    search: trans('Search...', {}, locale),
                     help: trans('Help', {}, locale),
                     assistant: trans('Assistant', {}, locale),
                     user_manual: trans('User manual', {}, locale),
