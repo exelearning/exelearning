@@ -23,6 +23,7 @@ import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
+import { GlobalSearchModal } from '../../search/index.js';
 
 // Mock all modal classes
 vi.mock('./modals/generic/modalAlert.js');
@@ -49,6 +50,16 @@ vi.mock('./modals/pages/modalUploadProgress.js');
 vi.mock('./modals/pages/modalShare.js');
 vi.mock('./modals/pages/modalPrintPreview.js');
 vi.mock('./modals/pages/modalImageOptimizer.js');
+vi.mock('../../search/index.js', () => {
+  const MockGlobalSearchModal = vi.fn().mockImplementation(function() {
+    this.behaviour = vi.fn();
+    this.show = vi.fn();
+    this.close = vi.fn();
+    this.modal = { _isShown: false };
+    this.permanent = false;
+  });
+  return { GlobalSearchModal: MockGlobalSearchModal };
+});
 
 describe('ModalsManagement', () => {
   let modalsManager;
@@ -103,6 +114,7 @@ describe('ModalsManagement', () => {
       expect(ModalShare).toHaveBeenCalledWith(modalsManager);
       expect(ModalPrintPreview).toHaveBeenCalledWith(modalsManager);
       expect(ModalImageOptimizer).toHaveBeenCalledWith(modalsManager);
+      expect(GlobalSearchModal).toHaveBeenCalledWith(modalsManager);
     });
   });
 
@@ -121,11 +133,12 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(23); // ImageOptimizer is 23rd
+      expect(list).toHaveLength(24); // GlobalSearch is 24th
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);
       expect(list).toContain(modalsManager.imageoptimizer);
+      expect(list).toContain(modalsManager.globalsearch);
     });
   });
 
