@@ -85,6 +85,8 @@
                     {{ t.utilities or 'Utilities' }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownUtilities">
+                    <li><a class="dropdown-item" id="navbar-button-global-search" href="#" data-shortcut="Mod+K" aria-keyshortcuts="Control+K Meta+K"><span class="small-icon search-menu-icon"></span> {{ t.search or 'Search...' }}</a></li>
+                    <li class="dropdown-divider"></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-idevice-manager" href="#">{{ t.idevice_manager or 'iDevice manager' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odeusedfiles" href="#"><span class="small-icon report-icon-green"></span> {{ t.resources_report or 'Resources report' }}</a></li>
                     <li><a class="dropdown-item exe-advanced" id="navbar-button-odebrokenlinks" href="#"><span class="small-icon link-icon"></span>  {{ t.link_validation or 'Link validation' }}</a></li>

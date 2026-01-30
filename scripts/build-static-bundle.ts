@@ -832,6 +832,7 @@ function generateModalsHtml(): string {
         'pages/modalShare.njk',
         'pages/printpreview.njk',
         'pages/imageoptimizer.njk',
+        'pages/globalsearch.njk',
     ];
 
     let modalsHtml = '';

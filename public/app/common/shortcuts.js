@@ -182,6 +182,7 @@ getComboRemap() {
     'mod+alt+s'   : 'navbar-button-share',
     'mod+alt+t'   : 'navbar-button-styles',
     'mod+p'       : 'navbar-button-preview',
+    'mod+k'       : 'navbar-button-global-search',
   };
 }
 

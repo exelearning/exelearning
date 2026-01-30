@@ -37,6 +37,7 @@ describe('NavbarUtilities', () => {
             usedFilesButton: createButton('navbar-button-odeusedfiles'),
             previewButton: createButton('navbar-button-preview'),
             projectPreferencesButton: createButton('head-top-settings-button'),
+            globalSearchButton: createButton('navbar-button-global-search'),
         };
 
         Object.values(mockButtons).forEach((button) => navbarElement.appendChild(button));
@@ -96,6 +97,7 @@ describe('NavbarUtilities', () => {
                     odebrokenlinks: { show: vi.fn() },
                     odeusedfiles: { show: vi.fn() },
                     alert: { show: vi.fn() },
+                    globalsearch: { show: vi.fn() },
                 },
                 toasts: {
                     createToast: vi.fn(() => ({
