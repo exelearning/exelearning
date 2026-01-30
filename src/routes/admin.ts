@@ -33,10 +33,12 @@ import {
     findProjectById as findProjectByIdDefault,
     updateProject as updateProjectDefault,
     hardDeleteProject as hardDeleteProjectDefault,
+    findProjectsByOwnerId as findProjectsByOwnerIdDefault,
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { getSystemInfo } from '../services/system-info';
+import { createFileHelper, type FileHelper } from '../services/file-helper';
 
 type AppSettingsTable = {
     key: string;
@@ -73,6 +75,7 @@ export interface AdminQueries {
     findProjectById: typeof findProjectByIdDefault;
     updateProject: typeof updateProjectDefault;
     hardDeleteProject: typeof hardDeleteProjectDefault;
+    findProjectsByOwnerId: typeof findProjectsByOwnerIdDefault;
 }
 
 /**
@@ -81,6 +84,7 @@ export interface AdminQueries {
 export interface AdminDependencies {
     db: Kysely<Database>;
     queries: AdminQueries;
+    fileHelper?: FileHelper;
 }
 
 // ============================================================================
@@ -107,7 +111,9 @@ const defaultDependencies: AdminDependencies = {
         findProjectById: findProjectByIdDefault,
         updateProject: updateProjectDefault,
         hardDeleteProject: hardDeleteProjectDefault,
+        findProjectsByOwnerId: findProjectsByOwnerIdDefault,
     },
+    fileHelper: createFileHelper(),
 };
 
 // Get JWT secret (same as auth.ts)
@@ -118,6 +124,23 @@ const getJwtSecret = () => {
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+/**
+ * Parse and validate an ID parameter from route params.
+ * Returns the parsed number if valid, or null if invalid.
+ * Sets status 400 and returns error response if invalid.
+ */
+function parseAndValidateId(
+    paramsId: string,
+    set: { status: number },
+): { id: number } | { error: string; message: string } {
+    const id = parseInt(paramsId, 10);
+    if (isNaN(id)) {
+        set.status = 400;
+        return { error: 'BAD_REQUEST', message: 'Invalid ID' };
+    }
+    return { id };
+}
 
 /**
  * Sanitize user for API response (remove password)
@@ -233,7 +256,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
  * Factory function to create admin routes with dependency injection
  */
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
-    const { db, queries } = deps;
+    const { db, queries, fileHelper = createFileHelper() } = deps;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -422,14 +445,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // GET /api/admin/users/:id - Get user by ID
             .get('/api/admin/users/:id', async ({ params, set }) => {
-                const userId = parseInt(params.id, 10);
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
 
-                if (isNaN(userId)) {
-                    set.status = 400;
-                    return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
-                }
-
-                const user = await queries.findUserById(db, userId);
+                const user = await queries.findUserById(db, parsed.id);
                 if (!user) {
                     set.status = 404;
                     return { error: 'NOT_FOUND', message: 'User not found' };
@@ -476,12 +495,9 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .patch(
                 '/api/admin/users/:id/roles',
                 async ({ params, body, set, jwtPayload }) => {
-                    const userId = parseInt(params.id, 10);
-
-                    if (isNaN(userId)) {
-                        set.status = 400;
-                        return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
-                    }
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
+                    const userId = parsed.id;
 
                     // Get target user
                     const targetUser = await queries.findUserById(db, userId);
@@ -531,12 +547,9 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .patch(
                 '/api/admin/users/:id/status',
                 async ({ params, body, set, jwtPayload }) => {
-                    const userId = parseInt(params.id, 10);
-
-                    if (isNaN(userId)) {
-                        set.status = 400;
-                        return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
-                    }
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
+                    const userId = parsed.id;
 
                     // Prevent deactivating yourself
                     if (jwtPayload!.sub === userId && !body.is_active) {
@@ -559,14 +572,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .patch(
                 '/api/admin/users/:id/quota',
                 async ({ params, body, set }) => {
-                    const userId = parseInt(params.id, 10);
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
 
-                    if (isNaN(userId)) {
-                        set.status = 400;
-                        return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
-                    }
-
-                    const updatedUser = await queries.updateUserQuota(db, userId, body.quota_mb);
+                    const updatedUser = await queries.updateUserQuota(db, parsed.id, body.quota_mb);
                     if (!updatedUser) {
                         set.status = 404;
                         return { error: 'NOT_FOUND', message: 'User not found' };
@@ -625,13 +634,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .patch(
                 '/api/admin/projects/:id/status',
                 async ({ params, body, set }) => {
-                    const projectId = parseInt(params.id, 10);
-                    if (isNaN(projectId)) {
-                        set.status = 400;
-                        return { error: 'BAD_REQUEST', message: 'Invalid project ID' };
-                    }
+                    const parsed = parseAndValidateId(params.id, set);
+                    if ('error' in parsed) return parsed;
 
-                    const updated = await queries.updateProject(db, projectId, {
+                    const updated = await queries.updateProject(db, parsed.id, {
                         status: body.status,
                     });
 
@@ -647,30 +653,24 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // DELETE /api/admin/projects/:id - Hard delete project
             .delete('/api/admin/projects/:id', async ({ params, set }) => {
-                const projectId = parseInt(params.id, 10);
-                if (isNaN(projectId)) {
-                    set.status = 400;
-                    return { error: 'BAD_REQUEST', message: 'Invalid project ID' };
-                }
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
 
-                const project = await queries.findProjectById(db, projectId);
+                const project = await queries.findProjectById(db, parsed.id);
                 if (!project) {
                     set.status = 404;
                     return { error: 'NOT_FOUND', message: 'Project not found' };
                 }
 
-                await queries.hardDeleteProject(db, projectId);
+                await queries.hardDeleteProject(db, parsed.id);
                 return { success: true };
             })
 
             // DELETE /api/admin/users/:id - Delete user
             .delete('/api/admin/users/:id', async ({ params, set, jwtPayload }) => {
-                const userId = parseInt(params.id, 10);
-
-                if (isNaN(userId)) {
-                    set.status = 400;
-                    return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
-                }
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
+                const userId = parsed.id;
 
                 // Prevent deleting yourself
                 if (jwtPayload!.sub === userId) {
@@ -698,9 +698,34 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     }
                 }
 
+                // Get all projects owned by user before deletion
+                // (needed to clean up asset directories - DB cascade will delete records)
+                const userProjects = await queries.findProjectsByOwnerId(db, userId);
+                const deletedProjectsCount = userProjects.length;
+
+                // Clean up asset directories for each project
+                // Continue even if some cleanups fail - the DB cascade will still remove records
+                for (const project of userProjects) {
+                    try {
+                        const assetsDir = fileHelper.getProjectAssetsDir(project.uuid);
+                        const exists = await fileHelper.fileExists(assetsDir);
+                        if (exists) {
+                            await fileHelper.remove(assetsDir);
+                        }
+                    } catch (err) {
+                        console.error(`Failed to clean up assets for project ${project.uuid}:`, err);
+                        // Continue with deletion - DB cascade will handle records
+                    }
+                }
+
+                // Delete user - DB cascade will delete projects and related records
                 await queries.deleteUser(db, userId);
 
-                return { success: true, message: 'User deleted' };
+                return {
+                    success: true,
+                    message: 'User deleted',
+                    deletedProjectsCount,
+                };
             })
     );
 }

@@ -7,7 +7,8 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import { createAdminRoutes, type AdminDependencies, type AdminQueries } from './admin';
 import type { Kysely } from 'kysely';
-import type { Database, User } from '../db/types';
+import type { Database, User, Project } from '../db/types';
+import type { FileHelper } from '../services/file-helper';
 
 // ============================================================================
 // TEST HELPERS
@@ -35,6 +36,55 @@ const mockAdminUser = mockUser({
     id: 1,
     email: 'admin@example.com',
     roles: '["ROLE_USER", "ROLE_ADMIN"]',
+});
+
+const mockProject = (overrides: Partial<Project> = {}): Project => ({
+    id: 1,
+    uuid: 'test-project-uuid',
+    title: 'Test Project',
+    description: null,
+    owner_id: 1,
+    status: 'active',
+    visibility: 'private',
+    language: null,
+    author: null,
+    license: null,
+    last_accessed_at: null,
+    saved_once: 1,
+    platform_id: null,
+    created_at: Date.now(),
+    updated_at: null,
+    ...overrides,
+});
+
+// Create mock file helper for unit tests
+const createMockFileHelper = (overrides: Partial<FileHelper> = {}): FileHelper => ({
+    getFilesDir: () => '/mock/data',
+    getTempPath: (subPath?: string) => (subPath ? `/mock/data/tmp/${subPath}` : '/mock/data/tmp'),
+    getPreviewExportPath: () => '/mock/preview',
+    getOdeSessionDistDir: () => '/mock/dist',
+    getOdeSessionTempDir: () => '/mock/tmp',
+    getProjectAssetsDir: (uuid: string) => `/mock/data/assets/${uuid}`,
+    getPublicDirectory: () => '/mock/public',
+    getLibsDir: () => '/mock/public/libs',
+    getThemesDir: () => '/mock/public/style/themes',
+    getIdevicesDir: () => '/mock/public/app/idevice',
+    createSessionDirectories: async () => undefined,
+    cleanupSessionDirectories: async () => undefined,
+    isPathSafe: () => true,
+    getContentXmlPath: () => '/mock/content.xml',
+    fileExists: async () => false,
+    readFile: async () => Buffer.from(''),
+    readFileAsString: async () => '',
+    writeFile: async () => undefined,
+    appendFile: async () => undefined,
+    copyFile: async () => undefined,
+    copyDir: async () => undefined,
+    remove: async () => undefined,
+    listFiles: async () => [],
+    getStats: async () => null,
+    generateUniqueFilename: (name: string) => name,
+    ...overrides,
 });
 
 // Create mock queries for unit tests
@@ -67,12 +117,17 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     findProjectById: async () => undefined,
     updateProject: async () => undefined,
     hardDeleteProject: async () => undefined,
+    findProjectsByOwnerId: async () => [],
     ...overrides,
 });
 
-const createMockDeps = (overrides: Partial<AdminQueries> = {}): AdminDependencies => ({
+const createMockDeps = (
+    queryOverrides: Partial<AdminQueries> = {},
+    fileHelperOverrides: Partial<FileHelper> = {},
+): AdminDependencies => ({
     db: {} as Kysely<Database>,
-    queries: createMockQueries(overrides),
+    queries: createMockQueries(queryOverrides),
+    fileHelper: createMockFileHelper(fileHelperOverrides),
 });
 
 // Helper to generate admin JWT token
@@ -1035,6 +1090,170 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(400);
             const body = await response.json();
             expect(body.error).toBe('CANNOT_DELETE_LAST_ADMIN');
+        });
+
+        it('should return count of deleted projects', async () => {
+            const userProjects = [
+                mockProject({ id: 1, uuid: 'project-uuid-1' }),
+                mockProject({ id: 2, uuid: 'project-uuid-2' }),
+                mockProject({ id: 3, uuid: 'project-uuid-3' }),
+            ];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectsByOwnerId: async () => userProjects,
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+            expect(body.deletedProjectsCount).toBe(3);
+        });
+
+        it('should clean up asset directories when deleting user with projects', async () => {
+            const userProjects = [
+                mockProject({ id: 1, uuid: 'project-uuid-1' }),
+                mockProject({ id: 2, uuid: 'project-uuid-2' }),
+            ];
+            const removedPaths: string[] = [];
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps(
+                        {
+                            findProjectsByOwnerId: async () => userProjects,
+                        },
+                        {
+                            fileExists: async () => true,
+                            remove: async (path: string) => {
+                                removedPaths.push(path);
+                            },
+                        },
+                    ),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            // Verify both project asset directories were cleaned up
+            expect(removedPaths.length).toBe(2);
+            expect(removedPaths).toContain('/mock/data/assets/project-uuid-1');
+            expect(removedPaths).toContain('/mock/data/assets/project-uuid-2');
+        });
+
+        it('should delete user even if asset cleanup fails', async () => {
+            const userProjects = [mockProject({ id: 1, uuid: 'project-uuid-1' })];
+            let deleteUserCalled = false;
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps(
+                        {
+                            findProjectsByOwnerId: async () => userProjects,
+                            deleteUser: async () => {
+                                deleteUserCalled = true;
+                            },
+                        },
+                        {
+                            fileExists: async () => true,
+                            remove: async () => {
+                                throw new Error('Disk error');
+                            },
+                        },
+                    ),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            // User deletion should succeed even if asset cleanup fails
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+            expect(deleteUserCalled).toBe(true);
+        });
+
+        it('should skip asset cleanup for non-existent directories', async () => {
+            const userProjects = [mockProject({ id: 1, uuid: 'project-uuid-1' })];
+            let removeCalled = false;
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps(
+                        {
+                            findProjectsByOwnerId: async () => userProjects,
+                        },
+                        {
+                            fileExists: async () => false, // Directory doesn't exist
+                            remove: async () => {
+                                removeCalled = true;
+                            },
+                        },
+                    ),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            // Remove should not be called if directory doesn't exist
+            expect(removeCalled).toBe(false);
+        });
+
+        it('should handle user with no projects', async () => {
+            let deleteUserCalled = false;
+
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectsByOwnerId: async () => [], // No projects
+                        deleteUser: async () => {
+                            deleteUserCalled = true;
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/users/2', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${adminToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+            expect(body.deletedProjectsCount).toBe(0);
+            expect(deleteUserCalled).toBe(true);
         });
     });
 

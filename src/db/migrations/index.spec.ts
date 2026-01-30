@@ -111,7 +111,7 @@ describe('Database Migrations', () => {
             const result = await migrateDown(db);
 
             expect(result.success).toBe(true);
-            expect(result.rolledBack).toBe('003_user_id_length');
+            expect(result.rolledBack).toBe('004_fix_user_foreign_keys');
         });
 
         it('should report no migrations to rollback on fresh database', async () => {
@@ -125,7 +125,8 @@ describe('Database Migrations', () => {
             // Migrate up
             await migrateToLatest(db);
 
-            // Rollback all 4 migrations to remove all tables
+            // Rollback all 5 migrations to remove all tables
+            await migrateDown(db); // rollback 004_fix_user_foreign_keys
             await migrateDown(db); // rollback 003_user_id_length
             await migrateDown(db); // rollback 002_asset_folder_path
             await migrateDown(db); // rollback 001_initial
@@ -188,12 +189,13 @@ describe('Database Migrations', () => {
 
             const status = await getMigrationStatus(db);
 
-            // After one rollback, 003_user_id_length should be pending
-            // 001_initial, 000_legacy_symfony, and 002_asset_folder_path are still executed
-            expect(status.pending).toContain('003_user_id_length');
+            // After one rollback, 004_fix_user_foreign_keys should be pending
+            // All prior migrations are still executed
+            expect(status.pending).toContain('004_fix_user_foreign_keys');
             expect(status.executed).toContain('001_initial');
             expect(status.executed).toContain('000_legacy_symfony');
             expect(status.executed).toContain('002_asset_folder_path');
+            expect(status.executed).toContain('003_user_id_length');
         });
     });
 
@@ -206,16 +208,17 @@ describe('Database Migrations', () => {
             expect(up1.executedMigrations).toContain('001_initial');
             expect(up1.executedMigrations).toContain('002_asset_folder_path');
             expect(up1.executedMigrations).toContain('003_user_id_length');
+            expect(up1.executedMigrations).toContain('004_fix_user_foreign_keys');
 
-            // Down - rolls back the last migration (003_user_id_length)
+            // Down - rolls back the last migration (004_fix_user_foreign_keys)
             const down = await migrateDown(db);
             expect(down.success).toBe(true);
-            expect(down.rolledBack).toBe('003_user_id_length');
+            expect(down.rolledBack).toBe('004_fix_user_foreign_keys');
 
-            // Up again - should re-apply 003_user_id_length
+            // Up again - should re-apply 004_fix_user_foreign_keys
             const up2 = await migrateToLatest(db);
             expect(up2.success).toBe(true);
-            expect(up2.executedMigrations).toContain('003_user_id_length');
+            expect(up2.executedMigrations).toContain('004_fix_user_foreign_keys');
         });
     });
 
