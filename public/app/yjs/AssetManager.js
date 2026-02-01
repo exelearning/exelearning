@@ -2827,7 +2827,7 @@ class AssetManager {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2865,7 +2865,7 @@ class AssetManager {
 
     try {
       // Get list from server
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2897,7 +2897,7 @@ class AssetManager {
       for (const assetId of missing) {
         try {
           const assetResponse = await fetch(
-            `${apiBaseUrl}/api/projects/${this.projectId}/assets/${assetId}`,
+            `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
 
