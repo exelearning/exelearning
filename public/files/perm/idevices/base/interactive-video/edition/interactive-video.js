@@ -8,7 +8,7 @@
  */
 
 // To review:
-// Do not allow Flash?
+// // Do not allow Flash?
 var InteractiveVideo = {};
 
 var stringToHTML = function (str) {
@@ -229,16 +229,9 @@ var $exeDevice = {
         $('#interactiveVideoFile')
             .change(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                if (this.value.indexOf('files/tmp/') == 0) {
+                // Accept both legacy files/tmp paths and new asset:// URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    // $exeDevice.interactiveVideoEditorOpenerHTML = e.html();
-                    // var saveNowMsg = '<p class="exe-block-info">' + _("Please save your iDevice now (click on %s now) and edit it to add interaction.") + '</p>';
-                    // saveNowMsg = saveNowMsg.replace('%s', '<img style="vertical-align:top" src="' + $exeDevice.idevicePath + 'images/stock-apply.png" alt="' + _("Done") + '" />');
-                    // var extension = this.value.split('.').pop().toLowerCase();
-                    // if (extension == "flv") {
-                    //   eXe.app.alert(_("Format") + ": flv - " + _("Recommended type") + ": ogv/ogg, webm, mp4");
-                    // }
-                    // e.html(saveNowMsg).fadeIn();
                     e.fadeIn();
                 } else {
                     e.hide();
@@ -246,7 +239,8 @@ var $exeDevice = {
             })
             .keyup(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                if (this.value.indexOf('files/tmp/') == 0) {
+                // Accept both legacy files/tmp paths and new asset:// URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
                     e.fadeIn();
                 } else {

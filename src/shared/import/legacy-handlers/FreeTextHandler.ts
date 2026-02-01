@@ -38,13 +38,12 @@ export class FreeTextHandler extends BaseLegacyHandler {
 
     /**
      * Extract HTML content from the legacy format
-     * Also renders feedback button and content directly into htmlView (matching Symfony behavior)
-     * Wraps content in exe-text-activity structure for proper editor/export handling
+     * Returns only the main content - feedback is extracted separately in extractProperties()
+     * to avoid duplication when text.js reconstructs the HTML
      *
      * @param dict - Dictionary element from legacy XML
-     * @param context - Context with language info
      */
-    extractHtmlView(dict: Element, context?: IdeviceHandlerContext): string {
+    extractHtmlView(dict: Element, _context?: IdeviceHandlerContext): string {
         if (!dict) return '';
 
         let content = '';
@@ -83,25 +82,12 @@ export class FreeTextHandler extends BaseLegacyHandler {
             }
         }
 
-        // Extract feedback (if present)
-        const feedback = this.extractFeedback(dict, context);
-
-        // If we have feedback, wrap content in exe-text-activity structure
-        // This matches Symfony format and allows text.js editor to properly parse it
-        if (feedback.content) {
-            const escapedCaption = this.escapeHtmlAttr(feedback.buttonCaption);
-            let rebuiltHtmlView = content;
-
-            // Add feedback button and content
-            rebuiltHtmlView += '<div class="iDevice_buttons feedback-button js-required">';
-            rebuiltHtmlView += `<input type="button" class="feedbacktooglebutton" value="${escapedCaption}" `;
-            rebuiltHtmlView += `data-text-a="${escapedCaption}" data-text-b="${escapedCaption}">`;
-            rebuiltHtmlView += '</div>';
-            rebuiltHtmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
-
-            // Wrap in exe-text-activity container (matches extractPblTaskMetadata format)
-            return `<div class="exe-text-activity">${rebuiltHtmlView}</div>`;
-        }
+        // Note: Feedback is NOT embedded in htmlView to avoid duplication.
+        // The feedback content is extracted separately in extractProperties() and stored as:
+        // - textFeedbackTextarea: feedback content
+        // - textFeedbackInput: button caption
+        // The text.js editor/export will reconstruct the complete HTML with feedback
+        // using buildTextareaHtml() which combines content + feedback properties.
 
         return content;
     }
