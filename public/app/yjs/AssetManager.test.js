@@ -3766,7 +3766,7 @@ describe('downloadMissingAssets', () => {
   it('returns 0 when all assets cached locally', async () => {
     global.fetch = mock(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }] }),
     }));
     assetManager.getAsset = mock(() => Promise.resolve({ id: 'a1' }));
 
@@ -3779,7 +3779,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+        json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -3800,7 +3800,7 @@ describe('downloadMissingAssets', () => {
       });
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
     });
 
     // Use a proper mock for getAsset that returns null for missing assets
@@ -3821,7 +3821,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }]),
+        json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }] }),
       })
       .mockResolvedValueOnce(createMockResponse(new Blob(['data1']), {
         'X-Original-Mime': 'image/png',
@@ -3871,7 +3871,7 @@ describe('downloadMissingAssets', () => {
         // First call: list assets
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve([{ id: 'asset-123' }]),
+          json: () => Promise.resolve({ success: true, data: [{ id: 'asset-123' }] }),
         });
       }
       // Second call: download asset

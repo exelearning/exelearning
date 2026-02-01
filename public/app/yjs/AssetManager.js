@@ -2874,7 +2874,9 @@ class AssetManager {
         return 0;
       }
 
-      const serverAssets = await response.json();
+      const responseData = await response.json();
+      // API returns { success: true, data: [...] }
+      const serverAssets = responseData.data || responseData.assets || responseData || [];
       Logger.log(`[AssetManager] Server has ${serverAssets.length} assets`);
 
       // Find missing locally
