@@ -493,9 +493,9 @@ describe('LegacyXmlParser', () => {
     });
 
     describe('findAllNodes - unique node handling', () => {
-        it('should include inline node definitions even when appearing after parentNode key', () => {
+        it('should include inline node definitions with content even when appearing after parentNode key', () => {
             // This tests the fix for nodes defined inline within parentNode fields
-            // Previously these were incorrectly filtered out, causing missing pages
+            // Nodes with content (idevices) should be included even if inside parentNode
             const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
 <instance class="exe.engine.package.Package" reference="1">
   <dictionary>
@@ -528,7 +528,14 @@ describe('LegacyXmlParser', () => {
                         <string role="key" value="parent"/>
                         <reference key="2"/>
                         <string role="key" value="idevices"/>
-                        <list/>
+                        <list>
+                          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="11">
+                            <dictionary>
+                              <string role="key" value="_title"/>
+                              <unicode value="Content"/>
+                            </dictionary>
+                          </instance>
+                        </list>
                       </dictionary>
                     </instance>
                   </dictionary>
@@ -546,10 +553,233 @@ describe('LegacyXmlParser', () => {
 
             const result = parser.parse(legacyXml);
 
-            // Should find the inline defined page (reference 4)
+            // Should find the inline defined page (reference 4) because it has idevices content
             const inlinePage = result.pages.find(p => p.title === 'Inline Defined Page');
             expect(inlinePage).toBeDefined();
             expect(result.pages.length).toBeGreaterThanOrEqual(3);
+        });
+
+        it('should filter out empty phantom nodes inside parentNode fields', () => {
+            // This tests the fix for mujeres_huella.elp where phantom nodes with
+            // EXPLICIT empty idevices AND empty children lists cause duplicate nodes
+            // The phantom node has the same title as the real root but different reference
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="4">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Real Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="5">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Child Page"/>
+              <string role="key" value="parent"/>
+              <reference key="4"/>
+              <string role="key" value="idevices"/>
+              <list>
+                <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="10">
+                  <dictionary>
+                    <string role="key" value="parentNode"/>
+                    <instance class="exe.engine.node.Node" reference="8">
+                      <dictionary>
+                        <string role="key" value="_title"/>
+                        <unicode value="Real Root Page"/>
+                        <string role="key" value="parent"/>
+                        <none/>
+                        <string role="key" value="idevices"/>
+                        <list/>
+                        <string role="key" value="children"/>
+                        <list/>
+                      </dictionary>
+                    </instance>
+                  </dictionary>
+                </instance>
+              </list>
+              <string role="key" value="children"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="6">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Root Content"/>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // The phantom node (ref=8) inside parentNode should be filtered out
+            // because it has EXPLICIT empty idevices AND empty children lists
+            // Total pages should be 2: root + child (phantom filtered out, not 3)
+            expect(result.pages.length).toBe(2);
+
+            // Both pages should have unique IDs (no duplicate from phantom)
+            const pageIds = result.pages.map(p => p.id);
+            expect(pageIds).toContain('page-4'); // Real root
+            expect(pageIds).toContain('page-5'); // Child
+            expect(pageIds).not.toContain('page-8'); // Phantom should NOT be included
+
+            // There should only be one page with title "Real Root Page"
+            const rootTitlePages = result.pages.filter(p => p.title === 'Real Root Page');
+            expect(rootTitlePages.length).toBe(1);
+        });
+
+        it('should NOT filter nodes inside parentNode if children list is missing', () => {
+            // If a node inside parentNode is missing the children list, it's not considered
+            // a phantom node and should be included (conservative approach)
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="10">
+            <dictionary>
+              <string role="key" value="parentNode"/>
+              <instance class="exe.engine.node.Node" reference="3">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Node Missing Children"/>
+                  <string role="key" value="parent"/>
+                  <none/>
+                  <string role="key" value="idevices"/>
+                  <list/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="children"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Node with missing children list should NOT be filtered (conservative)
+            // So we should have 2 pages: root + the node with missing children
+            expect(result.pages.length).toBe(2);
+            expect(result.pages.map(p => p.id)).toContain('page-3');
+        });
+
+        it('should NOT filter nodes inside parentNode if idevices list is missing', () => {
+            // If a node inside parentNode is missing the idevices list, it's not considered
+            // a phantom node and should be included (conservative approach)
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="10">
+            <dictionary>
+              <string role="key" value="parentNode"/>
+              <instance class="exe.engine.node.Node" reference="3">
+                <dictionary>
+                  <string role="key" value="_title"/>
+                  <unicode value="Node Missing Idevices"/>
+                  <string role="key" value="parent"/>
+                  <none/>
+                  <string role="key" value="children"/>
+                  <list/>
+                </dictionary>
+              </instance>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="children"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Node with missing idevices list should NOT be filtered (conservative)
+            // So we should have 2 pages: root + the node with missing idevices
+            expect(result.pages.length).toBe(2);
+            expect(result.pages.map(p => p.id)).toContain('page-3');
+        });
+
+        it('should NOT filter nodes that are not inside parentNode field', () => {
+            // Nodes defined directly in children list (not inside parentNode) should
+            // never be filtered, even if they have empty lists
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Root Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="children"/>
+        <list>
+          <instance class="exe.engine.node.Node" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Empty Child Page"/>
+              <string role="key" value="parent"/>
+              <reference key="2"/>
+              <string role="key" value="idevices"/>
+              <list/>
+              <string role="key" value="children"/>
+              <list/>
+            </dictionary>
+          </instance>
+        </list>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            // Empty child page in regular children list should be included
+            // (not filtered because it's not inside parentNode)
+            expect(result.pages.length).toBe(2);
+            const emptyChildPage = result.pages.find(p => p.title === 'Empty Child Page');
+            expect(emptyChildPage).toBeDefined();
         });
 
         it('should skip duplicate node references', () => {

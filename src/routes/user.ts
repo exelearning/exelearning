@@ -85,12 +85,12 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
      * Get user preferences from database
      * Returns format: { key: { value: x } }
      */
-    async function getUserPreferences(userId: string): Promise<Record<string, PreferenceValue>> {
+    async function getUserPreferences(ownerId: number): Promise<Record<string, PreferenceValue>> {
         // Start with deep copy of defaults
         const result: Record<string, PreferenceValue> = JSON.parse(JSON.stringify(DEFAULT_PREFERENCES));
 
         try {
-            const prefs = await queries.findAllPreferencesForUser(database, userId);
+            const prefs = await queries.findAllPreferencesForUser(database, ownerId);
 
             for (const pref of prefs) {
                 try {
@@ -118,13 +118,45 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
     /**
      * Save user preference to database
      */
-    async function saveUserPreference(userId: string, key: string, value: unknown): Promise<void> {
+    async function saveUserPreference(ownerId: number, key: string, value: unknown): Promise<void> {
         const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
 
         try {
-            await queries.setPreference(database, userId, key, stringValue);
+            await queries.setPreference(database, ownerId, key, stringValue);
         } catch (error) {
             console.error('[User] Failed to save preference:', error);
+        }
+    }
+
+    /**
+     * Shared handler for POST/PUT /api/user/preferences
+     * Both endpoints have identical behavior for Symfony compatibility.
+     */
+    async function handleSavePreferences(
+        body: unknown,
+        set: { status: number },
+        currentUser: { id: number; email: string; isGuest: boolean } | null,
+        saveFn: (ownerId: number, key: string, value: unknown) => Promise<void>,
+    ): Promise<{ responseMessage: string } | { error: string; message: string }> {
+        if (!currentUser) {
+            set.status = 401;
+            return { error: 'Unauthorized', message: 'Authentication required to save preferences' };
+        }
+
+        const ownerId = currentUser.id;
+
+        try {
+            const preferences = body as UserPreferencesRequest;
+
+            for (const [key, value] of Object.entries(preferences)) {
+                await saveFn(ownerId, key, value);
+            }
+
+            return { responseMessage: 'OK' };
+        } catch (error) {
+            console.error('[User] Failed to save preferences:', error);
+            set.status = 500;
+            return { error: 'Internal Error', message: 'Failed to save preferences' };
         }
     }
 
@@ -167,8 +199,8 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     return { userPreferences: {} };
                 }
 
-                const userId = String(currentUser.id);
-                const preferences = await getUserPreferences(userId);
+                const ownerId = currentUser.id;
+                const preferences = await getUserPreferences(ownerId);
                 // Frontend expects: { userPreferences: { key: { value: x } } }
                 return { userPreferences: preferences };
             })
@@ -207,52 +239,12 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
             // POST /api/user/preferences - Save user preferences
             .post('/api/user/preferences', async ({ body, set, currentUser }) => {
-                // Require authentication to save preferences
-                if (!currentUser) {
-                    set.status = 401;
-                    return { error: 'Unauthorized', message: 'Authentication required to save preferences' };
-                }
-
-                const userId = String(currentUser.id);
-
-                try {
-                    const preferences = body as UserPreferencesRequest;
-
-                    for (const [key, value] of Object.entries(preferences)) {
-                        await saveUserPreference(userId, key, value);
-                    }
-
-                    return { responseMessage: 'OK' };
-                } catch (error) {
-                    console.error('[User] Failed to save preferences:', error);
-                    set.status = 500;
-                    return { error: 'Internal Error', message: 'Failed to save preferences' };
-                }
+                return handleSavePreferences(body, set, currentUser, saveUserPreference);
             })
 
             // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
             .put('/api/user/preferences', async ({ body, set, currentUser }) => {
-                // Require authentication to save preferences
-                if (!currentUser) {
-                    set.status = 401;
-                    return { error: 'Unauthorized', message: 'Authentication required to save preferences' };
-                }
-
-                const userId = String(currentUser.id);
-
-                try {
-                    const preferences = body as UserPreferencesRequest;
-
-                    for (const [key, value] of Object.entries(preferences)) {
-                        await saveUserPreference(userId, key, value);
-                    }
-
-                    return { responseMessage: 'OK' };
-                } catch (error) {
-                    console.error('[User] Failed to save preferences:', error);
-                    set.status = 500;
-                    return { error: 'Internal Error', message: 'Failed to save preferences' };
-                }
+                return handleSavePreferences(body, set, currentUser, saveUserPreference);
             })
 
             // POST /api/user/lopd-accepted - Accept LOPD terms
@@ -263,11 +255,11 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                     return { error: 'Unauthorized', message: 'Authentication required' };
                 }
 
-                const userId = String(currentUser.id);
+                const ownerId = currentUser.id;
 
                 try {
-                    await saveUserPreference(userId, 'lopdAccepted', true);
-                    await saveUserPreference(userId, 'lopdAcceptedAt', new Date().toISOString());
+                    await saveUserPreference(ownerId, 'lopdAccepted', true);
+                    await saveUserPreference(ownerId, 'lopdAcceptedAt', new Date().toISOString());
                     return { success: true, message: 'LOPD accepted' };
                 } catch (error) {
                     console.error('[User] Failed to save LOPD acceptance:', error);

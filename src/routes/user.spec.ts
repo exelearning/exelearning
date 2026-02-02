@@ -27,8 +27,8 @@ describe('User Routes', () => {
         return {
             db: {} as any, // Not used directly, queries use it
             queries: {
-                findAllPreferencesForUser: async (_db: any, userId: string) => {
-                    const userPrefs = savedPreferences.get(userId);
+                findAllPreferencesForUser: async (_db: any, ownerId: number) => {
+                    const userPrefs = savedPreferences.get(String(ownerId));
                     if (!userPrefs) return [];
 
                     return Array.from(userPrefs.entries()).map(([key, value]) => ({
@@ -36,18 +36,19 @@ describe('User Routes', () => {
                         value: value,
                     }));
                 },
-                findPreference: async (_db: any, userId: string, key: string) => {
-                    const userPrefs = savedPreferences.get(userId);
+                findPreference: async (_db: any, ownerId: number, key: string) => {
+                    const userPrefs = savedPreferences.get(String(ownerId));
                     if (!userPrefs) return undefined;
                     const value = userPrefs.get(key);
                     if (value === undefined) return undefined;
                     return { preference_key: key, value };
                 },
-                setPreference: async (_db: any, userId: string, key: string, value: string) => {
-                    if (!savedPreferences.has(userId)) {
-                        savedPreferences.set(userId, new Map());
+                setPreference: async (_db: any, ownerId: number, key: string, value: string) => {
+                    const ownerKey = String(ownerId);
+                    if (!savedPreferences.has(ownerKey)) {
+                        savedPreferences.set(ownerKey, new Map());
                     }
-                    savedPreferences.get(userId)!.set(key, value);
+                    savedPreferences.get(ownerKey)!.set(key, value);
                 },
                 findUserById: async (_db: any, userId: number) => {
                     return mockUsers.get(userId) || null;
@@ -704,6 +705,76 @@ describe('User Routes', () => {
     });
 
     describe('preference value parsing edge cases', () => {
+        it('should handle corrupted JSON in preference values gracefully', async () => {
+            // Store invalid JSON - should fall back to raw value
+            savedPreferences.set('1', new Map([['corruptedPref', '{invalid json']]));
+
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    headers: { Cookie: authCookie },
+                }),
+            );
+
+            const body = await res.json();
+            // Corrupted JSON should be treated as raw string value
+            expect(body.userPreferences.corruptedPref.value).toBe('{invalid json');
+        });
+
+        it('should handle empty preferences object in POST request', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: JSON.stringify({}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+
+        it('should handle empty preferences object in PUT request', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'PUT',
+                    body: JSON.stringify({}),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.responseMessage).toBe('OK');
+        });
+
+        it('should handle null preference value', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: JSON.stringify({ nullPref: null }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Cookie: authCookie,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            // null is JSON-stringified to "null"
+            expect(savedPreferences.get('1')?.get('nullPref')).toBe('null');
+        });
+
         it('should handle non-JSON string preference values', async () => {
             savedPreferences.set('1', new Map([['simplePref', 'just a string']]));
 

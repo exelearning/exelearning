@@ -18,6 +18,7 @@ import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
 import { getAuthMethods, getSettingString } from '../services/app-settings';
 
@@ -378,7 +379,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas - CAS (Central Authentication Service) SSO login
-            .get('/login/cas', async ({ request, set, query }) => {
+            .get('/login/cas', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -395,9 +396,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 const loginUrl = `${casUrl}/${casLoginPath}?service=${encodeURIComponent(serviceUrl)}`;
 
@@ -416,7 +419,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas/callback - CAS callback after authentication
-            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -443,8 +446,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (must match what was sent to CAS login)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 try {
                     const validateUrl = `${casUrl}/${casValidatePath}?service=${encodeURIComponent(serviceUrl)}&ticket=${encodeURIComponent(ticket)}`;
@@ -545,7 +551,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid - OpenID Connect SSO login
-            .get('/login/openid', async ({ request, set, query }) => {
+            .get('/login/openid', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -572,9 +578,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 // In production, consider using a more secure method
                 const oidcState = JSON.stringify({ codeVerifier, state, nonce });
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
                 const scope = await getSettingString(db, 'OIDC_SCOPE', process.env.OIDC_SCOPE || 'openid email');
                 const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
@@ -615,7 +623,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid/callback - OpenID callback after authentication
-            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -676,8 +684,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 try {
-                    const url = new URL(request.url);
-                    const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                    // Build callback URL (must match what was sent to OIDC provider)
+                    const serverContext: ServerContext = {
+                        requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                    };
+                    const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
 
                     // Exchange code for tokens
                     const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');

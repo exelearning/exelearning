@@ -173,7 +173,34 @@ server {
 }
 ```
 
-> **If TLS is terminated at your proxy:** set `USE_FORWARDED_HEADERS=1` and ensure `X-Forwarded-*` headers are sent. 
+> **If TLS is terminated at your proxy:** set `TRUSTED_PROXIES=private_ranges,REMOTE_ADDR` in your `.env` and ensure your proxy sends `X-Forwarded-*` headers. See [Reverse Proxy Configuration](#reverse-proxy-configuration) below.
+
+---
+
+## Reverse Proxy Configuration
+
+When running behind a reverse proxy, eXeLearning needs to know how to construct public URLs (for SSO callbacks, redirects, etc.). Configure these variables in your `.env`:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `TRUSTED_PROXIES` | IP ranges allowed to set proxy headers | `private_ranges,REMOTE_ADDR` |
+| `TRUSTED_HEADERS` | Headers to trust from proxies | `x-forwarded-for,x-forwarded-host,x-forwarded-proto` |
+
+**Example `.env` for reverse proxy:**
+
+```env
+# Trust private network ranges (typical for Docker/internal proxies)
+TRUSTED_PROXIES=private_ranges,REMOTE_ADDR
+TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+```
+
+**Why this matters:** Without proper configuration, SSO authentication (CAS, OpenID) will fail because callback URLs will use the internal server hostname instead of the public URL.
+
+**Common issues:**
+
+- CAS/OpenID redirects to wrong host → Check `TRUSTED_PROXIES` is set
+- Protocol mismatch (http vs https) → Ensure proxy sends `X-Forwarded-Proto`
+- Missing BASE_PATH in callbacks → Ensure `BASE_PATH` is set correctly
 
 ---
 

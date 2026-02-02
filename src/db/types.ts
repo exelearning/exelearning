@@ -46,7 +46,7 @@ interface UsersTable {
 
 interface UsersPreferencesTable {
     id: Generated<number>;
-    user_id: string;
+    owner_id: number;
     preference_key: string;
     value: string;
     description: string | null;
