@@ -1,12 +1,11 @@
 /**
  * Migration: Make user_id nullable in users table
  *
- * The user_id column is only used for external login identifiers:
+ * The user_id column is only used for external SSO login identifiers:
  * - CAS users: "cas:{username}"
  * - OIDC users: "oidc:{subject}"
- * - Guest users: "guest_{id}"
  *
- * Local users (password auth) should have NULL for user_id.
+ * Local/Guest users should have NULL for user_id (they're not SSO).
  *
  * Note: SQLite doesn't support ALTER COLUMN, so we need to recreate the table.
  * PostgreSQL and MySQL support altering column nullability directly.
