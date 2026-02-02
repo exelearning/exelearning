@@ -105,6 +105,7 @@ Common knobs (all supported by the example files):
 You can deploy eXeLearning under a subdirectory (e.g., `https://example.org/exelearning`) by setting `BASE_PATH`.
 
 - Do not include a trailing slash.
+- Start with a slash
 - Can be multi-level.
 
 Examples:
@@ -128,8 +129,8 @@ What it does:
 
 Verification:
 
-- Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
-- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
+- Visit `https://your-host/%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
+- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `/%BASE_PATH%/healthcheck`.
 
 ---
 
