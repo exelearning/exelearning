@@ -89,7 +89,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -142,7 +142,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthcheck"]
+      test: ["CMD", "sh", "-c", "wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 3
