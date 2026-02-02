@@ -17,6 +17,7 @@ import { getString, getBoolean, hasHelp } from '../utils/args';
 import { colors } from '../utils/output';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as os from 'os';
 import { existsSync, mkdirSync } from 'fs';
 import * as Y from 'yjs';
 
@@ -186,7 +187,7 @@ export async function execute(
                 };
             }
 
-            tempInputFile = path.join('/tmp', `elp-input-${Date.now()}.elp`);
+            tempInputFile = path.join(os.tmpdir(), `elp-input-${Date.now()}.elp`);
             await fs.writeFile(tempInputFile, stdinData);
             inputPath = tempInputFile;
 
@@ -196,7 +197,10 @@ export async function execute(
         }
 
         // Create extraction directory for assets
-        const extractDir = path.join('/tmp', `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+        const extractDir = path.join(
+            os.tmpdir(),
+            `elp-extract-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        );
         if (!existsSync(extractDir)) {
             mkdirSync(extractDir, { recursive: true });
         }
