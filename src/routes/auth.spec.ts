@@ -518,6 +518,37 @@ describe('Auth Routes', () => {
             const location = response.headers.get('location');
             expect(location).toContain('cas.example.com');
         });
+
+        it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
+            // Note: Full proxy header processing requires a real server context with requestIP()
+            // The proxy URL logic is fully tested in proxy-url.util.spec.ts
+            // This test verifies the auth route handles proxy headers without errors
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevTrustedProxies = process.env.TRUSTED_PROXIES;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            process.env.TRUSTED_PROXIES = 'REMOTE_ADDR';
+
+            const response = await app.handle(
+                new Request('http://internal:8080/login/cas', {
+                    headers: {
+                        'X-Forwarded-Host': 'public.example.org',
+                        'X-Forwarded-Proto': 'https',
+                    },
+                }),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            process.env.TRUSTED_PROXIES = prevTrustedProxies;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('service=');
+            expect(location).toContain('cas.example.com');
+        });
     });
 
     describe('GET /login/openid', () => {
@@ -549,6 +580,40 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
             const location = response.headers.get('location');
+            expect(location).toContain('oidc.example.com');
+        });
+
+        it('should handle proxy headers gracefully (proxy trust verified in proxy-url.util.spec.ts)', async () => {
+            // Note: Full proxy header processing requires a real server context with requestIP()
+            // The proxy URL logic is fully tested in proxy-url.util.spec.ts
+            // This test verifies the auth route handles proxy headers without errors
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevEndpoint = process.env.OIDC_AUTHORIZATION_ENDPOINT;
+            const prevClientId = process.env.OIDC_CLIENT_ID;
+            const prevTrustedProxies = process.env.TRUSTED_PROXIES;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = 'https://oidc.example.com/auth';
+            process.env.OIDC_CLIENT_ID = 'test-client-id';
+            process.env.TRUSTED_PROXIES = 'REMOTE_ADDR';
+
+            const response = await app.handle(
+                new Request('http://internal:8080/login/openid', {
+                    headers: {
+                        'X-Forwarded-Host': 'public.example.org',
+                        'X-Forwarded-Proto': 'https',
+                    },
+                }),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.OIDC_AUTHORIZATION_ENDPOINT = prevEndpoint;
+            process.env.OIDC_CLIENT_ID = prevClientId;
+            process.env.TRUSTED_PROXIES = prevTrustedProxies;
+
+            expect(response.status).toBe(302);
+            const location = response.headers.get('location');
+            expect(location).toContain('redirect_uri=');
             expect(location).toContain('oidc.example.com');
         });
     });
