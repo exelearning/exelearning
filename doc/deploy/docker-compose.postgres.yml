@@ -2,66 +2,74 @@
 # Use with: docker compose -f docker-compose.postgres.yml up -d
 
 services:
-  exelearning:
-    image: ghcr.io/exelearning/exelearning:${TAG:-latest}
-    build: ../../
-    ports:
-      - "${APP_PORT:-8080}:8080"
-    restart: unless-stopped
-    volumes:
-      - exelearning-data:/mnt/data:rw
-    environment:
-      # Application settings
-      APP_ENV: prod
-      APP_DEBUG: 0
-      APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForPostgresDeployment}"
-      APP_ONLINE_MODE: 1
-      ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
-      XDEBUG_MODE: off
-      
-      # Database settings
-      DB_DRIVER: pdo_pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: "${DB_NAME:-exelearning}"
-      DB_USER: "${DB_USER:-postgres}"
-      DB_PASSWORD: "${DB_PASSWORD:-postgres}"
-      DB_CHARSET: "${DB_CHARSET:-utf8}"
-      DB_SERVER_VERSION: 17
-      
-      # Files directory
-      FILES_DIR: "/mnt/data/"
-      
-      # Authentication settings (guest enabled for E2E tests)
-      APP_AUTH_METHODS: password,guest
-      AUTH_CREATE_USERS: true
-      
-      # Test user
-      TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
-      TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
-      TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+    exelearning:
+        image: ghcr.io/exelearning/exelearning:${TAG:-latest}
+        build: ../../
+        ports:
+            - "${APP_PORT:-8080}:8080"
+        restart: unless-stopped
+        volumes:
+            - exelearning-data:/mnt/data:rw
+        environment:
+            # Application settings
+            APP_ENV: prod
+            APP_DEBUG: 0
+            APP_SECRET: "${APP_SECRET:-ChangeThisToASecretForPostgresDeployment}"
+            APP_ONLINE_MODE: 1
+            ONLINE_THEMES_INSTALL: ${ONLINE_THEMES_INSTALL:-0}
+            XDEBUG_MODE: off
 
-      API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForPostgresDeployment}"
+            # Database settings
+            DB_DRIVER: pdo_pgsql
+            DB_HOST: postgres
+            DB_PORT: 5432
+            DB_NAME: "${DB_NAME:-exelearning}"
+            DB_USER: "${DB_USER:-postgres}"
+            DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+            DB_CHARSET: "${DB_CHARSET:-utf8}"
+            DB_SERVER_VERSION: 17
 
-      # Post-configuration commands
-      POST_CONFIGURE_COMMANDS: |
-        echo "Setting up eXeLearning with PostgreSQL..."
-        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
-    depends_on:
-      - postgres
+            # Files directory
+            FILES_DIR: "/mnt/data/"
 
-  postgres:
-    image: postgres:18-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
-      POSTGRES_USER: "${DB_USER:-postgres}"
-      POSTGRES_DB: "${DB_NAME:-exelearning}"
-    # ports:
-    #   - "${DB_PORT:-5432}:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+            # Authentication settings (guest enabled for E2E tests)
+            APP_AUTH_METHODS: password,guest
+            AUTH_CREATE_USERS: true
+
+            # Test user
+            TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
+            TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
+            TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+
+            API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForPostgresDeployment}"
+            # Configure the BASE_PATH for subdirectory installation.
+            # Leave it empty if you want to use the root directory.
+            # IMPORTANT: You must start with a slash (/) and Do not end with a slash (/).
+            # Examples:
+            #   BASE_PATH= (installation at root)
+            #   BASE_PATH=/exelearning
+            #   BASE_PATH=/web/exelearning
+            BASE_PATH: ${BASE_PATH}
+
+            # Post-configuration commands
+            POST_CONFIGURE_COMMANDS: |
+                echo "Setting up eXeLearning with PostgreSQL..."
+                bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
+        depends_on:
+            - postgres
+
+    postgres:
+        image: postgres:18-alpine
+        restart: unless-stopped
+        environment:
+            POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+            POSTGRES_USER: "${DB_USER:-postgres}"
+            POSTGRES_DB: "${DB_NAME:-exelearning}"
+        # ports:
+        #   - "${DB_PORT:-5432}:5432"
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
 
 volumes:
-  exelearning-data:
-  postgres-data:
+    exelearning-data:
+    postgres-data:

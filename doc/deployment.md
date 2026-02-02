@@ -74,6 +74,7 @@ docker compose -f docker-compose.postgres.yml up -d
 
 > **Heads-up:** The sample sets `DB_SERVER_VERSION` and pins a Postgres image tag. Keep these aligned when you customize. 
 
+> **Note:** In all cases, if you experience write permission issues, try pruning unused Docker volumes.
 ---
 
 ## Configuration
