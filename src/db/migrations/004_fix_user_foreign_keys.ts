@@ -106,7 +106,12 @@ async function migrateDownSqlite(db: Kysely<unknown>): Promise<void> {
 
 async function migrateUpMysql(db: Kysely<unknown>): Promise<void> {
     // 1. Fix projects.owner_id CASCADE
-    await sql`ALTER TABLE projects DROP FOREIGN KEY projects_ibfk_1`.execute(db);
+    // Drop existing FK if it exists (name may vary or not exist on fresh databases)
+    try {
+        await sql`ALTER TABLE projects DROP FOREIGN KEY projects_ibfk_1`.execute(db);
+    } catch {
+        // FK doesn't exist or has different name - continue anyway
+    }
     await sql`ALTER TABLE projects ADD CONSTRAINT projects_owner_fk FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE`.execute(
         db,
     );
@@ -159,7 +164,12 @@ async function migrateDownMysql(db: Kysely<unknown>): Promise<void> {
     await sql`ALTER TABLE users_preferences DROP COLUMN owner_id`.execute(db);
 
     // 1. Remove projects CASCADE
-    await sql`ALTER TABLE projects DROP FOREIGN KEY projects_owner_fk`.execute(db);
+    // Drop existing FK if it exists (may not exist on fresh databases)
+    try {
+        await sql`ALTER TABLE projects DROP FOREIGN KEY projects_owner_fk`.execute(db);
+    } catch {
+        // FK doesn't exist - continue anyway
+    }
     await sql`ALTER TABLE projects ADD CONSTRAINT projects_ibfk_1 FOREIGN KEY (owner_id) REFERENCES users(id)`.execute(
         db,
     );
