@@ -135,6 +135,7 @@ var $azquizgame = {
         mOptions.modeBoard = mOptions.modeBoard ?? false;
         mOptions.evaluation = mOptions.evaluation ?? false;
         mOptions.evaluationID = mOptions.evaluationID ?? '';
+        mOptions.durationGame = mOptions.durationGame ?? 240;
 
         imgsLink.each(function (index) {
             const url = $(this).attr('href');
