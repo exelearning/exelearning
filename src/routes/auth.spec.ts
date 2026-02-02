@@ -1669,7 +1669,7 @@ describe('Auth Routes', () => {
     // =========================================================================
 
     describe('POST /login/guest (additional coverage)', () => {
-        it('should create new guest user in database', async () => {
+        it('should create new guest user in database with null user_id', async () => {
             const response = await app.handle(
                 new Request('http://localhost/login/guest', {
                     method: 'POST',
@@ -1686,6 +1686,8 @@ describe('Auth Routes', () => {
                 .execute();
             expect(guestUsers.length).toBeGreaterThan(0);
             expect(guestUsers[0].roles).toContain('ROLE_GUEST');
+            // Guest users should have null user_id (they're not SSO)
+            expect(guestUsers[0].user_id).toBeNull();
         });
 
         it('should redirect to returnUrl when provided', async () => {
