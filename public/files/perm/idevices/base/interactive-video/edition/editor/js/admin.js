@@ -227,6 +227,9 @@ var iAdmin = {
                     } else {
                         console.error('[InteractiveVideo] Asset resolver not available');
                     }
+                } else if (url.indexOf('blob:') === 0) {
+                    // For blob: URLs, use directly
+                    initializeLocalVideo(url);
                 } else {
                     // For legacy files/tmp paths, prefix with domainPath
                     initializeLocalVideo(`${iAdmin.domainPath}/${url}`);
@@ -556,10 +559,11 @@ var iAdmin = {
                     this.video.url = parent.document.getElementById(
                         'interactiveVideoFile'
                     ).value;
-                    // Accept both legacy files/tmp paths and new asset:// URLs
+                    // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                     if (
                         this.video.url.indexOf('files/tmp') != 0 &&
-                        this.video.url.indexOf('asset://') != 0
+                        this.video.url.indexOf('asset://') != 0 &&
+                        this.video.url.indexOf('blob:') != 0
                     ) {
                         this.appError(
                             $i18n.Type +

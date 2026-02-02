@@ -229,8 +229,8 @@ var $exeDevice = {
         $('#interactiveVideoFile')
             .change(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                // Accept both legacy files/tmp paths and new asset:// URLs
-                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0) {
+                // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
                     e.fadeIn();
                 } else {
@@ -239,8 +239,8 @@ var $exeDevice = {
             })
             .keyup(function () {
                 var e = $('#interactiveVideoEditorOpener');
-                // Accept both legacy files/tmp paths and new asset:// URLs
-                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0) {
+                // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
+                if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
                     e.fadeIn();
                 } else {
@@ -602,18 +602,21 @@ var $exeDevice = {
                 eXe.app.alert(_('Required') + ': ' + _('File'));
                 return false;
             }
-            var extension = myVideo.split('.').pop().toLowerCase();
-            if (
-                extension != 'ogg' &&
-                extension != 'ogv' &&
-                extension != 'mp4' &&
-                extension != 'webm' &&
-                extension != 'flv'
-            ) {
-                eXe.app.alert(
-                    _('Supported formats') + ': ogv/ogg, webm, mp4, flv'
-                );
-                return false;
+            // Skip extension validation for blob: and asset:// URLs (already validated on upload)
+            if (myVideo.indexOf('blob:') != 0 && myVideo.indexOf('asset://') != 0) {
+                var extension = myVideo.split('.').pop().toLowerCase();
+                if (
+                    extension != 'ogg' &&
+                    extension != 'ogv' &&
+                    extension != 'mp4' &&
+                    extension != 'webm' &&
+                    extension != 'flv'
+                ) {
+                    eXe.app.alert(
+                        _('Supported formats') + ': ogv/ogg, webm, mp4, flv'
+                    );
+                    return false;
+                }
             }
         } else if (type == 'youtube') {
             myVideo = $('#interactiveVideoYoutubeURL').val();
