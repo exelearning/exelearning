@@ -38,12 +38,12 @@ export class FreeTextHandler extends BaseLegacyHandler {
 
     /**
      * Extract HTML content from the legacy format
-     * Returns only the main content - feedback is extracted separately in extractProperties()
-     * to avoid duplication when text.js reconstructs the HTML
+     * When feedback is present, wraps content in exe-text-activity structure
      *
      * @param dict - Dictionary element from legacy XML
+     * @param context - Context with language info
      */
-    extractHtmlView(dict: Element, _context?: IdeviceHandlerContext): string {
+    extractHtmlView(dict: Element, context?: IdeviceHandlerContext): string {
         if (!dict) return '';
 
         let content = '';
@@ -82,14 +82,30 @@ export class FreeTextHandler extends BaseLegacyHandler {
             }
         }
 
-        // Note: Feedback is NOT embedded in htmlView to avoid duplication.
-        // The feedback content is extracted separately in extractProperties() and stored as:
-        // - textFeedbackTextarea: feedback content
-        // - textFeedbackInput: button caption
-        // The text.js editor/export will reconstruct the complete HTML with feedback
-        // using buildTextareaHtml() which combines content + feedback properties.
+        // Check for feedback and wrap in exe-text-activity if present
+        const feedback = this.extractFeedback(dict, context);
+        if (feedback.content) {
+            let html = content;
+            html += '<div class="iDevice_buttons feedback-button js-required">';
+            html += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(feedback.buttonCaption)}">`;
+            html += '</div>';
+            html += `<div class="feedback js-feedback js-hidden">${feedback.content}</div>`;
+            return `<div class="exe-text-activity">${html}</div>`;
+        }
 
         return content;
+    }
+
+    /**
+     * Escape HTML attribute special characters
+     */
+    private escapeHtmlAttr(str: string): string {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     /**
