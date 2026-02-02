@@ -1071,6 +1071,7 @@ export function buildApiParameters(): ApiParameters {
                         default: 'Theme default',
                         opendyslexic: 'OpenDyslexic',
                         andika: 'Andika',
+                        'atkinson-hyperlegible-next':'Atkinson Hyperlegible Next',
                         nunito: 'Nunito',
                         'playwrite-es': 'Playwrite ES',
                     },

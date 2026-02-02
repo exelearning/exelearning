@@ -225,6 +225,8 @@
     *   License: MIT
 *   Files: /public/files/perm/fonts/global/andika/*.woff2
     *   Copyright: SIL International
+*   Files: /public/files/perm/fonts/global/atkinson-hyperlegible-next/*.woff2
+    *   Copyright: The Atkinson Hyperlegible Next Project Authors
     *   License: SIL Open Font License version 1.1
 *   Files: /public/files/perm/fonts/global/nunito/*.woff2
     *   Copyright: Vernon Adams, with Reserved Font Name "Nunito".
