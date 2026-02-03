@@ -100,6 +100,14 @@ print_header() {
     echo -e "${BOLD}${CYAN}$1${NC}"
 }
 
+DEBUG_MODE="${DEBUG_MODE:-false}"
+
+print_debug() {
+    if [[ "$DEBUG_MODE" == "true" ]]; then
+        echo -e "${YELLOW}[DEBUG]${NC} $1"
+    fi
+}
+
 # Progress bar function
 # Usage: progress_bar current total filename [status]
 progress_bar() {
@@ -221,6 +229,7 @@ ${BOLD}OPTIONS:${NC}
     -t, --theme THEME    Theme to use (default: base)
     -h, --help           Show this help message
     -q, --quiet          Quiet mode (no interaction, requires -i and -f)
+    -d, --debug          Debug mode (verbose output)
 
 ${BOLD}SUPPORTED FORMATS:${NC}
 EOF
@@ -258,6 +267,7 @@ convert_file() {
     local format="$3"
     local theme="$4"
     local log_file="$5"
+    local debug_mode="${6:-false}"
 
     local filename
     filename=$(basename "$input_file")
@@ -283,21 +293,44 @@ convert_file() {
             ;;
     esac
 
+    local debug_flag=""
+    if [[ "$debug_mode" == "true" ]]; then
+        debug_flag="--debug"
+        echo ""
+        print_debug "Input: $input_file"
+        print_debug "Output: $output_file"
+        print_debug "Format: $format, Theme: $theme"
+    fi
+
     local cmd_output
     local exit_code=0
     local temp_output_file
     temp_output_file=$(mktemp)
 
+    print_debug "Running CLI command..."
+
     if [[ "$format" == "elpx" ]]; then
         # Use elp:convert for ELPX conversion
-        (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:convert "$input_file" "$output_file" 2>&1) > "$temp_output_file" || exit_code=$?
+        if [[ "$debug_mode" == "true" ]]; then
+            print_debug "Command: bun run src/cli/index.ts elp:convert \"$input_file\" \"$output_file\" $debug_flag"
+            (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:convert "$input_file" "$output_file" $debug_flag 2>&1) | tee "$temp_output_file" || exit_code=$?
+        else
+            (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:convert "$input_file" "$output_file" 2>&1) > "$temp_output_file" || exit_code=$?
+        fi
     else
         # Use elp:export for other formats
-        (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:export "$input_file" "$output_file" --format="$format" --theme="$theme" 2>&1) > "$temp_output_file" || exit_code=$?
+        if [[ "$debug_mode" == "true" ]]; then
+            print_debug "Command: bun run src/cli/index.ts elp:export \"$input_file\" \"$output_file\" --format=\"$format\" --theme=\"$theme\" $debug_flag"
+            (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:export "$input_file" "$output_file" --format="$format" --theme="$theme" $debug_flag 2>&1) | tee "$temp_output_file" || exit_code=$?
+        else
+            (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:export "$input_file" "$output_file" --format="$format" --theme="$theme" 2>&1) > "$temp_output_file" || exit_code=$?
+        fi
     fi
 
     cmd_output=$(cat "$temp_output_file")
     rm -f "$temp_output_file"
+
+    print_debug "CLI exit code: $exit_code"
 
     if [[ $exit_code -ne 0 ]]; then
         # Log the error
@@ -477,6 +510,21 @@ main() {
     fi
 
     # Debug: show what we found
+    print_debug "Raw file count: ${#files[@]}"
+
+    # Remove duplicates (glob may find same files twice)
+    local -a unique_files=()
+    local -A seen=()
+    for f in "${files[@]}"; do
+        local abs_path
+        abs_path=$(cd "$(dirname "$f")" && pwd)/$(basename "$f")
+        if [[ -z "${seen[$abs_path]:-}" ]]; then
+            seen[$abs_path]=1
+            unique_files+=("$f")
+        fi
+    done
+    files=("${unique_files[@]}")
+
     print_info "Found ${#files[@]} file(s) to process"
 
     if [[ ${#files[@]} -eq 0 ]]; then
@@ -486,17 +534,29 @@ main() {
         exit 1
     fi
 
+    # List files to process (in debug mode show full paths)
+    if [[ "$DEBUG_MODE" == "true" ]]; then
+        print_debug "Files to convert:"
+        for f in "${files[@]}"; do
+            print_debug "  - $f"
+        done
+    fi
+    echo ""
+
     # Process files from array
+    print_debug "Starting processing loop..."
     for file in "${files[@]}"; do
-        ((current++))
+        ((current++)) || true  # Prevent exit on arithmetic returning 0
         local filename
         filename=$(basename "$file")
+
+        print_debug "Loop iteration $current: $filename"
 
         # Show progress bar with "converting" status
         progress_bar "$current" "$total_count" "$filename" "converting..."
 
         # Convert the file
-        if convert_file "$file" "$OUTPUT_DIR" "$FORMAT" "$THEME" "$log_file"; then
+        if convert_file "$file" "$OUTPUT_DIR" "$FORMAT" "$THEME" "$log_file" "$DEBUG_MODE"; then
             ((success_count++))
             # Update progress bar with success status
             progress_bar "$current" "$total_count" "$filename" "done"
@@ -561,6 +621,7 @@ OUTPUT_DIR=""
 FORMAT=""
 THEME="base"
 QUIET_MODE="false"
+# DEBUG_MODE is declared earlier for print_debug
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -582,6 +643,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -q|--quiet)
             QUIET_MODE="true"
+            shift
+            ;;
+        -d|--debug)
+            DEBUG_MODE="true"
             shift
             ;;
         -h|--help)
