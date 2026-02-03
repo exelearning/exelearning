@@ -109,41 +109,41 @@ print_debug() {
 }
 
 # Progress bar function
-# Usage: progress_bar current total filename [status]
+# Usage: progress_bar current total filename status
 progress_bar() {
     local current=$1
     local total=$2
     local filename=$3
-    local status="${4:-processing}"
-    local width=40
+    local status="${4:-done}"
+    local width=30
     local percentage=$((current * 100 / total))
     local filled=$((width * current / total))
-    local empty=$((width - filled))
 
     # Build the bar
     local bar=""
     for ((i = 0; i < filled; i++)); do bar+="="; done
     if [[ $filled -lt $width ]]; then
         bar+=">"
-        for ((i = 0; i < empty - 1; i++)); do bar+=" "; done
+        for ((i = filled + 1; i < width; i++)); do bar+=" "; done
     fi
 
     # Truncate filename if too long
-    local max_name_len=25
+    local max_name_len=30
     local display_name="$filename"
     if [[ ${#filename} -gt $max_name_len ]]; then
         display_name="...${filename: -$((max_name_len - 3))}"
     fi
 
-    # Print progress on new line for better compatibility with MINGW/Git Bash
-    # Use carriage return only if terminal supports it
-    if [[ -t 1 ]]; then
-        # Terminal - use carriage return for cleaner output
-        printf "\r${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %-25s %-12s" "$bar" "$percentage" "$current" "$total" "$display_name" "[$status]"
-    else
-        # Not a terminal (pipe, redirect) - use newlines
-        printf "${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %s [%s]\n" "$bar" "$percentage" "$current" "$total" "$display_name" "$status"
+    # Color the status
+    local status_colored="$status"
+    if [[ "$status" == "done" ]]; then
+        status_colored="${GREEN}✓${NC}"
+    elif [[ "$status" == "ERROR" ]]; then
+        status_colored="${RED}✗${NC}"
     fi
+
+    # Simple single-line output (works on all terminals including MINGW)
+    printf "${CYAN}[%-${width}s]${NC} %3d%% (%2d/%d) %-30s %s\n" "$bar" "$percentage" "$current" "$total" "$display_name" "$status_colored"
 }
 
 # Format seconds to human readable time
@@ -553,26 +553,18 @@ main() {
         local filename
         filename=$(basename "$file")
 
-        print_debug ">>> Loop iteration $current/$total_count: $filename"
+        print_debug ">>> Processing $current/$total_count: $filename"
 
-        # Show progress bar with "converting" status
-        progress_bar "$current" "$total_count" "$filename" "converting..."
-
-        # Convert the file
+        # Convert the file and show result
         if convert_file "$file" "$OUTPUT_DIR" "$FORMAT" "$THEME" "$log_file" "$DEBUG_MODE"; then
             ((success_count++)) || true
-            # Update progress bar with success status
             progress_bar "$current" "$total_count" "$filename" "done"
             print_debug "File completed successfully"
         else
             ((error_count++)) || true
-            # Update progress bar with error status
             progress_bar "$current" "$total_count" "$filename" "ERROR"
             print_debug "File conversion failed"
         fi
-
-        # Newline after each file
-        echo ""
     done
 
     # Add spacing before summary
