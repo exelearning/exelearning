@@ -67,6 +67,13 @@ const $exeExport = window.$exeExport = {
                 console.error('Error: Failed to trigger print dialog');
             }
         }, this.delayLoadingPageTime);
+        setTimeout(() => {
+            try {
+                this.searchBar.highlightFromUrl();
+            } catch (err) {
+                // Failed to highlight search results
+            }
+        }, this.delayLoadingPageTime);
     },
 
     /**
@@ -442,20 +449,32 @@ $(function () {
 /* To review: This should be in a different file (exe_search.js) */
 $exeExport.searchBar = {
     deepLinking : false,
-    markResults : false,
+    markResults : true, // Mark results in list
+    removeAllMarksOnClick : true, // If true, clicking a mark removes all marks; if false, only that one
     query : '',
-    /**
-     * Normalize text for search comparison: lowercase and remove diacritical marks
-     * (accents, tildes, umlauts, cedillas, etc.)
-     * @param {string} text - The text to normalize
-     * @returns {string} - Normalized text without diacritical marks
-     */
+    // Normalize text for search comparison: lowercase and remove diacritical marks
     normalizeText : function(text) {
         if (!text) return '';
         return text
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
+    },
+    // Mark search term in text (for search results display)
+    markText : function(text, term) {
+        if (!this.markResults || !text || !term) return text;
+        var normalizedText = this.normalizeText(text);
+        var result = '';
+        var lastIndex = 0;
+        var index = normalizedText.indexOf(term);
+        while (index !== -1) {
+            result += text.substring(lastIndex, index);
+            result += '<mark class="exe-client-search-result">' + text.substring(index, index + term.length) + '</mark>';
+            lastIndex = index + term.length;
+            index = normalizedText.indexOf(term, lastIndex);
+        }
+        result += text.substring(lastIndex);
+        return result;
     },
     init : function(){
         var searchWrapper = $('#exe-client-search');
@@ -542,7 +561,9 @@ $exeExport.searchBar = {
             if (nodetitle.indexOf(str) != -1) {
                 this.results.push(i);
                 let lnk = this.getLink(node.fileUrl);
-                res += '<li><a href="' + lnk +'">' + nodeTitle + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
+                lnk = this.addSearchParam(lnk);
+                let displayTitle = this.markText(nodeTitle, str);
+                res += '<li><a href="' + lnk +'">' + displayTitle + '</a><span> ' + this.searchInBlocks(i, str, false) + '</span></li>';
             } else {
                 res += this.searchInBlocks(i, str, true);
             }
@@ -597,7 +618,11 @@ $exeExport.searchBar = {
             spans.remove();
         }
         $("#exe-client-search-results-list a").on("click", function(){
-            if (!$("#siteNav").is(":visible")) this.href += '?nav=false';
+            if (!$("#siteNav").is(":visible")) {
+                // Use & if URL already has parameters, otherwise use ?
+                var separator = this.href.indexOf('?') !== -1 ? '&' : '?';
+                this.href += separator + 'nav=false';
+            }
             // Close search box and restore page content
             $("main > header, main div.page-content").show();
             $("#exe-client-search-reset").removeClass("visible");
@@ -619,9 +644,11 @@ $exeExport.searchBar = {
         for (x in boxes) {
             boxCounter ++;
         }
+        var localBoxOrder = 0;
         for (x in boxes) {
+            localBoxOrder++;
             var box = boxes[x];
-            var boxOrder = box.order;
+            var boxOrder = localBoxOrder;
             var boxTitle = box.name;
             var boxtitle = this.normalizeText(boxTitle);
 
@@ -646,15 +673,144 @@ $exeExport.searchBar = {
                 var blockLabel = (typeof $exe_i18n !== 'undefined' && $exe_i18n.block) ? $exe_i18n.block : 'block';
                 if (fullLink) {
                     if (this.deepLinking) lnk += '#' + x;
-                    res += '<li><a href="' + lnk+ '">' + nodeTitle + '</a>';
+                    lnk = this.addSearchParam(lnk);
+                    let displayTitle = this.markText(nodeTitle, str);
+                    res += '<li><a href="' + lnk+ '">' + displayTitle + '</a>';
                     if (boxCounter > 1) res += '<span> (' + blockLabel + ' ' + boxOrder + ')</span></li>';
                 }
                 else {
-                    if (boxCounter > 1) res += ', <a href="' + lnk +'#' + x + '">' + blockLabel + ' ' + boxOrder + '</a>';
+                    var blockLnk = lnk +'#' + x;
+                    blockLnk = this.addSearchParam(blockLnk);
+                    if (boxCounter > 1) res += ', <a href="' + blockLnk + '">' + blockLabel + ' ' + boxOrder + '</a>';
                 }
             }
         }
         return res;
+    },
+
+    // Add search parameter to a link
+    addSearchParam : function(lnk) {
+        if (!this.query) return lnk;
+        var searchParam = encodeURIComponent(this.query);
+        // Handle hash
+        var hashIndex = lnk.indexOf('#');
+        var hash = '';
+        if (hashIndex !== -1) {
+            hash = lnk.substring(hashIndex);
+            lnk = lnk.substring(0, hashIndex);
+        }
+        // Add parameter
+        if (lnk.indexOf('?') !== -1) {
+            lnk += '&q=' + searchParam;
+        } else {
+            lnk += '?q=' + searchParam;
+        }
+        return lnk + hash;
+    },
+
+    // Check URL for search parameter and highlight matches
+    highlightFromUrl : function() {
+        var params = new URLSearchParams(window.location.search);
+        var searchTerm = params.get('q');
+        if (searchTerm) {
+            this.markSearchResults(searchTerm);
+        }
+    },
+
+    // Mark search results in the page content
+    markSearchResults : function(term) {
+        var self = this;
+        var normalizedTerm = this.normalizeText(term);
+        if (!normalizedTerm) return;
+
+        // Tags where we should not search for text
+        var excludeTags = ['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'SELECT', 'OPTION', 'NOSCRIPT', 'IFRAME', 'MARK', 'SVG', 'CODE', 'PRE'];
+
+        var container = document.querySelector('.exe-content') || document.body;
+
+        // Use TreeWalker to find text nodes
+        var walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Check if any ancestor is in the excludeTags
+                    var parent = node.parentNode;
+                    while (parent && parent !== container) {
+                        if (excludeTags.indexOf(parent.tagName) !== -1) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        parent = parent.parentNode;
+                    }
+                    // Skip empty or whitespace-only nodes
+                    if (!node.textContent.trim()) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            }
+        );
+
+        // Collect nodes to process
+        var nodesToProcess = [];
+        while (walker.nextNode()) {
+            var normalizedContent = self.normalizeText(walker.currentNode.textContent);
+            if (normalizedContent.indexOf(normalizedTerm) !== -1) {
+                nodesToProcess.push(walker.currentNode);
+            }
+        }
+
+        // Process each text node
+        nodesToProcess.forEach(function(textNode) {
+            var text = textNode.textContent;
+            var normalizedText = self.normalizeText(text);
+            var termLen = normalizedTerm.length;
+            var fragment = document.createDocumentFragment();
+            var lastIndex = 0;
+            var index = normalizedText.indexOf(normalizedTerm);
+
+            while (index !== -1) {
+                // Text before the match
+                if (index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(text.substring(lastIndex, index)));
+                }
+
+                // The match (use original text to preserve accents)
+                var mark = document.createElement('mark');
+                mark.className = 'exe-client-search-result';
+                mark.textContent = text.substring(index, index + termLen);
+                fragment.appendChild(mark);
+
+                lastIndex = index + termLen;
+                index = normalizedText.indexOf(normalizedTerm, lastIndex);
+            }
+
+            // Remaining text after last match
+            if (lastIndex < text.length) {
+                fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+            }
+
+            textNode.parentNode.replaceChild(fragment, textNode);
+        });
+
+        // Add click event to remove marks
+        document.addEventListener('click', function(e) {
+            if (e.target.matches && e.target.matches('mark.exe-client-search-result')) {
+                if ($exeExport.searchBar.removeAllMarksOnClick) {
+                    // Remove all marks
+                    var marks = document.querySelectorAll('mark.exe-client-search-result');
+                    marks.forEach(function(mark) {
+                        var text = document.createTextNode(mark.textContent);
+                        mark.parentNode.replaceChild(text, mark);
+                    });
+                } else {
+                    // Remove only the clicked mark
+                    var mark = e.target;
+                    var text = document.createTextNode(mark.textContent);
+                    mark.parentNode.replaceChild(text, mark);
+                }
+            }
+        });
     }
 };
 
