@@ -841,21 +841,97 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(anchor);
     });
 
-    it('MutationObserver processes nested elements', async () => {
-      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
+	    it('MutationObserver processes nested elements', async () => {
+	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
 
-      const container = document.createElement('div');
-      container.innerHTML = '<img src="asset://nested-uuid/nested.jpg">';
-      document.body.appendChild(container);
+	      const container = document.createElement('div');
+	      container.innerHTML = '<img src="asset://nested-uuid/nested.jpg">';
+	      document.body.appendChild(container);
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+	      await new Promise(resolve => setTimeout(resolve, 50));
 
-      const img = container.querySelector('img');
-      expect(img.getAttribute('data-asset-url')).toBe('asset://nested-uuid/nested.jpg');
+	      const img = container.querySelector('img');
+	      expect(img.getAttribute('data-asset-url')).toBe('asset://nested-uuid/nested.jpg');
 
-      document.body.removeChild(container);
-    });
-  });
+	      document.body.removeChild(container);
+	    });
+
+	    it('tracks unresolved iframe assets for retry (data-asset-id + data-asset-loading)', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue(null); // simulate blob not ready yet
+	      mockAssetManager.resolveAssetURL.mockResolvedValue(null);
+
+	      const attrs = new Map([['src', 'asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 0));
+
+	      expect(mockIframe.getAttribute('data-asset-src')).toBe('asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html');
+	      expect(mockIframe.getAttribute('data-asset-id')).toBe('1c43404d-a2b2-563a-8a87-9ac10a16fcb3');
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBe('true');
+	      expect(mockIframe.src).toBe('about:blank');
+	    });
+
+	    it('clears iframe loading attributes after successful HTML resolution', async () => {
+	      const resolver = window.eXeLearningAssetResolver;
+	      expect(resolver?.__processAddedNodeForTests).toBeTypeOf('function');
+
+	      mockAssetManager.getAssetMetadata.mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+	      mockAssetManager._isHtmlAsset.mockReturnValue(true);
+	      mockAssetManager.resolveHtmlWithAssets.mockResolvedValue('http://localhost/resolved.html');
+
+	      const attrs = new Map([['src', 'asset://1c43404d-a2b2-563a-8a87-9ac10a16fcb3.html']]);
+	      const mockIframe = {
+	        nodeType: Node.ELEMENT_NODE,
+	        tagName: 'IFRAME',
+	        matches: () => true,
+	        querySelectorAll: () => [],
+	        getAttribute: (name) => attrs.get(name) ?? null,
+	        setAttribute: (name, value) => {
+	          attrs.set(name, String(value));
+	        },
+	        removeAttribute: (name) => {
+	          attrs.delete(name);
+	        },
+	      };
+	      Object.defineProperty(mockIframe, 'src', {
+	        get: () => attrs.get('src') || '',
+	        set: (value) => {
+	          attrs.set('src', String(value));
+	        },
+	      });
+
+	      resolver.__processAddedNodeForTests(mockIframe);
+	      await new Promise(resolve => setTimeout(resolve, 0));
+
+	      expect(mockIframe.getAttribute('data-asset-loading')).toBeNull();
+	      expect(mockIframe.getAttribute('data-asset-id')).toBeNull();
+	      expect(mockIframe.src).toBe('http://localhost/resolved.html');
+	    });
+	  });
 
   describe('postMessage listener for exe-resolve-html-link', () => {
     let mockAssetManager;
