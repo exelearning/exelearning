@@ -1021,7 +1021,7 @@ describe('exe_export.js', () => {
 
       window.$exeExport.searchBar.doSearch();
 
-      expect(resultsList.innerHTML).toContain('Test Page');
+      expect(resultsList.innerHTML).toContain('<mark class="exe-client-search-result">Test</mark> Page');
     });
   });
 
