@@ -360,11 +360,11 @@ var $exeDevice = {
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else if ($exeDevice.videoType == 2) {
-            url = $exeDevice.extractURLGD(url);
+            url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else if ($exeDevice.videoType == 3) {
-            url = $exeDevice.extractURLGD(url);
+            url = $exeDevices.iDevice.gamification.media.extractURLGD(url);
             $exeDevice.stopVideoYT();
             $exeDevice.startVideoLocal(url, mstart, end);
         } else {
@@ -470,9 +470,39 @@ var $exeDevice = {
     startVideoLocal: function (url, start, end) {
         if ($exeDevice.localPlayer) {
             $exeDevice.pointEnd = end;
-            $exeDevice.localPlayer.src = url;
-            $exeDevice.localPlayer.currentTime = parseFloat(start);
-            $exeDevice.localPlayer.play();
+            const player = $exeDevice.localPlayer;
+            const startTime = parseFloat(start);
+
+            // For asset:// URLs, we need to wait for resolution before playing
+            if (url.startsWith('asset://')) {
+                // Store the asset URL for reference
+                player.setAttribute('data-asset-src', url);
+
+                // Use the global asset resolver if available
+                const resolver = window.eXeLearningAssetResolver;
+                if (resolver && typeof resolver.resolve === 'function') {
+                    resolver.resolve(url).then(blobUrl => {
+                        if (blobUrl) {
+                            // Set src directly without going through interceptor
+                            player.src = blobUrl;
+                            // Wait for canplay event to set time and play
+                            // This works better with the existing loadedmetadata listener from initClock
+                            player.addEventListener('canplay', function onCanPlay() {
+                                player.removeEventListener('canplay', onCanPlay);
+                                player.currentTime = startTime;
+                                player.play().catch(() => {});
+                            }, { once: true });
+                        }
+                    });
+                } else {
+                    console.warn('[quick-questions-video] Asset resolver not available for:', url);
+                }
+            } else {
+                // Regular URL - use synchronous approach
+                player.src = url;
+                player.currentTime = startTime;
+                player.play();
+            }
             $('#vquextEVITime').show();
         }
     },
@@ -1699,7 +1729,7 @@ var $exeDevice = {
                     .startsWith('https://drive.google.com') &&
                     idVideoQuExt.toLowerCase().includes('sharing')),
             isMediaTeca = idVideoQuExt.startsWith(
-                'https://mediateca.educa.madrid.org/videos'
+                'https://mediateca.educa.madrid.org/'
             ),
             authorVideo = $('#vquextEAuthor').val(),
             isNavigable = $('#vquextENavigable').is(':checked'),
@@ -1731,7 +1761,7 @@ var $exeDevice = {
             !$exeDevice.validTime($('#vquextEVIStart').val()) ||
             !$exeDevice.validTime($('#vquextEVIEnd').val()) ||
             startVideoQuExt >= endVideoQuExt ||
-            endVideoQuExt > durationVideo + 1
+            (durationVideo > 0 && endVideoQuExt > durationVideo + 1)
         ) {
             $exeDevice.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
 

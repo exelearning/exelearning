@@ -34,7 +34,9 @@ async function main() {
     const missing: string[] = []
 
     for (const file of files) {
-        const shouldIgnore = IGNORE_PATTERNS.some(p => p.test(file))
+        // `path.join()` uses platform separators. Normalize for regex patterns.
+        const normalizedFile = file.replace(/\\/g, '/')
+        const shouldIgnore = IGNORE_PATTERNS.some(p => p.test(normalizedFile))
         if (shouldIgnore) continue
 
         const specFile = file.replace(/\.ts$/, '.spec.ts')

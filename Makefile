@@ -146,7 +146,7 @@ bundle: deps
 # APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
 # APP_ENV=prod: Pre-compiled Elysia, no watchers
 .PHONY: up-local
-up-local: check-bun deps css bundle
+up-local: check-bun check-env deps css bundle
 ifeq ($(APP_ENV),prod)
 	@echo "Starting local (prod mode)..."
 	@$(MAKE) bundle
@@ -158,7 +158,7 @@ endif
 
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
-run-app: check-bun deps css bundle
+run-app: check-bun check-env deps css bundle
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."
@@ -517,7 +517,11 @@ check-coverage: check-bun ## Check that all files have at least 90% coverage
 	@bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 # Test environment: in-memory database for isolation, no BASE_PATH
+ifeq ($(SYSTEM_OS),windows)
+TEST_ENV := set "BASE_PATH=" && set "DB_PATH=:memory:" && set "ELYSIA_FILES_DIR=%TEMP%\exelearning-test" &&
+else
 TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
+endif
 
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage

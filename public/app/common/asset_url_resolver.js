@@ -214,13 +214,32 @@
                     // Store original for reference
                     element.setAttribute('data-asset-url', value);
 
-                    // Set placeholder immediately to prevent error
-                    originalDescriptor.set.call(element, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+                    // Set appropriate placeholder based on element type to prevent browser errors
+                    // Videos and audios need empty string (no placeholder), images use transparent GIF
+                    const tagName = element.tagName;
+                    if (tagName === 'VIDEO' || tagName === 'AUDIO' || tagName === 'SOURCE') {
+                        // Don't set a placeholder for video/audio - just wait for resolution
+                        // Setting an invalid source would cause NotSupportedError
+                    } else if (tagName === 'IFRAME') {
+                        originalDescriptor.set.call(element, 'about:blank');
+                    } else {
+                        // Images and other elements: use transparent 1x1 GIF
+                        originalDescriptor.set.call(element, 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+                    }
 
                     // Resolve and set real src
                     resolveAssetUrl(value).then(resolved => {
                         if (resolved) {
                             originalDescriptor.set.call(element, resolved);
+                            // Trigger load on media elements after setting src
+                            if (tagName === 'VIDEO' || tagName === 'AUDIO') {
+                                element.load();
+                            } else if (tagName === 'SOURCE') {
+                                const parent = element.parentElement;
+                                if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO')) {
+                                    parent.load();
+                                }
+                            }
                         }
                     });
                 } else {
@@ -323,7 +342,28 @@
                         el.removeAttribute('data-asset-id');
                     }
                 });
+            } else if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO' || el.tagName === 'SOURCE') {
+                // For video/audio/source elements, remove the invalid src immediately
+                // Don't set a placeholder - just clear it and wait for resolution
+                el.removeAttribute('src');
+
+                // Resolve asynchronously and set the real src
+                resolveAssetUrl(assetUrl).then(resolved => {
+                    if (resolved) {
+                        el.src = resolved;
+                        // Trigger load on the media element
+                        if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+                            el.load();
+                        } else if (el.tagName === 'SOURCE') {
+                            const parent = el.parentElement;
+                            if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO')) {
+                                parent.load();
+                            }
+                        }
+                    }
+                });
             } else {
+                // Images: use transparent 1x1 GIF as placeholder
                 el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
                 // Resolve asynchronously and set the real src

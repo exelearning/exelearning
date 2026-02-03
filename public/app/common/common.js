@@ -776,6 +776,17 @@ var $exeDevices = {
         // Gamification
         gamification: {
             initGame($game, nameGame, gameClass, ideviceClass) {
+                // Check if already initialized (SPA navigation protection)
+                // DataGame elements are removed after processing, so if activities exist
+                // but DataGame is gone, the game was already initialized
+                const $activities = $(`.${ideviceClass}`);
+                if ($activities.length > 0) {
+                    const $firstActivity = $activities.eq(0);
+                    if ($firstActivity.find('[class*="-DataGame"]').length === 0) {
+                        return; // Already initialized, skip reinitialization
+                    }
+                }
+
                 if ($(".QuizTestIdevice .iDevice").length > 0) {
                     $game.hasSCORMbutton = true;
                 }
@@ -785,7 +796,7 @@ var $exeDevices = {
                     ? eXe.app.getIdeviceInstalledExportPath(gameClass)
                     : $(".idevice_node." + gameClass).eq(0).attr("data-idevice-path");
 
-                $game.activities = $(`.${ideviceClass}`);
+                $game.activities = $activities;
                 if ($game.activities.length === 0) return;
                 if (!$exeDevices.iDevice.gamification.helpers.supportedBrowser(nameGame)) return;
 
@@ -1948,59 +1959,110 @@ var $exeDevices = {
             },
 
             helpers: {
+                /**
+                 * Sanitizes a JSON string by escaping unescaped control characters inside string values.
+                 *
+                 * This function processes a JSON string character by character, tracking whether
+                 * the current position is inside a string value (between quotes). When inside a
+                 * string, it escapes any control characters that are not properly escaped.
+                 *
+                 * Control characters handled:
+                 * - 0x08 (backspace) -> \b
+                 * - 0x09 (tab) -> \t
+                 * - 0x0A (newline) -> \n
+                 * - 0x0C (form feed) -> \f
+                 * - 0x0D (carriage return) -> \r
+                 * - 0x2028, 0x2029 (line/paragraph separators) -> \uXXXX
+                 * - Other control chars (0x00-0x1F, 0x7F, 0x80-0x9F) -> \uXXXX
+                 *
+                 * @param {string} jsonString - The JSON string to sanitize
+                 * @returns {string} The sanitized JSON string with properly escaped control characters
+                 *
+                 * @example
+                 * // Sanitize JSON with literal newline inside a string value
+                 * const input = '{"text":"line1\nline2"}';  // literal newline, not \\n
+                 * const output = sanitizeJSONString(input);
+                 * // output: '{"text":"line1\\nline2"}'  // now properly escaped
+                 * JSON.parse(output);  // works without error
+                 */
                 sanitizeJSONString: function (jsonString) {
-                    if (typeof jsonString !== 'string' || jsonString === '') return jsonString;
+                    if (typeof jsonString !== 'string' || jsonString === '') {
+                        return jsonString;
+                    }
+
+                    const BACKSPACE = 0x08;
+                    const TAB = 0x09;
+                    const NEWLINE = 0x0a;
+                    const FORM_FEED = 0x0c;
+                    const CARRIAGE_RETURN = 0x0d;
+                    const DELETE = 0x7f;
+                    const LINE_SEPARATOR = 0x2028;
+                    const PARAGRAPH_SEPARATOR = 0x2029;
 
                     let inString = false;
                     let result = '';
 
                     for (let i = 0; i < jsonString.length; i++) {
-                        const ch = jsonString[i];
+                        const char = jsonString[i];
 
+                        // Outside of a string value - just copy the character
                         if (!inString) {
-                            if (ch === '"') {
+                            if (char === '"') {
                                 inString = true;
                             }
-                            result += ch;
+                            result += char;
                             continue;
                         }
 
-                        if (ch === '\\') {
-                            if (i + 1 < jsonString.length) {
-                                result += ch + jsonString[i + 1];
+                        // Handle escape sequences - copy the backslash and next character as-is
+                        if (char === '\\') {
+                            const nextChar = jsonString[i + 1];
+                            if (nextChar !== undefined) {
+                                result += char + nextChar;
                                 i++;
                             } else {
-                                result += ch;
+                                result += char;
                             }
                             continue;
                         }
 
-                        if (ch === '"') {
+                        // End of string value
+                        if (char === '"') {
                             inString = false;
-                            result += ch;
+                            result += char;
                             continue;
                         }
 
-                        const code = ch.charCodeAt(0);
+                        // Inside a string value - escape control characters
+                        const charCode = char.charCodeAt(0);
 
-                        if (code === 0x08) {
-                            result += '\\b';
-                        } else if (code === 0x09) {
-                            result += '\\t';
-                        } else if (code === 0x0a) {
-                            result += '\\n';
-                        } else if (code === 0x0c) {
-                            result += '\\f';
-                        } else if (code === 0x0d) {
-                            result += '\\r';
-                        } else if (code === 0x2028 || code === 0x2029) {
-                            const hex = code.toString(16).padStart(4, '0');
-                            result += `\\u${hex}`;
-                        } else if (code < 0x20 || code === 0x7f || (code >= 0x80 && code <= 0x9f)) {
-                            const hex = code.toString(16).padStart(4, '0');
-                            result += `\\u${hex}`;
-                        } else {
-                            result += ch;
+                        switch (charCode) {
+                            case BACKSPACE:
+                                result += '\\b';
+                                break;
+                            case TAB:
+                                result += '\\t';
+                                break;
+                            case NEWLINE:
+                                result += '\\n';
+                                break;
+                            case FORM_FEED:
+                                result += '\\f';
+                                break;
+                            case CARRIAGE_RETURN:
+                                result += '\\r';
+                                break;
+                            case LINE_SEPARATOR:
+                            case PARAGRAPH_SEPARATOR:
+                                result += '\\u' + charCode.toString(16).padStart(4, '0');
+                                break;
+                            default:
+                                // Escape other control characters (C0, DEL, C1 control codes)
+                                if (charCode < 0x20 || charCode === DELETE || (charCode >= 0x80 && charCode <= 0x9f)) {
+                                    result += '\\u' + charCode.toString(16).padStart(4, '0');
+                                } else {
+                                    result += char;
+                                }
                         }
                     }
 
@@ -2119,6 +2181,7 @@ var $exeDevices = {
                 },
 
                 getQuestions: function (questions, percentage, random) {
+                    if (!Array.isArray(questions)) return questions;
                     const totalQuestions = questions.length;
 
                     if (percentage >= 100 && !random) return questions;
