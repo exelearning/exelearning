@@ -12,6 +12,7 @@ import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
 import type { Theme } from '../db/types';
+import { createZipService } from '../services/zip';
 
 // Base path for themes (bundled with the app)
 const THEMES_BASE_PATH = 'public/files/perm/themes/base';
@@ -20,6 +21,22 @@ const THEMES_BASE_PATH = 'public/files/perm/themes/base';
 const getSiteThemesPath = () => {
     const filesDir = process.env.ELYSIA_FILES_DIR || process.env.FILES_DIR || '/mnt/data';
     return path.join(filesDir, 'themes/site');
+};
+
+const isValidThemeId = (themeId: string): boolean => /^[A-Za-z0-9._-]+$/.test(themeId);
+
+const resolveThemePath = (themeId: string): string | null => {
+    const baseThemePath = path.join(THEMES_BASE_PATH, themeId);
+    if (deps.fs.existsSync(baseThemePath)) {
+        return baseThemePath;
+    }
+
+    const siteThemePath = path.join(getSiteThemesPath(), themeId);
+    if (deps.fs.existsSync(siteThemePath)) {
+        return siteThemePath;
+    }
+
+    return null;
 };
 
 /**
@@ -421,6 +438,39 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
         }
 
         return config;
+    })
+
+    // GET /api/themes/:themeId/download - Download theme as ZIP (base64 JSON)
+    .get('/api/themes/:themeId/download', async ({ params, set }) => {
+        const { themeId } = params;
+
+        if (!isValidThemeId(themeId)) {
+            set.status = 400;
+            return { error: 'Invalid themeId', message: 'Theme id contains invalid characters' };
+        }
+
+        const themePath = resolveThemePath(themeId);
+        if (!themePath) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
+        try {
+            const zipService = createZipService();
+            const zipBuffer = await zipService.createZipBuffer(themePath);
+            const zipBase64 = zipBuffer.toString('base64');
+
+            return {
+                zipFileName: `${themeId}.zip`,
+                zipBase64,
+            };
+        } catch (error) {
+            set.status = 500;
+            return {
+                error: 'Zip Error',
+                message: error instanceof Error ? error.message : 'Failed to generate zip',
+            };
+        }
     })
 
     // GET /api/resources/theme/:themeName/bundle - Get theme files as a bundle for export

@@ -679,10 +679,9 @@ export default class ApiCallManager {
      * @param {*} $themeDirName
      * @returns
      */
-    async getThemeZip(odeSessionId, themeDirName) {
+    async getThemeZip(_odeSessionId, themeDirName) {
         let url = this.endpoints.api_themes_download.path;
-        url = url.replace('{odeSessionId}', odeSessionId);
-        url = url.replace('{themeDirName}', themeDirName);
+        url = url.replace('{themeId}', themeDirName);
         return await this.func.get(url);
     }
 
