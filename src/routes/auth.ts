@@ -20,7 +20,10 @@ import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validato
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
-import { getAuthMethods, getSettingString } from '../services/app-settings';
+import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
+
+// Domain for temporary emails (CAS, OIDC, Guest users without real email)
+const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 /**
  * Dependency types for auth routes
@@ -482,20 +485,26 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         // casUser is already an email address
                         email = casUser;
                     } else {
-                        // casUser is just a username, add CAS domain
-                        email = `${casUser}@cas.local`;
+                        // casUser is just a username, add temp email domain
+                        email = `${casUser}@${TEMP_EMAIL_DOMAIN}`;
                     }
 
                     // Find or create user in database
                     let user = await findUserByEmail(db, email);
                     if (!user) {
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email,
                             user_id: `cas:${casUser}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -757,8 +766,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             // subject is already an email address
                             userEmail = subject;
                         } else {
-                            // Generate fallback email with OIDC domain
-                            userEmail = `oidc_${subject || randomBytes(8).toString('hex')}@oidc.local`;
+                            // Generate fallback email with temp email domain
+                            userEmail = `${subject || randomBytes(8).toString('hex')}@${TEMP_EMAIL_DOMAIN}`;
                         }
                     }
 
@@ -766,12 +775,18 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     let user = await findUserByEmail(db, userEmail);
                     if (!user) {
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email: userEmail,
                             user_id: `oidc:${subject || userEmail}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -867,17 +882,23 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const guestId = randomBytes(16).toString('hex');
-                const guestEmail = `guest_${guestId.slice(0, 8)}@guest.local`;
+                const guestEmail = `${guestId.slice(0, 8)}@${TEMP_EMAIL_DOMAIN}`;
 
                 let user = await findUserByEmail(db, guestEmail);
                 if (!user) {
                     const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                    const defaultQuota = await getSettingNumber(
+                        db,
+                        'DEFAULT_QUOTA',
+                        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                    );
                     user = await createUser(db, {
                         email: guestEmail,
                         user_id: `guest_${guestId.slice(0, 32)}`,
                         password: hashedPassword,
                         roles: ['ROLE_GUEST'],
                         is_lopd_accepted: 1,
+                        quota_mb: defaultQuota,
                     });
                 }
 
