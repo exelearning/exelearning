@@ -22,6 +22,42 @@ readonly NC=$'\033[0m' # No Color
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 1.5. PREREQUISITE CHECKS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+check_prerequisites() {
+    # Check if bun is installed
+    if ! command -v bun &> /dev/null; then
+        echo -e "${RED}Error:${NC} bun is not installed or not in PATH." >&2
+        echo "" >&2
+        echo "Please install bun first:" >&2
+        echo "  curl -fsSL https://bun.sh/install | bash" >&2
+        echo "" >&2
+        echo "Or visit: https://bun.sh" >&2
+        exit 1
+    fi
+
+    # Check if node_modules exist (bun install was run)
+    if [[ ! -d "$PROJECT_ROOT/node_modules" ]]; then
+        echo -e "${RED}Error:${NC} Dependencies not installed." >&2
+        echo "" >&2
+        echo "Please run the following command first:" >&2
+        echo "  cd $PROJECT_ROOT && bun install" >&2
+        exit 1
+    fi
+
+    # Check if CLI entry point exists
+    if [[ ! -f "$PROJECT_ROOT/src/cli/index.ts" ]]; then
+        echo -e "${RED}Error:${NC} CLI not found at $PROJECT_ROOT/src/cli/index.ts" >&2
+        echo "Make sure you're running this script from the exelearning repository." >&2
+        exit 1
+    fi
+}
+
+# Run prerequisite checks immediately
+check_prerequisites
+
 # Supported formats
 readonly -a FORMATS=("elpx" "html5" "html5-sp" "scorm12" "scorm2004" "ims" "epub3")
 readonly -a FORMAT_DESCRIPTIONS=(
@@ -62,11 +98,12 @@ print_header() {
 }
 
 # Progress bar function
-# Usage: progress_bar current total filename
+# Usage: progress_bar current total filename [status]
 progress_bar() {
     local current=$1
     local total=$2
     local filename=$3
+    local status="${4:-processing}"
     local width=40
     local percentage=$((current * 100 / total))
     local filled=$((width * current / total))
@@ -81,20 +118,21 @@ progress_bar() {
     fi
 
     # Truncate filename if too long
-    local max_name_len=30
+    local max_name_len=25
     local display_name="$filename"
     if [[ ${#filename} -gt $max_name_len ]]; then
         display_name="...${filename: -$((max_name_len - 3))}"
     fi
 
-    # Print progress bar (overwrite previous line)
-    printf "\r${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %s" "$bar" "$percentage" "$current" "$total" "$display_name"
-
-    # Add spaces to clear any remaining characters from previous longer filenames
-    printf "%-20s" ""
-
-    # Move cursor back to end of actual content
-    printf "\r${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %s" "$bar" "$percentage" "$current" "$total" "$display_name"
+    # Print progress on new line for better compatibility with MINGW/Git Bash
+    # Use carriage return only if terminal supports it
+    if [[ -t 1 ]]; then
+        # Terminal - use carriage return for cleaner output
+        printf "\r${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %-25s %-12s" "$bar" "$percentage" "$current" "$total" "$display_name" "[$status]"
+    else
+        # Not a terminal (pipe, redirect) - use newlines
+        printf "${CYAN}[%-${width}s]${NC} %3d%% (%d/%d) %s [%s]\n" "$bar" "$percentage" "$current" "$total" "$display_name" "$status"
+    fi
 }
 
 # Format seconds to human readable time
@@ -243,20 +281,29 @@ convert_file() {
     esac
 
     local cmd_output
-    local exit_code
+    local exit_code=0
+    local temp_output_file
+    temp_output_file=$(mktemp)
 
     if [[ "$format" == "elpx" ]]; then
         # Use elp:convert for ELPX conversion
-        cmd_output=$(cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:convert "$input_file" "$output_file" 2>&1) || exit_code=$?
+        (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:convert "$input_file" "$output_file" 2>&1) > "$temp_output_file" || exit_code=$?
     else
         # Use elp:export for other formats
-        cmd_output=$(cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:export "$input_file" "$output_file" --format="$format" --theme="$theme" 2>&1) || exit_code=$?
+        (cd "$PROJECT_ROOT" && bun run src/cli/index.ts elp:export "$input_file" "$output_file" --format="$format" --theme="$theme" 2>&1) > "$temp_output_file" || exit_code=$?
     fi
 
-    exit_code=${exit_code:-0}
+    cmd_output=$(cat "$temp_output_file")
+    rm -f "$temp_output_file"
 
     if [[ $exit_code -ne 0 ]]; then
         # Log the error
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $filename: $cmd_output" >> "$log_file"
+        return 1
+    fi
+
+    # Also check if output contains "failed" or "error" (some commands don't exit with error code)
+    if echo "$cmd_output" | grep -qi "failed\|error:"; then
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] $filename: $cmd_output" >> "$log_file"
         return 1
     fi
@@ -405,26 +452,53 @@ main() {
     start_time=$(date +%s)
 
     echo ""
+    print_info "Starting conversion..."
+    echo ""
 
-    # Find and process all ELP/ELPX files
+    # Build file list first (more portable than process substitution)
+    local -a files=()
     while IFS= read -r -d '' file; do
+        files+=("$file")
+    done < <(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) -print0 2>/dev/null | sort -z)
+
+    # Fallback for systems where process substitution doesn't work (e.g., MINGW)
+    if [[ ${#files[@]} -eq 0 ]] && [[ $total_count -gt 0 ]]; then
+        print_warning "Using fallback file discovery method..."
+        while IFS= read -r file; do
+            [[ -n "$file" ]] && files+=("$file")
+        done < <(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) 2>/dev/null | sort)
+    fi
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        print_error "Could not find files to process"
+        exit 1
+    fi
+
+    # Process files from array
+    for file in "${files[@]}"; do
         ((current++))
         local filename
         filename=$(basename "$file")
 
-        # Show progress bar
-        progress_bar "$current" "$total_count" "$filename"
+        # Show progress bar with "converting" status
+        progress_bar "$current" "$total_count" "$filename" "converting..."
 
         # Convert the file
         if convert_file "$file" "$OUTPUT_DIR" "$FORMAT" "$THEME" "$log_file"; then
             ((success_count++))
+            # Update progress bar with success status
+            progress_bar "$current" "$total_count" "$filename" "done"
         else
             ((error_count++))
+            # Update progress bar with error status
+            progress_bar "$current" "$total_count" "$filename" "ERROR"
         fi
-    done < <(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) -print0 2>/dev/null | sort -z)
 
-    # Clear the progress bar line
-    echo ""
+        # Newline after each file
+        echo ""
+    done
+
+    # Add spacing before summary
     echo ""
 
     # Calculate elapsed time
