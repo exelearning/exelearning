@@ -448,7 +448,7 @@ $(function () {
 
 /* To review: This should be in a different file (exe_search.js) */
 $exeExport.searchBar = {
-    deepLinking : true,
+    deepLinking : false,
     markResults : true, // Mark results in list
     removeAllMarksOnClick : true, // If true, clicking a mark removes all marks; if false, only that one
     query : '',
