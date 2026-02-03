@@ -272,7 +272,7 @@ var $quickquestions = {
                         <video class="QXTP-Video" id="quextVideoLocal-${instance}" preload="auto" controls></video>
                         <div class="QXTP-Protector" id="quextProtector-${instance}"></div>
                         <a href="#" class="QXTP-LinkAudio" id="quextLinkAudio-${instance}" title="${msgs.msgAudio}">
-                            <img src="${path}exequextaudio.png" class="QXTP-Activo" alt="${msgs.msgAudio}">
+                            <img src="${path}exequextaudio.svg" class="QXTP-Activo" alt="${msgs.msgAudio}">
                         </a>
                     </div>
                     <div class="QXTP-GameOver" id="quextGamerOver-${instance}">

@@ -193,7 +193,7 @@ var $quickquestionsmultiplechoice = {
                     <video class="SLCNP-Video" id="seleccionaVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="SLCNP-Protector" id="seleccionaProtector-${instance}"></div>
                     <a href="#" class="SLCNP-LinkAudio" id="seleccionaLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="SLCNP-Activo" alt="${msgs.msgAudio}" />
+                        <img src="${path}exequextaudio.svg" class="SLCNP-Activo" alt="${msgs.msgAudio}" />
                     </a>
                     <div class="SLCNP-GameOver" id="seleccionaGamerOver-${instance}">
                         <div class="SLCNP-DataImage">

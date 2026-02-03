@@ -135,6 +135,7 @@ var $azquizgame = {
         mOptions.modeBoard = mOptions.modeBoard ?? false;
         mOptions.evaluation = mOptions.evaluation ?? false;
         mOptions.evaluationID = mOptions.evaluationID ?? '';
+        mOptions.durationGame = mOptions.durationGame ?? 240;
 
         imgsLink.each(function (index) {
             const url = $(this).attr('href');
@@ -218,7 +219,7 @@ var $azquizgame = {
                                 <img src="${path}exequextcursor.gif" class="rosco-Cursor" alt="" id="roscoCursor-${instance}"/> 
                                 <img src="" class="rosco-ImageNeo" alt="${msgs.msgNoImage}" id="roscoImage-${instance}"/> 
                                 <img src="${path}roscoHome.png" class="rosco-NoImage" alt="${msgs.msgNoImage}" id="roscoNoImage-${instance}"/> 
-                                <a href="#" class="rosco-LinkAudio" id="roscoLinkAudio-${instance}" title="${msgs.msgAudio}"><img src="${path}exequextaudio.png" alt="${msgs.msgAudio}"></a>
+                                <a href="#" class="rosco-LinkAudio" id="roscoLinkAudio-${instance}" title="${msgs.msgAudio}"><img src="${path}exequextaudio.svg" alt="${msgs.msgAudio}"></a>
                                 <a href="#" class="rosco-FullLinkImage" id="roscoFullLinkImage-${instance}" title="${mOptions.msgs.msgFullScreen}">
                                     <strong><span class="sr-av">${mOptions.msgs.msgFullScreen}:</span></strong>
                                     <div  class="exeQuextIcons exeQuextIcons-FullImage rosco-Activo"></div>
@@ -346,7 +347,7 @@ var $azquizgame = {
                 let paragraph = `<p class="${className} ${bgColorClass}"><span>${typeText}. ${wordObj.word}</span>: ${wordObj.definition}`;
 
                 if (wordObj.audio) {
-                    paragraph += `<img src="${$azquizgame.idevicePath}exequextaudio.png" class="rosco-audioicon" data-audio="${wordObj.audio}" alt="${mOptions.msgs.msgAudio}" />`;
+                    paragraph += `<img src="${$azquizgame.idevicePath}exequextaudio.svg" class="rosco-audioicon" data-audio="${wordObj.audio}" alt="${mOptions.msgs.msgAudio}" />`;
                 }
 
                 paragraph += '</p>';

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="21.366104"
+   height="14.956273"
+   viewBox="0 0 21.366104 14.956273"
+   fill="none"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="exequextrerrors.svg"
+   xml:space="preserve"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"><inkscape:page
+       x="0"
+       y="0"
+       width="21.366104"
+       height="14.956273"
+       id="page2"
+       margin="0"
+       bleed="0" /></sodipodi:namedview><defs
+     id="defs1" /><g
+     style="fill:#312f77;fill-opacity:1"
+     id="g37"
+     transform="matrix(0.02670763,0,0,0.02670763,-2.1366105,20.297799)"><path
+       d="m 160,-200 q -33,0 -56.5,-23.5 Q 80,-247 80,-280 v -400 q 0,-33 23.5,-56.5 Q 127,-760 160,-760 h 640 q 33,0 56.5,23.5 23.5,23.5 23.5,56.5 v 400 q 0,33 -23.5,56.5 Q 833,-200 800,-200 Z m 0,-80 H 800 V -680 H 160 Z m 160,-40 h 320 v -80 H 320 Z M 200,-440 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 H 680 Z M 200,-560 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m 120,0 h 80 v -80 h -80 z m -520,280 v -400 z"
+       id="path1"
+       style="fill:#312f77;fill-opacity:1" /></g></svg>
