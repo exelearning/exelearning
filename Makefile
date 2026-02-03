@@ -146,7 +146,7 @@ bundle: deps
 # APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
 # APP_ENV=prod: Pre-compiled Elysia, no watchers
 .PHONY: up-local
-up-local: check-bun deps css bundle
+up-local: check-bun check-env deps css bundle
 ifeq ($(APP_ENV),prod)
 	@echo "Starting local (prod mode)..."
 	@$(MAKE) bundle
@@ -158,7 +158,7 @@ endif
 
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
-run-app: check-bun deps css bundle
+run-app: check-bun check-env deps css bundle
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."
