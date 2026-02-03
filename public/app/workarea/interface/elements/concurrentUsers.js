@@ -158,6 +158,7 @@ export default class ConcurrentUsers {
 
         const usernameElement = document.createElement('span');
         usernameElement.classList.add('username');
+        usernameElement.classList.add('text-truncate');
         usernameElement.innerHTML = user.name || _('User');
 
         // Check if guest user
