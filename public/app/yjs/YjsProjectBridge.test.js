@@ -1545,6 +1545,113 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_ensureNewProjectLanguage', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('updates project language to match user preference for new projects', () => {
+      // Setup user preferences with Spanish
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'es' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object with proper get/set methods
+      const metadataStore = { language: 'en' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(mockMetadata.get('language')).toBe('es');
+    });
+
+    it('does not update language when user preference matches current language', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'en' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      let setCalled = false;
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { 
+          if (key === 'language') setCalled = true;
+          metadataStore[key] = value; 
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(setCalled).toBe(false);
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('does nothing when user preferences are not available', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {} // No user preferences
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      // Language should remain unchanged
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('handles errors gracefully', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'fr' }
+              }
+            }
+          }
+        }
+      };
+
+      // Force an error by nullifying documentManager
+      bridge.documentManager = null;
+
+      // Should not throw
+      expect(() => bridge._ensureNewProjectLanguage()).not.toThrow();
+    });
+  });
+
   describe('save with SaveManager', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
