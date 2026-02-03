@@ -39,7 +39,7 @@ const mockAdminUser = mockUser({
 
 // Create mock queries for unit tests
 const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries => ({
-    findUserById: async () => mockUser(),
+    findUserById: async (_db, id) => (id === 1 ? mockAdminUser : mockUser({ id })),
     findUserByEmail: async () => null,
     findUsersPaginated: async () => ({ users: [mockUser()], total: 1 }),
     countAdmins: async () => 2,

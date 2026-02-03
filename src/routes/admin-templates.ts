@@ -11,7 +11,9 @@ import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database, Template } from '../db/types';
+import { parseRoles } from '../db/types';
 import type { JwtPayload } from './auth';
+import { findUserById as findUserByIdDefault } from '../db/queries/users';
 import {
     getAllTemplates as getAllTemplatesDefault,
     getTemplatesByLocale as getTemplatesByLocaleDefault,
@@ -52,6 +54,8 @@ export interface AdminTemplatesQueries {
     templateFilenameExists: typeof templateFilenameExistsDefault;
     getNextTemplateSortOrder: typeof getNextTemplateSortOrderDefault;
     getDistinctLocales: typeof getDistinctLocalesDefault;
+    // User lookup for admin auth
+    findUserById: typeof findUserByIdDefault;
 }
 
 export interface AdminTemplatesValidatorDeps {
@@ -86,6 +90,7 @@ const defaultDependencies: AdminTemplatesDependencies = {
         templateFilenameExists: templateFilenameExistsDefault,
         getNextTemplateSortOrder: getNextTemplateSortOrderDefault,
         getDistinctLocales: getDistinctLocalesDefault,
+        findUserById: findUserByIdDefault,
     },
     validator: {
         validateTemplateZip: validateTemplateZipDefault,
@@ -149,7 +154,22 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const userId = Number(payload.sub);
+                    if (!Number.isFinite(userId)) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Invalid token subject' };
+                    }
+
+                    const user = await queries.findUserById(database, userId);
+                    if (!user) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'User not found' };
+                    }
+
+                    const authError = requireAdmin({
+                        ...payload,
+                        roles: parseRoles(user.roles),
+                    });
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };

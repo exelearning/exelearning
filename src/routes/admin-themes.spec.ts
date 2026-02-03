@@ -67,11 +67,39 @@ const mockBaseTheme: Theme = {
     updated_at: '2024-01-01T00:00:00.000Z',
 };
 
+const mockAdminUser = {
+    id: 1,
+    user_id: 'admin',
+    email: 'admin@test.com',
+    password: '',
+    roles: '["ROLE_ADMIN"]',
+    is_active: 1,
+    quota_mb: null,
+    created_at: '2024-01-01T00:00:00.000Z',
+    updated_at: null,
+    last_login: null,
+    auth_method: 'local',
+    is_lopd_accepted: 0,
+    external_identifier: null,
+    api_token: null,
+} as const;
+
+const mockRegularUser = {
+    ...mockAdminUser,
+    id: 2,
+    user_id: 'user',
+    email: 'user@test.com',
+    roles: '["ROLE_USER"]',
+} as const;
+
 // Create mock dependencies
 function createMockDeps(overrides?: Partial<ThemesDependencies['queries']>): ThemesDependencies {
     return {
         db: {} as ThemesDependencies['db'],
         queries: {
+            findUserById: mock((_db, id: number) =>
+                Promise.resolve(id === 1 ? mockAdminUser : mockRegularUser),
+            ),
             getSiteThemes: mock(() => Promise.resolve([mockTheme])),
             getEnabledSiteThemes: mock(() => Promise.resolve([mockTheme])),
             getBaseThemes: mock(() => Promise.resolve([mockBaseTheme])),

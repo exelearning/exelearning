@@ -264,7 +264,26 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 try {
                     const payload = (await jwtPlugin.verify(token)) as JwtPayload | false;
-                    return { jwtPayload: payload || null };
+                    if (!payload) {
+                        return { jwtPayload: null as JwtPayload | null };
+                    }
+
+                    const userId = Number(payload.sub);
+                    if (!Number.isFinite(userId)) {
+                        return { jwtPayload: null as JwtPayload | null };
+                    }
+
+                    const user = await queries.findUserById(db, userId);
+                    if (!user) {
+                        return { jwtPayload: null as JwtPayload | null };
+                    }
+
+                    return {
+                        jwtPayload: {
+                            ...payload,
+                            roles: parseRoles(user.roles),
+                        },
+                    };
                 } catch {
                     return { jwtPayload: null as JwtPayload | null };
                 }

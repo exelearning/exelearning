@@ -14,7 +14,9 @@ import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database, Theme } from '../db/types';
+import { parseRoles } from '../db/types';
 import type { JwtPayload } from './auth';
+import { findUserById as findUserByIdDefault } from '../db/queries/users';
 import {
     // Site theme queries (is_builtin=0)
     getSiteThemes as getSiteThemesDefault,
@@ -67,6 +69,8 @@ export interface ThemesQueries {
     themeDirNameExists: typeof themeDirNameExistsDefault;
     getNextSiteThemeSortOrder: typeof getNextSiteThemeSortOrderDefault;
     getDefaultThemeRecord: typeof getDefaultThemeRecordDefault;
+    // User lookup for admin auth
+    findUserById: typeof findUserByIdDefault;
     // Base theme queries
     getBaseThemes: typeof getBaseThemesDefault;
     upsertBaseTheme: typeof upsertBaseThemeDefault;
@@ -109,6 +113,7 @@ const defaultDependencies: ThemesDependencies = {
         themeDirNameExists: themeDirNameExistsDefault,
         getNextSiteThemeSortOrder: getNextSiteThemeSortOrderDefault,
         getDefaultThemeRecord: getDefaultThemeRecordDefault,
+        findUserById: findUserByIdDefault,
         // Base theme queries
         getBaseThemes: getBaseThemesDefault,
         upsertBaseTheme: upsertBaseThemeDefault,
@@ -228,7 +233,22 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const userId = Number(payload.sub);
+                    if (!Number.isFinite(userId)) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'Invalid token subject' };
+                    }
+
+                    const user = await queries.findUserById(database, userId);
+                    if (!user) {
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'User not found' };
+                    }
+
+                    const authError = requireAdmin({
+                        ...payload,
+                        roles: parseRoles(user.roles),
+                    });
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };
