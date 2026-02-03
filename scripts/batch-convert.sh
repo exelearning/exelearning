@@ -512,22 +512,25 @@ main() {
     # Debug: show what we found
     print_debug "Raw file count: ${#files[@]}"
 
-    # Remove duplicates (glob may find same files twice)
+    # Remove duplicates using sort -u (works on all bash versions)
     local -a unique_files=()
-    local -A seen=()
+    local seen_list=""
     for f in "${files[@]}"; do
         local abs_path
-        abs_path=$(cd "$(dirname "$f")" && pwd)/$(basename "$f")
-        if [[ -z "${seen[$abs_path]:-}" ]]; then
-            seen[$abs_path]=1
+        abs_path=$(cd "$(dirname "$f")" 2>/dev/null && pwd)/$(basename "$f")
+        # Check if already seen using grep
+        if ! echo "$seen_list" | grep -qxF "$abs_path"; then
+            seen_list="${seen_list}${abs_path}"$'\n'
             unique_files+=("$f")
         fi
     done
     files=("${unique_files[@]}")
 
-    print_info "Found ${#files[@]} file(s) to process"
+    # Update total_count to match actual files found
+    total_count=${#files[@]}
+    print_info "Found $total_count file(s) to process"
 
-    if [[ ${#files[@]} -eq 0 ]]; then
+    if [[ $total_count -eq 0 ]]; then
         print_error "Could not find files to process"
         print_info "Checking directory contents..."
         ls -la "$INPUT_DIR" 2>/dev/null || echo "Cannot list directory"
@@ -544,26 +547,28 @@ main() {
     echo ""
 
     # Process files from array
-    print_debug "Starting processing loop..."
+    print_debug "Starting processing loop with $total_count files..."
     for file in "${files[@]}"; do
         ((current++)) || true  # Prevent exit on arithmetic returning 0
         local filename
         filename=$(basename "$file")
 
-        print_debug "Loop iteration $current: $filename"
+        print_debug ">>> Loop iteration $current/$total_count: $filename"
 
         # Show progress bar with "converting" status
         progress_bar "$current" "$total_count" "$filename" "converting..."
 
         # Convert the file
         if convert_file "$file" "$OUTPUT_DIR" "$FORMAT" "$THEME" "$log_file" "$DEBUG_MODE"; then
-            ((success_count++))
+            ((success_count++)) || true
             # Update progress bar with success status
             progress_bar "$current" "$total_count" "$filename" "done"
+            print_debug "File completed successfully"
         else
-            ((error_count++))
+            ((error_count++)) || true
             # Update progress bar with error status
             progress_bar "$current" "$total_count" "$filename" "ERROR"
+            print_debug "File conversion failed"
         fi
 
         # Newline after each file
