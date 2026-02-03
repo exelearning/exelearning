@@ -2880,11 +2880,15 @@ class AssetManager {
       Logger.log(`[AssetManager] Server has ${serverAssets.length} assets`);
 
       // Find missing locally
+      // Note: server returns {id: numeric_db_id, clientId: uuid_hash, ...}
+      // We use clientId as the asset identifier
       const missing = [];
       for (const serverAsset of serverAssets) {
-        const local = await this.getAsset(serverAsset.id);
+        const assetId = serverAsset.clientId;
+        if (!assetId) continue;
+        const local = await this.getAsset(assetId);
         if (!local) {
-          missing.push(serverAsset.id);
+          missing.push(assetId);
         }
       }
 

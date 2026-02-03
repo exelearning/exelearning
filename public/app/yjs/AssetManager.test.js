@@ -3821,7 +3821,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }] }),
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'a1' }] }),
       })
       .mockResolvedValueOnce(createMockResponse(new Blob(['data1']), {
         'X-Original-Mime': 'image/png',
@@ -3871,7 +3871,7 @@ describe('downloadMissingAssets', () => {
         // First call: list assets
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ success: true, data: [{ id: 'asset-123' }] }),
+          json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-123' }] }),
         });
       }
       // Second call: download asset
