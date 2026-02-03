@@ -230,11 +230,9 @@ Flexbox Bootstrap 5 helpers:
     &:has(.shared-icon) {
         opacity: 1;
         filter: none;
-
-        &:hover,
-        &:focus {
-            background: var(--brand-primary-100) !important;
-            border: 1px solid var(--brand-primary) !important;
+        border: 1px solid var(--brand-primary) !important;
+        .button-share-text {
+            color: var(--brand-primary);
         }
     }
 }
