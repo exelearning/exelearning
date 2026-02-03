@@ -15,7 +15,7 @@ var $exeDevice = {
     textareaTitle: _('Text'),
     // Fieldsets
     infoTitle: _('Task information (optional)'),
-    feedbackTitle: _('Feedback'),
+    feedbackTitle: _('Feedback (optional)'),
     // Inputs
     feedbakInputTitle: _('Button text'),
     infoDurationInputTitle: _('Estimated duration'),
