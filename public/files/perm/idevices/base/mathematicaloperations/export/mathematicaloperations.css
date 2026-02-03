@@ -42,7 +42,7 @@
 }
 
 .MTHO-Cubierta .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     width: 1.7em;
@@ -435,7 +435,7 @@ td {
 
 
 .MTHO-EdReply {
-    margin: auto 0.2em;
+    margin: auto 0.6em;
     max-width: 400px;
     width: 60%;
     text-align: center;
@@ -617,12 +617,12 @@ td {
 
 
 .MTHO-GameContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 .MTHO-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
