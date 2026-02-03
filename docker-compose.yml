@@ -12,7 +12,7 @@ services:
       - .env.dist
       - .env # Overrides what is defined in .env
     ports:
-      - ${APP_PORT:-8080}:${APP_PORT-8080} # Maps the host's $APP_PORT to the container's ${APP_PORT} internal port
+      - "${APP_PORT:-8080}:${APP_PORT:-8080}" # Maps the host's $APP_PORT to the container's ${APP_PORT} internal port
     restart: unless-stopped # Restart the container unless it is stopped manually
     volumes:
       # Persistent data only - no source code mounting

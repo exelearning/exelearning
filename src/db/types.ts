@@ -32,7 +32,13 @@ export interface Database {
 interface UsersTable {
     id: Generated<number>;
     email: string;
-    user_id: string;
+    /**
+     * External login identifier for SSO integrations (nullable)
+     * - CAS users: "cas:{username}"
+     * - OIDC users: "oidc:{subject}"
+     * - Local/Guest users: null (not SSO)
+     */
+    user_id: string | null;
     password: string;
     roles: string; // JSON stored as text, parse with JSON.parse()
     is_lopd_accepted: number; // SQLite boolean = 0/1
