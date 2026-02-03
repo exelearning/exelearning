@@ -2578,12 +2578,66 @@ export default class IdevicesEngine {
     }
 
     /**
+     * Normalize a script URL for deduplication checks.
+     * Strips hash and cache-buster param "t", preserves other query params.
+     *
+     * @param {string} rawSrc
+     * @returns {string}
+     */
+    normalizeScriptSrc(rawSrc) {
+        if (!rawSrc) return '';
+        try {
+            const url = new URL(rawSrc, document.baseURI);
+            url.hash = '';
+            if (url.searchParams.has('t')) {
+                url.searchParams.delete('t');
+                if (url.searchParams.toString() === '') {
+                    url.search = '';
+                }
+            }
+            return url.toString();
+        } catch (error) {
+            // Fallback for non-standard URLs
+            let cleaned = String(rawSrc).split('#')[0];
+            const parts = cleaned.split('?');
+            if (parts.length > 1) {
+                const base = parts.shift();
+                const params = parts.join('?');
+                const searchParams = new URLSearchParams(params);
+                if (searchParams.has('t')) {
+                    searchParams.delete('t');
+                }
+                const rest = searchParams.toString();
+                return rest ? `${base}?${rest}` : base;
+            }
+            return cleaned;
+        }
+    }
+
+    /**
      * Import a script to the page
      *
      * @param {*} path
      * @returns {Node}
      */
     loadScriptDynamically(path, newVersion) {
+        // Prevent duplicate script loading (SPA)
+        if (!newVersion) {
+            const normalizedTarget = this.normalizeScriptSrc(path);
+            const existingScript = Array.from(
+                document.querySelectorAll('head > script[src]')
+            ).find(
+                (script) =>
+                    this.normalizeScriptSrc(script.getAttribute('src')) ===
+                    normalizedTarget
+            );
+
+            if (existingScript) {
+                Logger.log('[iDevice] Script already loaded, skipping:', path);
+                return existingScript;
+            }
+        }
+
         let script = document.createElement('script');
         script.id = this.generateId();
         script.setAttribute('type', 'text/javascript');

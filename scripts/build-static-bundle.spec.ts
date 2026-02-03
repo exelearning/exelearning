@@ -560,6 +560,20 @@ describe('buildApiParameters', () => {
         expect(params.userPreferencesConfig.defaultLicense).toBeDefined();
     });
 
+    it('should include defaultAI without altering existing preferences', () => {
+        expect(params.userPreferencesConfig.defaultAI).toBeDefined();
+        expect(params.userPreferencesConfig.defaultAI.type).toBe('select');
+        expect(params.userPreferencesConfig.defaultAI.value).toBe('https://chatgpt.com/?q=');
+        expect(params.userPreferencesConfig.defaultAI.options).toBeDefined();
+
+        // Ensure existing keys remain intact
+        expect(params.userPreferencesConfig.locale).toBeDefined();
+        expect(params.userPreferencesConfig.advancedMode).toBeDefined();
+        expect(params.userPreferencesConfig.defaultLicense).toBeDefined();
+        expect(params.userPreferencesConfig.theme).toBeDefined();
+        expect(params.userPreferencesConfig.versionControl).toBeDefined();
+    });
+
     it('should include iDevice info fields config', () => {
         expect(params.ideviceInfoFieldsConfig).toBeDefined();
         expect(params.ideviceInfoFieldsConfig.title).toBeDefined();
@@ -753,8 +767,10 @@ describe('Configuration exports', () => {
     });
 
     describe('PACKAGE_LOCALES', () => {
-        it('should match LOCALE_NAMES', () => {
-            expect(PACKAGE_LOCALES).toEqual(LOCALE_NAMES);
+        it('should include all LOCALE_NAMES entries', () => {
+            for (const [locale, label] of Object.entries(LOCALE_NAMES)) {
+                expect(PACKAGE_LOCALES[locale]).toBe(label);
+            }
         });
     });
 

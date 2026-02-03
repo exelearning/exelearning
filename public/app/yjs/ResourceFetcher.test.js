@@ -1898,7 +1898,20 @@ describe('ResourceFetcher', () => {
       expect(result.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
       expect(result.has('fonts/global/andika/Andika-Bold.woff2')).toBe(true);
     });
+it('fetches atkinson-hyperlegible-next font files (woff2)', async () => {
+      const fetcher = new ResourceFetcher();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['font-data'])),
+      });
 
+      const result = await fetcher.fetchGlobalFontFiles('atkinson-hyperlegible-next');
+
+      expect(mockFetch).toHaveBeenCalledTimes(5);
+      expect(result.has('fonts/global/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Regular.woff2')).toBe(true);
+      expect(result.has('fonts/global/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Bold.woff2')).toBe(true);
+    });
+    
     it('fetches nunito font files', async () => {
       const fetcher = new ResourceFetcher();
       mockFetch.mockResolvedValue({

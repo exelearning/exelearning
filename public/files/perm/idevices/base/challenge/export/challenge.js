@@ -366,7 +366,7 @@ var $eXeDesafio = {
             ),
             l = 24,
             t = 24,
-            file = 'exequextretosicos.png';
+            colorMap = ['grey', 'blue', 'green', 'red'];
 
         $(`#desafioDesafio-${instance}`)
             .find('.desafio-GameDesafio')
@@ -380,13 +380,15 @@ var $eXeDesafio = {
         $buttonChalleng.each(function (i) {
             if (i < mOptions.stateChallenges.length) {
                 const state = mOptions.stateChallenges[i].state;
-                const left = `${-l * i}px`;
-                const top = `${-t * state}px`;
-                const mcss = `url(${$eXeDesafio.idevicePath}${file}) no-repeat ${left} ${top}`;
+                const color = colorMap[state] || 'grey';
+                const number = i + 1;
+                const svgFile = `number${number}_${color}.svg`;
+                const mcss = `url(${$eXeDesafio.idevicePath}${svgFile}) no-repeat center center`;
                 $(this)
                     .find('.exeQuextRetos')
                     .css({
                         background: mcss,
+                        'background-size': 'contain',
                         width: `${l}px`,
                         height: `${t}px`,
                         'flex-grow': 0,

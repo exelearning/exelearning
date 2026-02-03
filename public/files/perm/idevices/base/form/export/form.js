@@ -200,7 +200,6 @@ var $form = {
      * @returns {Boolean}
      */
     renderBehaviour: function (data, accesibility, ideviceId) {
-        console.log(data);
         const ldata = this.updateConfig(data, ideviceId);
         const addBtnAnswers = ldata.addBtnAnswers;
         if (!ldata.questionsData) return;

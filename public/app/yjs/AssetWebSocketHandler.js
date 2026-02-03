@@ -884,7 +884,7 @@ class AssetWebSocketHandler {
       // Use server-provided URL or construct fallback
       const downloadUrl = url
         ? `${this.config.apiUrl}${url}`
-        : `${this.config.apiUrl}/api/projects/${this.config.projectId}/assets/by-client-id/${assetId}`;
+        : `${this.config.apiUrl}/projects/${this.config.projectId}/assets/by-client-id/${assetId}`;
 
       // Download from server
       const response = await fetch(downloadUrl, {

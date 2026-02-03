@@ -13215,6 +13215,31 @@
         <source>Download Video</source>
         <target></target>
       </trans-unit>
+      <!-- Global Search Modal translations -->
+      <trans-unit id="gs_001" resname="Search pages and content...">
+        <source>Search pages and content...</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gs_002" resname="Search results">
+        <source>Search results</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gs_003" resname="No results found">
+        <source>No results found</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gs_004" resname="navigate">
+        <source>navigate</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gs_005" resname="select">
+        <source>select</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="gs_006" resname="in">
+        <source>in</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

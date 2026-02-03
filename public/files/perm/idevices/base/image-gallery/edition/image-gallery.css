@@ -2,9 +2,13 @@
 
 .imageGalleryIdeviceForm {
   padding: 10px;
-  border: 2px dashed var(--medium-exe-color);
+  border: 1px dashed var(--info-bordercolor);
   border-radius: var(--radius);
   margin-top: 0.4em;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: center;
+  align-items: center;
 }
 
 .imageGalleryIdeviceForm #textMsxHide {
@@ -138,6 +142,16 @@
 
 #addImageButton{
   float:left;
+  position: relative;
+  top: 1em;
+}
+
+.imageGalleryIdeviceForm:has(#textMsxHide[style*="display: none"]) #addImageButton {
+    top: 0
+}
+
+.imageGalleryIdeviceForm:has(#textMsxHide[style*="display: none"]) #UploadImage {
+  margin-top: 1em;
 }
 
 #addImageInstructions{

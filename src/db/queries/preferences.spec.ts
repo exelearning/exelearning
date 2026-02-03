@@ -3,7 +3,7 @@
  * Uses real in-memory SQLite database with dependency injection (no mocks)
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { createTestDb, cleanTestDb, destroyTestDb } from '../../../test/helpers/test-db';
+import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser } from '../../../test/helpers/test-db';
 import type { Kysely } from 'kysely';
 import type { Database } from '../types';
 import {
@@ -24,7 +24,7 @@ import {
 
 describe('Preferences Queries', () => {
     let db: Kysely<Database>;
-    const testUserId = 'test-user-123';
+    let testOwnerId: number;
 
     beforeAll(async () => {
         db = await createTestDb();
@@ -36,6 +36,8 @@ describe('Preferences Queries', () => {
 
     beforeEach(async () => {
         await cleanTestDb(db);
+        // Create a test user for FK constraint
+        testOwnerId = await seedTestUser(db, { email: 'test@example.com', user_id: 'test-user-123' });
     });
 
     // ============================================================================
@@ -45,7 +47,7 @@ describe('Preferences Queries', () => {
     describe('findPreferenceById', () => {
         it('should find preference by id', async () => {
             const created = await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'theme',
                 value: 'dark',
                 description: 'User theme',
@@ -66,38 +68,41 @@ describe('Preferences Queries', () => {
     });
 
     describe('findPreference', () => {
-        it('should find preference by user_id and key', async () => {
+        it('should find preference by owner_id and key', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'language',
                 value: 'es',
             });
 
-            const found = await findPreference(db, testUserId, 'language');
+            const found = await findPreference(db, testOwnerId, 'language');
 
             expect(found).toBeDefined();
             expect(found!.value).toBe('es');
         });
 
         it('should return undefined for non-existent preference', async () => {
-            const found = await findPreference(db, testUserId, 'nonexistent');
+            const found = await findPreference(db, testOwnerId, 'nonexistent');
             expect(found).toBeUndefined();
         });
 
-        it('should differentiate by user_id', async () => {
+        it('should differentiate by owner_id', async () => {
+            const ownerA = await seedTestUser(db, { email: 'a@test.com', user_id: 'user-a' });
+            const ownerB = await seedTestUser(db, { email: 'b@test.com', user_id: 'user-b' });
+
             await createPreference(db, {
-                user_id: 'user-a',
+                owner_id: ownerA,
                 preference_key: 'theme',
                 value: 'dark',
             });
             await createPreference(db, {
-                user_id: 'user-b',
+                owner_id: ownerB,
                 preference_key: 'theme',
                 value: 'light',
             });
 
-            const prefA = await findPreference(db, 'user-a', 'theme');
-            const prefB = await findPreference(db, 'user-b', 'theme');
+            const prefA = await findPreference(db, ownerA, 'theme');
+            const prefB = await findPreference(db, ownerB, 'theme');
 
             expect(prefA!.value).toBe('dark');
             expect(prefB!.value).toBe('light');
@@ -106,26 +111,30 @@ describe('Preferences Queries', () => {
 
     describe('findAllPreferencesForUser', () => {
         it('should return all preferences for user', async () => {
-            await createPreference(db, { user_id: testUserId, preference_key: 'theme', value: 'dark' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'language', value: 'en' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'fontSize', value: '14' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'theme', value: 'dark' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'language', value: 'en' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'fontSize', value: '14' });
 
-            const prefs = await findAllPreferencesForUser(db, testUserId);
+            const prefs = await findAllPreferencesForUser(db, testOwnerId);
 
             expect(prefs.length).toBe(3);
             expect(prefs.map(p => p.preference_key).sort()).toEqual(['fontSize', 'language', 'theme']);
         });
 
         it('should return empty array for user with no preferences', async () => {
-            const prefs = await findAllPreferencesForUser(db, 'nonexistent-user');
+            const otherOwner = await seedTestUser(db, { email: 'other@test.com', user_id: 'other-user' });
+            const prefs = await findAllPreferencesForUser(db, otherOwner);
             expect(prefs).toEqual([]);
         });
 
         it('should not return preferences for other users', async () => {
-            await createPreference(db, { user_id: 'user-a', preference_key: 'pref1', value: 'v1' });
-            await createPreference(db, { user_id: 'user-b', preference_key: 'pref2', value: 'v2' });
+            const ownerA = await seedTestUser(db, { email: 'a@test.com', user_id: 'user-a' });
+            const ownerB = await seedTestUser(db, { email: 'b@test.com', user_id: 'user-b' });
 
-            const prefsA = await findAllPreferencesForUser(db, 'user-a');
+            await createPreference(db, { owner_id: ownerA, preference_key: 'pref1', value: 'v1' });
+            await createPreference(db, { owner_id: ownerB, preference_key: 'pref2', value: 'v2' });
+
+            const prefsA = await findAllPreferencesForUser(db, ownerA);
 
             expect(prefsA.length).toBe(1);
             expect(prefsA[0].preference_key).toBe('pref1');
@@ -135,18 +144,18 @@ describe('Preferences Queries', () => {
     describe('getPreferenceValue', () => {
         it('should return value for existing preference', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'color',
                 value: 'blue',
             });
 
-            const value = await getPreferenceValue(db, testUserId, 'color');
+            const value = await getPreferenceValue(db, testOwnerId, 'color');
 
             expect(value).toBe('blue');
         });
 
         it('should return undefined for non-existent preference', async () => {
-            const value = await getPreferenceValue(db, testUserId, 'nonexistent');
+            const value = await getPreferenceValue(db, testOwnerId, 'nonexistent');
             expect(value).toBeUndefined();
         });
     });
@@ -154,18 +163,18 @@ describe('Preferences Queries', () => {
     describe('getPreferenceValueOrDefault', () => {
         it('should return value for existing preference', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'size',
                 value: 'large',
             });
 
-            const value = await getPreferenceValueOrDefault(db, testUserId, 'size', 'medium');
+            const value = await getPreferenceValueOrDefault(db, testOwnerId, 'size', 'medium');
 
             expect(value).toBe('large');
         });
 
         it('should return default for non-existent preference', async () => {
-            const value = await getPreferenceValueOrDefault(db, testUserId, 'nonexistent', 'default-value');
+            const value = await getPreferenceValueOrDefault(db, testOwnerId, 'nonexistent', 'default-value');
             expect(value).toBe('default-value');
         });
     });
@@ -177,7 +186,7 @@ describe('Preferences Queries', () => {
     describe('createPreference', () => {
         it('should create a new preference', async () => {
             const pref = await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'newPref',
                 value: 'newValue',
                 description: 'A new preference',
@@ -193,7 +202,7 @@ describe('Preferences Queries', () => {
         it('should set timestamps', async () => {
             const before = Date.now();
             const pref = await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'timestamped',
                 value: 'value',
             });
@@ -209,7 +218,7 @@ describe('Preferences Queries', () => {
     describe('updatePreference', () => {
         it('should update an existing preference', async () => {
             const created = await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'theme',
                 value: 'light',
             });
@@ -227,7 +236,7 @@ describe('Preferences Queries', () => {
 
         it('should update updated_at timestamp', async () => {
             const created = await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'pref',
                 value: 'old',
             });
@@ -243,51 +252,59 @@ describe('Preferences Queries', () => {
 
     describe('setPreference (upsert)', () => {
         it('should insert new preference if not exists', async () => {
-            const pref = await setPreference(db, testUserId, 'newKey', 'newValue', 'description');
+            const pref = await setPreference(db, testOwnerId, 'newKey', 'newValue', 'description');
 
             expect(pref.preference_key).toBe('newKey');
             expect(pref.value).toBe('newValue');
             expect(pref.description).toBe('description');
         });
 
+        it('should handle empty description', async () => {
+            const pref = await setPreference(db, testOwnerId, 'emptyDescKey', 'value', '');
+
+            expect(pref.preference_key).toBe('emptyDescKey');
+            expect(pref.value).toBe('value');
+            expect(pref.description).toBe('');
+        });
+
         it('should update existing preference', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'existingKey',
                 value: 'oldValue',
             });
 
-            const updated = await setPreference(db, testUserId, 'existingKey', 'updatedValue');
+            const updated = await setPreference(db, testOwnerId, 'existingKey', 'updatedValue');
 
             expect(updated.value).toBe('updatedValue');
 
             // Verify only one preference exists
-            const prefs = await findAllPreferencesForUser(db, testUserId);
+            const prefs = await findAllPreferencesForUser(db, testOwnerId);
             expect(prefs.length).toBe(1);
         });
 
         it('should preserve description if not provided on update', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'withDesc',
                 value: 'value1',
                 description: 'original description',
             });
 
-            const updated = await setPreference(db, testUserId, 'withDesc', 'value2');
+            const updated = await setPreference(db, testOwnerId, 'withDesc', 'value2');
 
             expect(updated.description).toBe('original description');
         });
 
         it('should override description if provided on update', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'withDesc',
                 value: 'value1',
                 description: 'original',
             });
 
-            const updated = await setPreference(db, testUserId, 'withDesc', 'value2', 'new description');
+            const updated = await setPreference(db, testOwnerId, 'withDesc', 'value2', 'new description');
 
             expect(updated.description).toBe('new description');
         });
@@ -296,51 +313,55 @@ describe('Preferences Queries', () => {
     describe('deletePreference', () => {
         it('should delete existing preference and return true', async () => {
             await createPreference(db, {
-                user_id: testUserId,
+                owner_id: testOwnerId,
                 preference_key: 'toDelete',
                 value: 'value',
             });
 
-            const result = await deletePreference(db, testUserId, 'toDelete');
+            const result = await deletePreference(db, testOwnerId, 'toDelete');
 
             expect(result).toBe(true);
 
-            const found = await findPreference(db, testUserId, 'toDelete');
+            const found = await findPreference(db, testOwnerId, 'toDelete');
             expect(found).toBeUndefined();
         });
 
         it('should return false for non-existent preference', async () => {
-            const result = await deletePreference(db, testUserId, 'nonexistent');
+            const result = await deletePreference(db, testOwnerId, 'nonexistent');
             expect(result).toBe(false);
         });
     });
 
     describe('deleteAllPreferencesForUser', () => {
         it('should delete all preferences for user', async () => {
-            await createPreference(db, { user_id: testUserId, preference_key: 'pref1', value: 'v1' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'pref2', value: 'v2' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'pref3', value: 'v3' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'pref1', value: 'v1' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'pref2', value: 'v2' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'pref3', value: 'v3' });
 
-            const count = await deleteAllPreferencesForUser(db, testUserId);
+            const count = await deleteAllPreferencesForUser(db, testOwnerId);
 
             expect(count).toBe(3);
 
-            const remaining = await findAllPreferencesForUser(db, testUserId);
+            const remaining = await findAllPreferencesForUser(db, testOwnerId);
             expect(remaining.length).toBe(0);
         });
 
         it('should return 0 for user with no preferences', async () => {
-            const count = await deleteAllPreferencesForUser(db, 'nonexistent');
+            const otherOwner = await seedTestUser(db, { email: 'other@test.com', user_id: 'other-user' });
+            const count = await deleteAllPreferencesForUser(db, otherOwner);
             expect(count).toBe(0);
         });
 
         it('should not delete other users preferences', async () => {
-            await createPreference(db, { user_id: 'user-a', preference_key: 'pref', value: 'v' });
-            await createPreference(db, { user_id: 'user-b', preference_key: 'pref', value: 'v' });
+            const ownerA = await seedTestUser(db, { email: 'a@test.com', user_id: 'user-a' });
+            const ownerB = await seedTestUser(db, { email: 'b@test.com', user_id: 'user-b' });
 
-            await deleteAllPreferencesForUser(db, 'user-a');
+            await createPreference(db, { owner_id: ownerA, preference_key: 'pref', value: 'v' });
+            await createPreference(db, { owner_id: ownerB, preference_key: 'pref', value: 'v' });
 
-            const prefsB = await findAllPreferencesForUser(db, 'user-b');
+            await deleteAllPreferencesForUser(db, ownerA);
+
+            const prefsB = await findAllPreferencesForUser(db, ownerB);
             expect(prefsB.length).toBe(1);
         });
     });
@@ -351,34 +372,46 @@ describe('Preferences Queries', () => {
 
     describe('setMultiplePreferences', () => {
         it('should set multiple preferences at once', async () => {
-            await setMultiplePreferences(db, testUserId, {
+            await setMultiplePreferences(db, testOwnerId, {
                 theme: 'dark',
                 language: 'es',
                 fontSize: '16',
             });
 
-            const prefs = await findAllPreferencesForUser(db, testUserId);
+            const prefs = await findAllPreferencesForUser(db, testOwnerId);
             expect(prefs.length).toBe(3);
 
-            const themeValue = await getPreferenceValue(db, testUserId, 'theme');
-            const langValue = await getPreferenceValue(db, testUserId, 'language');
-            const sizeValue = await getPreferenceValue(db, testUserId, 'fontSize');
+            const themeValue = await getPreferenceValue(db, testOwnerId, 'theme');
+            const langValue = await getPreferenceValue(db, testOwnerId, 'language');
+            const sizeValue = await getPreferenceValue(db, testOwnerId, 'fontSize');
 
             expect(themeValue).toBe('dark');
             expect(langValue).toBe('es');
             expect(sizeValue).toBe('16');
         });
 
-        it('should update existing and create new preferences', async () => {
-            await createPreference(db, { user_id: testUserId, preference_key: 'existing', value: 'old' });
+        it('should handle empty object without errors', async () => {
+            // Set up an existing preference first
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'existing', value: 'v' });
 
-            await setMultiplePreferences(db, testUserId, {
+            // Call with empty object - should not throw and not affect existing
+            await setMultiplePreferences(db, testOwnerId, {});
+
+            const prefs = await findAllPreferencesForUser(db, testOwnerId);
+            expect(prefs.length).toBe(1);
+            expect(prefs[0].preference_key).toBe('existing');
+        });
+
+        it('should update existing and create new preferences', async () => {
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'existing', value: 'old' });
+
+            await setMultiplePreferences(db, testOwnerId, {
                 existing: 'updated',
                 new: 'new-value',
             });
 
-            const existingValue = await getPreferenceValue(db, testUserId, 'existing');
-            const newValue = await getPreferenceValue(db, testUserId, 'new');
+            const existingValue = await getPreferenceValue(db, testOwnerId, 'existing');
+            const newValue = await getPreferenceValue(db, testOwnerId, 'new');
 
             expect(existingValue).toBe('updated');
             expect(newValue).toBe('new-value');
@@ -387,10 +420,10 @@ describe('Preferences Queries', () => {
 
     describe('getAllPreferencesAsMap', () => {
         it('should return preferences as Map', async () => {
-            await createPreference(db, { user_id: testUserId, preference_key: 'key1', value: 'value1' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'key2', value: 'value2' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'key1', value: 'value1' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'key2', value: 'value2' });
 
-            const map = await getAllPreferencesAsMap(db, testUserId);
+            const map = await getAllPreferencesAsMap(db, testOwnerId);
 
             expect(map instanceof Map).toBe(true);
             expect(map.get('key1')).toBe('value1');
@@ -399,17 +432,18 @@ describe('Preferences Queries', () => {
         });
 
         it('should return empty Map for user with no preferences', async () => {
-            const map = await getAllPreferencesAsMap(db, 'nonexistent');
+            const otherOwner = await seedTestUser(db, { email: 'other@test.com', user_id: 'other-user' });
+            const map = await getAllPreferencesAsMap(db, otherOwner);
             expect(map.size).toBe(0);
         });
     });
 
     describe('getAllPreferencesAsObject', () => {
         it('should return preferences as object', async () => {
-            await createPreference(db, { user_id: testUserId, preference_key: 'objKey1', value: 'objValue1' });
-            await createPreference(db, { user_id: testUserId, preference_key: 'objKey2', value: 'objValue2' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'objKey1', value: 'objValue1' });
+            await createPreference(db, { owner_id: testOwnerId, preference_key: 'objKey2', value: 'objValue2' });
 
-            const obj = await getAllPreferencesAsObject(db, testUserId);
+            const obj = await getAllPreferencesAsObject(db, testOwnerId);
 
             expect(obj.objKey1).toBe('objValue1');
             expect(obj.objKey2).toBe('objValue2');
@@ -417,7 +451,8 @@ describe('Preferences Queries', () => {
         });
 
         it('should return empty object for user with no preferences', async () => {
-            const obj = await getAllPreferencesAsObject(db, 'nonexistent');
+            const otherOwner = await seedTestUser(db, { email: 'other@test.com', user_id: 'other-user' });
+            const obj = await getAllPreferencesAsObject(db, otherOwner);
             expect(Object.keys(obj).length).toBe(0);
         });
     });

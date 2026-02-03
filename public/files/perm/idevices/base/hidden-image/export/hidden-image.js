@@ -235,7 +235,7 @@ var $eXeHiddenImage = {
                     <img id="hiPImage-${instance}" class="HIP-GameImage" src=""
                         alt="Imagen a descubrir">
                     <a href="#" class="HIP-LinkAudio" id="hiPLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="HIP-Activo" alt="${msgs.msgAudio}">
+                        <img src="${path}exequextaudio.svg" class="HIP-Activo" alt="${msgs.msgAudio}">
                     </a>
                     <div id="hipOverlay-${instance}" class="HIP-Overlay"></div>
                 </div>

@@ -29,6 +29,9 @@ export default class NavbarFile {
         this.imageOptimizerButton = this.menu.navbar.querySelector(
             '#navbar-button-imageoptimizer'
         );
+        this.globalSearchButton = this.menu.navbar.querySelector(
+            '#navbar-button-global-search'
+        );
     }
 
     /**
@@ -44,6 +47,7 @@ export default class NavbarFile {
         this.setPreviewEvent();
         this.setProjectPreferencesEvent();
         this.setImageOptimizerEvent();
+        this.setGlobalSearchEvent();
     }
 
     /**************************************************************************************
@@ -156,6 +160,19 @@ export default class NavbarFile {
         }
     }
 
+    /**
+     * Global Search
+     * Utilities -> Search...
+     *
+     */
+    setGlobalSearchEvent() {
+        if (this.globalSearchButton) {
+            this.globalSearchButton.addEventListener('click', () => {
+                this.globalSearchEvent();
+            });
+        }
+    }
+
     /**************************************************************************************
      * EVENTS
      **************************************************************************************/
@@ -190,6 +207,14 @@ export default class NavbarFile {
      */
     imageOptimizerEvent() {
         eXeLearning.app.modals.imageoptimizer.show();
+    }
+
+    /**
+     * Show Global Search modal
+     *
+     */
+    globalSearchEvent() {
+        eXeLearning.app.modals.globalsearch.show();
     }
 
     /**
