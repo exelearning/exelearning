@@ -85,18 +85,17 @@ var iAdmin = {
                 }
             } else {
                 var video = $('#player video');
-                var src = video.html();
-                src = src.split('"');
-                if (src.length != 3) return 0;
-                src = src[1];
-                var extension = src.split('.').pop().toLowerCase();
-                if (extension == 'flv') {
-                    return iAdmin.hourToSeconds(
-                        $('#player .mejs-currenttime').eq(0).text()
-                    );
-                } else {
+                if (!video.length || !video[0]) return 0;
+                // Try to get currentTime directly from video element
+                if (video[0].currentTime !== undefined && !isNaN(video[0].currentTime)) {
                     return parseInt(video[0].currentTime);
                 }
+                // Fallback for FLV using MediaElement display
+                var mejsTime = $('#player .mejs-currenttime').eq(0).text();
+                if (mejsTime) {
+                    return iAdmin.hourToSeconds(mejsTime);
+                }
+                return 0;
             }
         },
         youtubeIsReady: function () {
@@ -183,21 +182,58 @@ var iAdmin = {
                     return +a[0] * 60 * 60 + +a[1] * 60 + +a[2];
                 }
 
-                $('#player').html(
-                    `<video width="448" height="356" class="mejs__player" data-mejsoptions='{"pluginPath": "${iAdmin.domainPath}/app/common/mediaelement/", "alwaysShowControls": "true"}'><source src="${iAdmin.domainPath}/${url}" /></video>`
-                );
-                // The player won't work if there's no delay. Why?
-                setTimeout(function () {
-                    $exeMediaElement.checkForMediaContent();
-                    // Get duration
+                function initializeLocalVideo(videoSrc) {
+                    $('#player').html(
+                        `<video width="448" height="356" class="mejs__player" data-mejsoptions='{"pluginPath": "${iAdmin.domainPath}/app/common/mediaelement/", "alwaysShowControls": "true"}'><source src="${videoSrc}" type="video/mp4" /></video>`
+                    );
+                    // Initialize MediaElement player after a short delay
                     setTimeout(function () {
-                        var mejsDuration = $('.mejs-duration');
-                        if (mejsDuration.length == 1)
-                            iAdmin.video.duration = hhmmssToSeconds(
-                                mejsDuration.html()
-                            );
-                    }, 1000);
-                }, 500);
+                        var video = $('#player video');
+                        if (video.length && typeof $.fn.mediaelementplayer === 'function') {
+                            video.mediaelementplayer({
+                                pluginPath: iAdmin.domainPath + '/app/common/mediaelement/',
+                                alwaysShowControls: true
+                            });
+                        }
+                        // Get duration
+                        setTimeout(function () {
+                            var mejsDuration = $('.mejs-duration');
+                            if (mejsDuration.length == 1) {
+                                iAdmin.video.duration = hhmmssToSeconds(mejsDuration.html());
+                            } else {
+                                // Fallback: get duration from video element
+                                var videoEl = $('#player video')[0];
+                                if (videoEl && videoEl.duration && !isNaN(videoEl.duration)) {
+                                    iAdmin.video.duration = Math.floor(videoEl.duration);
+                                }
+                            }
+                        }, 1000);
+                    }, 500);
+                }
+
+                // For asset:// URLs, resolve using parent window's resolver
+                if (url.indexOf('asset://') === 0) {
+                    var resolver = parent.eXeLearningAssetResolver || top.eXeLearningAssetResolver;
+                    if (resolver && typeof resolver.resolve === 'function') {
+                        resolver.resolve(url).then(function(blobUrl) {
+                            if (blobUrl) {
+                                initializeLocalVideo(blobUrl);
+                            } else {
+                                console.error('[InteractiveVideo] Failed to resolve asset URL:', url);
+                            }
+                        }).catch(function(err) {
+                            console.error('[InteractiveVideo] Error resolving asset URL:', err);
+                        });
+                    } else {
+                        console.error('[InteractiveVideo] Asset resolver not available');
+                    }
+                } else if (url.indexOf('blob:') === 0) {
+                    // For blob: URLs, use directly
+                    initializeLocalVideo(url);
+                } else {
+                    // For legacy files/tmp paths, prefix with domainPath
+                    initializeLocalVideo(`${iAdmin.domainPath}/${url}`);
+                }
             }
         },
     },
@@ -523,10 +559,11 @@ var iAdmin = {
                     this.video.url = parent.document.getElementById(
                         'interactiveVideoFile'
                     ).value;
-                    // Accept both legacy files/tmp paths and new asset:// URLs
+                    // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                     if (
                         this.video.url.indexOf('files/tmp') != 0 &&
-                        this.video.url.indexOf('asset://') != 0
+                        this.video.url.indexOf('asset://') != 0 &&
+                        this.video.url.indexOf('blob:') != 0
                     ) {
                         this.appError(
                             $i18n.Type +

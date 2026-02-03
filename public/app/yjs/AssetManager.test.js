@@ -3707,7 +3707,7 @@ describe('uploadPendingAssets', () => {
     expect(result.uploaded).toBe(2);
     expect(result.bytes).toBe(300);
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://api/api/projects/project-123/assets',
+      'http://api/projects/project-123/assets',
       expect.objectContaining({ method: 'POST' })
     );
   });
@@ -3766,7 +3766,7 @@ describe('downloadMissingAssets', () => {
   it('returns 0 when all assets cached locally', async () => {
     global.fetch = mock(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }] }),
     }));
     assetManager.getAsset = mock(() => Promise.resolve({ id: 'a1' }));
 
@@ -3779,7 +3779,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+        json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -3800,7 +3800,7 @@ describe('downloadMissingAssets', () => {
       });
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
     });
 
     // Use a proper mock for getAsset that returns null for missing assets
@@ -3821,7 +3821,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }]),
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'a1' }] }),
       })
       .mockResolvedValueOnce(createMockResponse(new Blob(['data1']), {
         'X-Original-Mime': 'image/png',
@@ -3842,6 +3842,54 @@ describe('downloadMissingAssets', () => {
     const result = await assetManager.downloadMissingAssets('http://api', 'token');
 
     expect(result).toBe(0);
+  });
+
+  it('constructs correct URL without double /api prefix', async () => {
+    // This test verifies the fix for the /api/api/ bug
+    // When apiBaseUrl already contains /api (e.g., "http://localhost:8080/api"),
+    // the URL should NOT add another /api prefix
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      return Promise.resolve({ ok: false });
+    });
+
+    // Use an apiBaseUrl that already includes /api (as it does in production)
+    await assetManager.downloadMissingAssets('http://localhost:8080/api', 'token');
+
+    expect(capturedUrls.length).toBeGreaterThan(0);
+    // URL should be /api/projects/... NOT /api/api/projects/...
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/project-123/assets');
+    expect(capturedUrls[0]).not.toContain('/api/api/');
+  });
+
+  it('constructs correct URL for individual asset downloads', async () => {
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      if (capturedUrls.length === 1) {
+        // First call: list assets
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-123' }] }),
+        });
+      }
+      // Second call: download asset
+      return Promise.resolve({ ok: false });
+    });
+
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+
+    await assetManager.downloadMissingAssets('http://localhost:8080/api', 'token');
+
+    expect(capturedUrls.length).toBe(2);
+    // First URL: list assets
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/project-123/assets');
+    // Second URL: download individual asset
+    expect(capturedUrls[1]).toBe('http://localhost:8080/api/projects/project-123/assets/asset-123');
+    // Neither should have double /api
+    expect(capturedUrls[0]).not.toContain('/api/api/');
+    expect(capturedUrls[1]).not.toContain('/api/api/');
   });
 });
 
@@ -4064,6 +4112,26 @@ describe('downloadMissingAssetsFromServer', () => {
     const result = await assetManager.downloadMissingAssetsFromServer('http://api', 'token', 'proj-uuid');
 
     expect(mockWsHandler.requestAsset).toHaveBeenCalled();
+  });
+
+  it('constructs correct URL without double /api prefix', async () => {
+    // This test verifies the fix for the /api/api/ bug
+    // The URL should be ${apiBaseUrl}/projects/... NOT ${apiBaseUrl}/api/projects/...
+    assetManager.missingAssets.add('test-asset');
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      return Promise.resolve({ ok: false, status: 500 });
+    });
+
+    await assetManager.downloadMissingAssetsFromServer('http://localhost:8080/api', 'token', 'proj-uuid-123');
+
+    expect(capturedUrls.length).toBe(1);
+    // URL should be /api/projects/... NOT /api/api/projects/...
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/proj-uuid-123/assets/by-client-id/test-asset');
+    expect(capturedUrls[0]).not.toContain('/api/api/');
   });
 });
 

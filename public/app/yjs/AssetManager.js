@@ -2827,7 +2827,7 @@ class AssetManager {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2865,7 +2865,7 @@ class AssetManager {
 
     try {
       // Get list from server
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2874,15 +2874,21 @@ class AssetManager {
         return 0;
       }
 
-      const serverAssets = await response.json();
+      const responseData = await response.json();
+      // API returns { success: true, data: [...] }
+      const serverAssets = responseData.data || responseData.assets || responseData || [];
       Logger.log(`[AssetManager] Server has ${serverAssets.length} assets`);
 
       // Find missing locally
+      // Note: server returns {id: numeric_db_id, clientId: uuid_hash, ...}
+      // We use clientId as the asset identifier
       const missing = [];
       for (const serverAsset of serverAssets) {
-        const local = await this.getAsset(serverAsset.id);
+        const assetId = serverAsset.clientId;
+        if (!assetId) continue;
+        const local = await this.getAsset(assetId);
         if (!local) {
-          missing.push(serverAsset.id);
+          missing.push(assetId);
         }
       }
 
@@ -2897,7 +2903,7 @@ class AssetManager {
       for (const assetId of missing) {
         try {
           const assetResponse = await fetch(
-            `${apiBaseUrl}/api/projects/${this.projectId}/assets/${assetId}`,
+            `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
 
