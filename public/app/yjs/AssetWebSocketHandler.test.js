@@ -650,6 +650,52 @@ describe('AssetWebSocketHandler', () => {
 
       expect(eventHandler).toHaveBeenCalledWith({ assetId: 'asset-1' });
     });
+
+    it('constructs correct fallback URL without double /api prefix', async () => {
+      // This test verifies the fix for the /api/api/ bug
+      // When no URL is provided in the message, the fallback URL should be
+      // ${apiUrl}/projects/... NOT ${apiUrl}/api/projects/...
+      const capturedUrls = [];
+      global.fetch = mock((url) => {
+        capturedUrls.push(url);
+        return Promise.resolve({
+          ok: true,
+          headers: { get: mock(() => undefined) },
+          blob: mock(() => undefined).mockResolvedValue(new Blob(['data'])),
+        });
+      });
+
+      // Call with no URL - should use fallback
+      await handler._handleAssetReady({ assetId: 'test-asset-id' });
+
+      expect(capturedUrls.length).toBe(1);
+      // URL should be /api/projects/... NOT /api/api/projects/...
+      expect(capturedUrls[0]).toBe('http://localhost:3001/api/projects/project-123/assets/by-client-id/test-asset-id');
+      expect(capturedUrls[0]).not.toContain('/api/api/');
+    });
+
+    it('uses server-provided URL when available', async () => {
+      const capturedUrls = [];
+      global.fetch = mock((url) => {
+        capturedUrls.push(url);
+        return Promise.resolve({
+          ok: true,
+          headers: { get: mock(() => undefined) },
+          blob: mock(() => undefined).mockResolvedValue(new Blob(['data'])),
+        });
+      });
+
+      // Call with server-provided URL
+      await handler._handleAssetReady({
+        assetId: 'test-asset-id',
+        url: '/projects/proj-123/assets/by-client-id/test-asset-id'
+      });
+
+      expect(capturedUrls.length).toBe(1);
+      // Should use ${apiUrl}${url} = http://localhost:3001/api + /projects/...
+      expect(capturedUrls[0]).toBe('http://localhost:3001/api/projects/proj-123/assets/by-client-id/test-asset-id');
+      expect(capturedUrls[0]).not.toContain('/api/api/');
+    });
   });
 
   describe('_handleAssetNotFound', () => {

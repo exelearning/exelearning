@@ -381,10 +381,21 @@ var $interactivevideo = {
             var firstScriptTag = document.getElementsByTagName('script')[0];
             firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
         } else if (this.type == 'local') {
+            // Get MIME type based on extension for proper video playback (especially with blob URLs)
+            var mimeTypes = {
+                'mp4': 'video/mp4',
+                'm4v': 'video/mp4',
+                'webm': 'video/webm',
+                'ogv': 'video/ogg',
+                'ogg': 'video/ogg',
+                'flv': 'video/x-flv'
+            };
+            var mimeType = mimeTypes[this.extension] || 'video/mp4';
+
             $('#player').html(
                 '<video width="448" height="356" class="mejs__player" controls="controls"><source src="' +
                     this.file +
-                    '" /></video>'
+                    '" type="' + mimeType + '" /></video>'
             );
         }
         // $interactivevideo.ready();
