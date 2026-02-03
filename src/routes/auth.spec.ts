@@ -16,8 +16,8 @@ import { findUserByEmail, findUserById, createUser } from '../db/queries';
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
 
-// Default temp email domain used by auth routes
-const DEFAULT_TEMP_EMAIL_DOMAIN = 'domain.local';
+// Default temp email domain used by auth routes (read from env like production code)
+const DEFAULT_TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 // Helper to create test app with DI
 function createTestApp(db: Kysely<Database>) {
