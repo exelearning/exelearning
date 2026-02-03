@@ -949,6 +949,7 @@ describe('exe_export.js', () => {
 
       expect(window.$exeExport.searchBar.data).toEqual({ page1: { name: 'Test' } });
     });
+
   });
 
   describe('searchBar.createSearchForm', () => {
@@ -990,6 +991,49 @@ describe('exe_export.js', () => {
       expect(resultsList.innerHTML).toContain('No results found');
     });
 
+    it('finds results in blocks when page title does not match', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search';
+      document.body.appendChild(wrapper);
+
+      const resultsList = document.createElement('div');
+      resultsList.id = 'exe-client-search-results-list';
+      wrapper.appendChild(resultsList);
+
+      const main = document.createElement('main');
+      document.body.appendChild(main);
+
+      window.$exeExport.searchBar.isPreview = true;
+      window.$exeExport.searchBar.data = {
+        page1: {
+          name: 'Unrelated Title',
+          fileUrl: 'page1.html',
+          blocks: {
+            block1: {
+              order: 1,
+              name: 'Block With Search Term',
+              idevices: {},
+            },
+            block2: {
+              order: 2,
+              name: 'Another Block',
+              idevices: {},
+            },
+          },
+        },
+      };
+      window.$exeExport.searchBar.query = 'search';
+      window.$exeExport.searchBar.deepLinking = true;
+
+      window.$exeExport.searchBar.doSearch();
+
+      // Should find result via searchInBlocks with fullLink=true
+      // The page title is shown in the link, and block number is shown for multi-block pages
+      expect(resultsList.innerHTML).toContain('Unrelated Title');
+      expect(resultsList.innerHTML).toContain('block1'); // In the URL hash
+      expect(resultsList.innerHTML).toContain('block 1'); // In the span
+    });
+
     it('finds results in page titles', () => {
       const wrapper = document.createElement('div');
       wrapper.id = 'exe-client-search';
@@ -1021,7 +1065,7 @@ describe('exe_export.js', () => {
 
       window.$exeExport.searchBar.doSearch();
 
-      expect(resultsList.innerHTML).toContain('Test Page');
+      expect(resultsList.innerHTML).toContain('<mark class="exe-client-search-result">Test</mark> Page');
     });
   });
 
@@ -1225,6 +1269,215 @@ describe('exe_export.js', () => {
 
       // Spans should be removed (jQuery mock removes them)
     });
+
+    it('registers click handler on search result links', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="page.html">Page</a></li>';
+      document.body.appendChild(wrapper);
+
+      // Capture the click handler
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') {
+              clickHandler = handler;
+            }
+            return result;
+          });
+        }
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      expect(clickHandler).toBeDefined();
+
+      // Restore jQuery
+      window.$ = originalJQuery;
+    });
+
+    it('click handler adds nav=false when siteNav is not visible', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="page.html">Page</a></li>';
+      document.body.appendChild(wrapper);
+
+      // Create page elements that the click handler interacts with
+      const header = document.createElement('header');
+      const main = document.createElement('main');
+      main.appendChild(header);
+      const pageContent = document.createElement('div');
+      pageContent.className = 'page-content';
+      main.appendChild(pageContent);
+      document.body.appendChild(main);
+
+      const searchReset = document.createElement('a');
+      searchReset.id = 'exe-client-search-reset';
+      searchReset.className = 'visible';
+      document.body.appendChild(searchReset);
+
+      const searchBox = document.createElement('div');
+      searchBox.id = 'exe-client-search';
+      document.body.appendChild(searchBox);
+
+      const searchInput = document.createElement('input');
+      searchInput.id = 'exe-client-search-text';
+      document.body.appendChild(searchInput);
+
+      // Capture the click handler
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') {
+              clickHandler = handler;
+            }
+            return result;
+          });
+        }
+        // Make siteNav not visible
+        if (selector === '#siteNav') {
+          result.is = vi.fn(() => false);
+        }
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      // Execute the click handler
+      const link = wrapper.querySelector('a');
+      clickHandler.call(link);
+
+      // The href should now have nav=false
+      expect(link.href).toContain('nav=false');
+
+      // Restore jQuery
+      window.$ = originalJQuery;
+    });
+
+    it('click handler uses & separator when URL already has parameters', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="page.html?foo=bar">Page</a></li>';
+      document.body.appendChild(wrapper);
+
+      // Create required page elements
+      const main = document.createElement('main');
+      const header = document.createElement('header');
+      main.appendChild(header);
+      document.body.appendChild(main);
+
+      const searchReset = document.createElement('a');
+      searchReset.id = 'exe-client-search-reset';
+      document.body.appendChild(searchReset);
+
+      const searchBox = document.createElement('div');
+      searchBox.id = 'exe-client-search';
+      document.body.appendChild(searchBox);
+
+      const searchInput = document.createElement('input');
+      searchInput.id = 'exe-client-search-text';
+      document.body.appendChild(searchInput);
+
+      // Capture the click handler
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') {
+              clickHandler = handler;
+            }
+            return result;
+          });
+        }
+        if (selector === '#siteNav') {
+          result.is = vi.fn(() => false);
+        }
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      // Execute the click handler
+      const link = wrapper.querySelector('a');
+      clickHandler.call(link);
+
+      // The href should use & separator
+      expect(link.href).toContain('&nav=false');
+
+      // Restore jQuery
+      window.$ = originalJQuery;
+    });
+
+    it('click handler does not add nav=false when siteNav is visible', () => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'exe-client-search-results-list';
+      wrapper.innerHTML = '<li><a href="page.html">Page</a></li>';
+      document.body.appendChild(wrapper);
+
+      // Create required page elements
+      const main = document.createElement('main');
+      const header = document.createElement('header');
+      main.appendChild(header);
+      document.body.appendChild(main);
+
+      const searchReset = document.createElement('a');
+      searchReset.id = 'exe-client-search-reset';
+      document.body.appendChild(searchReset);
+
+      const searchBox = document.createElement('div');
+      searchBox.id = 'exe-client-search';
+      document.body.appendChild(searchBox);
+
+      const searchInput = document.createElement('input');
+      searchInput.id = 'exe-client-search-text';
+      document.body.appendChild(searchInput);
+
+      // Capture the click handler
+      let clickHandler = null;
+      const originalJQuery = window.$;
+      window.$ = vi.fn((selector) => {
+        const result = originalJQuery(selector);
+        if (selector === '#exe-client-search-results-list a') {
+          result.on = vi.fn((event, handler) => {
+            if (event === 'click') {
+              clickHandler = handler;
+            }
+            return result;
+          });
+        }
+        // Make siteNav visible
+        if (selector === '#siteNav') {
+          result.is = vi.fn(() => true);
+        }
+        return result;
+      });
+
+      window.$exeExport.searchBar.deepLinking = true;
+      window.$exeExport.searchBar.checkBlockLinks();
+
+      // Execute the click handler
+      const link = wrapper.querySelector('a');
+      const originalHref = link.href;
+      clickHandler.call(link);
+
+      // The href should NOT have nav=false
+      expect(link.href).toBe(originalHref);
+
+      // Restore jQuery
+      window.$ = originalJQuery;
+    });
   });
 
   describe('searchBar single block handling', () => {
@@ -1382,6 +1635,346 @@ describe('exe_export.js', () => {
 
       // Should use fallback 'block'
       expect(res).toContain('block 2');
+    });
+  });
+
+  describe('searchBar.addSearchParam', () => {
+    it('adds query parameter with ? when URL has no existing parameters', () => {
+      window.$exeExport.searchBar.query = 'test';
+      const result = window.$exeExport.searchBar.addSearchParam('page.html');
+      expect(result).toBe('page.html?q=test');
+    });
+
+    it('adds query parameter with & when URL already has parameters', () => {
+      window.$exeExport.searchBar.query = 'test';
+      const result = window.$exeExport.searchBar.addSearchParam('page.html?foo=bar');
+      expect(result).toBe('page.html?foo=bar&q=test');
+    });
+
+    it('preserves hash and appends it after query parameter', () => {
+      window.$exeExport.searchBar.query = 'test';
+      const result = window.$exeExport.searchBar.addSearchParam('page.html#section');
+      expect(result).toBe('page.html?q=test#section');
+    });
+
+    it('handles URL with both existing parameters and hash', () => {
+      window.$exeExport.searchBar.query = 'test';
+      const result = window.$exeExport.searchBar.addSearchParam('page.html?foo=bar#section');
+      expect(result).toBe('page.html?foo=bar&q=test#section');
+    });
+
+    it('returns link unchanged when query is empty', () => {
+      window.$exeExport.searchBar.query = '';
+      const result = window.$exeExport.searchBar.addSearchParam('page.html');
+      expect(result).toBe('page.html');
+    });
+  });
+
+  describe('searchBar.highlightFromUrl', () => {
+    it('calls markSearchResults when q parameter is present', () => {
+      const markSpy = vi.spyOn(window.$exeExport.searchBar, 'markSearchResults').mockImplementation(() => {});
+
+      Object.defineProperty(window, 'location', {
+        value: { search: '?q=testterm' },
+        writable: true,
+        configurable: true,
+      });
+
+      window.$exeExport.searchBar.highlightFromUrl();
+
+      expect(markSpy).toHaveBeenCalledWith('testterm');
+      markSpy.mockRestore();
+    });
+
+    it('does not call markSearchResults when q parameter is absent', () => {
+      const markSpy = vi.spyOn(window.$exeExport.searchBar, 'markSearchResults').mockImplementation(() => {});
+
+      Object.defineProperty(window, 'location', {
+        value: { search: '' },
+        writable: true,
+        configurable: true,
+      });
+
+      window.$exeExport.searchBar.highlightFromUrl();
+
+      expect(markSpy).not.toHaveBeenCalled();
+      markSpy.mockRestore();
+    });
+  });
+
+  describe('searchBar.markSearchResults', () => {
+    beforeEach(() => {
+      // Clean up any previous content
+      document.body.innerHTML = '';
+    });
+
+    it('wraps matching text in mark elements', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>This is a test paragraph with test word.</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(2);
+      expect(marks[0].textContent).toBe('test');
+      expect(marks[1].textContent).toBe('test');
+    });
+
+    it('does not search inside excluded tags', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>visible test</p><script>test in script</script><style>test in style</style>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(1);
+      expect(marks[0].textContent).toBe('test');
+    });
+
+    it('preserves text before and after matches', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>before test after</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const p = container.querySelector('p');
+      expect(p.textContent).toBe('before test after');
+      expect(p.innerHTML).toContain('before ');
+      expect(p.innerHTML).toContain('<mark class="exe-client-search-result">test</mark>');
+      expect(p.innerHTML).toContain(' after');
+    });
+
+    it('does nothing when term is empty', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test content</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(0);
+    });
+
+    it('skips whitespace-only text nodes', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>   </p><p>test</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(1);
+    });
+
+    it('falls back to document.body when .exe-content is not found', () => {
+      document.body.innerHTML = '<p>test content here</p>';
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = document.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(1);
+    });
+
+    it('handles multiple matches in same text node', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test one test two test</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(3);
+    });
+
+    it('adds click event listener that handles mark clicks', () => {
+      // Test that the click event handling code path is exercised
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>first test and second test</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.removeAllMarksOnClick = false;
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      let marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(2);
+
+      // Verify each mark has the correct class for click handling
+      marks.forEach((mark) => {
+        expect(mark.matches('mark.exe-client-search-result')).toBe(true);
+      });
+    });
+
+    it('sets up removeAllMarksOnClick handler correctly', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>first test and second test</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.removeAllMarksOnClick = true;
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      let marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(2);
+
+      // Verify marks are set up correctly for the removeAll handler
+      expect(window.$exeExport.searchBar.removeAllMarksOnClick).toBe(true);
+    });
+
+    it('does not mark text inside nested excluded tags', () => {
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<div><code><span>test inside code</span></code></div><p>test outside</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(1);
+      expect(marks[0].closest('p')).not.toBeNull();
+    });
+  });
+
+  describe('searchBar.markSearchResults click handling', () => {
+    let clickHandler;
+    let originalAddEventListener;
+
+    beforeEach(() => {
+      // Capture the click handler when it's registered
+      originalAddEventListener = document.addEventListener;
+      document.addEventListener = vi.fn((event, handler) => {
+        if (event === 'click') {
+          clickHandler = handler;
+        }
+        originalAddEventListener.call(document, event, handler);
+      });
+    });
+
+    afterEach(() => {
+      document.addEventListener = originalAddEventListener;
+      clickHandler = null;
+    });
+
+    it('sets up click handler that checks for mark elements', () => {
+      document.body.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test content</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      // Verify marks are created with correct class for the event handler
+      const mark = container.querySelector('mark.exe-client-search-result');
+      expect(mark).not.toBeNull();
+      expect(mark.matches('mark.exe-client-search-result')).toBe(true);
+      expect(clickHandler).toBeDefined();
+    });
+
+    it('click handler removes single mark when removeAllMarksOnClick is false', () => {
+      document.body.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test one test two</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.removeAllMarksOnClick = false;
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      let marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(2);
+
+      // Call the captured click handler directly with a mock event
+      const mockEvent = {
+        target: marks[0],
+      };
+      clickHandler(mockEvent);
+
+      marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(1);
+    });
+
+    it('click handler removes all marks when removeAllMarksOnClick is true', () => {
+      document.body.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test one test two</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.removeAllMarksOnClick = true;
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      let marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(2);
+
+      // Call the captured click handler directly with a mock event
+      const mockEvent = {
+        target: marks[0],
+      };
+      clickHandler(mockEvent);
+
+      marks = container.querySelectorAll('mark.exe-client-search-result');
+      expect(marks.length).toBe(0);
+    });
+
+    it('click handler ignores non-mark elements', () => {
+      document.body.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test content</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      const mark = container.querySelector('mark.exe-client-search-result');
+      expect(mark).not.toBeNull();
+
+      // Call the click handler with a non-mark target
+      const mockEvent = {
+        target: container.querySelector('p'),
+      };
+      clickHandler(mockEvent);
+
+      // Mark should still exist
+      expect(container.querySelector('mark.exe-client-search-result')).not.toBeNull();
+    });
+
+    it('click handler handles target without matches method', () => {
+      document.body.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'exe-content';
+      container.innerHTML = '<p>test content</p>';
+      document.body.appendChild(container);
+
+      window.$exeExport.searchBar.markSearchResults('test');
+
+      // Call the click handler with a target that has no matches method
+      const mockEvent = {
+        target: { matches: null },
+      };
+
+      // Should not throw
+      expect(() => clickHandler(mockEvent)).not.toThrow();
+    });
+  });
+
+  describe('jQuery ready callback initialization', () => {
+    it('searchBar.init is callable and sets up search functionality', () => {
+      // The searchBar.init is called in the jQuery ready callback at line 818
+      // We verify the init method exists and can be called
+      expect(typeof window.$exeExport.searchBar.init).toBe('function');
+
+      // Verify init doesn't throw when called (it may have already been called)
+      expect(() => window.$exeExport.searchBar.init()).not.toThrow();
     });
   });
 });

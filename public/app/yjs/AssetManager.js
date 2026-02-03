@@ -3125,6 +3125,28 @@ class AssetManager {
       }
     }
 
+    // Handle iframes that were waiting for this asset to download (guest users / late asset fetch)
+    const iframes = document.querySelectorAll(`iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`);
+    if (iframes.length > 0) {
+      const metadata = this.getAssetMetadata(assetId);
+      let iframeUrl = blobUrl;
+
+      // HTML iframes need resolveHtmlWithAssets() to fix internal relative URLs
+      if (metadata && this._isHtmlAsset(metadata.mime, metadata.filename)) {
+        const resolvedHtmlUrl = await this.resolveHtmlWithAssets(assetId);
+        if (resolvedHtmlUrl) {
+          iframeUrl = resolvedHtmlUrl;
+        }
+      }
+
+      for (const iframe of iframes) {
+        iframe.src = iframeUrl;
+        iframe.removeAttribute('data-asset-loading');
+        iframe.removeAttribute('data-asset-id');
+        count++;
+      }
+    }
+
     Logger.log(`[AssetManager] Updated ${count} DOM elements for asset ${assetId.substring(0, 8)}...`);
     return count;
   }

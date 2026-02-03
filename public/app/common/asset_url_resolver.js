@@ -251,6 +251,191 @@
         });
     });
 
+    function processAddedNode(node) {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+        // Find all media elements with asset:// src (including the node itself)
+        const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"], iframe[src^="asset://"]';
+        const mediaElementsList = [];
+
+        // Check if the node itself matches
+        if (node.matches && node.matches(mediaSelector)) {
+            mediaElementsList.push(node);
+        }
+
+        // Check descendants
+        if (node.querySelectorAll) {
+            mediaElementsList.push(...node.querySelectorAll(mediaSelector));
+        }
+
+        // Resolve each asset:// URL for media elements
+        mediaElementsList.forEach((el) => {
+            const assetUrl = el.getAttribute('src');
+            if (!assetUrl) return;
+
+            // Store the original asset URL as data attribute for reference
+            if (el.tagName === 'IFRAME') {
+                el.setAttribute('data-asset-src', assetUrl);
+            } else {
+                el.setAttribute('data-asset-url', assetUrl);
+            }
+
+            // Clear the invalid src immediately to prevent error events
+            // Use a transparent 1x1 GIF as placeholder for images, about:blank for iframes
+            if (el.tagName === 'IFRAME') {
+                el.src = 'about:blank';
+
+                // Track iframe resolution for later retries when the asset arrives
+                const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
+                const assetId = assetIdMatch ? assetIdMatch[1] : null;
+                if (assetId) {
+                    el.setAttribute('data-asset-id', assetId);
+                    el.setAttribute('data-asset-loading', 'true');
+                }
+
+                // For iframes, check if it's an HTML file and resolve with relative URLs
+                const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    // Extract asset ID from URL
+                    if (assetId) {
+                        const metadata = assetManager.getAssetMetadata(assetId);
+                        if (metadata && assetManager._isHtmlAsset(metadata.mime, metadata.filename)) {
+                            // Resolve HTML with all its relative URLs
+                            assetManager
+                                .resolveHtmlWithAssets(assetId)
+                                .then(resolved => {
+                                    if (resolved) {
+                                        el.src = resolved;
+                                        el.removeAttribute('data-asset-loading');
+                                        el.removeAttribute('data-asset-id');
+                                    } else {
+                                        // Fallback to regular resolution
+                                        resolveAssetUrl(assetUrl).then(fallback => {
+                                            if (fallback) {
+                                                el.src = fallback;
+                                                el.removeAttribute('data-asset-loading');
+                                                el.removeAttribute('data-asset-id');
+                                            }
+                                        });
+                                    }
+                                })
+                                .catch(() => {
+                                    // Fallback on error
+                                    resolveAssetUrl(assetUrl).then(fallback => {
+                                        if (fallback) {
+                                            el.src = fallback;
+                                            el.removeAttribute('data-asset-loading');
+                                            el.removeAttribute('data-asset-id');
+                                        }
+                                    });
+                                });
+                            return; // Early return, already handled
+                        }
+                    }
+                }
+
+                // For non-HTML iframes (PDFs, etc.), use regular resolution
+                resolveAssetUrl(assetUrl).then(resolved => {
+                    if (resolved) {
+                        el.src = resolved;
+                        el.removeAttribute('data-asset-loading');
+                        el.removeAttribute('data-asset-id');
+                    }
+                });
+            } else if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO' || el.tagName === 'SOURCE') {
+                // For video/audio/source elements, remove the invalid src immediately
+                // Don't set a placeholder - just clear it and wait for resolution
+                el.removeAttribute('src');
+
+                // Resolve asynchronously and set the real src
+                resolveAssetUrl(assetUrl).then(resolved => {
+                    if (resolved) {
+                        el.src = resolved;
+                        // Trigger load on the media element
+                        if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
+                            el.load();
+                        } else if (el.tagName === 'SOURCE') {
+                            const parent = el.parentElement;
+                            if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO')) {
+                                parent.load();
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Images: use transparent 1x1 GIF as placeholder
+                el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+                // Resolve asynchronously and set the real src
+                resolveAssetUrl(assetUrl).then(resolved => {
+                    if (resolved) {
+                        el.src = resolved;
+                    }
+                });
+            }
+        });
+
+        // Also handle images with asset:// in the 'origin' attribute (used by image-gallery)
+        const originSelector = 'img[origin^="asset://"]';
+        const originElements = [];
+
+        if (node.matches && node.matches(originSelector)) {
+            originElements.push(node);
+        }
+
+        if (node.querySelectorAll) {
+            originElements.push(...node.querySelectorAll(originSelector));
+        }
+
+        // Resolve each asset:// URL for origin attributes
+        originElements.forEach((el) => {
+            const assetUrl = el.getAttribute('origin');
+            if (!assetUrl || !isAssetUrl(assetUrl)) return;
+
+            // Store the original asset URL in a separate data attribute
+            el.setAttribute('data-asset-origin', assetUrl);
+
+            // Resolve asynchronously and set the real origin
+            resolveAssetUrl(assetUrl).then(resolved => {
+                if (resolved) {
+                    el.setAttribute('origin', resolved);
+                }
+            });
+        });
+
+        // Also handle anchor elements with asset:// hrefs (for lightbox, etc.)
+        const anchorSelector = 'a[href^="asset://"]';
+        const anchorElements = [];
+
+        if (node.matches && node.matches(anchorSelector)) {
+            anchorElements.push(node);
+        }
+
+        if (node.querySelectorAll) {
+            anchorElements.push(...node.querySelectorAll(anchorSelector));
+        }
+
+        // Resolve each asset:// URL for anchor elements
+        anchorElements.forEach((el) => {
+            const assetUrl = el.getAttribute('href');
+            if (!assetUrl) return;
+
+            // Store the original asset URL as data attribute for reference
+            el.setAttribute('data-asset-url', assetUrl);
+
+            // Don't set a placeholder - keep the asset:// URL in href
+            // SimpleLightbox and other libraries need a valid href when they initialize
+            // The resolved blob:// URL will be set once available
+
+            // Resolve asynchronously and set the real href
+            resolveAssetUrl(assetUrl).then(resolved => {
+                if (resolved) {
+                    el.setAttribute('href', resolved);
+                }
+            });
+        });
+    }
+
     /**
      * MutationObserver to automatically resolve asset:// URLs in newly added elements.
      * This handles cases where HTML is inserted directly (e.g., via .html()) rather than
@@ -258,170 +443,7 @@
      */
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-                // Find all media elements with asset:// src (including the node itself)
-                const mediaSelector = 'img[src^="asset://"], video[src^="asset://"], audio[src^="asset://"], source[src^="asset://"], iframe[src^="asset://"]';
-                const mediaElementsList = [];
-
-                // Check if the node itself matches
-                if (node.matches && node.matches(mediaSelector)) {
-                    mediaElementsList.push(node);
-                }
-
-                // Check descendants
-                if (node.querySelectorAll) {
-                    mediaElementsList.push(...node.querySelectorAll(mediaSelector));
-                }
-
-                // Resolve each asset:// URL for media elements
-                mediaElementsList.forEach((el) => {
-                    const assetUrl = el.getAttribute('src');
-                    if (!assetUrl) return;
-
-                    // Store the original asset URL as data attribute for reference
-                    if (el.tagName === 'IFRAME') {
-                        el.setAttribute('data-asset-src', assetUrl);
-                    } else {
-                        el.setAttribute('data-asset-url', assetUrl);
-                    }
-
-                    // Clear the invalid src immediately to prevent error events
-                    // Use a transparent 1x1 GIF as placeholder for images, about:blank for iframes
-                    if (el.tagName === 'IFRAME') {
-                        el.src = 'about:blank';
-
-                        // For iframes, check if it's an HTML file and resolve with relative URLs
-                        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                        if (assetManager) {
-                            // Extract asset ID from URL
-                            const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
-                            if (assetIdMatch) {
-                                const assetId = assetIdMatch[1];
-                                const metadata = assetManager.getAssetMetadata(assetId);
-                                if (metadata && assetManager._isHtmlAsset(metadata.mime, metadata.filename)) {
-                                    // Resolve HTML with all its relative URLs
-                                    assetManager.resolveHtmlWithAssets(assetId).then(resolved => {
-                                        if (resolved) {
-                                            el.src = resolved;
-                                        } else {
-                                            // Fallback to regular resolution
-                                            resolveAssetUrl(assetUrl).then(fallback => {
-                                                if (fallback) el.src = fallback;
-                                            });
-                                        }
-                                    }).catch(() => {
-                                        // Fallback on error
-                                        resolveAssetUrl(assetUrl).then(fallback => {
-                                            if (fallback) el.src = fallback;
-                                        });
-                                    });
-                                    return; // Early return, already handled
-                                }
-                            }
-                        }
-
-                        // For non-HTML iframes (PDFs, etc.), use regular resolution
-                        resolveAssetUrl(assetUrl).then(resolved => {
-                            if (resolved) {
-                                el.src = resolved;
-                            }
-                        });
-                    } else if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO' || el.tagName === 'SOURCE') {
-                        // For video/audio/source elements, remove the invalid src immediately
-                        // Don't set a placeholder - just clear it and wait for resolution
-                        el.removeAttribute('src');
-
-                        // Resolve asynchronously and set the real src
-                        resolveAssetUrl(assetUrl).then(resolved => {
-                            if (resolved) {
-                                el.src = resolved;
-                                // Trigger load on the media element
-                                // For SOURCE, we need to call load() on the parent VIDEO/AUDIO
-                                if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
-                                    el.load();
-                                } else if (el.tagName === 'SOURCE') {
-                                    const parent = el.parentElement;
-                                    if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO')) {
-                                        parent.load();
-                                    }
-                                }
-                            }
-                        });
-                    } else {
-                        // Images: use transparent 1x1 GIF as placeholder
-                        el.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-
-                        // Resolve asynchronously and set the real src
-                        resolveAssetUrl(assetUrl).then(resolved => {
-                            if (resolved) {
-                                el.src = resolved;
-                            }
-                        });
-                    }
-                });
-
-                // Also handle images with asset:// in the 'origin' attribute (used by image-gallery)
-                const originSelector = 'img[origin^="asset://"]';
-                const originElements = [];
-
-                if (node.matches && node.matches(originSelector)) {
-                    originElements.push(node);
-                }
-
-                if (node.querySelectorAll) {
-                    originElements.push(...node.querySelectorAll(originSelector));
-                }
-
-                // Resolve each asset:// URL for origin attributes
-                originElements.forEach((el) => {
-                    const assetUrl = el.getAttribute('origin');
-                    if (!assetUrl || !isAssetUrl(assetUrl)) return;
-
-                    // Store the original asset URL in a separate data attribute
-                    el.setAttribute('data-asset-origin', assetUrl);
-
-                    // Resolve asynchronously and set the real origin
-                    resolveAssetUrl(assetUrl).then(resolved => {
-                        if (resolved) {
-                            el.setAttribute('origin', resolved);
-                        }
-                    });
-                });
-
-                // Also handle anchor elements with asset:// hrefs (for lightbox, etc.)
-                const anchorSelector = 'a[href^="asset://"]';
-                const anchorElements = [];
-
-                if (node.matches && node.matches(anchorSelector)) {
-                    anchorElements.push(node);
-                }
-
-                if (node.querySelectorAll) {
-                    anchorElements.push(...node.querySelectorAll(anchorSelector));
-                }
-
-                // Resolve each asset:// URL for anchor elements
-                anchorElements.forEach((el) => {
-                    const assetUrl = el.getAttribute('href');
-                    if (!assetUrl) return;
-
-                    // Store the original asset URL as data attribute for reference
-                    el.setAttribute('data-asset-url', assetUrl);
-
-                    // Don't set a placeholder - keep the asset:// URL in href
-                    // SimpleLightbox and other libraries need a valid href when they initialize
-                    // The resolved blob:// URL will be set once available
-
-                    // Resolve asynchronously and set the real href
-                    resolveAssetUrl(assetUrl).then(resolved => {
-                        if (resolved) {
-                            el.setAttribute('href', resolved);
-                        }
-                    });
-                });
-            });
+            mutation.addedNodes.forEach(processAddedNode);
         });
     });
 
@@ -480,8 +502,8 @@
         return value;
     };
 
-    // Expose the observer for testing
-    window.eXeLearningAssetResolver = {
+    // Expose the resolver globally
+    const assetResolverApi = {
         /**
          * Resolve an asset:// URL to blob URL
          * @param {string} url - The asset:// URL
@@ -516,8 +538,16 @@
          */
         disconnect: function() {
             observer.disconnect();
-        }
+        },
     };
+
+    // Test hook: allow unit tests to invoke MutationObserver logic without DOM insertion.
+    // Only exposed when Vitest has installed its globals.
+    if (typeof globalThis.vi !== 'undefined') {
+        assetResolverApi.__processAddedNodeForTests = processAddedNode;
+    }
+
+    window.eXeLearningAssetResolver = assetResolverApi;
 
     /**
      * Intercept clicks on HTML asset links in the editor/workarea
