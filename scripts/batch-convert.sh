@@ -7,6 +7,9 @@
 
 set -euo pipefail
 
+# Debug: show line number on error
+trap 'echo "Error on line $LINENO. Exit code: $?" >&2' ERR
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. COLORS AND CONSTANTS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -455,22 +458,31 @@ main() {
     print_info "Starting conversion..."
     echo ""
 
-    # Build file list first (more portable than process substitution)
+    # Build file list - use simple method that works on all platforms including MINGW
     local -a files=()
-    while IFS= read -r -d '' file; do
-        files+=("$file")
-    done < <(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) -print0 2>/dev/null | sort -z)
 
-    # Fallback for systems where process substitution doesn't work (e.g., MINGW)
-    if [[ ${#files[@]} -eq 0 ]] && [[ $total_count -gt 0 ]]; then
-        print_warning "Using fallback file discovery method..."
+    # Method 1: Try globbing first (most portable)
+    shopt -s nullglob globstar 2>/dev/null || true
+    for f in "$INPUT_DIR"/*.elp "$INPUT_DIR"/*.elpx "$INPUT_DIR"/**/*.elp "$INPUT_DIR"/**/*.elpx; do
+        [[ -f "$f" ]] && files+=("$f")
+    done
+    shopt -u nullglob globstar 2>/dev/null || true
+
+    # Method 2: Fallback to find with simple read (if glob found nothing)
+    if [[ ${#files[@]} -eq 0 ]]; then
+        print_info "Using find for file discovery..."
         while IFS= read -r file; do
-            [[ -n "$file" ]] && files+=("$file")
-        done < <(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) 2>/dev/null | sort)
+            [[ -n "$file" && -f "$file" ]] && files+=("$file")
+        done <<< "$(find "$INPUT_DIR" -type f \( -name "*.elp" -o -name "*.elpx" \) 2>/dev/null)"
     fi
+
+    # Debug: show what we found
+    print_info "Found ${#files[@]} file(s) to process"
 
     if [[ ${#files[@]} -eq 0 ]]; then
         print_error "Could not find files to process"
+        print_info "Checking directory contents..."
+        ls -la "$INPUT_DIR" 2>/dev/null || echo "Cannot list directory"
         exit 1
     fi
 
