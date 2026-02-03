@@ -89,9 +89,10 @@ Common knobs (all supported by the example files):
 * **Base path (subdirectory installs):** `BASE_PATH`
 * **Database:** `DB_DRIVER`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_CHARSET`, engine-specific version flags
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
-* **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`, plus optional test user (`TEST_USER_*`)
+* **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`
+* **Admin user:** `ADMIN_EMAIL`, `ADMIN_PASSWORD` (see [Admin User Setup](#admin-user-setup))
 * **Real-time (Yjs WebSocket):** Uses the main server port, no additional configuration needed
-* **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., auto-create a user)
+* **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., run custom scripts)
 
 (See the embedded Compose files for the full set.)    
 
@@ -129,6 +130,44 @@ Verification:
 
 - Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
 - If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
+
+---
+
+## Admin User Setup
+
+eXeLearning can automatically create and maintain an admin user via environment variables. This is useful for:
+
+- Initial deployment setup
+- Admin password recovery (if locked out)
+- Consistent admin access across container restarts
+
+### Configuration
+
+Set these environment variables in your `.env` file or Docker Compose:
+
+```env
+# Admin user email
+ADMIN_EMAIL=admin@myorganization.org
+
+# Admin password (required to enable admin user creation)
+ADMIN_PASSWORD=your_secure_password_here
+```
+
+### Behavior
+
+When `ADMIN_PASSWORD` is set (non-empty):
+
+1. **If the admin user doesn't exist:** Creates a new user with `ROLE_USER` and `ROLE_ADMIN` roles
+2. **If the admin user exists:** Updates the password and ensures admin roles are set
+
+This "upsert" behavior allows admin recovery if you lose access—just set the environment variable and restart the container.
+
+### Security Notes
+
+- Never commit `ADMIN_PASSWORD` to version control
+- Use strong, unique passwords
+- Consider removing `ADMIN_PASSWORD` after initial setup and using the UI for password changes
+- For multi-instance deployments (Redis HA), use the same `ADMIN_EMAIL` and `ADMIN_PASSWORD` across all instances
 
 ---
 

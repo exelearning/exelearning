@@ -409,6 +409,7 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
                 default: `${TRANS_PREFIX}Theme default`,
                 opendyslexic: 'OpenDyslexic',
                 andika: 'Andika',
+                'atkinson-hyperlegible-next': 'Atkinson Hyperlegible Next',
                 nunito: 'Nunito',
                 'playwrite-es': 'Playwrite ES',
             },

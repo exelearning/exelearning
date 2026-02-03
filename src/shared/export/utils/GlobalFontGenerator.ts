@@ -50,6 +50,18 @@ export const GLOBAL_FONTS: Record<string, GlobalFontConfig> = {
             { weight: 700, style: 'italic', filename: 'Andika-BoldItalic.woff2', format: 'woff2' },
         ],
     },
+    'atkinson-hyperlegible-next': {
+        id: 'andika',
+        displayName: 'Atkinson Hyperlegible Next',
+        fontFamily: 'Atkinson Hyperlegible Next',
+        fallback: 'sans-serif',
+        files: [
+            { weight: 400, style: 'normal', filename: 'AtkinsonHyperlegibleNext-Regular.woff2', format: 'woff2' },
+            { weight: 400, style: 'italic', filename: 'AtkinsonHyperlegibleNext-RegularItalic.woff2', format: 'woff2' },
+            { weight: 700, style: 'normal', filename: 'AtkinsonHyperlegibleNext-Bold.woff2', format: 'woff2' },
+            { weight: 700, style: 'italic', filename: 'AtkinsonHyperlegibleNext-BoldItalic.woff2', format: 'woff2' },
+        ],
+    },
     nunito: {
         id: 'nunito',
         displayName: 'Nunito',

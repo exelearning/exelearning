@@ -9,12 +9,20 @@ import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import * as bcrypt from 'bcryptjs';
 import type { Database } from '../db/types';
 import { up } from '../db/migrations/001_initial';
+import {
+    up as migration005Up,
+    configure as configure005,
+    resetDependencies as reset005,
+} from '../db/migrations/005_user_id_nullable';
 import { now } from '../db/types';
 import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
+
+// Default temp email domain used by auth routes (read from env like production code)
+const DEFAULT_TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 // Helper to create test app with DI
 function createTestApp(db: Kysely<Database>) {
@@ -45,6 +53,7 @@ describe('Auth Routes', () => {
             API_JWT_SECRET: process.env.API_JWT_SECRET,
             CAS_URL: process.env.CAS_URL,
             OIDC_AUTHORIZATION_ENDPOINT: process.env.OIDC_AUTHORIZATION_ENDPOINT,
+            AUTH_TEMP_EMAIL_DOMAIN: process.env.AUTH_TEMP_EMAIL_DOMAIN,
         };
 
         // Set test environment
@@ -55,6 +64,10 @@ describe('Auth Routes', () => {
             dialect: new BunSqliteDialect({ url: ':memory:' }),
         });
         await up(testDb);
+        // Run migration 005 to make user_id nullable (required for guest users)
+        configure005({ getDialect: () => 'sqlite', columnExists: async () => true });
+        await migration005Up(testDb);
+        reset005();
         app = createTestApp(testDb);
     });
 
@@ -1053,7 +1066,7 @@ describe('Auth Routes', () => {
             expect(user).toBeDefined();
         });
 
-        it('should add @cas.local suffix when casUser is just a username', async () => {
+        it('should add temp email domain suffix when casUser is just a username', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevCasUrl = process.env.CAS_URL;
 
@@ -1078,7 +1091,7 @@ describe('Auth Routes', () => {
 
             const user = await testDb
                 .selectFrom('users')
-                .where('email', '=', 'justusername@cas.local')
+                .where('email', '=', `justusername@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeDefined();
@@ -1146,12 +1159,12 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            // Create existing user
+            // Create existing user with temp email domain
             const hashedPw = await hashPassword('existing');
             await testDb
                 .insertInto('users')
                 .values({
-                    email: 'existing@cas.local',
+                    email: `existing@${DEFAULT_TEMP_EMAIL_DOMAIN}`,
                     user_id: 'existing-cas-user',
                     password: hashedPw,
                     roles: '["ROLE_USER"]',
@@ -1181,7 +1194,7 @@ describe('Auth Routes', () => {
             // Should not create duplicate user
             const users = await testDb
                 .selectFrom('users')
-                .where('email', '=', 'existing@cas.local')
+                .where('email', '=', `existing@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .execute();
             expect(users.length).toBe(1);
@@ -1443,7 +1456,7 @@ describe('Auth Routes', () => {
             expect(user).toBeDefined();
         });
 
-        it('should generate oidc.local email when no email available', async () => {
+        it('should generate temp email domain email when no email available', async () => {
             const prevMethods = process.env.APP_AUTH_METHODS;
             const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
 
@@ -1474,10 +1487,10 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
 
-            // Should create user with oidc_ prefix email
+            // Should create user with subject@domain.local email (no prefix)
             const user = await testDb
                 .selectFrom('users')
-                .where('email', 'like', 'oidc_%@oidc.local')
+                .where('email', '=', `user-no-email@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeDefined();
@@ -1669,7 +1682,7 @@ describe('Auth Routes', () => {
     // =========================================================================
 
     describe('POST /login/guest (additional coverage)', () => {
-        it('should create new guest user in database', async () => {
+        it('should create new guest user in database with null user_id', async () => {
             const response = await app.handle(
                 new Request('http://localhost/login/guest', {
                     method: 'POST',
@@ -1678,14 +1691,17 @@ describe('Auth Routes', () => {
 
             expect(response.status).toBe(302);
 
-            // Verify a guest user was created
+            // Verify a guest user was created with temp email domain (no guest_ prefix)
             const guestUsers = await testDb
                 .selectFrom('users')
-                .where('email', 'like', 'guest_%@guest.local')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('roles', 'like', '%ROLE_GUEST%')
                 .selectAll()
                 .execute();
             expect(guestUsers.length).toBeGreaterThan(0);
             expect(guestUsers[0].roles).toContain('ROLE_GUEST');
+            // Guest users should have null user_id (they're not SSO)
+            expect(guestUsers[0].user_id).toBeNull();
         });
 
         it('should redirect to returnUrl when provided', async () => {
@@ -1895,6 +1911,319 @@ describe('Auth Routes', () => {
             expect(response.status).toBe(302);
             const setCookie = response.headers.get('set-cookie');
             expect(setCookie).toContain('sso_return_url=');
+        });
+    });
+
+    // =========================================================================
+    // DEFAULT_QUOTA Assignment Tests for SSO Users
+    // =========================================================================
+
+    describe('DEFAULT_QUOTA assignment for SSO users', () => {
+        const originalFetch = globalThis.fetch;
+
+        afterEach(() => {
+            globalThis.fetch = originalFetch;
+        });
+
+        it('should assign DEFAULT_QUOTA to new CAS users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            process.env.DEFAULT_QUOTA = '2048';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>cas_quota_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-quota'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `cas_quota_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(2048);
+        });
+
+        it('should assign DEFAULT_QUOTA to new OIDC users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+            process.env.DEFAULT_QUOTA = '1024';
+
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'oidc_quota_user',
+                    email: 'oidc_quota@example.com',
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-quota',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=quota-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', 'oidc_quota@example.com')
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(1024);
+        });
+
+        it('should assign DEFAULT_QUOTA to new guest users', async () => {
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+            process.env.DEFAULT_QUOTA = '512';
+
+            const response = await app.handle(
+                new Request('http://localhost/login/guest', {
+                    method: 'POST',
+                }),
+            );
+
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            } else {
+                delete process.env.DEFAULT_QUOTA;
+            }
+
+            expect(response.status).toBe(302);
+
+            // Find the most recently created guest user
+            const guestUser = await testDb
+                .selectFrom('users')
+                .where('roles', 'like', '%ROLE_GUEST%')
+                .orderBy('id', 'desc')
+                .selectAll()
+                .executeTakeFirst();
+
+            expect(guestUser).toBeDefined();
+            expect(guestUser?.quota_mb).toBe(512);
+        });
+
+        it('should use default 4096 quota when DEFAULT_QUOTA env is not set', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            const prevDefaultQuota = process.env.DEFAULT_QUOTA;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+            delete process.env.DEFAULT_QUOTA;
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>cas_default_quota_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(
+                new Request('http://localhost/login/cas/callback?ticket=ST-default-quota'),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+            if (prevDefaultQuota !== undefined) {
+                process.env.DEFAULT_QUOTA = prevDefaultQuota;
+            }
+
+            expect(response.status).toBe(302);
+
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `cas_default_quota_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.quota_mb).toBe(4096);
+        });
+    });
+
+    // =========================================================================
+    // AUTH_TEMP_EMAIL_DOMAIN Tests
+    // =========================================================================
+
+    describe('AUTH_TEMP_EMAIL_DOMAIN configuration', () => {
+        it('should use domain.local as default temp email domain for CAS users', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>tempdomain_cas_user</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-tempdomain'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+
+            expect(response.status).toBe(302);
+
+            // Verify email uses the default temp email domain (domain.local)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `tempdomain_cas_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.user_id).toBe('cas:tempdomain_cas_user');
+        });
+
+        it('should use domain.local as default temp email domain for OIDC users without email', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            // ID token with subject but no email
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    sub: 'tempdomain_oidc_user',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-tempdomain',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(
+                new Request('http://localhost/login/openid/callback?code=tempdomain-code'),
+            );
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+
+            expect(response.status).toBe(302);
+
+            // Verify email uses the default temp email domain (no oidc_ prefix)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', '=', `tempdomain_oidc_user@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .selectAll()
+                .executeTakeFirst();
+            expect(user).toBeDefined();
+            expect(user?.user_id).toBe('oidc:tempdomain_oidc_user');
+        });
+
+        it('should use domain.local as default temp email domain for guest users', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login/guest', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(response.status).toBe(302);
+
+            // Verify guest user was created with temp email domain (no guest_ prefix)
+            const guestUser = await testDb
+                .selectFrom('users')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('roles', 'like', '%ROLE_GUEST%')
+                .selectAll()
+                .executeTakeFirst();
+
+            expect(guestUser).toBeDefined();
+            // Email should be 8 hex chars + @domain.local (no guest_ prefix)
+            expect(guestUser?.email).toMatch(/^[0-9a-f]{8}@domain\.local$/);
+        });
+
+        it('should use random hex for OIDC fallback email when subject is missing', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            // ID token with no subject and no email
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
+            const mockIdToken = `header.${idTokenPayload}.signature`;
+
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        access_token: 'access-token-nosub',
+                        id_token: mockIdToken,
+                    }),
+                );
+
+            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=nosub-code'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+
+            expect(response.status).toBe(302);
+
+            // Verify user was created with random hex email (16 hex chars for 8 bytes)
+            const user = await testDb
+                .selectFrom('users')
+                .where('email', 'like', `%@${DEFAULT_TEMP_EMAIL_DOMAIN}`)
+                .where('user_id', 'like', 'oidc:%')
+                .selectAll()
+                .execute();
+
+            // Should have at least one user with random hex email
+            const randomHexUser = user.find(u => /^[0-9a-f]{16}@domain\.local$/.test(u.email));
+            expect(randomHexUser).toBeDefined();
         });
     });
 });

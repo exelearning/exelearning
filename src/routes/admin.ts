@@ -474,13 +474,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     // Default roles if not provided
                     const roles = body.roles || [ROLES.USER];
 
-                    // Generate user_id from email
-                    const userId = body.email.split('@')[0] + '_' + Date.now();
-
+                    // user_id: not set for admin-created users (null) - they're not SSO
                     const user = await queries.createUserAsAdmin(db, {
                         email: body.email,
                         password: hashedPassword,
-                        userId,
                         roles,
                         quotaMb: body.quota_mb,
                     });

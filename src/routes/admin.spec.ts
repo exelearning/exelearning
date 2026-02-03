@@ -98,7 +98,7 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     createUserAsAdmin: async (_db, data) =>
         mockUser({
             email: data.email,
-            user_id: data.userId,
+            user_id: data.userId ?? null, // null for local users, only set for SSO
             roles: JSON.stringify(data.roles),
             quota_mb: data.quotaMb ?? null,
         }),
