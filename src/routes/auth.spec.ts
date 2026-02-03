@@ -9,6 +9,11 @@ import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import * as bcrypt from 'bcryptjs';
 import type { Database } from '../db/types';
 import { up } from '../db/migrations/001_initial';
+import {
+    up as migration005Up,
+    configure as configure005,
+    resetDependencies as reset005,
+} from '../db/migrations/005_user_id_nullable';
 import { now } from '../db/types';
 import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
@@ -55,6 +60,10 @@ describe('Auth Routes', () => {
             dialect: new BunSqliteDialect({ url: ':memory:' }),
         });
         await up(testDb);
+        // Run migration 005 to make user_id nullable (required for guest users)
+        configure005({ getDialect: () => 'sqlite', columnExists: async () => true });
+        await migration005Up(testDb);
+        reset005();
         app = createTestApp(testDb);
     });
 
@@ -1669,7 +1678,7 @@ describe('Auth Routes', () => {
     // =========================================================================
 
     describe('POST /login/guest (additional coverage)', () => {
-        it('should create new guest user in database', async () => {
+        it('should create new guest user in database with null user_id', async () => {
             const response = await app.handle(
                 new Request('http://localhost/login/guest', {
                     method: 'POST',
@@ -1686,6 +1695,8 @@ describe('Auth Routes', () => {
                 .execute();
             expect(guestUsers.length).toBeGreaterThan(0);
             expect(guestUsers[0].roles).toContain('ROLE_GUEST');
+            // Guest users should have null user_id (they're not SSO)
+            expect(guestUsers[0].user_id).toBeNull();
         });
 
         it('should redirect to returnUrl when provided', async () => {

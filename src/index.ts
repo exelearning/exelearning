@@ -36,7 +36,7 @@ import {
 import { getFilesDir } from './services/file-helper';
 import { db } from './db/client';
 import { migrateToLatest } from './db/migrations';
-import { findUserByEmail, createUser } from './db/queries/users';
+import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
@@ -693,29 +693,68 @@ async function bootstrap() {
     // 3. Sync builtin themes from filesystem to database
     await syncBuiltinThemes();
 
-    // 5. Seed test user if not exists
-    const testEmail = process.env.TEST_USER_EMAIL || 'user@exelearning.net';
-    const testPassword = process.env.TEST_USER_PASSWORD || '1234';
+    // 5. Seed test user if explicitly configured (dev environment only)
+    const testEmail = process.env.TEST_USER_EMAIL?.trim();
+    const testPassword = process.env.TEST_USER_PASSWORD?.trim();
+    const appEnv = process.env.APP_ENV || 'prod';
 
-    const existingUser = await findUserByEmail(db, testEmail);
-    if (!existingUser) {
-        console.log('[DB] Creating test user...');
-        const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
-        const defaultQuota = await getSettingNumber(
-            db,
-            'DEFAULT_QUOTA',
-            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-        );
-        await createUser(db, {
-            email: testEmail,
-            user_id: 'test-user',
-            password: hashedPassword,
-            roles: '["ROLE_USER"]',
-            is_lopd_accepted: 1,
-            quota_mb: defaultQuota,
-            is_active: 1,
-        });
-        console.log(`[DB] Test user created: ${testEmail}`);
+    if (appEnv === 'dev' && testEmail && testPassword) {
+        const existingUser = await findUserByEmail(db, testEmail);
+        if (!existingUser) {
+            console.log('[DB] Creating test user...');
+            const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
+            const defaultQuota = await getSettingNumber(
+                db,
+                'DEFAULT_QUOTA',
+                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+            );
+            await createUser(db, {
+                email: testEmail,
+                // user_id: not set for local users (null)
+                password: hashedPassword,
+                roles: '["ROLE_USER"]',
+                is_lopd_accepted: 1,
+                quota_mb: defaultQuota,
+                is_active: 1,
+            });
+            console.log(`[DB] Test user created: ${testEmail}`);
+        }
+    }
+
+    // 6. Create/update admin user if ADMIN_EMAIL and ADMIN_PASSWORD are set
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+
+    if (adminEmail && adminPassword) {
+        const existingAdmin = await findUserByEmail(db, adminEmail);
+        const hashedPassword = await Bun.password.hash(adminPassword, { algorithm: 'bcrypt' });
+        const adminRoles = '["ROLE_USER","ROLE_ADMIN"]';
+
+        if (!existingAdmin) {
+            console.log('[DB] Creating admin user...');
+            const defaultQuota = await getSettingNumber(
+                db,
+                'DEFAULT_QUOTA',
+                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+            );
+            await createUser(db, {
+                email: adminEmail,
+                // user_id: not set for local users (null)
+                password: hashedPassword,
+                roles: adminRoles,
+                is_lopd_accepted: 1,
+                quota_mb: defaultQuota,
+                is_active: 1,
+            });
+            console.log(`[DB] Admin user created: ${adminEmail}`);
+        } else {
+            // Update existing user: password and roles (allows recovery)
+            await updateUser(db, existingAdmin.id, {
+                password: hashedPassword,
+                roles: adminRoles,
+            });
+            console.log(`[DB] Admin user updated: ${adminEmail}`);
+        }
     }
 
     // 6. Start server

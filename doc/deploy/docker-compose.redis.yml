@@ -70,18 +70,12 @@ services:
       APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
       AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
 
-      # Test user
-      TEST_USER_EMAIL: "${TEST_USER_EMAIL:-user@exelearning.net}"
-      TEST_USER_USERNAME: "${TEST_USER_USERNAME:-user}"
-      TEST_USER_PASSWORD: "${TEST_USER_PASSWORD:-1234}"
+      # Admin user (created/updated when ADMIN_PASSWORD is set)
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
 
       # JWT secret (MUST be same across all instances)
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
-
-      # Post-configuration commands (only run on first instance)
-      POST_CONFIGURE_COMMANDS: |
-        echo "Setting up eXeLearning instance 1..."
-        bun cli create-user --email ${TEST_USER_EMAIL:-user@exelearning.net} --password ${TEST_USER_PASSWORD:-1234} --username ${TEST_USER_USERNAME:-user} --no-fail
 
     depends_on:
       postgres:
@@ -131,10 +125,12 @@ services:
       APP_AUTH_METHODS: "${APP_AUTH_METHODS:-password,guest}"
       AUTH_CREATE_USERS: "${AUTH_CREATE_USERS:-true}"
 
+      # Admin user (same credentials as instance 1, handled automatically by app)
+      ADMIN_EMAIL: "${ADMIN_EMAIL}"
+      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+
       # JWT secret (MUST be same across all instances)
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForHADeployment}"
-
-      # No POST_CONFIGURE_COMMANDS - instance 1 handles user creation
 
     depends_on:
       postgres:

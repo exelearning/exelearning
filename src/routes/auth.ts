@@ -874,7 +874,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
                     user = await createUser(db, {
                         email: guestEmail,
-                        user_id: `guest_${guestId.slice(0, 32)}`,
+                        // user_id: not set for guest users (null) - they're not SSO
                         password: hashedPassword,
                         roles: ['ROLE_GUEST'],
                         is_lopd_accepted: 1,
