@@ -80,9 +80,14 @@ body.exe-export .highlighted-code {
 .box-content a {
     text-decoration: underline;
 }
-.box-content a:hover,
-.box-content a:focus {
+.box-content a:hover {
     text-decoration: none;
+}
+.box-content a:focus {
+    text-decoration: underline;
+}
+.box-content a:focus-visible {
+  --bs-focus-ring-color: #0d77d1;
 }
 
 /* Fix some issues... */
