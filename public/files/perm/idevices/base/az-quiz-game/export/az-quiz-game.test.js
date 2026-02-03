@@ -117,4 +117,74 @@ describe('az-quiz-game iDevice export', () => {
       expect($azquizgame.options).toEqual([]);
     });
   });
+
+  describe('loadDataGame', () => {
+    beforeEach(() => {
+      // Mock $exeDevices.iDevice.gamification
+      global.$exeDevices = {
+        iDevice: {
+          gamification: {
+            helpers: {
+              decrypt: (json) => json,
+              isJsonString: (json) => JSON.parse(json),
+            },
+            media: {
+              extractURLGD: (url) => url,
+            },
+          },
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete global.$exeDevices;
+    });
+
+    it('sets durationGame to 240 when not defined in JSON', () => {
+      const mockData = {
+        text: () => JSON.stringify({
+          wordsGame: [],
+        }),
+      };
+      const mockImgsLink = { each: () => {} };
+      const mockAudiosLink = { each: () => {} };
+
+      const result = $azquizgame.loadDataGame(mockData, mockImgsLink, mockAudiosLink, 0);
+
+      expect(result.durationGame).toBe(240);
+    });
+
+    it('preserves durationGame when defined in JSON', () => {
+      const mockData = {
+        text: () => JSON.stringify({
+          wordsGame: [],
+          durationGame: 300,
+        }),
+      };
+      const mockImgsLink = { each: () => {} };
+      const mockAudiosLink = { each: () => {} };
+
+      const result = $azquizgame.loadDataGame(mockData, mockImgsLink, mockAudiosLink, 0);
+
+      expect(result.durationGame).toBe(300);
+    });
+
+    it('sets default values for modeBoard, evaluation, and evaluationID', () => {
+      const mockData = {
+        text: () => JSON.stringify({
+          wordsGame: [],
+        }),
+      };
+      const mockImgsLink = { each: () => {} };
+      const mockAudiosLink = { each: () => {} };
+
+      const result = $azquizgame.loadDataGame(mockData, mockImgsLink, mockAudiosLink, 0);
+
+      expect(result.modeBoard).toBe(false);
+      expect(result.evaluation).toBe(false);
+      expect(result.evaluationID).toBe('');
+      expect(result.playerAudio).toBe('');
+      expect(result.gameOver).toBe(false);
+    });
+  });
 });

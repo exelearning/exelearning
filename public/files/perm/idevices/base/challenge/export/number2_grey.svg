@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   height="24px"
+   viewBox="0 -960 960 960"
+   width="24px"
+   fill="#df6069"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="number2_grey.svg"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="8"
+     inkscape:cx="13.875"
+     inkscape:cy="27.125"
+     inkscape:window-width="1312"
+     inkscape:window-height="675"
+     inkscape:window-x="0"
+     inkscape:window-y="30"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1" />
+  <path
+     d="M360-280h240v-80H440v-80h80q33 0 56.5-23.5T600-520v-80q0-33-23.5-56.5T520-680H360v80h160v80h-80q-33 0-56.5 23.5T360-440v160ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Z"
+     fill="#e0e0e0"
+     id="path1" />
+  <path
+     style="fill:#261314;stroke:#df6069;stroke-width:0.003125;stroke-linejoin:bevel"
+     d="m 9.0211272,14.71875 c 0.036327,-1.948169 0.071861,-2.270511 0.2913728,-2.643184 0.4756961,-0.807605 0.798602,-0.945725 2.321219,-0.992875 L 13,11.040381 V 9.9889405 8.9375 H 11 9 V 7.9924237 7.0473473 l 2.34375,0.038826 c 2.221804,0.036806 2.364986,0.053973 2.751886,0.3299311 C 14.807278,7.9236861 14.934757,8.315553 14.936208,10 c 0.0015,1.684411 -0.125166,2.073629 -0.840572,2.583895 -0.354497,0.252846 -0.584738,0.296666 -1.751886,0.333415 L 11,12.959619 v 1.051441 1.05144 h 2 2 V 16 16.9375 H 11.989877 8.9797543 Z"
+     id="path2"
+     transform="matrix(40,0,0,40,0,-960)" />
+</svg>

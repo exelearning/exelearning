@@ -380,7 +380,7 @@ var $guess = {
                     <video class="ADVNP-Video" id="adivinaVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="ADVNP-Protector" id="adivinaProtector-${instance}"></div>
                     <a href="#" class="ADVNP-LinkAudio" id="adivinaLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="ADVNP-Activo" alt="${msgs.msgAudio}" />
+                        <img src="${path}exequextaudio.svg" class="ADVNP-Activo" alt="${msgs.msgAudio}" />
                     </a>
                     <div class="ADVNP-GameOver" id="adivinaGamerOver-${instance}">
                         <div class="ADVNP-DataImage">

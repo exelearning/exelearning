@@ -486,7 +486,7 @@ var $eXeTrivial = {
                     <video class="trivial-Video" id="trivialVideoLocal-${instance}" preload="auto" controls></video>
                     <div class="trivial-Protector1" id="trivialProtector-${instance}"></div>
                     <a href="#" class="trivial-LinkAudio" id="trivialLinkAudio-${instance}" title="${msgs.msgAudio}">
-                        <img src="${path}exequextaudio.png" class="trivial-Activo" alt="${msgs.msgAudio}">
+                        <img src="${path}exequextaudio.svg" class="trivial-Activo" alt="${msgs.msgAudio}">
                     </a>
                 </div>
                 <div class="trivial-AuthorLicence" id="trivialAutorLicence-${instance}">
