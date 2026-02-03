@@ -345,30 +345,47 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
         return true;
     }
 
-    // Get all navigation elements and click through them to find the page with our iDevice
+    // Get all navigation elements
     const navElements = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text');
+
+    // Wait for navigation to be ready
+    await navElements.first().waitFor({ state: 'attached', timeout: 10000 });
+
     const count = await navElements.count();
 
     for (let i = 0; i < count; i++) {
-        const navItem = navElements.nth(i);
-        await navItem.scrollIntoViewIfNeeded();
-        await navItem.click({ force: true });
-        await page.waitForTimeout(500);
+        // Re-query on each iteration to get fresh reference (DOM may have changed)
+        const navItem = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').nth(i);
 
-        // Check if iDevice is now visible
-        const found = await page.evaluate(
-            ({ id, type }) => {
-                const el = document.getElementById(id);
-                return el?.classList.contains(type);
-            },
-            { id: ideviceId, type: ideviceType },
-        );
+        try {
+            await navItem.waitFor({ state: 'attached', timeout: 5000 });
+            await navItem.scrollIntoViewIfNeeded();
+            await navItem.click({ force: true });
 
-        if (found) {
-            // Wait for content to fully load
-            await page.waitForTimeout(1000);
-            return true;
-        }
+            // Wait for content area to update (deterministic wait, not fixed timeout)
+            await page.waitForFunction(
+                () => {
+                    const nodeContent = document.querySelector('#node-content');
+                    return nodeContent && nodeContent.children.length > 0;
+                },
+                { timeout: 5000 },
+            );
+
+            // Check if iDevice is now visible
+            const found = await page.evaluate(
+                ({ id, type }) => {
+                    const el = document.getElementById(id);
+                    return el?.classList.contains(type);
+                },
+                { id: ideviceId, type: ideviceType },
+            );
+
+            if (found) {
+                // Small buffer for any remaining DOM settling
+                await page.waitForTimeout(200);
+                return true;
+            }
+        } catch {}
     }
 
     return false;
