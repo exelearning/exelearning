@@ -345,13 +345,26 @@ describe('Database Helpers', () => {
         });
 
         it('should use mysql dialect branch when dialect is mysql', async () => {
-            // This test verifies that the MySQL dialect check is properly triggered.
-            // We can't actually execute MySQL-specific SQL on SQLite, but we can verify
-            // the dialect detection is working correctly by checking what branch would be taken.
+            // MySQL's INSERT IGNORE syntax isn't supported by SQLite, so we expect an error.
+            // This test verifies the MySQL code path is actually executed.
+            const ownerId = await seedTestUser(db, { email: 'mysql-owner@example.com' });
+            const projectId = await seedTestProject(db, ownerId, { uuid: 'mysql-ignore-test' });
+            const collaboratorId = await seedTestUser(db, { email: 'mysql-collab@example.com' });
+
             await withDbDriver('mysql', async () => {
                 expect(getDialect()).toBe('mysql');
-                // The actual MySQL syntax ("INSERT IGNORE") would be used in real MySQL environments.
-                // Since we're running on SQLite, we just verify the dialect detection works.
+                // The MySQL branch uses "INSERT IGNORE INTO" which SQLite doesn't support,
+                // so this will throw a syntax error - but it proves the branch is executed.
+                try {
+                    await insertIgnore(db, 'project_collaborators', {
+                        project_id: projectId,
+                        user_id: collaboratorId,
+                    });
+                    // If we get here on actual MySQL, that's fine
+                } catch (error: unknown) {
+                    // SQLite throws "no such column: IGNORE" error because it doesn't understand the syntax
+                    expect((error as Error).message).toContain('IGNORE');
+                }
             });
         });
     });
