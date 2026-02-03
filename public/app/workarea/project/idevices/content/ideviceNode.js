@@ -508,6 +508,38 @@ export default class IdeviceNode {
     }
 
     /**
+     * Release the Yjs editing lock for this iDevice
+     * Call this when exiting edition mode (save, undo, delete)
+     */
+    releaseYjsEditingLock() {
+        if (!this.isYjsEnabled()) return;
+
+        const componentId = this.yjsComponentId || this.odeIdeviceId;
+        const bridge = this.engine?.project?._yjsBridge;
+
+        // Release the lock
+        const lockManager = this.getLockManager();
+        if (lockManager) {
+            lockManager.releaseLock(componentId);
+        }
+
+        // Clear lock info from the component in Yjs
+        if (bridge?.structureBinding) {
+            bridge.structureBinding.updateComponent(componentId, {
+                lockedBy: null,
+                lockUserName: null,
+                lockUserColor: null
+            });
+        }
+
+        // Clear editing component in awareness
+        const documentManager = bridge?.getDocumentManager();
+        if (documentManager?.setEditingComponent) {
+            documentManager.setEditingComponent(null);
+        }
+    }
+
+    /**
      * Update the lock indicator in the iDevice header
      * Called when lock status changes (e.g., when content is saved by remote user)
      */
@@ -1040,6 +1072,9 @@ export default class IdeviceNode {
                     confirmExec: () => {
                         // Clear the inactivity timer
                         this.cleanupInactivityTracker();
+
+                        // Release Yjs editing lock
+                        this.releaseYjsEditingLock();
 
                         // Create the "Add Text" button
                         this.createAddTextBtn();
@@ -2948,31 +2983,7 @@ export default class IdeviceNode {
         );
 
         // Release the lock and clear editing state in Yjs
-        if (this.isYjsEnabled()) {
-            const componentId = this.yjsComponentId || this.odeIdeviceId;
-            const bridge = this.engine?.project?._yjsBridge;
-
-            // Release the lock
-            const lockManager = this.getLockManager();
-            if (lockManager) {
-                lockManager.releaseLock(componentId);
-            }
-
-            // Clear lock info from the component in Yjs
-            if (bridge?.structureBinding) {
-                bridge.structureBinding.updateComponent(componentId, {
-                    lockedBy: null,
-                    lockUserName: null,
-                    lockUserColor: null
-                });
-            }
-
-            // Clear editing component in awareness
-            const documentManager = bridge?.getDocumentManager();
-            if (documentManager?.setEditingComponent) {
-                documentManager.setEditingComponent(null);
-            }
-        }
+        this.releaseYjsEditingLock();
 
         if (saveOk) {
             // this.sendPublishedNotification();
@@ -3052,6 +3063,9 @@ export default class IdeviceNode {
     remove(bbdd) {
         clearInterval(this.checkDeviceLoadInterval);
         if (this.mode == 'edition') {
+            // Release Yjs editing lock
+            this.releaseYjsEditingLock();
+
             if (typeof $exeDevice !== 'undefined') {
                 $exeDevice = undefined;
             }

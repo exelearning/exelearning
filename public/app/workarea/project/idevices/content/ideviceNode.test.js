@@ -698,6 +698,139 @@ describe('IdeviceNode', () => {
         });
     });
 
+    describe('releaseYjsEditingLock', () => {
+        it('does nothing when Yjs is not enabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            const mockLockManager = { releaseLock: vi.fn() };
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).not.toHaveBeenCalled();
+        });
+
+        it('releases lock via lockManager when Yjs is enabled', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockLockManager = { releaseLock: vi.fn() };
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).toHaveBeenCalledWith('idevice-id-1');
+        });
+
+        it('clears lock info from component via structureBinding', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockUpdateComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: mockUpdateComponent },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockUpdateComponent).toHaveBeenCalledWith('idevice-id-1', {
+                lockedBy: null,
+                lockUserName: null,
+                lockUserColor: null,
+            });
+        });
+
+        it('clears editing component in awareness via documentManager', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            const mockSetEditingComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({
+                        setEditingComponent: mockSetEditingComponent,
+                    })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockSetEditingComponent).toHaveBeenCalledWith(null);
+        });
+
+        it('uses yjsComponentId when available instead of odeIdeviceId', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-component-123';
+            const mockLockManager = { releaseLock: vi.fn() };
+            const mockUpdateComponent = vi.fn();
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: mockLockManager,
+                    structureBinding: { updateComponent: mockUpdateComponent },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            idevice.releaseYjsEditingLock();
+
+            expect(mockLockManager.releaseLock).toHaveBeenCalledWith('yjs-component-123');
+            expect(mockUpdateComponent).toHaveBeenCalledWith(
+                'yjs-component-123',
+                expect.any(Object),
+            );
+        });
+
+        it('handles missing lockManager gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: null,
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+
+        it('handles missing structureBinding gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: null,
+                    getDocumentManager: vi.fn(() => ({ setEditingComponent: vi.fn() })),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+
+        it('handles missing documentManager gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            mockEngine.project = {
+                _yjsBridge: {
+                    lockManager: { releaseLock: vi.fn() },
+                    structureBinding: { updateComponent: vi.fn() },
+                    getDocumentManager: vi.fn(() => null),
+                },
+            };
+
+            expect(() => idevice.releaseYjsEditingLock()).not.toThrow();
+        });
+    });
+
     describe('toogleIdeviceButtonsState', () => {
         it('does nothing when ideviceButtons is null', () => {
             idevice.ideviceButtons = null;
