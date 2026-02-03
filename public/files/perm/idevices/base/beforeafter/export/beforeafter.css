@@ -308,15 +308,15 @@
 }
 
 .BFAFP-CodeAccessE {
-    margin: 0 .3em;
+    margin: 0 0.5em;
     width: 100%;
     text-align: center;
     max-width: 350px;
 }
 
 .BFAFP-MainContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 .BFAFP-DivInstructions {
@@ -418,7 +418,7 @@
     width: 1.7em;
 }
 .BFAFP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: cover;
     cursor: pointer;
 }
