@@ -1,0 +1,1226 @@
+/*!
+ * eXeLearning v3.0.1 Example Style File (Soft AA Palette)
+ * ----------------------
+ * Author: Ignacio Gros
+ * Project: eXeLearning.net
+ *
+ * This CSS file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images, fonts, etc.) created by third parties
+ *       and included in this style.
+ */
+
+/* vietnamese */
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-style: normal;
+    font-weight: 300;
+    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+        url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
+    unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-style: normal;
+    font-weight: 300;
+    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+        url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
+    unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB,
+        U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+    font-family: "Atkinson Hyperlegible";
+    font-style: normal;
+    font-weight: 300;
+    src: local("Atkinson Hyperlegible"), local("EncodeSans-Light"),
+        url(fonts/Atkinson-Hyperlegible-Regular-102a.woff2) format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+        U+2215, U+FEFF, U+FFFD;
+}
+
+/* Common definitions */
+body.exe-export {
+    background: #ffffff;
+}
+.exe-content {
+    font-family: "Atkinson Hyperlegible", Arial, Verdana, Helvetica, sans-serif;
+    line-height: 1.5em;
+    font-size: 1.05em;
+    color: #1f2833;
+}
+body.exe-export input,
+body.exe-export select,
+body.exe-export textarea {
+    font-family: "Atkinson Hyperlegible", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 1em;
+}
+body.exe-export .pre-code,
+body.exe-export .highlighted-code {
+    font-family: "Atkinson Hyperlegible", Arial, Helvetica, sans-serif;
+    font-size: 0.9em;
+    border-radius: 0;
+}
+.exe-content p {
+    margin: 1em 0;
+}
+.exe-content a {
+    color: #0d77d1;
+    text-decoration: none;
+}
+.exe-content a:hover,
+.exe-content a:focus {
+    color: #145cb1;
+    text-decoration: underline;
+}
+.box-content a {
+    text-decoration: underline;
+}
+.box-content a:hover {
+    text-decoration: none;
+}
+.box-content a:focus {
+    text-decoration: underline;
+}
+.box-content a:focus-visible {
+  --bs-focus-ring-color: #0d77d1;
+}
+
+/* Fix some issues... */
+/* Quote With Authorship */
+.exe-content .styled-qc {
+    margin-top: 4em;
+}
+
+/* Customize the color of the Effects */
+.exe-content .exe-accordion {
+    border: 1px solid #e3e3e3;
+}
+.exe-content .fx-accordion-title {
+    background: #fff;
+    background-size: auto 40px;
+    border-color: #e3e3e3 !important;
+    position: relative;
+}
+.exe-content .fx-accordion-title:after {
+    content: "";
+    width: 40px;
+    height: 40px;
+    display: inline-block;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #fff url(img/icons.png) no-repeat -240px 50%;
+    background-size: auto 40px;
+    border-color: #e3e3e3 !important;
+    opacity: 0.4;
+    transition: all 0.5s ease;
+    transform: rotate(180deg);
+}
+.exe-content .fx-accordion-title:hover:after {
+    opacity: 1;
+}
+.exe-content .fx-accordion-title h2 {
+    color: #777;
+    padding-right: 60px;
+}
+.exe-content .fx-accordion-title.active h2 {
+    color: #002a56;
+}
+.exe-content .fx-accordion-title.active {
+    padding-bottom: 0;
+}
+.exe-content .fx-accordion-title.active:after {
+    transform: rotate(0);
+}
+.fx-accordion-content {
+    color: #444444;
+}
+
+/* Page header */
+.exe-content .package-header {
+    color: #2b2e35;
+    position: relative; /* To set the position of the dark mode toggler */
+}
+.exe-content .package-header .package-title {
+    color: #000000;
+}
+body:has(#teacher-mode-toggler-wrapper) .package-title {
+    padding-right: 100px;
+}
+#teacher-mode-toggler-wrapper {
+    float: right;
+}
+body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
+    margin-right: 45px;
+}
+#teacher-mode-toggler-wrapper .form-check-input {
+    filter: grayscale(1);
+}
+#teacher-mode-toggler-wrapper .form-check-input:checked {
+    filter: grayscale(0);
+    background-color: #0d77d1;
+    border-color: #0d77d1;
+}
+.exe-content .package-title {
+    font-size: 1.2em;
+    margin: 0;
+}
+.exe-content .package-subtitle {
+    font-size: 1em;
+    margin: 0.5em 0 0 0;
+    opacity: 0.9;
+}
+.exe-content .page-header {
+    color: #002a56;
+    padding-top: 20px;
+    border-top: 2px solid #002a56;
+    margin-top: 20px;
+}
+.exe-content .page-title {
+    font-size: 1.8em;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* Page content and common elements (max-width) */
+.exe-export .exe-content {
+    max-width: 1280px;
+    padding: 20px;
+    margin: 0 auto;
+    position: relative; /* To set the position of the Page counter */
+}
+
+/* Page counter */
+.exe-content .page-counter {
+    position: absolute;
+    top: 55px;
+    right: 40px;
+    background: #0d77d1;
+    color: #ffffff;
+    font-size: 0.9em;
+    z-index: 99;
+}
+
+/* Boxes / iDevices */
+.exe-content .box {
+    border: 1px solid #ebebee;
+    margin: 20px 0;
+    border-radius: 4px;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 5px 24px;
+}
+.exe-content .box-content {
+    border-top: 1px solid #ebebee;
+}
+.exe-content .box-head {
+    border: 0;
+    background: #f8f8fb;
+    min-height: 70px; /* Icon size + margin */
+    padding: 10px;
+    position: relative;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+.exe-content .box-icon {
+    float: left;
+    margin-right: 10px;
+}
+.exe-content .box-head.no-icon {
+    padding-left: 20px;
+}
+.exe-content .box-icon img {
+    width: 50px;
+    height: auto;
+    scale: 0.9;
+}
+/* iDevice icons in the application */
+#node-content-container.exe-content .box-head .exe-icon img {
+    max-width: none;
+    height: 45px;
+    width: auto;
+    scale: 1;
+    margin-right: -10px;
+}
+.exe-export .box-title {
+    padding-top: 12px;
+    color: #002a56;
+}
+.exe-export .box-head .box-toggle {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -300px 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    transition: rotate 0.5s ease;
+}
+.exe-content .box.minimized .box-head {
+    border-radius: 4px;
+}
+.exe-export .box.minimized .box-head .box-toggle {
+    rotate: -180deg;
+}
+.exe-export .box-head .box-toggle span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+.exe-export .box-content {
+    padding: 20px;
+}
+/* iDevices with no box head (no title, icon or toggler) */
+.exe-export .box.no-header:not(:has(.box-toggle)) .box-head {
+    display: none;
+}
+.exe-export .box.no-header:not(:has(.box-toggle)) .box-content {
+    border-top: 0;
+}
+
+/* Feedback buttons */
+.exe-content .iDevice_buttons input[type="button"],
+.exe-content .iDevice_buttons input[type="submit"],
+.exe-content .iDevice_buttons button {
+    border: none;
+    background: #0d77d1;
+    color: #fff;
+    padding: 0.5em 1em;
+    margin: 0.5em 0;
+    transition: all 1s ease;
+}
+.exe-content .iDevice_buttons input[type="button"]:hover,
+.exe-content .iDevice_buttons input[type="button"]:focus,
+.exe-content .iDevice_buttons input[type="submit"]:hover,
+.exe-content .iDevice_buttons input[type="submit"]:focus
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
+    background: #145cb1;
+}
+
+/* Site footer */
+#siteFooter {
+    background: #f8f8fb;
+    color: #2b2e35;
+    padding: 20px;
+    border: 1px solid #ebebee;
+    border-radius: 4px;
+}
+#siteFooter a {
+    color: #000000;
+    text-decoration: underline;
+}
+#siteFooter #packageLicense p {
+    margin-top: 0;
+}
+/* Licenses */
+#packageLicense {
+    text-align: left;
+    font-size: 0.9em;
+    line-height: 1em;
+    margin-bottom: 1em;
+}
+#packageLicense p {
+    margin: 0;
+}
+#packageLicense .license-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+#packageLicense a {
+    color: #666;
+    text-transform: capitalize;
+    display: inline-block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 15px;
+}
+#packageLicense a:hover,
+#packageLicense a:focus {
+    text-decoration: none;
+    color: #d76b4a;
+}
+#packageLicense.propietary {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    height: 0;
+}
+#packageLicense.cc {
+    padding: 0 20px 0 90px;
+    background: url(img/licenses.gif) no-repeat 0 0;
+}
+#packageLicense.cc-by-sa {
+    background-position: 0 -100px;
+}
+#packageLicensea.cc-by-nd {
+    background-position: 0 -200px;
+}
+#packageLicense.cc-by-nc {
+    background-position: 0 -300px;
+}
+#packageLicense.cc-by-nc-sa {
+    background-position: 0 -400px;
+}
+#packageLicense.cc-by-nc-nd {
+    background-position: 0 -500px;
+}
+#packageLicense.cc-0 {
+    background-position: 0 -600px;
+}
+/* Made with eXeLearning */
+.js #made-with-eXe a {
+    background: #fff url(img/educamadrid.png) no-repeat 2px 50%;
+    background-size: auto 22px;
+}
+/* Website */
+.exe-web-site .exe-content {
+    max-width: none;
+    padding: 0;
+}
+.exe-web-site .main-header,
+.exe-web-site .page-content,
+.exe-web-site #siteFooterContent {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+.exe-web-site .page-content {
+    padding: 0;
+}
+
+/* Breadcrumbs */
+#siteBreadcrumbs {
+    font-size: 0.9em;
+    color: #000000;
+}
+#siteBreadcrumbs ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteBreadcrumbs li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: inline;
+}
+#siteBreadcrumbs a {
+    color: #145cb1;
+    text-decoration: none;
+}
+#siteBreadcrumbs a:hover,
+#siteBreadcrumbs a:focus {
+    color: #0d77d1;
+}
+#siteBreadcrumbs a img {
+    position: relative;
+    top: -2px;
+}
+#siteBreadcrumbs a:after {
+    content: "\2771";
+    margin: 0 0.6em;
+    color: #535353;
+}
+#exe-index #siteBreadcrumbs {
+    display: none;
+}
+#siteBreadcrumbsHome:hover img,
+#siteBreadcrumbsHome:focus img {
+    filter: brightness(1.1) saturate(1.1) hue-rotate(350deg);
+}
+#siteBreadcrumbs strong {
+    font-weight: normal;
+    opacity: 0.7;
+}
+.package-header.width-breadcrumbs .package-title,
+.package-header.width-breadcrumbs .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+/* Navigation menu */
+#sidebar-nav.fixed {
+    position: fixed;
+}
+#siteNav {
+    float: left;
+    width: 320px;
+}
+@media (min-width: 576px) {
+    #siteNav {
+        position: fixed;
+        max-height: calc(100vh - 50px);
+        overflow-y: auto;
+        padding-bottom: 43px;
+    }
+}
+#siteNav .other-section {
+    display: none; /* Optional (hide subpages) */
+}
+#siteNav ul {
+    margin: 10px 0 0 10px;
+    padding: 0;
+    list-style: none;
+}
+#siteNav ul ul {
+    margin-top: 5px;
+}
+#siteNav li {
+    margin: 0 0 5px 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav a {
+    color: #09376b;
+    display: block;
+    padding: 8px 15px;
+    max-width: 300px; /* Menu width - margin */
+    background: #f8f8fb;
+    border-radius: 4px;
+    transition: background 0.5s ease;
+}
+#siteNav a.active {
+    color: #000000;
+    text-decoration: underline;
+}
+#siteNav a:hover,
+#siteNav a:focus {
+    background: #ffffff;
+    color: #0d77d1;
+    text-decoration: none;
+    box-shadow: inset 0 0 1px #d2d2d5;
+}
+/* Special links */
+#siteNav a.highlighted-link {
+    background: #ffffe0;
+    color: #5f4a1f;
+    box-shadow: inset 0 0 2px #f2e090;
+}
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
+    background: #fffed1;
+    box-shadow: none;
+    color: #5f4a1f;
+}
+#siteNav ul ul {
+    margin-left: 0;
+}
+#siteNav ul ul a {
+    padding-left: 35px;
+    font-size: 0.95em;
+}
+#siteNav ul ul ul a {
+    padding-left: 55px;
+    font-size: 0.9em;
+}
+#siteNav ul ul ul ul a {
+    padding-left: 75px;
+}
+/* Dropdown buttons */
+#siteNav a {
+    position: relative;
+}
+#siteNav a:has(button) {
+    padding-right: 35px;
+}
+#siteNav a button {
+    width: 20px;
+    height: 20px;
+    background: red;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    border: none;
+    background: url(img/icons.png) no-repeat -185px 50%;
+    background-size: auto 30px;
+    transform: rotate(180deg);
+    transition: all 0.5s ease;
+}
+#siteNav a button.open-ul {
+    transform: rotate(0);
+}
+#siteNav a button span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+@media (min-width: 992px) {
+    .nav-buttons a span,
+    .nav-buttons span span {
+        position: relative;
+        clip: auto;
+    }
+
+    .nav-buttons .nav-button-left,
+    .nav-buttons .nav-button-right {
+        position: absolute;
+        top: 0;
+        right: 10px;
+        display: block;
+        background: #0d77d1;
+        width: 50px;
+        height: 30px;
+        background: url(img/icons.png) no-repeat -150px 0;
+        background-size: auto 50px;
+
+        width: auto;
+        height: 30px;
+        top: 10px;
+        min-width: 120px;
+        line-height: 30px;
+        background: green;
+        color: #fff;
+        padding: 0;
+        text-align: center;
+    }
+    .nav-buttons .nav-button-left {
+        right: 140px;
+    }
+    .exe-web-site #darkModeToggler {
+        right: 270px;
+    }
+    .exe-web-site .page-counter {
+        right: 330px;
+    }
+}
+
+/* Web content layout */
+.exe-web-site .exe-content {
+    padding: 0 0 20px 0;
+    position: relative;
+    box-shadow: inset 320px 0 0 0 #fbfbfe, inset 321px 0 0 0 #f0f0f3; /* False left column when the menu is visible */
+}
+.exe-web-site main.page {
+    padding-top: 20px;
+    padding-left: 340px; /* #siteNav width + margin */
+    padding-right: 20px;
+    min-height: calc(100vh - 147px); /* Sticky footer */
+}
+.exe-web-site #siteFooter {
+    background: none;
+    border: none;
+    padding: 0 20px 0 340px; /* 340 = #siteNav width + margin */
+}
+.exe-web-site #siteFooterContent {
+    background: #f8f8fb;
+    border: 1px solid #ebebee;
+    color: #000000;
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 4px;
+}
+
+/* Hidden navigation */
+html body.exe-web-site.siteNav-off .exe-content {
+    box-shadow: none !important; /* No false left column */
+}
+body.siteNav-off #siteNav {
+    display: none;
+}
+body.siteNav-off main.page,
+body.siteNav-off #siteFooter {
+    padding-left: 20px;
+}
+
+/* Search bar */
+button#searchBarTogger {
+    display: none;
+}
+.exe-search-on #searchBarTogger {
+    display: inline;
+}
+#exe-client-search {
+    display: none;
+}
+#exe-client-search {
+    max-width: 1280px;
+    margin: -10px auto 0 auto;
+    text-align: center;
+}
+#exe-client-search-reset span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px); /* IE6, IE7 */
+    clip: rect(1px, 1px, 1px, 1px);
+}
+#exe-client-search {
+    display: none;
+    margin-bottom: 30px;
+}
+#exe-client-search-text {
+    display: inline;
+    max-width: 600px;
+}
+#exe-client-search-submit {
+    text-indent: -999em;
+    background: #0d77d1 url(img/icons.png) no-repeat -41px -1px;
+    background-size: auto 40px;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 4px;
+}
+#exe-client-search-reset.visible {
+    background: url(img/icons.png) no-repeat -280px -1px;
+    background-size: auto 40px;
+    width: 38px;
+    height: 38px;
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+    left: -5px;
+    opacity: 0.6;
+    border-radius: 4px;
+}
+#exe-client-search-reset:hover,
+#exe-client-search-reset:focus {
+    opacity: 1;
+}
+#exe-client-search-submit:hover,
+#exe-client-search-submit:focus {
+    background-color: #145cb1;
+}
+#exe-client-search-results-list {
+    text-align: left;
+}
+#exe-client-search-results-list ul,
+#exe-client-search-results-list li {
+    margin: 2em 0;
+    padding: 0;
+    list-style: none;
+}
+#exe-client-search-results-list li {
+    margin: 0 0 1em 0;
+}
+#exe-client-search-results-list p {
+    margin-top: 2em;
+}
+
+/* Top navigation bar */
+#siteNavToggler span,
+#searchBarTogger span,
+#darkModeToggler span,
+.nav-buttons a span,
+.nav-buttons span span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+.nav-buttons span.nav-button {
+    /* Disabled Next/Prev buttons */
+    opacity: 0.7;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+#siteNavToggler {
+    position: fixed;
+    top: 0;
+    left: 10px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat 0 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+}
+#searchBarTogger {
+    position: fixed;
+    top: 0;
+    left: 60px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -50px 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+}
+#darkModeToggler {
+    position: absolute;
+    right: 10px;
+    top: 8px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -200px 0;
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+    scale: 0.8;
+}
+.exe-web-site #darkModeToggler {
+    position: fixed;
+    top: 0;
+    right: 110px;
+    scale: 1;
+}
+.nav-buttons {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 50px;
+    border: none;
+    background: #002a56;
+    width: 100%;
+}
+.nav-buttons .nav-button-left {
+    position: absolute;
+    top: 0;
+    right: 60px;
+    display: block;
+    background: #0d77d1;
+    width: 50px;
+    height: 50px;
+    background: url(img/icons.png) no-repeat -100px 0;
+    background-size: auto 50px;
+}
+.nav-buttons .nav-button-right {
+    position: absolute;
+    top: 0;
+    right: 10px;
+    display: block;
+    background: #0d77d1;
+    width: 50px;
+    height: 50px;
+    background: url(img/icons.png) no-repeat -150px 0;
+    background-size: auto 50px;
+}
+
+/* Page counter */
+.exe-web-site .page-counter {
+    position: fixed;
+    top: 0;
+    right: 180px;
+    z-index: 100;
+    background: none;
+}
+body.exe-web-site {
+    padding-top: 50px; /* .nav-buttons (top navigation bar) height */
+}
+
+/* Bigger Next / Previous buttons */
+@media (min-width: 768px) {
+    .nav-buttons a span,
+    .nav-buttons span span {
+        position: relative;
+        clip: auto;
+    }
+    .nav-buttons .nav-button-left,
+    .nav-buttons .nav-button-right {
+        width: auto;
+        height: 30px;
+        top: 10px;
+        right: 20px;
+        min-width: 120px;
+        line-height: 30px;
+        background: none;
+        box-shadow: inset 0 0 2px #fff;
+        background: none;
+        color: #fff !important;
+        padding: 0;
+        text-align: center;
+        border-radius: 4px;
+        font-size: 0.9em;
+        transition: background 0.5s ease;
+    }
+    .nav-buttons a:hover,
+    .nav-buttons a:focus {
+        text-decoration: none;
+        background: #145cb1;
+        color: #fff;
+    }
+    .nav-buttons .nav-button-left {
+        right: 150px;
+    }
+    .exe-web-site #darkModeToggler {
+        right: 280px;
+    }
+    .exe-web-site .page-counter {
+        right: 340px;
+    }
+}
+
+/* Scrollbar */
+/* WebKit (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+/* Firefox */
+* {
+    scrollbar-width: thin; /* closest to 8px */
+}
+
+/* UDL colors (based on the selected icon) */
+/* Green */
+.exe-export .box:has(.box-icon img[src*="eng_"]) .box-head .box-toggle {
+    background-position: -400px 0;
+}
+.box:has(.box-icon img[src*="eng_"]) a,
+.box:has(.box-icon img[src*="eng_"]) .box-title {
+    color: #499113;
+}
+.box:has(.box-icon img[src*="eng_"]) a:hover,
+.box:has(.box-icon img[src*="eng_"]) a:focus {
+    color: #307800;
+}
+.exe-export .box:has(.box-icon img[src*="eng_"]),
+.exe-export .box:has(.box-icon img[src*="eng_"]) .box-content,
+.exe-export .box.minimized:has(.box-icon img[src*="eng_"]) .box-head {
+    border-color: #d6eac8;
+}
+.exe-export .box:has(.box-icon img[src*="eng_"]) .box-head {
+    background: #f4fcf0;
+}
+
+.box:has(.box-icon img[src*="eng_"]) .exe-table,
+.box:has(.box-icon img[src*="eng_"]) .exe-table,
+.box:has(.box-icon img[src*="eng_"]) .exe-table td,
+.box:has(.box-icon img[src*="eng_"]) .exe-table th,
+.box:has(.box-icon img[src*="eng_"]) .exe-table td,
+.box:has(.box-icon img[src*="eng_"]) .exe-table th {
+    border-color: #549b0d;
+}
+.box:has(.box-icon img[src*="eng_"]) .exe-table thead th,
+.box:has(.box-icon img[src*="eng_"]) .exe-table thead th {
+    background: #437c0a;
+    color: #fff;
+}
+.box:has(.box-icon img[src*="eng_"]) .iDevice_buttons input[type="button"],
+.box:has(.box-icon img[src*="eng_"]) .iDevice_buttons input[type="submit"],
+.box:has(.box-icon img[src*="eng_"]) .iDevice_buttons button {
+    background: #437c0a;
+}
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    input[type="button"]:hover,
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    input[type="button"]:focus,
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    input[type="submit"]:hover,
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    input[type="submit"]:focus,
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    button:hover,
+.box:has(.box-icon img[src*="eng_"])
+    .iDevice_buttons
+    button:focus {
+    background: #356008;
+}
+.box:has(.box-icon img[src*="eng_"]) .fx-accordion-title.active h2 {
+    color: #356008;
+}
+/* Blue */
+.exe-export .box:has(.box-icon img[src*="exp_"]) .box-head .box-toggle {
+    background-position: -450px 0;
+}
+.box:has(.box-icon img[src*="exp_"]) a,
+.box:has(.box-icon img[src*="exp_"]) .box-title {
+    color: #0065ab;
+}
+.box:has(.box-icon img[src*="exp_"]) a:hover,
+.box:has(.box-icon img[src*="exp_"]) a:focus {
+    color: #004c92;
+}
+.exe-export .box:has(.box-icon img[src*="exp_"]),
+.exe-export .box:has(.box-icon img[src*="exp_"]) .box-content,
+.exe-export .box.minimized:has(.box-icon img[src*="exp_"]) .box-head {
+    border-color: #cfe1f3;
+}
+.exe-export .box:has(.box-icon img[src*="exp_"]) .box-head {
+    background: #eefaff;
+}
+
+.box:has(.box-icon img[src*="exp_"]) .exe-table,
+.box:has(.box-icon img[src*="exp_"]) .exe-table,
+.box:has(.box-icon img[src*="exp_"]) .exe-table td,
+.box:has(.box-icon img[src*="exp_"]) .exe-table th,
+.box:has(.box-icon img[src*="exp_"]) .exe-table td,
+.box:has(.box-icon img[src*="exp_"]) .exe-table th {
+    border-color: #0065ab;
+}
+.box:has(.box-icon img[src*="exp_"]) .exe-table thead th,
+.box:has(.box-icon img[src*="exp_"]) .exe-table thead th {
+    background: #005088;
+    color: #fcf4ff;
+}
+.box:has(.box-icon img[src*="exp_"]) .iDevice_buttons input[type="button"],
+.box:has(.box-icon img[src*="exp_"]) .iDevice_buttons input[type="submit"],
+.box:has(.box-icon img[src*="exp_"]) .iDevice_buttons button {
+    background: #005088;
+}
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    input[type="button"]:hover,
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    input[type="button"]:focus,
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    input[type="submit"]:hover,
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    input[type="submit"]:focus,
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    button:hover,
+.box:has(.box-icon img[src*="exp_"])
+    .iDevice_buttons
+    button:focus {
+    background: #00406e;
+}
+.box:has(.box-icon img[src*="exp_"]) .fx-accordion-title.active h2 {
+    color: #00406e;
+}
+/* Purple */
+.exe-export .box:has(.box-icon img[src*="rep_"]) .box-head .box-toggle {
+    background-position: -500px 0;
+}
+.box:has(.box-icon img[src*="rep_"]) a,
+.box:has(.box-icon img[src*="rep_"]) .box-title {
+    color: #a25ac4;
+}
+.box:has(.box-icon img[src*="rep_"]) a:hover,
+.box:has(.box-icon img[src*="rep_"]) a:focus {
+    color: #8941ab;
+}
+.exe-export .box:has(.box-icon img[src*="rep_"]),
+.exe-export .box:has(.box-icon img[src*="rep_"]) .box-content,
+.exe-export .box.minimized:has(.box-icon img[src*="rep_"]) .box-head {
+    border-color: #e6d4f6;
+}
+.exe-export .box:has(.box-icon img[src*="rep_"]) .box-head {
+    background: #fcf4ff;
+}
+
+.box:has(.box-icon img[src*="rep_"]) .exe-table,
+.box:has(.box-icon img[src*="rep_"]) .exe-table,
+.box:has(.box-icon img[src*="rep_"]) .exe-table td,
+.box:has(.box-icon img[src*="rep_"]) .exe-table th,
+.box:has(.box-icon img[src*="rep_"]) .exe-table td,
+.box:has(.box-icon img[src*="rep_"]) .exe-table th {
+    border-color: #784aba;
+}
+.box:has(.box-icon img[src*="rep_"]) .exe-table thead th,
+.box:has(.box-icon img[src*="rep_"]) .exe-table thead th {
+    background: #5f3996;
+    color: #fff;
+}
+.box:has(.box-icon img[src*="rep_"]) .iDevice_buttons input[type="button"],
+.box:has(.box-icon img[src*="rep_"]) .iDevice_buttons input[type="submit"],
+.box:has(.box-icon img[src*="rep_"]) .iDevice_buttons button {
+    background: #5f3996;
+}
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    input[type="button"]:hover,
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    input[type="button"]:focus,
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    input[type="submit"]:hover,
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    input[type="submit"]:focus,
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    button:hover,
+.box:has(.box-icon img[src*="rep_"])
+    .iDevice_buttons
+    button:focus {
+    background: #4c2f77;
+}
+.box:has(.box-icon img[src*="rep_"]) .fx-accordion-title.active h2 {
+    color: #4c2f77;
+}
+
+@media (max-width: 575.98px) {
+    #sidebar-nav.fixed {
+        position: relative;
+    }
+    #siteNav {
+        width: 100%;
+        float: none;
+        padding-bottom: 10px;
+    }
+    #siteNav > ul {
+        margin-right: 10px;
+    }
+    #siteNav a {
+        max-width: 100%;
+    }
+    .exe-web-site main.page,
+    .exe-web-site #siteFooter {
+        padding-left: 20px;
+    }
+    .exe-web-site .exe-content {
+        box-shadow: none !important; /* No false left column */
+    }
+}
+
+@media print {
+    html body.exe-export {
+        background: #ffffff;
+    }
+    .exe-export .exe-content {
+        background: #ffffff;
+        box-shadow: none;
+        color: #000000;
+        padding: 0;
+    }
+    @page {
+        margin: 1.5cm;
+    }
+    .exe-export .box-toggle {
+        display: none;
+    }
+    .exe-web-site #siteNav,
+    .exe-web-site .nav-buttons,
+    .exe-web-site button.toggler {
+        display: none;
+    }
+    .exe-export #siteFooter,
+    .exe-export #siteFooterContent,
+    .exe-export main.page,
+    .exe-export .package-header,
+    .exe-export .page-header {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .exe-export .page-counter {
+        top: 0;
+        right: 0;
+    }
+}
+
+/* eXe Dark Mode */
+@media screen {
+    html.exe-dark-mode {
+        filter: invert(98%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode .body,
+    html.exe-dark-mode .exe-content {
+        background: #f9f9f9 !important;
+        color: #2f2f2f;
+    }
+    html.exe-dark-mode .exe-web-site .exe-content {
+        box-shadow: inset 320px 0 0 0 #f9f9f9, inset 321px 0 0 0 #f0f0f3 !important;
+    }
+    /* No filter */
+    html.exe-dark-mode
+        :is(img, video, iframe):not(.exe-icon img):not(
+            #siteBreadcrumbsHome img
+        ) {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode #siteNav,
+    html.exe-dark-mode #packageLicense.cc,
+    html.exe-dark-mode .exe-web-site .nav-buttons,
+    html.exe-dark-mode .exe-web-site .toggler,
+    html.exe-dark-mode .exe-web-site .page-counter {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode #packageLicense.cc a {
+        color: #99c2ef;
+    }
+    html.exe-dark-mode #packageLicense.cc a:hover,
+    html.exe-dark-mode #packageLicense.cc a:focus {
+        color: #3fa5fb;
+    }
+    /* Top bar */
+    html.exe-dark-mode .nav-buttons,
+    html.exe-dark-mode .exe-web-site .page-counter {
+        background-color: #131313;
+    }
+    html.exe-dark-mode #darkModeToggler {
+        background-position: -250px 0;
+    }
+    /* Breadcrumbs */
+    html.exe-dark-mode #siteBreadcrumbs {
+        filter: grayscale(1);
+    }
+    /* Page header */
+    html.exe-dark-mode .exe-content .page-header {
+        filter: grayscale(1);
+    }
+    /* Navigation */
+    html.exe-dark-mode #siteNav a {
+        color: #C4C4C4;
+        background: #121212;
+    }
+    html.exe-dark-mode #siteNav a.active {
+        background: #272727;
+        color: #ffffff;
+    }
+    html.exe-dark-mode #siteNav a:hover,
+    html.exe-dark-mode #siteNav a:focus {
+        background: #272727;
+        color: #ffffff;
+        box-shadow: inset 0 0 1px #d2d2d5;
+    }
+    html.exe-dark-mode #siteNav a button {
+        filter: invert(1) grayscale(1);
+    }
+    /* Special links */
+    html.exe-dark-mode #siteNav a.highlighted-link {
+        background: #000000;
+        color: #ffffff;
+        box-shadow: inset 0 0 2px #d2d2d5;
+    }
+    html.exe-dark-mode #siteNav a.highlighted-link:hover,
+    html.exe-dark-mode #siteNav a.highlighted-link:focus {
+        background: #131313;
+        box-shadow: inset 0 0 2px #96bee9;
+        color: #ffffff;
+    }
+    /* False column */
+    html.exe-dark-mode .exe-web-site .exe-content {
+        box-shadow: inset 320px 0 0 0 #ffffff, inset 321px 0 0 0 #f0f0f3;
+    }
+    /* iDevices */
+    html.exe-dark-mode .exe-content .box {
+        box-shadow: none;
+    }
+    /* Made with eXe */
+    html.exe-dark-mode #made-with-eXe a {
+        filter: invert(100%) hue-rotate(180deg);
+        opacity: 1;
+    }
+    /* Accessibility toolbar */
+    html.exe-dark-mode #eXeAtoolsBtnSet,
+    html.exe-dark-mode #eXeAtoolsSet {
+        filter: invert(94%) hue-rotate(180deg);
+        box-shadow: #ffffff 0px 0 2px;
+    }
+}
+/* Bigger Next / Previous buttons */
+@media (min-width: 768px) {
+    html.exe-dark-mode .nav-buttons a:hover,
+    html.exe-dark-mode .nav-buttons a:focus {
+        background: #272727;
+        box-shadow: inset 0 0 1px #d2d2d5;
+    }
+}
+
+/* In eXeLearning */
+#workarea .box-head {
+    border: 1px solid #ebebee !important;
+    margin-bottom: 10px;
+}
