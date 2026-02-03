@@ -215,7 +215,7 @@ export async function createUserAsAdmin(
     data: {
         email: string;
         password: string;
-        userId: string;
+        userId?: string; // Optional: only for SSO users (CAS/OIDC)
         roles: string[];
         quotaMb?: number;
     },
@@ -228,7 +228,7 @@ export async function createUserAsAdmin(
     return insertAndReturn(db, 'users', {
         email: data.email,
         password: data.password,
-        user_id: data.userId,
+        user_id: data.userId ?? null, // null for local users, only set for SSO
         roles: stringifyRoles(roles),
         quota_mb: data.quotaMb ?? null,
         is_lopd_accepted: 0,

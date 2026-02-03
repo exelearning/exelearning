@@ -75,7 +75,7 @@ RUN mkdir -p /app/data /mnt/data && \
 USER bun
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget -qO- http://localhost:8080/healthcheck || exit 1
+  CMD wget -qO- http://localhost:${APP_PORT:-8080}/healthcheck || exit 1
 
 EXPOSE 8080
 
