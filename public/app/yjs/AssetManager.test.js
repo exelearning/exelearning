@@ -2056,6 +2056,129 @@ describe('AssetManager', () => {
   });
 });
 
+describe('AssetManager.updateDomImagesForAsset (iframe coverage)', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+    global.Logger = { log: mock(() => {}) };
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    document.body.innerHTML = '';
+  });
+
+  it('updates pending iframe src for non-HTML assets', async () => {
+    const assetId = '11111111-1111-1111-1111-111111111111';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/pdf');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'doc.pdf', mime: 'application/pdf' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(false);
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/pdf');
+  });
+
+  it('updates pending iframe src using resolveHtmlWithAssets for HTML assets', async () => {
+    const assetId = '22222222-2222-2222-2222-222222222222';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/html-raw');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+    const resolveHtml = vi.spyOn(assetManager, 'resolveHtmlWithAssets').mockResolvedValue('http://localhost/html');
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(resolveHtml).toHaveBeenCalledWith(assetId);
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/html');
+  });
+
+  it('falls back to blob URL when resolveHtmlWithAssets returns null', async () => {
+    const assetId = '33333333-3333-3333-3333-333333333333';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/html-fallback');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+    vi.spyOn(assetManager, 'resolveHtmlWithAssets').mockResolvedValue(null);
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/html-fallback');
+  });
+});
+
 describe('window.resolveAssetUrls global function', () => {
   beforeEach(() => {
     require('./AssetManager');

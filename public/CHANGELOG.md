@@ -1,16 +1,5 @@
-# eXeLearning Changelog
+# CHANGELOG
 
-## Version 3.0.0
+## v4.0.0-alpha1 - 2026-02-04
 
-### New Features
-- Migration to NestJS backend architecture
-- Improved authentication system
-- Enhanced user interface
-- Updated dependencies
-
-### Bug Fixes
-- Various stability improvements
-- Performance optimizations
-
-### Notes
-- This is a development version migrating from Symfony to NestJS
+- First alpha release of eXeLearning 4.0 ready for testing and collaboration. New backend built using Elysia, Bun, and Kysely.

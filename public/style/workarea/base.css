@@ -693,6 +693,11 @@ video {
 #exe-client-search-reset.visible {
     display: inline;
 }
+.exe-client-search-result{
+    padding:0;
+    background-color: #FFF3A0;
+    color: #1A1A1A;
+}
 
 /* Box toggler */
 .exe-export article.minimized .box-content{
