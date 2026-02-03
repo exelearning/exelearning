@@ -38,8 +38,7 @@ export class FreeTextHandler extends BaseLegacyHandler {
 
     /**
      * Extract HTML content from the legacy format
-     * Also renders feedback button and content directly into htmlView (matching Symfony behavior)
-     * Wraps content in exe-text-activity structure for proper editor/export handling
+     * When feedback is present, wraps content in exe-text-activity structure
      *
      * @param dict - Dictionary element from legacy XML
      * @param context - Context with language info
@@ -83,27 +82,26 @@ export class FreeTextHandler extends BaseLegacyHandler {
             }
         }
 
-        // Extract feedback (if present)
+        // Check for feedback and wrap in exe-text-activity if present
         const feedback = this.extractFeedback(dict, context);
-
-        // If we have feedback, wrap content in exe-text-activity structure
-        // This matches Symfony format and allows text.js editor to properly parse it
         if (feedback.content) {
-            const escapedCaption = this.escapeHtmlAttr(feedback.buttonCaption);
-            let rebuiltHtmlView = content;
-
-            // Add feedback button and content
-            rebuiltHtmlView += '<div class="iDevice_buttons feedback-button js-required">';
-            rebuiltHtmlView += `<input type="button" class="feedbacktooglebutton" value="${escapedCaption}" `;
-            rebuiltHtmlView += `data-text-a="${escapedCaption}" data-text-b="${escapedCaption}">`;
-            rebuiltHtmlView += '</div>';
-            rebuiltHtmlView += `<div class="feedback js-feedback js-hidden" style="display: none;">${feedback.content}</div>`;
-
-            // Wrap in exe-text-activity container (matches extractPblTaskMetadata format)
-            return `<div class="exe-text-activity">${rebuiltHtmlView}</div>`;
+            let html = content;
+            html += '<div class="iDevice_buttons feedback-button js-required">';
+            html += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(feedback.buttonCaption)}">`;
+            html += '</div>';
+            html += `<div class="feedback js-feedback js-hidden">${feedback.content}</div>`;
+            return `<div class="exe-text-activity">${html}</div>`;
         }
 
         return content;
+    }
+
+    /**
+     * Escape HTML attribute special characters
+     */
+    private escapeHtmlAttr(str: string): string {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
     /**

@@ -955,6 +955,12 @@ describe('common.js $exeDevices', () => {
       expect(result50.length).toBe(5);
     });
 
+    it('getQuestions returns non-array inputs as-is', () => {
+      const helpers = getHelpers();
+      expect(helpers.getQuestions(undefined, 50)).toBeUndefined();
+      expect(helpers.getQuestions(null, 50)).toBeNull();
+    });
+
     it('arrayMove moves element in array', () => {
       const helpers = getHelpers();
       const arr = ['a', 'b', 'c', 'd'];
@@ -2115,6 +2121,693 @@ describe('common.js $exeDevices', () => {
 
       expect(idevice.observersresize).toBeDefined();
       expect(idevice.observersresize.has(div)).toBe(true);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.sanitizeJSONString', () => {
+    const sanitizeJSONString = () => global.$exeDevices.iDevice.gamification.helpers.sanitizeJSONString;
+
+    describe('input validation', () => {
+      it('returns non-string input unchanged', () => {
+        expect(sanitizeJSONString()(null)).toBe(null);
+        expect(sanitizeJSONString()(undefined)).toBe(undefined);
+        expect(sanitizeJSONString()(123)).toBe(123);
+        expect(sanitizeJSONString()({})).toEqual({});
+        expect(sanitizeJSONString()([])).toEqual([]);
+      });
+
+      it('returns empty string unchanged', () => {
+        expect(sanitizeJSONString()('')).toBe('');
+      });
+
+      it('returns valid JSON string unchanged', () => {
+        const validJson = '{"name":"test","value":123}';
+        expect(sanitizeJSONString()(validJson)).toBe(validJson);
+      });
+    });
+
+    describe('control character escaping', () => {
+      it('escapes literal newline (0x0A) inside string values', () => {
+        const input = '{"text":"line1\nline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\nline2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal carriage return (0x0D) inside string values', () => {
+        const input = '{"text":"line1\rline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\rline2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal tab (0x09) inside string values', () => {
+        const input = '{"text":"col1\tcol2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"col1\\tcol2"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal backspace (0x08) inside string values', () => {
+        const input = '{"text":"back\bspace"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"back\\bspace"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes literal form feed (0x0C) inside string values', () => {
+        const input = '{"text":"form\ffeed"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"form\\ffeed"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes null character (0x00) inside string values', () => {
+        const input = '{"text":"null\x00char"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"null\\u0000char"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes line separator (U+2028) inside string values', () => {
+        const input = '{"text":"line\u2028sep"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line\\u2028sep"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes paragraph separator (U+2029) inside string values', () => {
+        const input = '{"text":"para\u2029sep"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"para\\u2029sep"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes DEL character (0x7F) inside string values', () => {
+        const input = '{"text":"del\x7Fchar"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"del\\u007fchar"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('escapes C1 control characters (0x80-0x9F) inside string values', () => {
+        const input = '{"text":"c1\x80\x9Fchars"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"c1\\u0080\\u009fchars"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+    });
+
+    describe('preserves already escaped sequences', () => {
+      it('preserves already escaped newline', () => {
+        const input = '{"text":"line1\\nline2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"line1\\nline2"}');
+      });
+
+      it('preserves already escaped tab', () => {
+        const input = '{"text":"col1\\tcol2"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"col1\\tcol2"}');
+      });
+
+      it('preserves already escaped backslash', () => {
+        const input = '{"path":"C:\\\\folder\\\\file"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"path":"C:\\\\folder\\\\file"}');
+      });
+
+      it('preserves already escaped quotes', () => {
+        const input = '{"text":"say \\"hello\\""}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"say \\"hello\\""}');
+      });
+
+      it('preserves already escaped unicode sequences', () => {
+        const input = '{"text":"euro \\u20ac symbol"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"euro \\u20ac symbol"}');
+      });
+    });
+
+    describe('handles complex JSON structures', () => {
+      it('sanitizes multiple string values with control characters', () => {
+        const input = '{"a":"line1\nline2","b":"tab\there"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"a":"line1\\nline2","b":"tab\\there"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('sanitizes nested objects with control characters', () => {
+        const input = '{"outer":{"inner":"value\nwith\nnewlines"}}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"outer":{"inner":"value\\nwith\\nnewlines"}}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('sanitizes arrays with control characters in strings', () => {
+        const input = '{"list":["item1\nwrap","item2\twrap"]}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"list":["item1\\nwrap","item2\\twrap"]}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('does not modify control characters outside string values', () => {
+        // Whitespace outside strings is valid JSON formatting
+        const input = '{\n  "key": "value"\n}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{\n  "key": "value"\n}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+    });
+
+    describe('edge cases', () => {
+      it('handles string with only control characters', () => {
+        const input = '{"text":"\n\r\t"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"\\n\\r\\t"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles empty string value', () => {
+        const input = '{"text":""}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":""}');
+      });
+
+      it('handles string with mixed escaped and unescaped characters', () => {
+        const input = '{"text":"escaped\\nnewline and literal\nnewline"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"escaped\\nnewline and literal\\nnewline"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles backslash at end of string', () => {
+        const input = '{"text":"ends with backslash\\\\"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"ends with backslash\\\\"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles multiple consecutive control characters', () => {
+        const input = '{"text":"multi\n\n\nlines"}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"text":"multi\\n\\n\\nlines"}');
+        expect(() => JSON.parse(output)).not.toThrow();
+      });
+
+      it('handles JSON with number and boolean values unchanged', () => {
+        const input = '{"num":123,"bool":true,"null":null}';
+        const output = sanitizeJSONString()(input);
+        expect(output).toBe('{"num":123,"bool":true,"null":null}');
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.isJsonString', () => {
+    const isJsonString = () => global.$exeDevices.iDevice.gamification.helpers.isJsonString;
+
+    describe('input validation', () => {
+      it('returns false for non-string input', () => {
+        expect(isJsonString()(null)).toBe(false);
+        expect(isJsonString()(undefined)).toBe(false);
+        expect(isJsonString()(123)).toBe(false);
+        expect(isJsonString()([])).toBe(false);
+        expect(isJsonString()({})).toBe(false);
+      });
+
+      it('returns false for empty string', () => {
+        expect(isJsonString()('')).toBe(false);
+      });
+
+      it('returns false for whitespace only', () => {
+        expect(isJsonString()('   ')).toBe(false);
+      });
+    });
+
+    describe('valid JSON objects', () => {
+      it('returns parsed object for valid JSON object', () => {
+        const result = isJsonString()('{"name":"test","value":123}');
+        expect(result).toEqual({ name: 'test', value: 123 });
+      });
+
+      it('handles JSON with whitespace padding', () => {
+        const result = isJsonString()('  {"key":"value"}  ');
+        expect(result).toEqual({ key: 'value' });
+      });
+
+      it('handles nested objects', () => {
+        const result = isJsonString()('{"outer":{"inner":"value"}}');
+        expect(result).toEqual({ outer: { inner: 'value' } });
+      });
+
+      it('handles objects with arrays', () => {
+        const result = isJsonString()('{"list":[1,2,3]}');
+        expect(result).toEqual({ list: [1, 2, 3] });
+      });
+    });
+
+    describe('invalid JSON', () => {
+      it('returns false for arrays (not objects)', () => {
+        expect(isJsonString()('[1,2,3]')).toBe(false);
+      });
+
+      it('returns false for plain strings', () => {
+        expect(isJsonString()('"hello"')).toBe(false);
+      });
+
+      it('returns false for numbers', () => {
+        expect(isJsonString()('123')).toBe(false);
+      });
+
+      it('returns false for malformed JSON', () => {
+        expect(isJsonString()('{"key": value}')).toBe(false);
+        expect(isJsonString()('{key: "value"}')).toBe(false);
+        expect(isJsonString()('{"unclosed": "string')).toBe(false);
+      });
+
+      it('returns false for strings that look like objects but are not', () => {
+        expect(isJsonString()('{not json}')).toBe(false);
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.shuffleAds', () => {
+    const shuffleAds = () => global.$exeDevices.iDevice.gamification.helpers.shuffleAds;
+
+    it('returns non-array input unchanged', () => {
+      expect(shuffleAds()(null)).toBe(null);
+      expect(shuffleAds()(undefined)).toBe(undefined);
+      expect(shuffleAds()('string')).toBe('string');
+      expect(shuffleAds()(123)).toBe(123);
+    });
+
+    it('returns empty array unchanged', () => {
+      const arr = [];
+      expect(shuffleAds()(arr)).toEqual([]);
+    });
+
+    it('returns single element array unchanged', () => {
+      const arr = [1];
+      expect(shuffleAds()(arr)).toEqual([1]);
+    });
+
+    it('shuffles array in place and returns it', () => {
+      const original = [1, 2, 3, 4, 5];
+      const arr = [...original];
+      const result = shuffleAds()(arr);
+
+      expect(result).toBe(arr); // Same reference
+      expect(result).toHaveLength(5);
+      expect(result.sort()).toEqual(original.sort()); // Same elements
+    });
+
+    it('produces different orderings (probabilistic)', () => {
+      const arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      const results = new Set();
+
+      // Run multiple times and check we get different orderings
+      for (let i = 0; i < 20; i++) {
+        const copy = [...arr];
+        shuffleAds()(copy);
+        results.add(copy.join(','));
+      }
+
+      // With 10 elements, we should get multiple different orderings
+      expect(results.size).toBeGreaterThan(1);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.encrypt/decrypt', () => {
+    const encrypt = () => global.$exeDevices.iDevice.gamification.helpers.encrypt;
+    const decrypt = () => global.$exeDevices.iDevice.gamification.helpers.decrypt;
+
+    describe('encrypt', () => {
+      it('returns empty string for null/undefined/empty input', () => {
+        expect(encrypt()('')).toBe('');
+        expect(encrypt()(null)).toBe('');
+        expect(encrypt()(undefined)).toBe('');
+        expect(encrypt()('undefined')).toBe('');
+        expect(encrypt()('null')).toBe('');
+      });
+
+      it('encrypts a simple string', () => {
+        const result = encrypt()('hello');
+        expect(result).not.toBe('hello');
+        expect(typeof result).toBe('string');
+      });
+
+      it('produces consistent output for same input', () => {
+        const result1 = encrypt()('test');
+        const result2 = encrypt()('test');
+        expect(result1).toBe(result2);
+      });
+    });
+
+    describe('decrypt', () => {
+      it('returns empty string for null/undefined/empty input', () => {
+        expect(decrypt()('')).toBe('');
+        expect(decrypt()(null)).toBe('');
+        expect(decrypt()(undefined)).toBe('');
+        expect(decrypt()('undefined')).toBe('');
+        expect(decrypt()('null')).toBe('');
+      });
+
+      it('decrypts an encrypted string back to original', () => {
+        const original = 'hello world';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+
+      it('handles special characters', () => {
+        const original = 'test@123!#$%';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+
+      it('handles unicode characters', () => {
+        const original = 'héllo wörld 你好';
+        const encrypted = encrypt()(original);
+        const decrypted = decrypt()(encrypted);
+        expect(decrypted).toBe(original);
+      });
+    });
+
+    describe('round-trip encryption', () => {
+      it('encrypts and decrypts correctly for various strings', () => {
+        const testStrings = [
+          'simple',
+          'with spaces',
+          '12345',
+          'MixedCase123',
+          'special!@#$%^&*()',
+          'líneas con ácentos',
+        ];
+
+        for (const str of testStrings) {
+          const encrypted = encrypt()(str);
+          const decrypted = decrypt()(encrypted);
+          expect(decrypted).toBe(str);
+        }
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getTimeSeconds', () => {
+    const getTimeSeconds = () => global.$exeDevices.iDevice.gamification.helpers.getTimeSeconds;
+
+    it('returns predefined times for indices 0-5', () => {
+      expect(getTimeSeconds()(0)).toBe(15);
+      expect(getTimeSeconds()(1)).toBe(30);
+      expect(getTimeSeconds()(2)).toBe(60);
+      expect(getTimeSeconds()(3)).toBe(180);
+      expect(getTimeSeconds()(4)).toBe(300);
+      expect(getTimeSeconds()(5)).toBe(600);
+    });
+
+    it('returns the input value for indices >= 6', () => {
+      expect(getTimeSeconds()(6)).toBe(6);
+      expect(getTimeSeconds()(100)).toBe(100);
+      expect(getTimeSeconds()(3600)).toBe(3600);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getTimeToString', () => {
+    const getTimeToString = () => global.$exeDevices.iDevice.gamification.helpers.getTimeToString;
+
+    it('formats 0 seconds as 00:00', () => {
+      expect(getTimeToString()(0)).toBe('00:00');
+    });
+
+    it('formats seconds less than 10 with leading zero', () => {
+      expect(getTimeToString()(5)).toBe('00:05');
+      expect(getTimeToString()(9)).toBe('00:09');
+    });
+
+    it('formats seconds 10-59 correctly', () => {
+      expect(getTimeToString()(10)).toBe('00:10');
+      expect(getTimeToString()(45)).toBe('00:45');
+      expect(getTimeToString()(59)).toBe('00:59');
+    });
+
+    it('formats minutes correctly', () => {
+      expect(getTimeToString()(60)).toBe('01:00');
+      expect(getTimeToString()(90)).toBe('01:30');
+      expect(getTimeToString()(125)).toBe('02:05');
+    });
+
+    it('formats large times correctly', () => {
+      expect(getTimeToString()(3599)).toBe('59:59');
+      expect(getTimeToString()(3600)).toBe('00:00'); // Wraps at 60 minutes
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.hourToSeconds', () => {
+    const hourToSeconds = () => global.$exeDevices.iDevice.gamification.helpers.hourToSeconds;
+
+    it('converts HH:MM:SS format', () => {
+      expect(hourToSeconds()('01:30:45')).toBe(5445);
+      expect(hourToSeconds()('00:00:00')).toBe(0);
+      expect(hourToSeconds()('00:01:00')).toBe(60);
+      expect(hourToSeconds()('01:00:00')).toBe(3600);
+    });
+
+    it('converts MM:SS format (assumes 00 hours)', () => {
+      expect(hourToSeconds()('05:30')).toBe(330);
+      expect(hourToSeconds()('00:45')).toBe(45);
+    });
+
+    it('converts SS format (assumes 00:00 hours:minutes)', () => {
+      expect(hourToSeconds()('30')).toBe(30);
+      expect(hourToSeconds()('0')).toBe(0);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.secondsToHour', () => {
+    const secondsToHour = () => global.$exeDevices.iDevice.gamification.helpers.secondsToHour;
+
+    it('converts 0 seconds', () => {
+      expect(secondsToHour()(0)).toBe('00:00:00');
+    });
+
+    it('converts seconds only', () => {
+      expect(secondsToHour()(45)).toBe('00:00:45');
+      expect(secondsToHour()(9)).toBe('00:00:09');
+    });
+
+    it('converts minutes and seconds', () => {
+      expect(secondsToHour()(90)).toBe('00:01:30');
+      expect(secondsToHour()(3599)).toBe('00:59:59');
+    });
+
+    it('converts hours, minutes and seconds', () => {
+      expect(secondsToHour()(3600)).toBe('01:00:00');
+      expect(secondsToHour()(5445)).toBe('01:30:45');
+      expect(secondsToHour()(86399)).toBe('23:59:59');
+    });
+
+    it('rounds fractional seconds', () => {
+      expect(secondsToHour()(45.4)).toBe('00:00:45');
+      expect(secondsToHour()(45.6)).toBe('00:00:46');
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.arrayMove', () => {
+    const arrayMove = () => global.$exeDevices.iDevice.gamification.helpers.arrayMove;
+
+    it('moves element forward in array', () => {
+      const arr = ['a', 'b', 'c', 'd'];
+      arrayMove()(arr, 0, 2);
+      expect(arr).toEqual(['b', 'c', 'a', 'd']);
+    });
+
+    it('moves element backward in array', () => {
+      const arr = ['a', 'b', 'c', 'd'];
+      arrayMove()(arr, 3, 1);
+      expect(arr).toEqual(['a', 'd', 'b', 'c']);
+    });
+
+    it('handles move to same position', () => {
+      const arr = ['a', 'b', 'c'];
+      arrayMove()(arr, 1, 1);
+      expect(arr).toEqual(['a', 'b', 'c']);
+    });
+
+    it('extends array when moving to index beyond length', () => {
+      const arr = ['a', 'b'];
+      arrayMove()(arr, 0, 4);
+      expect(arr).toEqual(['b', undefined, undefined, undefined, 'a']);
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.removeTags', () => {
+    const removeTags = () => global.$exeDevices.iDevice.gamification.helpers.removeTags;
+
+    it('removes HTML tags from string', () => {
+      expect(removeTags()('<p>Hello</p>')).toBe('Hello');
+      expect(removeTags()('<div><span>Test</span></div>')).toBe('Test');
+    });
+
+    it('removes multiple tags', () => {
+      expect(removeTags()('<p>Para 1</p><p>Para 2</p>')).toBe('Para 1Para 2');
+    });
+
+    it('handles string without tags', () => {
+      expect(removeTags()('plain text')).toBe('plain text');
+    });
+
+    it('handles empty string', () => {
+      expect(removeTags()('')).toBe('');
+    });
+
+    it('removes attributes from tags', () => {
+      expect(removeTags()('<a href="http://example.com">Link</a>')).toBe('Link');
+    });
+
+    it('preserves text content between tags', () => {
+      expect(removeTags()('Before <b>bold</b> after')).toBe('Before bold after');
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.generarID', () => {
+    const generarID = () => global.$exeDevices.iDevice.gamification.helpers.generarID;
+
+    it('returns a string', () => {
+      expect(typeof generarID()()).toBe('string');
+    });
+
+    it('generates unique IDs on consecutive calls', () => {
+      const id1 = generarID()();
+      const id2 = generarID()();
+      // IDs should be different or same (if called in same second)
+      // Format: YYYYMMDDHHmmss + timezone offset (can be negative)
+      expect(id1).toMatch(/^[\d-]+$/);
+      expect(id2).toMatch(/^[\d-]+$/);
+    });
+
+    it('generates ID based on current time', () => {
+      const before = new Date();
+      const id = generarID()();
+      const after = new Date();
+
+      // ID should contain the year
+      expect(id).toContain(String(before.getUTCFullYear()));
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.getQuestions', () => {
+    const getQuestions = () => global.$exeDevices.iDevice.gamification.helpers.getQuestions;
+
+    it('returns all questions when percentage is 100', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }];
+      const result = getQuestions()(questions, 100);
+      expect(result).toEqual(questions);
+    });
+
+    it('returns all questions when percentage > 100', () => {
+      const questions = [{ id: 1 }, { id: 2 }];
+      const result = getQuestions()(questions, 150);
+      expect(result).toEqual(questions);
+    });
+
+    it('returns subset of questions based on percentage', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+      const result = getQuestions()(questions, 40); // 40% of 5 = 2
+
+      expect(result).toHaveLength(2);
+      // All returned questions should be from original
+      for (const q of result) {
+        expect(questions).toContainEqual(q);
+      }
+    });
+
+    it('returns at least 1 question even for very low percentage', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }];
+      const result = getQuestions()(questions, 1);
+
+      expect(result.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('preserves original order of selected questions', () => {
+      const questions = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+      const result = getQuestions()(questions, 60);
+
+      // Selected questions should maintain their relative order
+      const originalIds = questions.map(q => q.id);
+      const resultIds = result.map(q => q.id);
+
+      for (let i = 1; i < resultIds.length; i++) {
+        expect(originalIds.indexOf(resultIds[i])).toBeGreaterThan(
+          originalIds.indexOf(resultIds[i - 1])
+        );
+      }
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.isFullscreen', () => {
+    const isFullscreen = () => global.$exeDevices.iDevice.gamification.helpers.isFullscreen;
+
+    it('returns false when no fullscreen element', () => {
+      expect(isFullscreen()()).toBe(false);
+    });
+
+    it('returns true when fullscreenElement is set', () => {
+      Object.defineProperty(document, 'fullscreenElement', {
+        value: document.body,
+        configurable: true,
+      });
+      Object.defineProperty(document, 'fullscreenEnabled', {
+        value: true,
+        configurable: true,
+      });
+
+      expect(isFullscreen()()).toBe(true);
+
+      Object.defineProperty(document, 'fullscreenElement', {
+        value: null,
+        configurable: true,
+      });
+    });
+  });
+
+  describe('$exeDevices.iDevice.gamification.helpers.supportedBrowser', () => {
+    const supportedBrowser = () => global.$exeDevices.iDevice.gamification.helpers.supportedBrowser;
+
+    it('returns true for modern browsers', () => {
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, 'userAgent', {
+        value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+        configurable: true,
+      });
+      Object.defineProperty(navigator, 'appName', {
+        value: 'Netscape',
+        configurable: true,
+      });
+
+      expect(supportedBrowser()('test-idevice')).toBe(true);
+
+      Object.defineProperty(navigator, 'userAgent', {
+        value: originalUserAgent,
+        configurable: true,
+      });
+    });
+
+    it('returns false for Internet Explorer', () => {
+      const originalAppName = navigator.appName;
+      Object.defineProperty(navigator, 'appName', {
+        value: 'Microsoft Internet Explorer',
+        configurable: true,
+      });
+
+      document.body.innerHTML = '<div class="test-idevice-instructions"></div>';
+      expect(supportedBrowser()('test-idevice')).toBe(false);
+
+      Object.defineProperty(navigator, 'appName', {
+        value: originalAppName,
+        configurable: true,
+      });
     });
   });
 });
