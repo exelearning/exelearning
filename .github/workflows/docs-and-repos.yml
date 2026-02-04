@@ -1,13 +1,6 @@
 name: Docs & Repos to GitHub Pages (latest release)
 
 on:
-  push:
-    branches:
-      - main
-    paths: # Only run on push when changes doc/ related files
-      - 'doc/**'
-      - 'mkdocs.yml'
-      - '.github/workflows/docs-and-repos.yml'
   release: # Always run on release
     types: [released]
   workflow_dispatch: # Allows manually triggering
