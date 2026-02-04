@@ -180,6 +180,14 @@ class YjsProjectBridge {
       // By deferring to after sync, we ensure only the first client creates the page.
       this.documentManager.ensureBlankStructureIfEmpty();
 
+      // For NEW projects only: ensure project language matches user preference
+      // This is a defensive check - the language should be set correctly in createBlankProjectStructure,
+      // but user preferences may not be fully loaded at that point in some edge cases.
+      // For existing projects, we preserve the original language set at creation time.
+      if (this.isNewProject) {
+        this._ensureNewProjectLanguage();
+      }
+
       // Announce assets after WebSocket is connected
       if (this.assetWebSocketHandler && preloadedAssetCount > 0) {
         Logger.log(`[YjsProjectBridge] Announcing ${preloadedAssetCount} assets to server...`);
@@ -216,6 +224,11 @@ class YjsProjectBridge {
         this.connectionMonitor.start();
         Logger.log('[YjsProjectBridge] ConnectionMonitor initialized');
       }
+    } else if (this.isNewProject) {
+      // OFFLINE/LOCAL mode: For new projects, ensure language matches user preference
+      // In offline mode, createBlankProjectStructure is called during initialize(),
+      // but user preferences may not be fully loaded at that point.
+      this._ensureNewProjectLanguage();
     }
 
     // Create SaveManager for saving to server with progress modal
@@ -322,6 +335,42 @@ class YjsProjectBridge {
 
     // Skip sync wait in Electron/offline mode
     return isElectron || isOffline;
+  }
+
+  /**
+   * Ensure new project's language matches user's locale preference.
+   * This is a defensive check for new projects only - existing projects keep their original language.
+   * 
+   * The language should be set correctly in createBlankProjectStructure(), but user preferences
+   * may not be fully loaded at that point in some edge cases (async timing, static mode, etc.)
+   * 
+   * @private
+   */
+  _ensureNewProjectLanguage() {
+    try {
+      const userLocale = window.eXeLearning?.app?.user?.preferences?.preferences?.locale?.value;
+      
+      if (!userLocale) {
+        // No user preference available, nothing to do
+        return;
+      }
+
+      const metadata = this.documentManager?.getMetadata();
+      if (!metadata) {
+        return;
+      }
+
+      const currentLanguage = metadata.get('language');
+      
+      // Only update if different from user preference
+      if (currentLanguage !== userLocale) {
+        Logger.log(`[YjsProjectBridge] Updating new project language: ${currentLanguage} → ${userLocale}`);
+        metadata.set('language', userLocale);
+      }
+    } catch (err) {
+      // Non-critical - log and continue
+      console.warn('[YjsProjectBridge] Failed to ensure project language:', err);
+    }
   }
 
   /**
