@@ -12,6 +12,7 @@ import type { Database, User } from '../db/types';
 import { up } from '../db/migrations/001_initial';
 import { now } from '../db/types';
 import { v4 as uuidv4 } from 'uuid';
+import { insertIgnore } from '../db/helpers';
 
 let testDb: Kysely<Database>;
 let user1: User;
@@ -146,11 +147,10 @@ function createTestProjectApp(db: Kysely<Database>) {
                     return { responseMessage: 'IS_OWNER' };
                 }
 
-                await db
-                    .insertInto('project_collaborators')
-                    .values({ project_id: projectId, user_id: user.id })
-                    .onConflict(oc => oc.doNothing())
-                    .execute();
+                await insertIgnore(db, 'project_collaborators', {
+                    project_id: projectId,
+                    user_id: user.id,
+                });
 
                 return { responseMessage: 'OK' };
             })

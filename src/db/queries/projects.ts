@@ -7,7 +7,7 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
-import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn } from '../helpers';
+import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
 
 // ============================================================================
 // HELPER TYPES AND FUNCTIONS
@@ -187,11 +187,7 @@ export async function getProjectCollaborators(db: Kysely<Database>, projectId: n
 }
 
 export async function addCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
-    await db
-        .insertInto('project_collaborators')
-        .values({ project_id: projectId, user_id: userId })
-        .onConflict(oc => oc.doNothing())
-        .execute();
+    await insertIgnore(db, 'project_collaborators', { project_id: projectId, user_id: userId });
 }
 
 export async function removeCollaborator(db: Kysely<Database>, projectId: number, userId: number): Promise<void> {
