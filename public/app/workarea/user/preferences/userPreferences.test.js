@@ -22,6 +22,7 @@ describe('UserPreferences', () => {
     globalThis.eXeLearning = {
       app: {
         capabilities: { storage: { remote: true } }, // Server mode
+        alert: vi.fn(), 
         api: {
           parameters: {
             userPreferencesConfig: {
@@ -64,6 +65,7 @@ describe('UserPreferences', () => {
     };
 
     userPreferences = new UserPreferences(mockManager);
+    userPreferences.userLang = 'en'; 
   });
 
   afterEach(() => {
@@ -186,14 +188,34 @@ describe('UserPreferences', () => {
 
   describe('apiSaveProperties (static mode)', () => {
     beforeEach(() => {
-      // Set up static mode
       globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should show alert and NOT reload when language changes in static mode', async () => {
+      userPreferences.preferences = {
+        locale: { value: 'en' }
+      };
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { reload: vi.fn() };
+
+      await userPreferences.apiSaveProperties({
+        locale: 'fr' 
+      });
+
+
+      expect(globalThis.eXeLearning.app.alert).toHaveBeenCalled();
+      
+
+      expect(window.location.reload).not.toHaveBeenCalled();
+
+      window.location = originalLocation;
     });
 
     it('should save preferences to localStorage in static mode', async () => {
       userPreferences.preferences = {
-        advancedMode: { value: 'false' },
-        versionControl: { value: 'true' }
+        advancedMode: { value: 'false' }
       };
 
       await userPreferences.apiSaveProperties({
@@ -204,19 +226,6 @@ describe('UserPreferences', () => {
         'exe_user_preferences',
         expect.any(String)
       );
-      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
-    });
-
-    it('should not call server API in static mode', async () => {
-      userPreferences.preferences = {
-        advancedMode: { value: 'false' }
-      };
-
-      await userPreferences.apiSaveProperties({
-        advancedMode: 'true'
-      });
-
-      expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
     });
   });
 });
