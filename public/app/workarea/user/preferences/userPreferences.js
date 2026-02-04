@@ -11,7 +11,8 @@ export default class UserPreferences {
         type: 'text',
         hide: true,
     };
-
+    userLang='';
+    
     /**
      * Load user preferences
      *
@@ -140,6 +141,7 @@ export default class UserPreferences {
                 this.manager.reloadVersionControl(this.preferences.versionControl.value);
             }
             if (this.preferences.locale) {
+				this.userLang=this.preferences.locale.value;
                 this.manager.reloadLang(this.preferences.locale.value);
             }
         } catch (error) {
@@ -185,11 +187,16 @@ export default class UserPreferences {
             this.manager.reloadVersionControl(preferences.versionControl);
         // Update interface lang
         if (preferences.locale) await this.manager.reloadLang(preferences.locale);
-
+		// Change license ????
+		
         // Reloading of the page so that it takes a possible change of language in the user preferences
-        if (params['locale'] !== undefined) {
-            window.onbeforeunload = null;
-            window.location.reload();
+        if (this.userLang!= params['locale']){
+            if (isStaticMode) {				
+			    eXe.app.alert('Language changes will take effect after restarting or creating a new project.');
+			}else{
+                window.onbeforeunload = null;
+                window.location.reload();
+	        }
         }
     }
 }
