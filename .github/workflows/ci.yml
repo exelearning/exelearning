@@ -135,43 +135,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # ============================================
-      # STATIC DOCKER IMAGE (Lightweight PWA)
-      # ============================================
-
-      - name: Docker meta (static)
-        id: meta-static
-        if: github.repository == 'exelearning/exelearning' && github.event_name != 'pull_request'
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ github.repository }}
-            ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=tag,suffix=-static
-            type=raw,value=latest-static,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
-            type=raw,value=main-static,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=tikismaker-static,enable=${{ github.ref == 'refs/heads/tikismaker' }}
-
-      - name: Remove .dockerignore for static build
-        if: github.repository == 'exelearning/exelearning' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tikismaker' || startsWith(github.ref, 'refs/tags/'))
-        run: rm -f .dockerignore
-
-      - name: Build and push static image
-        if: github.repository == 'exelearning/exelearning' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tikismaker' || startsWith(github.ref, 'refs/tags/'))
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.static
-          push: true
-          tags: ${{ steps.meta-static.outputs.tags }}
-          labels: ${{ steps.meta-static.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            VERSION=${{ steps.meta.outputs.version }}
-          cache-from: type=gha,scope=static
-          cache-to: type=gha,mode=max,scope=static
-
       - name: Scan image with Trivy (GHCR) only on main branch
         if: github.repository == 'exelearning/exelearning' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
