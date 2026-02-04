@@ -62,9 +62,9 @@
                                 <li class="d-none"><a id="navbar-button-exportas-xml-properties" class="dropdown-item" href="#">{{ t.metadata or 'Metadata' }} (XML)</a></li>
                             </ul>
                         </li>
-                        <li class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     {% endif %}
+                    <li class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" id="navbar-button-settings" href="#"><span class="small-icon settings-icon-green"></span> {{ t.project_properties or 'Project Properties' }}</a></li>
                     <li class="dropdown-divider"></li>
                     <li><a id="navbar-button-export-print" class="dropdown-item" href="#"><span class="small-icon print-icon-green"></span> {{ t.print or 'Print' }}</a></li>
                     {% if config.platformIntegration %}

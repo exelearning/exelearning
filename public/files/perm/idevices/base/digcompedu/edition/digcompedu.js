@@ -556,6 +556,7 @@ var $exeDevice = {
             this.idevicePreviousData.digcompeduDisplayMode || 'table';
         const frameworkOptions = `
             <option value="es"${this.activeLang === 'es' ? ' selected' : ''}>${_('Español (MRCDD detallado)')}</option>
+            <option value="gl"${this.activeLang === 'gl' ? ' selected' : ''}>${_('Galego (MRCDD completo)')}</option>
             <option value="en"${this.activeLang === 'en' ? ' selected' : ''}>${_('English (DigCompEdu core)')}</option>
         `;
 
