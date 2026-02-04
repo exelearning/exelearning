@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+# Dockerfile.static - Lightweight container for static PWA version
+#
+# This container packages the static/offline version of eXeLearning (PWA)
+# using nginx:alpine (~8MB) to facilitate deployment without a backend.
+#
+# Features:
+# - No database, no backend, no real-time collaboration
+# - Works fully offline after initial load
+# - Ideal for demos, quick deployments, or CDN distribution
+#
+# Usage:
+#   docker build -f Dockerfile.static -t exelearning:static --build-arg VERSION=v3.0.0 .
+#   docker run -p 8080:80 exelearning:static
+
+FROM oven/bun:alpine AS builder
+WORKDIR /app
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
+COPY . .
+ARG VERSION=latest
+RUN bun run build:static -- --version=${VERSION}
+
+FROM nginx:alpine
+COPY --from=builder /app/dist/static /usr/share/nginx/html
+LABEL org.opencontainers.image.title="eXeLearning Static" \
+      org.opencontainers.image.description="eXeLearning PWA - Static version" \
+      org.opencontainers.image.vendor="eXeLearning" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.source="https://github.com/exelearning/exelearning"
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -qO- http://localhost/ || exit 1

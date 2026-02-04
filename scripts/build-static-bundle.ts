@@ -887,7 +887,7 @@ export function buildApiParameters(): ApiParameters {
                 help: 'You can choose a different language for the current project.',
                 value: null,
                 type: 'select',
-                options: PACKAGE_LOCALES,
+                options: LOCALE_NAMES,
                 category: 'General settings',
             },
             advancedMode: {

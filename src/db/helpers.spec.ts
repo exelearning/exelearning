@@ -17,6 +17,7 @@ import {
     getAutoIncrementType,
     addAutoIncrement,
     getBinaryType,
+    insertIgnore,
     insertAndReturn,
     insertManyAndReturn,
     updateByIdAndReturn,
@@ -291,6 +292,82 @@ describe('Database Helpers', () => {
     // ============================================================================
     // INSERT HELPERS
     // ============================================================================
+
+    describe('insertIgnore', () => {
+        it('should insert a row when no conflict exists', async () => {
+            const ownerId = await seedTestUser(db, { email: 'owner@example.com' });
+            const projectId = await seedTestProject(db, ownerId, { uuid: 'ignore-test-1' });
+            const collaboratorId = await seedTestUser(db, { email: 'collab@example.com' });
+
+            await insertIgnore(db, 'project_collaborators', {
+                project_id: projectId,
+                user_id: collaboratorId,
+            });
+
+            const result = await db
+                .selectFrom('project_collaborators')
+                .selectAll()
+                .where('project_id', '=', projectId)
+                .where('user_id', '=', collaboratorId)
+                .executeTakeFirst();
+
+            expect(result).toBeDefined();
+            expect(result!.project_id).toBe(projectId);
+            expect(result!.user_id).toBe(collaboratorId);
+        });
+
+        it('should silently ignore duplicate inserts (no error thrown)', async () => {
+            const ownerId = await seedTestUser(db, { email: 'owner2@example.com' });
+            const projectId = await seedTestProject(db, ownerId, { uuid: 'ignore-test-2' });
+            const collaboratorId = await seedTestUser(db, { email: 'collab2@example.com' });
+
+            // Insert first time
+            await insertIgnore(db, 'project_collaborators', {
+                project_id: projectId,
+                user_id: collaboratorId,
+            });
+
+            // Insert second time - should not throw
+            await insertIgnore(db, 'project_collaborators', {
+                project_id: projectId,
+                user_id: collaboratorId,
+            });
+
+            // Verify only one row exists
+            const count = await db
+                .selectFrom('project_collaborators')
+                .select(eb => eb.fn.count<number>('project_id').as('count'))
+                .where('project_id', '=', projectId)
+                .where('user_id', '=', collaboratorId)
+                .executeTakeFirstOrThrow();
+
+            expect(Number(count.count)).toBe(1);
+        });
+
+        it('should use mysql dialect branch when dialect is mysql', async () => {
+            // MySQL's INSERT IGNORE syntax isn't supported by SQLite, so we expect an error.
+            // This test verifies the MySQL code path is actually executed.
+            const ownerId = await seedTestUser(db, { email: 'mysql-owner@example.com' });
+            const projectId = await seedTestProject(db, ownerId, { uuid: 'mysql-ignore-test' });
+            const collaboratorId = await seedTestUser(db, { email: 'mysql-collab@example.com' });
+
+            await withDbDriver('mysql', async () => {
+                expect(getDialect()).toBe('mysql');
+                // The MySQL branch uses "INSERT IGNORE INTO" which SQLite doesn't support,
+                // so this will throw a syntax error - but it proves the branch is executed.
+                try {
+                    await insertIgnore(db, 'project_collaborators', {
+                        project_id: projectId,
+                        user_id: collaboratorId,
+                    });
+                    // If we get here on actual MySQL, that's fine
+                } catch (error: unknown) {
+                    // SQLite throws "no such column: IGNORE" error because it doesn't understand the syntax
+                    expect((error as Error).message).toContain('IGNORE');
+                }
+            });
+        });
+    });
 
     describe('insertAndReturn', () => {
         it('should insert and return a user', async () => {

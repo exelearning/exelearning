@@ -1488,6 +1488,80 @@ describe('YjsDocumentManager', () => {
       // Should still only have 1 page
       expect(navigation.length).toBe(1);
     });
+
+    it('uses user preference locale when available', () => {
+      // Setup user preferences with Spanish locale
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'es' }
+              }
+            }
+          },
+          locale: { lang: 'en' } // UI is in English
+        }
+      };
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      // Metadata should use user preference locale (es), not UI locale (en)
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('es');
+    });
+
+    it('falls back to app locale when user preference is not set', () => {
+      // Setup app locale without user preferences
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {} // No locale preference
+            }
+          },
+          locale: { lang: 'fr' }
+        }
+      };
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('fr');
+    });
+
+    it('falls back to document lang when app locale is not available', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {} // No user preferences or locale
+      };
+      global.document.documentElement.lang = 'de';
+
+      // Clear navigation first
+      const navigation = manager.getNavigation();
+      while (navigation.length > 0) {
+        navigation.delete(0);
+      }
+
+      manager.ensureBlankStructureIfEmpty();
+
+      const metadata = manager.getMetadata();
+      expect(metadata.get('language')).toBe('de');
+    });
   });
 
   describe('initialize blank structure behavior', () => {
