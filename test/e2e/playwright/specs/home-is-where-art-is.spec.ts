@@ -39,6 +39,12 @@ import {
 const ELP_FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/more/home_is_where_art_is.elp');
 
 test.describe('home_is_where_art_is.elp Import Tests', () => {
+    test.beforeEach(({}, testInfo) => {
+        if (testInfo.project.name === 'static') {
+            test.skip(true, 'Legacy ELP import tests run only in online mode');
+        }
+    });
+
     test.describe('Image Gallery', () => {
         // Skip: Multi-page preview navigation is unreliable in SW-based preview
         // The gallery is on a subpage and clicking navigation links in multi-page export

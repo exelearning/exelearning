@@ -157,6 +157,18 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
+            // Static mode: new file without saving
+            const isStaticMode =
+                eXeLearning?.app?.capabilities?.storage?.remote === false &&
+                !window.electronAPI;
+            if (data.newFile && isStaticMode) {
+                this.close();
+                if (typeof window.newProject === 'function') {
+                    window.newProject();
+                }
+                return;
+            }
+
             // Handle Yjs project navigation (from Recent Projects menu)
             if (data.openYjsProject && data.projectUuid) {
                 const basePath = window.eXeLearning?.config?.basePath || '';
@@ -212,6 +224,23 @@ export default class ModalSessionLogout extends Modal {
 
         if (isYjsEnabled && saveManager) {
             try {
+                const isStaticMode =
+                    eXeLearning?.app?.capabilities?.storage?.remote === false &&
+                    !window.electronAPI;
+
+                if (data.newFile && isStaticMode) {
+                    if (eXeLearning.app.project?.exportToElpxViaYjs) {
+                        await eXeLearning.app.project.exportToElpxViaYjs({
+                            saveAs: false,
+                        });
+                    }
+                    this.close();
+                    if (typeof window.newProject === 'function') {
+                        window.newProject();
+                    }
+                    return;
+                }
+
                 // Save current project using Yjs SaveManager
                 await saveManager.save();
 

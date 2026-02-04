@@ -135,6 +135,7 @@ export default defineConfig({
                 ...devices['Desktop Chrome'],
                 baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
             },
+            testIgnore: /.*-static\.spec\.ts/,
         },
         {
             name: 'firefox',
@@ -143,6 +144,7 @@ export default defineConfig({
                 baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
                 serviceWorkers: 'allow',
             },
+            testIgnore: /.*-static\.spec\.ts/,
         },
         // {
         //     name: 'webkit',

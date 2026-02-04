@@ -413,8 +413,28 @@
             if (newBtn) {
                 newBtn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    if (confirm('Create a new project? Unsaved changes will be lost.')) {
+                    const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
+                    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    const hasUnsavedAssets =
+                        assetManager &&
+                        typeof assetManager.hasUnsavedAssets === 'function' &&
+                        assetManager.hasUnsavedAssets();
+                    const hasUnsaved = docManager?.isDirty === true || hasUnsavedAssets;
+
+                    if (!hasUnsaved) {
                         window.newProject();
+                        return;
+                    }
+
+                    // Use the same "save before leaving" modal as online mode
+                    if (window.eXeLearning?.app?.modals?.sessionlogout) {
+                        window.eXeLearning.app.modals.sessionlogout.show({
+                            title: (typeof _ === 'function' ? _('New file') : 'New file'),
+                            forceOpen: (typeof _ === 'function'
+                                ? _('Create new file without saving')
+                                : 'Create new file without saving'),
+                            newFile: true,
+                        });
                     }
                 });
             }
