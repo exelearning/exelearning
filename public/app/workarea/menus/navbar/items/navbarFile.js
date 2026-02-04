@@ -1123,10 +1123,9 @@ export default class NavbarFile {
             if (response.responseMessage == 'OK') {
                 // Clear beforeunload handler to prevent browser "Leave site?" dialog
                 window.onbeforeunload = null;
-                // Redirect to /workarea without project parameter
-                // Backend will create a new project and redirect back with new UUID
+                // Redirect to /workarea?new=1 to force creating a new project.
                 const basePath = window.eXeLearning?.config?.basePath || '';
-                window.location.href = `${basePath}/workarea`;
+                window.location.href = `${basePath}/workarea?new=1`;
             }
         });
     }

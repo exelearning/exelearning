@@ -1049,7 +1049,7 @@
             </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
-            <a href="{{ basePath }}/workarea" class="admin-nav-link">
+            <a href="{{ backToWorkareaUrl or (basePath + '/workarea') }}" class="admin-nav-link">
                 <span class="mi">arrow_back</span>
                 {{ t.back_to_workarea or 'Back to Workarea' }}
             </a>

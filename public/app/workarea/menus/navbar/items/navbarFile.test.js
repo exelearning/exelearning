@@ -895,7 +895,7 @@ describe('NavbarFile', () => {
                 odeSessionId: 'session-123',
             });
             expect(window.onbeforeunload).toBeNull();
-            expect(window.location.href).toBe('/workarea');
+            expect(window.location.href).toBe('/workarea?new=1');
         });
 
         it('should use Yjs mode when enabled', async () => {

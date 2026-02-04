@@ -403,7 +403,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request }) => {
+            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, cookie }) => {
                 // Check if user is authenticated
                 if (!currentUser) {
                     // Preserve the original URL for post-login redirect
@@ -486,6 +486,40 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             console.error('[Pages] Platform integration: Failed to create new project:', error);
                             // Continue - will fall through to normal flow
                         }
+                    }
+                }
+
+                // Recover current project when frontend navigates to /workarea without project
+                // due to generic redirects (e.g. async 403 handlers) while the user is editing.
+                // Explicit "new project" flows should send ?new=1 to bypass this recovery.
+                const forceNewProject = String(query.new || '') === '1';
+                if (!projectUuid && !forceNewProject) {
+                    const referer = request.headers.get('referer');
+                    if (referer) {
+                        try {
+                            const requestUrl = new URL(request.url);
+                            const refererUrl = new URL(referer);
+                            const basePath = getBasePath();
+                            const refererPath = refererUrl.pathname.replace(/\/+$/, '') || '/';
+                            const expectedWorkareaPath = `${basePath}/workarea` || '/workarea';
+
+                            if (refererUrl.origin === requestUrl.origin && refererPath === expectedWorkareaPath) {
+                                const refererProject = refererUrl.searchParams.get('project')?.trim();
+                                if (refererProject) {
+                                    projectUuid = refererProject;
+                                }
+                            }
+                        } catch {
+                            // Ignore malformed Referer headers
+                        }
+                    }
+                }
+
+                // Cookie fallback when Referer is missing (e.g., strict browser policies/new tab).
+                if (!projectUuid && !forceNewProject) {
+                    const cookieProject = cookie.projectId?.value?.trim();
+                    if (cookieProject) {
+                        projectUuid = cookieProject;
                     }
                 }
 
@@ -628,6 +662,17 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         console.error('[Pages] Failed to create new project:', error);
                         // Continue without project if creation fails
                     }
+                }
+
+                if (projectUuid) {
+                    cookie.projectId.set({
+                        value: projectUuid,
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV === 'production',
+                        sameSite: 'lax',
+                        maxAge: 30 * 24 * 60 * 60, // 30 days
+                        path: '/',
+                    });
                 }
 
                 const userId = currentUser.id;
@@ -847,7 +892,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Admin Panel
             // =====================================================
-            .get('/admin', async ({ currentUser, request, set }) => {
+            .get('/admin', async ({ currentUser, request, set, query, cookie }) => {
                 // Require authentication
                 if (!currentUser) {
                     return Response.redirect(prefixPath('/login?returnUrl=/admin') || '/login?returnUrl=/admin', 302);
@@ -885,6 +930,31 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     gravatarUrl: createGravatarUrl(email, null, email),
                     roles: userRoles,
                 };
+                const basePath = getBasePath();
+
+                const requestedProject = typeof query.project === 'string' ? query.project.trim() : '';
+                let refererProject = '';
+                const referer = request.headers.get('referer');
+                if (referer) {
+                    try {
+                        const requestUrl = new URL(request.url);
+                        const refererUrl = new URL(referer);
+                        const refererPath = refererUrl.pathname.replace(/\/+$/, '') || '/';
+                        const expectedWorkareaPath = `${basePath}/workarea` || '/workarea';
+
+                        if (refererUrl.origin === requestUrl.origin && refererPath === expectedWorkareaPath) {
+                            refererProject = refererUrl.searchParams.get('project')?.trim() || '';
+                        }
+                    } catch {
+                        // Ignore malformed Referer headers
+                    }
+                }
+
+                const cookieProject = cookie.projectId?.value?.trim() || '';
+                const backToProject = requestedProject || refererProject || cookieProject;
+                const backToWorkareaUrl = backToProject
+                    ? `${basePath}/workarea?project=${encodeURIComponent(backToProject)}`
+                    : `${basePath}/workarea`;
 
                 const t = {
                     admin_panel: trans('Admin Panel', {}, locale),
@@ -1084,7 +1154,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     user,
                     locale,
                     t,
-                    basePath: getBasePath(),
+                    basePath,
+                    backToWorkareaUrl,
                     defaultQuota,
                     adminSettings,
                 };

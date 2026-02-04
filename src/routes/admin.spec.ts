@@ -450,7 +450,7 @@ describe('Admin Routes', () => {
 
         it('should return 404 for non-existent user', async () => {
             const mockQueries = createMockQueries({
-                findUserById: async () => undefined,
+                findUserById: async (_db, id) => (id === 1 ? mockAdminUser : undefined),
             });
             const app = new Elysia().use(createAdminRoutes({ db: {} as any, queries: mockQueries }));
             const adminToken = await generateAdminToken();
@@ -688,7 +688,7 @@ describe('Admin Routes', () => {
 
         it('should return 404 for non-existent user', async () => {
             const mockQueries = createMockQueries({
-                findUserById: async () => undefined,
+                findUserById: async (_db, id) => (id === 1 ? mockAdminUser : undefined),
             });
             const app = new Elysia().use(createAdminRoutes({ db: {} as any, queries: mockQueries }));
             const adminToken = await generateAdminToken();
@@ -1001,7 +1001,7 @@ describe('Admin Routes', () => {
 
         it('should return 404 for non-existent user', async () => {
             const mockQueries = createMockQueries({
-                findUserById: async () => undefined,
+                findUserById: async (_db, id) => (id === 1 ? mockAdminUser : undefined),
             });
             const app = new Elysia().use(createAdminRoutes({ db: {} as any, queries: mockQueries }));
             const adminToken = await generateAdminToken();
@@ -1068,7 +1068,7 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(401);
         });
 
-        it('should handle JWT with null roles', async () => {
+        it('should use database roles even when JWT roles is null', async () => {
             const jwtInstance = jwt({
                 name: 'jwt',
                 secret: 'test-secret',
@@ -1090,7 +1090,7 @@ describe('Admin Routes', () => {
                 }),
             );
 
-            expect(response.status).toBe(403);
+            expect(response.status).toBe(200);
         });
     });
 

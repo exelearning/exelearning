@@ -208,7 +208,7 @@ Templates uploaded through the admin panel are stored in `FILES_DIR/admin/templa
 
 Administrators can enable or disable templates through the admin panel. Disabled templates won't appear in the "New from Template" menu for users.
 
-### Creating templates
+### Creating templates (without admin panel)
 
 1. Design your project in eXeLearning
 2. Export it as an `.elpx` file (**File → Download as... → eXeLearning content**)

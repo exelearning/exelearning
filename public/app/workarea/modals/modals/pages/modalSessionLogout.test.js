@@ -149,7 +149,7 @@ describe('ModalSessionLogout', () => {
       await modal.saveSession({ odeSessionId: 's' }, { newFile: true });
 
       expect(saveSpy).toHaveBeenCalled();
-      expect(window.location.href).toBe('/base/workarea');
+      expect(window.location.href).toBe('/base/workarea?new=1');
     });
 
     it('should show alert when Yjs save fails', async () => {

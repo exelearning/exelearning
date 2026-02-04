@@ -273,14 +273,16 @@ export async function getSystemStats(db: Kysely<Database>): Promise<{
         db
             .selectFrom('projects')
             .select([sql<number>`count(id)`.as('total')])
+            .where('saved_once', '=', 1)
             .executeTakeFirst(),
     ]);
 
-    // Count active projects (status = 'active')
+    // Count active saved projects
     const activeProjectsResult = await db
         .selectFrom('projects')
         .select(sql<number>`count(id)`.as('count'))
         .where('status', '=', 'active')
+        .where('saved_once', '=', 1)
         .executeTakeFirst();
 
     return {

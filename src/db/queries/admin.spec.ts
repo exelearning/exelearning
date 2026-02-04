@@ -746,7 +746,22 @@ describe('Admin Queries', () => {
 
             const stats = await getSystemStats(db);
 
-            expect(stats.totalProjects).toBe(2);
+            expect(stats.totalProjects).toBe(1);
+            expect(stats.activeProjects).toBe(1);
+        });
+
+        it('should exclude unsaved projects from totals', async () => {
+            const userId = await seedTestUser(db, { email: 'owner2@test.com', user_id: 'owner2' });
+            await seedTestProject(db, userId, { title: 'Saved Project', saved_once: 1, uuid: 'stats-saved-project' });
+            await seedTestProject(db, userId, {
+                title: 'Unsaved Project',
+                saved_once: 0,
+                uuid: 'stats-unsaved-project',
+            });
+
+            const stats = await getSystemStats(db);
+
+            expect(stats.totalProjects).toBe(1);
             expect(stats.activeProjects).toBe(1);
         });
 

@@ -1069,6 +1069,110 @@ describe('Pages Routes', () => {
             expect(location).toContain('project=');
         });
 
+        it('should recover current project from referer when project query is missing', async () => {
+            mockProjects.set('recover-project', {
+                id: 101,
+                uuid: 'recover-project',
+                ownerId: 1,
+                visibility: 'private',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        Referer: 'http://localhost/workarea?project=recover-project',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('should create new project when query new=1 even if referer has project', async () => {
+            mockProjects.set('recover-project-2', {
+                id: 102,
+                uuid: 'recover-project-2',
+                ownerId: 1,
+                visibility: 'private',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea?new=1', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        Referer: 'http://localhost/workarea?project=recover-project-2',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location') || '';
+            expect(location).toContain('project=');
+            expect(location).not.toContain('recover-project-2');
+        });
+
+        it('should recover current project from cookie when referer is missing', async () => {
+            mockProjects.set('cookie-project', {
+                id: 103,
+                uuid: 'cookie-project',
+                ownerId: 1,
+                visibility: 'private',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: `auth=${token}; projectId=cookie-project`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
         it('should NOT eagerly create session directories for new project (lazy creation)', async () => {
             // With lazy directory creation, createSessionDirectories should NOT be called
             // during project creation - directories are created on-demand when files are written
@@ -1866,6 +1970,149 @@ describe('Pages Routes', () => {
 
             expect(res.status).toBe(200);
             expect(res.headers.get('content-type')).toContain('text/html');
+        });
+
+        it('should build back_to_workarea URL with project from referer', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(19, {
+                id: 19,
+                email: 'admin-referer@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 19,
+                email: 'admin-referer@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        Referer: 'http://localhost/workarea?project=project-from-referer',
+                    },
+                }),
+            );
+
+            expect(templateData.backToWorkareaUrl).toBe('/workarea?project=project-from-referer');
+        });
+
+        it('should prioritize query project for back_to_workarea URL', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(20, {
+                id: 20,
+                email: 'admin-query@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 20,
+                email: 'admin-query@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin?project=project-from-query', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        Referer: 'http://localhost/workarea?project=project-from-referer',
+                    },
+                }),
+            );
+
+            expect(templateData.backToWorkareaUrl).toBe('/workarea?project=project-from-query');
+        });
+
+        it('should fallback to cookie project for back_to_workarea URL when referer is missing', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(21, {
+                id: 21,
+                email: 'admin-cookie@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 21,
+                email: 'admin-cookie@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}; projectId=project-from-cookie`,
+                    },
+                }),
+            );
+
+            expect(templateData.backToWorkareaUrl).toBe('/workarea?project=project-from-cookie');
         });
 
         it('should detect locale from Accept-Language header', async () => {

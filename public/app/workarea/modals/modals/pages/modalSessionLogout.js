@@ -224,7 +224,7 @@ export default class ModalSessionLogout extends Modal {
                     // Creating new file - reload to create new project
                     window.onbeforeunload = null;
                     const basePath = window.eXeLearning?.config?.basePath || '';
-                    window.location.href = `${basePath}/workarea`;
+                    window.location.href = `${basePath}/workarea?new=1`;
                 } else if (data.openOdeFile) {
                     // Opening a file
                     if (data.localOdeFile) {
