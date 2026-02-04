@@ -539,7 +539,18 @@ export default class PreviewPanelManager {
             const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
             const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html`;
 
-            // Open in new tab
+            // Check if we're in an iframe (Electron tabs on Win/Linux)
+            // In this case, ask the parent to create a new tab for the preview
+            if (window.parent !== window && window.electronAPI) {
+                window.parent.postMessage({
+                    type: 'OPEN_PREVIEW_TAB',
+                    url: viewerUrl
+                }, '*');
+                Logger.log('[PreviewPanel] Preview tab requested via parent');
+                return;
+            }
+
+            // Open in new tab (standard behavior for macOS native tabs and browser)
             const newTab = window.open(viewerUrl, '_blank');
 
             if (newTab) {

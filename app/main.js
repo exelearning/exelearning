@@ -106,22 +106,54 @@ function registerProtocolHandler() {
         }
 
         // Preview viewer paths should be handled by the Service Worker in the renderer
-        // Return a minimal HTML that will be intercepted by the preview-sw.js
-        // The SW will serve the actual preview content from its cache
+        // Return a minimal HTML that registers the SW and waits for content
         if (pathname.startsWith('/viewer/')) {
-            // Return empty response - the Service Worker should intercept this
-            // If SW isn't ready yet, return a placeholder that will auto-refresh
+            // This page registers the preview SW and waits for content to be available
+            // The opener window should have already sent content to the SW
             const placeholderHtml = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Loading preview...</title></head>
-<body><script>
-// Wait for Service Worker to be ready then reload
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready.then(() => {
-        setTimeout(() => location.reload(), 100);
-    });
-} else {
-    document.body.textContent = 'Preview requires Service Worker support';
-}
+<html><head><meta charset="UTF-8"><title>Loading preview...</title>
+<style>
+body { font-family: system-ui, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f5f5; }
+.loader { text-align: center; color: #666; }
+.spinner { width: 40px; height: 40px; border: 3px solid #ddd; border-top-color: #00a99d; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style></head>
+<body><div class="loader"><div class="spinner"></div><div>Loading preview...</div></div>
+<script>
+(async function() {
+    if (!('serviceWorker' in navigator)) {
+        document.body.innerHTML = '<p>Preview requires Service Worker support</p>';
+        return;
+    }
+    try {
+        // Register the preview SW with the correct scope
+        const reg = await navigator.serviceWorker.register('/preview-sw.js', { scope: '/viewer/' });
+
+        // Wait for SW to be active
+        const sw = reg.installing || reg.waiting || reg.active;
+        if (sw && sw.state !== 'activated') {
+            await new Promise(resolve => {
+                sw.addEventListener('statechange', function onStateChange() {
+                    if (sw.state === 'activated') {
+                        sw.removeEventListener('statechange', onStateChange);
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        // Try to get content from opener window's SW
+        if (window.opener) {
+            // Give the opener's SW a moment to sync content
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        // Reload to let the SW serve the actual content
+        location.reload();
+    } catch (e) {
+        document.body.innerHTML = '<p>Error loading preview: ' + e.message + '</p>';
+    }
+})();
 </script></body></html>`;
             return new Response(placeholderHtml, {
                 status: 200,
