@@ -259,6 +259,41 @@ describe('Kysely Dialect Factory', () => {
                 const dialect = createDialect(config);
                 expect(dialect).toBeDefined();
             });
+
+            it('should throw helpful error when using /mnt/ path on non-Linux', () => {
+                // This test only applies to non-Linux platforms
+                if (process.platform === 'linux') {
+                    return; // Skip on Linux where /mnt paths are valid
+                }
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: '/mnt/data/exelearning.db',
+                };
+
+                expect(() => createDialect(config)).toThrow(/appears to be a Docker\/Linux path/);
+            });
+
+            it('should include helpful instructions in /mnt/ path error message', () => {
+                if (process.platform === 'linux') {
+                    return; // Skip on Linux
+                }
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: '/mnt/data/test.db',
+                };
+
+                try {
+                    createDialect(config);
+                    // Should have thrown
+                    expect(true).toBe(false);
+                } catch (err) {
+                    const message = (err as Error).message;
+                    expect(message).toContain('DB_PATH=data/exelearning.db');
+                    expect(message).toContain('make create-user');
+                }
+            });
         });
 
         describe('PostgreSQL dialect', () => {
