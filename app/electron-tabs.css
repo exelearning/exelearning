@@ -89,6 +89,15 @@ body {
     opacity: 0.5;
 }
 
+/* Preview Tab Indicator */
+.tab-btn.preview-tab {
+    font-style: italic;
+}
+
+.tab-btn.preview-tab .tab-title {
+    color: #0077aa;
+}
+
 /* Tab Title */
 .tab-title {
     flex: 1;
@@ -233,6 +242,10 @@ body {
 
     .tab-btn.active:hover {
         background: #252525;
+    }
+
+    .tab-btn.preview-tab .tab-title {
+        color: #4db8ff;
     }
 
     .close-btn {

@@ -204,6 +204,45 @@ class TabManager {
     }
 
     /**
+     * Create a preview tab
+     * @param {string} url - URL to load in the preview (e.g., /viewer/index.html)
+     * @param {number} sourceTabId - The tab that requested the preview
+     * @returns {number} The new tab ID
+     */
+    createPreviewTab(url, sourceTabId) {
+        const id = this.nextId++;
+        const sourceTab = this.tabs.get(sourceTabId);
+        const sourceTitle = sourceTab?.title || 'Preview';
+
+        // Create iframe that loads the preview URL
+        const iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.className = 'tab-iframe';
+        iframe.dataset.tabId = id;
+        iframe.dataset.isPreview = 'true';
+        iframe.setAttribute('allow', 'clipboard-read; clipboard-write');
+        document.getElementById('tab-container').appendChild(iframe);
+
+        // Create tab button with preview indicator
+        const tabBtn = this._createTabButton(id, `📄 ${sourceTitle}`);
+        tabBtn.classList.add('preview-tab');
+        document.getElementById('tab-list').appendChild(tabBtn);
+
+        this.tabs.set(id, {
+            iframe,
+            tabBtn,
+            title: `📄 ${sourceTitle}`,
+            projectId: null,
+            filePath: null,
+            isPreview: true,
+            sourceTabId: sourceTabId
+        });
+
+        this.switchTab(id);
+        return id;
+    }
+
+    /**
      * Escape HTML to prevent XSS
      * @private
      */
@@ -248,6 +287,14 @@ window.addEventListener('message', (e) => {
         const tab = tabManager.tabs.get(tabId);
         if (tab) {
             tab.filePath = e.data.filePath;
+        }
+    } else if (e.data?.type === 'OPEN_PREVIEW_TAB') {
+        // Open preview in a new tab instead of new window
+        // This shares the same Service Worker context, so the preview content will be available
+        const url = e.data.url;
+        if (url) {
+            console.log('[TabManager] Opening preview in new tab:', url);
+            tabManager.createPreviewTab(url, tabId);
         }
     }
 });

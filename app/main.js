@@ -142,11 +142,9 @@ body { font-family: system-ui, sans-serif; display: flex; align-items: center; j
             });
         }
 
-        // Try to get content from opener window's SW
-        if (window.opener) {
-            // Give the opener's SW a moment to sync content
-            await new Promise(r => setTimeout(r, 200));
-        }
+        // Give the SW a moment to ensure content is available
+        // This handles both window.opener (popup) and iframe tabs cases
+        await new Promise(r => setTimeout(r, 200));
 
         // Reload to let the SW serve the actual content
         location.reload();
