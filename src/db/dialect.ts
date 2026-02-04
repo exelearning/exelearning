@@ -22,10 +22,19 @@ const defaultIsBun = typeof (globalThis as any).Bun !== 'undefined';
 
 export interface DialectDependencies {
     isBun: boolean;
+    /** Platform identifier (e.g., 'darwin', 'linux', 'win32') */
+    platform: NodeJS.Platform;
+    /** Check if a path exists */
+    existsSync: typeof existsSync;
+    /** Create a directory */
+    mkdirSync: typeof mkdirSync;
 }
 
 const defaultDeps: DialectDependencies = {
     isBun: defaultIsBun,
+    platform: process.platform,
+    existsSync,
+    mkdirSync,
 };
 
 let deps = { ...defaultDeps };
@@ -205,9 +214,9 @@ function createSqliteDialect(dbPath: string): Dialect {
 
         // Check if we're trying to use a Docker-style path on non-Linux
         // Common Docker paths: /mnt/data/, /var/lib/, /app/data/
-        if (fullPath.startsWith('/mnt/') && process.platform !== 'linux') {
+        if (fullPath.startsWith('/mnt/') && deps.platform !== 'linux') {
             throw new Error(
-                `DB_PATH "${dbPath}" appears to be a Docker/Linux path but you're running on ${process.platform}.\n` +
+                `DB_PATH "${dbPath}" appears to be a Docker/Linux path but you're running on ${deps.platform}.\n` +
                     'For local development, set DB_PATH in your .env file to a local path:\n' +
                     '  DB_PATH=data/exelearning.db\n\n' +
                     'Or use the Makefile which sets correct paths automatically:\n' +
@@ -215,9 +224,9 @@ function createSqliteDialect(dbPath: string): Dialect {
             );
         }
 
-        if (!existsSync(dir)) {
+        if (!deps.existsSync(dir)) {
             try {
-                mkdirSync(dir, { recursive: true });
+                deps.mkdirSync(dir, { recursive: true });
             } catch (err) {
                 const errMsg = err instanceof Error ? err.message : String(err);
                 throw new Error(
