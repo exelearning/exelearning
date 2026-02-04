@@ -193,14 +193,14 @@ export class ElpxImporter {
             const legacyParser = new LegacyXmlParser(this.logger);
             const parsedData = legacyParser.parse(contentXml);
             const stats = await this.importLegacyStructure(parsedData, workingZip, { clearExisting, parentId });
-            this.logger.log('[ElpxImporter] Legacy import complete:', stats);
+            // Note: detailed stats already logged in importLegacyStructure
             return stats;
         }
 
         // Extract and import structure (modern format)
         const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
 
-        this.logger.log('[ElpxImporter] Import complete:', stats);
+        // Note: detailed stats already logged in importStructure
         return stats;
     }
 
@@ -258,14 +258,14 @@ export class ElpxImporter {
             const legacyParser = new LegacyXmlParser(this.logger);
             const parsedData = legacyParser.parse(contentXml);
             const stats = await this.importLegacyStructure(parsedData, zipContents, { clearExisting, parentId });
-            this.logger.log('[ElpxImporter] Legacy import from zip contents complete:', stats);
+            // Note: detailed stats already logged in importLegacyStructure
             return stats;
         }
 
         // Extract and import structure (modern format)
         const stats = await this.importStructure(xmlDoc, zipContents, { clearExisting, parentId });
 
-        this.logger.log('[ElpxImporter] Import from zip contents complete:', stats);
+        // Note: detailed stats already logged in importStructure
         return stats;
     }
 
@@ -426,7 +426,8 @@ export class ElpxImporter {
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
 
-        this.logger.log('[ElpxImporter] Import complete:', stats);
+        const { zipContents: _zip, ...statsWithoutZip } = stats;
+        this.logger.log('[ElpxImporter] Import complete:', statsWithoutZip);
         return stats;
     }
 
@@ -523,7 +524,8 @@ export class ElpxImporter {
         // Cache zip contents for theme import (avoids re-unzipping)
         stats.zipContents = zip;
 
-        this.logger.log('[ElpxImporter] Legacy import complete:', stats);
+        const { zipContents: _zipLegacy, ...legacyStatsWithoutZip } = stats;
+        this.logger.log('[ElpxImporter] Legacy import complete:', legacyStatsWithoutZip);
         return stats;
     }
 
@@ -1598,10 +1600,17 @@ export class ElpxImporter {
      * but referenced with resources/ prefix in iDevice properties
      */
     private findAssetUrlForPath(assetPath: string): string | null {
+        // Helper to generate new format asset URL: asset://uuid.ext
+        const buildAssetUrl = (assetId: string, filename: string): string => {
+            const ext = filename.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
+            return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+        };
+
         // Try exact match first
         if (this.assetMap.has(assetPath)) {
             const assetId = this.assetMap.get(assetPath)!;
-            return `asset://${assetId}/${assetPath.split('/').pop()}`;
+            const filename = assetPath.split('/').pop() || '';
+            return buildAssetUrl(assetId, filename);
         }
 
         // Try without resources/ prefix (legacy format stores assets at root)
@@ -1609,7 +1618,8 @@ export class ElpxImporter {
             const pathWithoutPrefix = assetPath.substring('resources/'.length);
             if (this.assetMap.has(pathWithoutPrefix)) {
                 const assetId = this.assetMap.get(pathWithoutPrefix)!;
-                return `asset://${assetId}/${pathWithoutPrefix.split('/').pop()}`;
+                const filename = pathWithoutPrefix.split('/').pop() || '';
+                return buildAssetUrl(assetId, filename);
             }
         }
 
@@ -1618,7 +1628,7 @@ export class ElpxImporter {
         if (filename) {
             for (const [path, assetId] of this.assetMap.entries()) {
                 if (path === filename || path.endsWith('/' + filename)) {
-                    return `asset://${assetId}/${filename}`;
+                    return buildAssetUrl(assetId, filename);
                 }
             }
         }

@@ -451,34 +451,93 @@ export class LegacyXmlParser {
     }
 
     /**
+     * Check if a Node instance is defined inside a parentNode field
+     */
+    private isNodeInsideParentNodeField(nodeEl: Element): boolean {
+        let prev: Node | null = nodeEl.previousSibling;
+        while (prev && prev.nodeType !== 1) {
+            prev = prev.previousSibling;
+        }
+        const prevElement = prev as Element | null;
+
+        return (
+            prevElement?.tagName === 'string' &&
+            prevElement.getAttribute('role') === 'key' &&
+            prevElement.getAttribute('value') === 'parentNode'
+        );
+    }
+
+    /**
+     * Check if a node is an empty phantom node
+     * Returns true only if BOTH idevices AND children keys exist with empty lists
+     */
+    private isEmptyPhantomNode(nodeEl: Element): boolean {
+        const dict = this.getDirectChildByTagName(nodeEl, 'dictionary');
+        if (!dict) return true;
+
+        const idevicesList = this.findDictList(dict, 'idevices');
+        const childrenList = this.findDictList(dict, 'children');
+
+        // Only consider it empty if BOTH keys exist and are empty
+        // If a key is missing, we can't be sure it's a phantom node
+        if (idevicesList === null || childrenList === null) {
+            return false;
+        }
+
+        const isIdevicesEmpty = Array.from(idevicesList.childNodes).filter(n => n.nodeType === 1).length === 0;
+        const isChildrenEmpty = Array.from(childrenList.childNodes).filter(n => n.nodeType === 1).length === 0;
+
+        return isIdevicesEmpty && isChildrenEmpty;
+    }
+
+    /**
      * Find all Node instances in the document
+     *
+     * Legacy XML may define Node instances inline within parentNode fields.
+     * These inline definitions are often the ONLY definition of those nodes,
+     * so we must include all unique nodes (by reference), not filter them out.
+     *
+     * However, some legacy files (e.g., mujeres_huella.elp) have "phantom" nodes
+     * defined inside parentNode fields that have EXPLICIT empty idevices AND
+     * empty children lists. These phantom nodes should be filtered out to avoid
+     * creating duplicate root nodes.
+     *
+     * This matches the PHP behavior in OdeXmlUtil.php:1109-1140 which uses
+     * all exe.engine.node.Node instances without filtering.
      */
     private findAllNodes(): Element[] {
         if (!this.xmlDoc) return [];
 
         const allNodes = this.getElementsByAttribute(this.xmlDoc, 'instance', 'class', 'exe.engine.node.Node');
+        const seenRefs = new Set<string>();
+        const result: Element[] = [];
 
-        // Filter out parentNode references embedded in fields/idevices
-        return allNodes.filter(nodeEl => {
-            const prevSibling = nodeEl.previousSibling;
-            // Walk back through text nodes to find actual element
-            let prev: Node | null = prevSibling;
-            while (prev && prev.nodeType !== 1) {
-                prev = prev.previousSibling;
-            }
-            const prevElement = prev as Element | null;
+        for (const nodeEl of allNodes) {
+            const ref = nodeEl.getAttribute('reference');
+            if (!ref) continue;
 
-            if (
-                prevElement?.tagName === 'string' &&
-                prevElement.getAttribute('role') === 'key' &&
-                prevElement.getAttribute('value') === 'parentNode'
-            ) {
-                const ref = nodeEl.getAttribute('reference');
-                this.logger.log(`[LegacyXmlParser] Skipping parentNode reference=${ref} (not a real page)`);
-                return false;
+            // Only skip if we've already included this exact reference
+            if (seenRefs.has(ref)) {
+                this.logger.log(`[LegacyXmlParser] Skipping duplicate node reference=${ref}`);
+                continue;
             }
-            return true;
-        });
+
+            // Filter out EMPTY phantom nodes defined inside parentNode fields
+            if (this.isNodeInsideParentNodeField(nodeEl) && this.isEmptyPhantomNode(nodeEl)) {
+                this.logger.log(
+                    `[LegacyXmlParser] Skipping empty phantom node inside parentNode field, reference=${ref}`,
+                );
+                continue;
+            }
+
+            seenRefs.add(ref);
+            result.push(nodeEl);
+        }
+
+        this.logger.log(
+            `[LegacyXmlParser] Found ${result.length} unique nodes (from ${allNodes.length} total instances)`,
+        );
+        return result;
     }
 
     /**
@@ -653,6 +712,15 @@ export class LegacyXmlParser {
             }
         });
 
+        // 3. Sort children and root pages by document order (position)
+        // This ensures pages appear in the order they were defined in the XML
+        pageMap.forEach(page => {
+            if (page.children && page.children.length > 0) {
+                page.children.sort((a, b) => a.position - b.position);
+            }
+        });
+        rootPages.sort((a, b) => a.position - b.position);
+
         // Apply root node flattening convention
         const { shouldFlatten, rootPage } = this.shouldFlattenRootChildren(rootPages);
         let flatPages: LegacyPage[];
@@ -662,6 +730,11 @@ export class LegacyXmlParser {
             flatPages = [];
             this.flattenPages(rootPages, flatPages, null);
         }
+
+        // Reassign positions sequentially after flattening
+        flatPages.forEach((page, index) => {
+            page.position = index;
+        });
 
         // Detect and apply node reordering
         const nodesChangeRef = this.detectNodeReorderMap();

@@ -22,13 +22,13 @@
                 <span class="medium-icon settings-icon"></span>
             </button>
             <button id="head-top-share-button"
-                    class="btn button-tertiary button-square d-flex justify-content-center align-items-center exe-online"
+                    class="btn button-secondary button-share-link d-flex justify-content-center align-items-center exe-online ms-1"
                     title="{{ t.share or 'Share' }}"
                     aria-label="{{ t.share or 'Share' }}">
                 <span class="share-visibility-indicator d-flex align-items-center">
                     <div class="medium-icon share-icon"></div>
                 </span>
-                <span class="visually-hidden">{{ t.share or 'Share' }}</span>
+                <span class="button-share-text">{{ t.share or 'Share' }}</span>
             </button>
             {% if config.platformIntegration %}
             <button id="head-top-finish-button"

@@ -18,8 +18,12 @@ import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
 import type { LoginRequest, GuestLoginRequest } from './types/request-payloads';
-import { getAuthMethods, getSettingString } from '../services/app-settings';
+import { getAuthMethods, getSettingString, getSettingNumber } from '../services/app-settings';
+
+// Domain for temporary emails (CAS, OIDC, Guest users without real email)
+const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
 
 /**
  * Dependency types for auth routes
@@ -378,7 +382,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas - CAS (Central Authentication Service) SSO login
-            .get('/login/cas', async ({ request, set, query }) => {
+            .get('/login/cas', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -395,9 +399,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 const loginUrl = `${casUrl}/${casLoginPath}?service=${encodeURIComponent(serviceUrl)}`;
 
@@ -416,7 +422,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/cas/callback - CAS callback after authentication
-            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/cas/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('cas')) {
                     set.status = 404;
@@ -443,8 +449,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     return { error: 'Server Error', message: 'CAS authentication is misconfigured.' };
                 }
 
-                const url = new URL(request.url);
-                const serviceUrl = `${url.protocol}//${url.host}/login/cas/callback`;
+                // Build callback URL (must match what was sent to CAS login)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const serviceUrl = getPublicCallbackUrl(request, '/login/cas/callback', serverContext);
 
                 try {
                     const validateUrl = `${casUrl}/${casValidatePath}?service=${encodeURIComponent(serviceUrl)}&ticket=${encodeURIComponent(ticket)}`;
@@ -476,20 +485,26 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         // casUser is already an email address
                         email = casUser;
                     } else {
-                        // casUser is just a username, add CAS domain
-                        email = `${casUser}@cas.local`;
+                        // casUser is just a username, add temp email domain
+                        email = `${casUser}@${TEMP_EMAIL_DOMAIN}`;
                     }
 
                     // Find or create user in database
                     let user = await findUserByEmail(db, email);
                     if (!user) {
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email,
                             user_id: `cas:${casUser}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -545,7 +560,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid - OpenID Connect SSO login
-            .get('/login/openid', async ({ request, set, query }) => {
+            .get('/login/openid', async ({ request, set, query, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -572,9 +587,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 // In production, consider using a more secure method
                 const oidcState = JSON.stringify({ codeVerifier, state, nonce });
 
-                // Build callback URL
-                const url = new URL(request.url);
-                const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                // Build callback URL (respects reverse proxy headers and BASE_PATH)
+                const serverContext: ServerContext = {
+                    requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                };
+                const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
                 const scope = await getSettingString(db, 'OIDC_SCOPE', process.env.OIDC_SCOPE || 'openid email');
                 const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
 
@@ -615,7 +632,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // GET /login/openid/callback - OpenID callback after authentication
-            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set }) => {
+            .get('/login/openid/callback', async ({ jwt, cookie, request, query, set, server }) => {
                 const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
                 if (!authMethods.includes('openid')) {
                     set.status = 404;
@@ -676,8 +693,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 try {
-                    const url = new URL(request.url);
-                    const redirectUri = `${url.protocol}//${url.host}/login/openid/callback`;
+                    // Build callback URL (must match what was sent to OIDC provider)
+                    const serverContext: ServerContext = {
+                        requestIP: (req: Request) => server?.requestIP(req) ?? null,
+                    };
+                    const redirectUri = getPublicCallbackUrl(request, '/login/openid/callback', serverContext);
 
                     // Exchange code for tokens
                     const clientId = await getSettingString(db, 'OIDC_CLIENT_ID', process.env.OIDC_CLIENT_ID || '');
@@ -746,8 +766,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                             // subject is already an email address
                             userEmail = subject;
                         } else {
-                            // Generate fallback email with OIDC domain
-                            userEmail = `oidc_${subject || randomBytes(8).toString('hex')}@oidc.local`;
+                            // Generate fallback email with temp email domain
+                            userEmail = `${subject || randomBytes(8).toString('hex')}@${TEMP_EMAIL_DOMAIN}`;
                         }
                     }
 
@@ -755,12 +775,18 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     let user = await findUserByEmail(db, userEmail);
                     if (!user) {
                         const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getSettingNumber(
+                            db,
+                            'DEFAULT_QUOTA',
+                            parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                        );
                         user = await createUser(db, {
                             email: userEmail,
                             user_id: `oidc:${subject || userEmail}`,
                             password: hashedPassword,
                             roles: ['ROLE_USER'],
                             is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
                         });
                     }
 
@@ -856,17 +882,23 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const guestId = randomBytes(16).toString('hex');
-                const guestEmail = `guest_${guestId.slice(0, 8)}@guest.local`;
+                const guestEmail = `${guestId.slice(0, 8)}@${TEMP_EMAIL_DOMAIN}`;
 
                 let user = await findUserByEmail(db, guestEmail);
                 if (!user) {
                     const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                    const defaultQuota = await getSettingNumber(
+                        db,
+                        'DEFAULT_QUOTA',
+                        parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
+                    );
                     user = await createUser(db, {
                         email: guestEmail,
-                        user_id: `guest_${guestId.slice(0, 32)}`,
+                        // user_id: not set for guest users (null) - they're not SSO
                         password: hashedPassword,
                         roles: ['ROLE_GUEST'],
                         is_lopd_accepted: 1,
+                        quota_mb: defaultQuota,
                     });
                 }
 

@@ -172,11 +172,9 @@ describe('Themes Routes', () => {
                 DB_PATH: process.env.DB_PATH,
                 ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
             };
-            const tempDir = path.join(process.cwd(), 'test', 'temp');
-            const dbPath = path.join(tempDir, `themes-route-${Date.now()}.db`);
+            const dbPath = ':memory:';
 
             try {
-                fs.mkdirSync(tempDir, { recursive: true });
                 process.env.DB_DRIVER = 'pdo_sqlite';
                 process.env.DB_PATH = dbPath;
                 process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
@@ -232,9 +230,6 @@ describe('Themes Routes', () => {
                 expect(body.defaultTheme).toEqual({ type: 'site', dirName: 'site-test-theme' });
             } finally {
                 await resetClientCacheForTesting();
-                if (fs.existsSync(dbPath)) {
-                    fs.rmSync(dbPath, { force: true });
-                }
                 if (savedEnv.DB_DRIVER !== undefined) {
                     process.env.DB_DRIVER = savedEnv.DB_DRIVER;
                 } else {

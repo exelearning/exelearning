@@ -591,9 +591,9 @@ global.createMockAssetManager = (assets = []) => {
     // Check if asset exists
     hasAsset: vi.fn((id) => Promise.resolve(assetMap.has(id))),
 
-    // Resolve asset:// URL to blob URL
+    // Resolve asset:// URL to blob URL (format: asset://uuid.ext)
     resolveAssetURL: vi.fn((assetUrl) => {
-      const id = assetUrl.replace('asset://', '').split('/')[0];
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       if (blobURLCache.has(id)) {
         return Promise.resolve(blobURLCache.get(id));
       }
@@ -602,9 +602,15 @@ global.createMockAssetManager = (assets = []) => {
       return Promise.resolve(blobURL);
     }),
 
-    // Resolve asset:// URL synchronously
+    // Generate asset URL in new format: asset://uuid.ext
+    getAssetUrl: vi.fn((assetId, filename) => {
+      const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
+      return ext ? `asset://${assetId}.${ext}` : `asset://${assetId}`;
+    }),
+
+    // Resolve asset:// URL synchronously (format: asset://uuid.ext)
     resolveAssetURLSync: vi.fn((assetUrl) => {
-      const id = assetUrl.replace('asset://', '').split('/')[0];
+      const id = assetUrl.replace('asset://', '').split('.')[0];
       return blobURLCache.get(id) || null;
     }),
 
@@ -612,18 +618,20 @@ global.createMockAssetManager = (assets = []) => {
     resolveHTMLAssets: vi.fn((html) => Promise.resolve(html)),
     resolveHTMLAssetsSync: vi.fn((html) => html),
 
-    // Insert image
-    insertImage: vi.fn((file) => Promise.resolve(`asset://mock-${Date.now()}/${file.name}`)),
+    // Insert image - uses new format: asset://uuid.ext
+    insertImage: vi.fn((file) => {
+      const ext = file.name?.includes('.') ? file.name.split('.').pop().toLowerCase() : '';
+      const id = `mock-${Date.now()}`;
+      return Promise.resolve(ext ? `asset://${id}.${ext}` : `asset://${id}`);
+    }),
 
     // Upload/download methods
     uploadPendingAssets: vi.fn(() => Promise.resolve({ uploaded: 0, failed: 0, bytes: 0 })),
     downloadMissingAssetsFromServer: vi.fn(() => Promise.resolve({ downloaded: 0, failed: 0 })),
 
-    // Asset ID extraction
+    // Asset ID extraction (format: asset://uuid.ext)
     extractAssetId: vi.fn((assetUrl) => {
-      const path = assetUrl.replace('asset://', '');
-      const slashIndex = path.indexOf('/');
-      return slashIndex > 0 ? path.substring(0, slashIndex) : path;
+      return assetUrl.replace('asset://', '').split('.')[0];
     }),
 
     // Statistics

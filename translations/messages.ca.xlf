@@ -4713,9 +4713,9 @@
         <source>An error occurred while saving the component.</source>
         <target>S'ha produït un error en desar el component.</target>
       </trans-unit>
-      <trans-unit id="A3_STN3" resname="You are editing an iDevice. Please close it before continuing">
-        <source>You are editing an iDevice. Please close it before continuing</source>
-        <target>Estàs editant un iDevice. Si us plau, tanca’l abans de continuar.</target>
+      <trans-unit id="A3_STN3" resname="Unsaved changes detected. Save your iDevice before continuing.">
+        <source>Unsaved changes detected. Save your iDevice before continuing.</source>
+        <target>~Estàs editant un iDevice. Si us plau, tanca’l abans de continuar.</target>
       </trans-unit>
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>

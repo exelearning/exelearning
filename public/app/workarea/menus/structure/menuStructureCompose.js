@@ -469,8 +469,9 @@ export default class MenuStructureCompose {
             menuButton.setAttribute('type', 'button');
             menuButton.setAttribute('id', `dropdownMenuButtonPage${node.id}`);
             menuButton.setAttribute('data-bs-toggle', 'dropdown');
-            menuButton.setAttribute('data-bs-boundary', 'window'); // Try to prevent clipping
-            // menuButton.setAttribute('data-bs-display', 'static'); // Uncomment if positioning is still wrong
+            menuButton.setAttribute('data-bs-container', 'body'); // Append menu to body to avoid overflow clipping
+            // Use fixed positioning strategy to escape scroll containers
+            menuButton.setAttribute('data-bs-popper-config', JSON.stringify({ strategy: 'fixed' }));
             menuButton.setAttribute('aria-expanded', 'false');
             menuButton.setAttribute('aria-label', _('Page options'));
             menuButton.setAttribute('title', _('Page options'));
@@ -588,6 +589,12 @@ export default class MenuStructureCompose {
                 'export-view',
                 node.properties.visibility.value
             );
+        }
+        // highlight - add class when page is highlighted
+        // Note: value can be boolean true or string 'true' depending on source (Yjs vs config)
+        const highlightValue = node.properties.highlight?.value;
+        if (highlightValue === 'true' || highlightValue === true) {
+            nodeElement.classList.add('nav-element-highlighted');
         }
     }
 

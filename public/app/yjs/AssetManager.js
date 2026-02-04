@@ -919,12 +919,10 @@ class AssetManager {
       return 0;
     }
 
-    // Build the old and new reference patterns
-    // Handle URL-encoded filenames as well
-    const oldRef = `asset://${assetId}/${oldFilename}`;
-    const newRef = `asset://${assetId}/${newFilename}`;
-    const oldRefEncoded = `asset://${assetId}/${encodeURIComponent(oldFilename)}`;
-    const newRefEncoded = `asset://${assetId}/${encodeURIComponent(newFilename)}`;
+    // Build the old and new reference patterns using getAssetUrl
+    // Format: asset://uuid.ext - no filename in URL, so rename doesn't affect references
+    const oldRef = this.getAssetUrl(assetId, oldFilename);
+    const newRef = this.getAssetUrl(assetId, newFilename);
 
     let updatedCount = 0;
 
@@ -948,14 +946,12 @@ class AssetManager {
         if (!content) return;
 
         // Check if this content contains the old reference
-        if (!content.includes(oldRef) && !content.includes(oldRefEncoded)) {
+        if (!content.includes(oldRef)) {
           return;
         }
 
         // Replace all occurrences
-        let newContent = content;
-        newContent = newContent.split(oldRef).join(newRef);
-        newContent = newContent.split(oldRefEncoded).join(newRefEncoded);
+        const newContent = content.split(oldRef).join(newRef);
 
         // Update the Y.Text
         if (htmlContent instanceof Y.Text) {
@@ -1852,7 +1848,7 @@ class AssetManager {
           Logger.log(`[AssetManager] Updated folderPath for existing asset: ${assetId}`);
         }
         Logger.log(`[AssetManager] Asset already exists for this project: ${assetId}`);
-        return `asset://${assetId}/${existing.filename || file.name}`;
+        return this.getAssetUrl(assetId, existing.filename || file.name);
       }
 
       // Asset exists but blob is NOT for current project (or no blob at all)
@@ -2533,6 +2529,26 @@ class AssetManager {
             }
           }
         }
+
+        // =====================================================================
+        // FIX FOR v3.0 ELP BUG: custom/ folder asset detection
+        //
+        // In eXeLearning v3.0 (PHP/Symfony), the File Manager stored user-uploaded
+        // assets in the custom/ folder. These files need to be detected during import.
+        //
+        // IMPORTANT: There's also a filename normalization bug where:
+        // - Files in custom/ keep original names with SPACES (e.g., "11 A1.png")
+        // - XML references use UNDERSCORES (e.g., "11_A1.png")
+        // This is handled by adding normalized path mappings below.
+        // =====================================================================
+        if (!shouldInclude) {
+          const isCustomFolderFile = relativePath.startsWith('custom/') &&
+                                     !relativePath.endsWith('/');
+          if (isCustomFolderFile) {
+            shouldInclude = true;
+            Logger.log(`[AssetManager] Detected custom/ folder asset: ${relativePath}`);
+          }
+        }
       }
 
       if (shouldInclude) {
@@ -2618,6 +2634,19 @@ class AssetManager {
         await this.putAsset(asset);
         assetMap.set(path, assetId);
 
+        // =====================================================================
+        // FIX FOR v3.0 ELP BUG: Normalized filename mapping
+        //
+        // v3.0 had a bug where files uploaded via File Manager kept spaces in
+        // filenames on disk (e.g., "11 A1.png") but XML references used
+        // underscores (e.g., "11_A1.png"). We add BOTH mappings so lookups work.
+        // =====================================================================
+        if (path.startsWith('custom/') && path.includes(' ')) {
+          const normalizedPath = path.replace(/ /g, '_');
+          assetMap.set(normalizedPath, assetId);
+          Logger.log(`[AssetManager] Added normalized mapping: ${normalizedPath} → ${assetId.substring(0, 8)}...`);
+        }
+
         Logger.log(`[AssetManager] Extracted ${path} → ${assetId.substring(0, 8)}... (folder: ${folderPath || 'root'})`);
       } catch (e) {
         console.error(`[AssetManager] Failed to extract ${path}:`, e);
@@ -2673,6 +2702,38 @@ class AssetManager {
         for (const [path, assetId] of assetMap.entries()) {
           if (path.endsWith(shortPath)) {
             return this.getAssetUrl(assetId, pathParts[pathParts.length - 1]);
+          }
+        }
+      }
+
+      // =====================================================================
+      // FIX FOR v3.0 ELP BUG: Try custom/ folder lookup
+      //
+      // v3.0 XML references like "uuid/11_A1.png" may actually map to
+      // "custom/11 A1.png" (with space). Try multiple lookup strategies.
+      // =====================================================================
+
+      // Strategy 1: Try with custom/ prefix
+      const customPath = 'custom/' + filename;
+      if (assetMap.has(customPath)) {
+        return this.getAssetUrl(assetMap.get(customPath), filename);
+      }
+
+      // Strategy 2: Try denormalized (underscores → spaces) in custom/
+      const denormalizedFilename = filename.replace(/_/g, ' ');
+      if (denormalizedFilename !== filename) {
+        const customDenormalized = 'custom/' + denormalizedFilename;
+        if (assetMap.has(customDenormalized)) {
+          return this.getAssetUrl(assetMap.get(customDenormalized), denormalizedFilename);
+        }
+      }
+
+      // Strategy 3: Search custom/ folder for matching denormalized filename
+      for (const [mapPath, assetId] of assetMap.entries()) {
+        if (mapPath.startsWith('custom/')) {
+          const mapFilename = mapPath.split('/').pop();
+          if (mapFilename === denormalizedFilename || mapFilename === filename) {
+            return this.getAssetUrl(assetId, mapFilename);
           }
         }
       }
@@ -2766,7 +2827,7 @@ class AssetManager {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -2804,7 +2865,7 @@ class AssetManager {
 
     try {
       // Get list from server
-      const response = await fetch(`${apiBaseUrl}/api/projects/${this.projectId}/assets`, {
+      const response = await fetch(`${apiBaseUrl}/projects/${this.projectId}/assets`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -2813,15 +2874,21 @@ class AssetManager {
         return 0;
       }
 
-      const serverAssets = await response.json();
+      const responseData = await response.json();
+      // API returns { success: true, data: [...] }
+      const serverAssets = responseData.data || responseData.assets || responseData || [];
       Logger.log(`[AssetManager] Server has ${serverAssets.length} assets`);
 
       // Find missing locally
+      // Note: server returns {id: numeric_db_id, clientId: uuid_hash, ...}
+      // We use clientId as the asset identifier
       const missing = [];
       for (const serverAsset of serverAssets) {
-        const local = await this.getAsset(serverAsset.id);
+        const assetId = serverAsset.clientId;
+        if (!assetId) continue;
+        const local = await this.getAsset(assetId);
         if (!local) {
-          missing.push(serverAsset.id);
+          missing.push(assetId);
         }
       }
 
@@ -2836,7 +2903,7 @@ class AssetManager {
       for (const assetId of missing) {
         try {
           const assetResponse = await fetch(
-            `${apiBaseUrl}/api/projects/${this.projectId}/assets/${assetId}`,
+            `${apiBaseUrl}/projects/${this.projectId}/assets/${assetId}`,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
 
@@ -3054,6 +3121,28 @@ class AssetManager {
       if (el.style.backgroundImage && el.style.backgroundImage.includes('data:image')) {
         el.style.backgroundImage = `url(${blobUrl})`;
         el.removeAttribute('data-asset-loading');
+        count++;
+      }
+    }
+
+    // Handle iframes that were waiting for this asset to download (guest users / late asset fetch)
+    const iframes = document.querySelectorAll(`iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`);
+    if (iframes.length > 0) {
+      const metadata = this.getAssetMetadata(assetId);
+      let iframeUrl = blobUrl;
+
+      // HTML iframes need resolveHtmlWithAssets() to fix internal relative URLs
+      if (metadata && this._isHtmlAsset(metadata.mime, metadata.filename)) {
+        const resolvedHtmlUrl = await this.resolveHtmlWithAssets(assetId);
+        if (resolvedHtmlUrl) {
+          iframeUrl = resolvedHtmlUrl;
+        }
+      }
+
+      for (const iframe of iframes) {
+        iframe.src = iframeUrl;
+        iframe.removeAttribute('data-asset-loading');
+        iframe.removeAttribute('data-asset-id');
         count++;
       }
     }

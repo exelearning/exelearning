@@ -388,6 +388,16 @@ describe('MenuStructureCompose', () => {
             expect(settingsButton.getAttribute('data-menunavid')).toBe('test-node');
         });
 
+        it('should configure dropdown trigger with fixed positioning strategy', () => {
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const dropdownTrigger = result.querySelector('.page-settings-trigger');
+            expect(dropdownTrigger).not.toBeNull();
+            const popperConfig = dropdownTrigger.getAttribute('data-bs-popper-config');
+            expect(popperConfig).not.toBeNull();
+            const config = JSON.parse(popperConfig);
+            expect(config.strategy).toBe('fixed');
+        });
+
         it('should not contain settings button for root node', () => {
             mockNode.id = 'root';
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
@@ -440,6 +450,41 @@ describe('MenuStructureCompose', () => {
             const node = { properties: { visibility: { value: '' } } };
             menuStructureCompose.setPropertiesClassesToElement(element, node);
             expect(element.getAttribute('export-view')).toBeNull();
+        });
+
+        it('should add nav-element-highlighted class when highlight is string true', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: 'true' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(true);
+        });
+
+        it('should add nav-element-highlighted class when highlight is boolean true', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: true } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(true);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is string false', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: 'false' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is boolean false', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' }, highlight: { value: false } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
+        });
+
+        it('should not add nav-element-highlighted class when highlight is undefined', () => {
+            const element = document.createElement('div');
+            const node = { properties: { visibility: { value: '' } } };
+            menuStructureCompose.setPropertiesClassesToElement(element, node);
+            expect(element.classList.contains('nav-element-highlighted')).toBe(false);
         });
     });
 

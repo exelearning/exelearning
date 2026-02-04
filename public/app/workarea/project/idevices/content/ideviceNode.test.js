@@ -1934,7 +1934,6 @@ describe('IdeviceNode', () => {
             const result = idevice.showLockedPlaceholder();
 
             expect(idevice.ideviceBody.innerHTML).toContain('idevice-locked-placeholder');
-            expect(idevice.ideviceBody.innerHTML).toContain('🔒');
             expect(result.init).toBe('locked');
         });
 

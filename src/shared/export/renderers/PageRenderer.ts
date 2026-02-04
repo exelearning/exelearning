@@ -267,7 +267,11 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 head += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
             }
         }
-
+        // Accessibility toolbar (JS first, then CSS)
+        if (addAccessibilityToolbar) {
+            head += `\n<script src="${basePath}libs/exe_atools/exe_atools.js"> </script>`;
+            head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
+        }
         // Base CSS and theme
         head += `\n<link rel="stylesheet" href="${basePath}content/css/base.css">`;
 
@@ -296,12 +300,6 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // Custom styles
         if (customStyles) {
             head += `\n<style>\n${customStyles}\n</style>`;
-        }
-
-        // Accessibility toolbar (JS first, then CSS)
-        if (addAccessibilityToolbar) {
-            head += `\n<script src="${basePath}libs/exe_atools/exe_atools.js"> </script>`;
-            head += `<link rel="stylesheet" href="${basePath}libs/exe_atools/exe_atools.css">`;
         }
 
         // MathJax library (for math formulas with accessibility features)

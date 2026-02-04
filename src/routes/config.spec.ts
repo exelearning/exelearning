@@ -79,6 +79,7 @@ describe('Config Routes', () => {
             expect(data.userPreferencesConfig).toBeDefined();
             expect(data.userPreferencesConfig.locale).toBeDefined();
             expect(data.userPreferencesConfig.theme).toBeDefined();
+            expect(data.userPreferencesConfig.defaultAI).toBeDefined();
         });
 
         it('should return iDevice info fields config', async () => {

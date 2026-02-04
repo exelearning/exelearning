@@ -444,8 +444,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The key requirement is that the existing asset ID is used (no duplicate stored)
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The key requirement is that the existing asset ID is used with new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       expect(assetManager.putAsset).not.toHaveBeenCalled();
     });
 
@@ -476,8 +476,8 @@ describe('AssetManager', () => {
       };
       const url = await assetManager.insertImage(mockFile);
 
-      // The asset URL should be returned
-      expect(url).toContain('01234567-89ab-cdef-0123-456789abcdef');
+      // The asset URL should be returned in new format (uuid.ext)
+      expect(url).toBe('asset://01234567-89ab-cdef-0123-456789abcdef.jpg');
       // putAsset SHOULD be called to store blob for current project
       expect(assetManager.putAsset).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -2056,6 +2056,129 @@ describe('AssetManager', () => {
   });
 });
 
+describe('AssetManager.updateDomImagesForAsset (iframe coverage)', () => {
+  let assetManager;
+
+  beforeEach(() => {
+    assetManager = new AssetManager('project-123');
+    global.Logger = { log: mock(() => {}) };
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    delete global.Logger;
+    document.body.innerHTML = '';
+  });
+
+  it('updates pending iframe src for non-HTML assets', async () => {
+    const assetId = '11111111-1111-1111-1111-111111111111';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/pdf');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'doc.pdf', mime: 'application/pdf' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(false);
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/pdf');
+  });
+
+  it('updates pending iframe src using resolveHtmlWithAssets for HTML assets', async () => {
+    const assetId = '22222222-2222-2222-2222-222222222222';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/html-raw');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+    const resolveHtml = vi.spyOn(assetManager, 'resolveHtmlWithAssets').mockResolvedValue('http://localhost/html');
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(resolveHtml).toHaveBeenCalledWith(assetId);
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/html');
+  });
+
+  it('falls back to blob URL when resolveHtmlWithAssets returns null', async () => {
+    const assetId = '33333333-3333-3333-3333-333333333333';
+
+    const attrs = new Map([
+      ['data-asset-id', assetId],
+      ['data-asset-loading', 'true'],
+    ]);
+    const iframe = {
+      src: 'about:blank',
+      getAttribute: (name) => attrs.get(name) ?? null,
+      removeAttribute: (name) => {
+        attrs.delete(name);
+      },
+    };
+
+    const querySelectorSpy = vi.spyOn(document, 'querySelectorAll').mockImplementation((selector) => {
+      if (selector === `iframe[data-asset-id="${assetId}"][data-asset-loading="true"]`) return [iframe];
+      if (selector === `img[data-asset-id="${assetId}"]`) return [];
+      if (selector === `[data-asset-id="${assetId}"]`) return [];
+      return [];
+    });
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue('http://localhost/html-fallback');
+    vi.spyOn(assetManager, 'getAssetMetadata').mockReturnValue({ filename: 'index.html', mime: 'text/html' });
+    vi.spyOn(assetManager, '_isHtmlAsset').mockReturnValue(true);
+    vi.spyOn(assetManager, 'resolveHtmlWithAssets').mockResolvedValue(null);
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+    querySelectorSpy.mockRestore();
+
+    expect(count).toBe(1);
+    expect(iframe.getAttribute('data-asset-id')).toBeNull();
+    expect(iframe.getAttribute('data-asset-loading')).toBeNull();
+    expect(iframe.src).toBe('http://localhost/html-fallback');
+  });
+});
+
 describe('window.resolveAssetUrls global function', () => {
   beforeEach(() => {
     require('./AssetManager');
@@ -3101,6 +3224,54 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('random-folder/document.pdf')).toBe(false);
     });
   });
+
+  describe('v3.0 ELP custom/ folder support', () => {
+    it('extracts assets from custom/ folder', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+        'custom/photo.jpg': new Uint8Array([5, 6, 7, 8]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.has('custom/image.png')).toBe(true);
+      expect(assetMap.has('custom/photo.jpg')).toBe(true);
+    });
+
+    it('creates normalized filename mapping for files with spaces', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/11 A1.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      // Both the original path (with space) and normalized path (with underscore) should exist
+      expect(assetMap.has('custom/11 A1.png')).toBe(true);
+      expect(assetMap.has('custom/11_A1.png')).toBe(true);
+      // Both mappings should point to the same asset ID
+      expect(assetMap.get('custom/11 A1.png')).toBe(assetMap.get('custom/11_A1.png'));
+    });
+
+    it('does not create normalized mapping for files without spaces', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      // Only original path should exist, no underscore variant since there are no spaces
+      expect(assetMap.has('custom/image.png')).toBe(true);
+      expect(assetMap.size).toBe(1);
+    });
+
+    it('ignores custom/ directory entries (not files)', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/': new Uint8Array([]), // directory entry
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.has('custom/')).toBe(false);
+      expect(assetMap.has('custom/image.png')).toBe(true);
+    });
+  });
 });
 
 describe('convertContextPathToAssetRefs', () => {
@@ -3199,6 +3370,104 @@ describe('convertContextPathToAssetRefs', () => {
     const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
     expect(result).toBe(html);
     expect(console.warn).toHaveBeenCalled();
+  });
+
+  describe('v3.0 ELP custom/ folder support', () => {
+    it('finds asset in custom/ folder by filename', () => {
+      const assetMap = new Map([['custom/image.png', 'uuid-custom']]);
+      const html = '<img src="{{context_path}}/someid/image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toBe('<img src="asset://uuid-custom.png">');
+    });
+
+    it('finds custom/ asset when XML uses underscores but file has spaces', () => {
+      // Simulate the v3.0 bug: file stored as "11 A1.png" but XML references "11_A1.png"
+      const assetMap = new Map([
+        ['custom/11 A1.png', 'uuid-space'],
+        ['custom/11_A1.png', 'uuid-space'], // normalized mapping added during extraction
+      ]);
+      const html = '<img src="{{context_path}}/20251211173343CEGCIN/11_A1.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-space');
+    });
+
+    it('finds custom/ asset via denormalization when no normalized mapping exists', () => {
+      // Test the denormalization fallback (underscores → spaces)
+      const assetMap = new Map([
+        ['custom/file with spaces.png', 'uuid-denorm'],
+      ]);
+      const html = '<img src="{{context_path}}/someid/file_with_spaces.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-denorm');
+    });
+
+    it('searches custom/ folder for matching filename', () => {
+      const assetMap = new Map([
+        ['custom/my image.jpg', 'uuid-search'],
+      ]);
+      const html = '<img src="{{context_path}}/randomuuid/my_image.jpg">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-search');
+    });
+
+    it('finds asset in custom/ subfolder via loop when denormalized filename matches', () => {
+      // This tests Strategy 3: files in SUBFOLDERS of custom/
+      // Strategy 1 (custom/ + filename) won't match because actual path has subfolder
+      // Strategy 2 (custom/ + denormalized) won't match for same reason
+      // Strategy 3 loops through all custom/ entries and finds the match
+      const assetMap = new Map([
+        ['custom/2024/my image.png', 'uuid-subfolder'],
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/my_image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-subfolder');
+    });
+
+    it('finds asset in custom/ deep subfolder via Strategy 3 loop with denormalized match', () => {
+      // Tests Strategy 3 with deeply nested subfolder - ensures loop iterates through entries
+      // The space/underscore difference prevents earlier strategies from matching
+      const assetMap = new Map([
+        ['custom/year/month/day/my file.png', 'uuid-deep'],
+      ]);
+      const html = '<img src="{{context_path}}/uuid123/my_file.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-deep');
+    });
+
+    it('iterates through mixed entries in Strategy 3 loop and only matches custom/', () => {
+      // Tests that Strategy 3 loop correctly:
+      // 1. Iterates through entries (including non-custom/)
+      // 2. Only matches entries that start with 'custom/'
+      // 3. Matches via denormalized filename comparison
+      const assetMap = new Map([
+        ['resources/wrong file.png', 'uuid-wrong1'],       // not custom/, should skip
+        ['other/wrong file.png', 'uuid-wrong2'],           // not custom/, should skip
+        ['custom/2024/target file.png', 'uuid-target'],    // custom/, denormalized match
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/target_file.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-target');
+    });
+
+    it('skips non-custom/ entries in Strategy 3 loop and returns null when no match', () => {
+      // Ensure the loop only considers custom/ entries and returns null if none match
+      spyOn(console, 'warn').mockImplementation(() => {});
+      const assetMap = new Map([
+        ['resources/my image.png', 'uuid-resources'], // not in custom/
+        ['other/my image.png', 'uuid-other'], // not in custom/
+      ]);
+      const html = '<img src="{{context_path}}/someuuid/my_image.png">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      // Should NOT find a match since neither entry is in custom/
+      expect(result).toBe(html);
+      expect(console.warn).toHaveBeenCalled();
+    });
   });
 });
 
@@ -3561,7 +3830,7 @@ describe('uploadPendingAssets', () => {
     expect(result.uploaded).toBe(2);
     expect(result.bytes).toBe(300);
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://api/api/projects/project-123/assets',
+      'http://api/projects/project-123/assets',
       expect.objectContaining({ method: 'POST' })
     );
   });
@@ -3620,7 +3889,7 @@ describe('downloadMissingAssets', () => {
   it('returns 0 when all assets cached locally', async () => {
     global.fetch = mock(() => Promise.resolve({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }] }),
     }));
     assetManager.getAsset = mock(() => Promise.resolve({ id: 'a1' }));
 
@@ -3633,7 +3902,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+        json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
       })
       .mockResolvedValueOnce({
         ok: true,
@@ -3654,7 +3923,7 @@ describe('downloadMissingAssets', () => {
       });
     global.fetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve([{ id: 'a1' }, { id: 'a2' }]),
+      json: () => Promise.resolve({ success: true, data: [{ id: 'a1' }, { id: 'a2' }] }),
     });
 
     // Use a proper mock for getAsset that returns null for missing assets
@@ -3675,7 +3944,7 @@ describe('downloadMissingAssets', () => {
     global.fetch = mock()
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([{ id: 'a1' }]),
+        json: () => Promise.resolve({ success: true, data: [{ clientId: 'a1' }] }),
       })
       .mockResolvedValueOnce(createMockResponse(new Blob(['data1']), {
         'X-Original-Mime': 'image/png',
@@ -3696,6 +3965,54 @@ describe('downloadMissingAssets', () => {
     const result = await assetManager.downloadMissingAssets('http://api', 'token');
 
     expect(result).toBe(0);
+  });
+
+  it('constructs correct URL without double /api prefix', async () => {
+    // This test verifies the fix for the /api/api/ bug
+    // When apiBaseUrl already contains /api (e.g., "http://localhost:8080/api"),
+    // the URL should NOT add another /api prefix
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      return Promise.resolve({ ok: false });
+    });
+
+    // Use an apiBaseUrl that already includes /api (as it does in production)
+    await assetManager.downloadMissingAssets('http://localhost:8080/api', 'token');
+
+    expect(capturedUrls.length).toBeGreaterThan(0);
+    // URL should be /api/projects/... NOT /api/api/projects/...
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/project-123/assets');
+    expect(capturedUrls[0]).not.toContain('/api/api/');
+  });
+
+  it('constructs correct URL for individual asset downloads', async () => {
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      if (capturedUrls.length === 1) {
+        // First call: list assets
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true, data: [{ clientId: 'asset-123' }] }),
+        });
+      }
+      // Second call: download asset
+      return Promise.resolve({ ok: false });
+    });
+
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+
+    await assetManager.downloadMissingAssets('http://localhost:8080/api', 'token');
+
+    expect(capturedUrls.length).toBe(2);
+    // First URL: list assets
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/project-123/assets');
+    // Second URL: download individual asset
+    expect(capturedUrls[1]).toBe('http://localhost:8080/api/projects/project-123/assets/asset-123');
+    // Neither should have double /api
+    expect(capturedUrls[0]).not.toContain('/api/api/');
+    expect(capturedUrls[1]).not.toContain('/api/api/');
   });
 });
 
@@ -3918,6 +4235,26 @@ describe('downloadMissingAssetsFromServer', () => {
     const result = await assetManager.downloadMissingAssetsFromServer('http://api', 'token', 'proj-uuid');
 
     expect(mockWsHandler.requestAsset).toHaveBeenCalled();
+  });
+
+  it('constructs correct URL without double /api prefix', async () => {
+    // This test verifies the fix for the /api/api/ bug
+    // The URL should be ${apiBaseUrl}/projects/... NOT ${apiBaseUrl}/api/projects/...
+    assetManager.missingAssets.add('test-asset');
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+
+    const capturedUrls = [];
+    global.fetch = mock((url) => {
+      capturedUrls.push(url);
+      return Promise.resolve({ ok: false, status: 500 });
+    });
+
+    await assetManager.downloadMissingAssetsFromServer('http://localhost:8080/api', 'token', 'proj-uuid-123');
+
+    expect(capturedUrls.length).toBe(1);
+    // URL should be /api/projects/... NOT /api/api/projects/...
+    expect(capturedUrls[0]).toBe('http://localhost:8080/api/projects/proj-uuid-123/assets/by-client-id/test-asset');
+    expect(capturedUrls[0]).not.toContain('/api/api/');
   });
 });
 
@@ -5371,6 +5708,42 @@ describe('AssetManager renameAsset', () => {
 
     expect(updateSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg', 'new-name.jpg');
   });
+
+  it('calls getAssetUrl when updating references during rename', async () => {
+    // Set up window.eXeLearning and window.Y for updateAssetReferencesInYjs
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+    window.eXeLearning = {
+      app: {
+        project: {
+          _yjsBridge: mockYjsBridge
+        }
+      }
+    };
+
+    mockYjsBridge._assetsMap.set('asset-1', {
+      id: 'asset-1',
+      filename: 'old-name.jpg',
+      folderPath: '',
+      uploaded: true
+    });
+
+    // Spy on getAssetUrl to verify it's called when updating references
+    const getAssetUrlSpy = vi.spyOn(assetManager, 'getAssetUrl');
+
+    await assetManager.renameAsset('asset-1', 'new-name.png');
+
+    // Verify getAssetUrl was called for building old and new references
+    expect(getAssetUrlSpy).toHaveBeenCalledWith('asset-1', 'old-name.jpg');
+    expect(getAssetUrlSpy).toHaveBeenCalledWith('asset-1', 'new-name.png');
+
+    window.Y = originalY;
+    delete window.eXeLearning;
+  });
 });
 
 describe('AssetManager updateAssetReferencesInYjs', () => {
@@ -5424,13 +5797,13 @@ describe('AssetManager updateAssetReferencesInYjs', () => {
   });
 
   it('processes pages and updates references', () => {
-    // Create mock Y.Text with actual content
+    // Create mock Y.Text with actual content using NEW FORMAT (asset://uuid.ext)
     const mockHtmlContent = {
-      _content: 'src="asset://asset-1/old.jpg"',
+      _content: 'src="asset://asset-1.jpg"',
       toString: function() { return this._content; },
       delete: function(start, length) { this._content = ''; },
       insert: function(pos, text) { this._content = text; },
-      length: 30
+      length: 25
     };
 
     // Create mock component with Y.Map behavior
@@ -5535,6 +5908,44 @@ describe('AssetManager updateAssetReferencesInYjs', () => {
     const result = assetManager.updateAssetReferencesInYjs('asset-1', 'old.jpg', 'new.jpg');
 
     expect(result).toBe(0);
+    window.Y = originalY;
+  });
+
+  it('calls getAssetUrl to build old and new reference patterns', () => {
+    const originalY = window.Y;
+    window.Y = {
+      Map: class { },
+      Array: class { },
+      Text: class { }
+    };
+
+    window.eXeLearning.app.project._yjsBridge = {
+      documentManager: {
+        getNavigation: vi.fn(() => ({
+          forEach: () => {}
+        })),
+        getDoc: vi.fn(() => ({
+          transact: (fn) => fn()
+        }))
+      }
+    };
+
+    // Spy on getAssetUrl to verify it's called with correct arguments
+    const getAssetUrlSpy = vi.spyOn(assetManager, 'getAssetUrl');
+
+    assetManager.updateAssetReferencesInYjs('test-uuid-123', 'old-image.jpg', 'new-image.png');
+
+    // Verify getAssetUrl was called for both old and new filenames
+    expect(getAssetUrlSpy).toHaveBeenCalledTimes(2);
+    expect(getAssetUrlSpy).toHaveBeenNthCalledWith(1, 'test-uuid-123', 'old-image.jpg');
+    expect(getAssetUrlSpy).toHaveBeenNthCalledWith(2, 'test-uuid-123', 'new-image.png');
+
+    // Verify the returned URLs are in the correct format
+    const oldRef = assetManager.getAssetUrl('test-uuid-123', 'old-image.jpg');
+    const newRef = assetManager.getAssetUrl('test-uuid-123', 'new-image.png');
+    expect(oldRef).toBe('asset://test-uuid-123.jpg');
+    expect(newRef).toBe('asset://test-uuid-123.png');
+
     window.Y = originalY;
   });
 });

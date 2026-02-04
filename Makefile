@@ -146,7 +146,7 @@ bundle: deps
 # APP_ENV=dev (default): Elysia with hot-reload + SCSS watcher
 # APP_ENV=prod: Pre-compiled Elysia, no watchers
 .PHONY: up-local
-up-local: check-bun deps css bundle
+up-local: check-bun check-env deps css bundle
 ifeq ($(APP_ENV),prod)
 	@echo "Starting local (prod mode)..."
 	@$(MAKE) bundle
@@ -158,7 +158,7 @@ endif
 
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
-run-app: check-bun deps css bundle
+run-app: check-bun check-env deps css bundle
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."
@@ -167,11 +167,11 @@ run-app: check-bun deps css bundle
 	@bun run electron
 
 # Build static distribution (PWA mode, no server required)
-# Usage: make build-static
+# Usage: make build-static [VERSION=v1.0.0]
 .PHONY: build-static
 build-static: check-bun deps css bundle
 	@echo "Building static distribution..."
-	@bun run build:static
+	@$(if $(VERSION),VERSION=$(VERSION) ,)bun run build:static
 	@echo "Static distribution built at dist/static/"
 
 # Build static distribution and serve it
@@ -517,7 +517,11 @@ check-coverage: check-bun ## Check that all files have at least 90% coverage
 	@bun run scripts/check-coverage.ts < /tmp/exe-coverage.txt
 
 # Test environment: in-memory database for isolation, no BASE_PATH
+ifeq ($(SYSTEM_OS),windows)
+TEST_ENV := set "BASE_PATH=" && set "DB_PATH=:memory:" && set "ELYSIA_FILES_DIR=%TEMP%\exelearning-test" &&
+else
 TEST_ENV := BASE_PATH="" DB_PATH=:memory: ELYSIA_FILES_DIR=/tmp/exelearning-test
+endif
 
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
@@ -876,7 +880,7 @@ help:
 	@echo "  make run-app               Start Electron + backend (desktop app)"
 	@echo "  make up-local              Start locally (web only, dev mode)"
 	@echo "  make up-local APP_ENV=prod Start locally (web only, prod mode)"
-	@echo "  make build-static          Build static distribution (PWA mode)"
+	@echo "  make build-static [VERSION=v1.0.0]  Build static distribution (PWA mode)"
 	@echo "  make up-static             Build and serve static distribution (PWA mode)"
 	@echo "  make up-static PORT=3000   Same, but on custom port"
 	@echo ""

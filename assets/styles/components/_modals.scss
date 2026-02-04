@@ -240,6 +240,7 @@
     }
 
     .modal-content {
+        position: relative; // Required for modal-toasts-container positioning
         width: max-content;
         min-width: 250px;
         padding-top: 8px;
@@ -338,7 +339,7 @@
             width: calc(100% - var(--margin-m));
         }
 
-        .badge.bg-primary,
+        .image-optimizer-content .badge.bg-primary,
         .form-range.image-optimizer-quality {
             filter: grayscale(1);
         }
@@ -2274,17 +2275,17 @@
                             width: 220px;
                             height: 10px;
                             border-radius: 999px;
-                            background: #eef2f7;
+                            background: var(--gray-100);
                             overflow: hidden;
                             .progress-bar {
                                 &.bg-success {
-                                    background: #22c55e;
+                                    background: var(--brand-primary);
                                 }
                                 &.bg-warning {
-                                    background: #f59e0b;
+                                    background: #ffc107;
                                 }
                                 &.bg-danger {
-                                    background: #ef4444;
+                                    background: #dc3545;
                                 }
                             }
                         }
@@ -3054,8 +3055,10 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
                         gap: 15px;
                         justify-content: flex-start;
                         align-items: center;
+                        padding: 10px 15px;
                         .username {
                             font-size: 15px;
+                            max-width: 330px;
                         }
                     }
                 }

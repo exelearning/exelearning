@@ -1545,6 +1545,113 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_ensureNewProjectLanguage', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+    });
+
+    it('updates project language to match user preference for new projects', () => {
+      // Setup user preferences with Spanish
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'es' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object with proper get/set methods
+      const metadataStore = { language: 'en' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(mockMetadata.get('language')).toBe('es');
+    });
+
+    it('does not update language when user preference matches current language', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'en' }
+              }
+            }
+          }
+        }
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      let setCalled = false;
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { 
+          if (key === 'language') setCalled = true;
+          metadataStore[key] = value; 
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      expect(setCalled).toBe(false);
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('does nothing when user preferences are not available', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {} // No user preferences
+      };
+
+      // Create a mock metadata object
+      const metadataStore = { language: 'en' };
+      const mockMetadata = {
+        get: (key) => metadataStore[key],
+        set: (key, value) => { metadataStore[key] = value; },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge._ensureNewProjectLanguage();
+
+      // Language should remain unchanged
+      expect(mockMetadata.get('language')).toBe('en');
+    });
+
+    it('handles errors gracefully', () => {
+      global.window.eXeLearning = {
+        config: { basePath: '' },
+        app: {
+          user: {
+            preferences: {
+              preferences: {
+                locale: { value: 'fr' }
+              }
+            }
+          }
+        }
+      };
+
+      // Force an error by nullifying documentManager
+      bridge.documentManager = null;
+
+      // Should not throw
+      expect(() => bridge._ensureNewProjectLanguage()).not.toThrow();
+    });
+  });
+
   describe('save with SaveManager', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -2327,6 +2434,28 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('logs warning and returns early when structureBinding is null', () => {
+      bridge.structureBinding = null;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
+    });
+
+    it('logs warning and returns early when structureBinding is undefined', () => {
+      bridge.structureBinding = undefined;
+      const consoleWarnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+
+      bridge.syncStructureToLegacy();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[YjsProjectBridge] Cannot sync structure: structureBinding not initialized'
+      );
+    });
+
     it('converts pages to legacy format', () => {
       bridge.structureBinding = {
         getPages: mock(() => [
@@ -2361,6 +2490,81 @@ describe('YjsProjectBridge', () => {
 
       // Should not throw
       bridge.syncStructureToLegacy();
+    });
+
+    it('includes page properties in legacy data', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          {
+            id: 'page-1',
+            pageName: 'Test',
+            parentId: null,
+            order: 0,
+            properties: { highlight: true, titleNode: 'Custom Title' }
+          },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toEqual({
+        highlight: { value: true },
+        titleNode: { value: 'Custom Title' }
+      });
+    });
+
+    it('handles pages without properties', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0 },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
+    });
+
+    it('handles array as properties (returns null)', () => {
+      bridge.structureBinding = {
+        getPages: mock(() => [
+          { id: 'page-1', pageName: 'Test', parentId: null, order: 0, properties: ['not', 'an', 'object'] },
+        ]),
+      };
+
+      const mockSetData = mock(() => {});
+      bridge.app = {
+        project: {
+          structure: {
+            setDataFromYjs: mockSetData,
+          },
+        },
+      };
+
+      bridge.syncStructureToLegacy();
+
+      const calledData = mockSetData.mock.calls[0][0];
+      expect(calledData[0].odeNavStructureSyncProperties).toBe(null);
     });
   });
 

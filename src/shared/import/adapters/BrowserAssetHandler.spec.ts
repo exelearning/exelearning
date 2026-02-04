@@ -17,7 +17,10 @@ describe('BrowserAssetHandler', () => {
             init: mock(() => Promise.resolve()),
             storeBlob: mock(() => Promise.resolve('stored-id')),
             setAssetMetadata: mock(() => {}),
-            getAssetUrl: mock((id: string, filename: string) => `asset://${id}/${filename}`),
+            getAssetUrl: mock((id: string, filename: string) => {
+                const ext = filename?.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
+                return ext ? `asset://${id}.${ext}` : `asset://${id}`;
+            }),
             calculateHash: mock(() => Promise.resolve('mock-hash')),
             hashToUUID: mock(() => 'mock-uuid'),
             getAssetByHash: mock(() => Promise.resolve(null)),

@@ -122,7 +122,7 @@ const ENCRYPTED_GAMES: string[] = [
 const TYPE_MAP: Record<string, string> = {
     // Spanish -> English mappings
     selecciona: 'quick-questions-multiple-choice',
-    trivial: 'quick-questions',
+    trivial: 'trivial', // TriviExt game - NOT quick-questions
     mapa: 'map',
     rosco: 'az-quiz-game',
     videoquext: 'quick-questions-video',

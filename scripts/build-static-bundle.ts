@@ -36,8 +36,76 @@ const projectRoot = path.resolve(import.meta.dir, '..');
 const outputDir = path.join(projectRoot, 'dist/static');
 
 // Read version from environment variable or package.json
+// VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8'));
-const buildVersion = process.env.VERSION || `v${packageJson.version}`;
+
+// =============================================================================
+// VERSION RESOLUTION
+// =============================================================================
+// The version is resolved automatically based on the input type:
+// - Semver tags (v3.0.2, v3.0.2-rc1) → used directly for releases
+// - "main"/"master" → v0.0.0-nightly-YYYYMMDDHHMM for nightly builds
+// - Other strings (branch names, PR numbers) → v0.0.0-<name>-YYYYMMDDHHMM for previews
+//
+// This allows CI/CD to simply pass VERSION=main or VERSION=pr123 without
+// generating the full version string, keeping workflow files simple.
+// =============================================================================
+
+/**
+ * Check if a string is a valid semver version (with optional prerelease)
+ * Matches: v1.0.0, v1.0.0-rc1, v1.0.0-beta.2, v1.0.0-alpha+build123
+ */
+export function isSemver(version: string): boolean {
+    // Semver regex: optional v + major.minor.patch + optional prerelease/build metadata
+    return /^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$/.test(version);
+}
+
+/**
+ * Generate date string for version: YYYYMMDDHHMM
+ */
+function getDateString(): string {
+    const now = new Date();
+    return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
+ * Resolve version based on input type:
+ * - Semver (vX.X.X, vX.X.X-rc1) → use directly
+ * - "main" or "master" → v0.0.0-nightly-YYYYMMDDHHMM
+ * - Other (branch name) → v0.0.0-<branch>-YYYYMMDDHHMM
+ */
+export function resolveVersion(input: string | undefined): string {
+    // Default to package.json version if no input
+    if (!input) {
+        return `v${packageJson.version}`;
+    }
+
+    // Semver: use directly
+    if (isSemver(input)) {
+        return input.startsWith('v') ? input : `v${input}`;
+    }
+
+    const dateStr = getDateString();
+
+    // Main branch: nightly
+    if (input === 'main' || input === 'master') {
+        return `v0.0.0-nightly-${dateStr}`;
+    }
+
+    // Other branch: include branch name
+    // Sanitize branch name (replace invalid chars with -)
+    const sanitizedBranch = input.replace(/[^a-zA-Z0-9.-]/g, '-').replace(/-+/g, '-');
+    return `v0.0.0-${sanitizedBranch}-${dateStr}`;
+}
+
+// Parse --version= from CLI arguments (e.g., --version=main)
+const versionArg = process.argv.find(arg => arg.startsWith('--version='))?.split('=')[1];
+const versionInput = versionArg || process.env.VERSION || process.env.APP_VERSION;
+const buildVersion = resolveVersion(versionInput);
+
+// Log version resolution for CI/CD debugging
+const versionSource = versionArg ? 'CLI' : (process.env.VERSION ? 'VERSION env' : (process.env.APP_VERSION ? 'APP_VERSION env' : 'default'));
+console.log(`[Version] Input: ${versionInput || '(none)'} (${versionSource}) → Output: ${buildVersion}`);
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
 let buildHash: string;
@@ -55,6 +123,57 @@ export function getBuildVersion(): string {
 
 export function getBuildHash(): string {
     return buildHash;
+}
+
+/**
+ * Appends version query string to local asset URLs in HTML content.
+ * Skips external URLs, data URLs, template placeholders, and already versioned URLs.
+ *
+ * @param html - The HTML content to process
+ * @param version - The version string to append (e.g., 'v1.0.0')
+ * @returns HTML with version query strings appended to local asset URLs
+ */
+export function appendVersionToUrls(html: string, version: string): string {
+    // Pattern to match src="..." or href="..." attributes (but not data-src, etc.)
+    // Uses negative lookbehind (?<!-) to ensure we don't match hyphenated attributes
+    // Captures: attribute name (src/href), quote char, and URL value
+    const attrPattern = /(?<![-\w])(src|href)=(["'])([^"']*)\2/g;
+
+    return html.replace(attrPattern, (match, attr, quote, url) => {
+        // Skip empty URLs
+        if (!url || url.trim() === '') {
+            return match;
+        }
+
+        // Skip external URLs (http://, https://, //)
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+            return match;
+        }
+
+        // Skip data URLs
+        if (url.startsWith('data:')) {
+            return match;
+        }
+
+        // Skip anchor-only hrefs
+        if (url.startsWith('#')) {
+            return match;
+        }
+
+        // Skip template placeholders ({{...}})
+        if (url.includes('{{') || url.includes('}}')) {
+            return match;
+        }
+
+        // Skip URLs that already have a version parameter (?v= or &v=)
+        if (/[?&]v=/.test(url)) {
+            return match;
+        }
+
+        // Append version: use & if URL already has query string, otherwise use ?
+        const separator = url.includes('?') ? '&' : '?';
+        return `${attr}=${quote}${url}${separator}v=${version}${quote}`;
+    });
 }
 
 /**
@@ -713,6 +832,7 @@ function generateModalsHtml(): string {
         'pages/modalShare.njk',
         'pages/printpreview.njk',
         'pages/imageoptimizer.njk',
+        'pages/globalsearch.njk',
     ];
 
     let modalsHtml = '';
@@ -767,7 +887,7 @@ export function buildApiParameters(): ApiParameters {
                 help: 'You can choose a different language for the current project.',
                 value: null,
                 type: 'select',
-                options: PACKAGE_LOCALES,
+                options: LOCALE_NAMES,
                 category: 'General settings',
             },
             advancedMode: {
@@ -796,6 +916,20 @@ export function buildApiParameters(): ApiParameters {
                 title: 'Version control',
                 value: 'true',
                 type: 'checkbox',
+                category: 'General settings',
+            },
+            defaultAI: {
+                title: 'Default AI Assistant',
+                help: 'Select the AI that will be selected by default when editing iDevices.',
+                value: 'https://chatgpt.com/?q=',
+                type: 'select',
+                options: {
+                    'https://chatgpt.com/?q=': 'ChatGPT',
+                    'https://claude.ai/new?q=': 'Claude',
+                    'https://www.perplexity.ai/search?q=': 'Perplexity',
+                    'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
+                    'https://grok.com/?q=': 'Grok',
+                },
                 category: 'General settings',
             },
         },
@@ -937,6 +1071,7 @@ export function buildApiParameters(): ApiParameters {
                         default: 'Theme default',
                         opendyslexic: 'OpenDyslexic',
                         andika: 'Andika',
+                        'atkinson-hyperlegible-next':'Atkinson Hyperlegible Next',
                         nunito: 'Nunito',
                         'playwrite-es': 'Playwrite ES',
                     },
@@ -1011,6 +1146,10 @@ function generateStaticHtml(bundleData: object): string {
     html = html.replace('{{MENU_HEAD_TOP_HTML}}', generateMenuHeadTopHtml());
     html = html.replace('{{MENU_HEAD_BOTTOM_HTML}}', generateMenuHeadBottomHtml());
     html = html.replace('{{MODALS_HTML}}', generateModalsHtml());
+
+    // Post-process: ensure all local URLs have version query string for cache busting
+    // This handles both template URLs and dynamically generated content from .njk files
+    html = appendVersionToUrls(html, buildVersion);
 
     return html;
 }

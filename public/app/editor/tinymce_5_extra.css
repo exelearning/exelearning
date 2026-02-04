@@ -5,3 +5,16 @@ body#tinymce{padding:1em}
 #tinymce u{font-style:italic;text-decoration:none;opacity:.5}
 /* Download package iDevice */
 .exe-table.exe-package-info {caption-side:top;margin:0 auto}
+/* Boostrap changes the tables presentation (issue #1002) */
+/* Restore default TinyMCE table styles */
+.mce-content-body table {
+    border-collapse: collapse;
+    width: auto;
+    border: 1px dashed #bbb;
+}
+.mce-content-body th,
+.mce-content-body td {
+    border: 1px dashed #bbb;
+    padding: 4px 8px;
+    text-align: left;
+}

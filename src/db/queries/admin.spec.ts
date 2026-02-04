@@ -528,25 +528,35 @@ describe('Admin Queries', () => {
     // ============================================================================
 
     describe('createUserAsAdmin', () => {
-        it('should create user with minimal fields', async () => {
+        it('should create user with minimal fields and null user_id by default', async () => {
             const user = await createUserAsAdmin(db, {
                 email: 'new@test.com',
                 password: 'hashed-password',
-                userId: 'new_user',
                 roles: ['ROLE_USER'],
             });
 
             expect(user.id).toBeDefined();
             expect(user.email).toBe('new@test.com');
-            expect(user.user_id).toBe('new_user');
+            // user_id should be null for local users (not SSO)
+            expect(user.user_id).toBeNull();
             expect(user.is_active).toBe(1);
+        });
+
+        it('should set user_id when provided (for SSO users)', async () => {
+            const user = await createUserAsAdmin(db, {
+                email: 'sso@test.com',
+                password: 'hashed-password',
+                userId: 'cas:sso_user',
+                roles: ['ROLE_USER'],
+            });
+
+            expect(user.user_id).toBe('cas:sso_user');
         });
 
         it('should always include ROLE_USER', async () => {
             const user = await createUserAsAdmin(db, {
                 email: 'admin@test.com',
                 password: 'hash',
-                userId: 'admin',
                 roles: ['ROLE_ADMIN'], // Only admin role provided
             });
 
@@ -559,7 +569,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'user@test.com',
                 password: 'hash',
-                userId: 'user',
                 roles: ['ROLE_USER', 'ROLE_USER'], // Duplicate
             });
 
@@ -572,7 +581,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'quota@test.com',
                 password: 'hash',
-                userId: 'quota',
                 roles: ['ROLE_USER'],
                 quotaMb: 500,
             });
@@ -584,7 +592,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'noquota@test.com',
                 password: 'hash',
-                userId: 'noquota',
                 roles: ['ROLE_USER'],
             });
 
@@ -596,7 +603,6 @@ describe('Admin Queries', () => {
             const user = await createUserAsAdmin(db, {
                 email: 'time@test.com',
                 password: 'hash',
-                userId: 'time',
                 roles: ['ROLE_USER'],
             });
             const after = Date.now();
@@ -611,7 +617,6 @@ describe('Admin Queries', () => {
             await createUserAsAdmin(db, {
                 email: 'dupe@test.com',
                 password: 'hash',
-                userId: 'dupe1',
                 roles: ['ROLE_USER'],
             });
 
@@ -619,7 +624,6 @@ describe('Admin Queries', () => {
                 createUserAsAdmin(db, {
                     email: 'dupe@test.com',
                     password: 'hash',
-                    userId: 'dupe2',
                     roles: ['ROLE_USER'],
                 }),
             ).rejects.toThrow();

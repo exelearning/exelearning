@@ -41,7 +41,7 @@
 }
 
 .MTHP-Cubierta .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
     height: 1.7em;
     width: 1.7em;
@@ -154,7 +154,7 @@
 }
 
 .MTHP-EdReply {
-    margin: auto 0.3em;
+    margin: auto 0.6em;
     max-width: 170px;
     width: 60%;
     text-align: center;
@@ -162,17 +162,17 @@
 
 .MTHP-GameContainer .exeQuextIcons-MoveOne,
 .MTHP-GameContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 .MTHP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .MTHP-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 
@@ -541,12 +541,12 @@
 }
 
 .MTHP-MainContainer .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 
 .MTHP-MainContainer .exeQuextIcons-MoveOne {
-    background: url(exequextmoveon.png) no-repeat;
+    background: url(exequextmoveon.svg) no-repeat;
     background-size: 100% 100%;
 }
 

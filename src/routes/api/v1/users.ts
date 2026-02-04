@@ -107,10 +107,10 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             const hashedPassword = await Bun.password.hash(body.password, { algorithm: 'bcrypt' });
 
             // Create user
+            // user_id: not set for API-created users (null) - they're not SSO
             const roles = body.roles || ['ROLE_USER'];
             const result = await createUser(db, {
                 email: body.email,
-                user_id: body.email.split('@')[0], // Simple user_id from email
                 password: hashedPassword,
                 roles: JSON.stringify(roles),
                 is_lopd_accepted: 1,

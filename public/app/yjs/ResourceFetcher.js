@@ -1425,7 +1425,7 @@ class ResourceFetcher {
   /**
    * Fetch global font files for embedding in exports
    * Global fonts are stored in /files/perm/fonts/global/{fontId}/
-   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es')
+   * @param {string} fontId - Font identifier (e.g., 'opendyslexic', 'andika', 'nunito', 'playwrite-es','atkinson-hyperlegible-next')
    * @returns {Promise<Map<string, Blob>>} Map of file paths to blobs
    */
   async fetchGlobalFontFiles(fontId) {
@@ -1456,6 +1456,13 @@ class ResourceFetcher {
         'Nunito-Bold.woff2',
         'Nunito-Italic.woff2',
         'Nunito-BoldItalic.woff2',
+        'OFL.txt',
+      ],
+      'atkinson-hyperlegible-next': [
+        'AtkinsonHyperlegibleNext-Regular.woff2',
+        'AtkinsonHyperlegibleNext-Bold.woff2',
+        'AtkinsonHyperlegibleNext-RegularItalic.woff2',
+        'AtkinsonHyperlegibleNext-BoldItalic.woff2',
         'OFL.txt',
       ],
       'playwrite-es': ['PlaywriteES-Regular.woff2', 'OFL.txt'],

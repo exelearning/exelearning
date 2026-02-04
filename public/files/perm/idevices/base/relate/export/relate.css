@@ -417,15 +417,15 @@
 }
 
 .RLCP-CodeAccessE {
-    margin: 0 .3em;
+    margin: 0 0.5em;
     width: 100%;
     max-width: 350px;
     text-align: center;
 }
 
 .RLCP-GameContainer .exeQuextIcons-Submit {
-    height: 1.7em;
-    width: 1.7em;
+    height: 2em;
+    width: 2em;
 }
 
 .RLCP-BottonContainerDiv,
@@ -849,7 +849,7 @@
 
 .RLCP-MainContainer .exeQuextIcons-Submit,
 .RLCP-Cover .exeQuextIcons-Submit {
-    background: url(exequextreply.png) no-repeat;
+    background: url(exequextreply.svg) no-repeat;
     background-size: 100% 100%;
 }
 

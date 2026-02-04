@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<theme>
+    <name>universal</name>
+    <title>Universal</title>
+    <version>2025</version>
+    <compatibility>3.0</compatibility>
+    <author>EducaMadrid</author>
+    <license>Creative Commons BY-SA 4.0</license>
+    <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
+    <description>A web-accessibility–focused style for eXeLearning 4 designed to be compatible with Universal Design for Learning (UDL) principles. Created by Ignacio Gros for EducaMadrid.
+
+iDevice icons: "EducaAnd Escolares" style, by Consejería de Educación y Deporte (https://moocedu.juntadeandalucia.es/) for eXeLearning (http://exelearning.net/), cofinanced by FEDER funds.
+
+Atkinson Hyperlegible Font, licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org/open-font-license-official-text/). Copyright: Braille Institute of America, Inc. (https://www.brailleinstitute.org/freefont).
+
+Navigation icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).</description>
+    <downloadable>1</downloadable>
+</theme>
