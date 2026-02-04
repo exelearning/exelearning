@@ -360,33 +360,14 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
         try {
             await navItem.waitFor({ state: 'attached', timeout: 5000 });
             await navItem.scrollIntoViewIfNeeded();
-
-            // Capture current page heading before clicking (to detect content change)
-            const currentHeading = await page.evaluate(() => {
-                const heading = document.querySelector('#node-content h1');
-                return heading?.textContent || '';
-            });
-
             await navItem.click({ force: true });
 
-            // Wait for content area to update by detecting heading change or iDevice presence
+            // Wait for content area to update (deterministic wait, not fixed timeout)
             await page.waitForFunction(
-                ({ prevHeading, targetId, targetType }) => {
-                    // Check if the target iDevice is now visible
-                    const targetEl = document.getElementById(targetId);
-                    if (targetEl?.classList.contains(targetType)) {
-                        return true;
-                    }
-
-                    // Check if the heading changed (indicating page navigation completed)
+                () => {
                     const nodeContent = document.querySelector('#node-content');
-                    if (!nodeContent || nodeContent.children.length === 0) {
-                        return false;
-                    }
-                    const newHeading = nodeContent.querySelector('h1')?.textContent || '';
-                    return newHeading !== prevHeading;
+                    return nodeContent && nodeContent.children.length > 0;
                 },
-                { prevHeading: currentHeading, targetId: ideviceId, targetType: ideviceType },
                 { timeout: 5000 },
             );
 
