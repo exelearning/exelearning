@@ -105,6 +105,30 @@ function registerProtocolHandler() {
             pathname = '/index.html';
         }
 
+        // Preview viewer paths should be handled by the Service Worker in the renderer
+        // Return a minimal HTML that will be intercepted by the preview-sw.js
+        // The SW will serve the actual preview content from its cache
+        if (pathname.startsWith('/viewer/')) {
+            // Return empty response - the Service Worker should intercept this
+            // If SW isn't ready yet, return a placeholder that will auto-refresh
+            const placeholderHtml = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Loading preview...</title></head>
+<body><script>
+// Wait for Service Worker to be ready then reload
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(() => {
+        setTimeout(() => location.reload(), 100);
+    });
+} else {
+    document.body.textContent = 'Preview requires Service Worker support';
+}
+</script></body></html>`;
+            return new Response(placeholderHtml, {
+                status: 200,
+                headers: { 'Content-Type': 'text/html; charset=utf-8' }
+            });
+        }
+
         // Security: prevent path traversal
         const safePath = path.normalize(pathname).replace(/^(\.\.[/\\])+/, '');
         const filePath = path.join(staticDir, safePath);

@@ -451,6 +451,14 @@ class YjsPropertiesBinding {
         window.eXeLearning.app.interface.odeTitleElement.checkTitleLineCount();
       }
     }
+
+    // Notify parent window of title change (for Electron tabs on Win/Linux)
+    if (window.parent !== window) {
+      window.parent.postMessage({
+        type: 'TAB_TITLE_UPDATE',
+        title: title
+      }, '*');
+    }
   }
 
   /**
