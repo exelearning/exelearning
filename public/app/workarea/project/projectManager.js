@@ -47,6 +47,9 @@ export default class projectManager {
             this.properties.properties.pp_lang.value
         );
 
+        // Notify parent window of project title (for Electron tabs on Win/Linux)
+        this.notifyParentOfTitle();
+
         // Load project visibility for share button
         if (this.app.interface?.shareButton) {
             this.app.interface.shareButton.loadVisibilityFromProject();
@@ -1380,6 +1383,29 @@ export default class projectManager {
         setTimeout(() => {
             this.app.interface.loadingScreen.hide();
         }, 250);
+    }
+
+    /**
+     * Notify parent window of project title (for Electron tabs on Win/Linux)
+     * Gets the current project title from properties and sends it to the parent window
+     */
+    notifyParentOfTitle() {
+        // Only notify if we're in an iframe (Electron tabs on Win/Linux)
+        if (window.parent === window) return;
+
+        // Get project title from properties
+        const title = this.properties?.properties?.pp_title?.value || 'Untitled';
+
+        // Use app's notifyParentOfTitle if available
+        if (this.app?.notifyParentOfTitle) {
+            this.app.notifyParentOfTitle(title);
+        } else {
+            // Fallback: send directly
+            window.parent.postMessage({
+                type: 'TAB_TITLE_UPDATE',
+                title: title
+            }, '*');
+        }
     }
 
     /**

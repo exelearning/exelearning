@@ -106,6 +106,9 @@ export default class App {
         // Electron: handle files opened via file association
         this.bindElectronFileOpenHandler();
 
+        // Electron tabs: listen for messages from parent (when running in iframe on Win/Linux)
+        this.listenForParentMessages();
+
         // Handle exe-package:elp protocol for download-source-file iDevice
         this.initExePackageProtocolHandler();
     }
@@ -1103,6 +1106,44 @@ export default class App {
             console.log('[App] Received file to open:', filePath);
             await this.openFileFromPath(filePath);
         });
+    }
+
+    /**
+     * Listen for messages from the parent window (Electron tabs container on Win/Linux)
+     * This enables communication between the tab container and the iframe workarea
+     */
+    listenForParentMessages() {
+        // Only listen if we're running inside an iframe
+        if (window.parent === window) return;
+
+        window.addEventListener('message', async (e) => {
+            // Handle file open requests from the tab container
+            if (e.data?.type === 'OPEN_FILE' && e.data.filePath) {
+                console.log('[App] Received OPEN_FILE from parent:', e.data.filePath);
+                await this.openFileFromPath(e.data.filePath);
+
+                // Notify parent of the file path for duplicate detection
+                window.parent.postMessage({
+                    type: 'TAB_FILE_PATH',
+                    filePath: e.data.filePath
+                }, '*');
+            }
+        });
+
+        console.log('[App] Listening for parent messages (iframe mode)');
+    }
+
+    /**
+     * Notify parent window of project title change (for Electron tabs on Win/Linux)
+     * @param {string} title - The new project title
+     */
+    notifyParentOfTitle(title) {
+        if (window.parent !== window) {
+            window.parent.postMessage({
+                type: 'TAB_TITLE_UPDATE',
+                title: title
+            }, '*');
+        }
     }
 
     /**

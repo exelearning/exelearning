@@ -1503,6 +1503,16 @@ async function buildStaticBundle() {
         console.log('  Copied preview-sw.js');
     }
 
+    // Copy Electron tabs files (for Windows/Linux tab interface)
+    const electronTabsFiles = ['electron-tabs.html', 'electron-tabs.js', 'electron-tabs.css'];
+    for (const file of electronTabsFiles) {
+        const src = path.join(projectRoot, 'app', file);
+        if (fs.existsSync(src)) {
+            fs.copyFileSync(src, path.join(outputDir, file));
+            console.log(`  Copied ${file}`);
+        }
+    }
+
     console.log('\n' + '='.repeat(60));
     console.log('Static distribution built successfully!');
     console.log(`Output: ${outputDir}`);

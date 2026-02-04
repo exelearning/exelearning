@@ -582,7 +582,11 @@ async function createWindow() {
 
     // Load static HTML via app:// custom protocol
     // Enables Service Workers (supported in Electron 10.x+ with registerSchemesAsPrivileged)
-    mainWindow.loadURL('app://localhost/');
+    // On Windows/Linux, load the tab container; on macOS, load workarea directly (uses native tabs)
+    const startUrl = process.platform === 'darwin'
+        ? 'app://localhost/'
+        : 'app://localhost/electron-tabs.html';
+    mainWindow.loadURL(startUrl);
 
     // Check for updates and flush pending files
     mainWindow.webContents.on('did-finish-load', () => {

@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose safe APIs for renderer (Symfony UI)
 contextBridge.exposeInMainWorld('electronAPI', {
+  getPlatform: () => process.platform,
   save: (downloadUrl, projectKey, suggestedName) => ipcRenderer.invoke('app:save', { downloadUrl, projectKey, suggestedName }),
   saveAs: (downloadUrl, projectKey, suggestedName) =>
     ipcRenderer.invoke('app:saveAs', { downloadUrl, projectKey, suggestedName }),
