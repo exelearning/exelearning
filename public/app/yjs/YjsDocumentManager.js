@@ -549,8 +549,10 @@ class YjsDocumentManager {
       }
 
       // Create initial metadata
-      // Get user's language: app locale > document lang > navigator language > fallback to 'en'
-      const userLanguage = window.eXeLearning?.app?.locale?.lang
+      // Get user's language from preferences first, then fall back to UI/browser locale
+      // Priority: user preference > app locale > document lang > navigator language > 'en'
+      const userLanguage = window.eXeLearning?.app?.user?.preferences?.preferences?.locale?.value
+        || window.eXeLearning?.app?.locale?.lang
         || document.documentElement.lang
         || navigator.language?.split('-')[0]
         || 'en';
