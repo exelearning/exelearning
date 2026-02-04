@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' app: blob: data:; script-src 'self' app: 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' app: 'unsafe-inline'; img-src 'self' app: blob: data: https:; font-src 'self' app: data:; connect-src 'self' app: blob: ws: wss: https:; media-src 'self' app: blob: data:; frame-src 'self' app: blob:;">
+    <title>eXeLearning</title>
+    <link rel="stylesheet" href="electron-tabs.css">
+</head>
+<body>
+    <div id="tab-bar">
+        <div id="tab-list"></div>
+        <button id="new-tab-btn" title="New tab">+</button>
+    </div>
+    <div id="tab-container"></div>
+    <script src="electron-tabs.js"></script>
+</body>
+</html>

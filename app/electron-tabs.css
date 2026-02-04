@@ -1,0 +1,275 @@
+/**
+ * Styles for eXeLearning Tab Bar (Windows/Linux)
+ * Provides a Chrome-like tab interface for non-macOS platforms
+ */
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #f0f0f0;
+}
+
+/* Tab Bar */
+#tab-bar {
+    display: flex;
+    background: linear-gradient(to bottom, #f8f8f8, #e8e8e8);
+    height: 38px;
+    min-height: 38px;
+    border-bottom: 1px solid #bbb;
+    -webkit-app-region: drag; /* Allow dragging window from tab bar */
+    user-select: none;
+}
+
+#tab-list {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-app-region: no-drag;
+    scrollbar-width: thin;
+    scrollbar-color: #ccc transparent;
+}
+
+#tab-list::-webkit-scrollbar {
+    height: 4px;
+}
+
+#tab-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#tab-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 2px;
+}
+
+/* Individual Tab */
+.tab-btn {
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0 14px;
+    min-width: 120px;
+    max-width: 200px;
+    background: transparent;
+    border-right: 1px solid #d0d0d0;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
+    transition: background-color 0.15s ease;
+    position: relative;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.tab-btn.active {
+    background: white;
+    color: #333;
+    border-bottom: 2px solid #00a99d;
+    margin-bottom: -1px;
+}
+
+.tab-btn.active:hover {
+    background: white;
+}
+
+.tab-btn.dragging {
+    opacity: 0.5;
+}
+
+/* Tab Title */
+.tab-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 4px;
+}
+
+/* Close Button */
+.close-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    opacity: 0;
+    font-size: 16px;
+    line-height: 1;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.1s ease, background-color 0.1s ease;
+    flex-shrink: 0;
+}
+
+.tab-btn:hover .close-btn {
+    opacity: 0.6;
+}
+
+.close-btn:hover {
+    opacity: 1 !important;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.tab-btn.active .close-btn:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* New Tab Button */
+#new-tab-btn {
+    width: 38px;
+    min-width: 38px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 22px;
+    font-weight: 300;
+    color: #666;
+    -webkit-app-region: no-drag;
+    transition: background-color 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#new-tab-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+#new-tab-btn:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Tab Container (iframes) */
+#tab-container {
+    flex: 1;
+    position: relative;
+    background: #fff;
+}
+
+/* Individual Tab Iframe */
+.tab-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    visibility: hidden;
+    background: #fff;
+}
+
+.tab-iframe.active {
+    visibility: visible;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    #tab-bar {
+        background: #fff;
+        border-bottom: 2px solid #000;
+    }
+
+    .tab-btn {
+        border-right: 1px solid #000;
+        color: #000;
+    }
+
+    .tab-btn.active {
+        background: #000;
+        color: #fff;
+        border-bottom: none;
+    }
+
+    .tab-btn.active .close-btn {
+        color: #fff;
+    }
+
+    #new-tab-btn {
+        color: #000;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #202020;
+    }
+
+    #tab-bar {
+        background: linear-gradient(to bottom, #3c3c3c, #2d2d2d);
+        border-bottom: 1px solid #1a1a1a;
+    }
+
+    .tab-btn {
+        color: #b0b0b0;
+        border-right: 1px solid #1a1a1a;
+    }
+
+    .tab-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .tab-btn.active {
+        background: #252525;
+        color: #e0e0e0;
+        border-bottom-color: #00a99d;
+    }
+
+    .tab-btn.active:hover {
+        background: #252525;
+    }
+
+    .close-btn {
+        color: #999;
+    }
+
+    .close-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    #new-tab-btn {
+        color: #999;
+    }
+
+    #new-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ccc;
+    }
+
+    #tab-container {
+        background: #1e1e1e;
+    }
+
+    .tab-iframe {
+        background: #1e1e1e;
+    }
+
+    #tab-list::-webkit-scrollbar-thumb {
+        background: #555;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .tab-btn,
+    .close-btn,
+    #new-tab-btn {
+        transition: none;
+    }
+}
