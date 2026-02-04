@@ -2673,4 +2673,92 @@ describe('ProjectManager', () => {
             await expect(projectManager.refreshAfterDirectImport()).resolves.not.toThrow();
         });
     });
+
+    describe('notifyParentOfTitle', () => {
+        let originalParent;
+
+        beforeEach(() => {
+            originalParent = window.parent;
+        });
+
+        afterEach(() => {
+            Object.defineProperty(window, 'parent', {
+                value: originalParent,
+                writable: true,
+                configurable: true,
+            });
+        });
+
+        it('does nothing when not in an iframe', () => {
+            // window.parent === window means not in iframe (default)
+            projectManager.notifyParentOfTitle();
+            // No error should be thrown
+        });
+
+        it('sends TAB_TITLE_UPDATE message to parent with project title', () => {
+            const mockParent = { postMessage: vi.fn() };
+            Object.defineProperty(window, 'parent', {
+                value: mockParent,
+                writable: true,
+                configurable: true,
+            });
+
+            projectManager.properties = {
+                properties: {
+                    pp_title: { value: 'Test Project Title' },
+                },
+            };
+
+            projectManager.notifyParentOfTitle();
+
+            expect(mockParent.postMessage).toHaveBeenCalledWith(
+                { type: 'TAB_TITLE_UPDATE', title: 'Test Project Title' },
+                '*'
+            );
+        });
+
+        it('uses Untitled when project title not available', () => {
+            const mockParent = { postMessage: vi.fn() };
+            Object.defineProperty(window, 'parent', {
+                value: mockParent,
+                writable: true,
+                configurable: true,
+            });
+
+            projectManager.properties = {
+                properties: {},
+            };
+
+            projectManager.notifyParentOfTitle();
+
+            expect(mockParent.postMessage).toHaveBeenCalledWith(
+                { type: 'TAB_TITLE_UPDATE', title: 'Untitled' },
+                '*'
+            );
+        });
+
+        it('calls app.notifyParentOfTitle when available', () => {
+            const mockParent = { postMessage: vi.fn() };
+            Object.defineProperty(window, 'parent', {
+                value: mockParent,
+                writable: true,
+                configurable: true,
+            });
+
+            projectManager.app = {
+                ...mockApp,
+                notifyParentOfTitle: vi.fn(),
+            };
+
+            projectManager.properties = {
+                properties: {
+                    pp_title: { value: 'My Title' },
+                },
+            };
+
+            projectManager.notifyParentOfTitle();
+
+            expect(projectManager.app.notifyParentOfTitle).toHaveBeenCalledWith('My Title');
+        });
+    });
 });

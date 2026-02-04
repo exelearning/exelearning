@@ -2418,3 +2418,170 @@ describe('Module-level event handlers', () => {
     expect(typeof window.onbeforeunload).toBe('function');
   });
 });
+
+describe('Parent window communication (Electron tabs)', () => {
+  let appInstance;
+  let originalParent;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+    originalParent = window.parent;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, 'parent', {
+      value: originalParent,
+      writable: true,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+  });
+
+  describe('listenForParentMessages', () => {
+    it('does nothing when not in an iframe', () => {
+      // window.parent === window means not in iframe
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+      appInstance.listenForParentMessages();
+
+      expect(addEventListenerSpy).not.toHaveBeenCalledWith('message', expect.any(Function));
+    });
+
+    it('adds message listener when in an iframe', () => {
+      // Simulate being in an iframe
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+      appInstance.listenForParentMessages();
+
+      expect(addEventListenerSpy).toHaveBeenCalledWith('message', expect.any(Function));
+    });
+
+    it('handles OPEN_FILE message from parent', async () => {
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock openFileFromPath
+      appInstance.openFileFromPath = vi.fn().mockResolvedValue(undefined);
+
+      appInstance.listenForParentMessages();
+
+      // Simulate receiving a message
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'OPEN_FILE', filePath: '/test/file.elpx' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      // Wait for async handler
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(appInstance.openFileFromPath).toHaveBeenCalledWith('/test/file.elpx');
+      expect(mockParent.postMessage).toHaveBeenCalledWith(
+        { type: 'TAB_FILE_PATH', filePath: '/test/file.elpx' },
+        '*'
+      );
+    });
+
+    it('ignores messages without OPEN_FILE type', async () => {
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      appInstance.openFileFromPath = vi.fn();
+
+      appInstance.listenForParentMessages();
+
+      // Simulate receiving an unrelated message
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'OTHER_MESSAGE', data: 'test' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(appInstance.openFileFromPath).not.toHaveBeenCalled();
+    });
+
+    it('ignores OPEN_FILE message without filePath', async () => {
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      appInstance.openFileFromPath = vi.fn();
+
+      appInstance.listenForParentMessages();
+
+      // Simulate receiving OPEN_FILE without filePath
+      const messageEvent = new MessageEvent('message', {
+        data: { type: 'OPEN_FILE' },
+      });
+      window.dispatchEvent(messageEvent);
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(appInstance.openFileFromPath).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('notifyParentOfTitle', () => {
+    it('does nothing when not in an iframe', () => {
+      // window.parent === window means not in iframe
+      appInstance.notifyParentOfTitle('Test Title');
+      // No error should be thrown
+    });
+
+    it('sends TAB_TITLE_UPDATE message when in an iframe', () => {
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      appInstance.notifyParentOfTitle('My Project Title');
+
+      expect(mockParent.postMessage).toHaveBeenCalledWith(
+        { type: 'TAB_TITLE_UPDATE', title: 'My Project Title' },
+        '*'
+      );
+    });
+
+    it('sends empty string title when provided', () => {
+      const mockParent = { postMessage: vi.fn() };
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      appInstance.notifyParentOfTitle('');
+
+      expect(mockParent.postMessage).toHaveBeenCalledWith(
+        { type: 'TAB_TITLE_UPDATE', title: '' },
+        '*'
+      );
+    });
+  });
+});

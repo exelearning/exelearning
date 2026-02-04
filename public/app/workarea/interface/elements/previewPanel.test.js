@@ -615,6 +615,118 @@ describe('PreviewPanelManager', () => {
 
       window.location = originalLocation;
     });
+
+    it('should send OPEN_PREVIEW_TAB message when in iframe with electronAPI', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      // Mock being in an iframe
+      const mockParent = { postMessage: vi.fn() };
+      const originalParent = window.parent;
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      // Mock electronAPI
+      window.electronAPI = { getPlatform: () => 'win32' };
+
+      const mockOpen = vi.fn();
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'app://localhost',
+        pathname: '/workarea',
+      };
+
+      await manager.extractToNewTab();
+
+      // Should NOT open via window.open
+      expect(mockOpen).not.toHaveBeenCalled();
+
+      // Should send message to parent
+      expect(mockParent.postMessage).toHaveBeenCalledWith(
+        {
+          type: 'OPEN_PREVIEW_TAB',
+          url: 'app://localhost/viewer/index.html',
+        },
+        '*'
+      );
+
+      // Cleanup
+      Object.defineProperty(window, 'parent', {
+        value: originalParent,
+        writable: true,
+        configurable: true,
+      });
+      delete window.electronAPI;
+      window.location = originalLocation;
+    });
+
+    it('should use window.open when not in iframe even with electronAPI', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      // Mock electronAPI but NOT in iframe (parent === window)
+      window.electronAPI = { getPlatform: () => 'darwin' };
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'app://localhost',
+        pathname: '/workarea',
+      };
+
+      await manager.extractToNewTab();
+
+      // Should use window.open since not in iframe
+      expect(mockOpen).toHaveBeenCalled();
+
+      // Cleanup
+      delete window.electronAPI;
+      window.location = originalLocation;
+    });
+
+    it('should use window.open when in iframe but no electronAPI', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      // Mock being in an iframe but no electronAPI
+      const mockParent = { postMessage: vi.fn() };
+      const originalParent = window.parent;
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      // Ensure electronAPI is undefined
+      delete window.electronAPI;
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      await manager.extractToNewTab();
+
+      // Should use window.open since no electronAPI
+      expect(mockOpen).toHaveBeenCalled();
+      expect(mockParent.postMessage).not.toHaveBeenCalled();
+
+      // Cleanup
+      Object.defineProperty(window, 'parent', {
+        value: originalParent,
+        writable: true,
+        configurable: true,
+      });
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach

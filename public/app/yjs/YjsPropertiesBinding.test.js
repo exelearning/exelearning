@@ -570,6 +570,42 @@ describe('YjsPropertiesBinding', () => {
       // Should not throw
       binding.syncTitleToHeader();
     });
+
+    it('sends TAB_TITLE_UPDATE message to parent when in iframe', () => {
+      const mockParent = { postMessage: mock(() => undefined) };
+      const originalParent = window.parent;
+      Object.defineProperty(window, 'parent', {
+        value: mockParent,
+        writable: true,
+        configurable: true,
+      });
+
+      binding.metadata.set('title', 'My Project Title');
+      binding.syncTitleToHeader();
+
+      expect(mockParent.postMessage).toHaveBeenCalledWith(
+        { type: 'TAB_TITLE_UPDATE', title: 'My Project Title' },
+        '*'
+      );
+
+      // Cleanup
+      Object.defineProperty(window, 'parent', {
+        value: originalParent,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('does not send message when not in iframe', () => {
+      // window.parent === window means not in iframe (default state)
+      const postMessageSpy = spyOn(window, 'postMessage');
+
+      binding.metadata.set('title', 'Test Title');
+      binding.syncTitleToHeader();
+
+      // postMessage should not be called on window itself
+      expect(postMessageSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('onMetadataKeyChanged', () => {
