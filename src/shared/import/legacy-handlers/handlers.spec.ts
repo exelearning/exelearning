@@ -290,6 +290,92 @@ describe('FreeTextHandler', () => {
             expect(result).toContain('feedbacktooglebutton');
             expect(result).toContain('Feedback content');
         });
+
+        it('should NOT add duplicate feedback when content already has feedbacktooglebutton', () => {
+            const contentWithFeedback = `<p>Main content</p>
+                <div class="iDevice_buttons feedback-button js-required">
+                    <input type="button" class="feedbacktooglebutton" value="Existing Feedback" />
+                </div>
+                <div class="feedback js-feedback js-hidden">Existing feedback content</div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                        </dictionary>
+                    </instance>
+                    <string role="key" value="answerTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="XML Feedback that should be ignored"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict, { language: 'en' });
+            // Should contain existing feedback, not duplicate
+            expect(result).toContain('Existing Feedback');
+            expect(result).toContain('Existing feedback content');
+            // Should NOT contain the XML feedback
+            expect(result).not.toContain('XML Feedback that should be ignored');
+            // Should only have ONE feedback button
+            const feedbackButtonCount = (result.match(/feedbacktooglebutton/g) || []).length;
+            expect(feedbackButtonCount).toBe(1);
+        });
+
+        it('should NOT add duplicate feedback when content has feedbackbutton class', () => {
+            const contentWithFeedback = `<p>Content</p>
+                <div class="iDevice_buttons feedback-button js-required">
+                    <input type="button" class="feedbackbutton" value="Info" />
+                </div>
+                <div class="feedback js-feedback js-hidden">Info content</div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                        </dictionary>
+                    </instance>
+                    <string role="key" value="answerTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="Should be ignored"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict, { language: 'en' });
+            expect(result).toContain('Info content');
+            expect(result).not.toContain('Should be ignored');
+        });
+
+        it('should wrap content with existing feedback in exe-text-activity if not already wrapped', () => {
+            const contentWithFeedback = `<p>Content</p>
+                <div class="iDevice_buttons feedback-button js-required">
+                    <input type="button" class="feedbacktooglebutton" value="Show" />
+                </div>
+                <div class="feedback js-feedback js-hidden">Feedback</div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict, { language: 'en' });
+            expect(result).toContain('exe-text-activity');
+            expect(result).toContain('Feedback');
+        });
     });
 
     describe('extractFeedback', () => {
@@ -371,6 +457,36 @@ describe('FreeTextHandler', () => {
             const result = handler.extractFeedback(dict, { language: 'es' });
             expect(result.buttonCaption).toBe('Mostrar retroalimentación');
         });
+
+        it('should return empty when content HTML already has feedback embedded', () => {
+            const contentWithFeedback = `<p>Main content</p>
+                <div class="iDevice_buttons feedback-button js-required">
+                    <input type="button" class="feedbacktooglebutton" value="Existing Feedback" />
+                </div>
+                <div class="feedback js-feedback js-hidden">Existing feedback content</div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                        </dictionary>
+                    </instance>
+                    <string role="key" value="answerTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="XML Feedback that should be ignored"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const result = handler.extractFeedback(dict, { language: 'en' });
+            // Should return empty because content already has feedback
+            expect(result.content).toBe('');
+            expect(result.buttonCaption).toBe('');
+        });
     });
 
     describe('extractProperties', () => {
@@ -396,6 +512,37 @@ describe('FreeTextHandler', () => {
             const props = handler.extractProperties(dict);
             expect(props.textFeedbackTextarea).toBe('Feedback text');
             expect(props.textFeedbackInput).toBe('Show');
+        });
+
+        it('should return empty when content HTML already has feedback embedded', () => {
+            const contentWithFeedback = `<p>Content</p>
+                <div class="iDevice_buttons feedback-button js-required">
+                    <input type="button" class="feedbackbutton" value="Info" />
+                </div>
+                <div class="feedback js-feedback js-hidden">Info content</div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="activityTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="${contentWithFeedback.replace(/"/g, '&quot;')}"/>
+                        </dictionary>
+                    </instance>
+                    <string role="key" value="answerTextArea"/>
+                    <instance class="TextAreaField">
+                        <dictionary>
+                            <string role="key" value="content"/>
+                            <unicode value="Should be ignored"/>
+                            <string role="key" value="buttonCaption"/>
+                            <string value="Show"/>
+                        </dictionary>
+                    </instance>
+                </dictionary>
+            `);
+            const props = handler.extractProperties(dict);
+            // Should return empty because content already has feedback
+            expect(props).toEqual({});
         });
     });
 });
