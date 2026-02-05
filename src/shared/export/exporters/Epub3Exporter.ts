@@ -26,6 +26,7 @@ import type {
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { generateI18nScript } from '../generators/I18nGenerator';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 /**
  * EPUB3 XML namespaces
@@ -161,10 +162,67 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/nav.xhtml', navXhtml);
             this.addManifestItem('nav', 'nav.xhtml', 'application/xhtml+xml', 'nav');
 
-            // 4. Generate XHTML pages
+            // 4. Generate XHTML pages (with optional LaTeX and Mermaid pre-rendering)
+            let latexWasRendered = false;
+            let mermaidWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+                let xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+
+                // Pre-render LaTeX ONLY if addMathJax is false
+                // When MathJax is included, let it process LaTeX at runtime for full UX
+                if (!meta.addMathJax) {
+                    // Pre-render LaTeX in encrypted DataGame divs FIRST
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(xhtml);
+                            if (result.count > 0) {
+                                xhtml = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Epub3Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[Epub3Exporter] DataGame LaTeX pre-render failed:', page.title, error);
+                        }
+                    }
+
+                    // Pre-render visible LaTeX to SVG+MathML if hook is provided
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(xhtml);
+                            if (result.latexRendered) {
+                                xhtml = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[Epub3Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[Epub3Exporter] LaTeX pre-render failed:', page.title, error);
+                        }
+                    }
+                }
+
+                // Pre-render Mermaid diagrams to static SVG if hook is provided
+                // This eliminates the need for the ~2.7MB Mermaid library in exports
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(xhtml);
+                        if (result.mermaidRendered) {
+                            xhtml = result.html;
+                            mermaidWasRendered = true;
+                            console.log(
+                                `[Epub3Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[Epub3Exporter] Mermaid pre-render failed:', page.title, error);
+                    }
+                }
+
                 // Use unique filename from the map (handles title collisions)
                 // EPUB uses .xhtml extension instead of .html
                 const mapFilename = pageFilenameMap.get(page.id) || 'page.html';
@@ -177,7 +235,7 @@ export class Epub3Exporter extends BaseExporter {
                 this.spineItems.push({ idref: pageId });
             }
 
-            // 5. Add base CSS (fetch from content/css, then add EPUB-specific)
+            // 5. Add base CSS (fetch from content/css, then add EPUB-specific + pre-rendered CSS)
             const contentCssFiles = await this.resources.fetchContentCss();
             const fetchedBaseCss = contentCssFiles.get('content/css/base.css');
             if (!fetchedBaseCss) {
@@ -185,7 +243,14 @@ export class Epub3Exporter extends BaseExporter {
             }
             const baseCssContent =
                 typeof fetchedBaseCss === 'string' ? fetchedBaseCss : new TextDecoder().decode(fetchedBaseCss);
-            const baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
+            let baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered) {
+                baseCss += '\n' + this.getPreRenderedLatexCss();
+            }
+            if (mermaidWasRendered) {
+                baseCss += '\n' + this.getPreRenderedMermaidCss();
+            }
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
@@ -318,6 +383,22 @@ export class Epub3Exporter extends BaseExporter {
 
             // 9. Add project assets
             const _assetsAdded = await this.addEpubAssets();
+
+            // 9.5. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                try {
+                    const contentXml = await this.getContentXml();
+                    if (contentXml) {
+                        // In EPUB, content.xml goes inside EPUB/ directory
+                        this.zip.addFile('EPUB/content.xml', contentXml);
+                        this.addManifestItem('content-xml', 'content.xml', 'application/xml');
+                        this.zip.addFile('EPUB/' + ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                        this.addManifestItem('content-dtd', ODE_DTD_FILENAME, 'application/xml-dtd');
+                    }
+                } catch {
+                    // content.xml is optional - fail silently
+                }
+            }
 
             // 10. Generate package.opf (OPF manifest)
             const packageOpf = this.generatePackageOpf(meta, bookId);
@@ -680,24 +761,31 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Add assets to EPUB with manifest entries
+     * Uses buildAssetExportPathMap for clean paths (matching SCORM/Website exports)
      */
     private async addEpubAssets(): Promise<number> {
         let assetsAdded = 0;
 
         try {
             const assets = await this.assets.getAllAssets();
+            const exportPathMap = await this.buildAssetExportPathMap();
 
             for (const asset of assets) {
-                const assetId = asset.id;
-                const filename = asset.filename || `asset-${assetId}`;
-                const zipPath = `content/resources/${assetId}/${filename}`;
+                const exportPath = exportPathMap.get(asset.id);
+                if (!exportPath) {
+                    console.warn(`[Epub3Exporter] No export path for asset: ${asset.id}`);
+                    continue;
+                }
+
+                // Store in EPUB/content/resources/{exportPath} (matching HTML references)
+                const zipPath = `content/resources/${exportPath}`;
 
                 this.zip.addFile(`EPUB/${zipPath}`, asset.data);
 
                 // Add to manifest
-                const ext = this.getFileExtensionFromPath(filename);
+                const ext = this.getFileExtensionFromPath(exportPath);
                 const mimeType = MIME_TYPES[ext] || asset.mime || 'application/octet-stream';
-                this.addManifestItem(this.generateUniqueId(`asset-${assetId}`), zipPath, mimeType);
+                this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
             }
@@ -797,5 +885,43 @@ td, th {
         }
 
         return { themeFilesMap, themeRootFiles, faviconInfo };
+    }
+
+    /**
+     * Get content.xml from the document for inclusion in EPUB package
+     * This allows the package to be re-edited in eXeLearning
+     */
+    protected async getContentXml(): Promise<string | null> {
+        // Try to get content.xml from the document adapter
+        if ('getContentXml' in this.document && typeof this.document.getContentXml === 'function') {
+            return (this.document as { getContentXml: () => Promise<string | null> }).getContentXml();
+        }
+        return null;
+    }
+
+    /**
+     * Get CSS for pre-rendered LaTeX (SVG+MathML)
+     * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
+     */
+    protected getPreRenderedLatexCss(): string {
+        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
+.exe-math-rendered { display: inline-block; vertical-align: middle; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide MathML visually but keep accessible for screen readers */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+    }
+
+    /**
+     * Get CSS for pre-rendered Mermaid diagrams (static SVG)
+     * This CSS is needed when Mermaid is pre-rendered instead of using the library at runtime
+     */
+    protected getPreRenderedMermaidCss(): string {
+        return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
+.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
+.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
     }
 }

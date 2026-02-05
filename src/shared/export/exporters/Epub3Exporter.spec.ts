@@ -18,8 +18,9 @@ import type {
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
     private pages: ExportPage[];
+    private contentXml: string | null;
 
-    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = []) {
+    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = [], contentXml: string | null = null) {
         this.metadata = {
             title: 'Test EPUB Project',
             author: 'Test Author',
@@ -30,6 +31,7 @@ class MockDocument implements ExportDocument {
             ...metadata,
         };
         this.pages = pages;
+        this.contentXml = contentXml;
     }
 
     getMetadata(): ExportMetadata {
@@ -38,6 +40,10 @@ class MockDocument implements ExportDocument {
 
     getNavigation(): ExportPage[] {
         return this.pages;
+    }
+
+    async getContentXml(): Promise<string | null> {
+        return this.contentXml;
     }
 }
 
@@ -655,6 +661,73 @@ describe('Epub3Exporter', () => {
             // Check sub-page (chapter-1.xhtml) has correct relative path
             const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
             expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
+        });
+    });
+
+    describe('Content XML and DTD Handling', () => {
+        it('should include content.xml in EPUB when document provides it', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            const contentXml = zip.files.get('EPUB/content.xml') as string;
+            expect(contentXml).toContain('<test>data</test>');
+        });
+
+        it('should include content.dtd alongside content.xml', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml in EPUB manifest', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('id="content-xml"');
+            expect(packageOpf).toContain('href="content.xml"');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: false }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(false);
+        });
+
+        it('should include content.xml when exportSource is true', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: true }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should not fail when getContentXml returns null', async () => {
+            // Default MockDocument with null contentXml
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            // content.xml should not be in the archive when not provided
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
         });
     });
 });
