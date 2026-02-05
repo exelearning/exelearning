@@ -595,7 +595,8 @@ export class ElpxImporter {
         let htmlView = legacyIdevice.htmlView || '';
 
         // If there's feedback content, append feedback button and content
-        if (legacyIdevice.feedbackHtml) {
+        // BUT only if the HTML doesn't already have feedback embedded (prevents duplication)
+        if (legacyIdevice.feedbackHtml && !this.htmlHasFeedback(htmlView)) {
             const buttonText = legacyIdevice.feedbackButton || 'Show Feedback';
             htmlView += `<div class="iDevice_buttons feedback-button js-required">`;
             htmlView += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(buttonText)}" `;
@@ -696,6 +697,27 @@ export class ElpxImporter {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Check if HTML content already contains feedback button elements
+     * This prevents duplicate feedback when the handler already embedded feedback in htmlView
+     *
+     * @param html - HTML content to check
+     * @returns true if feedback button already exists
+     */
+    private htmlHasFeedback(html: string): boolean {
+        if (!html) return false;
+        // Check for various feedback button patterns used in legacy exports
+        // - feedbacktooglebutton: standard class name (note the typo in original)
+        // - feedbackbutton: alternative class name used in some versions
+        // - iDevice_buttons feedback-button: container class pattern
+        return (
+            html.includes('feedbacktooglebutton') ||
+            html.includes('feedbackbutton') ||
+            html.includes('iDevice_buttons feedback-button') ||
+            html.includes('class="feedback-button')
+        );
     }
 
     /**
