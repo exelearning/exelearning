@@ -2461,12 +2461,11 @@ describe('NavbarFile', () => {
             expect(clickSpy).toHaveBeenCalled();
         });
 
-        it('should handle file selection with yjsBridge', async () => {
-            const mockYjsBridge = {
-                importFromElpx: vi.fn().mockResolvedValue({}),
+        it('should handle file selection via unified open flow', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
             };
-            eXeLearning.app.project._yjsBridge = mockYjsBridge;
-            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
 
             navbarFile.openFileInputStatic();
 
@@ -2480,42 +2479,34 @@ describe('NavbarFile', () => {
             // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            expect(mockYjsBridge.importFromElpx).toHaveBeenCalledWith(
-                mockFile,
-                expect.objectContaining({ onProgress: expect.any(Function) })
-            );
+            expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
         });
 
-        it('should show error when yjsBridge is not available', async () => {
-            eXeLearning.app.project._yjsBridge = null;
-            const alertShowSpy = vi.fn();
-            eXeLearning.app.modals = { alert: { show: alertShowSpy } };
+        it('should not process when no file selected', async () => {
+            const largeFilesUploadSpy = vi.fn();
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
+            };
 
             navbarFile.openFileInputStatic();
 
             const input = document.getElementById('static-open-file-input');
-            const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
-            Object.defineProperty(input, 'files', { value: [mockFile] });
+            // Simulate empty file selection
+            Object.defineProperty(input, 'files', { value: [] });
             await input.dispatchEvent(new Event('change'));
 
             // Wait for async operations
             await new Promise(resolve => setTimeout(resolve, 10));
 
-            expect(alertShowSpy).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    title: expect.any(String),
-                    body: expect.stringContaining('Yjs bridge not initialized'),
-                })
-            );
+            expect(largeFilesUploadSpy).not.toHaveBeenCalled();
         });
 
         it('should reset input value after file selection', async () => {
-            const mockYjsBridge = {
-                importFromElpx: vi.fn().mockResolvedValue({}),
+            const largeFilesUploadSpy = vi.fn();
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: largeFilesUploadSpy,
             };
-            eXeLearning.app.project._yjsBridge = mockYjsBridge;
-            eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
 
             navbarFile.openFileInputStatic();
 

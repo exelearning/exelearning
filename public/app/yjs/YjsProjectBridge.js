@@ -48,6 +48,9 @@ class YjsProjectBridge {
 
     // Flag to prevent form recreation cascade during undo/redo operations
     this.isUndoRedoInProgress = false;
+
+    // Current save status for UI tracking
+    this.currentSaveStatus = 'saved';
   }
 
   /**
@@ -1097,8 +1100,8 @@ class YjsProjectBridge {
     this.updateUndoRedoButtons();
 
     // Set initial save status based on document state
-    // New projects or dirty documents should show 'unsaved'
-    if (this.documentManager?.isDirty || this.isNewProject) {
+    // Only mark unsaved when the document is actually dirty
+    if (this.documentManager?.isDirty) {
       this.updateSaveStatus('unsaved');
     } else {
       this.updateSaveStatus('saved');
@@ -1108,10 +1111,13 @@ class YjsProjectBridge {
   /**
    * Update save status on the save button
    * Uses classes 'saved' (green dot) and 'unsaved' (red dot)
-   * @param {'saving'|'saved'|'error'|'offline'} status
+   * @param {'saving'|'saved'|'error'|'offline'|'unsaved'} status
    * @param {string} message - Optional message
    */
   updateSaveStatus(status, message = null) {
+    // Track current status
+    this.currentSaveStatus = status;
+
     // Get the save button if not already cached
     if (!this.saveButton) {
       this.saveButton = document.getElementById('head-top-save-button');
@@ -1131,6 +1137,7 @@ class YjsProjectBridge {
           break;
         case 'error':
         case 'offline':
+        case 'unsaved':
         default:
           this.saveButton.classList.add('unsaved');
           break;
@@ -1145,6 +1152,32 @@ class YjsProjectBridge {
         console.error('[YjsProjectBridge] Save status callback error:', e);
       }
     }
+  }
+
+  /**
+   * Check if there are unsaved changes that should trigger UI warnings.
+   * This is the primary method for UI components to check save state.
+   *
+   * @returns {boolean} True if there are unsaved changes
+   */
+  hasUnsavedChangesForUI() {
+    if (this.documentManager) {
+      return this.documentManager.isDirty === true;
+    }
+
+    return this.currentSaveStatus === 'unsaved' || this.currentSaveStatus === 'error';
+  }
+
+  /**
+   * Mark the document as clean (no unsaved changes).
+   * Called after a successful save.
+   * @private
+   */
+  _markDocumentClean() {
+    if (this.documentManager) {
+      this.documentManager.markClean();
+    }
+    this.updateSaveStatus('saved');
   }
 
   /**
@@ -1614,8 +1647,13 @@ class YjsProjectBridge {
     });
 
     // Set initial status based on document dirty state
+    // After captureBaselineState(), isDirty reflects actual unsaved changes
+    // (including restored state from localStorage for page reloads)
     if (this.documentManager.isDirty) {
       this.updateSaveStatus('unsaved');
+    } else {
+      // Document is clean - show saved status
+      this.updateSaveStatus('saved');
     }
 
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
@@ -2132,7 +2170,16 @@ class YjsProjectBridge {
     // Use new AssetManager if available, otherwise fall back to legacy assetCache
     const assetHandler = this.assetManager || this.assetCache;
     const importer = new window.ElpxImporter(this.documentManager, assetHandler);
-    const stats = await importer.importFromFile(file, options);
+    const clearExisting = options.clearExisting !== false; // default is true
+    let stats;
+
+    if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+      stats = await this.documentManager.withSuppressedDirtyTracking(() =>
+        importer.importFromFile(file, options)
+      );
+    } else {
+      stats = await importer.importFromFile(file, options);
+    }
 
     // Announce imported assets to server for peer-to-peer collaboration
     // Skip only when collaboration is explicitly disabled (capabilities available and disabled)
@@ -2146,10 +2193,24 @@ class YjsProjectBridge {
     // Check and handle theme from imported package
     // Only import theme when opening a file (clearExisting=true), not when importing into existing project
     // Theme import works in all modes - _checkAndImportTheme handles mode-specific behavior internally
-    const clearExisting = options.clearExisting !== false; // default is true
     if (stats && stats.theme && clearExisting) {
-      // Pass cached zip contents to avoid re-unzipping the file
-      await this._checkAndImportTheme(stats.theme, file, stats.zipContents);
+      const importTheme = () => this._checkAndImportTheme(stats.theme, file, stats.zipContents);
+      if (typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
+        await this.documentManager.withSuppressedDirtyTracking(importTheme);
+      } else {
+        await importTheme();
+      }
+    }
+
+    if (clearExisting) {
+      if (typeof this.documentManager?.markClean === 'function') {
+        this.documentManager.markClean();
+      }
+      if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
+        this.documentManager.captureBaselineState();
+      }
+    } else if (this.documentManager && !this.documentManager.isDirty) {
+      this.documentManager.markDirty();
     }
 
     return stats;

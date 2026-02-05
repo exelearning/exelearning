@@ -248,12 +248,24 @@ export default class projectManager {
         });
 
         this._yjsEnabled = true;
+        if (typeof this._yjsBridge?.enableAutoSync === 'function') {
+            this._yjsBridge.enableAutoSync();
+        }
         Logger.log('[ProjectManager] Yjs reinitialized for project:', projectUuid);
 
         // Reset project state AFTER Yjs is initialized (structure loading needs Yjs)
         Logger.log('[ProjectManager] About to call resetProject...');
         this.resetProject();
-        Logger.log('[ProjectManager] resetProject completed, reinitializeWithProject returning');
+        Logger.log('[ProjectManager] resetProject completed');
+
+        // Capture baseline state to enable dirty tracking
+        // This must be called AFTER resetProject to prevent false positives
+        if (this._yjsBridge?.documentManager) {
+            this._yjsBridge.documentManager.captureBaselineState();
+            Logger.log('[ProjectManager] Baseline state captured for dirty tracking');
+        }
+
+        Logger.log('[ProjectManager] reinitializeWithProject returning');
     }
 
     /**

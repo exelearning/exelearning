@@ -120,6 +120,7 @@ describe('YjsDocumentManager', () => {
   let originalLocation;
   let originalAddEventListener;
   let originalRemoveEventListener;
+  let originalLocalStorage;
 
   beforeEach(() => {
     originalWindowY = global.window.Y;
@@ -130,6 +131,7 @@ describe('YjsDocumentManager', () => {
     originalLocation = global.window.location;
     originalAddEventListener = global.window.addEventListener;
     originalRemoveEventListener = global.window.removeEventListener;
+    originalLocalStorage = global.localStorage;
 
     // Setup global mocks
     global.window.Y = global.window.Y || global.Y;
@@ -146,6 +148,14 @@ describe('YjsDocumentManager', () => {
     };
     global.window.addEventListener = mock(() => undefined);
     global.window.removeEventListener = mock(() => undefined);
+
+    // Mock localStorage for dirty state persistence
+    const localStorageData = {};
+    global.localStorage = {
+      getItem: mock((key) => localStorageData[key] || null),
+      setItem: mock((key, value) => { localStorageData[key] = value; }),
+      removeItem: mock((key) => { delete localStorageData[key]; }),
+    };
 
     global._ = mock((key) => key);
     Object.defineProperty(global, 'navigator', {
@@ -191,6 +201,7 @@ describe('YjsDocumentManager', () => {
     global.window.location = originalLocation;
     global.window.addEventListener = originalAddEventListener;
     global.window.removeEventListener = originalRemoveEventListener;
+    global.localStorage = originalLocalStorage;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
@@ -218,6 +229,8 @@ describe('YjsDocumentManager', () => {
       expect(manager.isDirty).toBe(false);
       expect(manager.lastSavedAt).toBeNull();
       expect(manager.saveInProgress).toBe(false);
+      expect(manager._initialized).toBe(false);
+      expect(manager._suppressDirtyTracking).toBe(false);
     });
 
     it('initializes event listeners', () => {
@@ -380,12 +393,36 @@ describe('YjsDocumentManager', () => {
   describe('dirty state management', () => {
     beforeEach(async () => {
       await manager.initialize();
+      // Enable dirty tracking by capturing baseline state
+      manager.captureBaselineState();
     });
 
-    it('markDirty sets isDirty to true', () => {
+    it('markDirty sets isDirty to true when _initialized', () => {
       expect(manager.isDirty).toBe(false);
       manager.markDirty();
       expect(manager.isDirty).toBe(true);
+    });
+
+    it('markDirty does not set isDirty when not _initialized', async () => {
+      // Create fresh manager without baseline capture
+      const uninitManager = new YjsDocumentManager('test-uninit', {
+        offline: true,
+      });
+      await uninitManager.initialize();
+      // Note: _initialized is still false because captureBaselineState wasn't called
+
+      expect(uninitManager._initialized).toBe(false);
+      uninitManager.markDirty();
+      expect(uninitManager.isDirty).toBe(false);
+
+      await uninitManager.destroy();
+    });
+
+    it('markDirty does not set isDirty when _suppressDirtyTracking is true', () => {
+      manager._suppressDirtyTracking = true;
+      manager.markDirty();
+      expect(manager.isDirty).toBe(false);
+      manager._suppressDirtyTracking = false;
     });
 
     it('markDirty emits saveStatus event', () => {
@@ -418,18 +455,189 @@ describe('YjsDocumentManager', () => {
       expect(manager.lastSavedAt).toBeInstanceOf(Date);
     });
 
+    it('markClean clears persisted dirty state', () => {
+      manager.markDirty();
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBe('true');
+
+      manager.markClean();
+
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBeNull();
+    });
+
     it('hasUnsavedChanges returns isDirty', () => {
       expect(manager.hasUnsavedChanges()).toBe(false);
       manager.markDirty();
       expect(manager.hasUnsavedChanges()).toBe(true);
     });
 
-    it('getSaveStatus returns status object', () => {
+    it('getSaveStatus returns status object with isInitialized', () => {
       const status = manager.getSaveStatus();
 
       expect(status).toHaveProperty('isDirty');
       expect(status).toHaveProperty('lastSavedAt');
       expect(status).toHaveProperty('saveInProgress');
+      expect(status).toHaveProperty('isInitialized');
+      expect(status.isInitialized).toBe(true);
+    });
+
+    it('captureBaselineState sets _initialized to true', async () => {
+      const newManager = new YjsDocumentManager('test-baseline', {
+        offline: true,
+      });
+      await newManager.initialize();
+
+      expect(newManager._initialized).toBe(false);
+      newManager.captureBaselineState();
+      expect(newManager._initialized).toBe(true);
+
+      await newManager.destroy();
+    });
+
+    it('captureBaselineState restores persisted dirty state', async () => {
+      const newManager = new YjsDocumentManager('test-persisted-dirty', {
+        offline: true,
+      });
+      await newManager.initialize();
+
+      global.localStorage.setItem(newManager._dirtyStateKey, 'true');
+      newManager.captureBaselineState();
+
+      expect(newManager.isDirty).toBe(true);
+
+      await newManager.destroy();
+    });
+
+    it('withSuppressedDirtyTracking suppresses dirty tracking during execution', async () => {
+      expect(manager.isDirty).toBe(false);
+
+      await manager.withSuppressedDirtyTracking(async () => {
+        manager.markDirty();
+      });
+
+      // markDirty was suppressed, so still not dirty
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('withSuppressedDirtyTracking restores previous state after execution', async () => {
+      manager._suppressDirtyTracking = false;
+
+      await manager.withSuppressedDirtyTracking(async () => {
+        expect(manager._suppressDirtyTracking).toBe(true);
+      });
+
+      expect(manager._suppressDirtyTracking).toBe(false);
+    });
+  });
+
+  describe('_isStaticMode', () => {
+    it('returns false when electronAPI is present', async () => {
+      await manager.initialize();
+      window.electronAPI = { someMethod: () => {} };
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.electronAPI;
+    });
+
+    it('returns true when storage.remote is false', async () => {
+      await manager.initialize();
+      window.eXeLearning = { app: { capabilities: { storage: { remote: false } } } };
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.eXeLearning;
+    });
+
+    it('returns true when __EXE_STATIC_MODE__ is true', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns false by default', async () => {
+      await manager.initialize();
+      delete window.electronAPI;
+      delete window.eXeLearning;
+      delete window.__EXE_STATIC_MODE__;
+
+      expect(manager._isStaticMode()).toBe(false);
+    });
+
+    it('handles errors gracefully and returns false', async () => {
+      await manager.initialize();
+      // Set up a getter that throws
+      Object.defineProperty(window, 'eXeLearning', {
+        get: () => { throw new Error('Access denied'); },
+        configurable: true,
+      });
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.eXeLearning;
+    });
+  });
+
+  describe('_persistDirtyState', () => {
+    it('does not persist in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('persists dirty state to localStorage', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey, 'true');
+    });
+
+    it('removes from localStorage when not dirty', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const removeItemSpy = spyOn(localStorage, 'removeItem');
+
+      manager._persistDirtyState(false);
+
+      expect(removeItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey);
+    });
+  });
+
+  describe('_getPersistedDirtyState', () => {
+    it('returns false in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns true when localStorage has dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue('true');
+
+      expect(manager._getPersistedDirtyState()).toBe(true);
+    });
+
+    it('returns false when localStorage has no dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue(null);
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
     });
   });
 
@@ -668,6 +876,16 @@ describe('YjsDocumentManager', () => {
       expect(manager.initialized).toBe(false);
       expect(manager.isDirty).toBe(false);
       expect(manager.ydoc).toBeNull();
+    });
+
+    it('resets dirty tracking flags', async () => {
+      manager._initialized = true;
+      manager._suppressDirtyTracking = true;
+
+      await manager.destroy();
+
+      expect(manager._initialized).toBe(false);
+      expect(manager._suppressDirtyTracking).toBe(false);
     });
 
     it('clears listeners', async () => {

@@ -75,6 +75,14 @@ class YjsDocumentManager {
     this.lastSavedAt = null;
     this.saveInProgress = false;
 
+    // Improved dirty tracking: _initialized flag prevents marking dirty during initial load
+    // This is set to true after captureBaselineState() is called
+    this._initialized = false;
+    // Flag to suppress dirty tracking during specific operations (e.g., import)
+    this._suppressDirtyTracking = false;
+    // LocalStorage key for persisting dirty state
+    this._dirtyStateKey = `exelearning_dirty_state_${projectId}`;
+
     // Bind beforeunload handler
     this._beforeUnloadHandler = this._handleBeforeUnload.bind(this);
     // Bind unload handler (always fires, even if beforeunload is cancelled)
@@ -320,11 +328,11 @@ class YjsDocumentManager {
 
     // Setup dirty tracking - mark dirty on any document change (local or remote)
     this.ydoc.on('update', (update, origin) => {
-      // Don't mark dirty for system updates (initialization)
-      // Mark dirty for both local changes AND remote changes from collaborators
-      if (origin !== 'system') {
-        this.markDirty();
-      }
+      // Skip system origins (initial load, blank structure creation, imports)
+      // 'initial' - initial sync from server
+      // 'system' - blank project structure, programmatic changes
+      if (origin === 'initial' || origin === 'system') return;
+      this.markDirty();
     });
 
     // Setup beforeunload handler for auto-save on close
@@ -1276,23 +1284,135 @@ class YjsDocumentManager {
   // ===== Persistence (Stateless Relay) =====
 
   /**
-   * Mark document as dirty (has unsaved changes)
+   * Mark document as dirty (has unsaved changes).
+   * Only marks dirty if:
+   * - _initialized is true (initial load complete)
+   * - _suppressDirtyTracking is false
+   * This prevents false positives during initial load and import operations.
    */
   markDirty() {
+    // Don't mark dirty during initial load or when suppressed
+    if (!this._initialized || this._suppressDirtyTracking) {
+      return;
+    }
+
     if (!this.isDirty) {
       this.isDirty = true;
+      this._persistDirtyState(true);
       this.emit('saveStatus', { status: 'dirty', isDirty: true });
       Logger.log('[YjsDocumentManager] Document marked dirty');
     }
   }
 
   /**
-   * Mark document as clean (no unsaved changes)
+   * Mark document as clean (no unsaved changes).
+   * Also persists the clean state to localStorage.
    */
   markClean() {
     this.isDirty = false;
     this.lastSavedAt = new Date();
+    this._persistDirtyState(false);
     this.emit('saveStatus', { status: 'saved', isDirty: false, savedAt: this.lastSavedAt });
+  }
+
+  /**
+   * Capture the baseline state after initial load.
+   * Call this after all initial syncing is complete to enable dirty tracking.
+   * The current document state becomes the "clean" baseline.
+   */
+  captureBaselineState() {
+    // Check if there was persisted dirty state from a previous session
+    const hadUnsavedChanges = this._getPersistedDirtyState();
+
+    // Now enable dirty tracking
+    this._initialized = true;
+
+    if (hadUnsavedChanges) {
+      // Restore dirty state from previous session
+      this.isDirty = true;
+      Logger.log('[YjsDocumentManager] Restored dirty state from previous session');
+      this.emit('saveStatus', { status: 'dirty', isDirty: true });
+    } else {
+      // Document is clean - this is the baseline
+      this.isDirty = false;
+      Logger.log('[YjsDocumentManager] Baseline state captured, dirty tracking enabled');
+      // Emit saved status to ensure UI shows green dot (clean state)
+      this.emit('saveStatus', { status: 'saved', isDirty: false });
+    }
+  }
+
+  /**
+   * Execute a function with dirty tracking suppressed.
+   * Useful for import operations where we don't want to mark dirty until complete.
+   *
+   * @param {Function} fn - Function to execute
+   * @returns {Promise<any>} Result of the function
+   */
+  async withSuppressedDirtyTracking(fn) {
+    const wasSupressed = this._suppressDirtyTracking;
+    this._suppressDirtyTracking = true;
+    try {
+      return await fn();
+    } finally {
+      this._suppressDirtyTracking = wasSupressed;
+    }
+  }
+
+  /**
+   * Persist dirty state to localStorage.
+   * This allows detecting unsaved changes across page reloads.
+   *
+   * @param {boolean} isDirty - Whether the document is dirty
+   * @private
+   */
+  _persistDirtyState(isDirty) {
+    if (this._isStaticMode()) {
+      return;
+    }
+    try {
+      if (isDirty) {
+        localStorage.setItem(this._dirtyStateKey, 'true');
+      } else {
+        localStorage.removeItem(this._dirtyStateKey);
+      }
+    } catch (e) {
+      // localStorage not available or full
+    }
+  }
+
+  /**
+   * Get persisted dirty state from localStorage.
+   *
+   * @returns {boolean} The persisted dirty state
+   * @private
+   */
+  _getPersistedDirtyState() {
+    if (this._isStaticMode()) {
+      return false;
+    }
+    try {
+      return localStorage.getItem(this._dirtyStateKey) === 'true';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * Detect static mode (no remote storage, no Electron)
+   * @returns {boolean}
+   * @private
+   */
+  _isStaticMode() {
+    try {
+      if (window.electronAPI) return false;
+      const capabilities = window.eXeLearning?.app?.capabilities;
+      if (capabilities) {
+        return capabilities.storage?.remote === false;
+      }
+      return window.__EXE_STATIC_MODE__ === true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /**
@@ -1305,13 +1425,14 @@ class YjsDocumentManager {
 
   /**
    * Get save status info
-   * @returns {{ isDirty: boolean, lastSavedAt: Date|null, saveInProgress: boolean }}
+   * @returns {{ isDirty: boolean, lastSavedAt: Date|null, saveInProgress: boolean, isInitialized: boolean }}
    */
   getSaveStatus() {
     return {
       isDirty: this.isDirty,
       lastSavedAt: this.lastSavedAt,
       saveInProgress: this.saveInProgress,
+      isInitialized: this._initialized,
     };
   }
 
@@ -1525,8 +1646,10 @@ class YjsDocumentManager {
     this.awareness = null;
     this.listeners = { sync: [], update: [], awareness: [], connectionChange: [], saveStatus: [], usersChange: [] };
     this.initialized = false;
+    this._initialized = false;
     this.isDirty = false;
     this.saveInProgress = false;
+    this._suppressDirtyTracking = false;
 
     Logger.log(`[YjsDocumentManager] Destroyed for project ${this.projectId}`);
   }
