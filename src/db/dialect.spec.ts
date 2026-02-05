@@ -259,6 +259,116 @@ describe('Kysely Dialect Factory', () => {
                 const dialect = createDialect(config);
                 expect(dialect).toBeDefined();
             });
+
+            it('should throw helpful error when using /mnt/ path on non-Linux (using DI)', () => {
+                // Mock platform as darwin to test the error path
+                configure({
+                    platform: 'darwin',
+                    existsSync: () => false,
+                    mkdirSync: () => undefined,
+                });
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: '/mnt/data/exelearning.db',
+                };
+
+                expect(() => createDialect(config)).toThrow(/appears to be a Docker\/Linux path/);
+                expect(() => createDialect(config)).toThrow(/darwin/);
+            });
+
+            it('should include helpful instructions in /mnt/ path error message', () => {
+                // Mock platform as win32 to test different platform in error
+                configure({
+                    platform: 'win32',
+                    existsSync: () => false,
+                    mkdirSync: () => undefined,
+                });
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: '/mnt/data/test.db',
+                };
+
+                try {
+                    createDialect(config);
+                    // Should have thrown
+                    expect(true).toBe(false);
+                } catch (err) {
+                    const message = (err as Error).message;
+                    expect(message).toContain('DB_PATH=data/exelearning.db');
+                    expect(message).toContain('make create-user EMAIL=x PASSWORD=y');
+                    expect(message).toContain('win32');
+                }
+            });
+
+            it('should allow /mnt/ paths on Linux', () => {
+                // Mock platform as linux - /mnt/ paths should be allowed
+                configure({
+                    platform: 'linux',
+                    existsSync: () => true, // Pretend directory exists
+                    mkdirSync: () => undefined,
+                });
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: '/mnt/data/exelearning.db',
+                };
+
+                // Should not throw on Linux
+                const dialect = createDialect(config);
+                expect(dialect).toBeDefined();
+            });
+
+            it('should throw helpful error when directory creation fails', () => {
+                // Mock mkdirSync to throw an error
+                configure({
+                    platform: 'darwin',
+                    existsSync: () => false,
+                    mkdirSync: () => {
+                        throw new Error('EACCES: permission denied');
+                    },
+                });
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: path.join(testDbDir, 'subdir', 'test.db'),
+                };
+
+                try {
+                    createDialect(config);
+                    expect(true).toBe(false); // Should have thrown
+                } catch (err) {
+                    const message = (err as Error).message;
+                    expect(message).toContain('Failed to create database directory');
+                    expect(message).toContain('EACCES: permission denied');
+                    expect(message).toContain('DB_PATH=data/exelearning.db');
+                }
+            });
+
+            it('should handle non-Error throws in mkdirSync', () => {
+                // Mock mkdirSync to throw a string (not an Error object)
+                configure({
+                    platform: 'darwin',
+                    existsSync: () => false,
+                    mkdirSync: () => {
+                        throw 'String error message';
+                    },
+                });
+
+                const config: SqliteConfig = {
+                    dialect: 'sqlite',
+                    sqlitePath: path.join(testDbDir, 'another', 'test.db'),
+                };
+
+                try {
+                    createDialect(config);
+                    expect(true).toBe(false);
+                } catch (err) {
+                    const message = (err as Error).message;
+                    expect(message).toContain('String error message');
+                }
+            });
         });
 
         describe('PostgreSQL dialect', () => {

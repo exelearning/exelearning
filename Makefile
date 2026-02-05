@@ -123,7 +123,12 @@ logs: check-docker
 
 # Local environment variables (used by CLI commands)
 # For up-local, cross-env handles these via package.json scripts
+ifeq ($(SYSTEM_OS),windows)
+# Windows: use cross-env for environment variable handling
+LOCAL_ENV := npx cross-env FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+else
 LOCAL_ENV := FILES_DIR=data/ DB_PATH=data/exelearning.db PORT=8080 APP_ONLINE_MODE=1
+endif
 
 # Install dependencies
 .PHONY: deps
@@ -199,19 +204,16 @@ cli: check-bun
 	@$(CLI) $(ARGS)
 
 # Create a new user
-# Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
+# Usage: make create-user EMAIL=x PASSWORD=y [ROLES=ROLE_USER,ROLE_ADMIN] [QUOTA=4096]
 .PHONY: create-user
 create-user: check-bun
 ifndef EMAIL
-	$(error EMAIL is required. Usage: make create-user EMAIL=x PASSWORD=y USER_ID=z)
+	$(error EMAIL is required. Usage: make create-user EMAIL=x PASSWORD=y)
 endif
 ifndef PASSWORD
 	$(error PASSWORD is required)
 endif
-ifndef USER_ID
-	$(error USER_ID is required)
-endif
-	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(USER_ID) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
+	@$(CLI) create-user $(EMAIL) $(PASSWORD) $(if $(ROLES),--roles=$(ROLES),) $(if $(QUOTA),--quota=$(QUOTA),) $(if $(NO_FAIL),--no-fail,)
 
 # Grant ROLE_ADMIN to a user
 # Usage: make promote-admin EMAIL=x
@@ -886,7 +888,7 @@ help:
 	@echo ""
 	@echo "CLI Commands:"
 	@echo "  make cli ARGS='...'                           Generic CLI access"
-	@echo "  make create-user EMAIL=x PASSWORD=y USER_ID=z Create a new user"
+	@echo "  make create-user EMAIL=x PASSWORD=y           Create a new user"
 	@echo "  make demote-admin EMAIL=x                     Remove ROLE_ADMIN"
 	@echo "  make generate-jwt EMAIL=x [TTL=3600]          Generate JWT token"
 	@echo "  make grant-role EMAIL=x ROLE=y                Add role to user"
