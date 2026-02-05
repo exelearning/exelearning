@@ -63,7 +63,37 @@ export class PageExporter extends Html5Exporter {
                 this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
+            // Pre-process pages: Mermaid pre-rendering
+            // Mermaid diagrams must be converted to SVG before export
+            // We process per-component content to avoid regex issues on the massive single-page HTML
+            if (options?.preRenderMermaid) {
+                for (const page of pages) {
+                    if (page.blocks) {
+                        for (const block of page.blocks) {
+                            if (block.components) {
+                                for (const component of block.components) {
+                                    try {
+                                        // Check if content has potential Mermaid diagrams
+                                        if (component.content && (component.content.includes('class="mermaid"') || component.content.includes("class='mermaid'"))) {
+                                            const result = await options.preRenderMermaid(component.content);
+                                            // Only update if changes were made
+                                            if (result.mermaidRendered) {
+                                                component.content = result.html;
+                                                console.log(`[PageExporter] Pre-rendered ${result.count} Mermaid diagram(s) in component ${component.id}`);
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.error(`[PageExporter] Mermaid pre-render error for component ${component.id}:`, e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // 1. Generate single-page HTML with all content
+
             const html = this.generateSinglePageHtml(pages, meta, usedIdevices, faviconInfo);
             this.zip.addFile('index.html', html);
 
@@ -86,11 +116,57 @@ export class PageExporter extends Html5Exporter {
                 // No base libraries available
             }
 
+            // 5.b Detect and fetch additional required libraries based on content
+            // This is crucial for things like MathJax, Tooltips, etc.
+            const allHtmlContent = this.collectAllHtmlContent(pages);
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    // For single page, we might want to be careful with large libraries, but if content needs it, we must include it.
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: false, // In single page we don't support pre-rendering yet, or we assume it's not done in the same way?
+                    // Actually, if we add pre-rendering support to single page later, we should check for it here.
+                    // For now, let's include MathJax if detected or requested.
+                },
+            );
+
+            try {
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
+                for (const [libPath, content] of libFiles) {
+                    // Only add if not already added by base libraries
+                    const zipPath = `libs/${libPath}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        this.zip.addFile(zipPath, content);
+                    }
+                }
+            } catch (e) {
+                console.warn('[PageExporter] Failed to fetch additional libraries', e);
+                // Additional libraries not available - continue anyway
+            }
+
             // 5.5. Generate localized i18n file
             const i18nContent = generateI18nScript(meta.language || 'en');
             this.zip.addFile('libs/common_i18n.js', i18nContent);
 
             // 6. Fetch and add iDevice assets (test files filtered at provider level)
+            // Note: in single page export, all assets are in the same zip and handled by AssetResolver
+            // But we still need to make sure iDevice specific resources (like icons) are handled.
+            // PageRenderer.renderSinglePage calls ideviceRenderer.renderBlock which handles structure.
+
+            // 7. Generate single page HTML
+            const singlePageHtml = await this.generateSinglePageHtml(
+                pages,
+                meta,
+                usedIdevices,
+                faviconInfo,
+                patterns.map(p => p.name),
+                meta.addMathJax === true,
+            );
+            this.zip.addFile(options?.filename || 'index.html', singlePageHtml);
+
+            // 8. Generate CSS files
+            const cssFiles = await this.resources.fetchContentCss();
             for (const idevice of usedIdevices) {
                 try {
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
@@ -129,6 +205,8 @@ export class PageExporter extends Html5Exporter {
         meta: ExportMetadata,
         usedIdevices: string[],
         faviconInfo?: FaviconInfo | null,
+        detectedLibraries: string[] = [],
+        addMathJax = false,
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -142,6 +220,8 @@ export class PageExporter extends Html5Exporter {
             faviconType: faviconInfo?.type,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            detectedLibraries,
+            addMathJax,
         });
     }
 

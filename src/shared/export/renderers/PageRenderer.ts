@@ -882,8 +882,9 @@ ${userFooterHtml}</div></footer>`;
             licenseUrl?: string;
             faviconPath?: string;
             faviconType?: string;
-            addExeLink?: boolean;
-            userFooterContent?: string;
+            detectedLibraries?: string[];
+            addMathJax?: boolean;
+            addAccessibilityToolbar?: boolean;
             version?: string;
         } = {},
     ): string {
@@ -900,6 +901,9 @@ ${userFooterHtml}</div></footer>`;
             addExeLink = true,
             userFooterContent = '',
             version,
+            detectedLibraries = [],
+            addMathJax = false,
+            addAccessibilityToolbar = false,
         } = options;
 
         let contentHtml = '';
@@ -938,7 +942,7 @@ ${this.renderPageContent(page, '', projectTitle)}
         }
 
         return `<!DOCTYPE html>
-<html lang="${language}">
+<html lang="${language}" id="exe-index">
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
@@ -956,6 +960,9 @@ ${this.renderPageContent(page, '', projectTitle)}
 <link rel="stylesheet" href="theme/style.css">
 ${this.renderFavicon('', faviconPath, faviconType)}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
+${this.renderDetectedLibraries(detectedLibraries, '')}
+${addAccessibilityToolbar ? `<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">` : ''}
+${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
 <body class="exe-export exe-single-page">
 <script>document.body.className+=" js"</script>
@@ -1055,11 +1062,6 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
                     found = html.includes(`rel="${lib.pattern}"`) || html.includes(`rel='${lib.pattern}'`);
                     break;
 
-                case 'data':
-                    // Look for data-pattern or data-pattern="..."
-                    found = html.includes(`data-${lib.pattern}`) || html.includes(`data-${lib.pattern}=`);
-                    break;
-
                 case 'regex':
                     // Use provided regex pattern (e.g., for exe-package:elp protocol)
                     found = (lib.pattern as RegExp).test(html);
@@ -1099,5 +1101,30 @@ ${addExeLink ? this.renderMadeWithEXe() : ''}
     escapeAttr(str: string): string {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    /**
+     * Render detected libraries scripts and CSS
+     * @param detectedLibraries - List of detected library names
+     * @param basePath - Base path for URLs
+     * @returns HTML for library includes
+     */
+    private renderDetectedLibraries(detectedLibraries: string[], basePath: string): string {
+        let html = '';
+        for (const libName of detectedLibraries) {
+            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
+            if (!libPattern) continue;
+
+            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
+            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
+
+            for (const jsFile of jsFiles) {
+                html += `\n<script src="${basePath}libs/${jsFile}"> </script>`;
+            }
+            for (const cssFile of cssFiles) {
+                html += `\n<link rel="stylesheet" href="${basePath}libs/${cssFile}">`;
+            }
+        }
+        return html;
     }
 }
