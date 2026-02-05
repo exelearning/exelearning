@@ -529,6 +529,118 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('_isStaticMode', () => {
+    it('returns false when electronAPI is present', async () => {
+      await manager.initialize();
+      window.electronAPI = { someMethod: () => {} };
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.electronAPI;
+    });
+
+    it('returns true when storage.remote is false', async () => {
+      await manager.initialize();
+      window.eXeLearning = { app: { capabilities: { storage: { remote: false } } } };
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.eXeLearning;
+    });
+
+    it('returns true when __EXE_STATIC_MODE__ is true', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._isStaticMode()).toBe(true);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns false by default', async () => {
+      await manager.initialize();
+      delete window.electronAPI;
+      delete window.eXeLearning;
+      delete window.__EXE_STATIC_MODE__;
+
+      expect(manager._isStaticMode()).toBe(false);
+    });
+
+    it('handles errors gracefully and returns false', async () => {
+      await manager.initialize();
+      // Set up a getter that throws
+      Object.defineProperty(window, 'eXeLearning', {
+        get: () => { throw new Error('Access denied'); },
+        configurable: true,
+      });
+
+      expect(manager._isStaticMode()).toBe(false);
+
+      delete window.eXeLearning;
+    });
+  });
+
+  describe('_persistDirtyState', () => {
+    it('does not persist in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('persists dirty state to localStorage', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const setItemSpy = spyOn(localStorage, 'setItem');
+
+      manager._persistDirtyState(true);
+
+      expect(setItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey, 'true');
+    });
+
+    it('removes from localStorage when not dirty', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      const removeItemSpy = spyOn(localStorage, 'removeItem');
+
+      manager._persistDirtyState(false);
+
+      expect(removeItemSpy).toHaveBeenCalledWith(manager._dirtyStateKey);
+    });
+  });
+
+  describe('_getPersistedDirtyState', () => {
+    it('returns false in static mode', async () => {
+      await manager.initialize();
+      window.__EXE_STATIC_MODE__ = true;
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
+
+      delete window.__EXE_STATIC_MODE__;
+    });
+
+    it('returns true when localStorage has dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue('true');
+
+      expect(manager._getPersistedDirtyState()).toBe(true);
+    });
+
+    it('returns false when localStorage has no dirty state', async () => {
+      await manager.initialize();
+      delete window.__EXE_STATIC_MODE__;
+      spyOn(localStorage, 'getItem').mockReturnValue(null);
+
+      expect(manager._getPersistedDirtyState()).toBe(false);
+    });
+  });
+
   describe('undo/redo', () => {
     beforeEach(async () => {
       await manager.initialize();

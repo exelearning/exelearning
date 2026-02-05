@@ -281,5 +281,80 @@ describe('UnsavedChangesHelper', () => {
       UnsavedChangesHelper.clearPersistedDirtyState(null);
       expect(removeItemSpy).not.toHaveBeenCalled();
     });
+
+    it('should handle localStorage errors gracefully', () => {
+      removeItemSpy.mockImplementationOnce(() => { throw new Error('Storage full'); });
+      // Should not throw
+      expect(() => UnsavedChangesHelper.clearPersistedDirtyState('project-123')).not.toThrow();
+    });
+  });
+
+  describe('persistDirtyState error handling', () => {
+    it('should handle localStorage setItem errors gracefully', () => {
+      setItemSpy.mockImplementationOnce(() => { throw new Error('Storage full'); });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Should not throw
+      expect(() => UnsavedChangesHelper.persistDirtyState('project-123', true)).not.toThrow();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('getPersistedDirtyState error handling', () => {
+    it('should return false when localStorage throws', () => {
+      getItemSpy.mockImplementationOnce(() => { throw new Error('Access denied'); });
+      expect(UnsavedChangesHelper.getPersistedDirtyState('project-123')).toBe(false);
+    });
+  });
+
+  describe('setupBeforeUnloadHandler', () => {
+    it('should add beforeunload event listener', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+
+      expect(addEventListenerSpy).toHaveBeenCalledWith('beforeunload', expect.any(Function));
+      addEventListenerSpy.mockRestore();
+    });
+
+    it('should trigger confirmation when there are unsaved changes', () => {
+      mockDocumentManager.isDirty = true;
+
+      // Set up the handler
+      let capturedHandler;
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+        if (event === 'beforeunload') capturedHandler = handler;
+      });
+
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+
+      // Create mock event
+      const mockEvent = { preventDefault: vi.fn(), returnValue: undefined };
+      capturedHandler(mockEvent);
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe('');
+
+      addEventListenerSpy.mockRestore();
+    });
+
+    it('should not trigger confirmation when no unsaved changes', () => {
+      mockDocumentManager.isDirty = false;
+
+      let capturedHandler;
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+        if (event === 'beforeunload') capturedHandler = handler;
+      });
+
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+
+      const mockEvent = { preventDefault: vi.fn(), returnValue: undefined };
+      capturedHandler(mockEvent);
+
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+
+      addEventListenerSpy.mockRestore();
+    });
   });
 });
