@@ -5084,4 +5084,116 @@ describe('YjsProjectBridge', () => {
       }).not.toThrow();
     });
   });
+
+  describe('hasUnsavedChangesForUI', () => {
+    it('returns true when documentManager.isDirty is true', () => {
+      bridge.documentManager = { isDirty: true };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when documentManager.isDirty is false', () => {
+      bridge.documentManager = { isDirty: false };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+
+    it('returns true when currentSaveStatus is unsaved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'unsaved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns true when currentSaveStatus is error and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'error';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when currentSaveStatus is saved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'saved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+  });
+
+  describe('_markDocumentClean', () => {
+    beforeEach(() => {
+      // Ensure saveStatusCallbacks is initialized
+      bridge.saveStatusCallbacks = [];
+      // Create a mock save button with classList
+      bridge.saveButton = {
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+      };
+    });
+
+    it('calls documentManager.markClean when available', () => {
+      const markCleanMock = mock(() => {});
+      bridge.documentManager = { markClean: markCleanMock };
+
+      bridge._markDocumentClean();
+
+      expect(markCleanMock).toHaveBeenCalled();
+    });
+
+    it('updates save status to saved', () => {
+      bridge.documentManager = { markClean: mock(() => {}) };
+
+      bridge._markDocumentClean();
+
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge._markDocumentClean()).not.toThrow();
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+  });
+
+  describe('importFromElpx dirty tracking', () => {
+    beforeEach(() => {
+      bridge.documentManager = {
+        withSuppressedDirtyTracking: mock(async (fn) => fn()),
+        markClean: mock(() => {}),
+        markDirty: mock(() => {}),
+        captureBaselineState: mock(() => {}),
+        isDirty: false,
+        _initialized: true,
+      };
+      bridge.assetManager = {};
+
+      window.ElpxImporter = class {
+        constructor() {}
+        importFromFile = mock(() => Promise.resolve({ pages: 1, idevices: 2, assets: 0 }));
+      };
+    });
+
+    it('uses withSuppressedDirtyTracking when clearExisting is true', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.withSuppressedDirtyTracking).toHaveBeenCalled();
+    });
+
+    it('marks document clean after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.markClean).toHaveBeenCalled();
+    });
+
+    it('marks document dirty when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+  });
 });

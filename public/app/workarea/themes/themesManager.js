@@ -40,8 +40,10 @@ export default class ThemesManager {
                     getLogger().log('[ThemesManager] Loaded initial theme from Yjs:', initialTheme);
                 } else {
                     // If project has no theme, use the default
+                    // Don't save to Yjs during initialization - this is not a user change
+                    // The theme will be saved when the user makes their first actual change
                     const defaultTheme = window.eXeLearning?.config?.defaultTheme || 'base';
-                    this.selectTheme(defaultTheme, true, false, false);
+                    this.selectTheme(defaultTheme, false, false, false);
                     getLogger().log('[ThemesManager] No theme in project, using default:', defaultTheme);
                 }
 

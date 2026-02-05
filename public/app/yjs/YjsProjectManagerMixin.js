@@ -76,6 +76,14 @@ const YjsProjectManagerMixin = {
         Logger.log('[ProjectManager] Theme binding initialized from Yjs');
       }
 
+      // Capture baseline state to enable dirty tracking
+      // This must be called AFTER all initial syncing is complete
+      // to prevent false positives during document initialization
+      if (this._yjsBridge?.documentManager) {
+        this._yjsBridge.documentManager.captureBaselineState();
+        Logger.log('[ProjectManager] Baseline state captured for dirty tracking');
+      }
+
       return this._yjsBridge;
     };
 
