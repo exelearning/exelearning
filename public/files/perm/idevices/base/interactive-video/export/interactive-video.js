@@ -2691,6 +2691,19 @@ var $interactivevideo = {
 };
 
 $(function () {
+    // Helper to sanitize JSON from legacy formats (handles control characters)
+    var sanitizeJSON = function(jsonStr) {
+        if (typeof $exeDevices !== 'undefined' &&
+            $exeDevices.iDevice &&
+            $exeDevices.iDevice.gamification &&
+            $exeDevices.iDevice.gamification.helpers &&
+            $exeDevices.iDevice.gamification.helpers.sanitizeJSONString) {
+            return $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonStr);
+        }
+        return jsonStr;
+    };
+
+    // Try modern format first: <script id="exe-interactive-video-contents" type="application/json">
     var contentElement = document.getElementById(
         'exe-interactive-video-contents'
     );
@@ -2699,12 +2712,42 @@ $(function () {
         try {
             var jsonContent =
                 contentElement.textContent || contentElement.innerHTML;
-            jsonContent = jsonContent.trim();
+            jsonContent = sanitizeJSON(jsonContent.trim());
 
             InteractiveVideo = JSON.parse(jsonContent);
         } catch (error) {
             console.error('Interactive Video: Error parsing JSON', error);
             InteractiveVideo = { slides: [], i18n: $interactivevideo.i18n };
+        }
+    } else {
+        // Legacy format (eXe 2.9): <script type="text/javascript">var InteractiveVideo = {...}</script>
+        // The InteractiveVideo variable might already be set by the legacy script execution
+        if (typeof InteractiveVideo === 'undefined' || !InteractiveVideo.slides) {
+            // Try to find and parse the legacy script manually
+            var container = document.querySelector('.exe-interactive-video');
+            if (container) {
+                var legacyScript = container.querySelector('script[type="text/javascript"]');
+                if (legacyScript) {
+                    var scriptContent = legacyScript.textContent || legacyScript.innerHTML || '';
+                    // Remove CDATA markers and extract JSON
+                    scriptContent = scriptContent
+                        .replace(/\/\/<!\[CDATA\[/g, '')
+                        .replace(/\/\/\]\]>/g, '')
+                        .trim();
+
+                    var match = scriptContent.match(/var\s+InteractiveVideo\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+                    if (match && match[1]) {
+                        try {
+                            // Sanitize JSON to handle control characters from legacy versions
+                            var sanitizedJson = sanitizeJSON(match[1]);
+                            InteractiveVideo = JSON.parse(sanitizedJson);
+                        } catch (e) {
+                            console.error('Interactive Video: Error parsing legacy format', e);
+                            InteractiveVideo = { slides: [], i18n: $interactivevideo.i18n };
+                        }
+                    }
+                }
+            }
         }
     }
 
