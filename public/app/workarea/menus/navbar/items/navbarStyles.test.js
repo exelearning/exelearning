@@ -22,6 +22,9 @@ global.eXeLearning = {
                 themeInfoFieldsConfig: {},
                 themeEditionFieldsConfig: {},
             },
+            endpoints: {
+                api_themes_download: { path: '/api/themes/{themeId}/download', methods: ['GET'] },
+            },
             postNewTheme: vi.fn(),
             putEditTheme: vi.fn(),
             deleteTheme: vi.fn(),
@@ -431,14 +434,26 @@ describe('NavbarStyles', () => {
         uploadToIndexedDBSpy.mockRestore();
     });
 
-    it('downloads theme zip when data is available (server theme)', async () => {
-        eXeLearning.app.api.getThemeZip.mockResolvedValue({
-            zipFileName: 'theme.zip',
-            zipBase64: 'dGVzdA==',
-        });
+    it('downloads theme zip from bundle (server theme)', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        const mockResponse = {
+            ok: true,
+            blob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-        await navbarStyles.downloadThemeZip({ dirName: 'base-1', downloadable: '1' });
+
+        navbarStyles.downloadThemeZip({ dirName: 'base-1', name: 'Base Theme', downloadable: '1' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(fetch).toHaveBeenCalledWith('/bundles/themes/base-1.zip');
         expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
         clickSpy.mockRestore();
     });
 
@@ -495,6 +510,30 @@ describe('NavbarStyles', () => {
         });
 
         expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('not found'), expect.any(Object));
+    });
+
+    it('shows error when bundle download fails', async () => {
+        const mockResponse = {
+            ok: false,
+            status: 404,
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
+
+        navbarStyles.downloadThemeZip({
+            dirName: 'nonexistent',
+            name: 'Nonexistent Theme',
+            downloadable: '1',
+        });
+
+        // Wait for async operations
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(alertSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to download'),
+            expect.objectContaining({ error: expect.stringContaining('not found') })
+        );
     });
 
     describe('makeMenuThemeDownload', () => {
