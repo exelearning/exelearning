@@ -74,16 +74,25 @@ export class PageExporter extends Html5Exporter {
                                 for (const component of block.components) {
                                     try {
                                         // Check if content has potential Mermaid diagrams
-                                        if (component.content && (component.content.includes('class="mermaid"') || component.content.includes("class='mermaid'"))) {
+                                        if (
+                                            component.content &&
+                                            (component.content.includes('class="mermaid"') ||
+                                                component.content.includes("class='mermaid'"))
+                                        ) {
                                             const result = await options.preRenderMermaid(component.content);
                                             // Only update if changes were made
                                             if (result.mermaidRendered) {
                                                 component.content = result.html;
-                                                console.log(`[PageExporter] Pre-rendered ${result.count} Mermaid diagram(s) in component ${component.id}`);
+                                                console.log(
+                                                    `[PageExporter] Pre-rendered ${result.count} Mermaid diagram(s) in component ${component.id}`,
+                                                );
                                             }
                                         }
                                     } catch (e) {
-                                        console.error(`[PageExporter] Mermaid pre-render error for component ${component.id}:`, e);
+                                        console.error(
+                                            `[PageExporter] Mermaid pre-render error for component ${component.id}:`,
+                                            e,
+                                        );
                                     }
                                 }
                             }
@@ -105,6 +114,24 @@ export class PageExporter extends Html5Exporter {
             }
             this.zip.addFile('content/css/base.css', baseCss);
             this.zip.addFile('content/css/single-page.css', this.getSinglePageCss());
+
+            // 3. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                const contentXml = this.generateContentXml(pages);
+                this.zip.addFile('content.xml', contentXml);
+            }
+
+            // 4. Add eXeLearning logo for "Made with eXeLearning" footer
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                    }
+                } catch {
+                    // Logo not available - footer will still render but without background image
+                }
+            }
 
             // 5. Fetch and add base libraries
             try {

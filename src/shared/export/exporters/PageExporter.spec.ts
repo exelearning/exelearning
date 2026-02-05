@@ -273,10 +273,48 @@ describe('PageExporter', () => {
             expect(indexHtml).toContain('chapter 2');
         });
 
-        it('should NOT include content.xml (only needed for ELP)', async () => {
+        it('should include content.xml by default (exportSource not disabled)', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<?xml');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
             await exporter.export();
 
             expect(zip.files.has('content.xml')).toBe(false);
+        });
+
+        it('should include exe_powered_logo.png when logo is available', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
         });
 
         it('should include base CSS', async () => {
