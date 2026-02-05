@@ -237,6 +237,33 @@ describe('Scorm12Exporter', () => {
             expect(zip.files.has('libs/SCORM_API_wrapper.js')).toBe(true);
             expect(zip.files.has('libs/SCOFunctions.js')).toBe(true);
         });
+
+        it('should include exe_powered_logo.png when logo is available', async () => {
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(true);
+        });
+
+        it('should NOT include exe_powered_logo.png when addExeLink is false', async () => {
+            document = new MockDocument({ addExeLink: false }, samplePages);
+            resources.fetchExeLogo = async () => Buffer.from('fake-logo-data');
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
+
+        it('should handle logo fetch failure gracefully', async () => {
+            resources.fetchExeLogo = async () => {
+                throw new Error('Logo not found');
+            };
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.has('content/img/exe_powered_logo.png')).toBe(false);
+        });
     });
 
     describe('SCORM Manifest', () => {

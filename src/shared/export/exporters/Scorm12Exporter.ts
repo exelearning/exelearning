@@ -206,6 +206,19 @@ export class Scorm12Exporter extends Html5Exporter {
                 commonFiles.push('theme/style.css', 'theme/style.js');
             }
 
+            // 3b. Add eXeLearning logo for "Made with eXeLearning" footer
+            if (meta.addExeLink !== false) {
+                try {
+                    const logoData = await this.resources.fetchExeLogo();
+                    if (logoData) {
+                        this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                        commonFiles.push('content/img/exe_powered_logo.png');
+                    }
+                } catch {
+                    // Logo not available - footer will still render but without background image
+                }
+            }
+
             // 4. Fetch and add base libraries
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
