@@ -384,6 +384,65 @@ describe('Scorm12Exporter', () => {
         });
     });
 
+    describe('Visibility Handling', () => {
+        it('should exclude hidden pages and their children', async () => {
+            const mixedPages: ExportPage[] = [
+                {
+                    id: 'p1',
+                    title: 'Visible Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                    properties: { visibility: true },
+                },
+                {
+                    id: 'p2',
+                    title: 'Hidden Page',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: { visibility: false },
+                },
+                {
+                    id: 'p3',
+                    title: 'Hidden Child',
+                    parentId: 'p2',
+                    order: 0,
+                    blocks: [],
+                    properties: { visibility: true }, // Should be hidden because parent is hidden
+                },
+                {
+                    id: 'p4',
+                    title: 'Visible Page 2',
+                    parentId: null,
+                    order: 2,
+                    blocks: [],
+                },
+            ];
+
+            const doc = new MockDocument({}, mixedPages);
+            const exp = new Scorm12Exporter(doc, resources, assets, zip);
+            await exp.export();
+
+            // P1 should be index.html
+            expect(zip.files.has('index.html')).toBe(true);
+            const indexHtml = zip.files.get('index.html') as string;
+            // P1 content or title checking if mocked properly (MockDocument doesn't render much, but export does)
+
+            // P4 should be present
+            // Filename generation depends on title. "Visible Page 2" -> visible-page-2.html
+            expect(zip.files.has('html/visible-page-2.html')).toBe(true);
+
+            // P2 (Hidden Page) should NOT be present.
+            // "Hidden Page" -> hidden-page.html
+            expect(zip.files.has('html/hidden-page.html')).toBe(false);
+
+            // P3 (Hidden Child) should NOT be present
+            // "Hidden Child" -> hidden-child.html
+            expect(zip.files.has('html/hidden-child.html')).toBe(false);
+        });
+    });
+
     describe('Error Handling', () => {
         it('should use theme-specific favicon when available', async () => {
             // Mock theme having a favicon

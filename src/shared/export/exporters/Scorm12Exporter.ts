@@ -50,6 +50,9 @@ export class Scorm12Exporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Filter out hidden pages (visibility: false)
+            pages = pages.filter(p => this.isPageVisible(p, pages));
+
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 

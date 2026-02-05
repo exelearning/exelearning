@@ -46,6 +46,9 @@ export class PageExporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Filter out hidden pages (visibility: false)
+            pages = pages.filter(p => this.isPageVisible(p, pages));
+
             // Get all iDevice types used in the project
             const usedIdevices = this.getUsedIdevices(pages);
 
