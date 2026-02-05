@@ -2993,6 +2993,42 @@ class YjsProjectBridge {
 
     Logger.log('[YjsProjectBridge] Disconnected');
   }
+
+  /**
+   * Clear all assets for importing a new project (static mode)
+   * This clears asset caches and Yjs assets map without disconnecting the bridge
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  async clearAssetsForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing assets for new project...');
+
+    // Clear AssetManager caches (memory + Cache API)
+    if (this.assetManager) {
+      // Revoke blob URLs and clear memory caches
+      for (const blobURL of this.assetManager.blobURLCache.values()) {
+        URL.revokeObjectURL(blobURL);
+      }
+      this.assetManager.blobURLCache.clear();
+      this.assetManager.reverseBlobCache.clear();
+      this.assetManager.blobCache.clear();
+
+      // Clear Cache API storage
+      await this.assetManager.clearCache();
+
+      Logger.log('[YjsProjectBridge] AssetManager caches cleared');
+    }
+
+    // Clear Yjs assets Y.Map (metadata storage)
+    const assetsMap = this.documentManager?.ydoc?.getMap('assets');
+    if (assetsMap && assetsMap.size > 0) {
+      this.documentManager.ydoc.transact(() => {
+        assetsMap.clear();
+      });
+      Logger.log('[YjsProjectBridge] Yjs assets map cleared');
+    }
+
+    Logger.log('[YjsProjectBridge] Assets cleared for new project');
+  }
 }
 
 // Export for use

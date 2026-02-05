@@ -939,19 +939,37 @@ export default class NavbarFile {
             return;
         }
 
-        // Server themes: use existing API
-        eXeLearning.app.api
-            .getThemeZip(eXeLearning.app.project.odeSession, theme.dirName)
-            .then((response) => {
-                if (response && response.zipFileName && response.zipBase64) {
-                    let link = document.createElement('a');
-                    link.setAttribute('type', 'hidden');
-                    link.href = 'data:text/plain;base64,' + response.zipBase64;
-                    link.download = response.zipFileName;
-                    link.click();
-                    link.remove();
-                }
-            });
+        // Download from bundled theme ZIPs (works in both online and static mode)
+        this.downloadThemeFromBundle(theme);
+    }
+
+    /**
+     * Download a theme from the bundled ZIP files
+     * Works in both online and static mode since bundles are pre-built
+     * @param {Object} theme - Theme object with dirName and name properties
+     */
+    async downloadThemeFromBundle(theme) {
+        try {
+            const basePath = eXeLearning.config?.basePath || '';
+            const bundleUrl = `${basePath}/bundles/themes/${theme.dirName}.zip`;
+
+            const response = await fetch(bundleUrl);
+            if (!response.ok) {
+                throw new Error(`Theme bundle not found: ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${theme.name || theme.dirName}.zip`;
+            link.click();
+            URL.revokeObjectURL(url);
+            Logger.log(`[NavbarStyles] Theme '${theme.name}' downloaded from bundle`);
+        } catch (error) {
+            console.error('[NavbarStyles] Bundle download failed:', error);
+            this.showElementAlert(_('Failed to download the style'), { error: error.message });
+        }
     }
 
     toggleSidenav() {

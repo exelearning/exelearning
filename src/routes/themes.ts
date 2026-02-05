@@ -471,4 +471,46 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
             themeName,
             files,
         };
+    })
+
+    // GET /api/themes/:themeId/download - Download theme as ZIP
+    .get('/api/themes/:themeId/download', async ({ params, set }) => {
+        const { themeId } = params;
+
+        // Check base themes first
+        let themePath = path.join(THEMES_BASE_PATH, themeId);
+        let found = deps.fs.existsSync(themePath);
+        let themeName = themeId;
+
+        if (!found) {
+            // Check site themes
+            const siteThemesPath = getSiteThemesPath();
+            themePath = path.join(siteThemesPath, themeId);
+            found = deps.fs.existsSync(themePath);
+        }
+
+        if (!found) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeId} not found` };
+        }
+
+        // Parse config.xml to get display name for the filename
+        const configPath = path.join(themePath, 'config.xml');
+        if (deps.fs.existsSync(configPath)) {
+            const xmlContent = deps.fs.readFileSync(configPath, 'utf-8');
+            const nameMatch = xmlContent.match(/<name>([\s\S]*?)<\/name>/);
+            if (nameMatch) {
+                themeName = nameMatch[1].trim();
+            }
+        }
+
+        // Create ZIP buffer using Archiver
+        const { createZipBuffer } = await import('../services/zip');
+        const zipBuffer = await createZipBuffer(themePath);
+        const zipBase64 = zipBuffer.toString('base64');
+
+        return {
+            zipFileName: `${themeName}.zip`,
+            zipBase64,
+        };
     });
