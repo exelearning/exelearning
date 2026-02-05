@@ -1431,6 +1431,12 @@ export default class modalOpenUserOdeFiles extends Modal {
 
                     try {
                         Logger.log('[OpenFile] Static mode - importing file:', odeFileName);
+
+                        // Clear assets from previous project before importing new one
+                        if (yjsBridge.clearAssetsForNewProject) {
+                            await yjsBridge.clearAssetsForNewProject();
+                        }
+
                         await yjsBridge.importFromElpx(odeFile, {
                             onProgress: (progress) => importProgress.update(progress)
                         });
