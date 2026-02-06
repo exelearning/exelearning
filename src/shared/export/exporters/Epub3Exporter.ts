@@ -291,7 +291,9 @@ export class Epub3Exporter extends BaseExporter {
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [path, content] of libFiles) {
-                    this.zip.addFile(`EPUB/libs/${path}`, content);
+                    // Transform exe_abc_music.js to prevent duplicate execution errors in EPUB readers
+                    const finalContent = this.transformForEpub(path, content);
+                    this.zip.addFile(`EPUB/libs/${path}`, finalContent);
                     const ext = this.getFileExtensionFromPath(path);
                     const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                     this.addManifestItem(this.generateUniqueId(`lib-${path}`), `libs/${path}`, mimeType);
@@ -300,7 +302,9 @@ export class Epub3Exporter extends BaseExporter {
                 try {
                     const baseLibs = await this.resources.fetchBaseLibraries();
                     for (const [path, content] of baseLibs) {
-                        this.zip.addFile(`EPUB/libs/${path}`, content);
+                        // Also transform scripts in fallback path
+                        const finalContent = this.transformForEpub(path, content);
+                        this.zip.addFile(`EPUB/libs/${path}`, finalContent);
                         const ext = this.getFileExtensionFromPath(path);
                         const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                         this.addManifestItem(this.generateUniqueId(`lib-${path}`), `libs/${path}`, mimeType);
@@ -930,6 +934,88 @@ td, th {
         return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
 .exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
 .exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
+    }
+
+    /**
+     * Transform JavaScript files for EPUB compatibility
+     * Some scripts need to be wrapped in guards to prevent duplicate execution errors
+     * when EPUB readers re-execute scripts during page navigation.
+     * 
+     * @param path - The file path
+     * @param content - The file content (string or Uint8Array)
+     * @returns Transformed content (same type as input)
+     */
+    private transformForEpub(path: string, content: string | Uint8Array): string | Uint8Array {
+        // Extract filename, handling both forward and backslashes (Windows paths)
+        const filename = path.split(/[/\\]/).pop() || path;
+
+        // Transform abcjs-basic-min.js - the UMD pattern binds ABCJS to 'this' which may not be 'window' in EPUB
+        if (filename === 'abcjs-basic-min.js') {
+            const originalCode = typeof content === 'string'
+                ? content
+                : new TextDecoder().decode(content);
+
+            // Replaces the UMD pattern with a forced window assignment
+            // Original: !function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}(this,(function(){...
+            const umdPattern = '!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}';
+            const forcedBinding = '!function(e,t){window.ABCJS=t()}';
+
+            let transformedCode = originalCode.replace(umdPattern, forcedBinding);
+
+            // Add header comment if it's not the original code anymore
+            if (transformedCode !== originalCode) {
+                transformedCode = `// EPUB-safe version - forced window.ABCJS binding\n${transformedCode}`;
+            } else {
+                // Fallback if pattern doesn't match exactly (e.g. version change): append safety check
+                transformedCode = `// EPUB-safe version - fallback binding\n${originalCode}\n`;
+                transformedCode += `(function(){ if(typeof window!=='undefined' && !window.ABCJS && typeof ABCJS!=='undefined'){window.ABCJS=ABCJS;} })();`;
+            }
+
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
+        // Transform exe_abc_music.js - it contains class declarations that fail on re-execution
+        if (filename === 'exe_abc_music.js') {
+            // Convert to string if needed
+            let originalCode = typeof content === 'string'
+                ? content
+                : new TextDecoder().decode(content);
+
+            // Enhance logging for debugging
+            originalCode = originalCode.replace('console.warn("Error loading abcjs");', 'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);');
+
+            // EPUB Security Fix: Accessing parent.document throws SecurityError in sandboxed readers
+            // We wrap it in try-catch to allow falling back to the local document selector
+            originalCode = originalCode.replace(
+                'var htmlSource = parent.document.querySelector("#htmlSource");',
+                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }'
+            );
+
+            // Simple guard pattern: if already loaded, skip entire script
+            // We don't use IIFE to preserve the original global variable behavior
+            // Instead, we wrap just the class declaration that causes redeclaration errors
+            const transformedCode = `// EPUB-safe version - guards against redeclaration error
+if (typeof window.__exeABCmusicLoaded !== 'undefined') {
+    // Script already loaded, skip re-execution to prevent CursorControl redeclaration error
+} else {
+    window.__exeABCmusicLoaded = true;
+    // Original script follows - variables remain in global scope
+${originalCode}
+}
+`;
+
+            // Return in same format as input
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
+        // No transformation needed for other files
+        return content;
     }
 
     /**
