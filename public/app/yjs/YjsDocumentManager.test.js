@@ -63,7 +63,20 @@ class MockWebsocketProvider {
     }
   }
 
-  disconnect() {}
+  connect() {
+    this.wsconnected = true;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'connected' }));
+    }
+  }
+
+  disconnect() {
+    this.wsconnected = false;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'disconnected' }));
+    }
+  }
+
   destroy() {}
 }
 
@@ -2341,6 +2354,139 @@ describe('YjsDocumentManager', () => {
       // Should not throw
       await newManager.initialize();
       await newManager.destroy();
+    });
+  });
+
+  describe('Collaboration resync', () => {
+    it('should initialize _hasResynced to false', () => {
+      const mgr = new YjsDocumentManager('resync-test', {
+        wsUrl: 'wss://localhost/yjs',
+        apiUrl: '/api',
+        offline: true,
+      });
+      expect(mgr._hasResynced).toBe(false);
+    });
+
+    it('_setupCollaborationResync should register an awareness listener', async () => {
+      await manager.initialize();
+
+      // Setup WebSocket provider (non-offline mode uses it)
+      await manager.connectWebSocket();
+      const awareness = manager.awareness;
+
+      const listenerCountBefore = (awareness._listeners.update || []).length;
+      manager._setupCollaborationResync();
+      const listenerCountAfter = (awareness._listeners.update || []).length;
+
+      expect(listenerCountAfter).toBe(listenerCountBefore + 1);
+    });
+
+    it('_setupCollaborationResync should not register without awareness', async () => {
+      await manager.initialize();
+      manager.awareness = null;
+      // Should not throw
+      manager._setupCollaborationResync();
+    });
+
+    it('_forceResync should call disconnect and connect on wsProvider', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      let disconnected = false;
+      let connected = false;
+      const origDisconnect = manager.wsProvider.disconnect.bind(manager.wsProvider);
+      const origConnect = manager.wsProvider.connect.bind(manager.wsProvider);
+      manager.wsProvider.disconnect = () => { disconnected = true; origDisconnect(); };
+      manager.wsProvider.connect = () => { connected = true; origConnect(); };
+
+      manager._forceResync();
+
+      // Wait for the timeouts (300ms + 100ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      expect(disconnected).toBe(true);
+      expect(connected).toBe(true);
+    });
+
+    it('_forceResync should not throw when wsProvider is not connected', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = false;
+
+      // Should not throw or do anything
+      manager._forceResync();
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+    });
+
+    it('_setupCollaborationResync should trigger resync when first remote user appears', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      let forceResyncCalled = false;
+      manager._forceResync = () => { forceResyncCalled = true; };
+
+      manager._setupCollaborationResync();
+
+      // Simulate a remote user appearing in awareness
+      const awareness = manager.awareness;
+      awareness._states.set(99999, { user: { id: 2, name: 'Remote User' } });
+      // Fire update listeners
+      if (awareness._listeners.update) {
+        awareness._listeners.update.forEach(cb => cb());
+      }
+
+      expect(manager._hasResynced).toBe(true);
+      expect(forceResyncCalled).toBe(true);
+    });
+
+    it('_setupCollaborationResync should only trigger once (idempotent)', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      let forceResyncCount = 0;
+      manager._forceResync = () => { forceResyncCount++; };
+
+      manager._setupCollaborationResync();
+
+      const awareness = manager.awareness;
+      awareness._states.set(99999, { user: { id: 2, name: 'Remote User' } });
+
+      // Fire update listeners multiple times
+      if (awareness._listeners.update) {
+        awareness._listeners.update.forEach(cb => cb());
+      }
+      if (awareness._listeners.update) {
+        awareness._listeners.update.forEach(cb => cb());
+      }
+
+      expect(forceResyncCount).toBe(1);
+      expect(manager._hasResynced).toBe(true);
+    });
+
+    it('should not resync if _hasResynced is already true (server trigger path)', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      // Simulate server-side trigger already set the flag
+      manager._hasResynced = true;
+
+      let forceResyncCalled = false;
+      manager._forceResync = () => { forceResyncCalled = true; };
+
+      manager._setupCollaborationResync();
+
+      const awareness = manager.awareness;
+      awareness._states.set(99999, { user: { id: 2, name: 'Remote User' } });
+      if (awareness._listeners.update) {
+        awareness._listeners.update.forEach(cb => cb());
+      }
+
+      expect(forceResyncCalled).toBe(false);
     });
   });
 });

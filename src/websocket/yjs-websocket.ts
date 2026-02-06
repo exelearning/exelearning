@@ -319,6 +319,25 @@ export async function handleWebSocketOpen(
             }
         })();
 
+        // Send trigger-resync to all existing clients so they re-sync with the new arrival.
+        // This is belt-and-suspenders for the client-side awareness-triggered resync:
+        // if awareness propagation is slow, the server message ensures timely resync.
+        for (const existingConn of room.conns) {
+            if (existingConn !== ws && existingConn.readyState === 1) {
+                try {
+                    existingConn.send(
+                        JSON.stringify({
+                            type: 'trigger-resync',
+                            reason: 'new-client-joined',
+                            projectUuid,
+                        }),
+                    );
+                } catch {
+                    /* ignore individual send errors */
+                }
+            }
+        }
+
         deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
             console.error('[YjsWebSocket] Error in collaboration detection:', err);
         });

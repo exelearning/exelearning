@@ -40,6 +40,10 @@ describe('WebSocket message-parser', () => {
             expect(isAssetMessageType('upload-batch-complete')).toBe(true);
         });
 
+        it('should return true for collaboration resync message types', () => {
+            expect(isAssetMessageType('trigger-resync')).toBe(true);
+        });
+
         it('should return false for invalid types', () => {
             expect(isAssetMessageType('unknown-type')).toBe(false);
             expect(isAssetMessageType('')).toBe(false);

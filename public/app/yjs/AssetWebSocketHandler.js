@@ -240,6 +240,11 @@ class AssetWebSocketHandler {
             this._handleRequestSyncState(parsed);
             return;
           }
+          // Handle trigger-resync from server (new client joined, force bidirectional sync)
+          if (parsed.type === 'trigger-resync') {
+            this._handleTriggerResync(parsed);
+            return;
+          }
           Logger.log('[AssetWebSocketHandler] Ignoring unknown JSON message:', parsed.type || 'no type');
         } catch {
           Logger.log('[AssetWebSocketHandler] Ignoring non-JSON string message');
@@ -527,6 +532,22 @@ class AssetWebSocketHandler {
       Logger.log('[AssetWebSocketHandler] Project state synced due to collaboration');
     } catch (error) {
       console.error('[AssetWebSocketHandler] Failed to sync project state:', error);
+    }
+  }
+
+  /**
+   * Handle trigger-resync message from server (new client joined).
+   * Forces a WebSocket reconnect to re-run the full Yjs sync handshake bidirectionally.
+   * This is a server-side fallback for the client-side awareness-triggered resync.
+   * @param {Object} data - The trigger-resync message
+   * @param {string} [data.reason] - Why resync was triggered
+   */
+  _handleTriggerResync(data) {
+    Logger.log('[AssetWebSocketHandler] Trigger resync received, reason:', data?.reason);
+    const dm = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+    if (dm && !dm._hasResynced) {
+      dm._hasResynced = true;
+      dm._forceResync();
     }
   }
 

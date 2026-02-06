@@ -138,6 +138,28 @@ describe('ConcurrentUsers', () => {
       mockApp.project._yjsBridge.getDocumentManager = vi.fn(() => null);
       expect(() => concurrentUsers.subscribeToYjsAwareness()).not.toThrow();
     });
+
+    it('should not overwrite user info if already set early', () => {
+      mockDocumentManager.userInfo = { id: 'user-1', name: 'Early User' };
+
+      concurrentUsers.subscribeToYjsAwareness();
+
+      expect(mockDocumentManager.setUserInfo).not.toHaveBeenCalled();
+      expect(mockDocumentManager.onUsersChange).toHaveBeenCalled();
+    });
+
+    it('should set user info if userInfo has no id', () => {
+      mockDocumentManager.userInfo = { id: null, name: 'Placeholder' };
+
+      concurrentUsers.subscribeToYjsAwareness();
+
+      expect(mockDocumentManager.setUserInfo).toHaveBeenCalledWith({
+        id: 'user-1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        gravatarUrl: 'http://example.com/avatar.png',
+      });
+    });
   });
 
   describe('updateUsersDisplay', () => {

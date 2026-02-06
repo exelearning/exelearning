@@ -70,8 +70,8 @@ export default class ConcurrentUsers {
             return;
         }
 
-        // Set user info in awareness from current session
-        if (this.app.user) {
+        // Set user info in awareness from current session (only if not already set early)
+        if (this.app.user && !documentManager.userInfo?.id) {
             documentManager.setUserInfo({
                 id: this.app.user.id,
                 name: this.app.user.name || this.app.user.username,

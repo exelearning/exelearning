@@ -367,6 +367,23 @@ describe('YjsProjectBridge', () => {
       const result = await bridge.initialize(123, 'test-token');
       expect(result).toBe(bridge);
     });
+
+    it('sets user info on document manager before WebSocket connects', async () => {
+      const setUserInfoSpy = spyOn(MockYjsDocumentManager.prototype, 'setUserInfo');
+      bridge.app = {
+        user: { id: 'u1', name: 'Test User', email: 'test@test.com', gravatarUrl: 'http://g.com/u1' },
+        project: { structure: {}, updateProjectTitle: mock(() => undefined) },
+      };
+
+      await bridge.initialize(123, 'test-token');
+
+      expect(setUserInfoSpy).toHaveBeenCalledWith({
+        id: 'u1',
+        name: 'Test User',
+        email: 'test@test.com',
+        gravatarUrl: 'http://g.com/u1',
+      });
+    });
   });
 
   describe('getDocumentManager', () => {

@@ -83,6 +83,10 @@ class YjsDocumentManager {
     // LocalStorage key for persisting dirty state
     this._dirtyStateKey = `exelearning_dirty_state_${projectId}`;
 
+    // Collaboration resync: when initiator was alone at init and a collaborator joins later,
+    // force a WebSocket reconnect to re-run the full Yjs sync handshake bidirectionally
+    this._hasResynced = false;
+
     // Bind beforeunload handler
     this._beforeUnloadHandler = this._handleBeforeUnload.bind(this);
     // Bind unload handler (always fires, even if beforeunload is cancelled)
@@ -375,6 +379,7 @@ class YjsDocumentManager {
 
     if (!otherUsersPresent) {
       Logger.log('[YjsDocumentManager] Single user detected, skipping full sync wait');
+      this._setupCollaborationResync();
       return;
     }
 
@@ -475,6 +480,53 @@ class YjsDocumentManager {
         resolve();
       }
     });
+  }
+
+  /**
+   * Setup awareness listener to trigger resync when the first collaborator joins.
+   * Only relevant when the initiator was alone during initialization (single-user path).
+   * When a remote user appears in awareness, forces a WebSocket reconnect to re-run
+   * the full Yjs sync handshake bidirectionally.
+   * @private
+   */
+  _setupCollaborationResync() {
+    if (!this.awareness || !this.wsProvider) return;
+
+    const resyncHandler = () => {
+      if (this._hasResynced) return;
+      const otherUsers = this.getOnlineUsers().filter(u => !u.isLocal);
+      if (otherUsers.length > 0) {
+        this._hasResynced = true;
+        this.awareness.off('update', resyncHandler);
+        Logger.log('[YjsDocumentManager] First collaborator detected, triggering resync...');
+        this._forceResync();
+      }
+    };
+    this.awareness.on('update', resyncHandler);
+  }
+
+  /**
+   * Force a WebSocket reconnect to re-run the full Yjs sync handshake.
+   * Safe because:
+   * - Y.Doc and awareness state in memory are preserved across reconnection
+   * - AssetWebSocketHandler already handles reconnection (re-setups message handler on status change)
+   * - Brief disconnection (~100ms) is invisible to users
+   * @private
+   */
+  _forceResync() {
+    if (!this.wsProvider?.wsconnected) return;
+    // Small delay to let awareness fully propagate
+    setTimeout(() => {
+      if (this.wsProvider) {
+        this.wsProvider.disconnect();
+        setTimeout(() => {
+          if (this.wsProvider) {
+            this.wsProvider.connect();
+            Logger.log('[YjsDocumentManager] Resync reconnect complete');
+          }
+        }, 100);
+      }
+    }, 300);
   }
 
   /**

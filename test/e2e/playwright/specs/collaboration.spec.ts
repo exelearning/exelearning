@@ -87,10 +87,7 @@ test.describe('Real-Time Collaboration', () => {
             expect(nodeIdB).toBe(nodeIdA);
         });
 
-        // TODO: This test is flaky due to slow Yjs bidirectional sync timing
-        // The sync DOES work (screenshots show child appears after timeout),
-        // but takes >60s when joining client makes changes syncing back to owner
-        test.skip('should sync child node creation between clients', async ({
+        test('should sync child node creation between clients', async ({
             authenticatedPage,
             secondAuthenticatedPage,
             createProject,
@@ -115,10 +112,10 @@ test.describe('Real-Time Collaboration', () => {
             const childName = `Child ${Date.now()}`;
             await navB.createChildNode(parentName, childName);
 
-            // Client A should see the child
-            await navA.waitForNodeInNav(childName);
+            // Client A should see the child under the correct parent
+            await navA.waitForChildrenOrder(parentName, [childName], 30000);
 
-            // Verify hierarchy
+            // Verify hierarchy on both sides
             const childrenA = await navA.getChildrenTitles(parentName);
             const childrenB = await navB.getChildrenTitles(parentName);
 
@@ -166,10 +163,7 @@ test.describe('Real-Time Collaboration', () => {
     });
 
     test.describe('Node Reordering Sync', () => {
-        // TODO: This test is flaky due to slow Yjs bidirectional sync timing
-        // Same issue as child node creation test - joining client's changes
-        // sync back to owner slowly (>60s)
-        test.skip('should sync node reordering between clients', async ({
+        test('should sync node reordering between clients', async ({
             authenticatedPage,
             secondAuthenticatedPage,
             createProject,
@@ -270,6 +264,101 @@ test.describe('Real-Time Collaboration', () => {
             // Verify content is present
             const hasContent = await workareaB.hasTextInContent(testContent);
             expect(hasContent).toBeTruthy();
+        });
+    });
+
+    test.describe('User Presence Sync', () => {
+        test('should show collaborator in concurrent users list on initiator', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Initiator creates project
+            const projectUuid = await createProject(authenticatedPage, 'User Presence Test');
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForYjsSync(authenticatedPage);
+
+            // Get share URL and have joiner join
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            // Wait for the initiator to see >1 online users via Yjs awareness
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    const dm = bridge?.documentManager;
+                    if (!dm) return false;
+                    const users = dm.getOnlineUsers();
+                    return users.length > 1;
+                },
+                { timeout: 30000, polling: 500 },
+            );
+
+            // Verify the concurrent users UI shows 2+ users
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const el = document.querySelector('#exe-concurrent-users');
+                    const num = parseInt(el?.getAttribute('num') || '0', 10);
+                    return num > 1;
+                },
+                { timeout: 30000, polling: 500 },
+            );
+
+            // Also verify on joiner side
+            await secondAuthenticatedPage.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    const dm = bridge?.documentManager;
+                    if (!dm) return false;
+                    const users = dm.getOnlineUsers();
+                    return users.length > 1;
+                },
+                { timeout: 30000, polling: 500 },
+            );
+        });
+    });
+
+    test.describe('Bidirectional Content Sync', () => {
+        test('should sync joiner content changes to initiator without reload', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Initiator creates project with a page
+            const projectUuid = await createProject(authenticatedPage, 'Bidirectional Sync Test');
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForYjsSync(authenticatedPage);
+
+            const navA = new NavigationPage(authenticatedPage);
+            const navB = new NavigationPage(secondAuthenticatedPage);
+
+            // Create a page from initiator
+            const pageName = `Shared Page ${Date.now()}`;
+            await navA.createNodeAtRoot(pageName);
+
+            // Get share URL and have joiner join
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            // Wait for joiner to see the page
+            await navB.waitForNodeInNav(pageName, 30000);
+
+            // Joiner creates a child node (this tests joiner→initiator sync)
+            const childName = `Joiner Child ${Date.now()}`;
+            await navB.createChildNode(pageName, childName);
+
+            // Initiator should see the child WITHOUT reload
+            await navA.waitForNodeInNav(childName, 30000);
+
+            // Verify node exists in both navigations
+            const nodeIdA = await navA.getNodeIdByTitle(childName);
+            const nodeIdB = await navB.getNodeIdByTitle(childName);
+            expect(nodeIdA).toBeTruthy();
+            expect(nodeIdB).toBe(nodeIdA);
         });
     });
 });
