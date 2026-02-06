@@ -911,6 +911,12 @@ export default class modalOpenUserOdeFiles extends Modal {
      */
     selectProjectByUuid(projectUuid) {
         // Find the row with this UUID
+        const allRows = this.modalElementBodyContent.querySelectorAll('.ode-row');
+        const allOdeIds = Array.from(allRows).map(r => r.getAttribute('ode-id'));
+        Logger.log('[OpenProject] selectProjectByUuid:', projectUuid,
+            'available ode-ids:', allOdeIds,
+            'bodyContent children:', this.modalElementBodyContent.children.length);
+
         const row = this.modalElementBodyContent.querySelector(
             `.ode-row[ode-id="${projectUuid}"]`
         );
@@ -931,6 +937,9 @@ export default class modalOpenUserOdeFiles extends Modal {
 
             // Scroll the row into view
             row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            Logger.log('[OpenProject] selectProjectByUuid: selected row for', projectUuid);
+        } else {
+            Logger.warn('[OpenProject] selectProjectByUuid: row NOT found for', projectUuid);
         }
     }
 
@@ -1030,21 +1039,23 @@ export default class modalOpenUserOdeFiles extends Modal {
                 credentials: 'include',
             });
             const resp = await response.json();
+            Logger.log('[OpenProject] duplicate response:', JSON.stringify(resp));
             if (resp.responseMessage === 'OK' || resp.success) {
                 // Get the new project UUID from the response
-                const newProjectUuid = resp.data?.uuid;
+                const newProjectUuid = resp.project?.uuid || resp.newProjectId;
+                Logger.log('[OpenProject] newProjectUuid:', newProjectUuid);
 
                 // Refresh the list without closing the modal
                 await this.refreshList();
 
                 // Switch to "My Projects" tab since the duplicate is owned by the user
-                if (this.currentTab !== 'my-projects') {
-                    this.switchTab('my-projects');
-                }
+                this.switchTab('my-projects');
 
                 // Select the newly duplicated project
                 if (newProjectUuid) {
                     this.selectProjectByUuid(newProjectUuid);
+                } else {
+                    Logger.warn('[OpenProject] newProjectUuid is falsy, cannot select');
                 }
             } else {
                 console.error('[OpenProject] Duplicate error:', resp.message);
