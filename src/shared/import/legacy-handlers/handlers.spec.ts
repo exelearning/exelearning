@@ -3478,7 +3478,8 @@ var InteractiveVideo = {&quot;slides&quot;:[{&quot;type&quot;:&quot;text&quot;,&
 
         it('should handle complex nested JSON with control characters', () => {
             // Complex nested structure with control characters in various places
-            const jsonContent = '{"slides":[{"type":"text","text":"<p>Título</p>\n<p>Contenido con\ttabs</p>","options":{"nested":"value\rwith\nchars"}}],"i18n":{"msg":"Texto\ncon saltos"}}';
+            const jsonContent =
+                '{"slides":[{"type":"text","text":"<p>Título</p>\n<p>Contenido con\ttabs</p>","options":{"nested":"value\rwith\nchars"}}],"i18n":{"msg":"Texto\ncon saltos"}}';
             const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
             const dict = createDomElement(`
                 <dictionary>
