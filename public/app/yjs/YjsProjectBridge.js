@@ -2498,9 +2498,9 @@ class YjsProjectBridge {
           return match ? match[1].trim() : '';
         };
 
-        config.name = getValue('name') || themeName;
+        config.name = themeName; // Use the Yjs key (sanitized dirName), NOT raw <name> tag
         config.displayName = getValue('name') || themeName;
-        config.title = getValue('name') || themeName;
+        config.title = getValue('title') || getValue('name') || themeName;
         config.version = getValue('version') || '1.0';
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
