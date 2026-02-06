@@ -63,7 +63,7 @@ export const getAppVersion = (): string => {
         if (deps.existsSync(packagePath)) {
             try {
                 const pkg = JSON.parse(deps.readFileSync(packagePath, 'utf-8')) as PackageJson;
-                return `v${pkg.version}`;
+                return `v${pkg.version.replace(/^v/, '')}`;
             } catch {
                 // If JSON is invalid, stop searching
                 break;
