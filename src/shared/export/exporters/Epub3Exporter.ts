@@ -319,6 +319,13 @@ export class Epub3Exporter extends BaseExporter {
             // 9. Add project assets
             const _assetsAdded = await this.addEpubAssets();
 
+            // 9b. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                const contentXml = this.generateContentXml(pages);
+                this.zip.addFile('EPUB/content.xml', contentXml);
+                this.addManifestItem('content-xml', 'content.xml', 'application/xml');
+            }
+
             // 10. Generate package.opf (OPF manifest)
             const packageOpf = this.generatePackageOpf(meta, bookId);
             this.zip.addFile('EPUB/package.opf', packageOpf);

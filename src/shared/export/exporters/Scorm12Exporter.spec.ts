@@ -39,6 +39,10 @@ class MockDocument implements ExportDocument {
     getNavigation(): ExportPage[] {
         return this.pages;
     }
+
+    async getContentXml(): Promise<string | null> {
+        return '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE ode SYSTEM "content.dtd"><ode></ode>';
+    }
 }
 
 // Mock resource provider
@@ -371,6 +375,38 @@ describe('Scorm12Exporter', () => {
 
             expect(id1).not.toBe(id2);
             expect(id1.length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('ODE XML', () => {
+        it('should include content.xml when exportSource is true (default)', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+        });
+
+        it('should include content.dtd when exportSource is true (default)', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.dtd')).toBe(true);
+        });
+
+        it('should NOT include content.dtd when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.dtd')).toBe(false);
         });
     });
 

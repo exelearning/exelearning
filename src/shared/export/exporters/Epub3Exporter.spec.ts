@@ -568,6 +568,33 @@ describe('Epub3Exporter', () => {
         });
     });
 
+    describe('ODE XML', () => {
+        it('should include content.xml when exportSource is true (default)', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            const contentXml = zip.files.get('EPUB/content.xml') as string;
+            expect(contentXml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+        });
+
+        it('should include content.xml in package.opf manifest', async () => {
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('content.xml');
+        });
+    });
+
     describe('Favicon Handling', () => {
         it('should detect theme favicon.ico and use it in pages', async () => {
             // Override fetchTheme to include a favicon

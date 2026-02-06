@@ -178,11 +178,13 @@ export class ImsExporter extends Html5Exporter {
             // 6. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 6b. Add content.xml (ODE format) and content.dtd for re-editing
-            const contentXml = generateOdeXml(meta, pages);
-            this.zip.addFile('content.xml', contentXml);
-            this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-            commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            // 6b. Add content.xml (ODE format) and content.dtd for re-editing - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                const contentXml = generateOdeXml(meta, pages);
+                this.zip.addFile('content.xml', contentXml);
+                this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                commonFiles.push('content.xml', ODE_DTD_FILENAME);
+            }
 
             // 7. Generate imsmanifest.xml with complete file list
             // Get all files from the ZIP to ensure the manifest lists ALL resources

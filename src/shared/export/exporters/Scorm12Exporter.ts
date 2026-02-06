@@ -183,17 +183,19 @@ export class Scorm12Exporter extends Html5Exporter {
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
-            // 5b. Copy content.xml and DTD (always include for re-editing capability)
-            try {
-                const contentXml = await this.getContentXml();
-                if (contentXml) {
-                    this.zip.addFile('content.xml', contentXml);
-                    commonFiles.push('content.xml');
-                    this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-                    commonFiles.push(ODE_DTD_FILENAME);
+            // 5b. Copy content.xml and DTD (only if exportSource is enabled)
+            if (meta.exportSource !== false) {
+                try {
+                    const contentXml = await this.getContentXml();
+                    if (contentXml) {
+                        this.zip.addFile('content.xml', contentXml);
+                        commonFiles.push('content.xml');
+                        this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                        commonFiles.push(ODE_DTD_FILENAME);
+                    }
+                } catch {
+                    // content.xml is optional
                 }
-            } catch {
-                // content.xml is optional
             }
 
             // 6. Fetch and add iDevice assets

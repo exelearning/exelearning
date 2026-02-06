@@ -256,10 +256,10 @@ describe('PageExporter', () => {
             expect(indexHtml).toContain('chapter 2');
         });
 
-        it('should NOT include content.xml (only needed for ELP)', async () => {
+        it('should include content.xml by default (exportSource=true)', async () => {
             await exporter.export();
 
-            expect(zip.files.has('content.xml')).toBe(false);
+            expect(zip.files.has('content.xml')).toBe(true);
         });
 
         it('should include base CSS', async () => {
@@ -372,6 +372,26 @@ describe('PageExporter', () => {
 
             // Should succeed with fallback
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('ODE XML', () => {
+        it('should include content.xml when exportSource is true (default)', async () => {
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(true);
+            const contentXml = zip.files.get('content.xml') as string;
+            expect(contentXml).toContain('<?xml version="1.0" encoding="UTF-8"?>');
+            expect(contentXml).toContain('<ode');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
         });
     });
 

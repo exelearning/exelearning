@@ -102,6 +102,12 @@ export class PageExporter extends Html5Exporter {
             // 7. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
+            // 7b. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                const contentXml = this.generateContentXml(pages);
+                this.zip.addFile('content.xml', contentXml);
+            }
+
             // 8. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 

@@ -417,6 +417,24 @@ describe('ImsExporter', () => {
             expect(zip.files.has('content.dtd')).toBe(true);
         });
 
+        it('should NOT include content.xml when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.xml')).toBe(false);
+        });
+
+        it('should NOT include content.dtd when exportSource is false', async () => {
+            document = new MockDocument({ exportSource: false }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('content.dtd')).toBe(false);
+        });
+
         it('should include content.xml and content.dtd in manifest COMMON_FILES', async () => {
             await exporter.export();
 
