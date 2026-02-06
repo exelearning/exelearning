@@ -315,6 +315,11 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
 
+            // 7.5.1. Add EPUB guards script (prevents duplicate execution errors in EPUB readers)
+            const guardsScript = this.generateEpubGuardsScript();
+            this.zip.addFile('EPUB/libs/exe_epub_guards.js', guardsScript);
+            this.addManifestItem('epub-guards', 'libs/exe_epub_guards.js', 'application/javascript');
+
             // 7.6. Always add base libraries (including favicon) - these are essential for any export
             // This ensures libs/favicon.ico is always present regardless of library detection results
             try {
@@ -690,6 +695,8 @@ export class Epub3Exporter extends BaseExporter {
             currentPageIndex: pageIndex,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // EPUB-specific: load guard script for duplicate execution protection
+            isEpub: true,
         });
 
         // Convert HTML to XHTML
@@ -923,5 +930,32 @@ td, th {
         return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
 .exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
 .exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
+    }
+
+    /**
+     * Generate EPUB guards script that prevents duplicate execution errors
+     * This script runs BEFORE any libraries load and patches the global scope
+     * to handle EPUB readers that re-execute scripts during page navigation.
+     */
+    protected generateEpubGuardsScript(): string {
+        return `/**
+ * EPUB Library Guards - eXeLearning
+ * Prevents duplicate execution errors when EPUB readers re-execute scripts
+ */
+(function() {
+    'use strict';
+    if (window.__exeEpubGuardsLoaded) return;
+    window.__exeEpubGuardsLoaded = true;
+    
+    // Pre-declare globals that would cause redeclaration errors
+    if (typeof window.CursorControl === 'undefined') window.CursorControl = null;
+    if (typeof window.$exeABCmusic === 'undefined') window.$exeABCmusic = null;
+    if (typeof window.$exeExport === 'undefined') window.$exeExport = null;
+    if (typeof window.synthControl === 'undefined') window.synthControl = undefined;
+    if (typeof window.is_n_audio_ok === 'undefined') window.is_n_audio_ok = undefined;
+    if (typeof window.abc === 'undefined') window.abc = [];
+    
+    console.log('[EPUB Guards] Library guards initialized');
+})();`;
     }
 }

@@ -592,6 +592,9 @@ export interface PageRenderOptions {
     /** Hide the prev/next navigation buttons (default: false) */
     hideNavButtons?: boolean;
 
+    /** EPUB export indicator - loads guard script for duplicate execution protection */
+    isEpub?: boolean;
+
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
 

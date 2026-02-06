@@ -186,6 +186,7 @@ ${madeWithExeHtml}
         faviconPath?: string;
         faviconType?: string;
         version?: string;
+        isEpub?: boolean;
     }): string {
         const {
             pageTitle,
@@ -205,6 +206,7 @@ ${madeWithExeHtml}
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             version,
+            isEpub = false,
         } = options;
 
         // Meta tags
@@ -224,6 +226,11 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // SCRIPTS FIRST (legacy order requirement)
         head += `
 <script>document.querySelector("html").classList.add("js");</script>`;
+
+        // EPUB guard script (must load before any libraries to prevent duplicate execution errors)
+        if (isEpub) {
+            head += `<script src="${basePath}libs/exe_epub_guards.js"> </script>`;
+        }
 
         // Core library scripts
         head += `<script src="${basePath}libs/jquery/jquery.min.js"> </script>`;
