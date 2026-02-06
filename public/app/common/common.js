@@ -2064,6 +2064,7 @@ var $exeDevices = {
                     str = str.trim();
                     if (str.startsWith('{') && str.endsWith('}')) {
                         try {
+                            str = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(str);
                             const o = JSON.parse(str);
                             if (o && typeof o === 'object' && !Array.isArray(o)) {
                                 return o;
