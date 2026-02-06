@@ -593,6 +593,12 @@ export class Epub3Exporter extends BaseExporter {
 
         let html = '';
         for (const page of children) {
+            // Check visibility property (skip if explicitly set to false or "false")
+            const visibility = page.properties?.visibility;
+            if (visibility === false || visibility === 'false') {
+                continue;
+            }
+
             const filename = this.getPageFilename(page, allPages, pageFilenameMap);
             const grandchildren = pages.filter(p => p.parentId === page.id);
 
@@ -940,7 +946,7 @@ td, th {
      * Transform JavaScript files for EPUB compatibility
      * Some scripts need to be wrapped in guards to prevent duplicate execution errors
      * when EPUB readers re-execute scripts during page navigation.
-     * 
+     *
      * @param path - The file path
      * @param content - The file content (string or Uint8Array)
      * @returns Transformed content (same type as input)
@@ -951,13 +957,12 @@ td, th {
 
         // Transform abcjs-basic-min.js - the UMD pattern binds ABCJS to 'this' which may not be 'window' in EPUB
         if (filename === 'abcjs-basic-min.js') {
-            const originalCode = typeof content === 'string'
-                ? content
-                : new TextDecoder().decode(content);
+            const originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
 
             // Replaces the UMD pattern with a forced window assignment
             // Original: !function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}(this,(function(){...
-            const umdPattern = '!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}';
+            const umdPattern =
+                '!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}';
             const forcedBinding = '!function(e,t){window.ABCJS=t()}';
 
             let transformedCode = originalCode.replace(umdPattern, forcedBinding);
@@ -980,18 +985,19 @@ td, th {
         // Transform exe_abc_music.js - it contains class declarations that fail on re-execution
         if (filename === 'exe_abc_music.js') {
             // Convert to string if needed
-            let originalCode = typeof content === 'string'
-                ? content
-                : new TextDecoder().decode(content);
+            let originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
 
             // Enhance logging for debugging
-            originalCode = originalCode.replace('console.warn("Error loading abcjs");', 'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);');
+            originalCode = originalCode.replace(
+                'console.warn("Error loading abcjs");',
+                'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);',
+            );
 
             // EPUB Security Fix: Accessing parent.document throws SecurityError in sandboxed readers
             // We wrap it in try-catch to allow falling back to the local document selector
             originalCode = originalCode.replace(
                 'var htmlSource = parent.document.querySelector("#htmlSource");',
-                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }'
+                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }',
             );
 
             // Simple guard pattern: if already loaded, skip entire script
@@ -1016,9 +1022,7 @@ ${originalCode}
 
         // Transform exe_effects.js to fix Accordion in EPUB (href issue)
         if (filename === 'exe_effects.js') {
-            const originalCode = typeof content === 'string'
-                ? content
-                : new TextDecoder().decode(content);
+            const originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
 
             // Patch the accordion click handler
             // The issue is that $(this).attr('href') falls back to the full URL or is sanitized in EPUBs
@@ -1050,13 +1054,14 @@ ${originalCode}
         /* Original: var currentAttrValue = $(this).attr('href'); */`;
 
                 if (originalCode.includes(fallbackSearch)) {
-                    // We only replace the first line and comment out the rest manually if needed, 
+                    // We only replace the first line and comment out the rest manually if needed,
                     // or just rely on the fact that redefining currentAttrValue effectively overrides the subsequent logic
                     // IF we place it after.
                     // But simpler to just replace the line and handle the IE7 block if it exists next.
 
                     // Regex approach to match the block more robustly
-                    const regex = /var\s+currentAttrValue\s*=\s*\$\(this\)\.attr\('href'\);\s*\/\/ IE7[^/]*\/\/\s*\/ IE7/s;
+                    const regex =
+                        /var\s+currentAttrValue\s*=\s*\$\(this\)\.attr\('href'\);\s*\/\/ IE7[^/]*\/\/\s*\/ IE7/s;
                     if (regex.test(originalCode)) {
                         transformedCode = originalCode.replace(regex, replaceWith);
                     } else {

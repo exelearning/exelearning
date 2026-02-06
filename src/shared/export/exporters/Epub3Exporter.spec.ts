@@ -89,12 +89,20 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
+        return null;
+    }
 }
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
     async getAsset(_path: string): Promise<Buffer | null> {
         return null;
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return [];
     }
 
     async getAllAssets(): Promise<
@@ -417,6 +425,64 @@ describe('Epub3Exporter', () => {
             expect(navXhtml).toContain('href="index.xhtml"');
             expect(navXhtml).toMatch(/href="html\/[^"]+\.xhtml"/);
         });
+
+        it('should exclude hidden pages from navigation but keep them in export', async () => {
+            const hiddenPages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Visible Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'page-2',
+                    title: 'Hidden Page',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: {
+                        visibility: 'false', // String "false" as per interface inspection or common pattern
+                    },
+                },
+                {
+                    id: 'page-3',
+                    title: 'Hidden Page Boolean',
+                    parentId: null,
+                    order: 2,
+                    blocks: [],
+                    properties: {
+                        visibility: false,
+                    },
+                },
+            ];
+            document = new MockDocument({}, hiddenPages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const navXhtml = zip.files.get('EPUB/nav.xhtml') as string;
+
+            // Should contain visible page
+            expect(navXhtml).toContain('Visible Page');
+
+            // Should NOT contain hidden pages in TOC
+            expect(navXhtml).not.toContain('Hidden Page');
+            expect(navXhtml).not.toContain('Hidden Page Boolean');
+
+            // BUT should still be in the spine/manifest (users want it exported, just not in menu)
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            // Check that files are in the manifest
+            expect(packageOpf).toContain('href="html/hidden-page.xhtml"');
+            expect(packageOpf).toContain('href="html/hidden-page-boolean.xhtml"');
+
+            // Check spine has all 3 pages
+            const spineMatches = packageOpf.match(/<itemref/g);
+            expect(spineMatches?.length).toBe(3);
+
+            // And file should exist
+            expect(zip.files.has('EPUB/html/hidden-page.xhtml')).toBe(true);
+        });
     });
 
     describe('XHTML Page Generation', () => {
@@ -494,7 +560,7 @@ describe('Epub3Exporter', () => {
         it('should catch and return errors', async () => {
             // Create a failing zip provider
             const failingZip: ZipProvider = {
-                addFile: () => { },
+                addFile: () => {},
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
@@ -767,22 +833,35 @@ $("." + k + "-accordion").each(function (i) {
 });
 }`;
         // Setup page with accordion to trigger library detection
-        const pageWithAccordion: ExportPage[] = [{
-            id: 'p1', title: 'T', parentId: null, order: 0,
-            blocks: [{
-                id: 'b1', name: 'd', order: 0,
-                components: [{
-                    id: 'c1', type: 'text', order: 0,
-                    content: '<div class="exe-accordion">test</div>'
-                }]
-            }]
-        }];
+        const pageWithAccordion: ExportPage[] = [
+            {
+                id: 'p1',
+                title: 'T',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'd',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'c1',
+                                type: 'text',
+                                order: 0,
+                                content: '<div class="exe-accordion">test</div>',
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
 
         document = new MockDocument({}, pageWithAccordion);
         exporter = new Epub3Exporter(document, resources, assets, zip);
 
         // Mock library fetch to return our sample JS
-        resources.fetchLibraryFiles = async (files) => {
+        resources.fetchLibraryFiles = async files => {
             const result = new Map<string, Buffer>();
             // The exporter might request full paths, but we just need to ensuring we provide the file
             // when requested. The key in the map should match what the exporter expects.
