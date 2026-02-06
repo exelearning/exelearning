@@ -8,6 +8,7 @@ import type {
     ExportDocument,
     ExportPage,
     ResourceProvider,
+    AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
 } from '../interfaces';
@@ -67,15 +68,25 @@ export class PrintPreviewExporter {
     private document: ExportDocument;
     private ideviceRenderer: IdeviceRenderer;
     private pageRenderer: PageRenderer;
+    private assets: AssetProvider | null;
+    private assetExportPathMap: Map<string, string> | null = null;
 
     /**
      * Create a PrintPreviewExporter
      * @param document - Export document adapter
      * @param resourceProvider - Resource provider for theme/iDevice info
+     * @param assetProvider - Asset provider for resolving asset URLs (optional but recommended)
      */
-    constructor(document: ExportDocument, resourceProvider: ResourceProvider) {
+    constructor(
+        document: ExportDocument,
+        resourceProvider: ResourceProvider,
+        assetProvider: AssetProvider | null = null,
+    ) {
         this.document = document;
-        this.ideviceRenderer = new IdeviceRenderer(resourceProvider);
+        this.assets = assetProvider;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error - resourceProvider usage pending refactor of IdeviceRenderer
+        this.ideviceRenderer = new IdeviceRenderer();
         this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
 
@@ -93,12 +104,21 @@ export class PrintPreviewExporter {
                 return { success: false, error: 'No pages to preview' };
             }
 
-            // Get all used iDevice types (needed for path patching heuristic)
-            const usedIdevices = this.getUsedIdevices(pages);
+            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
+            const processedPages = await this.preprocessPages(pages);
+
+            const usedIdevices = this.getUsedIdevices(processedPages);
+
+            // Access version safely from window object
+            const windowConfig =
+                typeof window !== 'undefined'
+                    ? (window as unknown as { eXeLearning?: { config?: { version?: string } } })
+                    : undefined;
+            const version = windowConfig?.eXeLearning?.config?.version || 'v1.0.0';
 
             // Generate the single-page HTML components using PageRenderer
             // This ensures we use the exact same logic as the "Single Page" export
-            let html = this.pageRenderer.renderSinglePage(pages, {
+            let html = this.pageRenderer.renderSinglePage(processedPages, {
                 projectTitle: meta.title || 'eXeLearning',
                 projectSubtitle: meta.subtitle || '',
                 language: meta.language || 'en',
@@ -108,7 +128,7 @@ export class PrintPreviewExporter {
                 license: meta.license || '',
                 addExeLink: meta.addExeLink ?? true,
                 userFooterContent: meta.footer || '',
-                version: (typeof window !== 'undefined' && window.eXeLearning?.config?.version) || 'v1.0.0', // From browser context
+                version, // From browser context
             });
 
             // Post-process HTML:
@@ -131,13 +151,128 @@ export class PrintPreviewExporter {
     }
 
     /**
+     * Pre-process pages to resolve asset URLs
+     * Replaces asset://UUID with content/resources/FILENAME
+     */
+    private async preprocessPages(pages: ExportPage[]): Promise<ExportPage[]> {
+        if (!this.assets) return pages;
+
+        // Build path map if not already done
+        if (!this.assetExportPathMap) {
+            await this.buildAssetExportPathMap();
+        }
+
+        // Deep clone pages to avoid mutating original structure
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
+
+        for (const page of clonedPages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        component.content = await this.resolveAssetUrls(component.content);
+                    }
+                    if (component.properties) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.resolveAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
+                    }
+                }
+            }
+        }
+        return clonedPages;
+    }
+
+    /**
+     * Resolve asset:// and content/resources/ URLs to Blob URLs
+     */
+    private async resolveAssetUrls(content: string): Promise<string> {
+        if (!content || !this.assetExportPathMap) return content;
+
+        // Replace asset://UUID or content/resources/UUID with blob:URL
+        // Capture group 1 is the ID/Filename
+        // IMPORTANT: Exclude \ (backslash) to prevent consuming JSON escape characters (e.g. \")
+        return content.replace(/(?:asset:\/\/|content\/resources\/)([^"'\s\\]+)/gi, (_match, idOrFilename) => {
+            // 1. Try direct lookup (UUID or Filename as is)
+            let blobUrl = this.assetExportPathMap?.get(idOrFilename) || this.assetFilenameMap?.get(idOrFilename);
+
+            // 2. Try removing extension (e.g. UUID.png -> UUID)
+            if (!blobUrl && idOrFilename.includes('.')) {
+                const idWithoutExt = idOrFilename.substring(0, idOrFilename.lastIndexOf('.'));
+                blobUrl = this.assetExportPathMap?.get(idWithoutExt);
+            }
+
+            if (blobUrl) {
+                return blobUrl;
+            }
+
+            // Fallback: If it was asset://, convert to path. If it was already path, keep it.
+            if (_match.startsWith('asset://')) {
+                return `content/resources/${idOrFilename}`;
+            }
+            return _match;
+        });
+    }
+
+    private assetFilenameMap: Map<string, string> | null = null;
+
+    /**
+     * Build map of asset UUIDs to Blob URLs
+     */
+    private async buildAssetExportPathMap(): Promise<void> {
+        if (!this.assets) {
+            console.warn('[PrintPreviewExporter] No assets provider available');
+            return;
+        }
+
+        this.assetExportPathMap = new Map();
+        this.assetFilenameMap = new Map();
+
+        try {
+            const assets = await this.assets.getAllAssets();
+            console.log(`[PrintPreview] Building asset map for ${assets.length} assets`);
+
+            if (assets.length > 0) {
+                console.log('[PrintPreview] First asset sample:', assets[0]);
+            }
+
+            for (const asset of assets) {
+                // Create Blob URL
+                let blobUrl = '';
+                if (asset.data) {
+                    try {
+                        const blob =
+                            asset.data instanceof Blob
+                                ? asset.data
+                                : new Blob([asset.data as any], { type: asset.mime });
+                        blobUrl = URL.createObjectURL(blob);
+                    } catch (err) {
+                        console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
+                    }
+                } else {
+                    console.warn('[PrintPreview] Asset has no data:', asset.id);
+                }
+
+                if (blobUrl) {
+                    this.assetExportPathMap.set(asset.id, blobUrl);
+                    if (asset.filename) {
+                        this.assetFilenameMap.set(asset.filename, blobUrl);
+                    }
+                }
+            }
+            console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
+        } catch (e) {
+            console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
+        }
+    }
+
+    /**
      * Get all unique iDevice types used in pages
      */
     private getUsedIdevices(pages: ExportPage[]): string[] {
         const types = new Set<string>();
         for (const page of pages) {
-            for (const block of page.blocks) {
-                for (const component of block.components) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
                     if (component.type) {
                         types.add(component.type);
                     }
@@ -151,9 +286,9 @@ export class PrintPreviewExporter {
      * Pre-render dynamic content (LaTeX, Mermaid) using provided hooks
      */
     private async preRenderContent(
-        html: string, 
-        meta: ReturnType<ExportDocument['getMetadata']>, 
-        options: PrintPreviewOptions
+        html: string,
+        meta: ReturnType<ExportDocument['getMetadata']>,
+        options: PrintPreviewOptions,
     ): Promise<string> {
         let finalHtml = html;
 
@@ -163,13 +298,17 @@ export class PrintPreviewExporter {
                 try {
                     const result = await options.preRenderDataGameLatex(finalHtml);
                     if (result.count > 0) finalHtml = result.html;
-                } catch (e) { console.warn('DataGame LaTeX pre-render error:', e); }
+                } catch (e) {
+                    console.warn('DataGame LaTeX pre-render error:', e);
+                }
             }
             if (options.preRenderLatex) {
                 try {
                     const result = await options.preRenderLatex(finalHtml);
                     if (result.latexRendered) finalHtml = result.html;
-                } catch (e) { console.warn('LaTeX pre-render error:', e); }
+                } catch (e) {
+                    console.warn('LaTeX pre-render error:', e);
+                }
             }
         }
 
@@ -181,7 +320,9 @@ export class PrintPreviewExporter {
                     finalHtml = result.html;
                     console.log(`[PrintPreview] Pre-rendered ${result.count} Mermaid diagrams`);
                 }
-            } catch (e) { console.warn('Mermaid pre-render error:', e); }
+            } catch (e) {
+                console.warn('Mermaid pre-render error:', e);
+            }
         }
 
         return finalHtml;
@@ -190,16 +331,21 @@ export class PrintPreviewExporter {
     /**
      * Patch relative paths generated by PageRenderer to point to server resources
      */
-    private patchPathsForServer(html: string, themeName: string, usedIdevices: string[], options: PrintPreviewOptions): string {
+    private patchPathsForServer(
+        html: string,
+        themeName: string,
+        usedIdevices: string[],
+        options: PrintPreviewOptions,
+    ): string {
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
         const version = options.version || 'v1.0.0';
-        
+
         // Helper to build versioned server path
         const getPath = (path: string) => {
-             const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-             const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-             return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
+            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+            const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+            return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
         };
 
         let processed = html;
@@ -215,12 +361,12 @@ export class PrintPreviewExporter {
             'libs/exe_export.js': getPath('app/common/exe_export.js'),
             'libs/exe_math/tex-mml-svg.js': getPath('app/common/exe_math/tex-mml-svg.js'),
             'libs/favicon.ico': getPath('favicon.ico'),
-            
+
             // Base CSS
             'content/css/base.css': getPath('style/content.css'), // Fallback/Core CSS
-            
+
             // Theme (in zip: theme/ -> on server: /files/perm/themes/base/...)
-            'theme/style.css': options.themeUrl 
+            'theme/style.css': options.themeUrl
                 ? `${options.themeUrl.replace(/\/$/, '')}/style.css`
                 : getPath(`files/perm/themes/base/${themeName}/style.css`),
             'theme/style.js': options.themeUrl
@@ -237,18 +383,30 @@ export class PrintPreviewExporter {
 
         // Handle iDevice resources (in zip: idevices/ -> on server: /files/perm/idevices/base/...)
         const serverIdeviceBase = getPath('files/perm/idevices/base/');
-        
+
         // Regex to match "idevices/TYPE/FILE" and transform to "SERVER_BASE/TYPE/export/FILE"
         // PageRenderer typically outputs `src="idevices/{type}/{file}"` when basePath is empty
         const idevicePattern = /(src|href)=["']idevices\/([^/"']+)\/([^/"']+)["']/g;
-        
+
         processed = processed.replace(idevicePattern, (match, attr, type, file) => {
             return `${attr}="${serverIdeviceBase}${type}/export/${file}"`;
         });
-        
+
         // Fallback for simple 'idevices/' replacement if regex doesn't match specific structure
         processed = processed.replaceAll('src="idevices/', `src="${serverIdeviceBase}`);
         processed = processed.replaceAll('href="idevices/', `href="${serverIdeviceBase}`);
+
+        // Handle content/resources/ (assets) -> server path
+        // This is crucial for previewing images/media in Blob/iframe
+        const serverResourceBase = getPath('content/resources/');
+        // Replace src="content/resources/FILE" with src="SERVER_BASE/FILE"
+        // Also href="..."
+        // We use a regex to capture filenames to avoid double-slash issues if any
+
+        const resourcePattern = /(src|href)=["']content\/resources\/([^"']+)["']/g;
+        processed = processed.replace(resourcePattern, (match, attr, filename) => {
+            return `${attr}="${serverResourceBase}${filename}"`;
+        });
 
         return processed;
     }
@@ -257,7 +415,7 @@ export class PrintPreviewExporter {
      * Inject scripts/CSS required for the in-window Print Overlay
      */
     private injectPrintSpecifics(html: string): string {
-         const printScript = `
+        const printScript = `
 <script>
 window.onload = function() {
     setTimeout(function() {

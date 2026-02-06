@@ -114,6 +114,7 @@ function createNullResourceProvider() {
         fetchSchemas: async () => new Map<string, Uint8Array>(),
         fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+        fetchExeLogo: async () => null,
     };
 }
 
@@ -155,11 +156,13 @@ export function createExporter(
     }
 
     // Create adapters with null-safe wrappers
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const document = new YjsDocumentAdapter(documentManager as any);
 
     // Create resource provider with null-safe fallback
     const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
 
     // Create asset provider with null-safe fallback
@@ -168,8 +171,10 @@ export function createExporter(
     const assets =
         assetCache || assetManager
             ? new BrowserAssetProvider(
-                  assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                  assetManager as Parameters<typeof BrowserAssetProvider>[1],
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  assetCache as any,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  assetManager as any,
               )
             : createNullAssetProvider();
 
@@ -370,7 +375,8 @@ export async function exportAndDownload(
     const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
-    const blob = new Blob([result.data], { type: 'application/zip' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const blob = new Blob([result.data as any], { type: 'application/zip' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -390,31 +396,54 @@ export async function exportAndDownload(
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
  * @param options - Preview options (baseUrl, basePath, version)
+ * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
  * @returns Preview result with HTML string
  */
 export async function generatePrintPreview(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
     options?: PrintPreviewOptions,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): Promise<PrintPreviewResult> {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const document = new YjsDocumentAdapter(documentManager as any);
     const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
-    const exporter = new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        // Determine if it's the new Manager or old Cache based on property check
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cache = isNewManager ? null : (assetManager as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    const exporter = new PrintPreviewExporter(
+        document,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resources as any,
+        assets,
+    );
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
 
-    options = {
+    const previewOptions = {
         ...options,
         ...latexHooks,
         ...mermaidHooks,
     };
 
-    return exporter.generatePreview(options);
+    return exporter.generatePreview(previewOptions);
 }
 
 /**
@@ -422,17 +451,39 @@ export async function generatePrintPreview(
  *
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (optional)
  * @returns PrintPreviewExporter instance
  */
 export function createPrintPreviewExporter(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): PrintPreviewExporter {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const document = new YjsDocumentAdapter(documentManager as any);
     const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
-    return new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cache = isNewManager ? null : (assetManager as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    return new PrintPreviewExporter(
+        document,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        resources as any,
+        assets,
+    );
 }
 
 /**
@@ -471,19 +522,23 @@ export async function generatePreviewForSW(
         }
 
         // Create adapters with null-safe wrappers
-        const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const document = new YjsDocumentAdapter(documentManager as any);
 
         // Create resource provider with null-safe fallback
         const resources = resourceFetcher
-            ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              new BrowserResourceProvider(resourceFetcher as any)
             : createNullResourceProvider();
 
         // Create asset provider with null-safe fallback
         const assets =
             assetCache || assetManager
                 ? new BrowserAssetProvider(
-                      assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                      assetManager as Parameters<typeof BrowserAssetProvider>[1],
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      assetCache as any,
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      assetManager as any,
                   )
                 : createNullAssetProvider();
 
@@ -512,7 +567,8 @@ export async function generatePreviewForSW(
                 const encoded = encoder.encode(content);
                 files[path] = encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength);
             } else {
-                files[path] = content as ArrayBuffer;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                files[path] = content as any;
             }
         }
 

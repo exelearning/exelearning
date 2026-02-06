@@ -1,9 +1,18 @@
 /**
  * Tests for PrintPreviewExporter
  */
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'bun:test';
 import { PrintPreviewExporter } from './PrintPreviewExporter';
 import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../interfaces';
+
+// Mock URL.createObjectURL
+const originalCreateObjectURL = global.URL.createObjectURL;
+beforeAll(() => {
+    global.URL.createObjectURL = ((blob: Blob) => `blob:mock-url-${blob.size}`) as any;
+});
+afterAll(() => {
+    global.URL.createObjectURL = originalCreateObjectURL;
+});
 
 // Mock document
 const createMockDocument = (pages: ExportPage[] = [], meta: Partial<ExportMetadata> = {}): ExportDocument => ({
@@ -25,12 +34,14 @@ const createMockDocument = (pages: ExportPage[] = [], meta: Partial<ExportMetada
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    getThemeFiles: async () => [],
-    getThemeFile: async () => null,
-    getIdeviceFiles: async () => [],
-    getIdeviceFile: async () => null,
-    getLibraryFiles: async () => [],
-    getLibraryFile: async () => null,
+    fetchTheme: async () => new Map(),
+    fetchIdeviceResources: async () => new Map(),
+    fetchBaseLibraries: async () => new Map(),
+    fetchLibraryFiles: async () => new Map(),
+    normalizeIdeviceType: type => type,
+    fetchExeLogo: async () => null,
+    fetchContentCss: async () => new Map(),
+    fetchScormFiles: async () => new Map(),
 });
 
 describe('PrintPreviewExporter', () => {
@@ -257,6 +268,178 @@ describe('PrintPreviewExporter', () => {
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
             const result = await exp.generatePreview();
             expect(result.html).toContain('&lt;script&gt;xss&lt;/script&gt;');
+        });
+    });
+
+    describe('asset handling', () => {
+        const mockAssetProvider = {
+            getAllAssets: async () => [
+                {
+                    id: '1234-5678',
+                    filename: 'image.png',
+                    folderPath: '',
+                    mime: 'image/png',
+                    data: new Uint8Array([1, 2, 3]), // 3 bytes
+                },
+                {
+                    id: '8765-4321',
+                    filename: 'document.pdf',
+                    folderPath: '',
+                    mime: 'application/pdf',
+                    data: new Uint8Array([1, 2]), // 2 bytes
+                },
+            ],
+            getAsset: async () => null,
+            hasAsset: async () => false,
+            listAssets: async () => [],
+            resolveAssetUrl: async () => null,
+            getProjectAssets: async () => [],
+        };
+
+        it('should replace asset://UUID URLs with content/resources/FILENAME', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://1234-5678" /> <a href="asset://8765-4321">Link</a>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider, mockAssetProvider as any);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('blob:mock-url-3');
+            expect(result.html).toContain('blob:mock-url-2');
+            expect(result.html).not.toContain('asset://1234-5678');
+        });
+
+        it('should replace content/resources/ URL with blob URL', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="content/resources/1234-5678.png" />',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider, mockAssetProvider as any);
+            const result = await exp.generatePreview();
+
+            // Should find asset 1234-5678 (mapped to blob:mock-url-3) even if input is content/resources/1234-5678.png
+            // The mapping uses UUID as key, and filename as key.
+            // Our mock uses filename 'image.png' for ID '1234-5678'.
+            // The test input uses '1234-5678.png'.
+            // The resolver tries removing extension: '1234-5678'.
+            // This matches the asset ID.
+            expect(result.html).toContain('blob:mock-url-3');
+            expect(result.html).not.toContain('content/resources/1234-5678.png');
+        });
+
+        it('should handle multiple assets with same filename by generating unique blob URLs', async () => {
+            const duplicateProvider = {
+                ...mockAssetProvider,
+                getAllAssets: async () => [
+                    { id: '1', filename: 'image.png', folderPath: '', mime: 'image/png', data: new Uint8Array([1]) },
+                    { id: '2', filename: 'image.png', folderPath: '', mime: 'image/png', data: new Uint8Array([1, 2]) },
+                ],
+            };
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    order: 0,
+                    parentId: null,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: '<img src="asset://1" /> <img src="asset://2" />',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider, duplicateProvider as any);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('blob:mock-url-1');
+            expect(result.html).toContain('blob:mock-url-2');
+        });
+
+        it('should preserve asset:// URLs if asset not found in provider', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: '<img src="asset://unknown-uuid" />',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider, mockAssetProvider as any);
+            const result = await exp.generatePreview();
+
+            // Should default to UUID or existing path if not found (implementation details: returns content/resources/UUID)
+            expect(result.html).toContain('content/resources/unknown-uuid');
         });
     });
 

@@ -90,6 +90,14 @@ export default class ModalPrintPreview {
             throw new Error(_('Document manager not available'));
         }
 
+        console.log('[ModalPrintPreview] yjsBridge available:', !!yjsBridge);
+        console.log('[ModalPrintPreview] AssetManager available:', !!yjsBridge?.assetManager);
+        if (yjsBridge?.assetManager) {
+             console.log('[ModalPrintPreview] AssetManager details:', yjsBridge.assetManager);
+        } else {
+             console.warn('[ModalPrintPreview] AssetManager is MISSING in yjsBridge');
+        }
+
         // Get generatePrintPreview function
         const generatePrintPreviewFn =
             window.generatePrintPreview || window.SharedExporters?.generatePrintPreview;
@@ -106,7 +114,8 @@ export default class ModalPrintPreview {
                 baseUrl: window.eXeLearning?.config?.baseURL || window.location.origin,
                 basePath: window.eXeLearning?.config?.basePath || '',
                 version: window.eXeLearning?.config?.version || 'v1.0.0',
-            }
+            },
+            yjsBridge.assetManager || null
         );
 
         if (!result.success || !result.html) {
@@ -114,12 +123,7 @@ export default class ModalPrintPreview {
         }
 
         // Resolve asset URLs if available
-        let html = result.html;
-        const assetManager = yjsBridge.assetManager;
-
-        if (assetManager && typeof assetManager.resolveAssetUrlsAsync === 'function') {
-            html = await assetManager.resolveAssetUrlsAsync(html);
-        }
+        const html = result.html;
 
         // Create blob URL and load into iframe
         this.cleanup();
