@@ -1014,6 +1014,78 @@ ${originalCode}
             return new TextEncoder().encode(transformedCode);
         }
 
+        // Transform exe_effects.js to fix Accordion in EPUB (href issue)
+        if (filename === 'exe_effects.js') {
+            const originalCode = typeof content === 'string'
+                ? content
+                : new TextDecoder().decode(content);
+
+            // Patch the accordion click handler
+            // The issue is that $(this).attr('href') falls back to the full URL or is sanitized in EPUBs
+            // We need to derive the target ID from the element ID instead
+            const searchFor = `var currentAttrValue = $(this).attr('href');
+
+        // IE7 retrieves link#hash instead of #hash
+        currentAttrValue = currentAttrValue.split("#");
+        currentAttrValue = "#" + currentAttrValue[1];
+        // / IE7`;
+
+            const replaceWith = `// EPUB PATCH: Deduce target from ID because href might be void
+        var targetId = this.id.replace("-trigger", "").replace(/_/g, "-");
+        var currentAttrValue = "#" + targetId;`;
+
+            // Allow for flexible whitespace in search
+            const normalizedSearch = searchFor.replace(/\s+/g, ' ');
+            const normalizedOriginal = originalCode.replace(/\s+/g, ' ');
+
+            let transformedCode = originalCode;
+
+            // Try exact replacement first
+            if (originalCode.includes(searchFor)) {
+                transformedCode = originalCode.replace(searchFor, replaceWith);
+            } else {
+                // Determine indentation and surrounding context for fallback
+                const fallbackSearch = "var currentAttrValue = $(this).attr('href');";
+                const fallbackReplace = `var currentAttrValue = "#" + this.id.replace("-trigger", "").replace(/_/g, "-"); /* EPUB PATCH */
+        /* Original: var currentAttrValue = $(this).attr('href'); */`;
+
+                if (originalCode.includes(fallbackSearch)) {
+                    // We only replace the first line and comment out the rest manually if needed, 
+                    // or just rely on the fact that redefining currentAttrValue effectively overrides the subsequent logic
+                    // IF we place it after.
+                    // But simpler to just replace the line and handle the IE7 block if it exists next.
+
+                    // Regex approach to match the block more robustly
+                    const regex = /var\s+currentAttrValue\s*=\s*\$\(this\)\.attr\('href'\);\s*\/\/ IE7[^/]*\/\/\s*\/ IE7/s;
+                    if (regex.test(originalCode)) {
+                        transformedCode = originalCode.replace(regex, replaceWith);
+                    } else {
+                        // Fallback: just replace the initialization line
+                        transformedCode = originalCode.replace(fallbackSearch, fallbackReplace);
+                    }
+                } else {
+                    console.warn('[Epub3Exporter] Could not find exe_effects.js click handler to patch');
+                }
+            }
+
+            // Refinement: Prevent scroll-to-top by changing href="#" to href="javascript:void(0)"
+            // in the HTML generation part.
+            // Original: href="#' + id + '"
+            const linkSearch = 'href="#\' + id + \'"';
+            const linkReplace = 'href="javascript:void(0)"';
+
+            if (transformedCode.includes(linkSearch)) {
+                transformedCode = transformedCode.replace(linkSearch, linkReplace);
+            } else {
+                console.warn('[Epub3Exporter] Could not find exe_effects.js link generation to patch');
+            }
+
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
         // No transformation needed for other files
         return content;
     }

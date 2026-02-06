@@ -494,7 +494,7 @@ describe('Epub3Exporter', () => {
         it('should catch and return errors', async () => {
             // Create a failing zip provider
             const failingZip: ZipProvider = {
-                addFile: () => {},
+                addFile: () => { },
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
@@ -729,5 +729,88 @@ describe('Epub3Exporter', () => {
             // content.xml should not be in the archive when not provided
             expect(zip.files.has('EPUB/content.xml')).toBe(false);
         });
+    });
+});
+
+describe('Library Transformations', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: Epub3Exporter;
+
+    beforeEach(() => {
+        document = new MockDocument({}, samplePages);
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+    });
+
+    it('should patch exe_effects.js for EPUB export', async () => {
+        const originalJs = `
+function test() {
+var k = "exe";
+$("." + k + "-accordion").each(function (i) {
+    // HTML generation
+    h2.eq(y).wrap('<a class="fx-accordion-title" href="#' + id + '" id="' + id + '-trigger"></a>');
+
+    // Click handler
+    var currentAttrValue = $(this).attr('href');
+
+    // IE7 retrieves link#hash instead of #hash
+    currentAttrValue = currentAttrValue.split("#");
+    currentAttrValue = "#" + currentAttrValue[1];
+    // / IE7
+    
+    // more code
+});
+}`;
+        // Setup page with accordion to trigger library detection
+        const pageWithAccordion: ExportPage[] = [{
+            id: 'p1', title: 'T', parentId: null, order: 0,
+            blocks: [{
+                id: 'b1', name: 'd', order: 0,
+                components: [{
+                    id: 'c1', type: 'text', order: 0,
+                    content: '<div class="exe-accordion">test</div>'
+                }]
+            }]
+        }];
+
+        document = new MockDocument({}, pageWithAccordion);
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+
+        // Mock library fetch to return our sample JS
+        resources.fetchLibraryFiles = async (files) => {
+            const result = new Map<string, Buffer>();
+            // The exporter might request full paths, but we just need to ensuring we provide the file
+            // when requested. The key in the map should match what the exporter expects.
+            result.set('exe_effects/exe_effects.js', Buffer.from(originalJs));
+            return result;
+        };
+
+        // Also override fetchBaseLibraries just in case
+        resources.fetchBaseLibraries = async () => {
+            return new Map();
+        };
+
+        await exporter.export();
+
+        // Check if file exists in ZIP
+        const zipPath = 'EPUB/libs/exe_effects/exe_effects.js';
+        expect(zip.files.has(zipPath)).toBe(true);
+
+        const content = zip.files.get(zipPath);
+        const contentStr = typeof content === 'string' ? content : new TextDecoder().decode(content as Buffer);
+
+        // Verify transformations
+        // 1. Click handler patch
+        expect(contentStr).not.toContain("$(this).attr('href')");
+        expect(contentStr).toContain('var targetId = this.id.replace("-trigger", "").replace(/_/g, "-");');
+
+        // 2. Link generation patch (javascript:void(0))
+        expect(contentStr).not.toContain('href="#\' + id + \'"');
+        expect(contentStr).toContain('href="javascript:void(0)"');
     });
 });
