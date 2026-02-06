@@ -1309,8 +1309,7 @@ export default class App {
  * Deferring the installation avoids noisy warnings during automated navigations
  * while preserving the safety prompt for real users after they interact.
  *
- * With in-memory asset storage, we warn if there are unsaved assets that would
- * be lost on page reload (blobs not yet uploaded to server).
+ * Warn only when there are unsaved changes. Electron handles close flow separately.
  */
 let __exeBeforeUnloadInstalled = false;
 function __exeInstallBeforeUnloadOnce() {
@@ -1318,20 +1317,22 @@ function __exeInstallBeforeUnloadOnce() {
     __exeBeforeUnloadInstalled = true;
 
     window.onbeforeunload = function (event) {
-        // Check for unsaved assets (blobs in memory not yet uploaded to server)
-        // With in-memory storage, these would be lost on page reload
+        if (window.electronAPI) return undefined;
+
+        const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
         const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        if (assetManager && typeof assetManager.hasUnsavedAssets === 'function') {
-            if (assetManager.hasUnsavedAssets()) {
-                // Show browser confirmation dialog
-                const message = 'You have unsaved assets that will be lost if you leave. Are you sure?';
-                event.preventDefault();
-                event.returnValue = message;
-                return message;
-            }
+        const hasUnsavedAssets =
+            assetManager &&
+            typeof assetManager.hasUnsavedAssets === 'function' &&
+            assetManager.hasUnsavedAssets();
+        const isDirty = docManager?.isDirty === true;
+
+        if (isDirty || hasUnsavedAssets) {
+            event.preventDefault();
+            event.returnValue = '';
+            return '';
         }
 
-        // Auto-save with Yjs handles data persistence - no confirmation dialog needed
         return undefined;
     };
 }

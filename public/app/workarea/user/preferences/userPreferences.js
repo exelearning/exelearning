@@ -85,6 +85,37 @@ export default class UserPreferences {
             contentId: 'preferences',
             properties: this.preferences,
         });
+
+        // Add static mode notice after modal is rendered
+        const isStaticMode = eXeLearning.app.capabilities?.storage?.remote === false;
+        if (isStaticMode) {
+            // Wait for modal to render (matches modal's internal timeMax)
+            setTimeout(() => {
+                this._addStaticModeNotice();
+            }, 350);
+        }
+    }
+
+    /**
+     * Add notice for static mode users that preferences require page refresh
+     * @private
+     */
+    _addStaticModeNotice() {
+        const modal = document.getElementById('modalProperties');
+        const body = modal?.querySelector('.modal-body');
+        if (!body) return;
+
+        // Don't add if already exists
+        if (body.querySelector('#preferences-static-notice')) return;
+
+        const notice = document.createElement('div');
+        notice.id = 'preferences-static-notice';
+        notice.className = 'alert alert-info';
+        notice.setAttribute('role', 'alert');
+        notice.textContent = _('Preferences will be applied after refreshing the page.');
+
+        // Insert at the beginning of the body
+        body.prepend(notice);
     }
 
     /**
@@ -188,8 +219,32 @@ export default class UserPreferences {
 
         // Reloading of the page so that it takes a possible change of language in the user preferences
         if (params['locale'] !== undefined) {
+            if (isStaticMode) {
+                this._showStaticReloadWarning();
+                return;
+            }
             window.onbeforeunload = null;
             window.location.reload();
         }
+    }
+
+    _showStaticReloadWarning() {
+        const modal = document.getElementById('modalProperties');
+        const body = modal?.querySelector('.modal-body');
+        if (!body) return;
+
+        const message = typeof _ === 'function'
+            ? _('Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.')
+            : 'Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.';
+
+        let warning = body.querySelector('#preferences-reload-warning');
+        if (!warning) {
+            warning = document.createElement('div');
+            warning.id = 'preferences-reload-warning';
+            warning.className = 'alert alert-warning';
+            warning.setAttribute('role', 'alert');
+            body.prepend(warning);
+        }
+        warning.textContent = message;
     }
 }

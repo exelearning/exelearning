@@ -31,37 +31,133 @@ eXeLearning is an open-source educational content authoring tool (AGPL-3.0) that
 ```
 src/
 ├── index.ts              # Elysia entry point
+├── index-node.ts         # Node.js entry point
 ├── routes/               # API routes (Elysia plugins)
 ├── services/             # Business logic
 ├── shared/               # Shared code (export/, import/)
 ├── db/                   # Kysely: client, dialect, migrations, queries
+├── exceptions/           # Custom error types
+├── redis/                # Redis integration
 ├── websocket/            # Yjs collaboration, room/asset management
+├── yjs/                  # Yjs document handling and helpers
 ├── cli/                  # CLI commands
 └── utils/                # Utility functions
 ```
 
+### Frontend Structure
+
+```
+public/
+├── app/                   # Frontend app code (vanilla JS)
+│   ├── app.js             # App entry point
+│   ├── app.bundle.js      # Bundled build
+│   ├── app.test.js        # Frontend tests
+│   ├── adapters/          # App adapters/integrations
+│   ├── admin/             # Admin UI
+│   ├── common/            # Shared modules
+│   ├── core/              # Core app logic
+│   ├── editor/            # Editor modules
+│   ├── locate/            # Localization
+│   ├── rest/              # REST client helpers
+│   ├── schemas/           # Schema definitions
+│   ├── test-helpers/      # Test utilities
+│   ├── utils/             # Utility helpers
+│   ├── workarea/          # Workarea UI
+│   └── yjs/               # Yjs collaboration modules
+├── bundles/               # Prebuilt bundles (themes, libs, iDevices)
+├── files/                 # Static files (perm/tmp)
+├── icons/                 # Icon assets
+├── images/                # Image assets
+├── libs/                  # Third-party libraries
+├── style/                 # CSS styles
+├── loading.html           # Loading screen
+├── preview-sw.js          # Preview service worker
+└── preview-sw.test.js     # Preview service worker tests
+```
+
 ### Session-Based Architecture
 
-Every opened project receives a UUID session ID. Sessions are stored in-memory (`Map<sessionId, ProjectSession>`) and include parsed XML structure, project metadata, and timestamps.
+Every opened project receives a UUID session ID. The server maintains lightweight session metadata in-memory (`Map<sessionId, ProjectSession>`) with basic info (sessionId, userId, fileName, timestamps). **The client is the source of truth** for document structure via Yjs.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     CLIENT (Browser)                            │
+├─────────────────────────────────────────────────────────────────┤
+│  YjsDocumentManager (Y.Doc)                                     │
+│  ├── navigation (Y.Array) → pages, blocks, iDevices             │
+│  ├── metadata (Y.Map) → title, author, theme, etc.              │
+│  ├── assets (Y.Map) → file metadata                             │
+│  └── themeFiles (Y.Map) → custom themes                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              │ WebSocket (Yjs sync) + REST API
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     SERVER (Bun/Elysia)                         │
+├─────────────────────────────────────────────────────────────────┤
+│  SessionManager: lightweight metadata only (not document)       │
+│  WebSocket: stateless relay (does NOT store Y.Doc)              │
+│  Database: projects table + yjs_documents (binary snapshots)    │
+│  Filesystem: FILES_DIR/assets/{projectUuid}/                    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 **Note:** ELP extraction and export generation happen client-side. The server only stores assets permanently.
 
-### File Storage Architecture
+### Client-Side Storage (Browser)
 
-| Directory | Purpose | Path Pattern |
-|-----------|---------|--------------|
-| `assets/` | Permanent project assets | `{FILES_DIR}/assets/{projectUuid}/` |
+The browser uses **IndexedDB** and **Cache API** for persistence:
+
+| Storage | Name Pattern | Purpose | Location |
+|---------|--------------|---------|----------|
+| **IndexedDB** | `exelearning-project-{uuid}` | Yjs Y.Doc persistence per project | `public/app/yjs/YjsDocumentManager.js` |
+| **IndexedDB** | `exelearning` | User preferences (iDevice favorites) | `public/app/workarea/menus/idevices/menuIdevicesBottom.js` |
+| **IndexedDB** | `exelearning-resources-v1` | Cache for themes, iDevices, libraries | `public/app/yjs/ResourceCache.js` |
+| **Cache API** | `exe-assets-{uuid}` | Blob storage for images/files per project | `public/app/yjs/AssetManager.js` |
+
+**Why this architecture?**
+- `exelearning-project-{uuid}`: Survives page reload, enables offline editing, syncs via WebSocket
+- `exelearning`: Stores user settings locally (no server round-trip)
+- `exelearning-resources-v1`: Avoids re-downloading themes/libraries on every page load
+- `exe-assets-{uuid}`: Cache API is optimized for large blobs (images, PDFs), survives reload before saving to server
+
+### File Storage Architecture (Server)
+
+`FILES_DIR` is the root directory for all server-side persistent files.
+
+**Resolution order** (in `src/services/file-helper.ts`):
+1. `ELYSIA_FILES_DIR` (used by tests)
+2. `FILES_DIR` (from `.env`)
+3. Fallback: `./data/` (local development)
+
+**Structure:**
+```
+FILES_DIR/                          # /mnt/data/ (prod) or ./data/ (dev)
+├── assets/{projectUuid}/           # Permanent project assets (images, PDFs)
+├── tmp/{year}/{month}/{day}/{id}/  # Temporary files (exports in progress)
+├── dist/{year}/{month}/{day}/{id}/ # Ready-to-download exports
+├── chunks/                         # Large file upload chunks
+├── themes/site/                    # Custom site themes
+└── exelearning.db                  # SQLite database (if DB_DRIVER=pdo_sqlite)
+```
+
+**Key functions:**
+| Function | Returns |
+|----------|---------|
+| `getFilesDir()` | `FILES_DIR/` |
+| `getProjectAssetsDir(uuid)` | `FILES_DIR/assets/{uuid}/` |
+| `getTempPath()` | `FILES_DIR/tmp/` |
+| `getOdeSessionTempDir(id)` | `FILES_DIR/tmp/{year}/{month}/{day}/{id}/` |
 
 **Key rules:**
-- `tmp/` and `dist/` directories are NOT used for sessions. Server does NOT extract ELPs
-- Directories are created **lazily** (on-demand when files are written), never eagerly
+- Directories created **lazily** (on-demand when files are written), never eagerly
 - Assets use project **UUID**, NOT numeric ID
-- Asset uploads ALWAYS write to `FILES_DIR/assets/{projectUuid}/`
-- Content.xml is NOT generated by server - Yjs is the source of truth
-- CLI commands may use system `/tmp` for temporary files
+- Server does NOT extract ELPs - client-side only
+- Content.xml NOT generated by server - Yjs is the source of truth
 
-**Server:** Store assets permanently, persist Yjs documents in database, generate exports on-demand.
-**Client:** ELP extraction, export generation, Yjs document management (source of truth), asset management via IndexedDB.
+- **Server**: Stores assets permanently, persists Yjs documents in the database, and generates exports on demand. Note: the eXeLearning application must perform exports only in the browser. Server-side exports are available exclusively via CLI commands. An API service is also provided, intended for use by third-party applications.
+
+- **Client:** ELP extraction, export generation, Yjs document management (source of truth), asset management via Cache API.
 
 ### Preview System (Service Worker Architecture)
 
@@ -88,11 +184,14 @@ ELP files are ZIP archives containing:
 ## Development Commands
 
 ```bash
-bun install              # Install dependencies
-bun run start:dev        # Development server with hot reload
-make test-unit           # Run tests (ALWAYS use this)
-make test-coverage       # Run with coverage
-bun run build            # Build
+make deps                  # Install dependencies (preferred over bun install)
+make up-local              # Local dev server (web only, dev mode)
+make up-local APP_ENV=prod # Local dev server (web only, prod mode)
+make run-app               # Electron + backend (desktop app)
+make bundle                # Build all assets (TS + CSS + JS bundle)
+make test-unit             # Run unit tests with coverage (ALWAYS use this)
+make test                  # Run full test suite
+make up                    # Docker dev environment
 ```
 
 ## Testing
@@ -134,10 +233,15 @@ afterEach(() => resetDependencies());
 ### Test Structure
 
 ```
-src/**/*.spec.ts          # Unit tests next to source files
-test/integration/         # Multi-service integration tests
-test/fixtures/xml/        # Sample content.xml files
-test/helpers/             # Test utilities and mock providers
+src/**/*.spec.ts                        # Backend unit tests next to source files
+public/app/**/*.test.js                 # Frontend unit tests (workarea/UI)
+public/libs/**/*.test.js                # Frontend lib tests
+public/files/perm/idevices/**/*.test.js # Idevice edition/export tests
+test/unit/                              # Extra unit tests not colocated
+test/integration/                       # Integration tests
+test/e2e/playwright/specs/              # Playwright E2E specs
+test/fixtures/xml/                      # Sample content.xml files
+test/helpers/                           # Test utilities and mock providers
 ```
 
 ## Database
@@ -183,7 +287,7 @@ Configuration is managed via `.env` file. Use `.env.dist` as template (`cp .env.
 | `APP_PORT` | Server port | `8080` |
 | `DB_PATH` | SQLite database path | `/mnt/data/exelearning.db` |
 | `DB_DRIVER` | Database driver | `pdo_sqlite` |
-| `FILES_DIR` | Session/temp file storage | `/mnt/data/` |
+| `FILES_DIR` | Root for assets, tmp, dist (see File Storage) | `/mnt/data/` (prod), `./data/` (dev) |
 | `APP_SECRET` | JWT secret | (required) |
 | `BASE_PATH` | URL prefix for subdirectory install | (empty) |
 | `APP_AUTH_METHODS` | Auth methods (password,cas,openid,guest) | `password` |
@@ -194,18 +298,34 @@ See `.env.dist` for complete list with documentation.
 
 ### File Upload Flow
 
-1. Upload ELP → temp storage
-2. Generate session ID (`crypto.randomUUID()`)
-3. Create session directories, extract ZIP, parse XML
-4. Store session in `SessionManager.sessions` Map
-5. Return session ID to frontend
+Two real paths exist today. The primary path is **client-side**; the server is only a temp store in the fallback path.
+
+**Primary (browser, direct import)**
+1. User selects a .elp/.elpx file.
+2. Browser imports the file **in memory** via Yjs (`importElpDirectly` → `importFromElpxViaYjs`).
+3. UI refreshes from the Yjs document.
+4. The document is saved to the server only on explicit save or autosave.
+
+**Fallback (server temp + client-side import)**
+1. Browser uploads the file in 15MB chunks to `POST /api/project/upload-chunk`.
+2. Server concatenates chunks into a temp file (no parsing).
+3. Browser requests legacy open (`/api/odes/local/elp/open`) and receives `projectUuid` + `elpImportPath`.
+4. Browser reloads `workarea?project=...&import=...` and imports the file **client-side**.
+5. Browser calls `DELETE /api/project/cleanup-import` to remove the temp file.
 
 ### Export Flow
 
-1. Get session structure → create export directory
-2. Generate format-specific files (HTML, manifest, etc.)
-3. Copy theme files and assets → create ZIP archive
-4. Return download path
+The UI **tries client-side first**, then falls back to server-side export.
+
+**Primary (browser, Yjs + SharedExporters)**
+1. UI triggers export.
+2. Browser uses `SharedExporters` to generate the ZIP in memory.
+3. Browser downloads the file (or Electron saves it).
+
+**Fallback (server-side)**
+1. Browser calls `/api/export/:sessionId/:exportType/download` (POST with structure for `yjs-*` sessions).
+2. Server builds a Y.Doc from structure / DB / temp ELP and runs exporters.
+3. Server writes ZIP to `dist` and streams it back for download.
 
 ### Adding New Routes
 

@@ -82,7 +82,17 @@ export class FreeTextHandler extends BaseLegacyHandler {
             }
         }
 
-        // Check for feedback and wrap in exe-text-activity if present
+        // Check if content already has feedback buttons embedded (legacy ELPs may have them in HTML)
+        // This prevents duplicate feedback buttons when importing
+        if (this.hasFeedbackButton(content)) {
+            // Content already has feedback, wrap in exe-text-activity if not already wrapped
+            if (!content.includes('exe-text-activity')) {
+                return `<div class="exe-text-activity">${content}</div>`;
+            }
+            return content;
+        }
+
+        // Check for feedback in XML and add if present
         const feedback = this.extractFeedback(dict, context);
         if (feedback.content) {
             let html = content;
@@ -97,21 +107,77 @@ export class FreeTextHandler extends BaseLegacyHandler {
     }
 
     /**
-     * Escape HTML attribute special characters
+     * Check if HTML content already contains feedback button elements
+     * Legacy ELPs may have feedback buttons embedded in content_w_resourcePaths
+     *
+     * @param html - HTML content to check
+     * @returns true if feedback button already exists
      */
-    private escapeHtmlAttr(str: string): string {
-        if (!str) return '';
-        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    private hasFeedbackButton(html: string): boolean {
+        if (!html) return false;
+        // Check for various feedback button patterns used in legacy exports
+        // - feedbacktooglebutton: standard class name (note the typo in original)
+        // - feedbackbutton: alternative class name used in some versions
+        // - iDevice_buttons feedback-button: container class pattern
+        return (
+            html.includes('feedbacktooglebutton') ||
+            html.includes('feedbackbutton') ||
+            html.includes('iDevice_buttons feedback-button') ||
+            html.includes('class="feedback-button')
+        );
+    }
+
+    /**
+     * Extract the main content HTML from the dictionary (used to check for embedded feedback)
+     */
+    private extractMainContent(dict: Element): string {
+        // Strategy 1: Look for activityTextArea (main content)
+        const activityTextArea = this.findDictInstance(dict, 'activityTextArea');
+        if (activityTextArea) {
+            return this.extractTextAreaFieldContent(activityTextArea);
+        }
+
+        // Strategy 2: Look for "content" key
+        const contentTextArea = this.findDictInstance(dict, 'content');
+        if (contentTextArea) {
+            return this.extractTextAreaFieldContent(contentTextArea);
+        }
+
+        // Strategy 3: Look for "fields" list (JsIdevice format)
+        const fieldsContent = this.extractFieldsContent(dict);
+        if (fieldsContent) {
+            return fieldsContent;
+        }
+
+        // Strategy 4: Any TextAreaField in the dictionary
+        const instances = this.getDirectChildrenByTagName(dict, 'instance');
+        for (const inst of instances) {
+            const className = inst.getAttribute('class') || '';
+            if (className.includes('TextAreaField')) {
+                const content = this.extractTextAreaFieldContent(inst);
+                if (content) return content;
+            }
+        }
+
+        return '';
     }
 
     /**
      * Extract feedback content (for Reflection iDevices and GenericIdevice with FeedbackField)
+     * Returns empty if the main content HTML already has feedback embedded (prevents duplication)
      *
      * @param dict - Dictionary element
      * @param context - Context with language info
      */
     extractFeedback(dict: Element, context?: IdeviceHandlerContext): FeedbackResult {
         if (!dict) return { content: '', buttonCaption: '' };
+
+        // If the main content HTML already has feedback embedded, don't extract separate feedback
+        // This prevents duplication when legacy ELPs have feedback in both places
+        const mainContent = this.extractMainContent(dict);
+        if (this.hasFeedbackButton(mainContent)) {
+            return { content: '', buttonCaption: '' };
+        }
 
         // Use project language for default caption (not UI locale)
         const defaultCaption = this.getLocalizedFeedbackText(context?.language);
@@ -211,8 +277,16 @@ export class FreeTextHandler extends BaseLegacyHandler {
 
     /**
      * Extract properties for text iDevice
+     * Returns empty if the main content HTML already has feedback embedded (prevents duplication)
      */
     extractProperties(dict: Element, _ideviceId?: string): Record<string, unknown> {
+        // If the main content HTML already has feedback embedded, don't return feedback properties
+        // This prevents duplication when legacy ELPs have feedback in both places
+        const mainContent = this.extractMainContent(dict);
+        if (this.hasFeedbackButton(mainContent)) {
+            return {};
+        }
+
         const feedback = this.extractFeedback(dict);
         if (feedback.content) {
             return {

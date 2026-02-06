@@ -152,6 +152,154 @@ describe('UserPreferences', () => {
         properties: userPreferences.preferences
       }));
     });
+
+    it('should add static mode notice in static mode', async () => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+      // Create mock modal element
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences.preferences = { some: 'pref' };
+      userPreferences.showModalPreferences();
+
+      // Wait for setTimeout (350ms)
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).not.toBeNull();
+      expect(notice.className).toBe('alert alert-info');
+      expect(notice.textContent).toBe('Preferences will be applied after refreshing the page.');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should not add static mode notice in server mode', async () => {
+      // Server mode is default
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences.preferences = { some: 'pref' };
+      userPreferences.showModalPreferences();
+
+      // Wait for timeout
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).toBeNull();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+  });
+
+  describe('_addStaticModeNotice', () => {
+    it('should add notice to modal body', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences._addStaticModeNotice();
+
+      const notice = document.getElementById('preferences-static-notice');
+      expect(notice).not.toBeNull();
+      expect(notice.getAttribute('role')).toBe('alert');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should not add duplicate notice', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Call twice
+      userPreferences._addStaticModeNotice();
+      userPreferences._addStaticModeNotice();
+
+      const notices = document.querySelectorAll('#preferences-static-notice');
+      expect(notices.length).toBe(1);
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should handle missing modal gracefully', () => {
+      // No modal in DOM
+      expect(() => userPreferences._addStaticModeNotice()).not.toThrow();
+    });
+
+    it('should handle modal without body gracefully', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      // No modal-body child
+      document.body.appendChild(mockModal);
+
+      expect(() => userPreferences._addStaticModeNotice()).not.toThrow();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+  });
+
+  describe('_showStaticReloadWarning', () => {
+    it('should add warning to modal body', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      userPreferences._showStaticReloadWarning();
+
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+      expect(warning.className).toBe('alert alert-warning');
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should reuse existing warning element', () => {
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      // Call twice
+      userPreferences._showStaticReloadWarning();
+      userPreferences._showStaticReloadWarning();
+
+      const warnings = document.querySelectorAll('#preferences-reload-warning');
+      expect(warnings.length).toBe(1);
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+
+    it('should handle missing modal gracefully', () => {
+      expect(() => userPreferences._showStaticReloadWarning()).not.toThrow();
+    });
   });
 
   describe('apiSaveProperties (server mode)', () => {
@@ -217,6 +365,64 @@ describe('UserPreferences', () => {
       });
 
       expect(globalThis.eXeLearning.app.api.putSaveUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('should reload versionControl when saving versionControl preference', async () => {
+      userPreferences.preferences = {
+        versionControl: { value: 'false' }
+      };
+
+      await userPreferences.apiSaveProperties({
+        versionControl: 'true'
+      });
+
+      expect(mockManager.reloadVersionControl).toHaveBeenCalledWith('true');
+    });
+
+    it('should show static reload warning when changing locale in static mode', async () => {
+      userPreferences.preferences = {
+        locale: { value: 'en' }
+      };
+
+      // Create mock modal for the warning
+      const mockModal = document.createElement('div');
+      mockModal.id = 'modalProperties';
+      const mockBody = document.createElement('div');
+      mockBody.className = 'modal-body';
+      mockModal.appendChild(mockBody);
+      document.body.appendChild(mockModal);
+
+      await userPreferences.apiSaveProperties({
+        locale: 'es'
+      });
+
+      // Should show warning instead of reloading page
+      const warning = document.getElementById('preferences-reload-warning');
+      expect(warning).not.toBeNull();
+
+      // Cleanup
+      document.body.removeChild(mockModal);
+    });
+  });
+
+  describe('loadStaticPreferences error handling', () => {
+    beforeEach(() => {
+      // Set up static mode
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should handle localStorage parse errors gracefully', async () => {
+      // Set up invalid JSON in localStorage
+      localStorage.getItem = vi.fn().mockReturnValue('invalid json {{{');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await userPreferences.loadStaticPreferences();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[UserPreferences] Error loading static preferences:',
+        expect.any(Error)
+      );
+      warnSpy.mockRestore();
     });
   });
 });

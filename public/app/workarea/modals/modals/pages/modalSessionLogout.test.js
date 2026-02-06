@@ -400,4 +400,54 @@ describe('ModalSessionLogout', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('static mode handling', () => {
+    beforeEach(() => {
+      // Set up static mode
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      window.electronAPI = undefined;
+      window.newProject = vi.fn();
+    });
+
+    it('should call newProject in static mode when not saving (notSaveSession)', () => {
+      const closeSpy = vi.spyOn(modal, 'close');
+      const notSaveButton = mockElement.querySelector('.session-logout-without-save');
+
+      modal.notSaveSessionEventListener(notSaveButton, { newFile: true });
+      notSaveButton.click();
+
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.newProject).toHaveBeenCalled();
+    });
+
+    it('should export and call newProject in static mode when saving', async () => {
+      window.eXeLearning.app.project._yjsEnabled = true;
+      window.eXeLearning.app.project._yjsBridge = {
+        saveManager: { save: vi.fn().mockResolvedValue({}) },
+      };
+      window.eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({});
+
+      const closeSpy = vi.spyOn(modal, 'close');
+
+      await modal.saveSession({}, { newFile: true });
+
+      expect(window.eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalledWith({
+        saveAs: false,
+      });
+      expect(closeSpy).toHaveBeenCalled();
+      expect(window.newProject).toHaveBeenCalled();
+    });
+
+    it('should not trigger static mode handling when electronAPI is present', () => {
+      window.electronAPI = { someMethod: vi.fn() };
+      const closeSpy = vi.spyOn(modal, 'close');
+      const notSaveButton = mockElement.querySelector('.session-logout-without-save');
+
+      modal.notSaveSessionEventListener(notSaveButton, { newFile: true });
+      notSaveButton.click();
+
+      // Should NOT call newProject since electronAPI is present
+      expect(window.newProject).not.toHaveBeenCalled();
+    });
+  });
 });

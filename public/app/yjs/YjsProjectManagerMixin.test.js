@@ -49,6 +49,7 @@ describe('YjsProjectManagerMixin', () => {
       },
       documentManager: {
         awareness: null,
+        captureBaselineState: mock(() => undefined),
       },
       app: null,
     };
@@ -232,6 +233,12 @@ describe('YjsProjectManagerMixin', () => {
       await projectManager.enableYjsMode(123, 'token');
 
       expect(projectManager.app.themes.initYjsBinding).toHaveBeenCalled();
+    });
+
+    it('captures baseline state after initialization', async () => {
+      await projectManager.enableYjsMode(123, 'token');
+
+      expect(mockBridge.documentManager.captureBaselineState).toHaveBeenCalled();
     });
 
     it('returns bridge instance', async () => {

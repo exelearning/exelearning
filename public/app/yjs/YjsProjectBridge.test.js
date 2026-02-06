@@ -5084,4 +5084,223 @@ describe('YjsProjectBridge', () => {
       }).not.toThrow();
     });
   });
+
+  describe('hasUnsavedChangesForUI', () => {
+    it('returns true when documentManager.isDirty is true', () => {
+      bridge.documentManager = { isDirty: true };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when documentManager.isDirty is false', () => {
+      bridge.documentManager = { isDirty: false };
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+
+    it('returns true when currentSaveStatus is unsaved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'unsaved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns true when currentSaveStatus is error and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'error';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(true);
+    });
+
+    it('returns false when currentSaveStatus is saved and no documentManager', () => {
+      bridge.documentManager = null;
+      bridge.currentSaveStatus = 'saved';
+      expect(bridge.hasUnsavedChangesForUI()).toBe(false);
+    });
+  });
+
+  describe('_markDocumentClean', () => {
+    beforeEach(() => {
+      // Ensure saveStatusCallbacks is initialized
+      bridge.saveStatusCallbacks = [];
+      // Create a mock save button with classList
+      bridge.saveButton = {
+        classList: {
+          add: mock(() => {}),
+          remove: mock(() => {}),
+        },
+      };
+    });
+
+    it('calls documentManager.markClean when available', () => {
+      const markCleanMock = mock(() => {});
+      bridge.documentManager = { markClean: markCleanMock };
+
+      bridge._markDocumentClean();
+
+      expect(markCleanMock).toHaveBeenCalled();
+    });
+
+    it('updates save status to saved', () => {
+      bridge.documentManager = { markClean: mock(() => {}) };
+
+      bridge._markDocumentClean();
+
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge._markDocumentClean()).not.toThrow();
+      expect(bridge.currentSaveStatus).toBe('saved');
+    });
+  });
+
+  describe('importFromElpx dirty tracking', () => {
+    beforeEach(() => {
+      bridge.documentManager = {
+        withSuppressedDirtyTracking: mock(async (fn) => fn()),
+        markClean: mock(() => {}),
+        markDirty: mock(() => {}),
+        captureBaselineState: mock(() => {}),
+        isDirty: false,
+        _initialized: true,
+      };
+      bridge.assetManager = {};
+
+      window.ElpxImporter = class {
+        constructor() {}
+        importFromFile = mock(() => Promise.resolve({ pages: 1, idevices: 2, assets: 0 }));
+      };
+    });
+
+    it('uses withSuppressedDirtyTracking when clearExisting is true', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.withSuppressedDirtyTracking).toHaveBeenCalled();
+    });
+
+    it('marks document clean after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.markClean).toHaveBeenCalled();
+    });
+
+    it('marks document dirty when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+  });
+
+  describe('clearAssetsForNewProject', () => {
+    let mockYdoc;
+    let mockAssetsMap;
+    let mockAssetsData;
+
+    beforeEach(() => {
+      // Create a mock Y.Map-like object for assets
+      mockAssetsData = new Map();
+      mockAssetsMap = {
+        get size() {
+          return mockAssetsData.size;
+        },
+        set: (key, value) => mockAssetsData.set(key, value),
+        get: (key) => mockAssetsData.get(key),
+        clear: mock(() => mockAssetsData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'assets') return mockAssetsMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+
+      bridge.assetManager = {
+        blobCache: new Map(),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        clearCache: mock(async () => {}),
+      };
+    });
+
+    it('clears AssetManager memory caches', async () => {
+      // Setup: add some assets to caches
+      bridge.assetManager.blobCache.set('test-id', new Blob(['test']));
+      bridge.assetManager.blobURLCache.set('test-id', 'blob:http://test/123');
+      bridge.assetManager.reverseBlobCache.set('blob:http://test/123', 'test-id');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.blobCache.size).toBe(0);
+      expect(bridge.assetManager.blobURLCache.size).toBe(0);
+      expect(bridge.assetManager.reverseBlobCache.size).toBe(0);
+    });
+
+    it('revokes blob URLs when clearing caches', async () => {
+      const mockRevokeObjectURL = mock(() => {});
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('test-id-1', 'blob:http://test/123');
+      bridge.assetManager.blobURLCache.set('test-id-2', 'blob:http://test/456');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledTimes(2);
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/456');
+    });
+
+    it('clears Yjs assets map when it has entries', async () => {
+      // Setup: add asset metadata to Yjs
+      mockAssetsData.set('test-asset', { id: 'test-asset', filename: 'test.jpg' });
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalled();
+      expect(mockAssetsMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call transact when assets map is empty', async () => {
+      // Assets map is already empty
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).not.toHaveBeenCalled();
+    });
+
+    it('calls clearCache on AssetManager', async () => {
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.clearCache).toHaveBeenCalled();
+    });
+
+    it('handles missing assetManager gracefully', async () => {
+      bridge.assetManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing documentManager gracefully', async () => {
+      bridge.documentManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', async () => {
+      bridge.documentManager = {};
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+  });
 });
