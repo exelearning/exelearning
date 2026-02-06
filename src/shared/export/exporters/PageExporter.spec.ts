@@ -130,7 +130,7 @@ class MockZipProvider implements ZipProvider {
     }
 
     async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing using fflate
+        // Create actual ZIP using fflate
         const zipData: Record<string, Uint8Array> = {};
         for (const [path, content] of this.files) {
             if (typeof content === 'string') {
@@ -381,13 +381,13 @@ describe('PageExporter', () => {
             const result = await exporter.export();
 
             expect(result.success).toBe(true);
-            const loadedZip = unzipSync(new Uint8Array(result.data!));
+            const loadedZip = unzipSync(result.data as Uint8Array);
             expect(Object.keys(loadedZip).length).toBeGreaterThan(0);
         });
 
         it('should have single index.html with all content', async () => {
             const result = await exporter.export();
-            const loadedZip = unzipSync(new Uint8Array(result.data!));
+            const loadedZip = unzipSync(result.data as Uint8Array);
 
             // Only one HTML file should exist
             const htmlFiles = Object.keys(loadedZip).filter(f => f.endsWith('.html'));
@@ -440,7 +440,7 @@ describe('PageExporter', () => {
             const map = (exporter as any).buildPageUrlMap(pages);
 
             // All pages should use anchor fragments for single-page export
-            // Uses section-{id} to match the IDs generated in renderSinglePageSection
+            // Uses section-{id} to match IDs from renderSinglePageSection
             expect(map.get('page-1')).toEqual({
                 url: '#section-page-1',
                 urlFromSubpage: '#section-page-1',

@@ -12,6 +12,7 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
 } from '../interfaces';
 
 // Mock document adapter
@@ -136,12 +137,12 @@ class MockZipProvider implements ZipProvider {
 
     async generateAsync(): Promise<Buffer> {
         // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {};
+        const zipData: Record<string, Uint8Array | [Uint8Array, { level: 0 | 1 }]> = {};
         for (const [path, content] of this.files) {
             const data = typeof content === 'string' ? strToU8(content) : new Uint8Array(content);
             // EPUB requires mimetype to be first and uncompressed (level 0)
             if (path === 'mimetype') {
-                zipData[path] = [data, { level: 0 }];
+                zipData[path] = [data, { level: 0 as 0 }];
             } else {
                 zipData[path] = data;
             }
@@ -470,7 +471,7 @@ describe('Epub3Exporter', () => {
             expect(navXhtml).not.toContain('Hidden Page');
             expect(navXhtml).not.toContain('Hidden Page Boolean');
 
-            // BUT should still be in the spine/manifest (users want it exported, just not in menu)
+            // Should be in spine/manifest even if hidden in usage
             const packageOpf = zip.files.get('EPUB/package.opf') as string;
             // Check that files are in the manifest
             expect(packageOpf).toContain('href="html/hidden-page.xhtml"');
@@ -561,9 +562,18 @@ describe('Epub3Exporter', () => {
             // Create a failing zip provider
             const failingZip: ZipProvider = {
                 addFile: () => {},
+                hasFile: () => false,
+                getFilePaths: () => [],
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
+                createZip: () => ({
+                    addFile: () => {},
+                    addFiles: () => {},
+                    hasFile: () => false,
+                    getFilePaths: () => [],
+                    generate: async () => new Uint8Array(),
+                }),
             };
             exporter = new Epub3Exporter(document, resources, assets, failingZip);
 

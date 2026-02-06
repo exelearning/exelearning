@@ -83,13 +83,10 @@ export class PageExporter extends Html5Exporter {
                                             // Only update if changes were made
                                             if (result.mermaidRendered) {
                                                 component.content = result.html;
-                                                console.log(
-                                                    `[PageExporter] Pre-rendered ${result.count} Mermaid diagram(s) in component ${component.id}`,
-                                                );
                                             }
                                         }
                                     } catch (e) {
-                                        console.error(
+                                        console.warn(
                                             `[PageExporter] Mermaid pre-render error for component ${component.id}:`,
                                             e,
                                         );
@@ -150,11 +147,7 @@ export class PageExporter extends Html5Exporter {
                 allHtmlContent,
                 {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
-                    // For single page, we might want to be careful with large libraries, but if content needs it, we must include it.
-                    includeMathJax: meta.addMathJax === true,
-                    skipMathJax: false, // In single page we don't support pre-rendering yet, or we assume it's not done in the same way?
-                    // Actually, if we add pre-rendering support to single page later, we should check for it here.
-                    // For now, let's include MathJax if detected or requested.
+                    includeMathJax: meta.addMathJax === true, // MATHJAX is included if requested
                 },
             );
 
@@ -167,8 +160,7 @@ export class PageExporter extends Html5Exporter {
                         this.zip.addFile(zipPath, content);
                     }
                 }
-            } catch (e) {
-                console.warn('[PageExporter] Failed to fetch additional libraries', e);
+            } catch {
                 // Additional libraries not available - continue anyway
             }
 

@@ -318,7 +318,6 @@ export abstract class BaseExporter {
         try {
             const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
-            console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
 
             for (const asset of assets) {
                 const exportPath = exportPathMap.get(asset.id);
@@ -326,8 +325,6 @@ export abstract class BaseExporter {
                     console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
                     continue;
                 }
-
-                console.log(`[BaseExporter] Adding asset: ${asset.id} -> content/resources/${exportPath}`);
 
                 // Store in content/resources/{exportPath}
                 const zipPath = `content/resources/${exportPath}`;
@@ -439,7 +436,7 @@ export abstract class BaseExporter {
 
                 if (!filename) {
                     // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(asset.mimeType || 'application/octet-stream');
+                    const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
                     filename = `asset-${id.substring(0, 8)}${ext}`;
                 }
 

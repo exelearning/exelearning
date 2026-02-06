@@ -151,7 +151,6 @@ export class Epub3Exporter extends BaseExporter {
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1. Add mimetype file (MUST be first, uncompressed)
-            // Note: The ZIP provider should handle this specially
             this.zip.addFile('mimetype', EPUB3_MIMETYPE);
 
             // 2. Add container.xml
@@ -180,12 +179,9 @@ export class Epub3Exporter extends BaseExporter {
                             if (result.count > 0) {
                                 xhtml = result.html;
                                 latexWasRendered = true;
-                                console.log(
-                                    `[Epub3Exporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
-                                );
                             }
                         } catch (error) {
-                            console.warn('[Epub3Exporter] DataGame LaTeX pre-render failed:', page.title, error);
+                            // Fail silently for optional pre-rendering
                         }
                     }
 
@@ -196,12 +192,9 @@ export class Epub3Exporter extends BaseExporter {
                             if (result.latexRendered) {
                                 xhtml = result.html;
                                 latexWasRendered = true;
-                                console.log(
-                                    `[Epub3Exporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
-                                );
                             }
                         } catch (error) {
-                            console.warn('[Epub3Exporter] LaTeX pre-render failed:', page.title, error);
+                            // Fail silently for optional pre-rendering
                         }
                     }
                 }
@@ -214,12 +207,9 @@ export class Epub3Exporter extends BaseExporter {
                         if (result.mermaidRendered) {
                             xhtml = result.html;
                             mermaidWasRendered = true;
-                            console.log(
-                                `[Epub3Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
-                            );
                         }
                     } catch (error) {
-                        console.warn('[Epub3Exporter] Mermaid pre-render failed:', page.title, error);
+                        // Fail silently for optional pre-rendering
                     }
                 }
 
@@ -319,7 +309,7 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
 
-            // 7.5.1. Add EPUB guards script (prevents duplicate execution errors in EPUB readers)
+            // 7.5.1. Add EPUB guards script
             const guardsScript = this.generateEpubGuardsScript();
             this.zip.addFile('EPUB/libs/exe_epub_guards.js', guardsScript);
             this.addManifestItem('epub-guards', 'libs/exe_epub_guards.js', 'application/javascript');
@@ -381,12 +371,9 @@ export class Epub3Exporter extends BaseExporter {
                             const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                             this.addManifestItem(this.generateUniqueId(`font-${filePath}`), filePath, mimeType);
                         }
-                        console.log(
-                            `[Epub3Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
-                        );
                     }
-                } catch (e) {
-                    console.warn(`[Epub3Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                } catch {
+                    // Fail silently for font fetching
                 }
             }
 
@@ -790,7 +777,6 @@ export class Epub3Exporter extends BaseExporter {
             for (const asset of assets) {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
-                    console.warn(`[Epub3Exporter] No export path for asset: ${asset.id}`);
                     continue;
                 }
 
