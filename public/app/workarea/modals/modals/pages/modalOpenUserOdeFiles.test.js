@@ -1824,6 +1824,25 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
     });
 
+    it('should call clearAssetsForNewProject and clearMetadataForNewProject before import in static mode', async () => {
+      window.eXeLearning.app.capabilities = { storage: { remote: false } };
+      const mockYjsBridge = {
+        clearAssetsForNewProject: vi.fn().mockResolvedValue(),
+        clearMetadataForNewProject: vi.fn(),
+        importFromElpx: vi.fn().mockResolvedValue({}),
+      };
+      window.eXeLearning.app.project._yjsBridge = mockYjsBridge;
+      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+
+      await modal.largeFilesUpload(mockFile, false, false, false, false);
+
+      expect(mockYjsBridge.clearAssetsForNewProject).toHaveBeenCalled();
+      expect(mockYjsBridge.clearMetadataForNewProject).toHaveBeenCalled();
+      expect(mockYjsBridge.importFromElpx).toHaveBeenCalled();
+    });
+
     it('should fallback to legacy flow when yjsBridge is not available in static mode', async () => {
       window.eXeLearning.app.capabilities = { storage: { remote: false } };
       window.eXeLearning.app.project._yjsBridge = null;
