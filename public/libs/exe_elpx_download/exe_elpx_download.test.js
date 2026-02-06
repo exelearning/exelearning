@@ -34,9 +34,9 @@ describe('exe_elpx_download', () => {
         originalFflate = global.fflate;
         originalFetch = global.fetch;
 
-        // Mock fflate
+        // Mock fflate (no global options — per-file options are inline)
         global.fflate = {
-            zip: vi.fn((files, options, callback) => {
+            zip: vi.fn((files, callback) => {
                 const mockZipData = new Uint8Array([0x50, 0x4b, 0x03, 0x04]); // ZIP magic bytes
                 setTimeout(() => callback(null, mockZipData), 0);
             }),
@@ -253,6 +253,11 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain("relativePath.includes('/.')");
         });
 
+        it('reads files in parallel with Promise.all', () => {
+            expect(scriptContent).toContain('var readPromises = fileArray');
+            expect(scriptContent).toContain('await Promise.all(readPromises)');
+        });
+
         it('reads files as arrayBuffer', () => {
             expect(scriptContent).toContain('file.arrayBuffer()');
         });
@@ -348,8 +353,8 @@ describe('exe_elpx_download', () => {
     });
 
     describe('fetchAllAssets', () => {
-        it('limits concurrent requests to 6', () => {
-            expect(scriptContent).toContain('var concurrency = 6');
+        it('limits concurrent requests to 10', () => {
+            expect(scriptContent).toContain('var concurrency = 10');
         });
 
         it('handles failed fetches gracefully', () => {
@@ -361,14 +366,18 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('updateProgress(completed, total)');
         });
 
-        it('processes in batches', () => {
-            expect(scriptContent).toContain('manifest.files.slice(i, i + concurrency)');
+        it('uses a sliding worker pool pattern', () => {
+            expect(scriptContent).toContain('async function fetchWorker()');
+            expect(scriptContent).toContain('Math.min(concurrency, fileEntries.length)');
         });
     });
 
     describe('createZipAndDownload', () => {
-        it('uses fflate.zip with compression level 6', () => {
-            expect(scriptContent).toContain('fflate.zip(files, { level: 6 }');
+        it('uses per-file compression: STORE for compressed formats, level 6 for others', () => {
+            expect(scriptContent).toContain('STORE_EXTENSIONS');
+            expect(scriptContent).toContain('{ level: 0 }');
+            expect(scriptContent).toContain('{ level: 6 }');
+            expect(scriptContent).toContain('fflate.zip(zipInput,');
         });
 
         it('creates blob with application/zip type', () => {

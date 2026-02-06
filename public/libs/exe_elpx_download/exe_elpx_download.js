@@ -76,43 +76,52 @@
                 files['index.html'] = stringToUint8Array('<!DOCTYPE html>\n' + htmlClone.outerHTML);
             }
 
-            // Fetch all manifest files in parallel (batched)
-            var concurrency = 6;
-            for (var i = 0; i < manifest.files.length; i += concurrency) {
-                var batch = manifest.files.slice(i, i + concurrency);
-                var results = await Promise.all(
-                    batch.map(async function (path) {
-                        // Skip HTML files in preview (already captured above)
-                        if (manifest.isPreview && (path === 'index.html' || path.startsWith('html/'))) {
-                            return null;
-                        }
+            // Fetch all manifest files with a sliding concurrency pool
+            var concurrency = 10;
+            var fileEntries = manifest.files;
+            var fetchIndex = 0;
 
-                        try {
-                            var url = basePath + path;
-                            var response = await fetch(url);
-                            if (!response.ok) {
-                                console.warn('[ELPX Download] Failed to fetch: ' + path + ' (' + response.status + ')');
-                                return null;
-                            }
-                            var buffer = await response.arrayBuffer();
-                            completed++;
-                            updateProgress(completed, total);
-                            return { path: path, data: new Uint8Array(buffer) };
-                        } catch (e) {
-                            console.warn('[ELPX Download] Error fetching: ' + path, e);
-                            completed++;
-                            updateProgress(completed, total);
-                            return null;
-                        }
-                    }),
-                );
+            async function fetchFile(path) {
+                // Skip HTML files in preview (already captured above)
+                if (manifest.isPreview && (path === 'index.html' || path.startsWith('html/'))) {
+                    completed++;
+                    updateProgress(completed, total);
+                    return null;
+                }
 
-                results.forEach(function (result) {
+                try {
+                    var url = basePath + path;
+                    var response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn('[ELPX Download] Failed to fetch: ' + path + ' (' + response.status + ')');
+                        return null;
+                    }
+                    var buffer = await response.arrayBuffer();
+                    return { path: path, data: new Uint8Array(buffer) };
+                } catch (e) {
+                    console.warn('[ELPX Download] Error fetching: ' + path, e);
+                    return null;
+                } finally {
+                    completed++;
+                    updateProgress(completed, total);
+                }
+            }
+
+            async function fetchWorker() {
+                while (fetchIndex < fileEntries.length) {
+                    var currentIndex = fetchIndex++;
+                    var result = await fetchFile(fileEntries[currentIndex]);
                     if (result) {
                         files[result.path] = result.data;
                     }
-                });
+                }
             }
+
+            var workers = [];
+            for (var w = 0; w < Math.min(concurrency, fileEntries.length); w++) {
+                workers.push(fetchWorker());
+            }
+            await Promise.all(workers);
 
             // 4. Create ZIP and download
             var projectName = options.filename || manifest.projectTitle || 'eXeLearning-project';
@@ -163,23 +172,29 @@
                     var firstPath = fileArray[0].webkitRelativePath;
                     var folderPrefix = firstPath.split('/')[0] + '/';
 
-                    // Read all files
-                    for (var i = 0; i < fileArray.length; i++) {
-                        var file = fileArray[i];
-                        // Strip folder prefix from path
-                        var relativePath = file.webkitRelativePath;
-                        if (relativePath.startsWith(folderPrefix)) {
-                            relativePath = relativePath.substring(folderPrefix.length);
-                        }
+                    // Read all files in parallel
+                    var readPromises = fileArray
+                        .filter(function (file) {
+                            var relativePath = file.webkitRelativePath;
+                            if (relativePath.startsWith(folderPrefix)) {
+                                relativePath = relativePath.substring(folderPrefix.length);
+                            }
+                            // Skip hidden files and system files
+                            return !relativePath.startsWith('.') && !relativePath.includes('/.');
+                        })
+                        .map(async function (file) {
+                            var relativePath = file.webkitRelativePath;
+                            if (relativePath.startsWith(folderPrefix)) {
+                                relativePath = relativePath.substring(folderPrefix.length);
+                            }
+                            var buffer = await file.arrayBuffer();
+                            return { path: relativePath, data: new Uint8Array(buffer) };
+                        });
 
-                        // Skip hidden files and system files
-                        if (relativePath.startsWith('.') || relativePath.includes('/.')) {
-                            continue;
-                        }
-
-                        var buffer = await file.arrayBuffer();
-                        files[relativePath] = new Uint8Array(buffer);
-                    }
+                    var readResults = await Promise.all(readPromises);
+                    readResults.forEach(function (result) {
+                        files[result.path] = result.data;
+                    });
 
                     // Generate ZIP and download
                     await createZipAndDownload(files, sanitizeFilename(projectName));
@@ -327,11 +342,27 @@
      * @param {Object} files - Map of path -> Uint8Array
      * @param {string} projectName - Project name for filename
      */
+    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU
+    var STORE_EXTENSIONS =
+        /\.(jpg|jpeg|png|gif|webp|mp4|mp3|ogg|ogv|webm|woff|woff2|pdf|zip|gz|elpx)$/i;
+
     async function createZipAndDownload(files, projectName) {
         return new Promise(function (resolve, reject) {
             try {
+                // Set per-file compression: skip already-compressed formats
+                var zipInput = {};
+                var fileKeys = Object.keys(files);
+                for (var f = 0; f < fileKeys.length; f++) {
+                    var key = fileKeys[f];
+                    if (STORE_EXTENSIONS.test(key)) {
+                        zipInput[key] = [files[key], { level: 0 }];
+                    } else {
+                        zipInput[key] = [files[key], { level: 6 }];
+                    }
+                }
+
                 // Use fflate.zip for async compression
-                fflate.zip(files, { level: 6 }, function (err, data) {
+                fflate.zip(zipInput, function (err, data) {
                     if (err) {
                         reject(err);
                         return;
