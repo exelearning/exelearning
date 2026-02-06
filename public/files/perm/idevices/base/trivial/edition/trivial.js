@@ -1577,8 +1577,9 @@ var $exeDevice = {
 
             const wrapper = $('<div></div>');
             wrapper.html(originalHTML);
-            let json = $('.trivial-DataGame', wrapper).text(),
-                dataGame =
+            let json = $('.trivial-DataGame', wrapper).text();
+            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
+            let dataGame =
                     $exeDevices.iDevice.gamification.helpers.isJsonString(json);
 
             dataGame = $exeDevice.Decrypt(dataGame);
@@ -2239,6 +2240,7 @@ var $exeDevice = {
     },
 
     importGame: function (content) {
+        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (!game || typeof game.typeGame == 'undefined') {
@@ -3191,6 +3193,7 @@ var $exeDevice = {
     },
 
     gameAdd: function (content, filetype) {
+        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
