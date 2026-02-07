@@ -1610,13 +1610,13 @@ export default class IdevicesEngine {
         this.clearNeedlessScripts();
         // Load styles of idevices
         await this.loadIdevicesExportStyles();
-        // Reload body of components
-        this.components.idevices.forEach(async (idevice) => {
+        // Reload body of components (sequential to avoid race conditions)
+        for (const idevice of this.components.idevices) {
             if (!exceptionsIds.includes(idevice.id)) {
                 // Reload export html
                 await idevice.generateContentExportView();
             }
-        });
+        }
         // Load scripts of idevices
         this.loadIdevicesExportScripts();
         // Load legacy functions
