@@ -1606,8 +1606,6 @@ export default class IdevicesEngine {
      * @param {*} exceptionsIds
      */
     async resetCurrentIdevicesExportView(exceptionsIds) {
-        // Remove scripts/styles tags
-        this.clearNeedlessScripts();
         // Load styles of idevices
         await this.loadIdevicesExportStyles();
         // Reload body of components (sequential to avoid race conditions)
@@ -1617,8 +1615,6 @@ export default class IdevicesEngine {
                 await idevice.generateContentExportView();
             }
         }
-        // Load scripts of idevices
-        this.loadIdevicesExportScripts();
         // Load legacy functions
         this.loadLegacyExeFunctionalitiesExport();
         // Resets the "loading" attribute for the display effect
