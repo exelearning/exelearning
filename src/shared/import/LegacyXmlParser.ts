@@ -122,6 +122,34 @@ export class LegacyXmlParser {
     };
 
     /**
+     * DEFAULT IDEVICE TITLES THAT SHOULD NOT BE SHOWN AS BLOCK NAMES
+     *
+     * When importing legacy ELP files from eXe 2.x, iDevices often have
+     * default titles like "Free Text" or "Text" that were automatically
+     * assigned by the system. These should NOT appear as block titles
+     * in eXe 3 - only custom, user-defined titles should be preserved.
+     *
+     * This set contains all known default titles in multiple languages
+     * that should result in an empty blockName.
+     */
+    static DEFAULT_IDEVICE_TITLES: Set<string> = new Set([
+        // Free Text iDevice - all languages
+        'Free Text',
+        'Texto libre',
+        'Text lliure',
+        'Testu librea',
+        'Texto livre',
+        'Texte libre',
+        'Freier Text',
+        'Testo libero',
+        // Text iDevice - all languages
+        'Text',
+        'Texto',
+        'Testua',
+        'Texte',
+    ]);
+
+    /**
      * IDEVICE TITLE TRANSLATIONS
      */
     static IDEVICE_TITLE_TRANSLATIONS: Record<string, Record<string, string>> = {
@@ -1047,7 +1075,9 @@ export class LegacyXmlParser {
 
                     idevices.forEach((idevice, idx) => {
                         const title = idevice.title || '';
-                        const blockName = title === 'Free Text' ? '' : title;
+                        // Filter out default iDevice titles - they should not appear as block names
+                        // Only custom, user-defined titles should be preserved
+                        const blockName = LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has(title) ? '' : title;
                         const block: LegacyBlock = {
                             id: `block-${nodeEl.getAttribute('reference')}-${idx}`,
                             name: blockName,
