@@ -5303,4 +5303,95 @@ describe('YjsProjectBridge', () => {
       await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
     });
   });
+
+  describe('clearMetadataForNewProject', () => {
+    let mockYdoc;
+    let mockMetadataData;
+    let mockMetadataMap;
+    let mockThemeFilesData;
+    let mockThemeFilesMap;
+
+    beforeEach(() => {
+      mockMetadataData = new Map();
+      mockMetadataMap = {
+        get size() {
+          return mockMetadataData.size;
+        },
+        set: (key, value) => mockMetadataData.set(key, value),
+        get: (key) => mockMetadataData.get(key),
+        clear: mock(() => mockMetadataData.clear()),
+      };
+
+      mockThemeFilesData = new Map();
+      mockThemeFilesMap = {
+        get size() {
+          return mockThemeFilesData.size;
+        },
+        set: (key, value) => mockThemeFilesData.set(key, value),
+        get: (key) => mockThemeFilesData.get(key),
+        clear: mock(() => mockThemeFilesData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'metadata') return mockMetadataMap;
+          if (name === 'themeFiles') return mockThemeFilesMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+    });
+
+    it('clears metadata map and sets timestamps', () => {
+      mockMetadataData.set('title', 'Old Title');
+      mockMetadataData.set('subtitle', 'Old Subtitle');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockMetadataMap.clear).toHaveBeenCalled();
+      expect(mockMetadataData.has('createdAt')).toBe(true);
+      expect(mockMetadataData.has('modifiedAt')).toBe(true);
+      expect(typeof mockMetadataData.get('createdAt')).toBe('number');
+      expect(typeof mockMetadataData.get('modifiedAt')).toBe('number');
+    });
+
+    it('clears themeFiles map when it has entries', () => {
+      mockThemeFilesData.set('style.css', 'body {}');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call clear on themeFiles when empty', () => {
+      // themeFiles map is empty
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).not.toHaveBeenCalled();
+    });
+
+    it('runs inside a single transaction', () => {
+      mockMetadataData.set('title', 'Old');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', () => {
+      bridge.documentManager = {};
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+  });
 });

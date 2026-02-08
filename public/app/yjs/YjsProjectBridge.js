@@ -3029,6 +3029,44 @@ class YjsProjectBridge {
 
     Logger.log('[YjsProjectBridge] Assets cleared for new project');
   }
+
+  /**
+   * Clear metadata and themeFiles for importing a new project (static mode)
+   * This prevents stale metadata from a previous project leaking into the new one
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  clearMetadataForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing metadata for new project...');
+
+    const ydoc = this.documentManager?.ydoc;
+    if (!ydoc) {
+      Logger.warn('[YjsProjectBridge] No Y.Doc available to clear metadata');
+      return;
+    }
+
+    ydoc.transact(() => {
+      // Clear metadata Y.Map so no stale values remain
+      const metadataMap = ydoc.getMap('metadata');
+      if (metadataMap && metadataMap.size > 0) {
+        metadataMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs metadata map cleared');
+      }
+
+      // Re-set timestamps (not set by the importer)
+      const now = Date.now();
+      metadataMap.set('createdAt', now);
+      metadataMap.set('modifiedAt', now);
+
+      // Clear themeFiles Y.Map to prevent custom theme data leaking
+      const themeFilesMap = ydoc.getMap('themeFiles');
+      if (themeFilesMap && themeFilesMap.size > 0) {
+        themeFilesMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs themeFiles map cleared');
+      }
+    });
+
+    Logger.log('[YjsProjectBridge] Metadata cleared for new project');
+  }
 }
 
 // Export for use

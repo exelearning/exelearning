@@ -1278,6 +1278,83 @@ describe('FileSystemAssetHandler', () => {
         });
     });
 
+    describe('metadata clearing on re-import (clearExisting: true)', () => {
+        it('should clear stale subtitle/footer/extraHeadContent/theme when importing a project without them', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const metadata = ydoc.getMap('metadata');
+
+            // Simulate stale values from a previous project
+            metadata.set('subtitle', 'Old Subtitle');
+            metadata.set('footer', 'Old Footer');
+            metadata.set('extraHeadContent', '<meta name="old">');
+            metadata.set('theme', 'fancy-theme');
+
+            // Import a project that does NOT have these fields set (basic-example.elp)
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+            // Stale values should be cleared (set to empty/undefined/default), not persist
+            expect(metadata.get('subtitle')).toBeFalsy();
+            expect(metadata.get('footer')).toBeFalsy();
+            expect(metadata.get('extraHeadContent')).toBeFalsy();
+            // Theme should fall back to 'base' when not set in the imported file
+            expect(metadata.get('theme')).toBe('base');
+            // Title should be set from the imported file
+            expect(metadata.get('title')).toBe('Main title');
+
+            ydoc.destroy();
+        });
+
+        it('should clear stale subtitle/footer/extraHeadContent when importing legacy format', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Legacy Project"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+            };
+
+            const ydoc = new Y.Doc();
+            const metadata = ydoc.getMap('metadata');
+
+            // Simulate stale values from a previous project
+            metadata.set('subtitle', 'Old Subtitle');
+            metadata.set('footer', 'Old Footer');
+            metadata.set('extraHeadContent', '<meta name="old">');
+            metadata.set('theme', 'fancy-theme');
+
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromZipContents(zipContents);
+
+            // Legacy format should clear stale values
+            expect(metadata.get('subtitle')).toBe('');
+            expect(metadata.get('footer')).toBeFalsy();
+            expect(metadata.get('extraHeadContent')).toBeFalsy();
+            expect(metadata.get('theme')).toBe('base');
+            expect(metadata.get('title')).toBe('Legacy Project');
+
+            ydoc.destroy();
+        });
+    });
+
     describe('convertContextPathToAssetRefs', () => {
         it('should convert context_path references to asset URLs', () => {
             const handler = new FileSystemAssetHandler(testDir);
