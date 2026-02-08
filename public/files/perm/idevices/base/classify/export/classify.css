@@ -19,10 +19,10 @@
     margin: 0 auto;
     padding: 0;
     width: 100%;
-    height: 100%;
+    height: auto;
     background-color: transparent;
     position: relative;
-    overflow: hidden;;
+    overflow: hidden;
 }
 
 .CQP-MainContainer * {
@@ -66,7 +66,7 @@
     position: relative;
     max-width: 1300px;
     width: 100%;
-    min-height: 500px;
+    min-height: auto;
     overflow: visible;
 }
 
@@ -330,7 +330,7 @@
     width: 100%;
     display: flex;
     justify-content: center;
-    min-height: 40vh;
+    min-height: auto;
 }
 
 .CQP-CC {
@@ -345,7 +345,7 @@
     padding: 0.5em;
     margin: 0.4em;
     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.20), 0 3px 10px 0 rgba(0, 0, 0, 0.19);
-    min-height: 45vh;
+    min-height: 300px;
     font-size: 1em;
     z-index: 1;
     box-sizing: border-box;
@@ -1007,7 +1007,6 @@ div:fullscreen .CQP-Multimedia {
         padding: .05em;
         margin: 0.1em;
         box-shadow: none;
-        min-height: 45vh;
         border: 1px solid #ccc;
     }
 }
