@@ -103,6 +103,20 @@ describe('exe_elpx_download', () => {
         });
     });
 
+    describe('i18n helper', () => {
+        it('has i18n helper function', () => {
+            expect(scriptContent).toContain('function i18n(key, fallback)');
+        });
+
+        it('reads from $exe_i18n global', () => {
+            expect(scriptContent).toContain('$exe_i18n[key]');
+        });
+
+        it('falls back when $exe_i18n is unavailable', () => {
+            expect(scriptContent).toContain("typeof $exe_i18n !== 'undefined'");
+        });
+    });
+
     describe('manifest-based approach', () => {
         it('reads manifest from window.__ELPX_MANIFEST__', () => {
             expect(scriptContent).toContain('window.__ELPX_MANIFEST__');
@@ -156,26 +170,8 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('.exe-download-package-link a, .exe-download-package-link button');
         });
 
-        it('has translations object for multiple languages', () => {
-            expect(scriptContent).toContain('var FILE_PROTOCOL_WARNINGS = {');
-            expect(scriptContent).toContain("en: 'Local mode:");
-            expect(scriptContent).toContain("es: 'Modo local:");
-            expect(scriptContent).toContain("ca: 'Mode local:");
-            expect(scriptContent).toContain("eu: 'Modu lokala:");
-            expect(scriptContent).toContain("gl: 'Modo local:");
-            expect(scriptContent).toContain("fr: 'Mode local :");
-            expect(scriptContent).toContain("de: 'Lokaler Modus:");
-            expect(scriptContent).toContain("it: 'Modalità locale:");
-            expect(scriptContent).toContain("pt: 'Modo local:");
-        });
-
-        it('has getFileProtocolWarning function for translation', () => {
-            expect(scriptContent).toContain('function getFileProtocolWarning()');
-            expect(scriptContent).toContain('document.documentElement.lang');
-        });
-
-        it('falls back to English for unknown languages', () => {
-            expect(scriptContent).toContain('FILE_PROTOCOL_WARNINGS[lang] || FILE_PROTOCOL_WARNINGS.en');
+        it('uses $exe_i18n for file protocol warning translation', () => {
+            expect(scriptContent).toContain("i18n('elpxFileProtocolWarning'");
         });
 
         it('adds native tooltip to entire button', () => {
@@ -272,6 +268,23 @@ describe('exe_elpx_download', () => {
 
         it('exports downloadElpxViaFolderPicker for testing', () => {
             expect(scriptContent).toContain('downloadElpxViaFolderPicker: downloadElpxViaFolderPicker');
+        });
+
+        it('has a timeout mechanism for folder picker dialog', () => {
+            expect(scriptContent).toContain('FOLDER_PICKER_TIMEOUT');
+        });
+
+        it('provides helpful error when webkitdirectory returns empty files in file:// context', () => {
+            expect(scriptContent).toContain("i18n('elpxFolderPickerEmpty'");
+            expect(scriptContent).toContain('No files were returned by the folder picker');
+        });
+
+        it('cleans up timeout on successful selection or cancel', () => {
+            expect(scriptContent).toContain('clearTimeout(timeoutId)');
+        });
+
+        it('uses $exe_i18n for timeout error messages', () => {
+            expect(scriptContent).toContain("i18n('elpxFolderPickerTimeout'");
         });
     });
 
@@ -414,8 +427,8 @@ describe('exe_elpx_download', () => {
             expect(scriptContent).toContain('data-original-text');
         });
 
-        it('shows generating message', () => {
-            expect(scriptContent).toContain("'Generating...'");
+        it('shows generating message via i18n', () => {
+            expect(scriptContent).toContain("i18n('elpxGenerating', 'Generating...')");
         });
 
         it('disables button during generation', () => {

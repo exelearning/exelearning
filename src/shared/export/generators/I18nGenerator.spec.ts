@@ -115,6 +115,29 @@ describe('I18nGenerator', () => {
             }
         });
 
+        it('should include ELPX download translation keys', () => {
+            const script = generateI18nScript('en');
+
+            expect(script).toContain('"elpxGenerating":"Generating..."');
+            expect(script).toContain('"elpxFolderPickerTimeout"');
+            expect(script).toContain('"elpxFolderPickerEmpty"');
+            expect(script).toContain('"elpxFileProtocolWarning"');
+        });
+
+        it('should generate Spanish ELPX download translations', () => {
+            const script = generateI18nScript('es');
+
+            expect(script).toContain('"elpxGenerating":"Generando..."');
+            expect(script).toContain('"elpxFileProtocolWarning":"Modo local:');
+        });
+
+        it('should generate French ELPX download translations', () => {
+            const script = generateI18nScript('fr');
+
+            expect(script).toContain('"elpxGenerating":"Génération..."');
+            expect(script).toContain('"elpxFileProtocolWarning":"Mode local :');
+        });
+
         it('should handle unknown language by falling back to English', () => {
             const script = generateI18nScript('xx');
 

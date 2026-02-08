@@ -1022,6 +1022,20 @@ describe('ElpxExporter', () => {
             expect(manifest).toContain('index.html');
         });
 
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
         it('should use correct base path for manifest script on index page', async () => {
             // Put download-source-file on the first page (index.html)
             const pagesWithDownloadOnIndex: ExportPage[] = [

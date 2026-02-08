@@ -208,8 +208,10 @@ export class ElpxExporter extends Html5Exporter {
                         fileList.push(htmlFile);
                     }
                 }
+                // Include the manifest file itself in the file list (self-reference)
+                fileList.push('libs/elpx-manifest.js');
                 const manifestJs = this.generateElpxManifestFile(fileList);
-                addFile('libs/elpx-manifest.js', manifestJs);
+                this.zip.addFile('libs/elpx-manifest.js', manifestJs);
             }
 
             // 1.11 Add HTML pages to ZIP (with manifest script on pages that have download-source-file)
