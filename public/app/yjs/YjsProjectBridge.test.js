@@ -4487,6 +4487,128 @@ describe('YjsProjectBridge', () => {
         expect(bridge.resourceFetcher.userThemeFiles.has('deleted-theme')).toBe(false);
         expect(bridge.resourceFetcher.cache.has('theme:deleted-theme')).toBe(false);
       });
+
+      it('calls updateThemes and buildUserListThemes after adding a theme when styles panel is open', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is open
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('calls only updateThemes after adding a theme when styles panel is closed', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is closed (no 'active' class)
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => false) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).not.toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('refreshes UI after deleting a theme', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => null),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge.resourceFetcher = {
+          userThemeFiles: new Map([['deleted-theme', {}]]),
+          cache: new Map([['theme:deleted-theme', {}]]),
+        };
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['deleted-theme', { action: 'delete' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
     });
 
     describe('_loadUserThemeFromYjs - extended', () => {

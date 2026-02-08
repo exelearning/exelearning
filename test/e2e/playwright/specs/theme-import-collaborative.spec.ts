@@ -225,6 +225,89 @@ test.describe('Theme Import - Collaborative', () => {
             // Bug fix verification: theme.name should be the sanitized dirName, not the raw <name> tag
             expect(themeOnB!.name).toBe(expectedDirName);
         });
+
+        test('should auto-select uploaded theme and sync to collaborator', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            const pageA = authenticatedPage;
+            const pageB = secondAuthenticatedPage;
+
+            const fixturePath = path.resolve(__dirname, '../../../fixtures/test-theme-collab.zip');
+            const expectedDirName = 'collab_test_theme';
+            const expectedTitle = 'Collaborative Test Style';
+
+            // Client A creates a project
+            const projectUuid = await createProject(pageA, 'Theme Upload No Select Test');
+
+            // Navigate Client A to the project
+            await pageA.goto(`/workarea?project=${projectUuid}`);
+            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
+                timeout: 30000,
+            });
+            await waitForLoadingScreen(pageA);
+
+            // Client A shares the project
+            const shareUrl = await getShareUrl(pageA);
+
+            // Client B joins
+            await joinSharedProject(pageB, shareUrl);
+            await waitForYjsSync(pageB);
+            await waitForYjsSync(pageA);
+            await waitForLoadingScreen(pageB);
+
+            // Client A opens styles panel > Imported tab
+            await pageA.locator('#dropdownStyles').click();
+            await pageA.waitForSelector('#stylessidenav.active', { timeout: 5000 });
+            await pageA.locator('#importedstylescontent-tab').click();
+            await pageA.waitForSelector('#importedstylescontent', { timeout: 5000 });
+
+            // Client A uploads the theme (auto-selects on upload)
+            const fileInputA = pageA.locator('#theme-file-import');
+            await fileInputA.setInputFiles(fixturePath);
+
+            // Wait for theme to be processed and auto-selected on Client A
+            await pageA.waitForFunction(
+                dirName => {
+                    const themes = (window as any).eXeLearning?.app?.themes;
+                    return themes?.list?.installed?.[dirName] && themes?.selected?.id === dirName;
+                },
+                expectedDirName,
+                { timeout: 15000 },
+            );
+
+            // Wait for Client B to receive the theme via Yjs themeFiles observer
+            await pageB.waitForFunction(
+                dirName => {
+                    return !!(window as any).eXeLearning?.app?.themes?.list?.installed?.[dirName];
+                },
+                expectedDirName,
+                { timeout: 30000, polling: 500 },
+            );
+
+            // Client B opens Styles panel > Imported tab
+            await pageB.locator('#dropdownStyles').click();
+            await pageB.waitForSelector('#stylessidenav.active', { timeout: 5000 });
+            await pageB.locator('#importedstylescontent-tab').click();
+            await pageB.waitForSelector('#importedstylescontent', { timeout: 5000 });
+
+            // Verify the theme is visible in the Imported tab on Client B
+            const themeItemB = pageB.locator(`.user-theme-item[data-theme-id="${expectedDirName}"]`);
+            await expect(themeItemB).toBeVisible({ timeout: 10000 });
+
+            // Verify it has the correct title
+            const themeOnB = await pageB.evaluate(dirName => {
+                const theme = (window as any).eXeLearning?.app?.themes?.list?.installed?.[dirName];
+                return theme ? { id: theme.id, title: theme.title, name: theme.name } : null;
+            }, expectedDirName);
+
+            expect(themeOnB).not.toBeNull();
+            expect(themeOnB!.title).toBe(expectedTitle);
+            expect(themeOnB!.name).toBe(expectedDirName);
+        });
     });
 
     test.describe('Online Theme Import', () => {
