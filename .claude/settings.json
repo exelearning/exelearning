@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/lint-fix.sh",
+            "timeout": 120,
+            "statusMessage": "Running linter (make fix)..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-unit.sh",
+            "timeout": 300,
+            "statusMessage": "Running unit tests (make test-unit)..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-frontend.sh",
+            "timeout": 300,
+            "statusMessage": "Running frontend tests (make test-frontend)..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-integration.sh",
+            "timeout": 300,
+            "statusMessage": "Running integration tests (make test-integration)..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-e2e-chromium.sh",
+            "timeout": 600,
+            "statusMessage": "Running E2E tests Chromium (make test-e2e-chromium)..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-e2e-static.sh",
+            "timeout": 600,
+            "statusMessage": "Running E2E tests static (make test-e2e-static)..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-e2e-spec.sh",
+            "timeout": 300,
+            "statusMessage": "Running E2E spec (project-clone-duplicate)..."
+          }
+        ]
+      }
+    ]
+  }
+}

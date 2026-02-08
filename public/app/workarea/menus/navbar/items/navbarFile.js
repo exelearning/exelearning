@@ -1567,52 +1567,11 @@ export default class NavbarFile {
             fileInput.style.display = 'none';
             document.body.appendChild(fileInput);
 
-            fileInput.addEventListener('change', async (e) => {
+            fileInput.addEventListener('change', (e) => {
                 const file = e.target.files?.[0];
                 if (file) {
-                    // Show inline progress in workarea
-                    const importProgress = new ImportProgress();
-                    importProgress.show();
-
-                    try {
-                        // Get the Yjs bridge - required for static mode
-                        const yjsBridge = eXeLearning.app.project._yjsBridge;
-                        if (!yjsBridge) {
-                            throw new Error(
-                                'Yjs bridge not initialized. Please wait for the editor to load.'
-                            );
-                        }
-
-                        // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
-                        Logger.log('[Static] Importing file:', file.name);
-                        await yjsBridge.importFromElpx(file, {
-                            onProgress: (progress) => importProgress.update(progress)
-                        });
-
-                        importProgress.hide();
-
-                        // Refresh UI after import (without server calls)
-                        if (eXeLearning.app.project?.refreshAfterDirectImport) {
-                            await eXeLearning.app.project.refreshAfterDirectImport();
-                        }
-
-                        Logger.log('[Static] Import complete:', file.name);
-                    } catch (err) {
-                        importProgress.hide();
-                        console.error('[Static] Failed to import file:', err);
-                        if (eXeLearning.app.modals?.alert) {
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Error opening'),
-                                body: err.message || String(err),
-                                contentId: 'error',
-                            });
-                        } else {
-                            alert(
-                                _('Failed to open project: ') +
-                                    (err.message || err)
-                            );
-                        }
-                    }
+                    // Reuse unified open flow (handles unsaved modal + static import)
+                    eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
                 }
                 // Reset for next use
                 e.target.value = '';
@@ -1773,6 +1732,17 @@ export default class NavbarFile {
 
             toast.toastBody.innerHTML = _('File saved.');
             Logger.log('[NavbarFile] Project saved via Yjs');
+
+            // In offline/static mode, export acts as the save operation.
+            // Mark document clean so the save indicator turns green.
+            const capabilities = eXeLearning?.app?.capabilities;
+            const isOfflineLike = window.electronAPI || (capabilities && capabilities.storage?.remote === false);
+            if (isOfflineLike) {
+                const docManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+                if (docManager?.markClean) {
+                    docManager.markClean();
+                }
+            }
 
         } catch (error) {
             console.error('[NavbarFile] Yjs save error:', error);

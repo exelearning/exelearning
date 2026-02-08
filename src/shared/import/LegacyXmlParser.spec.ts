@@ -52,6 +52,29 @@ describe('LegacyXmlParser', () => {
             expect(LegacyXmlParser.IDEVICE_TITLE_TRANSLATIONS['Case Study']).toBeDefined();
             expect(LegacyXmlParser.IDEVICE_TITLE_TRANSLATIONS['Case Study'].en).toBe('Case Study');
         });
+
+        it('should have DEFAULT_IDEVICE_TITLES with all default title variations', () => {
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES).toBeDefined();
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES).toBeInstanceOf(Set);
+
+            // English defaults
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Free Text')).toBe(true);
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Text')).toBe(true);
+
+            // Spanish defaults
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Texto libre')).toBe(true);
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Texto')).toBe(true);
+
+            // Catalan defaults
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Text lliure')).toBe(true);
+
+            // Basque defaults
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Testu librea')).toBe(true);
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('Testua')).toBe(true);
+
+            // Should NOT contain empty string
+            expect(LegacyXmlParser.DEFAULT_IDEVICE_TITLES.has('')).toBe(false);
+        });
     });
 
     describe('getLocalizedFeedbackText', () => {
@@ -1063,6 +1086,284 @@ describe('LegacyXmlParser', () => {
                 // The link should be converted to use page ID
                 expect(idevice.htmlView).toContain('exe-node:');
             }
+        });
+    });
+
+    describe('default iDevice title filtering', () => {
+        it('should filter out "Free Text" default title and use empty block name', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Home"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Free Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Content&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            expect(result.pages.length).toBeGreaterThan(0);
+            const homePage = result.pages.find(p => p.title === 'Home');
+            expect(homePage).toBeDefined();
+            expect(homePage!.blocks.length).toBeGreaterThan(0);
+            // The block name should be empty, not "Free Text"
+            expect(homePage!.blocks[0].name).toBe('');
+        });
+
+        it('should filter out "Texto libre" Spanish default title', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Inicio"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Texto libre"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Contenido&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const page = result.pages.find(p => p.title === 'Inicio');
+            expect(page).toBeDefined();
+            expect(page!.blocks[0].name).toBe('');
+        });
+
+        it('should filter out "Text" simple default title', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Page"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.textidevice.TextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Content&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const page = result.pages.find(p => p.title === 'Page');
+            expect(page).toBeDefined();
+            expect(page!.blocks[0].name).toBe('');
+        });
+
+        it('should preserve custom user-defined titles', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Home"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="My Custom Title"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Content&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const homePage = result.pages.find(p => p.title === 'Home');
+            expect(homePage).toBeDefined();
+            // Custom title should be preserved
+            expect(homePage!.blocks[0].name).toBe('My Custom Title');
+        });
+
+        it('should preserve empty title when iDevice has no title', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Home"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Content without title&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const homePage = result.pages.find(p => p.title === 'Home');
+            expect(homePage).toBeDefined();
+            // Empty title should remain empty
+            expect(homePage!.blocks[0].name).toBe('');
+        });
+
+        it('should filter out Catalan "Text lliure" default title', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Inici"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Text lliure"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Contingut&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const page = result.pages.find(p => p.title === 'Inici');
+            expect(page).toBeDefined();
+            expect(page!.blocks[0].name).toBe('');
+        });
+
+        it('should filter out Basque "Testu librea" default title', () => {
+            const legacyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Hasiera"/>
+        <string role="key" value="idevices"/>
+        <list>
+          <instance class="exe.engine.freetextidevice.FreeTextIdevice" reference="3">
+            <dictionary>
+              <string role="key" value="_title"/>
+              <unicode value="Testu librea"/>
+              <string role="key" value="fields"/>
+              <list>
+                <instance class="exe.engine.field.TextAreaField" reference="4">
+                  <dictionary>
+                    <string role="key" value="content_w_resourcePaths"/>
+                    <unicode value="&lt;p&gt;Edukia&lt;/p&gt;"/>
+                  </dictionary>
+                </instance>
+              </list>
+            </dictionary>
+          </instance>
+        </list>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const result = parser.parse(legacyXml);
+
+            const page = result.pages.find(p => p.title === 'Hasiera');
+            expect(page).toBeDefined();
+            expect(page!.blocks[0].name).toBe('');
         });
     });
 });

@@ -191,7 +191,8 @@ describe('ThemesManager', () => {
       themesManager.initYjsBinding();
 
       // Should use default theme ('default-theme' from window.eXeLearning.config)
-      expect(spy).toHaveBeenCalledWith('default-theme', true, false, false);
+      // Note: save=false during init to avoid marking document dirty on load
+      expect(spy).toHaveBeenCalledWith('default-theme', false, false, false);
     });
 
     it('should observe metadata changes', () => {

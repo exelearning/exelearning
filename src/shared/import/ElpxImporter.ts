@@ -595,7 +595,8 @@ export class ElpxImporter {
         let htmlView = legacyIdevice.htmlView || '';
 
         // If there's feedback content, append feedback button and content
-        if (legacyIdevice.feedbackHtml) {
+        // BUT only if the HTML doesn't already have feedback embedded (prevents duplication)
+        if (legacyIdevice.feedbackHtml && !this.htmlHasFeedback(htmlView)) {
             const buttonText = legacyIdevice.feedbackButton || 'Show Feedback';
             htmlView += `<div class="iDevice_buttons feedback-button js-required">`;
             htmlView += `<input type="button" class="feedbacktooglebutton" value="${this.escapeHtmlAttr(buttonText)}" `;
@@ -661,10 +662,12 @@ export class ElpxImporter {
      */
     private setLegacyMetadata(metadata: Y.Map<unknown>, legacyMeta: LegacyMetadata): void {
         metadata.set('title', legacyMeta.title);
+        metadata.set('subtitle', '');
         metadata.set('author', legacyMeta.author);
         metadata.set('language', legacyMeta.language || 'en');
         metadata.set('description', legacyMeta.description);
         metadata.set('license', legacyMeta.license);
+        metadata.set('theme', 'base');
 
         // Export settings from legacy format (pp_ prefixed in meta)
         metadata.set('addPagination', legacyMeta.pp_addPagination);
@@ -677,12 +680,8 @@ export class ElpxImporter {
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
 
-        if (legacyMeta.extraHeadContent) {
-            metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
-        }
-        if (legacyMeta.footer) {
-            metadata.set('footer', legacyMeta.footer);
-        }
+        metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
+        metadata.set('footer', legacyMeta.footer);
     }
 
     /**
@@ -696,6 +695,27 @@ export class ElpxImporter {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * Check if HTML content already contains feedback button elements
+     * This prevents duplicate feedback when the handler already embedded feedback in htmlView
+     *
+     * @param html - HTML content to check
+     * @returns true if feedback button already exists
+     */
+    private htmlHasFeedback(html: string): boolean {
+        if (!html) return false;
+        // Check for various feedback button patterns used in legacy exports
+        // - feedbacktooglebutton: standard class name (note the typo in original)
+        // - feedbackbutton: alternative class name used in some versions
+        // - iDevice_buttons feedback-button: container class pattern
+        return (
+            html.includes('feedbacktooglebutton') ||
+            html.includes('feedbackbutton') ||
+            html.includes('iDevice_buttons feedback-button') ||
+            html.includes('class="feedback-button')
+        );
     }
 
     /**
@@ -749,17 +769,13 @@ export class ElpxImporter {
      */
     private setMetadata(metadata: Y.Map<unknown>, values: OdeMetadata): void {
         metadata.set('title', values.title);
-        if (values.subtitle) {
-            metadata.set('subtitle', values.subtitle);
-        }
+        metadata.set('subtitle', values.subtitle);
         metadata.set('author', values.author);
         metadata.set('language', values.language);
         metadata.set('description', values.description);
         metadata.set('license', values.license);
-        if (values.theme) {
-            metadata.set('theme', values.theme);
-            this.logger.log('[ElpxImporter] Theme set:', values.theme);
-        }
+        metadata.set('theme', values.theme || 'base');
+        this.logger.log('[ElpxImporter] Theme set:', values.theme || 'base');
         // Export settings
         metadata.set('addPagination', values.addPagination);
         metadata.set('addSearchBox', values.addSearchBox);
@@ -768,12 +784,8 @@ export class ElpxImporter {
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
-        if (values.extraHeadContent) {
-            metadata.set('extraHeadContent', values.extraHeadContent);
-        }
-        if (values.footer) {
-            metadata.set('footer', values.footer);
-        }
+        metadata.set('extraHeadContent', values.extraHeadContent);
+        metadata.set('footer', values.footer);
     }
 
     /**

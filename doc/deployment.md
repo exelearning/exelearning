@@ -74,6 +74,7 @@ docker compose -f docker-compose.postgres.yml up -d
 
 > **Heads-up:** The sample sets `DB_SERVER_VERSION` and pins a Postgres image tag. Keep these aligned when you customize. 
 
+> **Note:** In all cases, if you experience write permission issues, try pruning unused Docker volumes.
 ---
 
 ## Configuration
@@ -105,6 +106,7 @@ Common knobs (all supported by the example files):
 You can deploy eXeLearning under a subdirectory (e.g., `https://example.org/exelearning`) by setting `BASE_PATH`.
 
 - Do not include a trailing slash.
+- Start with a slash
 - Can be multi-level.
 
 Examples:
@@ -128,8 +130,8 @@ What it does:
 
 Verification:
 
-- Visit `https://your-host%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
-- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `%BASE_PATH%/healthcheck`.
+- Visit `https://your-host/%BASE_PATH%/healthcheck` and expect `{ "status": "ok" }`.
+- If you hit `/healthcheck` without the prefix while `BASE_PATH` is set, you will be redirected to `/%BASE_PATH%/healthcheck`.
 
 ---
 
@@ -272,7 +274,7 @@ Templates uploaded through the admin panel are stored in `FILES_DIR/admin/templa
 
 Administrators can enable or disable templates through the admin panel. Disabled templates won't appear in the "New from Template" menu for users.
 
-### Creating templates
+### Creating templates (without admin panel)
 
 1. Design your project in eXeLearning
 2. Export it as an `.elpx` file (**File → Download as... → eXeLearning content**)
