@@ -5196,4 +5196,202 @@ describe('YjsProjectBridge', () => {
       expect(bridge.documentManager.markDirty).toHaveBeenCalled();
     });
   });
+
+  describe('clearAssetsForNewProject', () => {
+    let mockYdoc;
+    let mockAssetsMap;
+    let mockAssetsData;
+
+    beforeEach(() => {
+      // Create a mock Y.Map-like object for assets
+      mockAssetsData = new Map();
+      mockAssetsMap = {
+        get size() {
+          return mockAssetsData.size;
+        },
+        set: (key, value) => mockAssetsData.set(key, value),
+        get: (key) => mockAssetsData.get(key),
+        clear: mock(() => mockAssetsData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'assets') return mockAssetsMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+
+      bridge.assetManager = {
+        blobCache: new Map(),
+        blobURLCache: new Map(),
+        reverseBlobCache: new Map(),
+        clearCache: mock(async () => {}),
+      };
+    });
+
+    it('clears AssetManager memory caches', async () => {
+      // Setup: add some assets to caches
+      bridge.assetManager.blobCache.set('test-id', new Blob(['test']));
+      bridge.assetManager.blobURLCache.set('test-id', 'blob:http://test/123');
+      bridge.assetManager.reverseBlobCache.set('blob:http://test/123', 'test-id');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.blobCache.size).toBe(0);
+      expect(bridge.assetManager.blobURLCache.size).toBe(0);
+      expect(bridge.assetManager.reverseBlobCache.size).toBe(0);
+    });
+
+    it('revokes blob URLs when clearing caches', async () => {
+      const mockRevokeObjectURL = mock(() => {});
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('test-id-1', 'blob:http://test/123');
+      bridge.assetManager.blobURLCache.set('test-id-2', 'blob:http://test/456');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledTimes(2);
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/456');
+    });
+
+    it('clears Yjs assets map when it has entries', async () => {
+      // Setup: add asset metadata to Yjs
+      mockAssetsData.set('test-asset', { id: 'test-asset', filename: 'test.jpg' });
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalled();
+      expect(mockAssetsMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call transact when assets map is empty', async () => {
+      // Assets map is already empty
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockYdoc.transact).not.toHaveBeenCalled();
+    });
+
+    it('calls clearCache on AssetManager', async () => {
+      await bridge.clearAssetsForNewProject();
+
+      expect(bridge.assetManager.clearCache).toHaveBeenCalled();
+    });
+
+    it('handles missing assetManager gracefully', async () => {
+      bridge.assetManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing documentManager gracefully', async () => {
+      bridge.documentManager = null;
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', async () => {
+      bridge.documentManager = {};
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+    });
+  });
+
+  describe('clearMetadataForNewProject', () => {
+    let mockYdoc;
+    let mockMetadataData;
+    let mockMetadataMap;
+    let mockThemeFilesData;
+    let mockThemeFilesMap;
+
+    beforeEach(() => {
+      mockMetadataData = new Map();
+      mockMetadataMap = {
+        get size() {
+          return mockMetadataData.size;
+        },
+        set: (key, value) => mockMetadataData.set(key, value),
+        get: (key) => mockMetadataData.get(key),
+        clear: mock(() => mockMetadataData.clear()),
+      };
+
+      mockThemeFilesData = new Map();
+      mockThemeFilesMap = {
+        get size() {
+          return mockThemeFilesData.size;
+        },
+        set: (key, value) => mockThemeFilesData.set(key, value),
+        get: (key) => mockThemeFilesData.get(key),
+        clear: mock(() => mockThemeFilesData.clear()),
+      };
+
+      mockYdoc = {
+        getMap: mock((name) => {
+          if (name === 'metadata') return mockMetadataMap;
+          if (name === 'themeFiles') return mockThemeFilesMap;
+          return new Map();
+        }),
+        transact: mock((fn) => fn()),
+      };
+
+      bridge.documentManager = {
+        ydoc: mockYdoc,
+      };
+    });
+
+    it('clears metadata map and sets timestamps', () => {
+      mockMetadataData.set('title', 'Old Title');
+      mockMetadataData.set('subtitle', 'Old Subtitle');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockMetadataMap.clear).toHaveBeenCalled();
+      expect(mockMetadataData.has('createdAt')).toBe(true);
+      expect(mockMetadataData.has('modifiedAt')).toBe(true);
+      expect(typeof mockMetadataData.get('createdAt')).toBe('number');
+      expect(typeof mockMetadataData.get('modifiedAt')).toBe('number');
+    });
+
+    it('clears themeFiles map when it has entries', () => {
+      mockThemeFilesData.set('style.css', 'body {}');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).toHaveBeenCalled();
+    });
+
+    it('does not call clear on themeFiles when empty', () => {
+      // themeFiles map is empty
+      bridge.clearMetadataForNewProject();
+
+      expect(mockThemeFilesMap.clear).not.toHaveBeenCalled();
+    });
+
+    it('runs inside a single transaction', () => {
+      mockMetadataData.set('title', 'Old');
+
+      bridge.clearMetadataForNewProject();
+
+      expect(mockYdoc.transact).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles missing documentManager gracefully', () => {
+      bridge.documentManager = null;
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+
+    it('handles missing ydoc gracefully', () => {
+      bridge.documentManager = {};
+
+      expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
+    });
+  });
 });

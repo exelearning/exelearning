@@ -869,4 +869,107 @@ describe('Themes Routes', () => {
             expect(emptyTheme?.cssFiles).toContain('style.css');
         });
     });
+
+    describe('GET /api/themes/:themeId/download', () => {
+        it('should return ZIP file data for base theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.zipFileName).toBeDefined();
+            expect(body.zipFileName).toContain('.zip');
+            expect(body.zipBase64).toBeDefined();
+            // Base64 should be valid
+            expect(body.zipBase64).toMatch(/^[A-Za-z0-9+/=]+$/);
+        });
+
+        it('should include theme name in filename', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            const body = await res.json();
+            // The base theme should have its name from config.xml (lowercase "base")
+            expect(body.zipFileName).toBe('base.zip');
+        });
+
+        it('should return 404 for non-existent theme', async () => {
+            const res = await app.handle(new Request('http://localhost/api/themes/non-existent-theme/download'));
+
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toBe('Not Found');
+        });
+
+        it('should check site themes if base theme not found', async () => {
+            // This test verifies that when a theme is not found in base themes,
+            // the endpoint checks site themes directory. We use a theme that
+            // doesn't exist anywhere to verify the 404 logic covers both paths.
+            const siteThemesPath = '/tmp/test-nonexistent/themes/site';
+            const savedEnv = {
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-nonexistent';
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            // Base theme doesn't exist
+                            if (p === path.join('public/files/perm/themes/base', 'check-site-theme')) {
+                                return false;
+                            }
+                            // Site theme doesn't exist either
+                            if (p === path.join(siteThemesPath, 'check-site-theme')) {
+                                return false;
+                            }
+                            return fs.existsSync(p);
+                        },
+                        readFileSync: fs.readFileSync,
+                        readdirSync: fs.readdirSync,
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/themes/check-site-theme/download'));
+
+                // Should return 404 since theme not found in either location
+                expect(res.status).toBe(404);
+                const body = await res.json();
+                expect(body.error).toBe('Not Found');
+            } finally {
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
+        });
+
+        it('should use themeId as fallback filename when config.xml has no name tag', async () => {
+            // Test with a real theme but config.xml without <name> tag
+            // We use the "base" theme which exists and has files for createZipBuffer
+            // but mock the readFileSync to return config without name
+            configure({
+                fs: {
+                    existsSync: fs.existsSync,
+                    readFileSync: (p: string, encoding?: BufferEncoding) => {
+                        // When reading config.xml for name extraction, return config without name
+                        if (typeof p === 'string' && p.includes('base/config.xml') && encoding === 'utf-8') {
+                            return '<theme><version>1.0</version></theme>';
+                        }
+                        return fs.readFileSync(p, encoding);
+                    },
+                    readdirSync: fs.readdirSync,
+                },
+            });
+            app = new Elysia().use(themesRoutes);
+
+            const res = await app.handle(new Request('http://localhost/api/themes/base/download'));
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            // Falls back to themeId when name cannot be extracted from config.xml
+            expect(body.zipFileName).toBe('base.zip');
+        });
+    });
 });

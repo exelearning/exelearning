@@ -2993,6 +2993,80 @@ class YjsProjectBridge {
 
     Logger.log('[YjsProjectBridge] Disconnected');
   }
+
+  /**
+   * Clear all assets for importing a new project (static mode)
+   * This clears asset caches and Yjs assets map without disconnecting the bridge
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  async clearAssetsForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing assets for new project...');
+
+    // Clear AssetManager caches (memory + Cache API)
+    if (this.assetManager) {
+      // Revoke blob URLs and clear memory caches
+      for (const blobURL of this.assetManager.blobURLCache.values()) {
+        URL.revokeObjectURL(blobURL);
+      }
+      this.assetManager.blobURLCache.clear();
+      this.assetManager.reverseBlobCache.clear();
+      this.assetManager.blobCache.clear();
+
+      // Clear Cache API storage
+      await this.assetManager.clearCache();
+
+      Logger.log('[YjsProjectBridge] AssetManager caches cleared');
+    }
+
+    // Clear Yjs assets Y.Map (metadata storage)
+    const assetsMap = this.documentManager?.ydoc?.getMap('assets');
+    if (assetsMap && assetsMap.size > 0) {
+      this.documentManager.ydoc.transact(() => {
+        assetsMap.clear();
+      });
+      Logger.log('[YjsProjectBridge] Yjs assets map cleared');
+    }
+
+    Logger.log('[YjsProjectBridge] Assets cleared for new project');
+  }
+
+  /**
+   * Clear metadata and themeFiles for importing a new project (static mode)
+   * This prevents stale metadata from a previous project leaking into the new one
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  clearMetadataForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing metadata for new project...');
+
+    const ydoc = this.documentManager?.ydoc;
+    if (!ydoc) {
+      Logger.warn('[YjsProjectBridge] No Y.Doc available to clear metadata');
+      return;
+    }
+
+    ydoc.transact(() => {
+      // Clear metadata Y.Map so no stale values remain
+      const metadataMap = ydoc.getMap('metadata');
+      if (metadataMap && metadataMap.size > 0) {
+        metadataMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs metadata map cleared');
+      }
+
+      // Re-set timestamps (not set by the importer)
+      const now = Date.now();
+      metadataMap.set('createdAt', now);
+      metadataMap.set('modifiedAt', now);
+
+      // Clear themeFiles Y.Map to prevent custom theme data leaking
+      const themeFilesMap = ydoc.getMap('themeFiles');
+      if (themeFilesMap && themeFilesMap.size > 0) {
+        themeFilesMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs themeFiles map cleared');
+      }
+    });
+
+    Logger.log('[YjsProjectBridge] Metadata cleared for new project');
+  }
 }
 
 // Export for use

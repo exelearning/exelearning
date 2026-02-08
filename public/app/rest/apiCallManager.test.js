@@ -268,13 +268,13 @@ describe('ApiCallManager', () => {
 
     it('should replace params in theme zip download', async () => {
       apiManager.endpoints.api_themes_download = {
-        path: 'http://localhost/themes/{odeSessionId}/{themeDirName}',
+        path: 'http://localhost/api/themes/{themeId}/download',
       };
 
-      await apiManager.getThemeZip('session-1', 'theme-1');
+      await apiManager.getThemeZip('theme-1');
 
       expect(mockFunc.get).toHaveBeenCalledWith(
-        'http://localhost/themes/session-1/theme-1'
+        'http://localhost/api/themes/theme-1/download'
       );
     });
 
