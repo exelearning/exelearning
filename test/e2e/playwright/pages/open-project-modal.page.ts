@@ -288,4 +288,70 @@ export class OpenProjectModalPage {
         const ownerInfo = this.projectList.locator(`.ode-group[ode-id="${odeId}"] .ode-owner-info`);
         return (await ownerInfo.count()) > 0;
     }
+
+    /**
+     * Click the duplicate/copy button for a specific project
+     */
+    async clickDuplicateForProject(odeId: string): Promise<void> {
+        const copyBtn = this.projectList.locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-copy`).first();
+        await copyBtn.click();
+    }
+
+    /**
+     * Get the ode-id of the currently selected project row
+     */
+    async getSelectedProjectUuid(): Promise<string | null> {
+        const selectedRow = this.projectList.locator('.ode-row.selected').first();
+        if ((await selectedRow.count()) === 0) return null;
+        return await selectedRow.getAttribute('ode-id');
+    }
+
+    /**
+     * Check if a specific project row has the .selected class
+     */
+    async isProjectSelected(odeId: string): Promise<boolean> {
+        const row = this.projectList.locator(`.ode-row[ode-id="${odeId}"]`).first();
+        if ((await row.count()) === 0) return false;
+        return await row.evaluate(el => el.classList.contains('selected'));
+    }
+
+    /**
+     * Wait until a project with a matching title substring appears in the list
+     */
+    async waitForProjectInList(titleSubstring: string, timeout = 15000): Promise<void> {
+        await this.page.waitForFunction(
+            substring => {
+                const titles = document.querySelectorAll('.ode-files-list .ode-title');
+                return Array.from(titles).some(el => el.textContent?.includes(substring));
+            },
+            titleSubstring,
+            { timeout },
+        );
+    }
+
+    /**
+     * Find a project's ode-id by matching its title text
+     */
+    async getProjectOdeIdByTitle(titleSubstring: string): Promise<string | null> {
+        const groups = this.projectList.locator('.ode-group');
+        const count = await groups.count();
+        for (let i = 0; i < count; i++) {
+            const group = groups.nth(i);
+            const title = await group.locator('.ode-title').first().textContent();
+            if (title?.includes(titleSubstring)) {
+                return await group.getAttribute('ode-id');
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Check if the Open button in the footer is enabled
+     */
+    async isOpenButtonEnabled(): Promise<boolean> {
+        const disabled = await this.openButton.evaluate(
+            el => el.hasAttribute('disabled') || el.classList.contains('disabled'),
+        );
+        return !disabled;
+    }
 }
