@@ -776,16 +776,7 @@ var $exeDevices = {
         // Gamification
         gamification: {
             initGame($game, nameGame, gameClass, ideviceClass) {
-                // Check if already initialized (SPA navigation protection)
-                // DataGame elements are removed after processing, so if activities exist
-                // but DataGame is gone, the game was already initialized
                 const $activities = $(`.${ideviceClass}`);
-                if ($activities.length > 0) {
-                    const $firstActivity = $activities.eq(0);
-                    if ($firstActivity.find('[class*="-DataGame"]').length === 0) {
-                        return; // Already initialized, skip reinitialization
-                    }
-                }
 
                 if ($(".QuizTestIdevice .iDevice").length > 0) {
                     $game.hasSCORMbutton = true;
@@ -2073,6 +2064,7 @@ var $exeDevices = {
                     str = str.trim();
                     if (str.startsWith('{') && str.endsWith('}')) {
                         try {
+                            str = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(str);
                             const o = JSON.parse(str);
                             if (o && typeof o === 'object' && !Array.isArray(o)) {
                                 return o;

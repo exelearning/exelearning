@@ -1076,6 +1076,7 @@ var $exeDevice = {
         $('#mapaPFooter').val(p.footer);
 
         $exeDevice.setIconType(p.iconType);
+         console.log('El tipo es', p.type);
 
         $('#mapaIdentify').val(p.question);
         $('#mapaLink').val(p.link);
@@ -1095,17 +1096,9 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.helpers.secondsToHour(p.fVideo)
             );
         } else if (p.type == 2) {
-            if (tinyMCE.get('mapaText')) {
-                tinyMCE.get('mapaText').setContent(p.eText);
-            } else {
-                $('#mapaText').val(p.eText);
-            }
+            $exeDevice.setEditorContent('mapaText', p.eText);
         } else if (p.type == 7) {
-            if (tinyMCE.get('mapaToolTip')) {
-                tinyMCE.get('mapaToolTip').setContent(p.toolTip);
-            } else {
-                $('#mapaToolTip').val(p.toolTip);
-            }
+            $exeDevice.setEditorContent('mapaToolTip', p.toolTip);
         }
 
         $('#mapaColorTitle').val(p.color);
@@ -1963,6 +1956,21 @@ var $exeDevice = {
             '</div>';
         html += '</div>';
         return html;
+    },
+
+    setEditorContent: function (editorId, content) {
+        const editor = tinyMCE.get(editorId);
+        if (editor) {
+            if (editor.initialized) {
+                editor.setContent(content);
+            } else {
+                editor.once('init', function () {
+                    editor.setContent(content);
+                });
+            }
+        } else {
+            $('#' + editorId).val(content);
+        }
     },
 
     clearTags(text) {
