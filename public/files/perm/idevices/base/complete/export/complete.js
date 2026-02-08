@@ -108,6 +108,20 @@ var $eXeCompleta = {
             typeof mOptions.wordsLimit === 'undefined'
                 ? false
                 : mOptions.wordsLimit;
+        mOptions.type =
+            typeof mOptions.type === 'undefined' ? 0 : mOptions.type;
+        mOptions.estrictCheck =
+            typeof mOptions.estrictCheck === 'undefined'
+                ? false
+                : mOptions.estrictCheck;
+        mOptions.caseSensitive =
+            typeof mOptions.caseSensitive === 'undefined'
+                ? false
+                : mOptions.caseSensitive;
+        mOptions.percentajeError =
+            typeof mOptions.percentajeError === 'undefined'
+                ? 0
+                : mOptions.percentajeError;
         mOptions.words = [];
         mOptions.wordsErrors = mOptions.wordsErrors || '';
         mOptions.oWords = {};
@@ -1124,7 +1138,7 @@ var $eXeCompleta = {
         mOptions.oWords = {};
         wordsCorrect.sort();
         wordsa = [...wordsCorrect];
-        if (mOptions.caseSensitive) {
+        if (!mOptions.caseSensitive) {
             wordsa = wordsa.map((name) => name.toLowerCase());
         }
         wordsa.forEach((el) => {

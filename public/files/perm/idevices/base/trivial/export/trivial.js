@@ -1481,7 +1481,8 @@ var $eXeTrivial = {
             .replace(/\\\[/g, '\\\\[');
     },
     loadDataGame: function (data) {
-        let json = $eXeTrivial.escapeParens(data.text());
+        let json = data.text();
+        json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
 
         let mOptions = $eXeTrivial.isJsonString(json);
         mOptions = $eXeTrivial.Decrypt(mOptions);
@@ -1532,7 +1533,68 @@ var $eXeTrivial = {
             typeof mOptions.modeBoard == 'undefined'
                 ? false
                 : mOptions.modeBoard;
-        return mOptions;
+
+        // Default messages for legacy imports
+        if (typeof mOptions.msgs === 'undefined') {
+            mOptions.msgs = {
+                msgStartGame: 'Click here to start',
+                msgSubmit: 'Submit',
+                msgEnterCode: 'Enter the access code',
+                msgErrorCode: 'The access code is not correct',
+                msgGameOver: 'Game Over!',
+                msgClue: 'Cool! The clue is:',
+                msgNewGame: 'Click here for a new game',
+                msgCodeAccess: 'Access code',
+                msgPlayStart: 'Click here to play',
+                msgMinimize: 'Minimize',
+                msgMaximize: 'Maximize',
+                msgTime: 'Time per question',
+                msgFullScreen: 'Full Screen',
+                msgExitFullScreen: 'Exit Full Screen',
+                msgNoImage: 'No picture question',
+                msgSuccesses: 'Right! | Excellent! | Great! | Very good! | Perfect!',
+                msgFailures: 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!',
+                msgNotNetwork: 'You can only play this game with internet connection.',
+                msgQuestion: 'Question',
+                msgAnswer: 'Check',
+                msgInformation: 'Information',
+                msgAuthor: 'Authorship',
+                msgActityComply: 'You have already done this activity.',
+                msgPlaySeveralTimes: 'You can do this activity as many times as you want',
+                msgYouLastScore: 'The last score saved is',
+                msgOption: 'Option',
+                msgImage: 'Image',
+                msgOrders: 'Please order the answers',
+                msgIndicateWord: 'Provide a word or phrase',
+                msgGameStarted: 'The game has already started.',
+                msgPlayersName: 'You must indicate a name for all the selected players.',
+                msgReboot: 'Do you want to restart the game?',
+                msgRoolDice: 'roll the dice.',
+                msgsWinner: 'The game has finished. The winner is %1. Do you want to play again?',
+                msgWinGame: 'Cool! You won the game.',
+                msgsYouPlay: 'you play. Roll the dice.',
+                msgSaveDiceAuto: 'Your score will be automatically saved after each throw.',
+                msgSaveAuto: 'Your score will be automatically saved after each question.',
+                msgOnlyFirstGame: 'You can only play once.',
+                msgGamers: 'Players',
+                msgReply: 'Answer',
+                msgErrorQuestion: 'you have failed.',
+                msgGetQueso: 'you get the cheese of',
+                msgRightAnswre: 'One more point.',
+                msgAudio: 'Audio',
+                msgCorrect: 'Correct',
+                msgIncorrect: 'Incorrect',
+                msgUncompletedActivity: 'Incomplete activity',
+                msgSuccessfulActivity: 'Activity: Passed. Score: %s',
+                msgUnsuccessfulActivity: 'Activity: Not passed. Score: %s',
+                msgNext: 'Next',
+                msgTypeGame: 'TriviExt',
+                msgRestart: 'Restart',
+                msgYouScore: 'Your score',
+            };
+        }
+
+        return mOptions
     },
 
     isJsonString: function (str) {

@@ -214,7 +214,7 @@ var $eXeIdentifica = {
                         <a href="#" id="idfUseClue-${instance}" class="IDFP-BClue">${msgs.msgShowClue}</a>
                     </div>
                     <div id="idfMessageAnswer-${instance}" class="IDFP-MessageClue"></div>
-                    <div class="IDFP-DivSubmit" id="idfDivSubmit-${instance}">
+                    <div class="IDFP-DivSubmit mb-3" id="idfDivSubmit-${instance}">
                         <a href="#" id="idfBtnMoveOn-${instance}" title="${msgs.msgMoveOne}">
                             <strong><span class="sr-av">${msgs.msgMoveOne}</span></strong>
                             <div class="exeQuextIcons-MoveOne IDFP-Activo"></div>

@@ -24,7 +24,26 @@ var $text = {
      * Get the base html of the idevice view
      */
     renderView(data, accessibility, template) {
-        return template.replace('{content}', data.textTextarea);
+        let content = data.textTextarea || '';
+        const feedbackContent = data[this.feedbackContentId] || '';
+
+        // Add feedback from jsonProperties only if content doesn't already have it
+        if (feedbackContent) {
+            const temp = document.createElement('div');
+            temp.innerHTML = content;
+            const hasFeedback = temp.querySelector('.feedback-button')
+                || temp.querySelector('.feedbacktooglebutton')
+                || temp.querySelector('.feedbackbutton')
+                || temp.querySelector('.feedback.js-feedback')
+                || temp.querySelector('div.feedback');
+
+            if (!hasFeedback) {
+                const btnText = c_(data[this.feedbackTitleId]) || this.defaultBtnFeedbackText;
+                content += this.createFeedbackHTML(btnText, feedbackContent);
+            }
+        }
+
+        return template.replace('{content}', content);
     },
 
     getHTMLView(data, pathMedia) {

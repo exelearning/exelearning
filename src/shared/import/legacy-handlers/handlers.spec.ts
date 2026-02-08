@@ -3197,6 +3197,37 @@ describe('InteractiveVideoHandler', () => {
             const result = handler.extractHtmlView(dict);
             expect(result).toContain('exe-interactive-video-contents');
         });
+
+        it('should preserve \\n escape sequences in JSON string values (legacy eXe 2.9 format)', () => {
+            // This is the actual format from eXe 2.9: JSON contains \n as escape sequences in string values
+            // The \n must be preserved so JSON.parse works correctly
+            const legacyContent = `&lt;div class=&quot;exe-interactive-video&quot;&gt;&lt;script type=&quot;text/javascript&quot;&gt;//&lt;![CDATA[
+var InteractiveVideo = {&quot;slides&quot;:[{&quot;type&quot;:&quot;text&quot;,&quot;text&quot;:&quot;&lt;p&gt;Line 1&lt;/p&gt;\\n&lt;p&gt;Line 2&lt;/p&gt;&quot;,&quot;startTime&quot;:5}],&quot;i18n&quot;:{}}
+//]]&gt;&lt;/script&gt;&lt;/div&gt;`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="${legacyContent}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            expect(result).toContain('application/json');
+            // Verify the JSON is valid by extracting and parsing it
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            expect(parsed.slides).toHaveLength(1);
+            expect(parsed.slides[0].text).toContain('<p>Line 1</p>');
+        });
     });
 
     describe('extractFieldsHtml edge cases', () => {
@@ -3266,6 +3297,311 @@ describe('InteractiveVideoHandler', () => {
             `);
             const result = handler.extractHtmlView(dict);
             expect(result).toContain('TextField content');
+        });
+    });
+
+    describe('sanitizeJsonString functionality', () => {
+        it('should handle JSON with literal tab characters in string values', () => {
+            // JSON with literal tab character (0x09) in a string value
+            const jsonWithTab = `<div class="exe-interactive-video"><script>var InteractiveVideo = {"slides":[{"text":"before\tafter"}]}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${jsonWithTab.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            // Verify the JSON is valid by extracting and parsing it
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            expect(parsed.slides[0].text).toContain('before');
+            expect(parsed.slides[0].text).toContain('after');
+        });
+
+        it('should handle JSON with literal newline characters in string values', () => {
+            // Create content with actual newline character inside JSON string
+            const jsonContent = '{"slides":[{"text":"line1\nline2"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+        });
+
+        it('should handle JSON with literal carriage return characters in string values', () => {
+            // Create content with actual carriage return character inside JSON string
+            const jsonContent = '{"slides":[{"text":"line1\rline2"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+        });
+
+        it('should handle JSON with mixed control characters in string values', () => {
+            // Create content with multiple control characters inside JSON string
+            const jsonContent = '{"slides":[{"text":"tab:\there\nnewline\rcarriage"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            // The content should have been sanitized - tabs and newlines escaped
+            expect(parsed.slides[0].text).toContain('tab:');
+            expect(parsed.slides[0].text).toContain('here');
+        });
+
+        it('should preserve already escaped sequences (\\n, \\t, \\r)', () => {
+            // JSON with properly escaped sequences should remain valid
+            const jsonContent = '{"slides":[{"text":"escaped\\\\nnewline and\\\\ttab"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+        });
+
+        it('should handle backspace character (0x08) in string values', () => {
+            // Create content with backspace character inside JSON string
+            const jsonContent = '{"slides":[{"text":"before\bafter"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+        });
+
+        it('should handle form feed character (0x0C) in string values', () => {
+            // Create content with form feed character inside JSON string
+            const jsonContent = '{"slides":[{"text":"before\fafter"}]}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+        });
+
+        it('should handle complex nested JSON with control characters', () => {
+            // Complex nested structure with control characters in various places
+            const jsonContent =
+                '{"slides":[{"type":"text","text":"<p>Título</p>\n<p>Contenido con\ttabs</p>","options":{"nested":"value\rwith\nchars"}}],"i18n":{"msg":"Texto\ncon saltos"}}';
+            const legacyScript = `<div class="exe-interactive-video"><script>var InteractiveVideo = ${jsonContent}</script></div>`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            expect(parsed.slides).toHaveLength(1);
+            expect(parsed.i18n.msg).toBeDefined();
+        });
+    });
+
+    describe('extractTextAreaFieldContentPreserveEscapes', () => {
+        it('should preserve backslash-n sequences as escape codes in JSON', () => {
+            // This tests that \\n in the XML is preserved as \n in the output
+            // which is necessary for JSON parsing
+            const contentWithEscapes = `&lt;div class=&quot;exe-interactive-video&quot;&gt;&lt;script&gt;var InteractiveVideo = {&quot;text&quot;:&quot;Line1\\nLine2&quot;}&lt;/script&gt;&lt;/div&gt;`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="${contentWithEscapes}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            // After parsing, the \n should become an actual newline
+            expect(parsed.text).toBe('Line1\nLine2');
+        });
+
+        it('should prefer content_w_resourcePaths over content', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="Preferred content"/>
+                                <string role="key" value="content"/>
+                                <unicode value="Fallback content"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('Preferred content');
+            expect(result).not.toContain('Fallback content');
+        });
+
+        it('should fallback to _content when content_w_resourcePaths is empty', () => {
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content_w_resourcePaths"/>
+                                <unicode value="   "/>
+                                <string role="key" value="_content"/>
+                                <unicode value="Fallback _content"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('Fallback _content');
+        });
+
+        it('should decode HTML entities while preserving escape sequences', () => {
+            // HTML entities like &lt; should be decoded, but \\n should be preserved
+            const content = `&lt;p&gt;HTML decoded&lt;/p&gt;\\nNew line after`;
+            const legacyScript = `&lt;div class=&quot;exe-interactive-video&quot;&gt;&lt;script&gt;var InteractiveVideo = {&quot;text&quot;:&quot;${content}&quot;}&lt;/script&gt;&lt;/div&gt;`;
+            const dict = createDomElement(`
+                <dictionary>
+                    <string role="key" value="fields"/>
+                    <list>
+                        <instance class="TextAreaField">
+                            <dictionary>
+                                <string role="key" value="content"/>
+                                <unicode value="${legacyScript}"/>
+                            </dictionary>
+                        </instance>
+                    </list>
+                </dictionary>
+            `);
+            const result = handler.extractHtmlView(dict);
+            expect(result).toContain('exe-interactive-video-contents');
+            const jsonMatch = result.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+            expect(jsonMatch).not.toBeNull();
+            expect(() => JSON.parse(jsonMatch![1])).not.toThrow();
+            const parsed = JSON.parse(jsonMatch![1]);
+            // HTML entities decoded: &lt; -> <, &gt; -> >
+            // Escape sequence preserved: \\n -> \n (actual newline after JSON.parse)
+            expect(parsed.text).toContain('<p>');
+            expect(parsed.text).toContain('</p>');
+            expect(parsed.text).toContain('\n');
         });
     });
 });
