@@ -519,8 +519,9 @@ describe('modalOpenUserOdeFiles', () => {
       const duplicateSpy = vi.spyOn(modal, 'duplicateOdeFileEvent');
       global.fetch = vi.fn().mockResolvedValue({
         json: vi.fn().mockResolvedValue({
-          responseMessage: 'OK',
-          data: { uuid: 'new-uuid' },
+          success: true,
+          newProjectId: 'new-uuid',
+          project: { uuid: 'new-uuid' },
         }),
       });
       const row = modal.renderOdeRow(ode, { principal: true }, false);
@@ -703,8 +704,10 @@ describe('modalOpenUserOdeFiles', () => {
       window.eXeLearning.app.project = { _yjsBridge: { authToken: 'token-1' } };
       global.fetch = vi.fn().mockResolvedValue({
         json: vi.fn().mockResolvedValue({
-          responseMessage: 'OK',
-          data: { uuid: 'new-uuid' },
+          success: true,
+          message: 'Project duplicated',
+          newProjectId: 'new-uuid',
+          project: { id: 1, uuid: 'new-uuid', title: 'Test (copy)' },
         }),
       });
 
