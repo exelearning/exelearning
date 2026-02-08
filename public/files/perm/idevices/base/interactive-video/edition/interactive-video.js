@@ -386,12 +386,63 @@ var $exeDevice = {
             $('body').append(wrapper);
 
             // Get the data
-
             var previousData = stringToHTML(originalHTML);
-            var jsonParse = previousData.querySelector(
-                '#exe-interactive-video-contents'
-            ).innerHTML;
-            InteractiveVideo = JSON.parse(jsonParse);
+
+            // Try modern format first: <script id="exe-interactive-video-contents" type="application/json">
+            var jsonScript = previousData.querySelector('#exe-interactive-video-contents');
+
+            // Helper to sanitize JSON from legacy formats (handles control characters)
+            var sanitizeJSON = function(jsonStr) {
+                if (typeof $exeDevices !== 'undefined' &&
+                    $exeDevices.iDevice &&
+                    $exeDevices.iDevice.gamification &&
+                    $exeDevices.iDevice.gamification.helpers &&
+                    $exeDevices.iDevice.gamification.helpers.sanitizeJSONString) {
+                    return $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonStr);
+                }
+                return jsonStr;
+            };
+
+            if (jsonScript) {
+                // Modern format - parse JSON directly
+                try {
+                    var jsonContent = sanitizeJSON(jsonScript.innerHTML);
+                    InteractiveVideo = JSON.parse(jsonContent);
+                } catch (e) {
+                    console.error('Interactive Video: Error parsing modern JSON format', e);
+                    InteractiveVideo = { slides: [] };
+                }
+            } else {
+                // Legacy format (eXe 2.9): <script type="text/javascript">var InteractiveVideo = {...}</script>
+                // Try to extract from var InteractiveVideo = {...}
+                var legacyScript = previousData.querySelector('script[type="text/javascript"]');
+                if (legacyScript) {
+                    var scriptContent = legacyScript.innerHTML || legacyScript.textContent || '';
+                    // Remove CDATA markers and extract JSON
+                    scriptContent = scriptContent
+                        .replace(/\/\/<!\[CDATA\[/g, '')
+                        .replace(/\/\/\]\]>/g, '')
+                        .trim();
+
+                    var match = scriptContent.match(/var\s+InteractiveVideo\s*=\s*(\{[\s\S]*\})\s*;?\s*$/);
+                    if (match && match[1]) {
+                        try {
+                            // Sanitize JSON to handle control characters from legacy versions
+                            var sanitizedJson = sanitizeJSON(match[1]);
+                            InteractiveVideo = JSON.parse(sanitizedJson);
+                        } catch (e) {
+                            console.error('Interactive Video: Error parsing legacy format', e);
+                            InteractiveVideo = { slides: [] };
+                        }
+                    } else {
+                        console.warn('Interactive Video: Could not extract data from legacy format');
+                        InteractiveVideo = { slides: [] };
+                    }
+                } else {
+                    console.warn('Interactive Video: No script tag found');
+                    InteractiveVideo = { slides: [] };
+                }
+            }
             if (
                 typeof InteractiveVideo == 'object' &&
                 typeof InteractiveVideo.slides == 'object'

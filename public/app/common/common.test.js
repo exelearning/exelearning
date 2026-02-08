@@ -2390,6 +2390,50 @@ describe('common.js $exeDevices', () => {
         expect(isJsonString()('{not json}')).toBe(false);
       });
     });
+
+    describe('sanitization of control characters', () => {
+      it('handles JSON with literal newlines in string values', () => {
+        const jsonWithNewline = '{"text":"line1\nline2"}';
+        const result = isJsonString()(jsonWithNewline);
+        expect(result).toEqual({ text: 'line1\nline2' });
+      });
+
+      it('handles JSON with literal tabs in string values', () => {
+        const jsonWithTab = '{"text":"col1\tcol2"}';
+        const result = isJsonString()(jsonWithTab);
+        expect(result).toEqual({ text: 'col1\tcol2' });
+      });
+
+      it('handles JSON with literal carriage returns in string values', () => {
+        const jsonWithCR = '{"text":"line1\rline2"}';
+        const result = isJsonString()(jsonWithCR);
+        expect(result).toEqual({ text: 'line1\rline2' });
+      });
+
+      it('handles JSON with mixed control characters', () => {
+        const jsonWithMixed = '{"text":"a\nb\tc\rd"}';
+        const result = isJsonString()(jsonWithMixed);
+        expect(result).toEqual({ text: 'a\nb\tc\rd' });
+      });
+
+      it('handles JSON with CRLF line endings', () => {
+        const jsonWithCRLF = '{"text":"line1\r\nline2"}';
+        const result = isJsonString()(jsonWithCRLF);
+        expect(result).toEqual({ text: 'line1\r\nline2' });
+      });
+
+      it('preserves already escaped sequences', () => {
+        const jsonWithEscaped = '{"text":"line1\\nline2"}';
+        const result = isJsonString()(jsonWithEscaped);
+        expect(result).toEqual({ text: 'line1\nline2' });
+      });
+
+      it('handles JSON with escaped double quotes', () => {
+        const jsonWithQuotes = '{"text":"He said \\"hello\\""}';
+        const result = isJsonString()(jsonWithQuotes);
+        expect(result).toEqual({ text: 'He said "hello"' });
+      });
+    });
   });
 
   describe('$exeDevices.iDevice.gamification.helpers.shuffleAds', () => {

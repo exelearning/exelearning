@@ -343,9 +343,8 @@ var $eXeMapa = {
     },
     paintPoints: function (instance) {
         let mOptions = $eXeMapa.options[instance];
-        $('#mapaMultimedia-' + instance)
-            .find('.MQP-Point')
-            .each(function () {
+        const $points = $('#mapaMultimedia-' + instance).find('.MQP-Point');
+        $points.each(function () {
                 const number = parseInt($(this).data('number')),
                     icon =
                         mOptions.evaluationG == 1
@@ -914,11 +913,11 @@ var $eXeMapa = {
                     p.activeSlide = 0;
                 }
                 if (
-                    (p.type == 9 && typeof p.tests == 'undefined') ||
-                    p.tests.length == 0
+                    p.type == 9 &&
+                    (typeof p.tests == 'undefined' || p.tests.length == 0)
                 ) {
                     p.tests = [];
-                    p.slides.push($eXeMapa.getDefaultQuestion());
+                    p.tests.push($eXeMapa.getDefaultQuestion());
                     p.activeTest = 0;
                 }
             } else {

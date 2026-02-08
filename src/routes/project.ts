@@ -1321,7 +1321,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // POST /api/projects/uuid/:uuid/duplicate - Duplicate project by UUID
-            .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set }) => {
+            .post('/api/projects/uuid/:uuid/duplicate', async ({ params, set, currentUser }) => {
                 const uuid = params.uuid;
 
                 const project = await findProjectByUuid(db, uuid);
@@ -1336,7 +1336,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // Create duplicate project with new UUID
                 const duplicateProject = await createProjectWithUuid(db, newUuid, {
                     title: `${project.title} (copy)`,
-                    owner_id: project.owner_id,
+                    owner_id: currentUser?.id ?? project.owner_id,
                     description: project.description || undefined,
                     visibility: project.visibility as 'public' | 'private',
                     language: project.language || undefined,
