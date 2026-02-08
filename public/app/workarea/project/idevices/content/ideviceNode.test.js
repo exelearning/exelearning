@@ -2791,6 +2791,145 @@ describe('IdeviceNode', () => {
             expect(() => idevice.edition()).not.toThrow();
             delete global.$exeDevices;
         });
+
+        it('acquires Yjs lock and writes metadata when lock is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-42');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'Alice', color: '#ff0000' });
+            const mockUpdateComponent = vi.fn();
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: mockUpdateComponent,
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(mockUpdateComponent).toHaveBeenCalledWith('yjs-comp-123', {
+                lockedBy: 'client-42',
+                lockUserName: 'Alice',
+                lockUserColor: '#ff0000',
+            });
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+        });
+
+        it('shows alert and re-enables buttons when lock is denied', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue({
+                lockUserName: 'Bob',
+                lockUserColor: '#00ff00',
+            });
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Bob',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+        });
+
+        it('proceeds normally when no lock manager is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: null,
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+            expect(mockEngine.updateMode).toHaveBeenCalled();
+        });
+
+        it('uses yjsComponentId over odeIdeviceId for lock acquisition', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-preferred-id';
+            idevice.odeIdeviceId = 'ode-fallback-id';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-1');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'User', color: '#999' });
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: vi.fn(),
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: vi.fn(),
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-preferred-id');
+        });
+
+        it('falls back to "Another user" when lockInfo is null on denial', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue(null);
+
+            idevice.edition();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Another user',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+        });
     });
 
     describe('save', () => {

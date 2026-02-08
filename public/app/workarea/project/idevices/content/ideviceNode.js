@@ -3039,6 +3039,35 @@ export default class IdeviceNode {
             $exeDevices.iDevice.gamification.media.stopSound();
         }
         if (this.engine.mode == 'view') {
+            // Acquire Yjs CRDT lock before entering edit mode
+            if (this.isYjsEnabled()) {
+                const componentId = this.yjsComponentId || this.odeIdeviceId;
+                const lockManager = this.getLockManager();
+                if (lockManager) {
+                    const lockAcquired = lockManager.requestLock(componentId);
+                    if (!lockAcquired) {
+                        const lockInfo = this.getLockInfo();
+                        const lockUserName = lockInfo?.lockUserName || _('Another user');
+                        eXeLearning.app.modals.alert.show({
+                            title: _('iDevice locked'),
+                            body: _('This iDevice is being edited by') + ' ' + lockUserName,
+                            contentId: 'warning',
+                        });
+                        this.toogleIdeviceButtonsState(false);
+                        return;
+                    }
+                    // Write lock metadata to structureBinding for remote visibility
+                    const bridge = this.engine?.project?._yjsBridge;
+                    if (bridge?.structureBinding) {
+                        bridge.structureBinding.updateComponent(componentId, {
+                            lockedBy: lockManager.getClientId(),
+                            lockUserName: lockManager.getCurrentUser()?.name || 'Unknown',
+                            lockUserColor: lockManager.getCurrentUser()?.color || '#999',
+                        });
+                    }
+                }
+            }
+
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');
             this.engine.updateMode();
