@@ -100,7 +100,8 @@ var $eXeInforme = {
                     jsonProp.textContent.trim().length > 0
                 ) {
                     try {
-                        const json = JSON.parse(jsonProp.textContent);
+                        const sanitized = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(jsonProp.textContent);
+                        const json = JSON.parse(sanitized);
                         components.push({
                             odeIdeviceId: json.id || json.ideviceId || '',
                             odeIdeviceTypeName:
