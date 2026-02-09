@@ -439,5 +439,18 @@ describe('ELPX Download with Manual Link (no download-source-file iDevice)', () 
             expect(manifest).toMatch(/"version":\s*1/);
             expect(manifest).toContain('"projectTitle": "Test Project Manual Link"');
         });
+
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            await exporter.export();
+
+            const manifest = zip.getFileAsString('libs/elpx-manifest.js');
+            expect(manifest).toBeDefined();
+
+            const manifestMatch = manifest!.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const parsed = JSON.parse(manifestMatch![1]);
+            expect(parsed.files).toContain('libs/elpx-manifest.js');
+        });
     });
 });

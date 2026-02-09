@@ -863,6 +863,21 @@ export default class NavbarFile {
             // Add to installed themes (does NOT auto-select)
             eXeLearning.app.themes.list.addUserTheme(themeConfig);
 
+            // Copy theme to Yjs for collaboration (so other clients receive it immediately)
+            const bridge = eXeLearning.app.project?._yjsBridge;
+            if (bridge) {
+                try {
+                    await bridge._copyThemeToYjs(dirName, zip);
+                    Logger.log(`[NavbarStyles] Theme '${dirName}' copied to Yjs for collaboration`);
+                } catch (e) {
+                    // Non-fatal: theme is still installed locally, just won't sync immediately
+                    console.warn('[NavbarStyles] Could not copy theme to Yjs:', e);
+                }
+            }
+
+            // Auto-select the uploaded theme
+            await eXeLearning.app.themes.selectTheme(dirName, true, false);
+
             // Update UI
             this.updateThemes();
             this.buildUserListThemes();
