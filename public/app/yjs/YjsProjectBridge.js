@@ -2505,9 +2505,9 @@ class YjsProjectBridge {
           return match ? match[1].trim() : '';
         };
 
-        config.name = getValue('name') || themeName;
+        config.name = themeName; // Use the Yjs key (sanitized dirName), NOT raw <name> tag
         config.displayName = getValue('name') || themeName;
-        config.title = getValue('name') || themeName;
+        config.title = getValue('title') || getValue('name') || themeName;
         config.version = getValue('version') || '1.0';
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
@@ -2844,6 +2844,15 @@ class YjsProjectBridge {
             if (themeData) {
               Logger.log(`[YjsProjectBridge] Collaborator added theme '${themeName}', loading...`);
               await this._loadUserThemeFromYjs(themeName, themeData);
+
+              // Refresh NavbarStyles UI so the new theme appears in the "Imported" tab
+              if (eXeLearning.app?.menus?.navbar?.styles) {
+                eXeLearning.app.menus.navbar.styles.updateThemes();
+                const stylesPanel = document.getElementById('stylessidenav');
+                if (stylesPanel?.classList.contains('active')) {
+                  eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+                }
+              }
             }
           } else if (change.action === 'delete') {
             Logger.log(`[YjsProjectBridge] Theme '${themeName}' removed from Yjs`);
@@ -2852,6 +2861,15 @@ class YjsProjectBridge {
             if (this.resourceFetcher?.userThemeFiles) {
               this.resourceFetcher.userThemeFiles.delete(themeName);
               this.resourceFetcher.cache.delete(`theme:${themeName}`);
+            }
+
+            // Refresh NavbarStyles UI to reflect the removal
+            if (eXeLearning.app?.menus?.navbar?.styles) {
+              eXeLearning.app.menus.navbar.styles.updateThemes();
+              const stylesPanel = document.getElementById('stylessidenav');
+              if (stylesPanel?.classList.contains('active')) {
+                eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+              }
             }
           }
         }
