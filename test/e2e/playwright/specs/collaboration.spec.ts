@@ -247,11 +247,24 @@ test.describe('Real-Time Collaboration', () => {
             await navB.waitForNodeInNav(pageName);
 
             await workareaA.addTextIdevice();
-            await authenticatedPage.waitForTimeout(500);
 
-            // Client A enters edit mode on the iDevice (acquires lock)
+            // The iDevice starts in edition mode after being added; save it first
             const ideviceBlock = authenticatedPage.locator('#node-content article .idevice_node.text').first();
             await ideviceBlock.waitFor({ timeout: 10000 });
+            const saveBtn = ideviceBlock.locator('.btn-save-idevice');
+            await saveBtn.waitFor({ timeout: 10000 });
+            await saveBtn.click();
+
+            // Wait for export mode (save complete)
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const el = document.querySelector('#node-content article .idevice_node.text');
+                    return el?.getAttribute('mode') === 'export';
+                },
+                { timeout: 15000 },
+            );
+
+            // Client A enters edit mode on the iDevice (acquires lock)
             const editBtn = ideviceBlock.locator('.btn-edit-idevice');
             await editBtn.waitFor({ timeout: 10000 });
             await editBtn.click();
