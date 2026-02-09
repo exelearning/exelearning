@@ -324,29 +324,105 @@ var $interactivevideo = {
         // Cover (poster)
         if (
             InteractiveVideo.coverType &&
-            InteractiveVideo.coverType == 'poster'
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
         ) {
-            var img = $(
-                '.interactive-videoIdevice .exe-interactive-video-poster'
-            );
-            if (img.length == 1) {
-                img = img.eq(0);
-                cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
-                cover +=
-                    "<span class='activity-cover-img-content'>" +
-                    img.html() +
-                    '</span>';
-                coverCSS = ' class="activity-cover-img"';
-            }
+            var posterUrl = InteractiveVideo.poster;
+            var posterAlt = InteractiveVideo.posterDescription || '';
+            cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
+            cover +=
+                "<span class='activity-cover-img-content'>" +
+                '<img id="exe-interactive-video-poster-img" src="" alt="' + posterAlt + '" style="display:none;" />' +
+                '</span>';
+            coverCSS = ' class="activity-cover-img"';
+            
         }
 
         $('#activity').prepend(
-            '<div id="activity-cover"><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
+            '<div id="activity-cover"' + coverCSS + '><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
                 cover +
                 '</div>' +
                 play +
                 '</div>'
         );
+
+        // Resolve poster URL after DOM is ready (must be after prepend)
+        if (
+            InteractiveVideo.coverType &&
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
+        ) {
+            var posterUrl = InteractiveVideo.poster;
+            var posterImg = document.getElementById('exe-interactive-video-poster-img');
+            if (posterImg) {
+                // Helper to display the image
+                var showPoster = function(url) {
+                    posterImg.src = url;
+                    posterImg.style.display = '';
+                };
+                
+                // Get AssetManager from parent/top context (for preview mode in iframe)
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   parent?.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   top?.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                
+                // If asset:// URL
+                if (posterUrl.indexOf('asset://') === 0) {
+                    // If AssetManager available (IDE mode), resolve to blob://
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(posterUrl).then(function(blobUrl) {
+                            showPoster(blobUrl || posterUrl);
+                        }).catch(function() {
+                            showPoster(posterUrl);
+                        });
+                    } else {
+                        // Export/preview mode: transform asset://uuid/path to content/resources/path
+                        var slashIndex = posterUrl.indexOf('/', 8); // after 'asset://'
+                        if (slashIndex !== -1) {
+                            var exportPath = posterUrl.substring(slashIndex + 1);
+                            showPoster('content/resources/' + exportPath);
+                        } else {
+                            showPoster(posterUrl);
+                        }
+                    }
+                }
+                // If resources/ path (legacy ELP 2.9 format)
+                else if (posterUrl.indexOf('resources/') === 0) {
+                    var filename = posterUrl.replace('resources/', '');
+                    
+                    // If AssetManager available (IDE mode), find asset and resolve to blob://
+                    if (assetManager && typeof assetManager.getAllAssetsMetadata === 'function') {
+                        var assets = assetManager.getAllAssetsMetadata();
+                        var foundAsset = null;
+                        for (var i = 0; i < assets.length; i++) {
+                            if (assets[i].filename === filename) {
+                                foundAsset = assets[i];
+                                break;
+                            }
+                        }
+                        if (foundAsset) {
+                            var assetUrl = 'asset://' + foundAsset.id + '/' + foundAsset.filename;
+                            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                                showPoster(blobUrl || assetUrl);
+                            }).catch(function() {
+                                // Fallback to content/resources/ path
+                                showPoster('content/resources/' + filename);
+                            });
+                        } else {
+                            // Asset not found in manager, use content/resources/ path
+                            showPoster('content/resources/' + filename);
+                        }
+                    } else {
+                        // No AssetManager (preview/export mode), use content/resources/ path
+                        showPoster('content/resources/' + filename);
+                    }
+                }
+                // Other URLs (http://, blob://, content/resources/, etc.)
+                else {
+                    showPoster(posterUrl);
+                }
+            }
+        }
 
         const videoHtml = $('.exe-interactive-video').html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(videoHtml)) {
