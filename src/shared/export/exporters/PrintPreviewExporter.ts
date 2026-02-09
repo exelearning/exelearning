@@ -138,16 +138,63 @@ export class PrintPreviewExporter {
             // 2. Patch relative paths (libs/, theme/) to server absolute paths
             html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
 
-            // 3. Inject Print scripts and CSS (if printMode)
+            // 3. Inject styles to avoid horizontal scroll
+            html = this.injectPreviewStyles(html);
+
+            // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
                 html = this.injectPrintSpecifics(html);
             }
-
             return { success: true, html };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
         }
+    }
+
+    /**
+     * Inject styles to force content to fit within the page width
+     */
+    private injectPreviewStyles(html: string): string {
+        const styles = `
+<style>
+/* Force content to fit within the page (no horizontal scroll) */
+img, figure, video, object, iframe, table {
+    max-width: 100%;
+    height: auto;
+    box-sizing: border-box;
+}
+/* Ensure figures behave responsively */
+figure {
+    margin: 1em 0;
+}
+figure img {
+    max-width: 100%;
+    height: auto;
+}
+/* Fix for specific eXe layout issues */
+.iDevice_content {
+    overflow-x: auto;
+}
+@media print {
+    img, figure, video, object, iframe, table {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+    }
+    pre, blockquote {
+        page-break-inside: avoid;
+        white-space: pre-wrap;
+    }
+    /* Ensure no scrollbars in print */
+    body { 
+        overflow: visible !important; 
+        height: auto !important; 
+    }
+}
+</style>
+`;
+        return html.replace('</head>', `${styles}</head>`);
     }
 
     /**

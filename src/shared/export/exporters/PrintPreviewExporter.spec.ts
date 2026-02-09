@@ -201,6 +201,14 @@ describe('PrintPreviewExporter', () => {
             const result = await exporter.generatePreview({ printMode: false });
             expect(result.html).not.toContain('window.print()');
         });
+
+        it('should always inject max-width styles for horizontal scroll fix', async () => {
+            const result = await exporter.generatePreview();
+            expect(result.html).toContain('max-width: 100%');
+            expect(result.html).toContain('box-sizing: border-box');
+            expect(result.html).toContain('@media print');
+            expect(result.html).toContain('page-break-inside: avoid');
+        });
     });
 
     describe('versioned paths', () => {
