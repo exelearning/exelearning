@@ -1610,9 +1610,9 @@ var $exeDevices = {
                     }
                     if (!window.MathJax.loader) window.MathJax.loader = {};
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
-                    // In static mode, keep the pre-configured relative path
-                    var capabilities = window.eXeLearning?.app?.capabilities;
-                    if (capabilities?.storage?.remote) {
+                    // Always set basePath for MathJax path resolution
+                    // This fixes path issues in export formats with subdirectories (like EPUB)
+                    if (basePath) {
                         window.MathJax.loader.paths.mathjax = basePath;
                     }
                     var script = document.createElement('script');
