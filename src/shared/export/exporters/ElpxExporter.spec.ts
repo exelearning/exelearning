@@ -919,4 +919,158 @@ describe('ElpxExporter', () => {
             expect(zip.files.has('theme/default.js')).toBe(false);
         });
     });
+
+    describe('Download Source File (ELPX Manifest)', () => {
+        // Pages with download-source-file iDevice on the second page
+        const pagesWithDownloadSourceFile: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Introduction',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Content Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'comp-1',
+                                type: 'FreeTextIdevice',
+                                order: 0,
+                                content: '<p>Welcome to the course.</p>',
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                id: 'page-2',
+                title: 'Download Page',
+                parentId: null,
+                order: 1,
+                blocks: [
+                    {
+                        id: 'block-2',
+                        name: 'Download Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'comp-2',
+                                type: 'download-source-file',
+                                order: 0,
+                                content:
+                                    '<a class="exe-download-package-link" href="exe-package:elp">Download source file</a>',
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        it('should generate elpx-manifest.js when download-source-file iDevice is present', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(true);
+            const manifest = zip.files.get('libs/elpx-manifest.js') as string;
+            expect(manifest).toContain('__ELPX_MANIFEST__');
+        });
+
+        it('should not generate elpx-manifest.js when no download-source-file iDevice', async () => {
+            // Default samplePages have no download-source-file
+            await exporter.export();
+
+            expect(zip.files.has('libs/elpx-manifest.js')).toBe(false);
+        });
+
+        it('should inject manifest script tag into pages that have download-source-file', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Page 2 has download-source-file — should get the script tag
+            const page2Html = zip.files.get('html/download-page.html') as string;
+            expect(page2Html).toContain('elpx-manifest.js');
+            expect(page2Html).toContain('<script src="../libs/elpx-manifest.js">');
+        });
+
+        it('should not inject manifest script tag into pages without download-source-file', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // Page 1 (index.html) does NOT have download-source-file — no script tag
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('elpx-manifest.js');
+        });
+
+        it('should track all files in manifest when download-source-file is present', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifest = zip.files.get('libs/elpx-manifest.js') as string;
+            // Manifest should reference key files like CSS, libs, theme, and HTML pages
+            expect(manifest).toContain('content/css/base.css');
+            expect(manifest).toContain('theme/style.css');
+            expect(manifest).toContain('index.html');
+        });
+
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            document = new MockDocument({}, pagesWithDownloadSourceFile);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should use correct base path for manifest script on index page', async () => {
+            // Put download-source-file on the first page (index.html)
+            const pagesWithDownloadOnIndex: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Download Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<a class="exe-download-package-link" href="exe-package:elp">Download</a>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownloadOnIndex);
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            // index.html is at root level — base path should be empty (no ../)
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<script src="libs/elpx-manifest.js">');
+            expect(indexHtml).not.toContain('../libs/elpx-manifest.js');
+        });
+    });
 });

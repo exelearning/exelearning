@@ -451,6 +451,52 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
         eo: 'Instruista reĝimo',
         ro: 'Mod profesor',
     },
+
+    // ELPX download
+    elpxGenerating: {
+        en: 'Generating...',
+        es: 'Generando...',
+        ca: 'Generant...',
+        eu: 'Sortzen...',
+        gl: 'Xerando...',
+        fr: 'Génération...',
+        de: 'Erstellen...',
+        it: 'Generazione...',
+        pt: 'Gerando...',
+    },
+    elpxFolderPickerTimeout: {
+        en: 'The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.',
+        es: 'El selector de carpetas no respondió. Esto puede ocurrir al abrir archivos exportados directamente desde el sistema de archivos (protocolo file://). Intente abrir el archivo a través de un servidor web local.',
+        ca: "El selector de carpetes no va respondre. Això pot passar en obrir fitxers exportats directament des del sistema de fitxers (protocol file://). Proveu d'obrir el fitxer a través d'un servidor web local.",
+        eu: 'Karpeta-hautatzaileak ez du erantzun. Hori gerta daiteke esportatutako fitxategiak fitxategi-sistematik zuzenean irekitzean (file:// protokoloa). Saiatu fitxategia web zerbitzari lokal baten bidez irekitzen.',
+        gl: 'O selector de cartafoles non respondeu. Isto pode ocorrer ao abrir ficheiros exportados directamente desde o sistema de ficheiros (protocolo file://). Intente abrir o ficheiro a través dun servidor web local.',
+        fr: "Le sélecteur de dossier n'a pas répondu. Cela peut se produire lors de l'ouverture de fichiers exportés directement depuis le système de fichiers (protocole file://). Essayez d'ouvrir le fichier via un serveur web local.",
+        de: 'Die Ordnerauswahl hat nicht reagiert. Dies kann auftreten, wenn exportierte Dateien direkt aus dem Dateisystem geöffnet werden (file://-Protokoll). Versuchen Sie, die Datei über einen lokalen Webserver zu öffnen.',
+        it: 'Il selettore cartelle non ha risposto. Questo può accadere quando si aprono file esportati direttamente dal file system (protocollo file://). Provare ad aprire il file tramite un server web locale.',
+        pt: 'O seletor de pastas não respondeu. Isso pode acontecer ao abrir arquivos exportados diretamente do sistema de arquivos (protocolo file://). Tente abrir o arquivo através de um servidor web local.',
+    },
+    elpxFolderPickerEmpty: {
+        en: 'No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.',
+        es: 'El selector de carpetas no devolvió archivos. Esta es una limitación conocida al abrir archivos exportados con el protocolo file:// en algunos navegadores. Intente usar un navegador diferente o abrir el archivo a través de un servidor web local.',
+        ca: "El selector de carpetes no va retornar fitxers. Aquesta és una limitació coneguda en obrir fitxers exportats amb el protocol file:// en alguns navegadors. Proveu d'usar un navegador diferent o d'obrir el fitxer a través d'un servidor web local.",
+        eu: 'Karpeta-hautatzaileak ez du fitxategirik itzuli. Hau muga ezaguna da fitxategi esportatuak file:// protokoloarekin nabigatzaile batzuetan irekitzean. Saiatu beste nabigatzaile bat erabiltzen edo fitxategia web zerbitzari lokal baten bidez irekitzen.',
+        gl: 'O selector de cartafoles non devolveu ficheiros. Esta é unha limitación coñecida ao abrir ficheiros exportados co protocolo file:// nalgúns navegadores. Intente usar un navegador diferente ou abrir o ficheiro a través dun servidor web local.',
+        fr: "Le sélecteur de dossier n'a renvoyé aucun fichier. C'est une limitation connue lors de l'ouverture de fichiers exportés avec le protocole file:// dans certains navigateurs. Essayez d'utiliser un autre navigateur ou d'ouvrir le fichier via un serveur web local.",
+        de: 'Die Ordnerauswahl hat keine Dateien zurückgegeben. Dies ist eine bekannte Einschränkung beim Öffnen exportierter Dateien mit dem file://-Protokoll in einigen Browsern. Versuchen Sie, einen anderen Browser zu verwenden oder die Datei über einen lokalen Webserver zu öffnen.',
+        it: 'Il selettore cartelle non ha restituito file. Questa è una limitazione nota quando si aprono file esportati con il protocollo file:// in alcuni browser. Provare a utilizzare un browser diverso o ad aprire il file tramite un server web locale.',
+        pt: 'O seletor de pastas não retornou arquivos. Esta é uma limitação conhecida ao abrir arquivos exportados com o protocolo file:// em alguns navegadores. Tente usar um navegador diferente ou abrir o arquivo através de um servidor web local.',
+    },
+    elpxFileProtocolWarning: {
+        en: 'Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.',
+        es: 'Modo local: Por política de seguridad del navegador, deberá seleccionar la carpeta desde donde abrió este fichero. En un servidor web esto no será necesario.',
+        ca: "Mode local: Per política de seguretat del navegador, haurà de seleccionar la carpeta des d'on va obrir aquest fitxer. En un servidor web això no serà necessari.",
+        eu: 'Modu lokala: Nabigatzailearen segurtasun-politikaren ondorioz, fitxategi hau ireki zenuen karpeta hautatu beharko duzu. Web zerbitzari batean hori ez da beharrezkoa izango.',
+        gl: 'Modo local: Por política de seguridade do navegador, deberá seleccionar o cartafol desde onde abriu este ficheiro. Nun servidor web isto non será necesario.',
+        fr: 'Mode local : En raison de la politique de sécurité du navigateur, vous devrez sélectionner le dossier à partir duquel vous avez ouvert ce fichier. Sur un serveur web, cela ne sera pas nécessaire.',
+        de: 'Lokaler Modus: Aufgrund der Sicherheitsrichtlinie des Browsers müssen Sie den Ordner auswählen, aus dem Sie diese Datei geöffnet haben. Auf einem Webserver ist dies nicht erforderlich.',
+        it: 'Modalità locale: A causa della politica di sicurezza del browser, dovrai selezionare la cartella da cui hai aperto questo file. Su un server web ciò non sarà necessario.',
+        pt: 'Modo local: Devido à política de segurança do navegador, você precisará selecionar a pasta de onde abriu este arquivo. Em um servidor web isso não será necessário.',
+    },
 };
 
 /**
