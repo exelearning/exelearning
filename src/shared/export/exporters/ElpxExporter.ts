@@ -91,7 +91,8 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1.1 Generate HTML pages (with optional Mermaid pre-rendering)
+            // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
+            const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
@@ -150,7 +151,7 @@ export class ElpxExporter extends Html5Exporter {
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
 
             // 1.4 Add eXeLearning logo for "Made with eXeLearning" footer
             try {
