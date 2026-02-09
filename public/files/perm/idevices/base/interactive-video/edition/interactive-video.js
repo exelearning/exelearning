@@ -161,7 +161,7 @@ var $exeDevice = {
                     </div>                    
                     <span class="d-block mt-1 info">
                         <strong>${_('Example')}:</strong>
-                        <a href="https://www.youtube.com/watch?v=v_rGjOBtvhI" target="_blank" rel="noopener">https://www.youtube.com/watch?v=v_rGjOBtvhI</a>
+                        <a href="https://www.youtube.com/watch?v=g9gPKSGGkEk" target="_blank" rel="noopener">https://www.youtube.com/watch?v=g9gPKSGGkEk</a>
                     </span>
                 </div>
                 <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
@@ -691,7 +691,7 @@ var $exeDevice = {
             if (myVideo.indexOf('https://www.youtube.com/watch?v=') != 0) {
                 eXe.app.alert(
                     _('Wrong URL. Expected format:') +
-                        ' https://www.youtube.com/watch?v=v_rGjOBtvhI'
+                        ' https://www.youtube.com/watch?v=g9gPKSGGkEk'
                 );
                 return false;
             }
