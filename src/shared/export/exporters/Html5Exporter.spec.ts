@@ -1111,6 +1111,44 @@ describe('Html5Exporter', () => {
             expect(manifest.files).toContain('index.html');
         });
 
+        it('should include libs/elpx-manifest.js in the manifest file list', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download content</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const manifestJs = zip.files.get('libs/elpx-manifest.js') as string;
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
+        });
+
         it('should only add manifest script to pages with download-source-file iDevice', async () => {
             // Create multiple pages, only one with download-source-file
             const mixedPages: ExportPage[] = [
@@ -1891,6 +1929,49 @@ describe('Html5Exporter', () => {
                     : new TextDecoder().decode(manifestContent as Uint8Array);
             expect(manifestJs).toContain('window.__ELPX_MANIFEST__');
             expect(manifestJs).toContain('"files"');
+        });
+
+        it('should include libs/elpx-manifest.js in the manifest file list for preview', async () => {
+            const pagesWithDownload: ExportPage[] = [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp1',
+                                    type: 'download-source-file',
+                                    order: 0,
+                                    content: '<p>Download</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDownload);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const files = await exporter.generateForPreview();
+
+            const manifestContent = files.get('libs/elpx-manifest.js');
+            const manifestJs =
+                typeof manifestContent === 'string'
+                    ? manifestContent
+                    : new TextDecoder().decode(manifestContent as Uint8Array);
+
+            const manifestMatch = manifestJs.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+
+            const manifest = JSON.parse(manifestMatch![1]);
+            expect(manifest.files).toContain('libs/elpx-manifest.js');
         });
 
         it('should create ELPX manifest when exe-package:elp class is in content', async () => {
