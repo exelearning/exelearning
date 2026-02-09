@@ -68,11 +68,21 @@ export class ElpxExporter extends Html5Exporter {
             // Theme priority: 1º parameter > 2º ELP metadata > 3º default
             const themeName = elpxOptions?.theme || meta.theme || 'base';
 
+            // Check for ELPX download support (looks for download-source-file iDevice)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                this.zip.addFile(path, content);
+                if (fileList) fileList.push(path);
+            };
 
             // =========================================================================
             // SECTION 1: Generate HTML5 content (same as Html5Exporter)
@@ -81,7 +91,8 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1.1 Generate HTML pages
+            // 1.1 Generate HTML pages (store for later — manifest script tag injection happens after manifest is created)
+            const pageHtmlMap = new Map<string, string>();
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
                 const html = this.generatePageHtml(
@@ -97,13 +108,13 @@ export class ElpxExporter extends Html5Exporter {
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
-                this.zip.addFile(pageFilename, html);
+                pageHtmlMap.set(pageFilename, html);
             }
 
             // 1.2 Add search_index.js if search box is enabled
             if (meta.addSearchBox) {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
-                this.zip.addFile('search_index.js', searchIndexContent);
+                addFile('search_index.js', searchIndexContent);
             }
 
             // 1.3 Add base CSS (fetch from content/css)
@@ -112,13 +123,13 @@ export class ElpxExporter extends Html5Exporter {
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
 
             // 1.4 Add eXeLearning logo for "Made with eXeLearning" footer
             try {
                 const logoData = await this.resources.fetchExeLogo();
                 if (logoData) {
-                    this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                    addFile('content/img/exe_powered_logo.png', logoData);
                 }
             } catch {
                 // Logo not available - footer will still render but without background image
@@ -127,19 +138,19 @@ export class ElpxExporter extends Html5Exporter {
             // 1.5 Add theme files (already pre-fetched in step 1.0)
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
-                    this.zip.addFile(`theme/${filePath}`, content);
+                    addFile(`theme/${filePath}`, content);
                 }
             } else {
                 // Add fallback theme if pre-fetch failed
-                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+                addFile('theme/style.css', this.getFallbackThemeCss());
+                addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
             // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [libPath, content] of baseLibs) {
-                    this.zip.addFile(`libs/${libPath}`, content);
+                    addFile(`libs/${libPath}`, content);
                 }
             } catch {
                 // Base libraries not available - continue anyway
@@ -147,7 +158,7 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.6.5 Generate localized i18n file
             const i18nContent = generateI18nScript(meta.language || 'en');
-            this.zip.addFile('libs/common_i18n.js', i18nContent);
+            addFile('libs/common_i18n.js', i18nContent);
 
             // 1.7 Detect and fetch additional required libraries based on content
             const allHtmlContent = this.collectAllHtmlContent(pages);
@@ -164,7 +175,7 @@ export class ElpxExporter extends Html5Exporter {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;
                     if (!this.zip.hasFile(zipPath)) {
-                        this.zip.addFile(zipPath, content);
+                        addFile(zipPath, content);
                     }
                 }
             } catch {
@@ -180,7 +191,7 @@ export class ElpxExporter extends Html5Exporter {
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [filePath, content] of ideviceFiles) {
                         // Use normalized type for ZIP path
-                        this.zip.addFile(`idevices/${normalizedType}/${filePath}`, content);
+                        addFile(`idevices/${normalizedType}/${filePath}`, content);
                     }
                 } catch {
                     // Many iDevices don't have extra files - this is normal
@@ -188,7 +199,35 @@ export class ElpxExporter extends Html5Exporter {
             }
 
             // 1.9 Add project assets
-            await this.addAssetsToZipWithResourcePath();
+            await this.addAssetsToZipWithResourcePath(fileList);
+
+            // 1.10 Generate ELPX manifest and add HTML pages to ZIP
+            if (needsElpxDownload && fileList) {
+                for (const [htmlFile] of pageHtmlMap) {
+                    if (!fileList.includes(htmlFile)) {
+                        fileList.push(htmlFile);
+                    }
+                }
+                // Include the manifest file itself in the file list (self-reference)
+                fileList.push('libs/elpx-manifest.js');
+                const manifestJs = this.generateElpxManifestFile(fileList);
+                this.zip.addFile('libs/elpx-manifest.js', manifestJs);
+            }
+
+            // 1.11 Add HTML pages to ZIP (with manifest script on pages that have download-source-file)
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const pageFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = i === 0 ? 'index.html' : `html/${pageFilename}`;
+                let html = pageHtmlMap.get(filename) || '';
+
+                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
+                    const basePath = i === 0 ? '' : '../';
+                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
+                }
+                this.zip.addFile(filename, html);
+            }
 
             // =========================================================================
             // SECTION 2: Add ELPX-specific files (content.xml with ODE format + DTD)

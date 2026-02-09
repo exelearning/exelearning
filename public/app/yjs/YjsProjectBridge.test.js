@@ -4161,7 +4161,9 @@ describe('YjsProjectBridge', () => {
         const result = bridge._parseThemeConfigFromFiles('my-theme', themeFilesData);
 
         expect(result).not.toBeNull();
-        expect(result.name).toBe('My Theme');
+        // name uses the Yjs key (sanitized dirName), NOT the raw <name> tag
+        expect(result.name).toBe('my-theme');
+        expect(result.displayName).toBe('My Theme');
         expect(result.type).toBe('user');
         expect(result.isUserTheme).toBe(true);
         expect(result.downloadable).toBe('0');
@@ -4180,8 +4182,52 @@ describe('YjsProjectBridge', () => {
         // Should use themeName as default values
         expect(result.name).toBe('my-theme');
         expect(result.displayName).toBe('my-theme');
+        expect(result.title).toBe('my-theme');
         expect(result.type).toBe('user');
         expect(result.downloadable).toBe('1');
+      });
+
+      it('uses <title> tag for title, falling back to <name>', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>my_custom</name><title>My Custom Theme</title></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('my_custom', themeFilesData);
+
+        expect(result.name).toBe('my_custom');
+        expect(result.displayName).toBe('my_custom');
+        expect(result.title).toBe('My Custom Theme');
+      });
+
+      it('falls back to <name> for title when <title> is missing', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Fancy Theme</name></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('fancy_theme', themeFilesData);
+
+        expect(result.name).toBe('fancy_theme');
+        expect(result.displayName).toBe('Fancy Theme');
+        expect(result.title).toBe('Fancy Theme');
+      });
+
+      it('always uses themeName (Yjs key) for name, not raw <name> tag', () => {
+        const themeFilesData = {
+          files: { 'style.css': new Uint8Array([1]) },
+          configXml: '<theme><name>Collab Test Theme</name><title>Collaborative Test Style</title></theme>',
+        };
+
+        const result = bridge._parseThemeConfigFromFiles('collab_test_theme', themeFilesData);
+
+        // name = sanitized Yjs key, not the raw XML <name> tag
+        expect(result.name).toBe('collab_test_theme');
+        expect(result.dirName).toBe('collab_test_theme');
+        // displayName = raw <name> tag from config.xml
+        expect(result.displayName).toBe('Collab Test Theme');
+        // title = <title> tag (preferred over <name>)
+        expect(result.title).toBe('Collaborative Test Style');
       });
 
       it('detects CSS and JS files', () => {
@@ -4440,6 +4486,128 @@ describe('YjsProjectBridge', () => {
 
         expect(bridge.resourceFetcher.userThemeFiles.has('deleted-theme')).toBe(false);
         expect(bridge.resourceFetcher.cache.has('theme:deleted-theme')).toBe(false);
+      });
+
+      it('calls updateThemes and buildUserListThemes after adding a theme when styles panel is open', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is open
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('calls only updateThemes after adding a theme when styles panel is closed', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => 'base64themedata'),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge._loadUserThemeFromYjs = mock(() => Promise.resolve());
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        // Styles panel is closed (no 'active' class)
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => false) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['new-theme', { action: 'add' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).not.toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
+      });
+
+      it('refreshes UI after deleting a theme', async () => {
+        let observerCallback = null;
+        const mockThemeFilesMap = {
+          observe: (cb) => {
+            observerCallback = cb;
+          },
+          get: mock(() => null),
+        };
+        bridge.documentManager.getThemeFiles = mock(() => mockThemeFilesMap);
+        bridge.resourceFetcher = {
+          userThemeFiles: new Map([['deleted-theme', {}]]),
+          cache: new Map([['theme:deleted-theme', {}]]),
+        };
+
+        const mockUpdateThemes = mock(() => {});
+        const mockBuildUserListThemes = mock(() => {});
+        global.eXeLearning.app.menus = {
+          navbar: {
+            styles: {
+              updateThemes: mockUpdateThemes,
+              buildUserListThemes: mockBuildUserListThemes,
+            },
+          },
+        };
+        global.document.getElementById = mock(() => ({
+          classList: { contains: mock(() => true) },
+        }));
+
+        bridge.setupThemeFilesObserver();
+
+        await observerCallback({
+          changes: {
+            keys: [['deleted-theme', { action: 'delete' }]],
+          },
+        });
+
+        expect(mockUpdateThemes).toHaveBeenCalled();
+        expect(mockBuildUserListThemes).toHaveBeenCalled();
+
+        delete global.eXeLearning.app.menus;
       });
     });
 

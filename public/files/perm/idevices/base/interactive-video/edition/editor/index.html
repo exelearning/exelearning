@@ -83,12 +83,12 @@
             adminStyle.rel = 'stylesheet';
             adminStyle.href = window.__LOCAL_RESOURCE_PREFIX__ + 'css/admin.css';
             document.head.appendChild(adminStyle);
-
-            // Load langs script (local resource)
-            var langsScript = document.createElement('script');
-            langsScript.src = window.__LOCAL_RESOURCE_PREFIX__ + 'langs/all.js';
-            document.head.appendChild(langsScript);
         })();
+    </script>
+
+    <!-- Load langs script synchronously (required before admin.js) -->
+    <script>
+        document.write('<script src="' + window.__LOCAL_RESOURCE_PREFIX__ + 'langs/all.js"><\/script>');
     </script>
 
     <!-- Load external scripts after path computation -->

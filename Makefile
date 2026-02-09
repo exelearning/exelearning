@@ -133,7 +133,12 @@ endif
 # Install dependencies
 .PHONY: deps
 deps: check-bun
-	@bun install
+	@LOCK=/tmp/.exe-bun-lock; \
+	if mkdir "$$LOCK" 2>/dev/null; then \
+		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; exit $$RET; \
+	else \
+		while [ -d "$$LOCK" ]; do sleep 0.5; done; \
+	fi
 
 # Build CSS
 .PHONY: css
