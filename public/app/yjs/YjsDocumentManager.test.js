@@ -1012,9 +1012,11 @@ describe('YjsDocumentManager', () => {
       // Should complete quickly without errors
     });
 
-    it('returns immediately if wsProvider is already synced', async () => {
+    it('returns immediately if wsProvider is already synced and sets _hasResynced', async () => {
       manager.wsProvider = { synced: true, disconnect: () => {}, destroy: () => {} };
+      expect(manager._hasResynced).toBe(false);
       await manager.waitForWebSocketSync();
+      expect(manager._hasResynced).toBe(true);
     });
 
     it('skips full sync if no other users present', async () => {
@@ -1025,6 +1027,31 @@ describe('YjsDocumentManager', () => {
 
       await manager.waitForWebSocketSync();
       // Should complete without waiting for full sync
+    });
+
+    it('sets _hasResynced after _waitForFullSync completes', async () => {
+      manager.config.skipSyncWait = false;
+      const mockProvider = {
+        synced: false,
+        once: mock((event, callback) => {
+          if (event === 'sync') {
+            setTimeout(() => callback(true), 10);
+          }
+        }),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+      manager.wsProvider = mockProvider;
+      manager.config.fullSyncTimeout = 1000;
+
+      // Simulate other users present
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(99999, { user: { id: 'other-user' } });
+      manager.config.awarenessCheckTimeout = 100;
+
+      expect(manager._hasResynced).toBe(false);
+      await manager.waitForWebSocketSync();
+      expect(manager._hasResynced).toBe(true);
     });
   });
 
@@ -2407,6 +2434,30 @@ describe('YjsDocumentManager', () => {
 
       expect(disconnected).toBe(true);
       expect(connected).toBe(true);
+    });
+
+    it('_forceResync should re-broadcast awareness after reconnect', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      const awareness = manager.awareness;
+      awareness._localState = { user: { id: 'test', name: 'Test User' } };
+
+      let setLocalStateCalls = 0;
+      const origSetLocalState = awareness.setLocalState.bind(awareness);
+      awareness.setLocalState = (state) => {
+        setLocalStateCalls++;
+        origSetLocalState(state);
+      };
+
+      manager._forceResync();
+
+      // Wait for the timeouts (300ms + 100ms)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // setLocalState should have been called to re-broadcast
+      expect(setLocalStateCalls).toBeGreaterThan(0);
     });
 
     it('_forceResync should not throw when wsProvider is not connected', async () => {

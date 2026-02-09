@@ -318,6 +318,66 @@ test.describe('Real-Time Collaboration', () => {
                 { timeout: 30000, polling: 500 },
             );
         });
+
+        test('should show online users button for both initiator and joiner and keep it visible', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Initiator creates project
+            const projectUuid = await createProject(authenticatedPage, 'Online Users Button Test');
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForYjsSync(authenticatedPage);
+
+            // Get share URL and have joiner join
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            // Wait for awareness to propagate (both sides see 2+ users)
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    return bridge?.documentManager?.getOnlineUsers()?.length > 1;
+                },
+                { timeout: 30000, polling: 500 },
+            );
+
+            await secondAuthenticatedPage.waitForFunction(
+                () => {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    return bridge?.documentManager?.getOnlineUsers()?.length > 1;
+                },
+                { timeout: 30000, polling: 500 },
+            );
+
+            // Verify button is visible on JOINER side
+            const joinerButton = secondAuthenticatedPage.locator('#button-more-exe-concurrent-users');
+            await expect(joinerButton).toBeVisible({ timeout: 15000 });
+
+            // Verify button is visible on INITIATOR side
+            const initiatorButton = authenticatedPage.locator('#button-more-exe-concurrent-users');
+            await expect(initiatorButton).toBeVisible({ timeout: 15000 });
+
+            // Wait 10 seconds and verify button is STILL visible (no transient hiding)
+            await authenticatedPage.waitForTimeout(10000);
+            await expect(initiatorButton).toBeVisible();
+            await expect(joinerButton).toBeVisible();
+
+            // Verify correct user count on both sides
+            const initiatorUserCount = await authenticatedPage.evaluate(() => {
+                const el = document.querySelector('#exe-concurrent-users');
+                return parseInt(el?.getAttribute('num') || '0', 10);
+            });
+            expect(initiatorUserCount).toBe(2);
+
+            const joinerUserCount = await secondAuthenticatedPage.evaluate(() => {
+                const el = document.querySelector('#exe-concurrent-users');
+                return parseInt(el?.getAttribute('num') || '0', 10);
+            });
+            expect(joinerUserCount).toBe(2);
+        });
     });
 
     test.describe('Bidirectional Content Sync', () => {

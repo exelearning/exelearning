@@ -17,6 +17,10 @@ export default class ConcurrentUsers {
         this.currentUsers = [];
         this.app = app;
         this.unsubscribe = null;
+
+        // Debounce hiding: prevent transient awareness drops from hiding the button
+        this._hideTimer = null;
+        this._wasMultiUser = false;
     }
 
     /**
@@ -91,9 +95,48 @@ export default class ConcurrentUsers {
     }
 
     /**
-     * Update the concurrent users display
+     * Update the concurrent users display.
+     * Debounces hiding: when transitioning from multi-user to single-user,
+     * waits 5 seconds before hiding to avoid flicker from transient
+     * awareness drops (e.g. during WebSocket reconnection).
      */
     updateUsersDisplay() {
+        if (!this.concurrentUsersElement) return;
+
+        const numUsers = this.currentUsers.length;
+
+        // If transitioning from multi-user to single-user, debounce the hide
+        if (this._wasMultiUser && numUsers <= 1) {
+            if (!this._hideTimer) {
+                this._hideTimer = setTimeout(() => {
+                    this._hideTimer = null;
+                    // Re-check: if still single user after grace period, hide
+                    if (this.currentUsers.length <= 1) {
+                        this._wasMultiUser = false;
+                        this._renderDisplay();
+                    }
+                }, 5000);
+            }
+            return; // Keep showing the previous multi-user state
+        }
+
+        // Clear any pending hide timer if we're back to multi-user
+        if (numUsers > 1) {
+            if (this._hideTimer) {
+                clearTimeout(this._hideTimer);
+                this._hideTimer = null;
+            }
+            this._wasMultiUser = true;
+        }
+
+        this._renderDisplay();
+    }
+
+    /**
+     * Render the concurrent users display (no debounce logic)
+     * @private
+     */
+    _renderDisplay() {
         if (!this.concurrentUsersElement) return;
 
         // Remove existing user elements (but keep the "more" button)
@@ -288,6 +331,10 @@ export default class ConcurrentUsers {
      * Clean up subscriptions
      */
     destroy() {
+        if (this._hideTimer) {
+            clearTimeout(this._hideTimer);
+            this._hideTimer = null;
+        }
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;

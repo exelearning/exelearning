@@ -371,6 +371,7 @@ class YjsDocumentManager {
     // If already synced, resolve immediately
     if (this.wsProvider?.synced) {
       Logger.log('[YjsDocumentManager] WebSocket already synced');
+      this._hasResynced = true;
       return;
     }
 
@@ -386,6 +387,7 @@ class YjsDocumentManager {
     // Phase 2: Full sync wait (other users detected)
     Logger.log('[YjsDocumentManager] Other users detected, waiting for full sync');
     await this._waitForFullSync();
+    this._hasResynced = true;
   }
 
   /**
@@ -522,6 +524,13 @@ class YjsDocumentManager {
         setTimeout(() => {
           if (this.wsProvider) {
             this.wsProvider.connect();
+            // Re-broadcast awareness to speed up remote state recovery
+            if (this.awareness) {
+              const localState = this.awareness.getLocalState();
+              if (localState) {
+                this.awareness.setLocalState(localState);
+              }
+            }
             Logger.log('[YjsDocumentManager] Resync reconnect complete');
           }
         }, 100);
