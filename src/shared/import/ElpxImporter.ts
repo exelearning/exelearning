@@ -662,10 +662,12 @@ export class ElpxImporter {
      */
     private setLegacyMetadata(metadata: Y.Map<unknown>, legacyMeta: LegacyMetadata): void {
         metadata.set('title', legacyMeta.title);
+        metadata.set('subtitle', '');
         metadata.set('author', legacyMeta.author);
         metadata.set('language', legacyMeta.language || 'en');
         metadata.set('description', legacyMeta.description);
         metadata.set('license', legacyMeta.license);
+        metadata.set('theme', 'base');
 
         // Export settings from legacy format (pp_ prefixed in meta)
         metadata.set('addPagination', legacyMeta.pp_addPagination);
@@ -678,12 +680,8 @@ export class ElpxImporter {
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
 
-        if (legacyMeta.extraHeadContent) {
-            metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
-        }
-        if (legacyMeta.footer) {
-            metadata.set('footer', legacyMeta.footer);
-        }
+        metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
+        metadata.set('footer', legacyMeta.footer);
     }
 
     /**
@@ -771,17 +769,13 @@ export class ElpxImporter {
      */
     private setMetadata(metadata: Y.Map<unknown>, values: OdeMetadata): void {
         metadata.set('title', values.title);
-        if (values.subtitle) {
-            metadata.set('subtitle', values.subtitle);
-        }
+        metadata.set('subtitle', values.subtitle);
         metadata.set('author', values.author);
         metadata.set('language', values.language);
         metadata.set('description', values.description);
         metadata.set('license', values.license);
-        if (values.theme) {
-            metadata.set('theme', values.theme);
-            this.logger.log('[ElpxImporter] Theme set:', values.theme);
-        }
+        metadata.set('theme', values.theme || 'base');
+        this.logger.log('[ElpxImporter] Theme set:', values.theme || 'base');
         // Export settings
         metadata.set('addPagination', values.addPagination);
         metadata.set('addSearchBox', values.addSearchBox);
@@ -790,12 +784,8 @@ export class ElpxImporter {
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
-        if (values.extraHeadContent) {
-            metadata.set('extraHeadContent', values.extraHeadContent);
-        }
-        if (values.footer) {
-            metadata.set('footer', values.footer);
-        }
+        metadata.set('extraHeadContent', values.extraHeadContent);
+        metadata.set('footer', values.footer);
     }
 
     /**

@@ -822,6 +822,58 @@ describe('NavbarStyles', () => {
                 })
             );
         });
+
+        it('copies theme to Yjs for collaboration when bridge is available', async () => {
+            const copyToYjsSpy = vi.fn().mockResolvedValue();
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = copyToYjsSpy;
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(copyToYjsSpy).toHaveBeenCalledWith(
+                'test_theme',
+                expect.any(Object)
+            );
+        });
+
+        it('auto-selects the uploaded theme', async () => {
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = vi.fn().mockResolvedValue();
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(eXeLearning.app.themes.selectTheme).toHaveBeenCalledWith(
+                'test_theme',
+                true,
+                false
+            );
+        });
+
+        it('succeeds locally when _copyThemeToYjs throws', async () => {
+            const copyToYjsSpy = vi.fn().mockRejectedValue(new Error('Yjs error'));
+            eXeLearning.app.project._yjsBridge._copyThemeToYjs = copyToYjsSpy;
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            expect(copyToYjsSpy).toHaveBeenCalled();
+            // Theme should still be installed locally despite Yjs error
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalled();
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+            warnSpy.mockRestore();
+        });
+
+        it('skips Yjs copy when bridge is not available', async () => {
+            delete eXeLearning.app.project._yjsBridge._copyThemeToYjs;
+            // Re-create bridge without _copyThemeToYjs
+            eXeLearning.app.project._yjsBridge = {
+                resourceCache: mockResourceCache,
+            };
+
+            await navbarStyles.uploadThemeToIndexedDB('theme.zip', new ArrayBuffer(10));
+
+            // Theme should still be installed locally
+            expect(mockResourceCache.setUserTheme).toHaveBeenCalled();
+            expect(eXeLearning.app.themes.list.addUserTheme).toHaveBeenCalled();
+        });
     });
 
     describe('removeTheme for user themes', () => {
