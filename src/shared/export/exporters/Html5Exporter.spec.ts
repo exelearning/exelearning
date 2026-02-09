@@ -2286,6 +2286,7 @@ describe('Html5Exporter', () => {
             // The generated HTML should have the resolved icon name with extension
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).toContain('theme/icons/lightbulb.svg');
+            expect(indexHtml).not.toContain('lightbulb.png');
         });
 
         it('should handle multiple icon formats in different themes', async () => {

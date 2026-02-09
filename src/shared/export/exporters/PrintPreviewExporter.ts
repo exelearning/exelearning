@@ -70,6 +70,7 @@ export interface PrintPreviewResult {
 export class PrintPreviewExporter {
     private document: ExportDocument;
     private ideviceRenderer: IdeviceRenderer;
+    private resources: ResourceProvider;
 
     /**
      * Create a PrintPreviewExporter
@@ -78,7 +79,8 @@ export class PrintPreviewExporter {
      */
     constructor(document: ExportDocument, resourceProvider: ResourceProvider) {
         this.document = document;
-        this.ideviceRenderer = new IdeviceRenderer(resourceProvider);
+        this.resources = resourceProvider;
+        this.ideviceRenderer = new IdeviceRenderer();
     }
 
     /**
@@ -93,6 +95,15 @@ export class PrintPreviewExporter {
 
             if (pages.length === 0) {
                 return { success: false, error: 'No pages to preview' };
+            }
+
+            // Fetch theme files and configure icon resolution
+            const themeName = meta.theme || 'base';
+            try {
+                const themeFilesMap = await this.resources.fetchTheme(themeName);
+                this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+            } catch {
+                // Theme fetch not available - icons will use .png fallback
             }
 
             // Get all used iDevice types
