@@ -22,6 +22,7 @@ import { ImsManifestGenerator } from '../generators/ImsManifest';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { generateI18nScript } from '../generators/I18nGenerator';
+import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class ImsExporter extends Html5Exporter {
     protected manifestGenerator: ImsManifestGenerator | null = null;
@@ -49,11 +50,16 @@ export class ImsExporter extends Html5Exporter {
             // Pre-process pages: add filenames to asset URLs
             pages = await this.preprocessPagesForExport(pages);
 
+            // Filter out hidden pages (visibility: false)
+            pages = pages.filter(p => this.isPageVisible(p, pages));
+
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
             // Initialize manifest generator
             this.manifestGenerator = new ImsManifestGenerator(projectId, pages, {
+                identifier: projectId,
+                pages: pages,
                 title: meta.title || 'eXeLearning',
                 language: meta.language || 'en',
                 author: meta.author || '',
@@ -68,8 +74,12 @@ export class ImsExporter extends Html5Exporter {
             // 0. Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1. Generate HTML pages (with optional LaTeX pre-rendering)
+            // Configure iDevice renderer with theme files for icon resolution
+            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
+            // 1. Generate HTML pages (with optional LaTeX/Mermaid pre-rendering)
             let latexWasRendered = false;
+            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -86,19 +96,53 @@ export class ImsExporter extends Html5Exporter {
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
-                // When MathJax is included, let it process LaTeX at runtime for full UX (context menu, accessibility)
-                if (!meta.addMathJax && options?.preRenderLatex) {
+                if (!meta.addMathJax) {
+                    // Pre-render LaTeX in encrypted DataGame divs FIRST
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(html);
+                            if (result.count > 0) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[ImsExporter] Pre-rendered LaTeX in ${result.count} DataGame(s) on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[ImsExporter] DataGame LaTeX pre-render failed for page:', page.title, error);
+                        }
+                    }
+
+                    // Pre-render visible LaTeX to SVG+MathML
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(html);
+                            if (result.latexRendered) {
+                                html = result.html;
+                                latexWasRendered = true;
+                                console.log(
+                                    `[ImsExporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                                );
+                            }
+                        } catch (error) {
+                            console.warn('[ImsExporter] LaTeX pre-render failed for page:', page.title, error);
+                        }
+                    }
+                }
+
+                // Pre-render Mermaid diagrams to static SVG
+                if (options?.preRenderMermaid) {
                     try {
-                        const result = await options.preRenderLatex(html);
-                        if (result.latexRendered) {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
                             html = result.html;
-                            latexWasRendered = true;
+                            mermaidWasRendered = true;
                             console.log(
-                                `[ImsExporter] Pre-rendered ${result.count} LaTeX expressions on page: ${page.title}`,
+                                `[ImsExporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
                             );
                         }
                     } catch (error) {
-                        console.warn('[ImsExporter] LaTeX pre-render failed for page:', page.title, error);
+                        console.warn('[ImsExporter] Mermaid pre-render failed for page:', page.title, error);
                     }
                 }
 
@@ -116,19 +160,24 @@ export class ImsExporter extends Html5Exporter {
             // Note: IMS exports do NOT include search_index.js
             // The LMS handles navigation, so client-side search is not needed
 
-            // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
+            // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered LaTeX CSS if LaTeX was rendered
-            if (latexWasRendered) {
-                const latexCss = this.getPreRenderedLatexCss();
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered || mermaidWasRendered) {
                 const decoder = new TextDecoder();
-                const baseCssText = decoder.decode(baseCss);
+                let baseCssText = decoder.decode(baseCss);
+                if (latexWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedLatexCss();
+                }
+                if (mermaidWasRendered) {
+                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                }
                 const encoder = new TextEncoder();
-                baseCss = encoder.encode(baseCssText + '\n' + latexCss);
+                baseCss = encoder.encode(baseCssText);
             }
             this.zip.addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
@@ -158,33 +207,74 @@ export class ImsExporter extends Html5Exporter {
 
             // 4.5. Generate localized i18n file
             const i18nContent = generateI18nScript(meta.language || 'en');
-            this.zip.addFile('libs/common_i18n.js', i18nContent);
+            this.zip.addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
             commonFiles.push('libs/common_i18n.js');
 
-            // 5. Fetch and add iDevice assets
+            // 5. Detect and fetch additional required libraries based on content
+            const allHtmlContent = this.collectAllHtmlContent(pages);
+            const { files: allRequiredFiles, patterns } = this.libraryDetector.getAllRequiredFilesWithPatterns(
+                allHtmlContent,
+                {
+                    includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
+                    includeMathJax: meta.addMathJax === true,
+                    skipMathJax: latexWasRendered && !meta.addMathJax,
+                },
+            );
+
+            try {
+                const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
+                for (const [libPath, content] of libFiles) {
+                    // Only add if not already added by base libraries
+                    const zipPath = `libs/${libPath}`;
+                    if (!this.zip.hasFile(zipPath)) {
+                        this.zip.addFile(zipPath, content);
+                        commonFiles.push(zipPath);
+                    }
+                }
+            } catch {
+                // Additional libraries not available - continue anyway
+            }
+
+            // 6. Fetch and add iDevice assets
             const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
+                    const normalizedType = this.resources.normalizeIdeviceType(idevice);
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`idevices/${idevice}/${path}`, content);
-                        commonFiles.push(`idevices/${idevice}/${path}`);
+                        this.zip.addFile(`idevices/${normalizedType}/${path}`, content);
+                        commonFiles.push(`idevices/${normalizedType}/${path}`);
                     }
                 } catch {
                     // Many iDevices don't have extra files
                 }
             }
 
-            // 6. Add project assets
+            // 7. Fetch and add global font files (if selected)
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            this.zip.addFile(filePath, content);
+                            commonFiles.push(filePath);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[ImsExporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
+
+            // 8. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            // 6b. Add content.xml (ODE format) and content.dtd for re-editing
+            // 8b. Add content.xml (ODE format) and content.dtd for re-editing
             const contentXml = generateOdeXml(meta, pages);
             this.zip.addFile('content.xml', contentXml);
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
             commonFiles.push('content.xml', ODE_DTD_FILENAME);
 
-            // 7. Generate imsmanifest.xml with complete file list
+            // 9. Generate imsmanifest.xml with complete file list
             // Get all files from the ZIP to ensure the manifest lists ALL resources
             const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
@@ -194,7 +284,7 @@ export class ImsExporter extends Html5Exporter {
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
 
-            // 8. Generate ZIP buffer
+            // 10. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -241,12 +331,28 @@ export class ImsExporter extends Html5Exporter {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
 
+        // Generate global font CSS if a font is selected
+        let customStyles = meta.customStyles || '';
+        let bodyClass = 'exe-export exe-ims';
+        if (meta.globalFont && meta.globalFont !== 'default') {
+            const globalFontCss = GlobalFontGenerator.generateCss(meta.globalFont, basePath);
+            if (globalFontCss) {
+                // Prepend global font CSS to customStyles
+                customStyles = globalFontCss + '\n' + customStyles;
+            }
+            // Add font-specific body class
+            const fontBodyClass = GlobalFontGenerator.getBodyClassName(meta.globalFont);
+            if (fontBodyClass) {
+                bodyClass += ` ${fontBodyClass}`;
+            }
+        }
+
         return this.pageRenderer.render(page, {
             projectTitle: meta.title || 'eXeLearning',
             projectSubtitle: meta.subtitle || '',
             language: meta.language || 'en',
             theme: meta.theme || 'base',
-            customStyles: meta.customStyles || '',
+            customStyles: customStyles,
             allPages,
             basePath,
             isIndex,
@@ -262,7 +368,7 @@ export class ImsExporter extends Html5Exporter {
             addPagination: true,
             totalPages: allPages.length,
             currentPageIndex: pageIndex ?? 0,
-            bodyClass: 'exe-export exe-ims',
+            bodyClass: bodyClass,
             // Hide navigation elements - LMS handles navigation in IMS
             hideNavigation: true,
             hideNavButtons: true,
