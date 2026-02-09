@@ -12,14 +12,16 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
 } from '../interfaces';
 
 // Mock document adapter
 class MockDocument implements ExportDocument {
     private metadata: ExportMetadata;
     private pages: ExportPage[];
+    private contentXml: string | null;
 
-    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = []) {
+    constructor(metadata: Partial<ExportMetadata> = {}, pages: ExportPage[] = [], contentXml: string | null = null) {
         this.metadata = {
             title: 'Test EPUB Project',
             author: 'Test Author',
@@ -30,6 +32,7 @@ class MockDocument implements ExportDocument {
             ...metadata,
         };
         this.pages = pages;
+        this.contentXml = contentXml;
     }
 
     getMetadata(): ExportMetadata {
@@ -38,6 +41,10 @@ class MockDocument implements ExportDocument {
 
     getNavigation(): ExportPage[] {
         return this.pages;
+    }
+
+    async getContentXml(): Promise<string | null> {
+        return this.contentXml;
     }
 }
 
@@ -83,12 +90,20 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
+        return null;
+    }
 }
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
     async getAsset(_path: string): Promise<Buffer | null> {
         return null;
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return [];
     }
 
     async getAllAssets(): Promise<
@@ -122,12 +137,12 @@ class MockZipProvider implements ZipProvider {
 
     async generateAsync(): Promise<Buffer> {
         // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array | [Uint8Array, { level: number }]> = {};
+        const zipData: Record<string, Uint8Array | [Uint8Array, { level: 0 | 1 }]> = {};
         for (const [path, content] of this.files) {
             const data = typeof content === 'string' ? strToU8(content) : new Uint8Array(content);
             // EPUB requires mimetype to be first and uncompressed (level 0)
             if (path === 'mimetype') {
-                zipData[path] = [data, { level: 0 }];
+                zipData[path] = [data, { level: 0 as 0 }];
             } else {
                 zipData[path] = data;
             }
@@ -411,6 +426,64 @@ describe('Epub3Exporter', () => {
             expect(navXhtml).toContain('href="index.xhtml"');
             expect(navXhtml).toMatch(/href="html\/[^"]+\.xhtml"/);
         });
+
+        it('should exclude hidden pages from navigation but keep them in export', async () => {
+            const hiddenPages: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Visible Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'page-2',
+                    title: 'Hidden Page',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: {
+                        visibility: 'false', // String "false" as per interface inspection or common pattern
+                    },
+                },
+                {
+                    id: 'page-3',
+                    title: 'Hidden Page Boolean',
+                    parentId: null,
+                    order: 2,
+                    blocks: [],
+                    properties: {
+                        visibility: false,
+                    },
+                },
+            ];
+            document = new MockDocument({}, hiddenPages);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const navXhtml = zip.files.get('EPUB/nav.xhtml') as string;
+
+            // Should contain visible page
+            expect(navXhtml).toContain('Visible Page');
+
+            // Should NOT contain hidden pages in TOC
+            expect(navXhtml).not.toContain('Hidden Page');
+            expect(navXhtml).not.toContain('Hidden Page Boolean');
+
+            // Should be in spine/manifest even if hidden in usage
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            // Check that files are in the manifest
+            expect(packageOpf).toContain('href="html/hidden-page.xhtml"');
+            expect(packageOpf).toContain('href="html/hidden-page-boolean.xhtml"');
+
+            // Check spine has all 3 pages
+            const spineMatches = packageOpf.match(/<itemref/g);
+            expect(spineMatches?.length).toBe(3);
+
+            // And file should exist
+            expect(zip.files.has('EPUB/html/hidden-page.xhtml')).toBe(true);
+        });
     });
 
     describe('XHTML Page Generation', () => {
@@ -489,9 +562,18 @@ describe('Epub3Exporter', () => {
             // Create a failing zip provider
             const failingZip: ZipProvider = {
                 addFile: () => {},
+                hasFile: () => false,
+                getFilePaths: () => [],
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
+                createZip: () => ({
+                    addFile: () => {},
+                    addFiles: () => {},
+                    hasFile: () => false,
+                    getFilePaths: () => [],
+                    generate: async () => new Uint8Array(),
+                }),
             };
             exporter = new Epub3Exporter(document, resources, assets, failingZip);
 
@@ -656,5 +738,168 @@ describe('Epub3Exporter', () => {
             const chapter1Xhtml = zip.files.get('EPUB/html/chapter-1.xhtml') as string;
             expect(chapter1Xhtml).toContain('<link rel="icon" type="image/x-icon" href="../theme/img/favicon.ico"');
         });
+    });
+
+    describe('Content XML and DTD Handling', () => {
+        it('should include content.xml in EPUB when document provides it', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            const contentXml = zip.files.get('EPUB/content.xml') as string;
+            expect(contentXml).toContain('<test>data</test>');
+        });
+
+        it('should include content.dtd alongside content.xml', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should include content.xml in EPUB manifest', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({}, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            const packageOpf = zip.files.get('EPUB/package.opf') as string;
+            expect(packageOpf).toContain('id="content-xml"');
+            expect(packageOpf).toContain('href="content.xml"');
+        });
+
+        it('should NOT include content.xml when exportSource is false', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: false }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(false);
+        });
+
+        it('should include content.xml when exportSource is true', async () => {
+            const sampleContentXml = '<?xml version="1.0"?><content><test>data</test></content>';
+            document = new MockDocument({ exportSource: true }, samplePages, sampleContentXml);
+            exporter = new Epub3Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('EPUB/content.xml')).toBe(true);
+            expect(zip.files.has('EPUB/content.dtd')).toBe(true);
+        });
+
+        it('should not fail when getContentXml returns null', async () => {
+            // Default MockDocument with null contentXml
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            // content.xml should not be in the archive when not provided
+            expect(zip.files.has('EPUB/content.xml')).toBe(false);
+        });
+    });
+});
+
+describe('Library Transformations', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: Epub3Exporter;
+
+    beforeEach(() => {
+        document = new MockDocument({}, samplePages);
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+    });
+
+    it('should patch exe_effects.js for EPUB export', async () => {
+        const originalJs = `
+function test() {
+var k = "exe";
+$("." + k + "-accordion").each(function (i) {
+    // HTML generation
+    h2.eq(y).wrap('<a class="fx-accordion-title" href="#' + id + '" id="' + id + '-trigger"></a>');
+
+    // Click handler
+    var currentAttrValue = $(this).attr('href');
+
+    // IE7 retrieves link#hash instead of #hash
+    currentAttrValue = currentAttrValue.split("#");
+    currentAttrValue = "#" + currentAttrValue[1];
+    // / IE7
+    
+    // more code
+});
+}`;
+        // Setup page with accordion to trigger library detection
+        const pageWithAccordion: ExportPage[] = [
+            {
+                id: 'p1',
+                title: 'T',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'd',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'c1',
+                                type: 'text',
+                                order: 0,
+                                content: '<div class="exe-accordion">test</div>',
+                            },
+                        ],
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pageWithAccordion);
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+
+        // Mock library fetch to return our sample JS
+        resources.fetchLibraryFiles = async files => {
+            const result = new Map<string, Buffer>();
+            // The exporter might request full paths, but we just need to ensuring we provide the file
+            // when requested. The key in the map should match what the exporter expects.
+            result.set('exe_effects/exe_effects.js', Buffer.from(originalJs));
+            return result;
+        };
+
+        // Also override fetchBaseLibraries just in case
+        resources.fetchBaseLibraries = async () => {
+            return new Map();
+        };
+
+        await exporter.export();
+
+        // Check if file exists in ZIP
+        const zipPath = 'EPUB/libs/exe_effects/exe_effects.js';
+        expect(zip.files.has(zipPath)).toBe(true);
+
+        const content = zip.files.get(zipPath);
+        const contentStr = typeof content === 'string' ? content : new TextDecoder().decode(content as Buffer);
+
+        // Verify transformations
+        // 1. Click handler patch
+        expect(contentStr).not.toContain("$(this).attr('href')");
+        expect(contentStr).toContain('var targetId = this.id.replace("-trigger", "").replace(/_/g, "-");');
+
+        // 2. Link generation patch (javascript:void(0))
+        expect(contentStr).not.toContain('href="#\' + id + \'"');
+        expect(contentStr).toContain('href="javascript:void(0)"');
     });
 });
