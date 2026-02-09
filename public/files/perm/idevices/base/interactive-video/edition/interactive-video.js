@@ -447,6 +447,23 @@ var $exeDevice = {
                 typeof InteractiveVideo == 'object' &&
                 typeof InteractiveVideo.slides == 'object'
             ) {
+                // Update legacy image URLs (numbers) to asset:// URLs
+                if (InteractiveVideo.slides && Array.isArray(InteractiveVideo.slides)) {
+                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                        var slide = InteractiveVideo.slides[i];
+                        if (slide.type === 'image' && typeof slide.url === 'number') {
+                            // Find the image in the HTML
+                            var imgId = 'exe-interactive-video-img-' + slide.url;
+                            var imgEl = previousData.querySelector('#' + imgId);
+                            if (imgEl && imgEl.src) {
+                                slide.url = imgEl.src;
+                            } else {
+                                console.warn('[InteractiveVideo] Could not find image element', imgId);
+                            }
+                        }
+                    }
+                }
+
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
                 // i18n
                 InteractiveVideo.scorm =
@@ -750,7 +767,10 @@ var $exeDevice = {
                             '" id="exe-interactive-video-img-' +
                             i +
                             '" alt="" /></p>';
-                        slide.url = i;
+                        // Only replace URL with index for legacy relative paths (not asset:// or blob://)
+                        if (slide.url.indexOf('asset://') !== 0 && slide.url.indexOf('blob:') !== 0) {
+                            slide.url = i;
+                        }
                     }
                 }
             }
