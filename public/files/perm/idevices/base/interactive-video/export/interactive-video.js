@@ -1267,25 +1267,84 @@ var $interactivevideo = {
                 // Image
             } else if (e.type == 'image') {
                 var img = new Image();
-                img.src = $('#exe-interactive-video-img-' + e.url).attr('src');
-                img.onload = function () {
-                    slide.html(
-                        $interactivevideo.getImage(
-                            e,
-                            img.width,
-                            img.height,
-                            img.src
-                        )
-                    );
-                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
-                        if (e == InteractiveVideo.slides[i]) {
-                            $interactivevideo.updateResult(i, i18n.seen);
-                            e.results = {
-                                viewed: true,
-                            };
+                
+                // Determine the image source
+                // If e.url is a number (legacy format), find the element by ID
+                // If e.url is a URL (asset://, blob://, http://, etc.), use it directly
+                var imgSrc;
+                if (typeof e.url === 'number' || /^\d+$/.test(e.url)) {
+                    // Legacy format: e.url is an index, find the img element
+                    var imgElement = document.getElementById('exe-interactive-video-img-' + e.url);
+                    imgSrc = imgElement ? imgElement.src : '';
+                } else {
+                    // New format: e.url is already a URL
+                    imgSrc = e.url;
+                }
+                
+                // Helper function to load and display the image
+                var loadAndDisplayImage = function(src) {
+                    img.src = src;
+                    img.onload = function () {
+                        // Use saved dimensions if available, calculate proportionally if only one is set
+                        var naturalW = img.naturalWidth || img.width;
+                        var naturalH = img.naturalHeight || img.height;
+                        var displayWidth, displayHeight;
+                        
+                        if (e.width && e.height) {
+                            // Both dimensions saved
+                            displayWidth = parseInt(e.width);
+                            displayHeight = parseInt(e.height);
+                        } else if (e.width && !e.height) {
+                            // Only width saved, calculate height proportionally
+                            displayWidth = parseInt(e.width);
+                            displayHeight = Math.round((displayWidth * naturalH) / naturalW);
+                        } else if (!e.width && e.height) {
+                            // Only height saved, calculate width proportionally
+                            displayHeight = parseInt(e.height);
+                            displayWidth = Math.round((displayHeight * naturalW) / naturalH);
+                        } else {
+                            // No dimensions saved, use natural
+                            displayWidth = naturalW;
+                            displayHeight = naturalH;
                         }
-                    }
+                        slide.html(
+                            $interactivevideo.getImage(
+                                e,
+                                displayWidth,
+                                displayHeight,
+                                img.src
+                            )
+                        );
+                        for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                            if (e == InteractiveVideo.slides[i]) {
+                                $interactivevideo.updateResult(i, i18n.seen);
+                                e.results = {
+                                    viewed: true,
+                                };
+                            }
+                        }
+                    };
+                    img.onerror = function() {
+                        console.warn('[InteractiveVideo] Failed to load image:', src);
+                    };
                 };
+                
+                // If asset:// URL, resolve it first
+                if (imgSrc && imgSrc.indexOf('asset://') === 0) {
+                    var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(imgSrc).then(function(blobUrl) {
+                            loadAndDisplayImage(blobUrl || imgSrc);
+                        }).catch(function() {
+                            loadAndDisplayImage(imgSrc);
+                        });
+                    } else {
+                        // No AssetManager, try loading directly (won't work for asset://)
+                        loadAndDisplayImage(imgSrc);
+                    }
+                } else {
+                    loadAndDisplayImage(imgSrc);
+                }
 
                 // Single choice
             } else if (e.type == 'singleChoice') {
@@ -2591,7 +2650,11 @@ var $interactivevideo = {
             newW +
             '" height="' +
             newH +
-            '" style="display:block;margin-top:' +
+            '" style="display:block;width:' +
+            newW +
+            'px;height:' +
+            newH +
+            'px;margin-top:' +
             (maxH - newH) / 2 +
             'px" /><a href="' +
             src +

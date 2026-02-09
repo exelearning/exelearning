@@ -723,6 +723,8 @@ var iAdmin = {
         // Hide all the success messages and show the hidden forms
         $('.hidden-block').removeClass();
         $('.success-msg').html('');
+        // Clear the current image asset URL
+        iAdmin.currentImageAssetUrl = null;
         // Clear all the fields
         tinyMCE.get('text-block-content').setContent('');
         iAdmin.tabs.restart('image', false);
@@ -804,7 +806,26 @@ var iAdmin = {
                     return false;
                 }
                 imgs = imgs.eq(0);
-                var url = imgs.attr('src');
+
+                // Prefer asset:// URL from data attribute over blob:// URL from src
+                var dataAssetUrl = imgs.attr('data-asset-url');
+                var srcUrl = imgs.attr('src');
+                var url = dataAssetUrl || srcUrl;
+
+                // If URL is blob://, try to convert to asset:// using reverseBlobCache
+                if (url && url.startsWith('blob:') && !dataAssetUrl) {
+                    const assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager && assetManager.reverseBlobCache?.has(url)) {
+                        const assetId = assetManager.reverseBlobCache.get(url);
+                        if (assetId) {
+                            // Get asset to build full URL
+                            const asset = assetManager.yjsAssets?.get(assetId);
+                            if (asset && asset.filename) {
+                                url = 'asset://' + assetId + '/' + asset.filename;
+                            }
+                        }
+                    }
+                }
 
                 if (url == '') {
                     iAdmin.msg.txt($i18n.No_Image);
@@ -891,38 +912,130 @@ var iAdmin = {
 
         // Save image
         else if (type == 'image') {
-            // Check if it's a valid URL
-            var txt = tinyMCE.get('image-block-content').save();
-            if (txt == '') {
+            // Access the TinyMCE editor DOM directly (avoids serialization issues)
+            var editor = tinyMCE.get('image-block-content');
+            var imgElement = editor ? editor.dom.select('img')[0] : null;
+            
+            // In edit mode, allow saving even if TinyMCE didn't load the image (async timing)
+            if (!imgElement && iAdmin.globals.mode != 'edit') {
                 iAdmin.msg.txt($i18n.No_Image);
                 return false;
             }
 
-            var tmp = $('<div></div>');
-            tmp.html(txt);
-            var imgs = $('img', tmp);
-            if (imgs.length == 0) {
-                iAdmin.msg.txt($i18n.No_Image_Error);
-                return false;
+            // Resolve the asset URL with clear priority chain:
+            var url = '';
+            
+            // Priority 1: currentImageAssetUrl (set ONLY by file_picker_callback when user picked a NEW image)
+            if (iAdmin.currentImageAssetUrl && iAdmin.currentImageAssetUrl.indexOf('asset://') === 0) {
+                url = iAdmin.currentImageAssetUrl;
             }
-            imgs = imgs.eq(0);
-
-            // Prefer asset:// URL from data attribute over blob:// URL from src
-            var dataAssetUrl = imgs.attr('data-asset-url');
-            var srcUrl = imgs.attr('src');
-            var url = dataAssetUrl || srcUrl;
-
-            if (url == '') {
-                iAdmin.msg.txt($i18n.No_Image_Error);
+            
+            // Priority 2: data-asset-url attribute on the img (TinyMCE may preserve it)
+            if (!url && imgElement) {
+                var dataAssetUrl = imgElement.getAttribute('data-asset-url');
+                if (dataAssetUrl && dataAssetUrl.indexOf('asset://') === 0) {
+                    url = dataAssetUrl;
+                }
+            }
+            
+            // Priority 3: reverseBlobCache lookup (blob URL -> asset ID)
+            if (!url && imgElement) {
+                var srcUrl = imgElement.getAttribute('src') || '';
+                var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager && assetManager.reverseBlobCache) {
+                    var assetId = assetManager.reverseBlobCache.get(srcUrl);
+                    if (assetId) {
+                        var asset = assetManager.yjsAssets?.get(assetId);
+                        if (asset && asset.filename) {
+                            url = 'asset://' + assetId + '/' + asset.filename;
+                        }
+                    }
+                }
+            }
+            
+            // Priority 4: Edit mode - use existing slide URL
+            if (!url && iAdmin.globals.mode == 'edit') {
+                var existingSlide = InteractiveVideo.slides[iAdmin.globals.currentSlide];
+                if (existingSlide && existingSlide.url) {
+                     url = existingSlide.url;
+                     
+                     // If the existing URL is a blob, try to resolve it to an asset URL
+                     if (url.startsWith('blob:')) {
+                        var assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                        if (assetManager && assetManager.reverseBlobCache) {
+                            var assetId = assetManager.reverseBlobCache.get(url);
+                            if (assetId) {
+                                var asset = assetManager.yjsAssets?.get(assetId);
+                                if (asset && asset.filename) {
+                                    url = 'asset://' + assetId + '/' + asset.filename;
+                                }
+                            }
+                        }
+                     }
+                }
+            }
+            
+            // Validation: Fail if no URL found, OR if URL is a blob/data URL AND it's not a legacy edit case
+            var isInvalidUrl = !url || url.startsWith('blob:') || url.startsWith('data:');
+            
+            // Exception: In edit mode, if we are just preserving the existing (potentially broken/blob) URL, allow it to save.
+            // This prevents blocking the user from updating other fields (text/time) just because the image URL is imperfect.
+            if (isInvalidUrl && iAdmin.globals.mode == 'edit' && url === InteractiveVideo.slides[iAdmin.globals.currentSlide]?.url) {
+                isInvalidUrl = false;
+            }
+            
+            if (isInvalidUrl) {
+                iAdmin.msg.txt($i18n.No_Image);
                 return false;
             }
 
             // Check the alt text
-            // var alt = $("#image-alt").val();
-            var alt = imgs.attr('alt');
+            var alt = imgElement ? (imgElement.getAttribute('alt') || '') : '';
+            // In edit mode, fall back to the existing slide description if no alt in TinyMCE
+            if (alt == '' && iAdmin.globals.mode == 'edit') {
+                var existingSlideAlt = InteractiveVideo.slides[iAdmin.globals.currentSlide];
+                if (existingSlideAlt && existingSlideAlt.description) {
+                    alt = existingSlideAlt.description;
+                }
+            }
             if (alt == '') {
                 iAdmin.msg.txt($i18n.No_Alt);
                 return false;
+            }
+
+            // Extract width/height from the image
+            // Priority: inline style > attributes (style reflects user's choice in dialog)
+            var imgWidth = null;
+            var imgHeight = null;
+            if (imgElement) {
+                var imgStyle = imgElement.getAttribute('style') || '';
+                
+                // First, try to get from inline style (user's chosen size)
+                var widthMatch = imgStyle.match(/width:\s*(\d+)px/i);
+                if (widthMatch) imgWidth = widthMatch[1];
+                var heightMatch = imgStyle.match(/height:\s*(\d+)px/i);
+                if (heightMatch) imgHeight = heightMatch[1];
+                
+                // If not in style, fall back to attributes
+                if (!imgWidth && imgElement.getAttribute('width')) imgWidth = imgElement.getAttribute('width');
+                if (!imgHeight && imgElement.getAttribute('height')) imgHeight = imgElement.getAttribute('height');
+                
+                // If we have only one dimension, calculate the other proportionally
+                var naturalWidth = imgElement.naturalWidth;
+                var naturalHeight = imgElement.naturalHeight;
+                if (imgWidth && !imgHeight && naturalWidth && naturalHeight) {
+                    imgHeight = Math.round((parseInt(imgWidth) * naturalHeight) / naturalWidth);
+                } else if (imgHeight && !imgWidth && naturalWidth && naturalHeight) {
+                    imgWidth = Math.round((parseInt(imgHeight) * naturalWidth) / naturalHeight);
+                }
+            }
+            // Edit mode fallback for dimensions: use existing slide dimensions
+            if (!imgWidth && !imgHeight && iAdmin.globals.mode == 'edit') {
+                var existingSlideDim = InteractiveVideo.slides[iAdmin.globals.currentSlide];
+                if (existingSlideDim) {
+                    if (existingSlideDim.width) imgWidth = existingSlideDim.width;
+                    if (existingSlideDim.height) imgHeight = existingSlideDim.height;
+                }
             }
 
             // Add mode
@@ -933,6 +1046,8 @@ var iAdmin = {
                     description: alt,
                     startTime: startTime,
                 };
+                if (imgWidth) newImage.width = imgWidth;
+                if (imgHeight) newImage.height = imgHeight;
                 if (!$('#auto-stop').prop('checked')) {
                     newImage.endTime = toInSeconds;
                 }
@@ -944,6 +1059,8 @@ var iAdmin = {
                 slide.startTime = startTime;
                 slide.url = url;
                 slide.description = alt;
+                if (imgWidth) slide.width = imgWidth; else delete slide.width;
+                if (imgHeight) slide.height = imgHeight; else delete slide.height;
                 if (!$('#auto-stop').prop('checked')) {
                     slide.endTime = toInSeconds;
                 }
@@ -1459,6 +1576,10 @@ var iAdmin = {
                 if (src == '' && typeof slide.url == 'string' && slide.url != '') {
                     src = slide.url;
                 }
+                
+                // Note: we do NOT set iAdmin.currentImageAssetUrl here.
+                // It is only set by file_picker_callback when the user picks a NEW image.
+                // In edit mode, save will fall back to slide.url if currentImageAssetUrl is null.
                 if (src != '') {
                     // For asset:// URLs, resolve using AssetManager
                     if (src.indexOf('asset://') === 0) {
@@ -1473,21 +1594,43 @@ var iAdmin = {
                                             // Load image to get dimensions
                                             const img = new Image();
                                             img.onload = function() {
-                                                const content = '<p><img src="' + blobUrl + '" alt="' + slide.description + '" width="' + img.naturalWidth + '" height="' + img.naturalHeight + '" data-asset-url="' + src + '" /></p>';
+                                                // Use saved dimensions if available, calculate proportionally if only one is set
+                                                var naturalW = img.naturalWidth;
+                                                var naturalH = img.naturalHeight;
+                                                var w, h;
+                                                if (slide.width && slide.height) {
+                                                    w = parseInt(slide.width);
+                                                    h = parseInt(slide.height);
+                                                } else if (slide.width && !slide.height) {
+                                                    w = parseInt(slide.width);
+                                                    h = Math.round((w * naturalH) / naturalW);
+                                                } else if (!slide.width && slide.height) {
+                                                    h = parseInt(slide.height);
+                                                    w = Math.round((h * naturalW) / naturalH);
+                                                } else {
+                                                    w = naturalW;
+                                                    h = naturalH;
+                                                }
+                                                const content = '<p><img src="' + blobUrl + '" alt="' + slide.description + '" width="' + w + '" height="' + h + '" style="width: ' + w + 'px; height: ' + h + 'px;" data-asset-url="' + src + '" /></p>';
                                                 editor.setContent(content);
                                             };
                                             img.onerror = function() {
+                                                console.warn('[InteractiveVideo] Edit - Image load error for:', blobUrl);
                                                 // Set content without dimensions
                                                 const content = '<p><img src="' + blobUrl + '" alt="' + slide.description + '" data-asset-url="' + src + '" /></p>';
                                                 editor.setContent(content);
                                             };
                                             img.src = blobUrl;
                                         }
+                                    } else {
+                                        console.warn('[InteractiveVideo] Edit - blobUrl is empty/null');
                                     }
                                 })
-                                .catch(() => {
-                                    // Error resolving asset URL
+                                .catch(err => {
+                                    console.error('[InteractiveVideo] Edit - Error resolving asset URL:', err);
                                 });
+                        } else {
+                            console.warn('[InteractiveVideo] Edit - AssetManager not available');
                         }
                     } else if (src.indexOf('blob:') === 0) {
                         // For blob: URLs, use directly (load for dimensions)
@@ -1495,7 +1638,24 @@ var iAdmin = {
                         if (editor) {
                             const img = new Image();
                             img.onload = function() {
-                                const content = '<p><img src="' + src + '" alt="' + slide.description + '" width="' + img.naturalWidth + '" height="' + img.naturalHeight + '" /></p>';
+                                // Use saved dimensions if available, calculate proportionally if only one is set
+                                var naturalW = img.naturalWidth;
+                                var naturalH = img.naturalHeight;
+                                var w, h;
+                                if (slide.width && slide.height) {
+                                    w = parseInt(slide.width);
+                                    h = parseInt(slide.height);
+                                } else if (slide.width && !slide.height) {
+                                    w = parseInt(slide.width);
+                                    h = Math.round((w * naturalH) / naturalW);
+                                } else if (!slide.width && slide.height) {
+                                    h = parseInt(slide.height);
+                                    w = Math.round((h * naturalW) / naturalH);
+                                } else {
+                                    w = naturalW;
+                                    h = naturalH;
+                                }
+                                const content = '<p><img src="' + src + '" alt="' + slide.description + '" width="' + w + '" height="' + h + '" style="width: ' + w + 'px; height: ' + h + 'px;" /></p>';
                                 editor.setContent(content);
                             };
                             img.onerror = function() {
@@ -1527,7 +1687,24 @@ var iAdmin = {
                         if (editor) {
                             const img = new Image();
                             img.onload = function() {
-                                const content = '<p><img src="' + finalSrc + '" alt="' + slide.description + '" width="' + img.naturalWidth + '" height="' + img.naturalHeight + '" /></p>';
+                                // Use saved dimensions if available, calculate proportionally if only one is set
+                                var naturalW = img.naturalWidth;
+                                var naturalH = img.naturalHeight;
+                                var w, h;
+                                if (slide.width && slide.height) {
+                                    w = parseInt(slide.width);
+                                    h = parseInt(slide.height);
+                                } else if (slide.width && !slide.height) {
+                                    w = parseInt(slide.width);
+                                    h = Math.round((w * naturalH) / naturalW);
+                                } else if (!slide.width && slide.height) {
+                                    h = parseInt(slide.height);
+                                    w = Math.round((h * naturalW) / naturalH);
+                                } else {
+                                    w = naturalW;
+                                    h = naturalH;
+                                }
+                                const content = '<p><img src="' + finalSrc + '" alt="' + slide.description + '" width="' + w + '" height="' + h + '" style="width: ' + w + 'px; height: ' + h + 'px;" /></p>';
                                 editor.setContent(content);
                             };
                             img.onerror = function() {
@@ -1603,6 +1780,7 @@ var iAdmin = {
             iAdmin.content = $('#content');
         },
         txt: (txt, showButton) => {
+            if (txt === undefined || txt === null) txt = 'Error';
             var tag = 'p';
             if (txt.indexOf('<p>') == 0) tag = 'div';
             txt = '<' + tag + ' class="txt">' + txt + '</' + tag + '>';
@@ -1736,13 +1914,19 @@ var iAdmin = {
             if (id == 'image-block-content' || id == 'frontpage-content-alt') {
                 buttons = 'undo redo image';
             }
+            
+            // For image-block-content, initialize the current asset URL tracker
+            if (id == 'image-block-content') {
+                iAdmin.currentImageAssetUrl = null;
+            }
+            
             tinymce.init({
                 selector: '#' + id,
                 max_height: 350,
                 language: 'all',
                 width: 440,
                 plugins: 'lists link code paste image autoresize',
-                paste_as_text: true,
+                paste_data_images: false,  // Disable pasting images directly
                 browser_spellcheck: true,
                 entity_encoding: 'raw',
                 toolbar: buttons,
@@ -1751,11 +1935,37 @@ var iAdmin = {
                 convert_urls: false,
 
                 // Allow data-asset-url attribute on img tags
-                extended_valid_elements: 'img[class|src|border|alt|title|width|height|data-asset-url]',
+                extended_valid_elements: 'img[class|src|border|alt|title|width|height|data-asset-url|style]',
 
-                automatic_uploads: false,  // Disabled to preserve blob:// URLs with data-asset-url
+                automatic_uploads: false,  // Disable automatic uploads
                 file_picker_types: 'image',
-                /* and here's our custom image picker*/
+                
+                // Prevent TinyMCE from converting blob: URLs to base64
+                images_dataimg_filter: function(img) {
+                    // Return false to prevent image from being processed/converted
+                    return false;
+                },
+                
+                // Setup: block paste/drop of images (only allow file_picker_callback)
+                setup: function(editor) {
+                    // Block pasting images
+                    editor.on('PastePreProcess', function(e) {
+                        if (e.content && e.content.indexOf('<img') !== -1) {
+                            e.content = e.content.replace(/<img[^>]*>/gi, '');
+                        }
+                    });
+                    
+                    // Block dropping files/images
+                    editor.on('drop', function(e) {
+                        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            return false;
+                        }
+                    });
+                },
+                
+                /* Custom image picker - returns to dialog form */
                 file_picker_callback: (cb, value, meta) => {
                     var input = document.createElement('input');
                     input.setAttribute('type', 'file');
@@ -1767,6 +1977,7 @@ var iAdmin = {
                         try {
                             // Use AssetManager to store the image
                             const assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                            
                             if (!assetManager) {
                                 alert('Error: Asset manager not available');
                                 return;
@@ -1779,31 +1990,16 @@ var iAdmin = {
                             const blobUrl = await assetManager.resolveAssetURL(assetUrl);
 
                             if (blobUrl) {
-                                // Load image to get dimensions
-                                const img = new Image();
-                                img.onload = function() {
-                                    // Return blob URL to TinyMCE dialog with all properties
-                                    cb(blobUrl, {
-                                        title: file.name,
-                                        alt: file.name,
-                                        width: img.naturalWidth,
-                                        height: img.naturalHeight,
-                                        'data-asset-url': assetUrl,  // Store asset:// URL for persistence
-                                    });
-                                };
-                                img.onerror = function() {
-                                    // Call callback anyway without dimensions
-                                    cb(blobUrl, {
-                                        title: file.name,
-                                        alt: file.name,
-                                        'data-asset-url': assetUrl,
-                                    });
-                                };
-                                img.src = blobUrl;
+                                // Store asset URL globally - this is the source of truth for saving
+                                iAdmin.currentImageAssetUrl = assetUrl;
+                                
+                                // Return blob URL to TinyMCE dialog
+                                cb(blobUrl, { alt: file.name });
                             } else {
                                 alert('Error: Failed to load image');
                             }
                         } catch (error) {
+                            console.error('[InteractiveVideo] Error in file_picker_callback:', error);
                             alert('Error uploading image: ' + error.message);
                         }
                     };
