@@ -732,7 +732,7 @@ describe('Admin Queries', () => {
             const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
             await seedTestProject(db, userId, { title: 'Active Project' });
 
-            // Create archived project
+            // Create archived but saved project
             const now = Date.now();
             await db
                 .insertInto('projects')
@@ -742,7 +742,7 @@ describe('Admin Queries', () => {
                     owner_id: userId,
                     status: 'archived',
                     visibility: 'private',
-                    saved_once: 0,
+                    saved_once: 1,
                     created_at: now,
                     updated_at: now,
                 })
@@ -752,6 +752,49 @@ describe('Admin Queries', () => {
 
             expect(stats.totalProjects).toBe(2);
             expect(stats.activeProjects).toBe(1);
+        });
+
+        it('should exclude unsaved projects from counts', async () => {
+            const userId = await seedTestUser(db, { email: 'owner@test.com', user_id: 'owner' });
+
+            // Create saved projects (should be counted)
+            await seedTestProject(db, userId, { title: 'Saved Active', uuid: 'saved-1' });
+            await seedTestProject(db, userId, { title: 'Saved Active 2', uuid: 'saved-2' });
+
+            // Create unsaved projects (should NOT be counted)
+            const now = Date.now();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'unsaved-1',
+                    title: 'Unsaved Project 1',
+                    owner_id: userId,
+                    status: 'active',
+                    visibility: 'private',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'unsaved-2',
+                    title: 'Unsaved Project 2',
+                    owner_id: userId,
+                    status: 'active',
+                    visibility: 'private',
+                    saved_once: 0,
+                    created_at: now,
+                    updated_at: now,
+                })
+                .execute();
+
+            const stats = await getSystemStats(db);
+
+            // Only saved projects should be counted
+            expect(stats.totalProjects).toBe(2);
+            expect(stats.activeProjects).toBe(2);
         });
 
         it('should return consistent numbers', async () => {

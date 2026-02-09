@@ -127,6 +127,9 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
         // Remove trailing commas before } or ]
         decoded = decoded.replace(/,\s*([}\]])/g, '$1');
 
+        // Sanitize JSON to handle control characters from legacy versions
+        decoded = this.sanitizeJsonString(decoded);
+
         // Try to parse as JSON
         let parsed: Record<string, unknown> | null = null;
         try {
@@ -227,7 +230,106 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
     }
 
     /**
+     * Sanitize JSON string by escaping control characters inside string values.
+     * Based on common.js sanitizeJSONString function.
+     *
+     * Control characters inside JSON string values must be escaped:
+     * - 0x08 (backspace) -> \b
+     * - 0x09 (tab) -> \t
+     * - 0x0A (newline) -> \n
+     * - 0x0C (form feed) -> \f
+     * - 0x0D (carriage return) -> \r
+     * - Other control chars -> \uXXXX
+     *
+     * @param jsonString - The JSON string to sanitize
+     * @returns The sanitized JSON string
+     */
+    private sanitizeJsonString(jsonString: string): string {
+        if (!jsonString) return jsonString;
+
+        const BACKSPACE = 0x08;
+        const TAB = 0x09;
+        const NEWLINE = 0x0a;
+        const FORM_FEED = 0x0c;
+        const CARRIAGE_RETURN = 0x0d;
+        const DELETE = 0x7f;
+        const LINE_SEPARATOR = 0x2028;
+        const PARAGRAPH_SEPARATOR = 0x2029;
+
+        let inString = false;
+        let result = '';
+
+        for (let i = 0; i < jsonString.length; i++) {
+            const char = jsonString[i];
+
+            // Outside of a string value - just copy the character
+            if (!inString) {
+                if (char === '"') {
+                    inString = true;
+                }
+                result += char;
+                continue;
+            }
+
+            // Handle escape sequences - copy the backslash and next character as-is
+            if (char === '\\') {
+                const nextChar = jsonString[i + 1];
+                if (nextChar !== undefined) {
+                    result += char + nextChar;
+                    i++;
+                } else {
+                    result += char;
+                }
+                continue;
+            }
+
+            // End of string value
+            if (char === '"') {
+                inString = false;
+                result += char;
+                continue;
+            }
+
+            // Inside a string value - escape control characters
+            const charCode = char.charCodeAt(0);
+
+            switch (charCode) {
+                case BACKSPACE:
+                    result += '\\b';
+                    break;
+                case TAB:
+                    result += '\\t';
+                    break;
+                case NEWLINE:
+                    result += '\\n';
+                    break;
+                case FORM_FEED:
+                    result += '\\f';
+                    break;
+                case CARRIAGE_RETURN:
+                    result += '\\r';
+                    break;
+                case LINE_SEPARATOR:
+                case PARAGRAPH_SEPARATOR:
+                    result += '\\u' + charCode.toString(16).padStart(4, '0');
+                    break;
+                default:
+                    // Escape other control characters (C0, DEL, C1 control codes)
+                    if (charCode < 0x20 || charCode === DELETE || (charCode >= 0x80 && charCode <= 0x9f)) {
+                        result += '\\u' + charCode.toString(16).padStart(4, '0');
+                    } else {
+                        result += char;
+                    }
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Extract HTML content from fields list (JsIdevice format)
+     * Uses a custom extraction that doesn't convert \n to newlines,
+     * since the JSON inside the script tag uses \n as escape sequences.
      *
      * @param dict - Dictionary element
      * @returns HTML content
@@ -252,7 +354,8 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
                     for (const fieldInst of fieldInstances) {
                         const fieldClass = fieldInst.getAttribute('class') || '';
                         if (fieldClass.includes('TextAreaField') || fieldClass.includes('TextField')) {
-                            const content = this.extractTextAreaFieldContent(fieldInst);
+                            // Use custom extraction that preserves \n sequences for JSON
+                            const content = this.extractTextAreaFieldContentPreserveEscapes(fieldInst);
                             if (content) {
                                 contents.push(content);
                             }
@@ -264,6 +367,46 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
         }
 
         return contents.join('\n');
+    }
+
+    /**
+     * Extract TextAreaField content without converting \n to newlines.
+     * This is needed because Interactive Video content contains JSON
+     * where \n is a valid escape sequence that must be preserved.
+     *
+     * @param fieldInst - TextAreaField instance element
+     * @returns HTML content with \n preserved
+     */
+    private extractTextAreaFieldContentPreserveEscapes(fieldInst: Element | null): string {
+        if (!fieldInst) return '';
+        const dict = this.getDirectChildByTagName(fieldInst, 'dictionary');
+        if (!dict) return '';
+
+        const children = this.getChildElements(dict);
+        const contentKeys = ['content_w_resourcePaths', '_content', 'content'];
+
+        for (const targetKey of contentKeys) {
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (
+                    child.tagName === 'string' &&
+                    child.getAttribute('role') === 'key' &&
+                    child.getAttribute('value') === targetKey
+                ) {
+                    const valueEl = children[i + 1];
+                    if (valueEl && valueEl.tagName === 'unicode') {
+                        const value = valueEl.getAttribute('value') || valueEl.textContent || '';
+                        if (value.trim()) {
+                            // Only decode HTML entities, NOT \n sequences
+                            // The \n sequences are valid JSON escapes that must be preserved
+                            return this.decodeHtmlEntities(value);
+                        }
+                    }
+                }
+            }
+        }
+
+        return '';
     }
 
     /**
