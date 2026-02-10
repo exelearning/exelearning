@@ -1716,6 +1716,54 @@ export async function getBlockIconName(page: Page, blockIndex: number = 0): Prom
 }
 
 /**
+ * Get the block iconName from Yjs by block ID
+ *
+ * @param page - Playwright page
+ * @param blockId - The block ID (from DOM attribute)
+ * @returns The iconName value from Yjs, or null if not found
+ */
+export async function getBlockIconNameById(page: Page, blockId: string): Promise<string | null> {
+    return await page.evaluate(targetBlockId => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge) return null;
+
+        const docManager = bridge.getDocumentManager();
+        if (!docManager) return null;
+
+        const yDoc = docManager.getDoc();
+        if (!yDoc) return null;
+
+        // Helper to find a block by ID recursively in all pages
+        const findBlockById = (pages: any, targetId: string): any | null => {
+            for (let i = 0; i < pages.length; i++) {
+                const pageMap = pages.get(i);
+                const blocks = pageMap?.get('blocks');
+                if (blocks) {
+                    for (let j = 0; j < blocks.length; j++) {
+                        const block = blocks.get(j);
+                        if (block?.get('id') === targetId) {
+                            return block;
+                        }
+                    }
+                }
+                // Check nested pages
+                const subpages = pageMap?.get('pages');
+                if (subpages) {
+                    const found = findBlockById(subpages, targetId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+
+        const navigation = yDoc.getArray('navigation');
+        const block = findBlockById(navigation, targetBlockId);
+
+        return block?.get('iconName') || null;
+    }, blockId);
+}
+
+/**
  * Get the block ID from the current page at a given index
  *
  * @param page - Playwright page

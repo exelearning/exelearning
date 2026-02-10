@@ -351,8 +351,19 @@ export default class IdeviceBlockNode {
         let iconData = false;
         // Get icon id
         if (this.iconName) {
-            // Get theme icon
-            iconData = eXeLearning.app.themes.getThemeIcons()[this.iconName];
+            // Get theme icons object
+            const themeIcons = eXeLearning.app.themes.getThemeIcons() || {};
+            // First try direct lookup (iconName is the key in themeIcons)
+            iconData = themeIcons[this.iconName];
+            // If not found, search by icon.id or icon.value (same fallback as _syncBlockIcon)
+            if (!iconData) {
+                for (const icon of Object.values(themeIcons)) {
+                    if (icon.id === this.iconName || icon.value === this.iconName) {
+                        iconData = icon;
+                        break;
+                    }
+                }
+            }
             if (iconData) {
                 // Icon exists in actual theme
                 let newIconValue = this.makeIconValueElement(iconData);
