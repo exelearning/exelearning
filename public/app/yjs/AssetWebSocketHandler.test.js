@@ -1103,25 +1103,22 @@ describe('AssetWebSocketHandler', () => {
   });
 
   describe('_handleTriggerResync', () => {
-    it('calls _forceResync on document manager when not yet resynced', () => {
-      const mockDm = { _hasResynced: false, _forceResync: mock(() => undefined) };
+    it('calls rebroadcastAwareness on document manager', () => {
+      const mockDm = { rebroadcastAwareness: mock(() => true) };
       global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
 
       handler._handleTriggerResync({ reason: 'new-client-joined' });
 
-      expect(mockDm._hasResynced).toBe(true);
-      expect(mockDm._forceResync).toHaveBeenCalled();
+      expect(mockDm.rebroadcastAwareness).toHaveBeenCalledWith('server-trigger-resync');
 
       delete global.eXeLearning;
     });
 
-    it('does not call _forceResync when already resynced', () => {
-      const mockDm = { _hasResynced: true, _forceResync: mock(() => undefined) };
+    it('does not throw if rebroadcastAwareness is missing', () => {
+      const mockDm = {};
       global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
 
-      handler._handleTriggerResync({ reason: 'new-client-joined' });
-
-      expect(mockDm._forceResync).not.toHaveBeenCalled();
+      expect(() => handler._handleTriggerResync({ reason: 'new-client-joined' })).not.toThrow();
 
       delete global.eXeLearning;
     });

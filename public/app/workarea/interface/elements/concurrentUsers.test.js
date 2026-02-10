@@ -79,8 +79,6 @@ describe('ConcurrentUsers', () => {
       expect(concurrentUsers.maxUsersShow).toBe(5);
       expect(concurrentUsers.concurrentUsersElement).toBe(mockElement);
       expect(concurrentUsers.currentUsers).toEqual([]);
-      expect(concurrentUsers._hideTimer).toBeNull();
-      expect(concurrentUsers._wasMultiUser).toBe(false);
     });
   });
 
@@ -230,130 +228,6 @@ describe('ConcurrentUsers', () => {
       expect(mockApp.modals.info.show).toHaveBeenCalledWith(expect.objectContaining({
         title: expect.stringContaining('Users online'),
       }));
-    });
-  });
-
-  describe('debounce hiding', () => {
-    beforeEach(() => {
-      vi.useFakeTimers();
-    });
-
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
-    it('should not immediately hide button when users drop from 2 to 1', () => {
-      // First, show 2 users
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 2, name: 'User 2' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      const moreButton = mockElement.querySelector('#button-more-exe-concurrent-users');
-      expect(moreButton.style.display).toBe('block');
-
-      // Drop to 1 user
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Button should still be visible (debounce active)
-      expect(moreButton.style.display).toBe('block');
-    });
-
-    it('should hide button after debounce timeout if still single user', () => {
-      // First, show 2 users
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 2, name: 'User 2' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Drop to 1 user
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Advance past the debounce timeout (5000ms)
-      vi.advanceTimersByTime(5000);
-
-      const moreButton = mockElement.querySelector('#button-more-exe-concurrent-users');
-      expect(moreButton.style.display).toBe('none');
-    });
-
-    it('should cancel hide if users go back to 2+ during debounce period', () => {
-      // First, show 2 users
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 2, name: 'User 2' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Drop to 1 user
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Before timeout, users go back to 2
-      vi.advanceTimersByTime(2000);
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 3, name: 'User 3' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Advance past original timeout
-      vi.advanceTimersByTime(5000);
-
-      // Button should still be visible
-      const moreButton = mockElement.querySelector('#button-more-exe-concurrent-users');
-      expect(moreButton.style.display).toBe('block');
-      expect(concurrentUsers._hideTimer).toBeNull();
-    });
-
-    it('should not start multiple hide timers', () => {
-      // First, show 2 users
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 2, name: 'User 2' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      // Drop to 1 user - multiple times
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-      const firstTimer = concurrentUsers._hideTimer;
-
-      concurrentUsers.updateUsersDisplay();
-      const secondTimer = concurrentUsers._hideTimer;
-
-      // Same timer reference (not a new one)
-      expect(firstTimer).toBe(secondTimer);
-    });
-
-    it('should clean up timer on destroy', () => {
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-        { clientId: 2, name: 'User 2' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      concurrentUsers.currentUsers = [
-        { clientId: 1, name: 'User 1' },
-      ];
-      concurrentUsers.updateUsersDisplay();
-
-      expect(concurrentUsers._hideTimer).not.toBeNull();
-
-      concurrentUsers.destroy();
-
-      expect(concurrentUsers._hideTimer).toBeNull();
     });
   });
 

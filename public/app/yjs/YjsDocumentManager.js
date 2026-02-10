@@ -83,10 +83,6 @@ class YjsDocumentManager {
     // LocalStorage key for persisting dirty state
     this._dirtyStateKey = `exelearning_dirty_state_${projectId}`;
 
-    // Collaboration resync: when initiator was alone at init and a collaborator joins later,
-    // force a WebSocket reconnect to re-run the full Yjs sync handshake bidirectionally
-    this._hasResynced = false;
-
     // Bind beforeunload handler
     this._beforeUnloadHandler = this._handleBeforeUnload.bind(this);
     // Bind unload handler (always fires, even if beforeunload is cancelled)
@@ -371,7 +367,6 @@ class YjsDocumentManager {
     // If already synced, resolve immediately
     if (this.wsProvider?.synced) {
       Logger.log('[YjsDocumentManager] WebSocket already synced');
-      this._hasResynced = true;
       return;
     }
 
@@ -380,14 +375,12 @@ class YjsDocumentManager {
 
     if (!otherUsersPresent) {
       Logger.log('[YjsDocumentManager] Single user detected, skipping full sync wait');
-      this._setupCollaborationResync();
       return;
     }
 
     // Phase 2: Full sync wait (other users detected)
     Logger.log('[YjsDocumentManager] Other users detected, waiting for full sync');
     await this._waitForFullSync();
-    this._hasResynced = true;
   }
 
   /**
@@ -485,57 +478,25 @@ class YjsDocumentManager {
   }
 
   /**
-   * Setup awareness listener to trigger resync when the first collaborator joins.
-   * Only relevant when the initiator was alone during initialization (single-user path).
-   * When a remote user appears in awareness, forces a WebSocket reconnect to re-run
-   * the full Yjs sync handshake bidirectionally.
-   * @private
+   * Re-broadcast local awareness state without reconnecting the WebSocket.
+   * Useful when a new collaborator joins and we want immediate presence refresh.
+   * @param {string} reason
+   * @returns {boolean} true if rebroadcast was sent
    */
-  _setupCollaborationResync() {
-    if (!this.awareness || !this.wsProvider) return;
+  rebroadcastAwareness(reason = 'manual') {
+    if (!this.awareness || !this.wsProvider?.wsconnected) return false;
 
-    const resyncHandler = () => {
-      if (this._hasResynced) return;
-      const otherUsers = this.getOnlineUsers().filter(u => !u.isLocal);
-      if (otherUsers.length > 0) {
-        this._hasResynced = true;
-        this.awareness.off('update', resyncHandler);
-        Logger.log('[YjsDocumentManager] First collaborator detected, triggering resync...');
-        this._forceResync();
-      }
+    const localState = this.awareness.getLocalState();
+    if (!localState) return false;
+
+    const clonedState = {
+      ...localState,
+      user: localState.user ? { ...localState.user } : localState.user,
     };
-    this.awareness.on('update', resyncHandler);
-  }
 
-  /**
-   * Force a WebSocket reconnect to re-run the full Yjs sync handshake.
-   * Safe because:
-   * - Y.Doc and awareness state in memory are preserved across reconnection
-   * - AssetWebSocketHandler already handles reconnection (re-setups message handler on status change)
-   * - Brief disconnection (~100ms) is invisible to users
-   * @private
-   */
-  _forceResync() {
-    if (!this.wsProvider?.wsconnected) return;
-    // Small delay to let awareness fully propagate
-    setTimeout(() => {
-      if (this.wsProvider) {
-        this.wsProvider.disconnect();
-        setTimeout(() => {
-          if (this.wsProvider) {
-            this.wsProvider.connect();
-            // Re-broadcast awareness to speed up remote state recovery
-            if (this.awareness) {
-              const localState = this.awareness.getLocalState();
-              if (localState) {
-                this.awareness.setLocalState(localState);
-              }
-            }
-            Logger.log('[YjsDocumentManager] Resync reconnect complete');
-          }
-        }, 100);
-      }
-    }, 300);
+    this.awareness.setLocalState(clonedState);
+    Logger.log('[YjsDocumentManager] Awareness re-broadcast sent:', reason);
+    return true;
   }
 
   /**
@@ -779,6 +740,8 @@ class YjsDocumentManager {
       Logger.log(`[YjsDocumentManager] Connection status: ${status}`);
       if (status === 'connected') {
         this.emit('connectionChange', { connected: true });
+        // Refresh presence immediately after connect/reconnect.
+        this.rebroadcastAwareness('status-connected');
       } else if (status === 'disconnected') {
         this.emit('connectionChange', { connected: false });
       }

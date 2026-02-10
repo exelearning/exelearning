@@ -319,9 +319,8 @@ export async function handleWebSocketOpen(
             }
         })();
 
-        // Send trigger-resync to all existing clients so they re-sync with the new arrival.
-        // This is belt-and-suspenders for the client-side awareness-triggered resync:
-        // if awareness propagation is slow, the server message ensures timely resync.
+        // Ask existing clients to re-broadcast awareness when a new client joins.
+        // This keeps presence UI in sync without forcing reconnects.
         for (const existingConn of room.conns) {
             if (existingConn !== ws && existingConn.readyState === 1) {
                 try {
