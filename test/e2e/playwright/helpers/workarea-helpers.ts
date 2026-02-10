@@ -1531,6 +1531,15 @@ export async function getBlockIconSrc(page: Page, blockIndex: number = 0): Promi
 export async function blockHasEmptyIcon(page: Page, blockIndex: number = 0): Promise<boolean> {
     const block = page.locator('#node-content article.box').nth(blockIndex);
     const iconBtn = block.locator('header.box-head button.box-icon').first();
+
+    // Wait for the icon button to be attached to the DOM before evaluating
+    try {
+        await iconBtn.waitFor({ state: 'attached', timeout: 10000 });
+    } catch {
+        // If icon button doesn't exist after timeout, consider it as having no icon structure
+        return true;
+    }
+
     return await iconBtn.evaluate(el => el.classList.contains('exe-no-icon') || el.querySelector('svg') !== null);
 }
 

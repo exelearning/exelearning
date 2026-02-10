@@ -2491,6 +2491,29 @@ describe('ProjectManager', () => {
             // Sequential: must be in order
             expect(creationOrder).toEqual(['first', 'second', 'third']);
         });
+
+        it('skips iDevices with null htmlView', async () => {
+            const creationOrder = [];
+            projectManager.idevices.createIdeviceInContent = vi.fn().mockImplementation(async (idevice) => {
+                creationOrder.push(idevice.odeIdeviceTypeName);
+                return { ideviceContent: document.createElement('div') };
+            });
+
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [
+                    { htmlView: '<div>1</div>', odeIdeviceTypeName: 'first' },
+                    { htmlView: null, odeIdeviceTypeName: 'empty' },
+                    { htmlView: '<div>3</div>', odeIdeviceTypeName: 'third' },
+                ],
+            };
+
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+            await vi.advanceTimersByTimeAsync(projectManager.syncIntervalTime + 50);
+
+            // Empty idevice should be skipped
+            expect(creationOrder).toEqual(['first', 'third']);
+        });
     });
 
     describe('moveOdeComponentOnSamePage', () => {
