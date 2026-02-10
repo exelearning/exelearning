@@ -161,7 +161,7 @@ var $exeDevice = {
                     </div>                    
                     <span class="d-block mt-1 info">
                         <strong>${_('Example')}:</strong>
-                        <a href="https://www.youtube.com/watch?v=v_rGjOBtvhI" target="_blank" rel="noopener">https://www.youtube.com/watch?v=v_rGjOBtvhI</a>
+                        <a href="https://www.youtube.com/watch?v=g9gPKSGGkEk" target="_blank" rel="noopener">https://www.youtube.com/watch?v=g9gPKSGGkEk</a>
                     </span>
                 </div>
                 <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
@@ -447,6 +447,23 @@ var $exeDevice = {
                 typeof InteractiveVideo == 'object' &&
                 typeof InteractiveVideo.slides == 'object'
             ) {
+                // Update legacy image URLs (numbers) to asset:// URLs
+                if (InteractiveVideo.slides && Array.isArray(InteractiveVideo.slides)) {
+                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                        var slide = InteractiveVideo.slides[i];
+                        if (slide.type === 'image' && typeof slide.url === 'number') {
+                            // Find the image in the HTML
+                            var imgId = 'exe-interactive-video-img-' + slide.url;
+                            var imgEl = previousData.querySelector('#' + imgId);
+                            if (imgEl && imgEl.src) {
+                                slide.url = imgEl.src;
+                            } else {
+                                console.warn('[InteractiveVideo] Could not find image element', imgId);
+                            }
+                        }
+                    }
+                }
+
                 top.interactiveVideoEditor.activityToSave = InteractiveVideo;
                 // i18n
                 InteractiveVideo.scorm =
@@ -674,7 +691,7 @@ var $exeDevice = {
             if (myVideo.indexOf('https://www.youtube.com/watch?v=') != 0) {
                 eXe.app.alert(
                     _('Wrong URL. Expected format:') +
-                        ' https://www.youtube.com/watch?v=v_rGjOBtvhI'
+                        ' https://www.youtube.com/watch?v=g9gPKSGGkEk'
                 );
                 return false;
             }
@@ -750,7 +767,10 @@ var $exeDevice = {
                             '" id="exe-interactive-video-img-' +
                             i +
                             '" alt="" /></p>';
-                        slide.url = i;
+                        // Only replace URL with index for legacy relative paths (not asset:// or blob://)
+                        if (slide.url.indexOf('asset://') !== 0 && slide.url.indexOf('blob:') !== 0) {
+                            slide.url = i;
+                        }
                     }
                 }
             }

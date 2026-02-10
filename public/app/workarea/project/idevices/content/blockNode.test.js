@@ -1427,6 +1427,183 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
+    describe('getLockedIdevicesInfo', () => {
+        it('returns empty array when Yjs is disabled', () => {
+            eXeLearning.app.project._yjsEnabled = false;
+            block.idevices = [
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'User A', lockUserColor: '#f00' }) },
+            ];
+            expect(block.getLockedIdevicesInfo()).toEqual([]);
+        });
+
+        it('returns empty array when no iDevices are locked', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'block-id-1', isLockedByOtherUser: () => false, getLockInfo: () => null },
+                { blockId: 'block-id-1', isLockedByOtherUser: () => false, getLockInfo: () => null },
+            ];
+            expect(block.getLockedIdevicesInfo()).toEqual([]);
+        });
+
+        it('returns locked user info for locked iDevices', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+            ];
+            const result = block.getLockedIdevicesInfo();
+            expect(result).toEqual([{ name: 'Alice', color: '#f00' }]);
+        });
+
+        it('deduplicates users by name', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+            ];
+            const result = block.getLockedIdevicesInfo();
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe('Alice');
+        });
+
+        it('includes multiple different users', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Bob', lockUserColor: '#0f0' }) },
+            ];
+            const result = block.getLockedIdevicesInfo();
+            expect(result).toHaveLength(2);
+            expect(result.map(u => u.name)).toEqual(['Alice', 'Bob']);
+        });
+
+        it('ignores iDevices from other blocks', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'other-block', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+                { blockId: 'block-id-1', isLockedByOtherUser: () => false, getLockInfo: () => null },
+            ];
+            expect(block.getLockedIdevicesInfo()).toEqual([]);
+        });
+
+        it('handles iDevices without isLockedByOtherUser method gracefully', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            block.idevices = [
+                { blockId: 'block-id-1' },
+                { blockId: 'block-id-1', isLockedByOtherUser: () => true, getLockInfo: () => ({ lockUserName: 'Alice', lockUserColor: '#f00' }) },
+            ];
+            const result = block.getLockedIdevicesInfo();
+            expect(result).toHaveLength(1);
+            expect(result[0].name).toBe('Alice');
+        });
+    });
+
+    describe('addBehaviourButtonDeleteBlock - locked iDevices warning', () => {
+        let deleteButton;
+
+        beforeEach(() => {
+            // Generate block content with buttons so addBehaviourButtonDeleteBlock can find the button
+            block.blockId = 'test-block-id';
+            vi.spyOn(block, 'addBehaviourButtonDropDown').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveUpBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonMoveDownBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonPropertiesBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourButtonCloneBlock').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourMoveToPageBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourExportBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addBehaviourToggleBlockButton').mockImplementation(() => {});
+            vi.spyOn(block, 'addTooltips').mockImplementation(() => {});
+            vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});
+            vi.spyOn(block, 'remove').mockImplementation(() => {});
+
+            // Build buttons element (which registers the delete handler internally)
+            block.makeBlockButtonsElement();
+            deleteButton = block.blockButtons.querySelector('#deleteBlocktest-block-id');
+
+            // Mock jQuery $ for the handler
+            global.$ = vi.fn(() => ({
+                attr: vi.fn(() => 'false'),
+                trigger: vi.fn(),
+            }));
+
+            // Mock isAvalaibleOdeComponent to resolve OK
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+        });
+
+        afterEach(() => {
+            delete global.$;
+        });
+
+        it('deletes directly when no iDevices are locked', async () => {
+            vi.spyOn(block, 'getLockedIdevicesInfo').mockReturnValue([]);
+
+            deleteButton.click();
+            await vi.waitFor(() => {
+                expect(block.remove).toHaveBeenCalledWith(true);
+            });
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+        });
+
+        it('shows warning modal when iDevices are locked', async () => {
+            vi.spyOn(block, 'getLockedIdevicesInfo').mockReturnValue([
+                { name: 'Alice', color: '#f00' },
+            ]);
+
+            deleteButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+            // Block should NOT be removed yet (user hasn't confirmed)
+            expect(block.remove).not.toHaveBeenCalled();
+        });
+
+        it('shows multiple user names in warning', async () => {
+            vi.spyOn(block, 'getLockedIdevicesInfo').mockReturnValue([
+                { name: 'Alice', color: '#f00' },
+                { name: 'Bob', color: '#0f0' },
+            ]);
+
+            deleteButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+            const callArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            expect(callArgs.body).toContain('Alice');
+            expect(callArgs.body).toContain('Bob');
+            expect(callArgs.focusCancelButton).toBe(true);
+        });
+
+        it('executes deletion when user confirms in modal', async () => {
+            vi.spyOn(block, 'getLockedIdevicesInfo').mockReturnValue([
+                { name: 'Alice', color: '#f00' },
+            ]);
+
+            deleteButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+
+            // Simulate user confirming
+            const callArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            callArgs.confirmExec();
+
+            expect(block.remove).toHaveBeenCalledWith(true);
+            expect(eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode).toHaveBeenCalled();
+        });
+
+        it('uses singular message for one locked user', async () => {
+            vi.spyOn(block, 'getLockedIdevicesInfo').mockReturnValue([
+                { name: 'Alice', color: '#f00' },
+            ]);
+
+            deleteButton.click();
+            await vi.waitFor(() => {
+                expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
+            });
+            const callArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            expect(callArgs.body).toContain('An iDevice in this box is being edited by another user');
+        });
+    });
+
     describe('removeIdevices', () => {
         it('only removes iDevices that belong to this block', () => {
             const mockIdevice1 = {

@@ -1423,6 +1423,58 @@ describe('IdevicesEngine', () => {
 
             expect(() => engine._updateIdevicePresence(users)).not.toThrow();
         });
+
+        it('should trigger button re-render when lock state changes', () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                yjsComponentId: null,
+                lockedByRemote: false,
+                lockUserName: null,
+                lockUserColor: null,
+                updateLockIndicator: vi.fn(),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            // Add a DOM container for the component
+            const container = document.createElement('div');
+            container.classList.add('idevice-editor-avatar');
+            container.setAttribute('data-component-id', 'comp-1');
+            document.body.appendChild(container);
+
+            const users = [
+                { editingComponentId: 'comp-1', name: 'RemoteUser', color: '#f00', isLocal: false },
+            ];
+
+            engine._updateIdevicePresence(users);
+
+            expect(mockIdevice.lockedByRemote).toBe(true);
+            expect(mockIdevice.lockUserName).toBe('RemoteUser');
+            expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
+        });
+
+        it('should clear lock state when remote user stops editing', () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                yjsComponentId: null,
+                lockedByRemote: true,
+                lockUserName: 'RemoteUser',
+                lockUserColor: '#f00',
+                updateLockIndicator: vi.fn(),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            const container = document.createElement('div');
+            container.classList.add('idevice-editor-avatar');
+            container.setAttribute('data-component-id', 'comp-1');
+            document.body.appendChild(container);
+
+            // No users editing anymore
+            engine._updateIdevicePresence([]);
+
+            expect(mockIdevice.lockedByRemote).toBe(false);
+            expect(mockIdevice.lockUserName).toBeNull();
+            expect(mockIdevice.updateLockIndicator).toHaveBeenCalled();
+        });
     });
 
     describe('_renderIdeviceEditorAvatar', () => {
