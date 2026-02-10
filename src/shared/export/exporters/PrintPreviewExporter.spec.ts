@@ -25,12 +25,15 @@ const createMockDocument = (pages: ExportPage[] = [], meta: Partial<ExportMetada
 
 // Mock resource provider
 const createMockResourceProvider = (): ResourceProvider => ({
-    getThemeFiles: async () => [],
-    getThemeFile: async () => null,
-    getIdeviceFiles: async () => [],
-    getIdeviceFile: async () => null,
-    getLibraryFiles: async () => [],
-    getLibraryFile: async () => null,
+    fetchTheme: async () => new Map(),
+    fetchIdeviceResources: async () => new Map(),
+    fetchBaseLibraries: async () => new Map(),
+    fetchLibraryFiles: async () => new Map(),
+    fetchScormFiles: async () => new Map(),
+    normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, ''),
+    fetchExeLogo: async () => null,
+    fetchContentCss: async () => new Map(),
+    fetchGlobalFontFiles: async () => null,
 });
 
 describe('PrintPreviewExporter', () => {
@@ -489,6 +492,102 @@ describe('PrintPreviewExporter', () => {
         it('should call $exeExport.init()', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('$exeExport.init()');
+        });
+    });
+
+    describe('Icon Resolution via setThemeIconFiles', () => {
+        it('should resolve SVG icons when theme has SVG icon files', async () => {
+            const pagesWithIcon = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            const provider = createMockResourceProvider();
+            provider.fetchTheme = async () => {
+                const files = new Map<string, Uint8Array>();
+                files.set('style.css', new Uint8Array(0));
+                files.set('icons/activity.svg', new Uint8Array(0));
+                return files;
+            };
+
+            const doc = createMockDocument(pagesWithIcon);
+            const exp = new PrintPreviewExporter(doc, provider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('icons/activity.svg');
+        });
+
+        it('should fall back to .png when theme fetch fails', async () => {
+            const pagesWithIcon = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            const provider = createMockResourceProvider();
+            provider.fetchTheme = async () => {
+                throw new Error('Theme not available');
+            };
+
+            const doc = createMockDocument(pagesWithIcon);
+            const exp = new PrintPreviewExporter(doc, provider);
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('icons/activity.png');
+        });
+
+        it('should fall back to .png when theme has no icon files', async () => {
+            const pagesWithIcon = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            const doc = createMockDocument(pagesWithIcon);
+            const exp = new PrintPreviewExporter(doc, createMockResourceProvider());
+            const result = await exp.generatePreview();
+
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('icons/activity.png');
         });
     });
 });

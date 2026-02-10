@@ -82,9 +82,6 @@ export class Html5Exporter extends BaseExporter {
                 console.log(`[Html5Exporter] Theme '${themeName}' files count: ${themeFilesMap.size}`);
             }
 
-            // Configure iDevice renderer with theme files for icon resolution
-            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
-
             // Override favicon if provided in options
             const faviconInfo = html5Options?.faviconPath
                 ? { path: html5Options.faviconPath, type: html5Options.faviconType || 'image/x-icon' }
@@ -482,6 +479,9 @@ export class Html5Exporter extends BaseExporter {
             themeRootFiles.push('style.css', 'style.js');
         }
 
+        // Configure iDevice renderer with theme files for icon resolution (SVG vs PNG)
+        this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
         return { themeFilesMap, themeRootFiles, faviconInfo };
     }
 
@@ -564,9 +564,6 @@ export class Html5Exporter extends BaseExporter {
                 themeRootFiles,
                 faviconInfo: detectedFavicon,
             } = await this.prepareThemeData(themeName);
-
-            // Configure iDevice renderer with theme files for icon resolution
-            this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
             // Override favicon if provided in options
             const faviconInfo = options?.faviconPath

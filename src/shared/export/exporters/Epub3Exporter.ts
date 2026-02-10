@@ -887,6 +887,9 @@ td, th {
             themeRootFiles.push('style.css', 'style.js');
         }
 
+        // Configure iDevice renderer with theme files for icon resolution (SVG vs PNG)
+        this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+
         return { themeFilesMap, themeRootFiles, faviconInfo };
     }
 
