@@ -223,6 +223,116 @@ test.describe('Real-Time Collaboration', () => {
         });
     });
 
+    test.describe('Block Deletion with Locked iDevices', () => {
+        test('should warn when deleting a block containing iDevices locked by another user', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Setup: Both clients on same project
+            const projectUuid = await createProject(authenticatedPage, 'Block Delete Lock Test');
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            const navA = new NavigationPage(authenticatedPage);
+            const navB = new NavigationPage(secondAuthenticatedPage);
+            const workareaA = new WorkareaPage(authenticatedPage);
+
+            // Client A creates a page and adds a text iDevice
+            const pageName = `Lock Test Page ${Date.now()}`;
+            await navA.createNodeAtRoot(pageName);
+            await navB.waitForNodeInNav(pageName);
+
+            await workareaA.addTextIdevice();
+
+            // The iDevice starts in edition mode after being added; save it first
+            const ideviceBlock = authenticatedPage.locator('#node-content article .idevice_node.text').first();
+            await ideviceBlock.waitFor({ timeout: 10000 });
+            const saveBtn = ideviceBlock.locator('.btn-save-idevice');
+            await saveBtn.waitFor({ timeout: 10000 });
+            await saveBtn.click();
+
+            // Wait for export mode (save complete)
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const el = document.querySelector('#node-content article .idevice_node.text');
+                    return el?.getAttribute('mode') === 'export';
+                },
+                { timeout: 15000 },
+            );
+
+            // Client A enters edit mode on the iDevice (acquires lock)
+            const editBtn = ideviceBlock.locator('.btn-edit-idevice');
+            await editBtn.waitFor({ timeout: 10000 });
+            await editBtn.click();
+
+            // Wait for edition mode to be active
+            await authenticatedPage.waitForFunction(
+                () => {
+                    const el = document.querySelector('#node-content article .idevice_node.text');
+                    return el?.getAttribute('mode') === 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            // Wait for lock to propagate via Yjs
+            await authenticatedPage.waitForTimeout(2000);
+
+            // Client B navigates to the same page
+            await navB.selectNodeByTitle(pageName);
+            await secondAuthenticatedPage.waitForTimeout(2000);
+
+            // Wait for the iDevice to appear on Client B's view
+            await secondAuthenticatedPage
+                .locator('#node-content article .idevice_node.text')
+                .first()
+                .waitFor({ timeout: 15000 });
+
+            // Client B: find the block (article.box) containing the iDevice and click Delete box
+            const blockArticle = secondAuthenticatedPage.locator('#node-content article.box').first();
+            await blockArticle.waitFor({ timeout: 10000 });
+            const blockId = await blockArticle.getAttribute('id');
+
+            // Enable advanced mode to see the Delete box option
+            await secondAuthenticatedPage.evaluate(() => {
+                const advBtn = document.querySelector('.btn-advanced-mode, #btn-advanced-mode');
+                if (advBtn) (advBtn as HTMLElement).click();
+            });
+            await secondAuthenticatedPage.waitForTimeout(300);
+
+            // Open the block dropdown menu
+            const dropdownToggle = blockArticle.locator('[data-bs-toggle="dropdown"]').first();
+            await dropdownToggle.click();
+            await secondAuthenticatedPage.waitForTimeout(300);
+
+            // Click "Delete box" button
+            const deleteBtn = secondAuthenticatedPage.locator(`#deleteBlock${blockId}`);
+            await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
+            await deleteBtn.click();
+
+            // Assert: confirmation modal appears with warning text
+            const confirmModal = secondAuthenticatedPage.locator('#modalConfirm');
+            await confirmModal.waitFor({ state: 'visible', timeout: 10000 });
+
+            // Verify the modal contains warning about the other user
+            const modalBody = confirmModal.locator('.modal-body');
+            const bodyText = await modalBody.textContent();
+            expect(bodyText).toContain('Warning');
+
+            // Click Cancel to keep the block intact
+            const cancelBtn = confirmModal.locator('button.cancel');
+            await cancelBtn.click();
+            await secondAuthenticatedPage.waitForTimeout(500);
+
+            // Assert: block is still present after cancelling
+            const blockStillExists = await secondAuthenticatedPage.locator(`#${blockId}`).count();
+            expect(blockStillExists).toBeGreaterThan(0);
+        });
+    });
+
     test.describe('Content Editing Sync', () => {
         test('should sync content edits between clients', async ({
             authenticatedPage,
