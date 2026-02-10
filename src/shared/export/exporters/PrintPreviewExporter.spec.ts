@@ -516,26 +516,98 @@ describe('PrintPreviewExporter', () => {
                             type: 'text',
                             components: [
                                 // Version divs
-                                { id: 'c1', order: 0, properties: {}, type: 'text', content: '<div class="sopa-version js-hidden">Sopa Version</div>' },
-                                { id: 'c2', order: 1, properties: {}, type: 'text', content: '<div class="candado-version js-hidden">Candado Version</div>' },
+                                {
+                                    id: 'c1',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="sopa-version js-hidden">Sopa Version</div>',
+                                },
+                                {
+                                    id: 'c2',
+                                    order: 1,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="candado-version js-hidden">Candado Version</div>',
+                                },
                                 // BNS divs
-                                { id: 'c3', order: 2, properties: {}, type: 'text', content: '<div class="selecciona-bns js-hidden">Selecciona BNS</div>' },
-                                { id: 'c4', order: 3, properties: {}, type: 'text', content: '<div class="quext-bns js-hidden">Quext BNS</div>' },
+                                {
+                                    id: 'c3',
+                                    order: 2,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="selecciona-bns js-hidden">Selecciona BNS</div>',
+                                },
+                                {
+                                    id: 'c4',
+                                    order: 3,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="quext-bns js-hidden">Quext BNS</div>',
+                                },
                                 // Images/Links
-                                { id: 'c5', order: 4, properties: {}, type: 'text', content: '<img src="img.jpg" class="js-hidden mapa-LinkImagesMapas">' },
-                                { id: 'c6', order: 5, properties: {}, type: 'text', content: '<img src="img2.jpg" class=" js-hidden mapa-LinkImagesSlides">' },
-                                { id: 'c7', order: 6, properties: {}, type: 'text', content: '<img src="img3.jpg" class="js-hidden mapa-ImageMap">' },
-                                { id: 'c8', order: 7, properties: {}, type: 'text', content: '<a href="#" class="js-hidden selecciona-LinkImages">Link 1</a>' },
-                                { id: 'c9', order: 8, properties: {}, type: 'text', content: '<a href="#" class="js-hidden adivina-LinkImages">Link 2</a>' },
+                                {
+                                    id: 'c5',
+                                    order: 4,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<img src="img.jpg" class="js-hidden mapa-LinkImagesMapas">',
+                                },
+                                {
+                                    id: 'c6',
+                                    order: 5,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<img src="img2.jpg" class=" js-hidden mapa-LinkImagesSlides">',
+                                },
+                                {
+                                    id: 'c7',
+                                    order: 6,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<img src="img3.jpg" class="js-hidden mapa-ImageMap">',
+                                },
+                                {
+                                    id: 'c8',
+                                    order: 7,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="js-hidden selecciona-LinkImages">Link 1</a>',
+                                },
+                                {
+                                    id: 'c9',
+                                    order: 8,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="js-hidden adivina-LinkImages">Link 2</a>',
+                                },
                                 // Control cases (should NOT be hidden)
-                                { id: 'c10', order: 9, properties: {}, type: 'text', content: '<div class="other-version">Visible Version</div>' }, // No js-hidden
-                                { id: 'c11', order: 10, properties: {}, type: 'text', content: '<div class="js-hidden">Just Hidden Div</div>' }, // No -version/-bns
-                                { id: 'c12', order: 11, properties: {}, type: 'text', content: '<img src="ok.jpg" class="mapa-ImageMap">' } // No js-hidden
-                            ]
-                        }
+                                {
+                                    id: 'c10',
+                                    order: 9,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="other-version">Visible Version</div>',
+                                }, // No js-hidden
+                                {
+                                    id: 'c11',
+                                    order: 10,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="js-hidden">Just Hidden Div</div>',
+                                }, // No -version/-bns
+                                {
+                                    id: 'c12',
+                                    order: 11,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<img src="ok.jpg" class="mapa-ImageMap">',
+                                }, // No js-hidden
+                            ],
+                        },
                     ],
-                    properties: {}
-                }
+                    properties: {},
+                },
             ]);
 
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
@@ -560,7 +632,9 @@ describe('PrintPreviewExporter', () => {
                 // We'll escape the snippet for regex and allow for inserted style
                 // This is getting complicated to verify strictly with simple expectation.
                 // Let's rely on finding `style="display: none !important"` near the identifying class/content.
-                expect(result.html).toMatch(new RegExp(snippet.replace('>', '.*style=.*display:\\s*none.*!important.*>')));
+                expect(result.html).toMatch(
+                    new RegExp(snippet.replace('>', '.*style=.*display:\\s*none.*!important.*>')),
+                );
             };
 
             // Can't easily use regex match on exact input string because attributes might move if we parsed them?
@@ -602,29 +676,73 @@ describe('PrintPreviewExporter', () => {
                             type: 'text',
                             components: [
                                 // Audio links
-                                { id: 'c1', order: 0, properties: {}, type: 'text', content: '<a href="#" class="js-hidden seleccionamedias-LinkAudios-1">Audio 1</a>' },
-                                { id: 'c2', order: 1, properties: {}, type: 'text', content: '<a href="#" class="js-hidden sopa-LinkAudios">Audio 2</a>' },
+                                {
+                                    id: 'c1',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="js-hidden seleccionamedias-LinkAudios-1">Audio 1</a>',
+                                },
+                                {
+                                    id: 'c2',
+                                    order: 1,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="js-hidden sopa-LinkAudios">Audio 2</a>',
+                                },
                                 // Video links
-                                { id: 'c3', order: 2, properties: {}, type: 'text', content: '<a href="#" class="js-hidden vquext-LinkLocalVideo">Video 1</a>' },
+                                {
+                                    id: 'c3',
+                                    order: 2,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="js-hidden vquext-LinkLocalVideo">Video 1</a>',
+                                },
                                 // Specific P tag
-                                { id: 'c4', order: 3, properties: {}, type: 'text', content: '<p class="exe-mindmap-code">Mindmap Code</p>' },
+                                {
+                                    id: 'c4',
+                                    order: 3,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<p class="exe-mindmap-code">Mindmap Code</p>',
+                                },
                                 // Specific Divs
-                                { id: 'c5', order: 4, properties: {}, type: 'text', content: '<div class="form-Data js-hidden">Form Data</div>' },
-                                { id: 'c6', order: 5, properties: {}, type: 'text', content: '<div class="completa-DataGame js-hidden">Completa DataGame</div>' },
+                                {
+                                    id: 'c5',
+                                    order: 4,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="form-Data js-hidden">Form Data</div>',
+                                },
+                                {
+                                    id: 'c6',
+                                    order: 5,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="completa-DataGame js-hidden">Completa DataGame</div>',
+                                },
                                 // Controls
-                                { id: 'c7', order: 6, properties: {}, type: 'text', content: '<a href="#" class="sopa-LinkAudios">Visible Audio</a>' } // No js-hidden
-                            ]
-                        }
+                                {
+                                    id: 'c7',
+                                    order: 6,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<a href="#" class="sopa-LinkAudios">Visible Audio</a>',
+                                }, // No js-hidden
+                            ],
+                        },
                     ],
-                    properties: {}
-                }
+                    properties: {},
+                },
             ]);
 
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
             const result = await exp.generatePreview();
 
             // 1. Audio/Video
-            expect(result.html).toContain('class="js-hidden seleccionamedias-LinkAudios-1" style="display: none !important"');
+            expect(result.html).toContain(
+                'class="js-hidden seleccionamedias-LinkAudios-1" style="display: none !important"',
+            );
             expect(result.html).toContain('class="js-hidden sopa-LinkAudios" style="display: none !important"');
             expect(result.html).toContain('class="js-hidden vquext-LinkLocalVideo" style="display: none !important"');
 
@@ -637,7 +755,6 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).not.toContain('class="sopa-LinkAudios" style="display: none !important"');
         });
     });
-
 
     describe('component deduplication', () => {
         it('should remove consecutive duplicate components with shared ID prefix', async () => {
@@ -659,21 +776,21 @@ describe('PrintPreviewExporter', () => {
                                     order: 0,
                                     properties: {},
                                     type: 'complete',
-                                    content: '<div>Component 1 (Keep)</div>'
+                                    content: '<div>Component 1 (Keep)</div>',
                                 },
                                 {
                                     id: '20251021091936KBGQGU',
                                     order: 1,
                                     properties: {},
                                     type: 'complete',
-                                    content: '<div>Component 2 (Drop)</div>'
+                                    content: '<div>Component 2 (Drop)</div>',
                                 },
                                 {
                                     id: '20251021091936GSEMZX',
                                     order: 2,
                                     properties: {},
                                     type: 'complete',
-                                    content: '<div>Component 3 (Drop)</div>'
+                                    content: '<div>Component 3 (Drop)</div>',
                                 },
                                 // Another independent component (Different prefix)
                                 {
@@ -681,7 +798,7 @@ describe('PrintPreviewExporter', () => {
                                     order: 3,
                                     properties: {},
                                     type: 'complete',
-                                    content: '<div>Component 4 (Keep - Different Prefix)</div>'
+                                    content: '<div>Component 4 (Keep - Different Prefix)</div>',
                                 },
                                 // Another sequence (Different prefix from first group)
                                 {
@@ -689,7 +806,7 @@ describe('PrintPreviewExporter', () => {
                                     order: 4,
                                     properties: {},
                                     type: 'complete',
-                                    content: '<div>Component 5 (Drop - Duplicate of 4)</div>'
+                                    content: '<div>Component 5 (Drop - Duplicate of 4)</div>',
                                 },
                                 // Different Type (Should break chain even if prefix matches? Unlikely scenario but good control)
                                 {
@@ -697,13 +814,13 @@ describe('PrintPreviewExporter', () => {
                                     order: 5,
                                     properties: {},
                                     type: 'text',
-                                    content: '<div>Component 6 (Keep - Different Type)</div>'
-                                }
-                            ]
-                        }
+                                    content: '<div>Component 6 (Keep - Different Type)</div>',
+                                },
+                            ],
+                        },
                     ],
-                    properties: {}
-                }
+                    properties: {},
+                },
             ]);
 
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
@@ -772,6 +889,48 @@ describe('PrintPreviewExporter', () => {
             // highlighter mappings
             expect(result.html).toContain('/app/common/exe_highlighter/exe_highlighter.js"');
             expect(result.html).not.toContain('src="libs/exe_highlighter/exe_highlighter.js"');
+        });
+
+        it('should handle empty version string correctly (static mode)', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    parentId: null,
+                    order: 0,
+                    title: 'Title',
+                    // content property doesn't exist on ExportPage, use blocks/components
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'b1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: '<script src="libs/jquery/jquery.min.js"></script>',
+                                },
+                            ],
+                        },
+                    ],
+                    properties: {},
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            // Pass empty string as version
+            const result = await exp.generatePreview({
+                baseUrl: 'http://localhost:8080',
+                basePath: '',
+                version: '',
+            });
+
+            // Should NOT contain v1.0.0 or any version segment
+            // Expected: http://localhost:8080/libs/jquery/jquery.min.js
+            expect(result.html).toContain('src="http://localhost:8080/libs/jquery/jquery.min.js"');
+            expect(result.html).not.toContain('/v1.0.0/');
         });
     });
 

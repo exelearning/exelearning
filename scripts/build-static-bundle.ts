@@ -1071,7 +1071,7 @@ export function buildApiParameters(): ApiParameters {
                         default: 'Theme default',
                         opendyslexic: 'OpenDyslexic',
                         andika: 'Andika',
-                        'atkinson-hyperlegible-next':'Atkinson Hyperlegible Next',
+                        'atkinson-hyperlegible-next': 'Atkinson Hyperlegible Next',
                         nunito: 'Nunito',
                         'playwrite-es': 'Playwrite ES',
                     },
@@ -1444,6 +1444,11 @@ async function buildStaticBundle() {
     copyDirRecursive(
         path.join(projectRoot, 'public/libs'),
         path.join(outputDir, 'libs')
+    );
+    // Copy mermaid library (it's in app/common/mermaid but needed in libs/mermaid for static export)
+    copyDirRecursive(
+        path.join(projectRoot, 'public/app/common/mermaid'),
+        path.join(outputDir, 'libs/mermaid')
     );
     console.log('  Copied libs/');
 

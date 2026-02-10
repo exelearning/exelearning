@@ -111,9 +111,14 @@ export default class ModalPrintPreview {
             yjsBridge.documentManager,
             yjsBridge.resourceFetcher || null,
             {
-                baseUrl: window.eXeLearning?.config?.baseURL || window.location.origin,
+                // In static mode, use window.location.origin to ensure absolute paths in Blob
+                // config.baseURL is '.' which breaks in blob: URLs
+                baseUrl: window.eXeLearning?.config?.isStaticMode 
+                    ? window.location.origin 
+                    : (window.eXeLearning?.config?.baseURL || window.location.origin),
                 basePath: window.eXeLearning?.config?.basePath || '',
-                version: window.eXeLearning?.config?.version || 'v1.0.0',
+                // In static mode, use empty version to avoid path issues (libs are at root relative)
+                version: window.eXeLearning?.config?.isStaticMode ? '' : (window.eXeLearning?.config?.version || 'v1.0.0'),
             },
             yjsBridge.assetManager || null
         );

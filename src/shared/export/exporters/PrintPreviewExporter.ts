@@ -4,7 +4,15 @@
  * Generates a single-page HTML preview for printing.
  * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
-import { ExportDocument, ExportPage, ExportComponent, ResourceProvider, AssetProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../../interfaces';
+import {
+    ExportDocument,
+    ExportPage,
+    ExportComponent,
+    ResourceProvider,
+    AssetProvider,
+    LatexPreRenderResult,
+    MermaidPreRenderResult,
+} from '../../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 
@@ -428,12 +436,20 @@ figure img {
     ): string {
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
-        const version = options.version || 'v1.0.0';
+        // If version is explicitly empty string (static mode), keep it empty.
+        // Only default to v1.0.0 if undefined.
+        const version = options.version === undefined ? 'v1.0.0' : options.version;
 
         // Helper to build versioned server path
         const getPath = (path: string) => {
             const cleanPath = path.startsWith('/') ? path.slice(1) : path;
             const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+
+            // If version is empty, don't include it in path
+            if (!version) {
+                return `${baseUrl}${cleanBasePath}/${cleanPath}`;
+            }
+
             return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
         };
 
@@ -657,8 +673,11 @@ $(function() {
                         // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
                         // Example ID: 20251021091936ZBADPV
                         const prefixLength = 14;
-                        if (lastComponent.id && component.id &&
-                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)) {
+                        if (
+                            lastComponent.id &&
+                            component.id &&
+                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)
+                        ) {
                             isDuplicate = true;
                         }
                     }
@@ -671,13 +690,13 @@ $(function() {
 
                 return {
                     ...block,
-                    components: uniqueComponents
+                    components: uniqueComponents,
                 };
             });
 
             return {
                 ...page,
-                blocks: newBlocks
+                blocks: newBlocks,
                 // ExportPage is flat list, no children property
             };
         });
