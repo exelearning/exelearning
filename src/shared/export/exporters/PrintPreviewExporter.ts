@@ -4,14 +4,7 @@
  * Generates a single-page HTML preview for printing.
  * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
-import type {
-    ExportDocument,
-    ExportPage,
-    ResourceProvider,
-    AssetProvider,
-    LatexPreRenderResult,
-    MermaidPreRenderResult,
-} from '../interfaces';
+import { ExportDocument, ExportPage, ExportComponent, ResourceProvider, AssetProvider, LatexPreRenderResult, MermaidPreRenderResult } from '../../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 
@@ -105,7 +98,10 @@ export class PrintPreviewExporter {
             }
 
             // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
-            const processedPages = await this.preprocessPages(pages);
+            let processedPages = await this.preprocessPages(pages);
+
+            // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
+            processedPages = this.deduplicateComponents(processedPages);
 
             const usedIdevices = this.getUsedIdevices(processedPages);
 
@@ -138,9 +134,6 @@ export class PrintPreviewExporter {
             // 2. Patch relative paths (libs/, theme/) to server absolute paths
             html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
 
-            // 2. Patch relative paths (libs/, theme/) to server absolute paths
-            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
-
             // 3. Make hidden feedback elements visible (remove display: none)
             html = this.revealFeedback(html);
 
@@ -159,6 +152,7 @@ export class PrintPreviewExporter {
             }
             return { success: true, html };
         } catch (error) {
+            console.error('PrintPreview generate error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
         }
@@ -253,12 +247,12 @@ figure img {
             await this.buildAssetExportPathMap();
         }
 
-        // Deep clone pages to avoid mutating original structure
-        // AND filter visible pages at the same time
-        const filteredPages = this.filterVisiblePages(pages);
+        // Filter out hidden pages
+        const visiblePages = this.filterVisiblePages(pages);
+
         // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
         // Let's do a deep clone of the filtered result to be safe and consistent with previous logic
-        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(filteredPages));
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(visiblePages));
 
         for (const page of clonedPages) {
             for (const block of page.blocks || []) {
@@ -640,6 +634,52 @@ $(function() {
             }
 
             return match;
+        });
+    }
+
+    /**
+     * Deduplicate consecutive components that share the same type and ID prefix (timestamp)
+     * This handles cases like 'Complete' iDevice where it splits into multiple components
+     * but we only want to show the first one in print.
+     */
+    private deduplicateComponents(pages: ExportPage[]): ExportPage[] {
+        return pages.map(page => {
+            const blocks = page.blocks || [];
+            const newBlocks = blocks.map(block => {
+                const components = block.components || [];
+                const uniqueComponents: ExportComponent[] = [];
+                let lastComponent: ExportComponent | null = null;
+
+                for (const component of components) {
+                    let isDuplicate = false;
+
+                    if (lastComponent && lastComponent.type === component.type) {
+                        // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
+                        // Example ID: 20251021091936ZBADPV
+                        const prefixLength = 14;
+                        if (lastComponent.id && component.id &&
+                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)) {
+                            isDuplicate = true;
+                        }
+                    }
+
+                    if (!isDuplicate) {
+                        uniqueComponents.push(component);
+                        lastComponent = component;
+                    }
+                }
+
+                return {
+                    ...block,
+                    components: uniqueComponents
+                };
+            });
+
+            return {
+                ...page,
+                blocks: newBlocks
+                // ExportPage is flat list, no children property
+            };
         });
     }
 

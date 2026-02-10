@@ -638,6 +638,91 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+
+    describe('component deduplication', () => {
+        it('should remove consecutive duplicate components with shared ID prefix', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with duplicates',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            type: 'text',
+                            components: [
+                                // Sequence of duplicates (Simulating the Complete iDevice split)
+                                // Shared prefix: 20251021091936 (14 chars)
+                                {
+                                    id: '20251021091936ZBADPV',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'complete',
+                                    content: '<div>Component 1 (Keep)</div>'
+                                },
+                                {
+                                    id: '20251021091936KBGQGU',
+                                    order: 1,
+                                    properties: {},
+                                    type: 'complete',
+                                    content: '<div>Component 2 (Drop)</div>'
+                                },
+                                {
+                                    id: '20251021091936GSEMZX',
+                                    order: 2,
+                                    properties: {},
+                                    type: 'complete',
+                                    content: '<div>Component 3 (Drop)</div>'
+                                },
+                                // Another independent component (Different prefix)
+                                {
+                                    id: '20251021092000AAAAAA',
+                                    order: 3,
+                                    properties: {},
+                                    type: 'complete',
+                                    content: '<div>Component 4 (Keep - Different Prefix)</div>'
+                                },
+                                // Another sequence (Different prefix from first group)
+                                {
+                                    id: '20251021092000BBBBBB',
+                                    order: 4,
+                                    properties: {},
+                                    type: 'complete',
+                                    content: '<div>Component 5 (Drop - Duplicate of 4)</div>'
+                                },
+                                // Different Type (Should break chain even if prefix matches? Unlikely scenario but good control)
+                                {
+                                    id: '20251021092000CCCCCC',
+                                    order: 5,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div>Component 6 (Keep - Different Type)</div>'
+                                }
+                            ]
+                        }
+                    ],
+                    properties: {}
+                }
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // 1. First Group
+            expect(result.html).toContain('Component 1 (Keep)');
+            expect(result.html).not.toContain('Component 2 (Drop)');
+            expect(result.html).not.toContain('Component 3 (Drop)');
+
+            // 2. Second Group
+            expect(result.html).toContain('Component 4 (Keep - Different Prefix)');
+            expect(result.html).not.toContain('Component 5 (Drop - Duplicate of 4)');
+
+            // 3. Different Type
+            expect(result.html).toContain('Component 6 (Keep - Different Type)');
+        });
+    });
+
     describe('library path patching', () => {
         it('should patch paths for abcjs and highlighter', async () => {
             // Create a doc with content that triggers library detection
