@@ -1445,7 +1445,7 @@ async function buildStaticBundle() {
         path.join(projectRoot, 'public/libs'),
         path.join(outputDir, 'libs')
     );
-    // Copy mermaid library (it's in app/common/mermaid but needed in libs/mermaid for static export)
+    // Copy mermaid library
     copyDirRecursive(
         path.join(projectRoot, 'public/app/common/mermaid'),
         path.join(outputDir, 'libs/mermaid')

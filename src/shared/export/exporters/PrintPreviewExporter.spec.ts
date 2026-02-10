@@ -898,7 +898,6 @@ describe('PrintPreviewExporter', () => {
                     parentId: null,
                     order: 0,
                     title: 'Title',
-                    // content property doesn't exist on ExportPage, use blocks/components
                     blocks: [
                         {
                             id: 'b1',
@@ -920,15 +919,12 @@ describe('PrintPreviewExporter', () => {
             ]);
 
             const exp = new PrintPreviewExporter(doc, mockResourceProvider);
-            // Pass empty string as version
             const result = await exp.generatePreview({
                 baseUrl: 'http://localhost:8080',
                 basePath: '',
                 version: '',
             });
 
-            // Should NOT contain v1.0.0 or any version segment
-            // Expected: http://localhost:8080/libs/jquery/jquery.min.js
             expect(result.html).toContain('src="http://localhost:8080/libs/jquery/jquery.min.js"');
             expect(result.html).not.toContain('/v1.0.0/');
         });

@@ -436,16 +436,12 @@ figure img {
     ): string {
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
-        // If version is explicitly empty string (static mode), keep it empty.
-        // Only default to v1.0.0 if undefined.
         const version = options.version === undefined ? 'v1.0.0' : options.version;
 
-        // Helper to build versioned server path
         const getPath = (path: string) => {
             const cleanPath = path.startsWith('/') ? path.slice(1) : path;
             const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
 
-            // If version is empty, don't include it in path
             if (!version) {
                 return `${baseUrl}${cleanBasePath}/${cleanPath}`;
             }
@@ -468,7 +464,7 @@ figure img {
             'libs/favicon.ico': getPath('favicon.ico'),
 
             // Base CSS
-            'content/css/base.css': getPath('style/content.css'), // Fallback/Core CSS
+            'content/css/base.css': getPath('style/workarea/base.css'), // Fallback/Core CSS
 
             // Theme (in zip: theme/ -> on server: /files/perm/themes/base/...)
             'theme/style.css': options.themeUrl
