@@ -144,7 +144,10 @@ export class PrintPreviewExporter {
             // 3. Make hidden feedback elements visible (remove display: none)
             html = this.revealFeedback(html);
 
-            // 4. Inject styles to avoid horizontal scroll
+            // 4. Hide unwanted print elements (versions, bns, map images)
+            html = this.hidePrintExtras(html);
+
+            // 5. Inject styles to avoid horizontal scroll
             html = this.injectPreviewStyles(html);
 
             // 4. Inject Print scripts and CSS (if printMode)
@@ -634,6 +637,63 @@ $(function() {
                     return newStyle ? `style=${quote}${newStyle}${quote}` : '';
                 });
                 return `<div${newAttributes}>`;
+            }
+
+            return match;
+        });
+    }
+
+    /**
+     * Hide specific elements from print preview based on class patterns
+     * - divs with class ending in -version or -bns AND js-hidden
+     * - imgs/links with class containing 'image', 'audio', 'video' AND js-hidden
+     * - specific classes: exe-mindmap-code, form-Data, completa-DataGame
+     */
+    private hidePrintExtras(html: string): string {
+        return html.replace(/<(div|img|a|p)([^>]*)>/gi, (match, tagName, attributes) => {
+            const classMatch = /class=["']([^"']*)["']/i.exec(attributes);
+            if (!classMatch) return match;
+
+            const classes = classMatch[1].split(/\s+/);
+            const lowerTagName = tagName.toLowerCase();
+            let shouldHide = false;
+
+            // 1. Check specific classes that don't depend on js-hidden
+            // "The text that starts with that tag <p class="exe-mindmap-code">"
+            if (lowerTagName === 'p' && classes.includes('exe-mindmap-code')) {
+                shouldHide = true;
+            }
+
+            // 2. Checks that require js-hidden
+            if (!shouldHide && classes.includes('js-hidden')) {
+                if (lowerTagName === 'div') {
+                    // Check for classes that match *-version or *-bns
+                    // Regex for class: /.+-(version|bns)$/
+                    if (classes.some(c => /.+-(version|bns)$/i.test(c))) {
+                        shouldHide = true;
+                    }
+                    // Specific divs requested: form-Data, completa-DataGame
+                    if (classes.includes('form-Data') || classes.includes('completa-DataGame')) {
+                        shouldHide = true;
+                    }
+                } else if (lowerTagName === 'img' || lowerTagName === 'a') {
+                    // Check for classes containing 'image', 'audio', 'video' (case insensitive)
+                    if (classes.some(c => /image|audio|video/i.test(c))) {
+                        shouldHide = true;
+                    }
+                }
+            }
+
+            if (shouldHide) {
+                // Inject style="display: none !important"
+                // Check if style attribute exists
+                if (/style=(["'])/i.test(attributes)) {
+                    return match.replace(/style=(["'])(.*?)\1/i, (m, q, c) => {
+                        return `style=${q}${c}; display: none !important;${q}`;
+                    });
+                } else {
+                    return `<${tagName} ${attributes} style="display: none !important">`;
+                }
             }
 
             return match;

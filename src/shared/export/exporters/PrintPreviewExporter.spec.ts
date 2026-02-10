@@ -502,6 +502,142 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('hiding unwanted print elements', () => {
+        it('should hide specific version/bns divs and image links', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with extras',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            type: 'text',
+                            components: [
+                                // Version divs
+                                { id: 'c1', order: 0, properties: {}, type: 'text', content: '<div class="sopa-version js-hidden">Sopa Version</div>' },
+                                { id: 'c2', order: 1, properties: {}, type: 'text', content: '<div class="candado-version js-hidden">Candado Version</div>' },
+                                // BNS divs
+                                { id: 'c3', order: 2, properties: {}, type: 'text', content: '<div class="selecciona-bns js-hidden">Selecciona BNS</div>' },
+                                { id: 'c4', order: 3, properties: {}, type: 'text', content: '<div class="quext-bns js-hidden">Quext BNS</div>' },
+                                // Images/Links
+                                { id: 'c5', order: 4, properties: {}, type: 'text', content: '<img src="img.jpg" class="js-hidden mapa-LinkImagesMapas">' },
+                                { id: 'c6', order: 5, properties: {}, type: 'text', content: '<img src="img2.jpg" class=" js-hidden mapa-LinkImagesSlides">' },
+                                { id: 'c7', order: 6, properties: {}, type: 'text', content: '<img src="img3.jpg" class="js-hidden mapa-ImageMap">' },
+                                { id: 'c8', order: 7, properties: {}, type: 'text', content: '<a href="#" class="js-hidden selecciona-LinkImages">Link 1</a>' },
+                                { id: 'c9', order: 8, properties: {}, type: 'text', content: '<a href="#" class="js-hidden adivina-LinkImages">Link 2</a>' },
+                                // Control cases (should NOT be hidden)
+                                { id: 'c10', order: 9, properties: {}, type: 'text', content: '<div class="other-version">Visible Version</div>' }, // No js-hidden
+                                { id: 'c11', order: 10, properties: {}, type: 'text', content: '<div class="js-hidden">Just Hidden Div</div>' }, // No -version/-bns
+                                { id: 'c12', order: 11, properties: {}, type: 'text', content: '<img src="ok.jpg" class="mapa-ImageMap">' } // No js-hidden
+                            ]
+                        }
+                    ],
+                    properties: {}
+                }
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Helper to check for display: none !important
+            const checkHidden = (snippet: string) => {
+                // Determine the tag type to construct the expectation
+                const isImg = snippet.startsWith('<img');
+                const isA = snippet.startsWith('<a');
+
+                // We expect the style to be injected. The regex might produce slightly different attribute orders
+                // but our tool usually appends/modifies style.
+                // Let's check that the result string contains the content AND display: none
+                // Since result.html is large, we can't easily isolate just this element without parsing.
+                // But we know the content strings are unique enough.
+
+                // Simplified check: Does the HTML contain the unique text/src AND style="...display: none..."?
+                // For images, check src. For text, check text content.
+
+                // Actually, let's just regex match the specific element in the result
+                // We'll escape the snippet for regex and allow for inserted style
+                // This is getting complicated to verify strictly with simple expectation.
+                // Let's rely on finding `style="display: none !important"` near the identifying class/content.
+                expect(result.html).toMatch(new RegExp(snippet.replace('>', '.*style=.*display:\\s*none.*!important.*>')));
+            };
+
+            // Can't easily use regex match on exact input string because attributes might move if we parsed them?
+            // If we use string replace, attributes stay mostly put.
+            // Let's check that the specific class combinations now have style="display: none !important" attached.
+
+            // 1. Version divs
+            expect(result.html).toContain('class="sopa-version js-hidden" style="display: none !important"');
+            expect(result.html).toContain('class="candado-version js-hidden" style="display: none !important"');
+
+            // 2. BNS divs
+            expect(result.html).toContain('class="selecciona-bns js-hidden" style="display: none !important"');
+            expect(result.html).toContain('class="quext-bns js-hidden" style="display: none !important"');
+
+            // 3. Images/Links
+            expect(result.html).toContain('class="js-hidden mapa-LinkImagesMapas" style="display: none !important"');
+            // Note: snippet had " js-hidden"
+            expect(result.html).toContain('class=" js-hidden mapa-LinkImagesSlides" style="display: none !important"');
+            expect(result.html).toContain('class="js-hidden mapa-ImageMap" style="display: none !important"');
+            expect(result.html).toContain('class="js-hidden selecciona-LinkImages" style="display: none !important"');
+            expect(result.html).toContain('class="js-hidden adivina-LinkImages" style="display: none !important"');
+
+            // 4. Controls (Should NOT have the style injected)
+            expect(result.html).not.toContain('class="other-version" style="display: none !important"');
+            expect(result.html).not.toContain('class="js-hidden" style="display: none !important"'); // Just Hidden Div
+            expect(result.html).not.toContain('class="mapa-ImageMap" style="display: none !important"');
+        });
+
+        it('should hide audio/video links and specific data divs/paragraphs', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with media extras',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            type: 'text',
+                            components: [
+                                // Audio links
+                                { id: 'c1', order: 0, properties: {}, type: 'text', content: '<a href="#" class="js-hidden seleccionamedias-LinkAudios-1">Audio 1</a>' },
+                                { id: 'c2', order: 1, properties: {}, type: 'text', content: '<a href="#" class="js-hidden sopa-LinkAudios">Audio 2</a>' },
+                                // Video links
+                                { id: 'c3', order: 2, properties: {}, type: 'text', content: '<a href="#" class="js-hidden vquext-LinkLocalVideo">Video 1</a>' },
+                                // Specific P tag
+                                { id: 'c4', order: 3, properties: {}, type: 'text', content: '<p class="exe-mindmap-code">Mindmap Code</p>' },
+                                // Specific Divs
+                                { id: 'c5', order: 4, properties: {}, type: 'text', content: '<div class="form-Data js-hidden">Form Data</div>' },
+                                { id: 'c6', order: 5, properties: {}, type: 'text', content: '<div class="completa-DataGame js-hidden">Completa DataGame</div>' },
+                                // Controls
+                                { id: 'c7', order: 6, properties: {}, type: 'text', content: '<a href="#" class="sopa-LinkAudios">Visible Audio</a>' } // No js-hidden
+                            ]
+                        }
+                    ],
+                    properties: {}
+                }
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // 1. Audio/Video
+            expect(result.html).toContain('class="js-hidden seleccionamedias-LinkAudios-1" style="display: none !important"');
+            expect(result.html).toContain('class="js-hidden sopa-LinkAudios" style="display: none !important"');
+            expect(result.html).toContain('class="js-hidden vquext-LinkLocalVideo" style="display: none !important"');
+
+            // 2. Specific Elements
+            expect(result.html).toContain('class="exe-mindmap-code" style="display: none !important"');
+            expect(result.html).toContain('class="form-Data js-hidden" style="display: none !important"');
+            expect(result.html).toContain('class="completa-DataGame js-hidden" style="display: none !important"');
+
+            // 3. Controls
+            expect(result.html).not.toContain('class="sopa-LinkAudios" style="display: none !important"');
+        });
+    });
+
     describe('library path patching', () => {
         it('should patch paths for abcjs and highlighter', async () => {
             // Create a doc with content that triggers library detection
