@@ -500,4 +500,67 @@ describe('Scorm12Exporter', () => {
             expect(zip.files.has('libs/SCOFunctions.js')).toBe(true);
         });
     });
+
+    describe('Icon Resolution via setThemeIconFiles', () => {
+        it('should resolve SVG icons when theme has SVG icon files', async () => {
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            resources.fetchTheme = async (_name: string) => {
+                const files = new Map<string, Buffer>();
+                files.set('style.css', Buffer.from('/* theme css */'));
+                files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+                return files;
+            };
+
+            document = new MockDocument({}, pagesWithIcon);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/activity.svg');
+        });
+
+        it('should fall back to .png when theme has no icon files', async () => {
+            const pagesWithIcon: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Test Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Block with Icon',
+                            order: 0,
+                            components: [],
+                            iconName: 'activity',
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithIcon);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('theme/icons/activity.png');
+        });
+    });
 });
