@@ -23,6 +23,16 @@
     }
 
     /**
+     * Get a translated string from $exe_i18n (set by common_i18n.js) with English fallback.
+     * @param {string} key - Translation key
+     * @param {string} fallback - English fallback if $exe_i18n is unavailable
+     * @returns {string}
+     */
+    function i18n(key, fallback) {
+        return (typeof $exe_i18n !== 'undefined' && $exe_i18n[key]) ? $exe_i18n[key] : fallback;
+    }
+
+    /**
      * Check if running in file:// protocol (where fetch is blocked by same-origin policy)
      * @returns {boolean}
      */
@@ -76,43 +86,52 @@
                 files['index.html'] = stringToUint8Array('<!DOCTYPE html>\n' + htmlClone.outerHTML);
             }
 
-            // Fetch all manifest files in parallel (batched)
-            var concurrency = 6;
-            for (var i = 0; i < manifest.files.length; i += concurrency) {
-                var batch = manifest.files.slice(i, i + concurrency);
-                var results = await Promise.all(
-                    batch.map(async function (path) {
-                        // Skip HTML files in preview (already captured above)
-                        if (manifest.isPreview && (path === 'index.html' || path.startsWith('html/'))) {
-                            return null;
-                        }
+            // Fetch all manifest files with a sliding concurrency pool
+            var concurrency = 10;
+            var fileEntries = manifest.files;
+            var fetchIndex = 0;
 
-                        try {
-                            var url = basePath + path;
-                            var response = await fetch(url);
-                            if (!response.ok) {
-                                console.warn('[ELPX Download] Failed to fetch: ' + path + ' (' + response.status + ')');
-                                return null;
-                            }
-                            var buffer = await response.arrayBuffer();
-                            completed++;
-                            updateProgress(completed, total);
-                            return { path: path, data: new Uint8Array(buffer) };
-                        } catch (e) {
-                            console.warn('[ELPX Download] Error fetching: ' + path, e);
-                            completed++;
-                            updateProgress(completed, total);
-                            return null;
-                        }
-                    }),
-                );
+            async function fetchFile(path) {
+                // Skip HTML files in preview (already captured above)
+                if (manifest.isPreview && (path === 'index.html' || path.startsWith('html/'))) {
+                    completed++;
+                    updateProgress(completed, total);
+                    return null;
+                }
 
-                results.forEach(function (result) {
+                try {
+                    var url = basePath + path;
+                    var response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn('[ELPX Download] Failed to fetch: ' + path + ' (' + response.status + ')');
+                        return null;
+                    }
+                    var buffer = await response.arrayBuffer();
+                    return { path: path, data: new Uint8Array(buffer) };
+                } catch (e) {
+                    console.warn('[ELPX Download] Error fetching: ' + path, e);
+                    return null;
+                } finally {
+                    completed++;
+                    updateProgress(completed, total);
+                }
+            }
+
+            async function fetchWorker() {
+                while (fetchIndex < fileEntries.length) {
+                    var currentIndex = fetchIndex++;
+                    var result = await fetchFile(fileEntries[currentIndex]);
                     if (result) {
                         files[result.path] = result.data;
                     }
-                });
+                }
             }
+
+            var workers = [];
+            for (var w = 0; w < Math.min(concurrency, fileEntries.length); w++) {
+                workers.push(fetchWorker());
+            }
+            await Promise.all(workers);
 
             // 4. Create ZIP and download
             var projectName = options.filename || manifest.projectTitle || 'eXeLearning-project';
@@ -127,6 +146,13 @@
     }
 
     /**
+     * Timeout for folder picker dialog (2 minutes).
+     * If neither onchange nor cancel fires within this time, the dialog likely didn't open.
+     * @type {number}
+     */
+    var FOLDER_PICKER_TIMEOUT = 120000;
+
+    /**
      * Download ELPX by letting user select the export folder
      * Works in file:// context where fetch() is blocked by same-origin policy
      * @param {Object} options - Optional configuration
@@ -139,6 +165,8 @@
             options.filename || (manifest && manifest.projectTitle) || 'eXeLearning-project';
 
         return new Promise(function (resolve, reject) {
+            var timeoutId = null;
+
             // Create hidden folder input
             var input = document.createElement('input');
             input.type = 'file';
@@ -147,7 +175,18 @@
             input.style.display = 'none';
             document.body.appendChild(input);
 
+            function cleanup() {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                if (input.parentNode) {
+                    document.body.removeChild(input);
+                }
+            }
+
             input.onchange = async function () {
+                cleanup();
                 try {
                     showLoadingIndicator(true);
 
@@ -155,7 +194,7 @@
                     var fileArray = Array.from(input.files);
 
                     if (fileArray.length === 0) {
-                        throw new Error('No files selected');
+                        throw new Error(i18n('elpxFolderPickerEmpty', 'No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.'));
                     }
 
                     // Get the folder name prefix to strip
@@ -163,23 +202,29 @@
                     var firstPath = fileArray[0].webkitRelativePath;
                     var folderPrefix = firstPath.split('/')[0] + '/';
 
-                    // Read all files
-                    for (var i = 0; i < fileArray.length; i++) {
-                        var file = fileArray[i];
-                        // Strip folder prefix from path
-                        var relativePath = file.webkitRelativePath;
-                        if (relativePath.startsWith(folderPrefix)) {
-                            relativePath = relativePath.substring(folderPrefix.length);
-                        }
+                    // Read all files in parallel
+                    var readPromises = fileArray
+                        .filter(function (file) {
+                            var relativePath = file.webkitRelativePath;
+                            if (relativePath.startsWith(folderPrefix)) {
+                                relativePath = relativePath.substring(folderPrefix.length);
+                            }
+                            // Skip hidden files and system files
+                            return !relativePath.startsWith('.') && !relativePath.includes('/.');
+                        })
+                        .map(async function (file) {
+                            var relativePath = file.webkitRelativePath;
+                            if (relativePath.startsWith(folderPrefix)) {
+                                relativePath = relativePath.substring(folderPrefix.length);
+                            }
+                            var buffer = await file.arrayBuffer();
+                            return { path: relativePath, data: new Uint8Array(buffer) };
+                        });
 
-                        // Skip hidden files and system files
-                        if (relativePath.startsWith('.') || relativePath.includes('/.')) {
-                            continue;
-                        }
-
-                        var buffer = await file.arrayBuffer();
-                        files[relativePath] = new Uint8Array(buffer);
-                    }
+                    var readResults = await Promise.all(readPromises);
+                    readResults.forEach(function (result) {
+                        files[result.path] = result.data;
+                    });
 
                     // Generate ZIP and download
                     await createZipAndDownload(files, sanitizeFilename(projectName));
@@ -189,50 +234,29 @@
                 } catch (error) {
                     showLoadingIndicator(false);
                     console.error('[ELPX Download] Folder picker error:', error);
-                    alert('Error generating ELPX: ' + error.message);
+                    alert(error.message);
                     reject(error);
-                } finally {
-                    if (input.parentNode) {
-                        document.body.removeChild(input);
-                    }
                 }
             };
 
             // Handle cancel (user closes dialog without selecting)
             input.addEventListener('cancel', function () {
-                if (input.parentNode) {
-                    document.body.removeChild(input);
-                }
+                cleanup();
                 resolve(); // User cancelled, not an error
             });
+
+            // Set timeout: if neither onchange nor cancel fires, the dialog likely didn't open
+            timeoutId = setTimeout(function () {
+                cleanup();
+                var errorMsg = i18n('elpxFolderPickerTimeout', 'The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.');
+                console.error('[ELPX Download] Folder picker timeout');
+                alert(errorMsg);
+                reject(new Error(errorMsg));
+            }, FOLDER_PICKER_TIMEOUT);
 
             // Open folder picker immediately (no alert - would consume user activation)
             input.click();
         });
-    }
-
-    /**
-     * Translated warning messages for file:// protocol
-     */
-    var FILE_PROTOCOL_WARNINGS = {
-        en: 'Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.',
-        es: 'Modo local: Por política de seguridad del navegador, deberá seleccionar la carpeta desde donde abrió este fichero. En un servidor web esto no será necesario.',
-        ca: 'Mode local: Per política de seguretat del navegador, haurà de seleccionar la carpeta des d\'on va obrir aquest fitxer. En un servidor web això no serà necessari.',
-        eu: 'Modu lokala: Nabigatzailearen segurtasun-politikaren ondorioz, fitxategi hau ireki zenuen karpeta hautatu beharko duzu. Web zerbitzari batean hori ez da beharrezkoa izango.',
-        gl: 'Modo local: Por política de seguridade do navegador, deberá seleccionar o cartafol desde onde abriu este ficheiro. Nun servidor web isto non será necesario.',
-        fr: 'Mode local : En raison de la politique de sécurité du navigateur, vous devrez sélectionner le dossier à partir duquel vous avez ouvert ce fichier. Sur un serveur web, cela ne sera pas nécessaire.',
-        de: 'Lokaler Modus: Aufgrund der Sicherheitsrichtlinie des Browsers müssen Sie den Ordner auswählen, aus dem Sie diese Datei geöffnet haben. Auf einem Webserver ist dies nicht erforderlich.',
-        it: 'Modalità locale: A causa della politica di sicurezza del browser, dovrai selezionare la cartella da cui hai aperto questo file. Su un server web ciò non sarà necessario.',
-        pt: 'Modo local: Devido à política de segurança do navegador, você precisará selecionar a pasta de onde abriu este arquivo. Em um servidor web isso não será necessário.',
-    };
-
-    /**
-     * Get translated warning message based on document language
-     * @returns {string}
-     */
-    function getFileProtocolWarning() {
-        var lang = (document.documentElement.lang || 'en').split('-')[0].toLowerCase();
-        return FILE_PROTOCOL_WARNINGS[lang] || FILE_PROTOCOL_WARNINGS.en;
     }
 
     /**
@@ -242,7 +266,7 @@
     function addFileProtocolWarning() {
         if (!isFileProtocol()) return;
 
-        var warningMessage = getFileProtocolWarning();
+        var warningMessage = i18n('elpxFileProtocolWarning', 'Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.');
         var buttons = document.querySelectorAll('.exe-download-package-link a, .exe-download-package-link button');
 
         buttons.forEach(function (btn) {
@@ -327,11 +351,27 @@
      * @param {Object} files - Map of path -> Uint8Array
      * @param {string} projectName - Project name for filename
      */
+    // File extensions that are already compressed — use STORE (level 0) to skip wasting CPU
+    var STORE_EXTENSIONS =
+        /\.(mp4|mp3|ogg|ogv|webm|woff|woff2|zip|gz|elpx)$/i;
+
     async function createZipAndDownload(files, projectName) {
         return new Promise(function (resolve, reject) {
             try {
+                // Set per-file compression: skip already-compressed formats
+                var zipInput = {};
+                var fileKeys = Object.keys(files);
+                for (var f = 0; f < fileKeys.length; f++) {
+                    var key = fileKeys[f];
+                    if (STORE_EXTENSIONS.test(key)) {
+                        zipInput[key] = [files[key], { level: 0 }];
+                    } else {
+                        zipInput[key] = [files[key], { level: 6 }];
+                    }
+                }
+
                 // Use fflate.zip for async compression
-                fflate.zip(files, { level: 6 }, function (err, data) {
+                fflate.zip(zipInput, function (err, data) {
                     if (err) {
                         reject(err);
                         return;
@@ -380,7 +420,7 @@
         buttons.forEach(function (btn) {
             if (show) {
                 btn.setAttribute('data-original-text', btn.textContent);
-                btn.textContent = 'Generating...';
+                btn.textContent = i18n('elpxGenerating', 'Generating...');
                 btn.style.opacity = '0.7';
                 btn.style.pointerEvents = 'none';
             } else {

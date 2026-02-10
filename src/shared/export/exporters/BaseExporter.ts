@@ -152,6 +152,42 @@ export abstract class BaseExporter {
     }
 
     // =========================================================================
+    // Visibility Helpers
+    // =========================================================================
+
+    /**
+     * Check if a page is visible in export
+     * A page is visible if:
+     * 1. It is the root page (always visible)
+     * 2. Its visibility property is not set to false/ 'false'
+     * 3. All its ancestors are visible
+     */
+    isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
+        // Root page (index 0) is always visible
+        if (page.id === allPages[0]?.id) {
+            return true;
+        }
+
+        // Check explicit visibility property
+        const visibility = page.properties?.visibility;
+        if (visibility === false || visibility === 'false') {
+            return false;
+        }
+
+        // Check ancestor visibility
+        if (page.parentId) {
+            const parent = allPages.find(p => p.id === page.parentId);
+            // If parent exists and is not visible, this page is not visible
+            // Recursive check handles the entire hierarchy
+            if (parent && !this.isPageVisible(parent, allPages)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // =========================================================================
     // String Utilities
     // =========================================================================
 
@@ -282,7 +318,6 @@ export abstract class BaseExporter {
         try {
             const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
-            console.log(`[BaseExporter] addAssetsToZipWithResourcePath: Found ${assets.length} assets to add`);
 
             for (const asset of assets) {
                 const exportPath = exportPathMap.get(asset.id);
@@ -290,8 +325,6 @@ export abstract class BaseExporter {
                     console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
                     continue;
                 }
-
-                console.log(`[BaseExporter] Adding asset: ${asset.id} -> content/resources/${exportPath}`);
 
                 // Store in content/resources/{exportPath}
                 const zipPath = `content/resources/${exportPath}`;
@@ -403,7 +436,7 @@ export abstract class BaseExporter {
 
                 if (!filename) {
                     // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(asset.mimeType || 'application/octet-stream');
+                    const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
                     filename = `asset-${id.substring(0, 8)}${ext}`;
                 }
 

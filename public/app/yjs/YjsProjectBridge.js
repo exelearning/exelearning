@@ -2108,7 +2108,14 @@ class YjsProjectBridge {
           this.resourceFetcher,
           this.assetManager
         );
-        const result = await exporter.export();
+        
+        // Get Mermaid pre-renderer hook if available
+        const exportOptions = {};
+        if (window.MermaidPreRenderer) {
+          exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
+        }
+        
+        const result = await exporter.export(exportOptions);
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';
@@ -2498,9 +2505,9 @@ class YjsProjectBridge {
           return match ? match[1].trim() : '';
         };
 
-        config.name = getValue('name') || themeName;
+        config.name = themeName; // Use the Yjs key (sanitized dirName), NOT raw <name> tag
         config.displayName = getValue('name') || themeName;
-        config.title = getValue('name') || themeName;
+        config.title = getValue('title') || getValue('name') || themeName;
         config.version = getValue('version') || '1.0';
         config.author = getValue('author') || '';
         config.license = getValue('license') || '';
@@ -2837,6 +2844,15 @@ class YjsProjectBridge {
             if (themeData) {
               Logger.log(`[YjsProjectBridge] Collaborator added theme '${themeName}', loading...`);
               await this._loadUserThemeFromYjs(themeName, themeData);
+
+              // Refresh NavbarStyles UI so the new theme appears in the "Imported" tab
+              if (eXeLearning.app?.menus?.navbar?.styles) {
+                eXeLearning.app.menus.navbar.styles.updateThemes();
+                const stylesPanel = document.getElementById('stylessidenav');
+                if (stylesPanel?.classList.contains('active')) {
+                  eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+                }
+              }
             }
           } else if (change.action === 'delete') {
             Logger.log(`[YjsProjectBridge] Theme '${themeName}' removed from Yjs`);
@@ -2845,6 +2861,15 @@ class YjsProjectBridge {
             if (this.resourceFetcher?.userThemeFiles) {
               this.resourceFetcher.userThemeFiles.delete(themeName);
               this.resourceFetcher.cache.delete(`theme:${themeName}`);
+            }
+
+            // Refresh NavbarStyles UI to reflect the removal
+            if (eXeLearning.app?.menus?.navbar?.styles) {
+              eXeLearning.app.menus.navbar.styles.updateThemes();
+              const stylesPanel = document.getElementById('stylessidenav');
+              if (stylesPanel?.classList.contains('active')) {
+                eXeLearning.app.menus.navbar.styles.buildUserListThemes();
+              }
             }
           }
         }
@@ -3028,6 +3053,44 @@ class YjsProjectBridge {
     }
 
     Logger.log('[YjsProjectBridge] Assets cleared for new project');
+  }
+
+  /**
+   * Clear metadata and themeFiles for importing a new project (static mode)
+   * This prevents stale metadata from a previous project leaking into the new one
+   * Used when opening a new project file on top of an existing one in static mode
+   */
+  clearMetadataForNewProject() {
+    Logger.log('[YjsProjectBridge] Clearing metadata for new project...');
+
+    const ydoc = this.documentManager?.ydoc;
+    if (!ydoc) {
+      Logger.warn('[YjsProjectBridge] No Y.Doc available to clear metadata');
+      return;
+    }
+
+    ydoc.transact(() => {
+      // Clear metadata Y.Map so no stale values remain
+      const metadataMap = ydoc.getMap('metadata');
+      if (metadataMap && metadataMap.size > 0) {
+        metadataMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs metadata map cleared');
+      }
+
+      // Re-set timestamps (not set by the importer)
+      const now = Date.now();
+      metadataMap.set('createdAt', now);
+      metadataMap.set('modifiedAt', now);
+
+      // Clear themeFiles Y.Map to prevent custom theme data leaking
+      const themeFilesMap = ydoc.getMap('themeFiles');
+      if (themeFilesMap && themeFilesMap.size > 0) {
+        themeFilesMap.clear();
+        Logger.log('[YjsProjectBridge] Yjs themeFiles map cleared');
+      }
+    });
+
+    Logger.log('[YjsProjectBridge] Metadata cleared for new project');
   }
 }
 

@@ -320,9 +320,10 @@ export class Html5Exporter extends BaseExporter {
                         fileList.push(htmlFile);
                     }
                 }
-                // Create separate manifest JS file
+                // Include the manifest file itself in the file list (self-reference)
+                fileList.push('libs/elpx-manifest.js');
                 const manifestJs = this.generateElpxManifestFile(fileList);
-                addFile('libs/elpx-manifest.js', manifestJs);
+                this.zip.addFile('libs/elpx-manifest.js', manifestJs);
             }
 
             // 12. Add all HTML pages to ZIP (with manifest script only on pages with download-source-file)
@@ -771,8 +772,10 @@ export class Html5Exporter extends BaseExporter {
                         fileList.push(htmlFile);
                     }
                 }
+                // Include the manifest file itself in the file list (self-reference)
+                fileList.push('libs/elpx-manifest.js');
                 const manifestJs = this.generateElpxManifestFile(fileList);
-                addFile('libs/elpx-manifest.js', manifestJs);
+                files.set('libs/elpx-manifest.js', manifestJs);
 
                 // Ensure ELPX download libraries are present (may not be detected by library detector)
                 const elpxLibFiles = ['fflate/fflate.umd.js', 'exe_elpx_download/exe_elpx_download.js'];

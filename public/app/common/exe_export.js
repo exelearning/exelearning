@@ -23,7 +23,9 @@ function translateI18nElement(key, defaultText) {
     });
 }
 
-const $exeExport = window.$exeExport = {
+// Guard against multiple loads (EPUB readers may reload scripts when navigating)
+if (typeof window.$exeExport === 'undefined') {
+window.$exeExport = {
 
     isTogglingBox: false,
     delayLoadingPageTime: 200,
@@ -441,6 +443,10 @@ const $exeExport = window.$exeExport = {
         }
     }
 }
+} // End of if (typeof window.$exeExport === 'undefined')
+
+// Use local reference for cleaner code
+var $exeExport = window.$exeExport;
 
 $(function () {
     $exeExport.init();
