@@ -144,12 +144,43 @@ export class PrintPreviewExporter {
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
                 html = this.injectPrintSpecifics(html);
+            } else {
+                // Even in normal preview mode, we need to force init scripts because window.eXeLearning is defined
+                html = this.injectInitScripts(html);
             }
             return { success: true, html };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
         }
+    }
+
+    /**
+     * Filter out pages that are marked as not visible in export
+     */
+    private filterVisiblePages(pages: ExportPage[]): ExportPage[] {
+        return (
+            pages
+                .filter(page => {
+                    // Check visibility property. Default is visible if undefined.
+                    // strict check for false or 'false'
+                    const isHidden = page.properties?.visibility === false || page.properties?.visibility === 'false';
+                    return !isHidden;
+                })
+                // Recursively filter children (though ExportPage definition implies flat list,
+                // if PageRenderer handles hierarchy via other means, this is safe for future proofing
+                // or if ExportPage has children property not shown in interface file but present in runtime)
+                .map(page => {
+                    // Clone page to avoid mutation
+                    const newPage = { ...page };
+                    // @ts-expect-error - children might exist in runtime even if not in strict interface
+                    if (newPage.children && Array.isArray(newPage.children)) {
+                        // @ts-expect-error - children access
+                        newPage.children = this.filterVisiblePages(newPage.children);
+                    }
+                    return newPage;
+                })
+        );
     }
 
     /**
@@ -202,7 +233,7 @@ figure img {
      * Replaces asset://UUID with content/resources/FILENAME
      */
     private async preprocessPages(pages: ExportPage[]): Promise<ExportPage[]> {
-        if (!this.assets) return pages;
+        if (!this.assets) return this.filterVisiblePages(pages);
 
         // Build path map if not already done
         if (!this.assetExportPathMap) {
@@ -210,7 +241,11 @@ figure img {
         }
 
         // Deep clone pages to avoid mutating original structure
-        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
+        // AND filter visible pages at the same time
+        const filteredPages = this.filterVisiblePages(pages);
+        // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
+        // Let's do a deep clone of the filtered result to be safe and consistent with previous logic
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(filteredPages));
 
         for (const page of clonedPages) {
             for (const block of page.blocks || []) {
@@ -419,6 +454,19 @@ figure img {
             'theme/style.js': options.themeUrl
                 ? `${options.themeUrl.replace(/\/$/, '')}/style.js`
                 : getPath(`files/perm/themes/base/${themeName}/style.js`),
+
+            // Highlighter (exe_highlighter)
+            // PageRenderer outputs libs/exe_highlighter/...
+            // Server has it in app/common/exe_highlighter/...
+            'libs/exe_highlighter/exe_highlighter.js': getPath('app/common/exe_highlighter/exe_highlighter.js'),
+            'libs/exe_highlighter/exe_highlighter.css': getPath('app/common/exe_highlighter/exe_highlighter.css'),
+
+            // ABC Music (abcjs)
+            // PageRenderer outputs libs/abcjs/...
+            // Server has it in libs/abcjs/... (direct mapping to public/libs)
+            'libs/abcjs/abcjs-basic-min.js': getPath('libs/abcjs/abcjs-basic-min.js'),
+            'libs/abcjs/exe_abc_music.js': getPath('libs/abcjs/exe_abc_music.js'),
+            'libs/abcjs/abcjs-audio.css': getPath('libs/abcjs/abcjs-audio.css'),
         };
 
         // Apply direct string replacements
@@ -465,6 +513,14 @@ figure img {
         const printScript = `
 <script>
 window.onload = function() {
+    // Force init for Print Preview (since window.eXeLearning is defined, auto-init doesn't run)
+    if (typeof $exeABCmusic !== 'undefined' && typeof $exeABCmusic.init === 'function') {
+         $exeABCmusic.init();
+    }
+    if (typeof $exeHighlighter !== 'undefined' && typeof $exeHighlighter.init === 'function') {
+         $exeHighlighter.init();
+    }
+
     setTimeout(function() {
         window.print();
     }, 1000);
@@ -522,5 +578,25 @@ html, body { height: 100%; margin: 0; padding: 0; }
 </style>
 `;
         return html.replace('</body>', `${printScript}</body>`);
+    }
+
+    /**
+     * Inject specific initialization scripts without print dialog
+     */
+    private injectInitScripts(html: string): string {
+        const initScript = `
+<script>
+$(function() {
+    // Force init for Print Preview (since window.eXeLearning is defined, auto-init doesn't run)
+    if (typeof $exeABCmusic !== 'undefined' && typeof $exeABCmusic.init === 'function') {
+         $exeABCmusic.init();
+    }
+    if (typeof $exeHighlighter !== 'undefined' && typeof $exeHighlighter.init === 'function') {
+         $exeHighlighter.init();
+    }
+});
+</script>
+`;
+        return html.replace('</body>', `${initScript}</body>`);
     }
 }

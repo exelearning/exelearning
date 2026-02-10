@@ -451,10 +451,104 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('library path patching', () => {
+        it('should patch paths for abcjs and highlighter', async () => {
+            // Create a doc with content that triggers library detection
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with libs',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            type: 'text',
+                            components: [
+                                { type: 'text', content: '<pre class="abc-music">X:1</pre>' },
+                                { type: 'text', content: '<pre class="highlighted-code">code</pre>' },
+                            ],
+                        },
+                    ],
+                    properties: {},
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview(); // Uses default options (basePath='')
+
+            // Check that libs/ paths are replaced with absolute server paths
+            // We expect PrintPreviewExporter to use default version/basePath if not provided
+            // Default version is usually 'v1.0.0' or similar in the code
+
+            // abcjs mappings
+            expect(result.html).toContain('/libs/abcjs/exe_abc_music.js"');
+            expect(result.html).not.toContain('src="libs/abcjs/exe_abc_music.js"');
+
+            // highlighter mappings
+            expect(result.html).toContain('/app/common/exe_highlighter/exe_highlighter.js"');
+            expect(result.html).not.toContain('src="libs/exe_highlighter/exe_highlighter.js"');
+        });
+    });
+
     describe('export options', () => {
         it('should include made-with-eXe by default', async () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('made-with-eXe');
+        });
+    });
+
+    describe('visibility filtering', () => {
+        it('should exclude pages with visibility=false', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Visible Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                    properties: { visibility: true },
+                },
+                {
+                    id: 'p2',
+                    title: 'Hidden Page',
+                    parentId: null,
+                    order: 1,
+                    blocks: [],
+                    properties: { visibility: false },
+                },
+            ]);
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('Visible Page');
+            expect(result.html).not.toContain('Hidden Page');
+        });
+
+        it('should include pages with visibility=undefined (default)', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Default Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                    properties: {},
+                },
+            ]);
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            expect(result.html).toContain('Default Page');
+        });
+    });
+
+    describe('script execution', () => {
+        it('should inject script force-initializing abcjs and highlighter', async () => {
+            const result = await exporter.generatePreview();
+            // Check for the specific script content
+            expect(result.html).toContain('$exeABCmusic.init()');
+            expect(result.html).toContain('$exeHighlighter.init()');
         });
     });
 });
