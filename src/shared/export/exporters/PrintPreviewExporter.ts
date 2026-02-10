@@ -149,7 +149,47 @@ export class PrintPreviewExporter {
             html = this.hidePrintExtras(html);
 
             // 5. Inject styles to avoid horizontal scroll
-            html = this.injectPreviewStyles(html);
+            // Calculate logo URL for fix (same logic as patchPathsForServer)
+            const baseUrl = options.baseUrl || '';
+            const basePath = options.basePath || '';
+            // Determine version (priority: options > window > default)
+            let versionStr = options.version;
+            if (versionStr === undefined) {
+                versionStr = version !== 'v1.0.0' ? version : undefined;
+            }
+            // If version is still undefined/null, default to nothing or v1.0.0 depending on logic.
+            // patchPathsForServer uses options.version ?? 'v1.0.0' logic roughly.
+            // Let's use the exact same logic helper if possible, or replicate:
+            const effectiveVersion = options.version ?? version; // Use window version if options not present
+
+            const getPath = (path: string) => {
+                const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+                const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+                // If version is provided/detected, include it
+                if (effectiveVersion && effectiveVersion !== 'v1.0.0') {
+                    return `${baseUrl}${cleanBasePath}/${effectiveVersion}/${cleanPath}`;
+                }
+                // Default to no version in path if v1.0.0 or missing (usually dev)
+                // NOTE: build-static-bundle usually puts everything under version folder?
+                // patchPathsForServer logic:
+                // if (!version) return ... else return .../${version}/...
+                // It used `options.version === undefined ? 'v1.0.0' : options.version`
+                // and checked `if (!version)` (which is never true if it defaults to v1.0.0 string?)
+                // Wait, patchPathsForServer uses local scope version variable.
+
+                // Replicating patchPathsForServer logic exactly:
+                const v = options.version === undefined ? 'v1.0.0' : options.version;
+                // If v exists (it always does due to default), it appends it?
+                // No, check patchPathsForServer:
+                // const version = options.version === undefined ? 'v1.0.0' : options.version;
+                // if (!version) ... 
+                // 'v1.0.0' is truthy. So it always appends version?
+                // Actually, let's look at patchPathsForServer implementation I saw earlier.
+                return `${baseUrl}${cleanBasePath}/${v}/${cleanPath}`;
+            };
+
+            const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
+            html = this.injectPreviewStyles(html, logoUrl);
 
             // 4. Inject Print scripts and CSS (if printMode)
             if (options.printMode) {
@@ -197,7 +237,15 @@ export class PrintPreviewExporter {
     /**
      * Inject styles to force content to fit within the page width
      */
-    private injectPreviewStyles(html: string): string {
+    private injectPreviewStyles(html: string, logoUrl?: string): string {
+        const logoCss = logoUrl
+            ? `
+/* Fix for eXe logo 404 */
+#made-with-eXe a {
+    background-image: url("${logoUrl}") !important;
+}`
+            : '';
+
         const styles = `
 <style>
 /* Force content to fit within the page (no horizontal scroll) */
@@ -238,6 +286,7 @@ figure img {
 .feedback.js-hidden {
     display: block !important;
 }
+${logoCss}
 </style>
 `;
         return html.replace('</head>', `${styles}</head>`);
@@ -341,7 +390,7 @@ figure img {
                             asset.data instanceof Blob
                                 ? asset.data
                                 : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
+                                new Blob([asset.data as any], { type: asset.mime });
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);

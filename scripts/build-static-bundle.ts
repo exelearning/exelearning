@@ -1445,11 +1445,7 @@ async function buildStaticBundle() {
         path.join(projectRoot, 'public/libs'),
         path.join(outputDir, 'libs')
     );
-    // Copy mermaid library
-    copyDirRecursive(
-        path.join(projectRoot, 'public/app/common/mermaid'),
-        path.join(outputDir, 'libs/mermaid')
-    );
+
     console.log('  Copied libs/');
 
     // Copy style folder

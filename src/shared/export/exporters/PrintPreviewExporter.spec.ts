@@ -231,6 +231,49 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('pre-rendering', () => {
+        it('should call preRenderMermaid hook if provided', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block 1',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<div class="mermaid">graph TD; A-->B;</div>',
+                                },
+                            ],
+                        },
+                    ],
+                    properties: {},
+                },
+            ]);
+
+            const preRenderMermaid = async (html: string) => ({
+                html: html.replace('<div class="mermaid">graph TD; A-->B;</div>', '<svg>Mock SVG</svg>'),
+                mermaidRendered: true,
+                count: 1,
+            });
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ preRenderMermaid });
+
+            expect(result.html).toContain('<svg>Mock SVG</svg>');
+            expect(result.html).not.toContain('<div class="mermaid">graph TD; A-->B;</div>');
+        });
+    });
+
     describe('iDevice handling', () => {
         it('should include iDevice scripts/css (via PageRenderer)', async () => {
             // We can check if the html contains references to the text iDevice present in mock

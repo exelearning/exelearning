@@ -163,7 +163,7 @@ export function createExporter(
     // Create resource provider with null-safe fallback
     const resources = resourceFetcher
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          new BrowserResourceProvider(resourceFetcher as any)
+        new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
 
     // Create asset provider with null-safe fallback
@@ -172,11 +172,11 @@ export function createExporter(
     const assets =
         assetCache || assetManager
             ? new BrowserAssetProvider(
-                  // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
-                  assetCache as any,
-                  // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
-                  assetManager as any,
-              )
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+                assetCache as any,
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+                assetManager as any,
+            )
             : createNullAssetProvider();
 
     const zip = new FflateZipProvider();
@@ -410,7 +410,7 @@ export async function generatePrintPreview(
     const document = new YjsDocumentAdapter(documentManager as any);
     const resources = resourceFetcher
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          new BrowserResourceProvider(resourceFetcher as any)
+        new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
 
     // Construct AssetProvider
@@ -464,7 +464,7 @@ export function createPrintPreviewExporter(
     const document = new YjsDocumentAdapter(documentManager as any);
     const resources = resourceFetcher
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          new BrowserResourceProvider(resourceFetcher as any)
+        new BrowserResourceProvider(resourceFetcher as any)
         : createNullResourceProvider();
 
     // Construct AssetProvider
@@ -529,18 +529,18 @@ export async function generatePreviewForSW(
         // Create resource provider with null-safe fallback
         const resources = resourceFetcher
             ? // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
-              new BrowserResourceProvider(resourceFetcher as any)
+            new BrowserResourceProvider(resourceFetcher as any)
             : createNullResourceProvider();
 
         // Create asset provider with null-safe fallback
         const assets =
             assetCache || assetManager
                 ? new BrowserAssetProvider(
-                      // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
-                      assetCache as any,
-                      // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
-                      assetManager as any,
-                  )
+                    // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+                    assetCache as any,
+                    // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+                    assetManager as any,
+                )
                 : createNullAssetProvider();
 
         // Create a null zip provider (not needed for preview files)
