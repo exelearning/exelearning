@@ -59,9 +59,26 @@ window.MathJax = window.MathJax || (function() {
             }
         }
     }
+    // Generic logic to detect if we are in the index page (root) or a subpage
+    // We check the src of the common.js script itself.
+    var scriptPath = '';
+    var scripts = document.getElementsByTagName('script');
+    for (var i = 0; i < scripts.length; i++) {
+        var src = scripts[i].getAttribute('src');
+        if (src && src.indexOf("common.js") !== -1 && src.indexOf("common_i18n") === -1) {
+            scriptPath = src;
+            break;
+        }
+    }
+    // If common.js is loaded as "libs/common.js" (or "./libs...") we are at root.
+    // If it's loaded as "../libs/common.js", we are in a subfolder.
+    if (scriptPath && (scriptPath === 'libs/common.js' || scriptPath === './libs/common.js' || scriptPath.indexOf('/libs/common.js') !== -1 && scriptPath.indexOf('../') === -1)) {
+        isIndex = true;
+    }
+
     var basePath = isWorkarea
         ? (version ? configBasePath + '/' + version + '/app/common/exe_math' : configBasePath + '/app/common/exe_math')
-        : (isIndex ? './libs/exe_math' : '../libs/exe_math');
+        : (isIndex ? 'libs/exe_math' : '../libs/exe_math');
     
     var externalExtensions = [
         'amscd', 'bbox', 'boldsymbol', 'braket', 'bussproofs', 'cancel',
@@ -306,7 +323,19 @@ var $exe = {
                 return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
             }
             // Export mode
-            return ($("html").prop("id") === "exe-index" ? "./libs/mermaid/mermaid.min.js" : "../app/common/mermaid/mermaid.min.js");
+            var isIndex = $("html").prop("id") === "exe-index";
+            // Double check with script src if ID check fails (robustness)
+            if (!isIndex) {
+                 var scripts = document.getElementsByTagName('script');
+                 for (var i = 0; i < scripts.length; i++) {
+                     var src = scripts[i].getAttribute('src');
+                     if (src && (src === 'libs/common.js' || src === './libs/common.js')) {
+                         isIndex = true;
+                         break;
+                     }
+                 }
+            }
+            return (isIndex ? "libs/mermaid/mermaid.min.js" : "../libs/mermaid/mermaid.min.js");
         })(),
         reload_pending: false,
         initialized: false,
@@ -686,11 +715,26 @@ var $exe = {
                 p = (eXeLearning.symfony?.fullURL || eXeLearning.config?.fullURL || '') + "/app/common/exe_tooltips/";
             } else {
                 var ref = window.location.href;
-                // Check if it's the home page
+                // Check if it's the home page using robust checks (ID or script path)
                 p = "libs/exe_tooltips/";
-                if (!document.getElementById("exe-index")) p = "../" + p;
+                var isIndex = document.getElementById("exe-index") !== null;
+                if (!isIndex) {
+                    var scripts = document.getElementsByTagName('script');
+                    for (var i = 0; i < scripts.length; i++) {
+                        var src = scripts[i].getAttribute('src');
+                        if (src && (src === 'libs/common.js' || src === './libs/common.js')) {
+                            isIndex = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isIndex) p = "../" + p;
             }
-            $exe.loadScript(p + "exe_tooltips.js", "$exe.tooltips.init('" + p + "')")
+            if (typeof($exe.tooltips) === 'undefined') {
+                $exe.loadScript(p + "exe_tooltips.js", "$exe.tooltips.init('" + p + "')")
+            } else {
+                 $exe.tooltips.init(p);
+            }
         }
     },
 
@@ -1566,9 +1610,9 @@ var $exeDevices = {
                     }
                     if (!window.MathJax.loader) window.MathJax.loader = {};
                     if (!window.MathJax.loader.paths) window.MathJax.loader.paths = {};
-                    // In static mode, keep the pre-configured relative path
-                    var capabilities = window.eXeLearning?.app?.capabilities;
-                    if (capabilities?.storage?.remote) {
+                    // Always set basePath for MathJax path resolution
+                    // This fixes path issues in export formats with subdirectories (like EPUB)
+                    if (basePath) {
                         window.MathJax.loader.paths.mathjax = basePath;
                     }
                     var script = document.createElement('script');

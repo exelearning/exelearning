@@ -26,6 +26,7 @@ import type {
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { generateI18nScript } from '../generators/I18nGenerator';
+import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 /**
  * EPUB3 XML namespaces
@@ -150,7 +151,6 @@ export class Epub3Exporter extends BaseExporter {
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
             // 1. Add mimetype file (MUST be first, uncompressed)
-            // Note: The ZIP provider should handle this specially
             this.zip.addFile('mimetype', EPUB3_MIMETYPE);
 
             // 2. Add container.xml
@@ -161,10 +161,58 @@ export class Epub3Exporter extends BaseExporter {
             this.zip.addFile('EPUB/nav.xhtml', navXhtml);
             this.addManifestItem('nav', 'nav.xhtml', 'application/xhtml+xml', 'nav');
 
-            // 4. Generate XHTML pages
+            // 4. Generate XHTML pages (with optional LaTeX and Mermaid pre-rendering)
+            let latexWasRendered = false;
+            let mermaidWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+                let xhtml = this.generatePageXhtml(page, pages, meta, i === 0, i, themeRootFiles, faviconInfo);
+
+                // Pre-render LaTeX ONLY if addMathJax is false
+                // When MathJax is included, let it process LaTeX at runtime for full UX
+                if (!meta.addMathJax) {
+                    // Pre-render LaTeX in encrypted DataGame divs FIRST
+                    if (options?.preRenderDataGameLatex) {
+                        try {
+                            const result = await options.preRenderDataGameLatex(xhtml);
+                            if (result.count > 0) {
+                                xhtml = result.html;
+                                latexWasRendered = true;
+                            }
+                        } catch (error) {
+                            // Fail silently for optional pre-rendering
+                        }
+                    }
+
+                    // Pre-render visible LaTeX to SVG+MathML if hook is provided
+                    if (options?.preRenderLatex) {
+                        try {
+                            const result = await options.preRenderLatex(xhtml);
+                            if (result.latexRendered) {
+                                xhtml = result.html;
+                                latexWasRendered = true;
+                            }
+                        } catch (error) {
+                            // Fail silently for optional pre-rendering
+                        }
+                    }
+                }
+
+                // Pre-render Mermaid diagrams to static SVG if hook is provided
+                // This eliminates the need for the ~2.7MB Mermaid library in exports
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(xhtml);
+                        if (result.mermaidRendered) {
+                            xhtml = result.html;
+                            mermaidWasRendered = true;
+                        }
+                    } catch (error) {
+                        // Fail silently for optional pre-rendering
+                    }
+                }
+
                 // Use unique filename from the map (handles title collisions)
                 // EPUB uses .xhtml extension instead of .html
                 const mapFilename = pageFilenameMap.get(page.id) || 'page.html';
@@ -177,7 +225,7 @@ export class Epub3Exporter extends BaseExporter {
                 this.spineItems.push({ idref: pageId });
             }
 
-            // 5. Add base CSS (fetch from content/css, then add EPUB-specific)
+            // 5. Add base CSS (fetch from content/css, then add EPUB-specific + pre-rendered CSS)
             const contentCssFiles = await this.resources.fetchContentCss();
             const fetchedBaseCss = contentCssFiles.get('content/css/base.css');
             if (!fetchedBaseCss) {
@@ -185,7 +233,14 @@ export class Epub3Exporter extends BaseExporter {
             }
             const baseCssContent =
                 typeof fetchedBaseCss === 'string' ? fetchedBaseCss : new TextDecoder().decode(fetchedBaseCss);
-            const baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
+            let baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
+            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            if (latexWasRendered) {
+                baseCss += '\n' + this.getPreRenderedLatexCss();
+            }
+            if (mermaidWasRendered) {
+                baseCss += '\n' + this.getPreRenderedMermaidCss();
+            }
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
 
@@ -226,7 +281,9 @@ export class Epub3Exporter extends BaseExporter {
             try {
                 const libFiles = await this.resources.fetchLibraryFiles(allRequiredFiles, patterns);
                 for (const [path, content] of libFiles) {
-                    this.zip.addFile(`EPUB/libs/${path}`, content);
+                    // Transform exe_abc_music.js to prevent duplicate execution errors in EPUB readers
+                    const finalContent = this.transformForEpub(path, content);
+                    this.zip.addFile(`EPUB/libs/${path}`, finalContent);
                     const ext = this.getFileExtensionFromPath(path);
                     const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                     this.addManifestItem(this.generateUniqueId(`lib-${path}`), `libs/${path}`, mimeType);
@@ -235,7 +292,9 @@ export class Epub3Exporter extends BaseExporter {
                 try {
                     const baseLibs = await this.resources.fetchBaseLibraries();
                     for (const [path, content] of baseLibs) {
-                        this.zip.addFile(`EPUB/libs/${path}`, content);
+                        // Also transform scripts in fallback path
+                        const finalContent = this.transformForEpub(path, content);
+                        this.zip.addFile(`EPUB/libs/${path}`, finalContent);
                         const ext = this.getFileExtensionFromPath(path);
                         const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                         this.addManifestItem(this.generateUniqueId(`lib-${path}`), `libs/${path}`, mimeType);
@@ -249,6 +308,11 @@ export class Epub3Exporter extends BaseExporter {
             const i18nContent = generateI18nScript(meta.language || 'en');
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
+
+            // 7.5.1. Add EPUB guards script
+            const guardsScript = this.generateEpubGuardsScript();
+            this.zip.addFile('EPUB/libs/exe_epub_guards.js', guardsScript);
+            this.addManifestItem('epub-guards', 'libs/exe_epub_guards.js', 'application/javascript');
 
             // 7.6. Always add base libraries (including favicon) - these are essential for any export
             // This ensures libs/favicon.ico is always present regardless of library detection results
@@ -307,17 +371,30 @@ export class Epub3Exporter extends BaseExporter {
                             const mimeType = MIME_TYPES[ext] || 'application/octet-stream';
                             this.addManifestItem(this.generateUniqueId(`font-${filePath}`), filePath, mimeType);
                         }
-                        console.log(
-                            `[Epub3Exporter] Added ${fontFiles.size} global font files for: ${meta.globalFont}`,
-                        );
                     }
-                } catch (e) {
-                    console.warn(`[Epub3Exporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                } catch {
+                    // Fail silently for font fetching
                 }
             }
 
             // 9. Add project assets
             const _assetsAdded = await this.addEpubAssets();
+
+            // 9.5. Add content.xml (ODE format for re-import) - only if exportSource is enabled
+            if (meta.exportSource !== false) {
+                try {
+                    const contentXml = await this.getContentXml();
+                    if (contentXml) {
+                        // In EPUB, content.xml goes inside EPUB/ directory
+                        this.zip.addFile('EPUB/content.xml', contentXml);
+                        this.addManifestItem('content-xml', 'content.xml', 'application/xml');
+                        this.zip.addFile('EPUB/' + ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                        this.addManifestItem('content-dtd', ODE_DTD_FILENAME, 'application/xml-dtd');
+                    }
+                } catch {
+                    // content.xml is optional - fail silently
+                }
+            }
 
             // 10. Generate package.opf (OPF manifest)
             const packageOpf = this.generatePackageOpf(meta, bookId);
@@ -503,6 +580,12 @@ export class Epub3Exporter extends BaseExporter {
 
         let html = '';
         for (const page of children) {
+            // Check visibility property (skip if explicitly set to false or "false")
+            const visibility = page.properties?.visibility;
+            if (visibility === false || visibility === 'false') {
+                continue;
+            }
+
             const filename = this.getPageFilename(page, allPages, pageFilenameMap);
             const grandchildren = pages.filter(p => p.parentId === page.id);
 
@@ -609,6 +692,8 @@ export class Epub3Exporter extends BaseExporter {
             currentPageIndex: pageIndex,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // EPUB-specific: load guard script for duplicate execution protection
+            isEpub: true,
         });
 
         // Convert HTML to XHTML
@@ -680,24 +765,30 @@ export class Epub3Exporter extends BaseExporter {
 
     /**
      * Add assets to EPUB with manifest entries
+     * Uses buildAssetExportPathMap for clean paths (matching SCORM/Website exports)
      */
     private async addEpubAssets(): Promise<number> {
         let assetsAdded = 0;
 
         try {
             const assets = await this.assets.getAllAssets();
+            const exportPathMap = await this.buildAssetExportPathMap();
 
             for (const asset of assets) {
-                const assetId = asset.id;
-                const filename = asset.filename || `asset-${assetId}`;
-                const zipPath = `content/resources/${assetId}/${filename}`;
+                const exportPath = exportPathMap.get(asset.id);
+                if (!exportPath) {
+                    continue;
+                }
+
+                // Store in EPUB/content/resources/{exportPath} (matching HTML references)
+                const zipPath = `content/resources/${exportPath}`;
 
                 this.zip.addFile(`EPUB/${zipPath}`, asset.data);
 
                 // Add to manifest
-                const ext = this.getFileExtensionFromPath(filename);
+                const ext = this.getFileExtensionFromPath(exportPath);
                 const mimeType = MIME_TYPES[ext] || asset.mime || 'application/octet-stream';
-                this.addManifestItem(this.generateUniqueId(`asset-${assetId}`), zipPath, mimeType);
+                this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
             }
@@ -797,5 +888,223 @@ td, th {
         }
 
         return { themeFilesMap, themeRootFiles, faviconInfo };
+    }
+
+    /**
+     * Get content.xml from the document for inclusion in EPUB package
+     * This allows the package to be re-edited in eXeLearning
+     */
+    protected async getContentXml(): Promise<string | null> {
+        // Try to get content.xml from the document adapter
+        if ('getContentXml' in this.document && typeof this.document.getContentXml === 'function') {
+            return (this.document as { getContentXml: () => Promise<string | null> }).getContentXml();
+        }
+        return null;
+    }
+
+    /**
+     * Get CSS for pre-rendered LaTeX (SVG+MathML)
+     * This CSS is needed when LaTeX is pre-rendered instead of using MathJax at runtime
+     */
+    protected getPreRenderedLatexCss(): string {
+        return `/* Pre-rendered LaTeX (SVG+MathML) - MathJax not included */
+.exe-math-rendered { display: inline-block; vertical-align: middle; }
+.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
+.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
+/* Fix for MathJax array/table borders - SVG has stroke-width:0 which hides lines */
+.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
+.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
+/* Hide MathML visually but keep accessible for screen readers */
+.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }`;
+    }
+
+    /**
+     * Get CSS for pre-rendered Mermaid diagrams (static SVG)
+     * This CSS is needed when Mermaid is pre-rendered instead of using the library at runtime
+     */
+    protected getPreRenderedMermaidCss(): string {
+        return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
+.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
+.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
+    }
+
+    /**
+     * Transform JavaScript files for EPUB compatibility
+     * Some scripts need to be wrapped in guards to prevent duplicate execution errors
+     * when EPUB readers re-execute scripts during page navigation.
+     *
+     * @param path - The file path
+     * @param content - The file content (string or Uint8Array)
+     * @returns Transformed content (same type as input)
+     */
+    private transformForEpub(path: string, content: string | Uint8Array): string | Uint8Array {
+        // Extract filename, handling both forward and backslashes (Windows paths)
+        const filename = path.split(/[/\\]/).pop() || path;
+
+        // Transform abcjs-basic-min.js - the UMD pattern binds ABCJS to 'this' which may not be 'window' in EPUB
+        if (filename === 'abcjs-basic-min.js') {
+            const originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
+
+            // Replaces the UMD pattern with a forced window assignment
+            // Original: !function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}(this,(function(){...
+            const umdPattern =
+                '!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}';
+            const forcedBinding = '!function(e,t){window.ABCJS=t()}';
+
+            let transformedCode = originalCode.replace(umdPattern, forcedBinding);
+
+            // Add header comment if it's not the original code anymore
+            if (transformedCode !== originalCode) {
+                transformedCode = `// EPUB-safe version - forced window.ABCJS binding\n${transformedCode}`;
+            } else {
+                // Fallback if pattern doesn't match exactly (e.g. version change): append safety check
+                transformedCode = `// EPUB-safe version - fallback binding\n${originalCode}\n`;
+                transformedCode += `(function(){ if(typeof window!=='undefined' && !window.ABCJS && typeof ABCJS!=='undefined'){window.ABCJS=ABCJS;} })();`;
+            }
+
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
+        // Transform exe_abc_music.js - it contains class declarations that fail on re-execution
+        if (filename === 'exe_abc_music.js') {
+            // Convert to string if needed
+            let originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
+
+            // Enhance logging for debugging
+            originalCode = originalCode.replace(
+                'console.warn("Error loading abcjs");',
+                'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);',
+            );
+
+            // EPUB Security Fix: Accessing parent.document throws SecurityError in sandboxed readers
+            // We wrap it in try-catch to allow falling back to the local document selector
+            originalCode = originalCode.replace(
+                'var htmlSource = parent.document.querySelector("#htmlSource");',
+                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }',
+            );
+
+            // Simple guard pattern: if already loaded, skip entire script
+            // We don't use IIFE to preserve the original global variable behavior
+            // Instead, we wrap just the class declaration that causes redeclaration errors
+            const transformedCode = `// EPUB-safe version - guards against redeclaration error
+if (typeof window.__exeABCmusicLoaded !== 'undefined') {
+    // Script already loaded, skip re-execution to prevent CursorControl redeclaration error
+} else {
+    window.__exeABCmusicLoaded = true;
+    // Original script follows - variables remain in global scope
+${originalCode}
+}
+`;
+
+            // Return in same format as input
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
+        // Transform exe_effects.js to fix Accordion in EPUB (href issue)
+        if (filename === 'exe_effects.js') {
+            const originalCode = typeof content === 'string' ? content : new TextDecoder().decode(content);
+
+            // Patch the accordion click handler
+            // The issue is that $(this).attr('href') falls back to the full URL or is sanitized in EPUBs
+            // We need to derive the target ID from the element ID instead
+            const searchFor = `var currentAttrValue = $(this).attr('href');
+
+        // IE7 retrieves link#hash instead of #hash
+        currentAttrValue = currentAttrValue.split("#");
+        currentAttrValue = "#" + currentAttrValue[1];
+        // / IE7`;
+
+            const replaceWith = `// EPUB PATCH: Deduce target from ID because href might be void
+        var targetId = this.id.replace("-trigger", "").replace(/_/g, "-");
+        var currentAttrValue = "#" + targetId;`;
+
+            // Allow for flexible whitespace in search
+            const normalizedSearch = searchFor.replace(/\s+/g, ' ');
+            const normalizedOriginal = originalCode.replace(/\s+/g, ' ');
+
+            let transformedCode = originalCode;
+
+            // Try exact replacement first
+            if (originalCode.includes(searchFor)) {
+                transformedCode = originalCode.replace(searchFor, replaceWith);
+            } else {
+                // Determine indentation and surrounding context for fallback
+                const fallbackSearch = "var currentAttrValue = $(this).attr('href');";
+                const fallbackReplace = `var currentAttrValue = "#" + this.id.replace("-trigger", "").replace(/_/g, "-"); /* EPUB PATCH */
+        /* Original: var currentAttrValue = $(this).attr('href'); */`;
+
+                if (originalCode.includes(fallbackSearch)) {
+                    // We only replace the first line and comment out the rest manually if needed,
+                    // or just rely on the fact that redefining currentAttrValue effectively overrides the subsequent logic
+                    // IF we place it after.
+                    // But simpler to just replace the line and handle the IE7 block if it exists next.
+
+                    // Regex approach to match the block more robustly
+                    const regex =
+                        /var\s+currentAttrValue\s*=\s*\$\(this\)\.attr\('href'\);\s*\/\/ IE7[^/]*\/\/\s*\/ IE7/s;
+                    if (regex.test(originalCode)) {
+                        transformedCode = originalCode.replace(regex, replaceWith);
+                    } else {
+                        // Fallback: just replace the initialization line
+                        transformedCode = originalCode.replace(fallbackSearch, fallbackReplace);
+                    }
+                } else {
+                    console.warn('[Epub3Exporter] Could not find exe_effects.js click handler to patch');
+                }
+            }
+
+            // Refinement: Prevent scroll-to-top by changing href="#" to href="javascript:void(0)"
+            // in the HTML generation part.
+            // Original: href="#' + id + '"
+            const linkSearch = 'href="#\' + id + \'"';
+            const linkReplace = 'href="javascript:void(0)"';
+
+            if (transformedCode.includes(linkSearch)) {
+                transformedCode = transformedCode.replace(linkSearch, linkReplace);
+            } else {
+                console.warn('[Epub3Exporter] Could not find exe_effects.js link generation to patch');
+            }
+
+            if (typeof content === 'string') {
+                return transformedCode;
+            }
+            return new TextEncoder().encode(transformedCode);
+        }
+
+        // No transformation needed for other files
+        return content;
+    }
+
+    /**
+     * Generate EPUB guards script that prevents duplicate execution errors
+     * This script runs BEFORE any libraries load and patches the global scope
+     * to handle EPUB readers that re-execute scripts during page navigation.
+     */
+    protected generateEpubGuardsScript(): string {
+        return `/**
+ * EPUB Library Guards - eXeLearning
+ * Prevents duplicate execution errors when EPUB readers re-execute scripts
+ */
+(function() {
+    'use strict';
+    if (window.__exeEpubGuardsLoaded) return;
+    window.__exeEpubGuardsLoaded = true;
+    
+    // Pre-declare globals that would cause redeclaration errors
+    if (typeof window.CursorControl === 'undefined') window.CursorControl = null;
+    if (typeof window.$exeABCmusic === 'undefined') window.$exeABCmusic = null;
+    if (typeof window.$exeExport === 'undefined') window.$exeExport = null;
+    if (typeof window.synthControl === 'undefined') window.synthControl = undefined;
+    if (typeof window.is_n_audio_ok === 'undefined') window.is_n_audio_ok = undefined;
+    if (typeof window.abc === 'undefined') window.abc = [];
+    
+    console.log('[EPUB Guards] Library guards initialized');
+})();`;
     }
 }
