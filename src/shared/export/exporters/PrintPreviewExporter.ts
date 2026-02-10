@@ -138,7 +138,13 @@ export class PrintPreviewExporter {
             // 2. Patch relative paths (libs/, theme/) to server absolute paths
             html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
 
-            // 3. Inject styles to avoid horizontal scroll
+            // 2. Patch relative paths (libs/, theme/) to server absolute paths
+            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
+
+            // 3. Make hidden feedback elements visible (remove display: none)
+            html = this.revealFeedback(html);
+
+            // 4. Inject styles to avoid horizontal scroll
             html = this.injectPreviewStyles(html);
 
             // 4. Inject Print scripts and CSS (if printMode)
@@ -222,6 +228,10 @@ figure img {
         overflow: visible !important; 
         height: auto !important; 
     }
+}
+/* Force visibility for feedback elements even if JS tries to hide them */
+.feedback.js-hidden {
+    display: block !important;
 }
 </style>
 `;
@@ -598,5 +608,35 @@ $(function() {
 </script>
 `;
         return html.replace('</body>', `${initScript}</body>`);
+    }
+
+    /**
+     * Reveal hidden feedback elements by removing display: none style
+     * Targets divs with classes 'feedback' and 'js-hidden'
+     */
+    private revealFeedback(html: string): string {
+        // Regex to match opening div tags
+        return html.replace(/<div([^>]*)>/gi, (match, attributes) => {
+            // Check if it has the required classes
+            // We look for class="..." containing both 'feedback' and 'js-hidden'
+            const classMatch = /class=["']([^"']*)["']/i.exec(attributes);
+            if (!classMatch) return match;
+
+            const classes = classMatch[1].split(/\s+/);
+            if (classes.includes('feedback') && classes.includes('js-hidden')) {
+                // It's a feedback div. Remove display properties from inline style
+                // Replace style="..." completely if it checks out, or just modify content
+                const newAttributes = attributes.replace(/style=(["'])(.*?)\1/i, (styleMatch, quote, styleContent) => {
+                    // Remove display: none (case insensitive, optional space, optional semicolon)
+                    // Also robust against 'display:none' without space
+                    const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
+                    // If style is empty after removal, we can return empty string or style=""
+                    return newStyle ? `style=${quote}${newStyle}${quote}` : '';
+                });
+                return `<div${newAttributes}>`;
+            }
+
+            return match;
+        });
     }
 }

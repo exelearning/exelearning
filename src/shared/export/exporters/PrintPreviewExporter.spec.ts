@@ -451,6 +451,57 @@ describe('PrintPreviewExporter', () => {
         });
     });
 
+    describe('feedback visibility', () => {
+        it('should remove display:none from hidden feedback elements', async () => {
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page with feedback',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            type: 'text',
+                            components: [
+                                {
+                                    type: 'text',
+                                    content:
+                                        '<div class="feedback js-feedback js-hidden" style="display: none;">Hidden Feedback</div>',
+                                },
+                                {
+                                    type: 'text',
+                                    content:
+                                        '<div class="CSP-FeedbackText feedback js-feedback js-hidden" style="display: none;">Another Hidden Feedback</div>',
+                                },
+                            ],
+                        },
+                    ],
+                    properties: {},
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview();
+
+            // Should still contain the content
+            expect(result.html).toContain('Hidden Feedback');
+            expect(result.html).toContain('Another Hidden Feedback');
+
+            // Should NOT contain style="display: none;" for these elements
+            // We use a regex to check that the specific div doesn't have the style anymore
+            // Simple check: the exact string provided in content should not exist as-is
+            expect(result.html).not.toContain('<div class="feedback js-feedback js-hidden" style="display: none;">');
+            expect(result.html).not.toContain(
+                '<div class="CSP-FeedbackText feedback js-feedback js-hidden" style="display: none;">',
+            );
+
+            // It should probably just be the div without the style or with style=""
+            // checking that the class exists is enough to ensure we didn't wipe the element
+            expect(result.html).toContain('class="feedback js-feedback js-hidden"');
+        });
+    });
+
     describe('library path patching', () => {
         it('should patch paths for abcjs and highlighter', async () => {
             // Create a doc with content that triggers library detection
@@ -465,8 +516,20 @@ describe('PrintPreviewExporter', () => {
                             id: 'b1',
                             type: 'text',
                             components: [
-                                { type: 'text', content: '<pre class="abc-music">X:1</pre>' },
-                                { type: 'text', content: '<pre class="highlighted-code">code</pre>' },
+                                {
+                                    id: 'c3',
+                                    order: 0,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<pre class="abc-music">X:1</pre>',
+                                },
+                                {
+                                    id: 'c4',
+                                    order: 1,
+                                    properties: {},
+                                    type: 'text',
+                                    content: '<pre class="highlighted-code">code</pre>',
+                                },
                             ],
                         },
                     ],
