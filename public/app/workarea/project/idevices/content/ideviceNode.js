@@ -357,6 +357,7 @@ export default class IdeviceNode {
 
                 // Check if locked by another user via Yjs
                 const isLockedByOther = this.isLockedByOtherUser();
+                const lockedDisabled = isLockedByOther ? 'disabled' : '';
 
                 if (this.haveEdition && this.valid && !isLockedByOther) {
                     // In some cases the idevice will not be able to be edited
@@ -384,11 +385,11 @@ export default class IdeviceNode {
                 <div class="dropdown exe-actions-menu">
                     <div class="idevice-editor-avatar" data-component-id="${id}"></div>
                     ${ideviceTypeIcon}
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}"><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
-                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}"><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-move-up-idevice" type="button" id=moveUpIdevice${id} title="${_('Move up')}" ${lockedDisabled}><span class="small-icon arrow-up-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move up')}</span></button>
+                    <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-right d-flex justify-content-center align-items-center btn-move-down-idevice" type="button" id=moveDownIdevice${id} title="${_('Move down')}" ${lockedDisabled}><span class="small-icon arrow-down-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Move down')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-left d-flex justify-content-center align-items-center btn-edit-idevice ${blockButtonEditClass}" type="button" id=editIdevice${id} title="${_('Edit')}" ${blockButtonEditClass}><span class="small-icon edit-icon-green" aria-hidden="true"></span>${_('Edit')}${lockIndicator}</button>
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>                    
-                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}"><span class="micro-icon dots-menu-vertical-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice" type="button" id=deleteIdevice${id} title="${_('Delete')}" ${lockedDisabled}><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete')}</span></button>
+                    <button class="btn-action-menu btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center exe-advanced" type="button" id="dropdownMenuButtonIdevice${id}" data-bs-toggle="dropdown" aria-expanded="false" title="${_('Actions')}" ${lockedDisabled}><span class="micro-icon dots-menu-vertical-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Actions')}</span></button>
                     <ul class="dropdown-menu${dropdownColumns} button-action-block exe-advanced" aria-labelledby="dropdownMenuButtonIdevice${id}">
                         <li><button class="dropdown-item button-action-block" id="propertiesIdevice${id}"><span class="small-icon settings-icon-green" aria-hidden="true"></span>${_('Properties')}</button></li>
                         <li><button class="dropdown-item button-action-block" id="cloneIdevice${id}"><span class="small-icon duplicate-icon-green" aria-hidden="true"></span>${_('Clone')}</button></li>
@@ -399,8 +400,8 @@ export default class IdeviceNode {
                 </div>`;
                 // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
-                // drag&drop
-                this.ideviceButtons.setAttribute('draggable', true);
+                // drag&drop (disabled when locked by another user)
+                this.ideviceButtons.setAttribute('draggable', !isLockedByOther);
                 // Event listeners
                 this.addBehaviourEditionIdeviceButton();
                 this.addBehaviourMoveUpIdeviceButton();
@@ -427,7 +428,7 @@ export default class IdeviceNode {
     toogleIdeviceButtonsState(disable) {
         if (!this.ideviceButtons) return;
         this.ideviceButtons
-            .querySelectorAll('.button-action-idevice')
+            .querySelectorAll('.btn-action-menu')
             .forEach((button) => {
                 button.disabled = disable;
             });
@@ -1019,6 +1020,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#deleteIdevice' + this.odeIdeviceId)
             .addEventListener('click', (e) => {
+                // Prevent deleting iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 const parent = e.target.closest('.idevice_node');
                 if (parent && parent.getAttribute('mode') === 'export') {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
@@ -1132,6 +1135,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#moveUpIdevice' + this.odeIdeviceId)
             .addEventListener('click', (element) => {
+                // Prevent moving iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // check component Flag
                 eXeLearning.app.project
@@ -1184,6 +1189,8 @@ export default class IdeviceNode {
         this.ideviceButtons
             .querySelector('#moveDownIdevice' + this.odeIdeviceId)
             .addEventListener('click', (element) => {
+                // Prevent moving iDevices locked by another user
+                if (this.isLockedByOtherUser()) return;
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
                 // Check odeComponent flag
                 eXeLearning.app.project
@@ -3032,6 +3039,35 @@ export default class IdeviceNode {
             $exeDevices.iDevice.gamification.media.stopSound();
         }
         if (this.engine.mode == 'view') {
+            // Acquire Yjs CRDT lock before entering edit mode
+            if (this.isYjsEnabled()) {
+                const componentId = this.yjsComponentId || this.odeIdeviceId;
+                const lockManager = this.getLockManager();
+                if (lockManager) {
+                    const lockAcquired = lockManager.requestLock(componentId);
+                    if (!lockAcquired) {
+                        const lockInfo = this.getLockInfo();
+                        const lockUserName = lockInfo?.lockUserName || _('Another user');
+                        eXeLearning.app.modals.alert.show({
+                            title: _('iDevice locked'),
+                            body: _('This iDevice is being edited by') + ' ' + lockUserName,
+                            contentId: 'warning',
+                        });
+                        this.toogleIdeviceButtonsState(false);
+                        return;
+                    }
+                    // Write lock metadata to structureBinding for remote visibility
+                    const bridge = this.engine?.project?._yjsBridge;
+                    if (bridge?.structureBinding) {
+                        bridge.structureBinding.updateComponent(componentId, {
+                            lockedBy: lockManager.getClientId(),
+                            lockUserName: lockManager.getCurrentUser()?.name || 'Unknown',
+                            lockUserColor: lockManager.getCurrentUser()?.color || '#999',
+                        });
+                    }
+                }
+            }
+
             this.goWindowToIdevice(100);
             this.loadInitScriptIdevice('edition');
             this.engine.updateMode();

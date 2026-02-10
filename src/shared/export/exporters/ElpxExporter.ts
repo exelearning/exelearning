@@ -91,11 +91,13 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
-            // 1.1 Generate HTML pages (store for later — manifest script tag injection happens after manifest is created)
+            // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
+            let mermaidWasRendered = false;
+
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
-                const html = this.generatePageHtml(
+                let html = this.generatePageHtml(
                     page,
                     pages,
                     meta,
@@ -105,6 +107,24 @@ export class ElpxExporter extends Html5Exporter {
                     faviconInfo,
                     pageFilenameMap,
                 );
+
+                // Pre-render Mermaid diagrams to static SVG if hook is provided
+                // This eliminates the need for the ~2.7MB Mermaid library in exports
+                if (options?.preRenderMermaid) {
+                    try {
+                        const result = await options.preRenderMermaid(html);
+                        if (result.mermaidRendered) {
+                            html = result.html;
+                            mermaidWasRendered = true;
+                            console.log(
+                                `[ElpxExporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
+                            );
+                        }
+                    } catch (error) {
+                        console.warn('[ElpxExporter] Mermaid pre-render failed for page:', page.title, error);
+                    }
+                }
+
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
@@ -117,11 +137,19 @@ export class ElpxExporter extends Html5Exporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 1.3 Add base CSS (fetch from content/css)
+            // 1.3 Add base CSS (fetch from content/css) and Mermaid pre-rendered CSS
             const contentCssFiles = await this.resources.fetchContentCss();
-            const baseCss = contentCssFiles.get('content/css/base.css');
+            let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
+            }
+            // Append pre-rendered Mermaid CSS if diagrams were rendered
+            if (mermaidWasRendered) {
+                const decoder = new TextDecoder();
+                let baseCssText = decoder.decode(baseCss);
+                baseCssText += '\n' + this.getPreRenderedMermaidCss();
+                const encoder = new TextEncoder();
+                baseCss = encoder.encode(baseCssText);
             }
             addFile('content/css/base.css', baseCss);
 

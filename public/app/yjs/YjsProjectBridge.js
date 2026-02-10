@@ -2108,7 +2108,14 @@ class YjsProjectBridge {
           this.resourceFetcher,
           this.assetManager
         );
-        const result = await exporter.export();
+        
+        // Get Mermaid pre-renderer hook if available
+        const exportOptions = {};
+        if (window.MermaidPreRenderer) {
+          exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
+        }
+        
+        const result = await exporter.export(exportOptions);
         if (result.success && result.data) {
           // Use sanitized filename from exporter (lowercase, no accents, no special chars)
           const exportFilename = result.filename || 'export.elpx';

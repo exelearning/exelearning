@@ -837,12 +837,12 @@ describe('IdeviceNode', () => {
             expect(() => idevice.toogleIdeviceButtonsState(true)).not.toThrow();
         });
 
-        it('disables all buttons when disable is true', () => {
+        it('disables all action buttons when disable is true', () => {
             idevice.ideviceButtons = document.createElement('div');
             const button1 = document.createElement('button');
-            button1.classList.add('button-action-idevice');
+            button1.classList.add('btn-action-menu');
             const button2 = document.createElement('button');
-            button2.classList.add('button-action-idevice');
+            button2.classList.add('btn-action-menu');
             idevice.ideviceButtons.appendChild(button1);
             idevice.ideviceButtons.appendChild(button2);
 
@@ -852,16 +852,31 @@ describe('IdeviceNode', () => {
             expect(button2.disabled).toBe(true);
         });
 
-        it('enables all buttons when disable is false', () => {
+        it('enables all action buttons when disable is false', () => {
             idevice.ideviceButtons = document.createElement('div');
             const button = document.createElement('button');
-            button.classList.add('button-action-idevice');
+            button.classList.add('btn-action-menu');
             button.disabled = true;
             idevice.ideviceButtons.appendChild(button);
 
             idevice.toogleIdeviceButtonsState(false);
 
             expect(button.disabled).toBe(false);
+        });
+
+        it('does not affect buttons without btn-action-menu class', () => {
+            idevice.ideviceButtons = document.createElement('div');
+            const actionButton = document.createElement('button');
+            actionButton.classList.add('btn-action-menu');
+            const otherButton = document.createElement('button');
+            otherButton.classList.add('some-other-class');
+            idevice.ideviceButtons.appendChild(actionButton);
+            idevice.ideviceButtons.appendChild(otherButton);
+
+            idevice.toogleIdeviceButtonsState(true);
+
+            expect(actionButton.disabled).toBe(true);
+            expect(otherButton.disabled).toBe(false);
         });
     });
 
@@ -2776,6 +2791,145 @@ describe('IdeviceNode', () => {
             expect(() => idevice.edition()).not.toThrow();
             delete global.$exeDevices;
         });
+
+        it('acquires Yjs lock and writes metadata when lock is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-42');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'Alice', color: '#ff0000' });
+            const mockUpdateComponent = vi.fn();
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: mockUpdateComponent,
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(mockUpdateComponent).toHaveBeenCalledWith('yjs-comp-123', {
+                lockedBy: 'client-42',
+                lockUserName: 'Alice',
+                lockUserColor: '#ff0000',
+            });
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+        });
+
+        it('shows alert and re-enables buttons when lock is denied', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue({
+                lockUserName: 'Bob',
+                lockUserColor: '#00ff00',
+            });
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-comp-123');
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Bob',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+            expect(idevice.loadInitScriptIdevice).not.toHaveBeenCalled();
+        });
+
+        it('proceeds normally when no lock manager is available', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            const mockSetEditingComponent = vi.fn();
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: null,
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: mockSetEditingComponent,
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(100);
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('edition');
+            expect(mockEngine.updateMode).toHaveBeenCalled();
+        });
+
+        it('uses yjsComponentId over odeIdeviceId for lock acquisition', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-preferred-id';
+            idevice.odeIdeviceId = 'ode-fallback-id';
+            const mockRequestLock = vi.fn().mockReturnValue(true);
+            const mockGetClientId = vi.fn().mockReturnValue('client-1');
+            const mockGetCurrentUser = vi.fn().mockReturnValue({ name: 'User', color: '#999' });
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                        getClientId: mockGetClientId,
+                        getCurrentUser: mockGetCurrentUser,
+                    },
+                    structureBinding: {
+                        updateComponent: vi.fn(),
+                    },
+                    getDocumentManager: vi.fn().mockReturnValue({
+                        setEditingComponent: vi.fn(),
+                    }),
+                },
+            };
+
+            idevice.edition();
+
+            expect(mockRequestLock).toHaveBeenCalledWith('yjs-preferred-id');
+        });
+
+        it('falls back to "Another user" when lockInfo is null on denial', () => {
+            eXeLearning.app.project._yjsEnabled = true;
+            idevice.yjsComponentId = 'yjs-comp-123';
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            const mockRequestLock = vi.fn().mockReturnValue(false);
+            idevice.engine.project = {
+                _yjsBridge: {
+                    lockManager: {
+                        requestLock: mockRequestLock,
+                    },
+                },
+            };
+            idevice.getLockInfo = vi.fn().mockReturnValue(null);
+
+            idevice.edition();
+
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith({
+                title: 'iDevice locked',
+                body: 'This iDevice is being edited by Another user',
+                contentId: 'warning',
+            });
+            expect(idevice.toogleIdeviceButtonsState).toHaveBeenCalledWith(false);
+            expect(idevice.goWindowToIdevice).not.toHaveBeenCalled();
+        });
     });
 
     describe('save', () => {
@@ -4395,6 +4549,105 @@ describe('IdeviceNode', () => {
             idevice.makeIdeviceButtonsElement();
 
             expect(idevice.ideviceButtons.innerHTML).toContain('editIdevice');
+        });
+
+        it('should disable delete, move up, move down, and actions buttons when locked by other user', () => {
+            idevice.mode = 'export';
+            idevice.lockedByRemote = true;
+            idevice.lockUserName = 'Remote User';
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+
+            idevice.makeIdeviceButtonsElement();
+
+            const moveUp = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            const moveDown = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            const editBtn = idevice.ideviceButtons.querySelector('.btn-edit-idevice');
+            const actionsDropdown = idevice.ideviceButtons.querySelector('[data-bs-toggle="dropdown"]');
+
+            expect(moveUp.disabled).toBe(true);
+            expect(moveDown.disabled).toBe(true);
+            expect(deleteBtn.disabled).toBe(true);
+            expect(editBtn.disabled).toBe(true);
+            expect(actionsDropdown.disabled).toBe(true);
+            // drag&drop should be disabled
+            expect(idevice.ideviceButtons.getAttribute('draggable')).toBe('false');
+        });
+
+        it('should enable delete, move up, move down buttons when NOT locked', () => {
+            idevice.mode = 'export';
+            idevice.lockedByRemote = false;
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+
+            idevice.makeIdeviceButtonsElement();
+
+            const moveUp = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            const moveDown = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            const editBtn = idevice.ideviceButtons.querySelector('.btn-edit-idevice');
+
+            expect(moveUp.disabled).toBe(false);
+            expect(moveDown.disabled).toBe(false);
+            expect(deleteBtn.disabled).toBe(false);
+            expect(editBtn.disabled).toBe(false);
+            // drag&drop should be enabled
+            expect(idevice.ideviceButtons.getAttribute('draggable')).toBe('true');
+        });
+    });
+
+    describe('locked iDevice handler guards', () => {
+        beforeEach(() => {
+            // Set up export mode with buttons rendered
+            idevice.odeIdeviceId = 'idevice-test';
+            idevice.ideviceContent = document.createElement('div');
+            idevice.mode = 'export';
+            idevice.valid = true;
+            idevice.haveEdition = true;
+            idevice.lockedByRemote = false;
+            idevice.ideviceContent.querySelector = vi.fn().mockReturnValue(null);
+            mockEngine.addEventDragStartToContentIdevice = vi.fn();
+            mockEngine.addEventDragEndToContentIdevice = vi.fn();
+            idevice.makeIdeviceButtonsElement();
+        });
+
+        it('delete handler should not proceed when locked by other user', () => {
+            const changeUserFlagSpy = eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            deleteBtn.click();
+
+            expect(changeUserFlagSpy).not.toHaveBeenCalled();
+        });
+
+        it('move up handler should not proceed when locked by other user', () => {
+            const isAvailableSpy = eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const moveUpBtn = idevice.ideviceButtons.querySelector('.btn-move-up-idevice');
+            moveUpBtn.click();
+
+            expect(isAvailableSpy).not.toHaveBeenCalled();
+        });
+
+        it('move down handler should not proceed when locked by other user', () => {
+            const isAvailableSpy = eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = true;
+
+            const moveDownBtn = idevice.ideviceButtons.querySelector('.btn-move-down-idevice');
+            moveDownBtn.click();
+
+            expect(isAvailableSpy).not.toHaveBeenCalled();
+        });
+
+        it('delete handler should proceed when NOT locked by other user', () => {
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+            idevice.lockedByRemote = false;
+
+            const deleteBtn = idevice.ideviceButtons.querySelector('.btn-delete-idevice');
+            deleteBtn.click();
+
+            expect(eXeLearning.app.project.changeUserFlagOnEdit).toHaveBeenCalled();
         });
     });
 

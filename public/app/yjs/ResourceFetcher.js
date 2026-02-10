@@ -913,6 +913,14 @@ class ResourceFetcher {
       return this.cache.get(cacheKey);
     }
 
+    // In static mode, fetch from local files
+    if (this.isStaticMode) {
+      console.log('[ResourceFetcher] 📁 Static mode: Loading SCORM files from local');
+      const scormFiles = await this.fetchScormFilesStatic();
+      this.cache.set(cacheKey, scormFiles);
+      return scormFiles;
+    }
+
     Logger.log('[ResourceFetcher] Fetching SCORM files from server...');
 
     try {
@@ -952,6 +960,42 @@ class ResourceFetcher {
       console.error('[ResourceFetcher] Failed to fetch SCORM files:', e);
       return new Map();
     }
+  }
+
+  /**
+   * Static mode: Fetch SCORM files from local paths
+   * SCORM files are located in app/common/scorm/ directory
+   * @returns {Promise<Map<string, Blob>>}
+   */
+  async fetchScormFilesStatic() {
+    const scormFiles = new Map();
+    const scormFileNames = ['SCORM_API_wrapper.js', 'SCOFunctions.js'];
+
+    // In static mode, SCORM files are in app/common/scorm/
+    for (const fileName of scormFileNames) {
+      const url = `${this.basePath}/app/common/scorm/${fileName}`;
+      try {
+        const response = await fetch(url);
+        if (response.ok) {
+          const blob = await response.blob();
+          // Store with just filename (caller adds libs/ prefix)
+          scormFiles.set(fileName, blob);
+          console.log(`[ResourceFetcher] Loaded SCORM file: ${fileName}`);
+        } else {
+          console.warn(`[ResourceFetcher] SCORM file not found: ${url} (${response.status})`);
+        }
+      } catch (e) {
+        console.warn(`[ResourceFetcher] Error fetching SCORM file ${url}:`, e);
+      }
+    }
+
+    if (scormFiles.size > 0) {
+      Logger.log(`[ResourceFetcher] Static SCORM files loaded (${scormFiles.size} files)`);
+    } else {
+      console.warn('[ResourceFetcher] No SCORM files found in static mode');
+    }
+
+    return scormFiles;
   }
 
   // =========================================================================

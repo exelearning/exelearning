@@ -206,6 +206,13 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchScormFiles(version: '1.2' | '2004'): Promise<Map<string, Uint8Array>>;
+
+    /**
+     * Fetch global font files
+     * @param fontName - Name of the font (e.g., 'opendyslexic')
+     * @returns Map of relative path -> content buffer
+     */
+    fetchGlobalFontFiles(fontName: string): Promise<Map<string, Uint8Array> | null>;
 }
 
 /**
@@ -282,6 +289,38 @@ export interface ZipProvider {
      * Create a new ZIP archive
      */
     createZip(): ZipArchive;
+
+    // Methods for direct usage if the provider acts as the archive (BaseExporter usage compatibility)
+    addFile(path: string, content: string | Uint8Array | Blob): void;
+    hasFile(path: string): boolean;
+    getFilePaths(): string[];
+    generateAsync(options?: ZipGenerateOptions): Promise<Uint8Array | Blob>;
+}
+
+/**
+ * Options for generating ZIP
+ */
+export interface ZipGenerateOptions {
+    type?:
+        | 'base64'
+        | 'string'
+        | 'text'
+        | 'binarystring'
+        | 'array'
+        | 'uint8array'
+        | 'arraybuffer'
+        | 'blob'
+        | 'nodebuffer';
+    compression?: 'STORE' | 'DEFLATE';
+    compressionOptions?: {
+        level: number;
+    };
+    comment?: string;
+    mimeType?: string;
+    platform?: 'DOS' | 'UNIX';
+    encodeFileName?: (filename: string) => string;
+    streamFiles?: boolean;
+    onUpdate?: (metadata: unknown) => void;
 }
 
 /**
@@ -553,6 +592,9 @@ export interface PageRenderOptions {
     /** Hide the prev/next navigation buttons (default: false) */
     hideNavButtons?: boolean;
 
+    /** EPUB export indicator - loads guard script for duplicate execution protection */
+    isEpub?: boolean;
+
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
 
@@ -699,6 +741,9 @@ export interface ScormManifestOptions {
     masteryScore?: number;
     organization?: string;
     version: '1.2' | '2004';
+    author?: string;
+    description?: string;
+    license?: string;
 }
 
 /**
@@ -709,6 +754,9 @@ export interface ImsManifestOptions {
     title: string;
     language: string;
     pages: ExportPage[];
+    description?: string;
+    author?: string;
+    license?: string;
 }
 
 /**

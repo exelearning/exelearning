@@ -55,19 +55,22 @@
 	width: 90%;
 	padding-right: 5%;
 	padding-left: 5%;
-	height: 316px;
+	height: 100%;
 	margin: 0 auto;
 	overflow: auto;
-	display: none
+	display: none;
+	position: relative;
+	
 }
 
 #activity-cover.activity-cover-img {
 	width: 100%;
 	padding: 0;
 	position: relative;
-	height: 316px;
+	height: 100%;
 	text-align: center;
-	overflow: hidden
+	overflow: hidden;
+	background: #fff
 }
 
 #activity-cover .activity-cover-img-content {
@@ -99,8 +102,10 @@
 /* Use this to add a logo to all the activities */
 #start-activity {
 	text-align: center;
-	margin: 2.5em 0
+	margin: 2.5em 0;
 }
+
+
 
 #start-activity a {
 	padding: 8px 20px;
