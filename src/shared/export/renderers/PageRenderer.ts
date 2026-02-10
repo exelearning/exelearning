@@ -955,9 +955,9 @@ ${this.renderPageContent(page, '', projectTitle)}
         }
 
         // Detect content libraries
-        const detectedLibraries = this.detectContentLibraries(allContentParts.join('\n'));
+        const contentLibraries = this.detectContentLibraries(allContentParts.join('\n'));
         let libIncludes = '';
-        for (const libName of detectedLibraries) {
+        for (const libName of contentLibraries) {
             const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
             if (!libPattern) continue;
 

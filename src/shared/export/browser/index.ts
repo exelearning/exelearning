@@ -115,6 +115,7 @@ function createNullResourceProvider() {
         fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
         fetchExeLogo: async () => null,
+        fetchGlobalFontFiles: async () => new Map<string, Uint8Array>(),
     };
 }
 
@@ -156,7 +157,7 @@ export function createExporter(
     }
 
     // Create adapters with null-safe wrappers
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const document = new YjsDocumentAdapter(documentManager as any);
 
     // Create resource provider with null-safe fallback
@@ -171,9 +172,9 @@ export function createExporter(
     const assets =
         assetCache || assetManager
             ? new BrowserAssetProvider(
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
                   assetCache as any,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
                   assetManager as any,
               )
             : createNullAssetProvider();
@@ -472,7 +473,7 @@ export function createPrintPreviewExporter(
         const isNewManager = 'getProjectAssets' in assetManager;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cache = isNewManager ? null : (assetManager as any);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
         const manager = isNewManager ? (assetManager as any) : null;
 
         assets = new BrowserAssetProvider(cache, manager);
@@ -480,7 +481,7 @@ export function createPrintPreviewExporter(
 
     return new PrintPreviewExporter(
         document,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: resource provider compatibility
         resources as any,
         assets,
     );
@@ -522,12 +523,12 @@ export async function generatePreviewForSW(
         }
 
         // Create adapters with null-safe wrappers
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
         const document = new YjsDocumentAdapter(documentManager as any);
 
         // Create resource provider with null-safe fallback
         const resources = resourceFetcher
-            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ? // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
               new BrowserResourceProvider(resourceFetcher as any)
             : createNullResourceProvider();
 
@@ -535,9 +536,9 @@ export async function generatePreviewForSW(
         const assets =
             assetCache || assetManager
                 ? new BrowserAssetProvider(
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
                       assetCache as any,
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
                       assetManager as any,
                   )
                 : createNullAssetProvider();
@@ -567,7 +568,7 @@ export async function generatePreviewForSW(
                 const encoded = encoder.encode(content);
                 files[path] = encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength);
             } else {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // biome-ignore lint/suspicious/noExplicitAny: fallback for unknown content types
                 files[path] = content as any;
             }
         }
