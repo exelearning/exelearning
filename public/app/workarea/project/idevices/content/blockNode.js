@@ -118,6 +118,37 @@ export default class IdeviceBlockNode {
     }
 
     /**
+     * Get info about iDevices in this block that are locked by other users
+     * Used to warn before deleting a block containing iDevices being edited by others
+     * @returns {Array<{name: string, color: string}>} Array of unique locked user info objects
+     */
+    getLockedIdevicesInfo() {
+        if (!this.isYjsEnabled()) return [];
+
+        const lockedUsers = [];
+        const seenNames = new Set();
+        const myIdevices = this.idevices.filter(
+            (idevice) => idevice.blockId === this.blockId
+        );
+
+        for (const idevice of myIdevices) {
+            if (idevice.isLockedByOtherUser && idevice.isLockedByOtherUser()) {
+                const lockInfo = idevice.getLockInfo ? idevice.getLockInfo() : null;
+                const userName = lockInfo?.lockUserName || _('Another user');
+                if (!seenNames.has(userName)) {
+                    seenNames.add(userName);
+                    lockedUsers.push({
+                        name: userName,
+                        color: lockInfo?.lockUserColor || '#999',
+                    });
+                }
+            }
+        }
+
+        return lockedUsers;
+    }
+
+    /**
      * Load properties from Yjs
      * Updates local properties object with values from Yjs
      * Should be called before showing the properties modal to get latest values
@@ -739,8 +770,33 @@ export default class IdeviceBlockNode {
                                 contentId: 'error',
                             });
                         } else {
-                            this.remove(true);
-                            eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                            const lockedUsers = this.getLockedIdevicesInfo();
+                            if (lockedUsers.length > 0) {
+                                const userNames = lockedUsers.map(u => `<strong class="text-primary">${u.name}</strong>`).join(', ');
+                                const warningText = lockedUsers.length === 1
+                                    ? _('An iDevice in this box is being edited by another user')
+                                    : _('iDevices in this box are being edited by other users');
+                                const modalBody = `<p><strong>${_('Warning')}:</strong> ${warningText}:</p>
+                                    <p>${userNames}</p>
+                                    <p>${_('Their changes may be lost if you delete this box.')}</p>
+                                    <p>${_('Do you want to delete this box?')}</p>`;
+
+                                eXeLearning.app.modals.confirm.show({
+                                    title: _('Delete box'),
+                                    contentId: 'delete-block-modal',
+                                    body: modalBody,
+                                    confirmButtonText: _('Delete'),
+                                    cancelButtonText: _('Cancel'),
+                                    focusCancelButton: true,
+                                    confirmExec: () => {
+                                        this.remove(true);
+                                        eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                                    },
+                                });
+                            } else {
+                                this.remove(true);
+                                eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                            }
                         }
                     });
             });

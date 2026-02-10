@@ -324,29 +324,105 @@ var $interactivevideo = {
         // Cover (poster)
         if (
             InteractiveVideo.coverType &&
-            InteractiveVideo.coverType == 'poster'
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
         ) {
-            var img = $(
-                '.interactive-videoIdevice .exe-interactive-video-poster'
-            );
-            if (img.length == 1) {
-                img = img.eq(0);
-                cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
-                cover +=
-                    "<span class='activity-cover-img-content'>" +
-                    img.html() +
-                    '</span>';
-                coverCSS = ' class="activity-cover-img"';
-            }
+            var posterUrl = InteractiveVideo.poster;
+            var posterAlt = InteractiveVideo.posterDescription || '';
+            cover = "<h2 class='sr-av'>" + videoTitle + '</h2>';
+            cover +=
+                "<span class='activity-cover-img-content'>" +
+                '<img id="exe-interactive-video-poster-img" src="" alt="' + posterAlt + '" style="display:none;" />' +
+                '</span>';
+            coverCSS = ' class="activity-cover-img"';
+            
         }
 
         $('#activity').prepend(
-            '<div id="activity-cover"><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
+            '<div id="activity-cover"' + coverCSS + '><div id="activity-cover-logo"></div><div id="activity-cover-content">' +
                 cover +
                 '</div>' +
                 play +
                 '</div>'
         );
+
+        // Resolve poster URL after DOM is ready (must be after prepend)
+        if (
+            InteractiveVideo.coverType &&
+            InteractiveVideo.coverType == 'poster' &&
+            InteractiveVideo.poster
+        ) {
+            var posterUrl = InteractiveVideo.poster;
+            var posterImg = document.getElementById('exe-interactive-video-poster-img');
+            if (posterImg) {
+                // Helper to display the image
+                var showPoster = function(url) {
+                    posterImg.src = url;
+                    posterImg.style.display = '';
+                };
+                
+                // Get AssetManager from parent/top context (for preview mode in iframe)
+                var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   parent?.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                                   top?.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                
+                // If asset:// URL
+                if (posterUrl.indexOf('asset://') === 0) {
+                    // If AssetManager available (IDE mode), resolve to blob://
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(posterUrl).then(function(blobUrl) {
+                            showPoster(blobUrl || posterUrl);
+                        }).catch(function() {
+                            showPoster(posterUrl);
+                        });
+                    } else {
+                        // Export/preview mode: transform asset://uuid/path to content/resources/path
+                        var slashIndex = posterUrl.indexOf('/', 8); // after 'asset://'
+                        if (slashIndex !== -1) {
+                            var exportPath = posterUrl.substring(slashIndex + 1);
+                            showPoster('content/resources/' + exportPath);
+                        } else {
+                            showPoster(posterUrl);
+                        }
+                    }
+                }
+                // If resources/ path (legacy ELP 2.9 format)
+                else if (posterUrl.indexOf('resources/') === 0) {
+                    var filename = posterUrl.replace('resources/', '');
+                    
+                    // If AssetManager available (IDE mode), find asset and resolve to blob://
+                    if (assetManager && typeof assetManager.getAllAssetsMetadata === 'function') {
+                        var assets = assetManager.getAllAssetsMetadata();
+                        var foundAsset = null;
+                        for (var i = 0; i < assets.length; i++) {
+                            if (assets[i].filename === filename) {
+                                foundAsset = assets[i];
+                                break;
+                            }
+                        }
+                        if (foundAsset) {
+                            var assetUrl = 'asset://' + foundAsset.id + '/' + foundAsset.filename;
+                            assetManager.resolveAssetURL(assetUrl).then(function(blobUrl) {
+                                showPoster(blobUrl || assetUrl);
+                            }).catch(function() {
+                                // Fallback to content/resources/ path
+                                showPoster('content/resources/' + filename);
+                            });
+                        } else {
+                            // Asset not found in manager, use content/resources/ path
+                            showPoster('content/resources/' + filename);
+                        }
+                    } else {
+                        // No AssetManager (preview/export mode), use content/resources/ path
+                        showPoster('content/resources/' + filename);
+                    }
+                }
+                // Other URLs (http://, blob://, content/resources/, etc.)
+                else {
+                    showPoster(posterUrl);
+                }
+            }
+        }
 
         const videoHtml = $('.exe-interactive-video').html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(videoHtml)) {
@@ -1267,25 +1343,84 @@ var $interactivevideo = {
                 // Image
             } else if (e.type == 'image') {
                 var img = new Image();
-                img.src = $('#exe-interactive-video-img-' + e.url).attr('src');
-                img.onload = function () {
-                    slide.html(
-                        $interactivevideo.getImage(
-                            e,
-                            img.width,
-                            img.height,
-                            img.src
-                        )
-                    );
-                    for (var i = 0; i < InteractiveVideo.slides.length; i++) {
-                        if (e == InteractiveVideo.slides[i]) {
-                            $interactivevideo.updateResult(i, i18n.seen);
-                            e.results = {
-                                viewed: true,
-                            };
+                
+                // Determine the image source
+                // If e.url is a number (legacy format), find the element by ID
+                // If e.url is a URL (asset://, blob://, http://, etc.), use it directly
+                var imgSrc;
+                if (typeof e.url === 'number' || /^\d+$/.test(e.url)) {
+                    // Legacy format: e.url is an index, find the img element
+                    var imgElement = document.getElementById('exe-interactive-video-img-' + e.url);
+                    imgSrc = imgElement ? imgElement.src : '';
+                } else {
+                    // New format: e.url is already a URL
+                    imgSrc = e.url;
+                }
+                
+                // Helper function to load and display the image
+                var loadAndDisplayImage = function(src) {
+                    img.src = src;
+                    img.onload = function () {
+                        // Use saved dimensions if available, calculate proportionally if only one is set
+                        var naturalW = img.naturalWidth || img.width;
+                        var naturalH = img.naturalHeight || img.height;
+                        var displayWidth, displayHeight;
+                        
+                        if (e.width && e.height) {
+                            // Both dimensions saved
+                            displayWidth = parseInt(e.width);
+                            displayHeight = parseInt(e.height);
+                        } else if (e.width && !e.height) {
+                            // Only width saved, calculate height proportionally
+                            displayWidth = parseInt(e.width);
+                            displayHeight = Math.round((displayWidth * naturalH) / naturalW);
+                        } else if (!e.width && e.height) {
+                            // Only height saved, calculate width proportionally
+                            displayHeight = parseInt(e.height);
+                            displayWidth = Math.round((displayHeight * naturalW) / naturalH);
+                        } else {
+                            // No dimensions saved, use natural
+                            displayWidth = naturalW;
+                            displayHeight = naturalH;
                         }
-                    }
+                        slide.html(
+                            $interactivevideo.getImage(
+                                e,
+                                displayWidth,
+                                displayHeight,
+                                img.src
+                            )
+                        );
+                        for (var i = 0; i < InteractiveVideo.slides.length; i++) {
+                            if (e == InteractiveVideo.slides[i]) {
+                                $interactivevideo.updateResult(i, i18n.seen);
+                                e.results = {
+                                    viewed: true,
+                                };
+                            }
+                        }
+                    };
+                    img.onerror = function() {
+                        console.warn('[InteractiveVideo] Failed to load image:', src);
+                    };
                 };
+                
+                // If asset:// URL, resolve it first
+                if (imgSrc && imgSrc.indexOf('asset://') === 0) {
+                    var assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                    if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                        assetManager.resolveAssetURL(imgSrc).then(function(blobUrl) {
+                            loadAndDisplayImage(blobUrl || imgSrc);
+                        }).catch(function() {
+                            loadAndDisplayImage(imgSrc);
+                        });
+                    } else {
+                        // No AssetManager, try loading directly (won't work for asset://)
+                        loadAndDisplayImage(imgSrc);
+                    }
+                } else {
+                    loadAndDisplayImage(imgSrc);
+                }
 
                 // Single choice
             } else if (e.type == 'singleChoice') {
@@ -2591,7 +2726,11 @@ var $interactivevideo = {
             newW +
             '" height="' +
             newH +
-            '" style="display:block;margin-top:' +
+            '" style="display:block;width:' +
+            newW +
+            'px;height:' +
+            newH +
+            'px;margin-top:' +
             (maxH - newH) / 2 +
             'px" /><a href="' +
             src +
