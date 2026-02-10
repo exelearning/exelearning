@@ -42,9 +42,10 @@ var $guess = {
         $guess.options = [];
         $guess.activities.each(function (i) {
             const id = $(this).closest('.idevice_node').attr('id');
+            const dl = $('.adivina-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
 
             const version = $('.adivina-version', this).eq(0).text(),
-                dl = $('.adivina-DataGame', this),
                 imagesLink = $('.adivina-LinkImages', this),
                 audioLink = $('.adivina-LinkAudios', this),
                 mOption = $guess.loadDataGame(

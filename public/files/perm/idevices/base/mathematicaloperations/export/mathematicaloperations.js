@@ -66,8 +66,9 @@ var $eXeMathOperations = {
     loadGame: function () {
         $eXeMathOperations.options = [];
         $eXeMathOperations.activities.each(function (i) {
-            const dl = $('.mathoperations-DataGame', this),
-                mOption = $eXeMathOperations.loadDataGame(dl, i),
+            const dl = $('.mathoperations-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeMathOperations.loadDataGame(dl, i),
                 msg = mOption.msgs.msgPlayStart;
 
             mOption.scorerp = 0;

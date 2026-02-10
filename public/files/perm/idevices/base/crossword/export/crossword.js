@@ -1802,8 +1802,9 @@ var $eXeCrucigrama = {
         $eXeCrucigrama.options = [];
 
         $eXeCrucigrama.activities.each(function (i) {
+            const dl = $('.crucigrama-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             let version = $('.crucigrama-version', this).eq(0).text(),
-                dl = $('.crucigrama-DataGame', this),
                 imagesLink = $('.crucigrama-LinkImages', this),
                 audioLink = $('.crucigrama-LinkAudios', this),
                 $imageBack = $('.crucigrama-LinkBack', this),

@@ -38,6 +38,7 @@ var $eXeBeforeAfter = {
 
         $eXeBeforeAfter.activities.each(function (i) {
             const dl = $('.beforeafter-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const mOption = $eXeBeforeAfter.loadDataGame(dl, this);
 
             mOption.scorerp = 0;

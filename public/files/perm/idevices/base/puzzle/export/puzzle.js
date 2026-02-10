@@ -120,8 +120,9 @@ var $eXePuzzle = {
     loadGame: function () {
         $eXePuzzle.options = [];
         $eXePuzzle.activities.each(function (i) {
-            const dl = $('.puzzle-DataGame', this),
-                mOption = $eXePuzzle.loadDataGame(dl, this);
+            const dl = $('.puzzle-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXePuzzle.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXePuzzle.idevicePath;

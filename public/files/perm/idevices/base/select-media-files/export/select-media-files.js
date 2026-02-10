@@ -80,8 +80,9 @@ var $eXeSeleccionaMedias = {
         $eXeSeleccionaMedias.options = [];
 
         $eXeSeleccionaMedias.activities.each(function (i) {
-            const dl = $('.seleccionamedias-DataGame', this),
-                mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
+            const dl = $('.seleccionamedias-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeSeleccionaMedias.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeSeleccionaMedias.idevicePath;

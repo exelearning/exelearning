@@ -54,8 +54,9 @@ var $eXeFlipCards = {
     loadGame: function () {
         $eXeFlipCards.options = [];
         $eXeFlipCards.activities.each(function (i) {
-            const dl = $('.flipcards-DataGame', this),
-                $imageBack = $('.flipcard-ImageBack', this),
+            const dl = $('.flipcards-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $imageBack = $('.flipcard-ImageBack', this),
                 mOption = $eXeFlipCards.loadDataGame(dl, this);
 
             mOption.scorerp = 0;

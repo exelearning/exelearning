@@ -53,8 +53,9 @@ var $eXeOrdena = {
         $eXeOrdena.options = [];
 
         $eXeOrdena.activities.each(function (i) {
-            const dl = $('.ordena-DataGame', this),
-                mOption = $eXeOrdena.loadDataGame(dl, this);
+            const dl = $('.ordena-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeOrdena.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeOrdena.idevicePath;
