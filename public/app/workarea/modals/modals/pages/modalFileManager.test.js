@@ -665,6 +665,18 @@ describe('ModalFilemanager', () => {
       await modal.deleteSelectedAsset();
       expect(window.eXeLearning.app.project._yjsBridge.assetManager.deleteAsset).not.toHaveBeenCalled();
     });
+
+    it('should delete all selected assets in batch when confirmed', async () => {
+      modal.selectedAssets = [{ id: '1' }, { id: '2' }];
+      const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
+
+      await modal.deleteSelectedAsset();
+
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.deleteAsset).toHaveBeenCalledTimes(2);
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.deleteAsset).toHaveBeenCalledWith('1');
+      expect(window.eXeLearning.app.project._yjsBridge.assetManager.deleteAsset).toHaveBeenCalledWith('2');
+      expect(loadSpy).toHaveBeenCalled();
+    });
   });
 
   describe('generateUniqueCopyName', () => {
@@ -2228,6 +2240,7 @@ describe('ModalFilemanager', () => {
 
     it('should enable buttons when asset is selected', () => {
       modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
 
       modal.updateButtonStates();
 
@@ -2237,6 +2250,7 @@ describe('ModalFilemanager', () => {
     it('should enable insert button when file is selected', () => {
       // Insert button is enabled based on file selection, not callback
       modal.selectedAsset = { id: 'test', filename: 'test.jpg', mime: 'image/jpeg' };
+      modal.selectedAssets = [{ id: 'test', filename: 'test.jpg', mime: 'image/jpeg' }];
 
       modal.updateButtonStates();
 
@@ -2245,10 +2259,30 @@ describe('ModalFilemanager', () => {
 
     it('should disable insert button when no file is selected', () => {
       modal.selectedAsset = null;
+      modal.selectedAssets = [];
       modal.selectedFolder = 'some-folder';
 
       modal.updateButtonStates();
 
+      expect(modal.insertBtn?.disabled).toBe(true);
+    });
+
+    it('should keep delete and move enabled but disable single-item actions for multi selection', () => {
+      modal.selectedAsset = { id: 'a1', filename: '1.jpg', mime: 'image/jpeg' };
+      modal.selectedAssets = [
+        { id: 'a1', filename: '1.jpg', mime: 'image/jpeg' },
+        { id: 'a2', filename: '2.jpg', mime: 'image/jpeg' }
+      ];
+      modal.selectedFolder = null;
+
+      modal.updateButtonStates();
+
+      expect(modal.deleteBtn?.disabled).toBe(false);
+      expect(modal.moveBtn?.disabled).toBe(false);
+      expect(modal.renameBtn?.disabled).toBe(true);
+      expect(modal.downloadBtn?.disabled).toBe(true);
+      expect(modal.duplicateBtn?.disabled).toBe(true);
+      expect(modal.moreBtn?.disabled).toBe(true);
       expect(modal.insertBtn?.disabled).toBe(true);
     });
   });
@@ -2989,6 +3023,7 @@ describe('ModalFilemanager', () => {
 
     it('should move file successfully', async () => {
       modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'old' };
+      modal.selectedAssets = [modal.selectedAsset];
       modal.selectedFolderPath = null;
       modal.selectedMoveTarget = 'new';
       modal.hideFolderPicker = vi.fn();
@@ -3015,6 +3050,7 @@ describe('ModalFilemanager', () => {
 
     it('should handle file move error', async () => {
       modal.selectedAsset = { id: 'a1', filename: 'test.jpg', folderPath: 'old' };
+      modal.selectedAssets = [modal.selectedAsset];
       modal.selectedFolderPath = null;
       modal.selectedMoveTarget = 'new';
       modal.assetManager.updateAssetFolderPath.mockRejectedValue(new Error('Move failed'));
@@ -3028,6 +3064,7 @@ describe('ModalFilemanager', () => {
 
     it('should hide picker if no asset selected when moving file', async () => {
       modal.selectedAsset = null;
+      modal.selectedAssets = [];
       modal.selectedFolderPath = null;
       modal.selectedMoveTarget = 'dest';
       modal.hideFolderPicker = vi.fn();
@@ -3035,6 +3072,25 @@ describe('ModalFilemanager', () => {
       await modal.confirmMove();
 
       expect(modal.hideFolderPicker).toHaveBeenCalled();
+    });
+
+    it('should move multiple files successfully', async () => {
+      modal.selectedAsset = { id: 'a2', filename: 'second.jpg', folderPath: 'folder-a' };
+      modal.selectedAssets = [
+        { id: 'a1', filename: 'first.jpg', folderPath: 'folder-a' },
+        { id: 'a2', filename: 'second.jpg', folderPath: 'folder-b' }
+      ];
+      modal.selectedFolderPath = null;
+      modal.selectedMoveTarget = 'new-folder';
+      modal.hideFolderPicker = vi.fn();
+
+      await modal.confirmMove();
+
+      expect(modal.assetManager.updateAssetFolderPath).toHaveBeenCalledTimes(2);
+      expect(modal.assetManager.updateAssetFolderPath).toHaveBeenCalledWith('a1', 'new-folder');
+      expect(modal.assetManager.updateAssetFolderPath).toHaveBeenCalledWith('a2', 'new-folder');
+      expect(modal.hideFolderPicker).toHaveBeenCalled();
+      expect(modal.loadAssets).toHaveBeenCalled();
     });
   });
 
@@ -3149,6 +3205,7 @@ describe('ModalFilemanager', () => {
         formatFileSize: vi.fn(() => '1 KB'),
       };
       modal.showSidebarContent = vi.fn();
+      modal.showMultiSelectionSidebarContent = vi.fn();
       modal.selectedAsset = null;
     });
 
@@ -3190,6 +3247,50 @@ describe('ModalFilemanager', () => {
 
       expect(modal.selectedAssets).toContain(asset);
       expect(modal.selectedAssets.length).toBe(1);
+    });
+
+    it('should support additive selection with ctrl/cmd click', async () => {
+      const row1 = document.createElement('tr');
+      const row2 = document.createElement('tr');
+      modal.listTbody.appendChild(row1);
+      modal.listTbody.appendChild(row2);
+
+      const asset1 = { id: 'a1', filename: 'first.jpg' };
+      const asset2 = { id: 'a2', filename: 'second.jpg' };
+
+      await modal.selectAssetInList(asset1, row1);
+      await modal.selectAssetInList(asset2, row2, { ctrlKey: true });
+
+      expect(modal.selectedAssets).toHaveLength(2);
+      expect(row1.classList.contains('selected')).toBe(true);
+      expect(row2.classList.contains('selected')).toBe(true);
+      expect(modal.showMultiSelectionSidebarContent).toHaveBeenCalledWith(modal.selectedAssets);
+      expect(modal.showSidebarContent).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('showMultiSelectionSidebarContent', () => {
+    beforeEach(() => {
+      modal.initElements();
+      modal.assetManager = {
+        formatFileSize: vi.fn((bytes) => `${bytes} bytes`),
+      };
+      modal.locationRow = document.createElement('div');
+      modal.updateButtonStates = vi.fn();
+    });
+
+    it('should show aggregate info for multiple selected files', () => {
+      modal.showMultiSelectionSidebarContent([
+        { id: 'a1', size: 100 },
+        { id: 'a2', size: 250 },
+      ]);
+
+      expect(modal.filenameSpan.textContent).toBe('2 files selected');
+      expect(modal.typeSpan.textContent).toBe('Multiple files');
+      expect(modal.sizeSpan.textContent).toBe('350 bytes');
+      expect(modal.urlInput.value).toBe('');
+      expect(modal.locationRow.style.display).toBe('none');
+      expect(modal.updateButtonStates).toHaveBeenCalled();
     });
   });
 

@@ -84,8 +84,9 @@ var $quickquestionsvideo = {
         $quickquestionsvideo.options = [];
 
         $quickquestionsvideo.activities.each(function (i) {
+            const dl = $('.vquext-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.vquext-version', this).eq(0).text(),
-                dl = $('.vquext-DataGame', this),
                 videoLocal = $('.vquext-LinkLocalVideo', this)
                     .eq(0)
                     .attr('href'),

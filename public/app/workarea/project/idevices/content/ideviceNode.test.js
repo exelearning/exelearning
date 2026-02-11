@@ -4424,13 +4424,18 @@ describe('IdeviceNode', () => {
     describe('addBehaviourUndoIdeviceButton', () => {
         beforeEach(() => {
             idevice.odeIdeviceId = 'idevice-123';
+            idevice.id = 'idevice-123';
             idevice.mode = 'edition';
             idevice.ideviceButtons = document.createElement('div');
             idevice.ideviceButtons.innerHTML = `<button id="undoIdeviceidevice-123">Undo</button>`;
-            idevice.loadInitScriptIdevice = vi.fn();
+            idevice.loadInitScriptIdevice = vi.fn().mockResolvedValue();
             idevice.loadLegacyExeFunctionalitiesExport = vi.fn();
             idevice.toogleIdeviceButtonsState = vi.fn();
+            idevice.cleanupInactivityTracker = vi.fn();
+            idevice.releaseYjsEditingLock = vi.fn();
+            idevice.createAddTextBtn = vi.fn();
             mockEngine.unsetIdeviceActive = vi.fn();
+            mockEngine.resetCurrentIdevicesExportView = vi.fn().mockResolvedValue();
             eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue();
         });
 
@@ -4439,6 +4444,48 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('confirmExec calls loadInitScriptIdevice and resetCurrentIdevicesExportView sequentially', async () => {
+            // Capture confirmExec callback
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourUndoIdeviceButton();
+            // Trigger click to show confirm modal
+            const btn = idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123');
+            btn.click();
+
+            expect(capturedConfirmExec).toBeDefined();
+
+            // Execute the confirm callback
+            await capturedConfirmExec();
+
+            expect(idevice.loadInitScriptIdevice).toHaveBeenCalledWith('export');
+            expect(mockEngine.resetCurrentIdevicesExportView).toHaveBeenCalledWith(['idevice-123']);
+        });
+
+        it('confirmExec awaits loadInitScriptIdevice before resetCurrentIdevicesExportView', async () => {
+            const callOrder = [];
+            idevice.loadInitScriptIdevice = vi.fn().mockImplementation(async () => {
+                callOrder.push('loadInitScript');
+            });
+            mockEngine.resetCurrentIdevicesExportView = vi.fn().mockImplementation(async () => {
+                callOrder.push('resetExportView');
+            });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec }) => {
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourUndoIdeviceButton();
+            idevice.ideviceButtons.querySelector('#undoIdeviceidevice-123').click();
+            await capturedConfirmExec();
+
+            expect(callOrder).toEqual(['loadInitScript', 'resetExportView']);
         });
     });
 

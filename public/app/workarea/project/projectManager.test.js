@@ -2465,6 +2465,55 @@ describe('ProjectManager', () => {
 
             expect(projectManager.idevices.newBlockNode).toHaveBeenCalled();
         });
+
+        it('creates iDevices sequentially with for...of (not parallel)', async () => {
+            const creationOrder = [];
+            projectManager.idevices.createIdeviceInContent = vi.fn().mockImplementation(async (idevice) => {
+                // Simulate async work with small delay
+                await new Promise(r => setTimeout(r, 10));
+                creationOrder.push(idevice.odeIdeviceTypeName);
+                return { ideviceContent: document.createElement('div') };
+            });
+
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [
+                    { htmlView: '<div>1</div>', odeIdeviceTypeName: 'first' },
+                    { htmlView: '<div>2</div>', odeIdeviceTypeName: 'second' },
+                    { htmlView: '<div>3</div>', odeIdeviceTypeName: 'third' },
+                ],
+            };
+
+            // Trigger the interval callback
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+            await vi.advanceTimersByTimeAsync(projectManager.syncIntervalTime + 50);
+
+            // Sequential: must be in order
+            expect(creationOrder).toEqual(['first', 'second', 'third']);
+        });
+
+        it('skips iDevices with null htmlView', async () => {
+            const creationOrder = [];
+            projectManager.idevices.createIdeviceInContent = vi.fn().mockImplementation(async (idevice) => {
+                creationOrder.push(idevice.odeIdeviceTypeName);
+                return { ideviceContent: document.createElement('div') };
+            });
+
+            const odeBlockSync = {
+                blockId: 'block-123',
+                odeComponentsSyncs: [
+                    { htmlView: '<div>1</div>', odeIdeviceTypeName: 'first' },
+                    { htmlView: null, odeIdeviceTypeName: 'empty' },
+                    { htmlView: '<div>3</div>', odeIdeviceTypeName: 'third' },
+                ],
+            };
+
+            await projectManager.moveOdeBlockOnSamePage(odeBlockSync);
+            await vi.advanceTimersByTimeAsync(projectManager.syncIntervalTime + 50);
+
+            // Empty idevice should be skipped
+            expect(creationOrder).toEqual(['first', 'third']);
+        });
     });
 
     describe('moveOdeComponentOnSamePage', () => {

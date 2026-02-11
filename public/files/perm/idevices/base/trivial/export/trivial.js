@@ -125,6 +125,7 @@ var $eXeTrivial = {
         $eXeTrivial.options = [];
         $eXeTrivial.activities.each(function (i) {
             const dl = $('.trivial-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             let mOption = $eXeTrivial.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 

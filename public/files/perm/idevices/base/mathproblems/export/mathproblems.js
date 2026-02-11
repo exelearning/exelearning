@@ -58,8 +58,9 @@ var $eXeMathProblems = {
     loadGame: function () {
         $eXeMathProblems.options = [];
         $eXeMathProblems.activities.each(function (i) {
-            const dl = $('.mathproblems-DataGame', this),
-                $wordings = $('.mathproblems-LinkWordings', this),
+            const dl = $('.mathproblems-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $wordings = $('.mathproblems-LinkWordings', this),
                 $feedbacks = $('.mathproblems-LinkFeedBacks', this),
                 mOption = $eXeMathProblems.loadDataGame(
                     dl,
