@@ -893,6 +893,8 @@ ${userFooterHtml}</div></footer>`;
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
             version?: string;
+            addExeLink?: boolean;
+            userFooterContent?: string;
         } = {},
     ): string {
         const {

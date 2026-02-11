@@ -85,8 +85,6 @@ export class PrintPreviewExporter {
     ) {
         this.document = document;
         this.assets = assetProvider;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error - resourceProvider usage pending refactor of IdeviceRenderer
         this.ideviceRenderer = new IdeviceRenderer();
         this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
@@ -224,9 +222,7 @@ export class PrintPreviewExporter {
                 .map(page => {
                     // Clone page to avoid mutation
                     const newPage = { ...page };
-                    // @ts-expect-error - children might exist in runtime even if not in strict interface
                     if (newPage.children && Array.isArray(newPage.children)) {
-                        // @ts-expect-error - children access
                         newPage.children = this.filterVisiblePages(newPage.children);
                     }
                     return newPage;
@@ -248,8 +244,24 @@ export class PrintPreviewExporter {
 
         const styles = `
 <style>
+/* PREVIEW MODE (Screen) */
+/* Create space around the document in preview mode */
+body {
+    padding: 40px;
+    background-color: #f5f5f5; /* Light grey background for the "paper" effect */
+}
+/* The page content acts as the paper */
+.exe-single-page {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    max-width: 210mm; /* A4 width approx */
+    margin: 0 auto;
+    padding: 20mm; /* A4 margins approx */
+    box-sizing: border-box;
+}
+
 /* Force content to fit within the page (no horizontal scroll) */
-img, figure, video, object, iframe, table {
+img, figure, video, object, iframe, table, svg, canvas {
     max-width: 100%;
     height: auto;
     box-sizing: border-box;
@@ -264,28 +276,85 @@ figure img {
 }
 /* Fix for specific eXe layout issues */
 .iDevice_content {
-    overflow-x: auto;
-}
-@media print {
-    img, figure, video, object, iframe, table {
-        max-width: 100% !important;
-        height: auto !important;
-        page-break-inside: avoid;
+    /* 3. Force visibility for maps, definition lists and UDL content blocks globally */
+    .mapa-LinkTextsPoints,
+    .js-hidden.mapa-LinkTextsPoints,
+    .js .js-hidden.mapa-LinkTextsPoints,
+    .mapa-IDevice .js-hidden.mapa-LinkTextsPoints {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
-    pre, blockquote {
-        page-break-inside: avoid;
-        white-space: pre-wrap;
+
+    .js .exe-dl dd {
+        display: block !important;
     }
-    /* Ensure no scrollbars in print */
-    body { 
-        overflow: visible !important; 
-        height: auto !important; 
+
+    .exe-udlContent-block,
+    .exe-udlContent-block.js-hidden,
+    .js .exe-udlContent-block.js-hidden {
+        display: block !important;
     }
-}
-/* Force visibility for feedback elements even if JS tries to hide them */
-.feedback.js-hidden {
-    display: block !important;
-}
+
+    /* PRINT MODE */
+    @media print {
+        /* Reset preview-specific styles */
+        body {
+            padding: 0 !important;
+            background-color: transparent !important;
+            overflow: visible !important;
+            height: auto !important;
+        }
+        .exe-single-page {
+            box-shadow: none !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Avoid cutting images between pages */
+        img, figure, video, object, iframe, table, svg, canvas {
+            max-width: 100% !important;
+            height: auto !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+        }
+        
+        pre, blockquote {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            white-space: pre-wrap;
+        }
+
+        /* Hide Headers and Subtitles */
+        .main-header, 
+        #nodeDecoration { 
+            display: none !important; 
+        }
+
+        /* Ensure Package Header is visible on first page */
+        .package-header {
+            display: block !important;
+            visibility: visible !important; 
+            position: static !important;
+        }
+
+        /* Hide navigation */
+        #siteNav, .single-page-nav { display: none !important; }
+        
+        #made-with-eXe { display: none; }
+        
+        .single-page-section {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            border-bottom: none;
+        }
+    }
+
+    /* Force visibility for feedback elements */
+    .feedback.js-hidden {
+        display: block !important;
+    }
 ${logoCss}
 </style>
 `;
@@ -390,7 +459,7 @@ ${logoCss}
                             asset.data instanceof Blob
                                 ? asset.data
                                 : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                  new Blob([asset.data as any], { type: asset.mime });
+                                new Blob([asset.data as any], { type: asset.mime });
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);

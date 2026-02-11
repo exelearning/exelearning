@@ -42,6 +42,7 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchExeLogo: async () => null,
     fetchContentCss: async () => new Map(),
     fetchScormFiles: async () => new Map(),
+    fetchGlobalFontFiles: async () => null,
 });
 
 describe('PrintPreviewExporter', () => {
@@ -208,6 +209,43 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('box-sizing: border-box');
             expect(result.html).toContain('@media print');
             expect(result.html).toContain('page-break-inside: avoid');
+        });
+
+        it('should inject new print CSS rules (spacing, hiding headers, map points)', async () => {
+            const result = await exporter.generatePreview();
+
+            // 1. Preview Spacing
+            expect(result.html).toContain('body {');
+            expect(result.html).toContain('padding: 40px;'); // Preview padding
+            expect(result.html).toContain('.exe-single-page {');
+            expect(result.html).toContain('max-width: 210mm;');
+
+            // 2. Print Mode Reset
+            expect(result.html).toContain('@media print {');
+            expect(result.html).toContain('padding: 0 !important;'); // Reset padding
+
+            // 3. Header Visibility
+            // Package header (Project Title) should be visible and static
+            expect(result.html).toContain('.package-header {');
+            expect(result.html).toContain('display: block !important;');
+            expect(result.html).toContain('visibility: visible !important;');
+            expect(result.html).toContain('position: static !important;');
+
+            // Node decorations should be hidden
+            expect(result.html).toContain('#nodeDecoration {');
+            expect(result.html).toContain('display: none !important;');
+
+            // 4. Show Map Points (including js-hidden with parent selectors)
+            expect(result.html).toContain('.mapa-LinkTextsPoints,');
+            expect(result.html).toContain('.mapa-IDevice .js-hidden.mapa-LinkTextsPoints {');
+            expect(result.html).toContain('display: block !important;');
+
+            // 5. Definition List
+            expect(result.html).toContain('.js .exe-dl dd {');
+            expect(result.html).toContain('display: block !important;');
+
+            expect(result.html).toContain('.exe-udlContent-block.js-hidden,');
+            expect(result.html).toContain('.js .exe-udlContent-block.js-hidden {');
         });
     });
 
@@ -505,14 +543,21 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            type: 'text',
+                            name: 'Text Block',
+                            order: 0,
                             components: [
                                 {
+                                    id: 'c1',
+                                    order: 0,
+                                    properties: {},
                                     type: 'text',
                                     content:
                                         '<div class="feedback js-feedback js-hidden" style="display: none;">Hidden Feedback</div>',
                                 },
                                 {
+                                    id: 'c2',
+                                    order: 1,
+                                    properties: {},
                                     type: 'text',
                                     content:
                                         '<div class="CSP-FeedbackText feedback js-feedback js-hidden" style="display: none;">Another Hidden Feedback</div>',
@@ -556,7 +601,8 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            type: 'text',
+                            name: 'Text Block',
+                            order: 0,
                             components: [
                                 // Version divs
                                 {
@@ -716,7 +762,8 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            type: 'text',
+                            name: 'Text Block',
+                            order: 0,
                             components: [
                                 // Audio links
                                 {
@@ -810,7 +857,8 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            type: 'text',
+                            name: 'Text Block',
+                            order: 0,
                             components: [
                                 // Sequence of duplicates (Simulating the Complete iDevice split)
                                 // Shared prefix: 20251021091936 (14 chars)
@@ -895,7 +943,8 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            type: 'text',
+                            name: 'Text Block',
+                            order: 0,
                             components: [
                                 {
                                     id: 'c3',
@@ -944,7 +993,7 @@ describe('PrintPreviewExporter', () => {
                     blocks: [
                         {
                             id: 'b1',
-                            name: 'b1',
+                            name: 'Text Block',
                             order: 0,
                             components: [
                                 {
