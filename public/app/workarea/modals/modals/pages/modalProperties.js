@@ -14,6 +14,8 @@ export default class ModalProperties extends Modal {
             'button.close.btn.btn-secondary'
         );
         this.node = null;
+        this.propertiesLockId = null;
+        this.propertiesLockRefreshInterval = null;
     }
 
     /**
@@ -31,13 +33,44 @@ export default class ModalProperties extends Modal {
             let contentId = data.contentId ? data.contentId : null;
             let properties = data.properties ? data.properties : {};
             let fullScreen = data.fullScreen ? data.fullScreen : null;
+
+            const lockConfig = this.getPropertiesLockConfig(contentId);
+            if (lockConfig) {
+                const lockResult = this.acquirePropertiesLock(lockConfig);
+                if (!lockResult.ok) {
+                    eXeLearning.app.modals.alert.show({
+                        title: _(lockConfig.lockedTitle),
+                        body:
+                            _(lockConfig.lockedBody) +
+                            ' ' +
+                            lockResult.userName,
+                        contentId: 'warning',
+                    });
+                    return;
+                }
+                this.setConfirmExec(async () => {
+                    await this.saveAction();
+                    this.releasePropertiesLock();
+                });
+                this.setCancelExec(() => {
+                    this.releasePropertiesLock();
+                });
+                this.setCloseExec(() => {
+                    this.releasePropertiesLock();
+                });
+            } else {
+                this.releasePropertiesLock();
+                this.setConfirmExec(() => {
+                    this.saveAction();
+                });
+                this.setCancelExec(undefined);
+                this.setCloseExec(undefined);
+            }
+
             this.setTitle(title);
             this.setContentId(contentId);
             this.setBodyElement(this.makeBodyElement(properties));
             this.setFullScreen(fullScreen);
-            this.setConfirmExec(() => {
-                this.saveAction();
-            });
             this.modal.show();
             // Add modal default help behaviour
             this.addBehaviourExeHelp();
@@ -52,6 +85,121 @@ export default class ModalProperties extends Modal {
                 );
             }, this.timeMax);
         }, time);
+    }
+
+    /**
+     * Get lock config by modal content id
+     * @param {string} contentId
+     * @returns {Object|null}
+     */
+    getPropertiesLockConfig(contentId) {
+        if (!contentId || !this.node) {
+            return null;
+        }
+
+        if (contentId === 'page-properties') {
+            if (this.node.constructor?.name !== 'StructureNode' || !this.node.id) {
+                return null;
+            }
+            return {
+                lockId: `page-properties:${this.node.id}`,
+                lockedTitle: 'Page properties locked',
+                lockedBody: 'These page properties are being edited by',
+            };
+        }
+
+        if (contentId === 'block-properties') {
+            const blockId = this.node.blockId || this.node.id;
+            if (!blockId) {
+                return null;
+            }
+            return {
+                lockId: `block-properties:${blockId}`,
+                lockedTitle: 'Box properties locked',
+                lockedBody: 'These box properties are being edited by',
+            };
+        }
+
+        if (contentId === 'idevice-properties') {
+            const ideviceId =
+                this.node.yjsComponentId || this.node.odeIdeviceId || this.node.id;
+            if (!ideviceId) {
+                return null;
+            }
+            return {
+                lockId: `idevice-properties:${ideviceId}`,
+                lockedTitle: 'iDevice properties locked',
+                lockedBody: 'These iDevice properties are being edited by',
+            };
+        }
+
+        return null;
+    }
+
+    /**
+     * Acquire properties lock via Yjs lock manager
+     * @param {Object} lockConfig
+     * @returns {{ok: boolean, userName?: string}}
+     */
+    acquirePropertiesLock(lockConfig) {
+        const lockId = lockConfig?.lockId;
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+
+        if (!lockId || !lockManager) {
+            return { ok: true };
+        }
+
+        const lockAcquired = lockManager.requestLock(lockId);
+        if (!lockAcquired) {
+            const lockInfo = lockManager.getLockInfo(lockId);
+            return {
+                ok: false,
+                userName: lockInfo?.user?.name || _('Another user'),
+            };
+        }
+
+        this.propertiesLockId = lockId;
+        this.startPropertiesLockRefresh();
+        return { ok: true };
+    }
+
+    /**
+     * Release properties lock
+     */
+    releasePropertiesLock() {
+        if (!this.propertiesLockId) {
+            return null;
+        }
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+        if (lockManager) {
+            lockManager.releaseLock(this.propertiesLockId);
+        }
+        this.stopPropertiesLockRefresh();
+        this.propertiesLockId = null;
+    }
+
+    /**
+     * Keep lock alive while modal stays open
+     */
+    startPropertiesLockRefresh() {
+        this.stopPropertiesLockRefresh();
+        const lockManager = eXeLearning.app?.project?._yjsBridge?.lockManager;
+        if (!lockManager || !this.propertiesLockId) {
+            return;
+        }
+        this.propertiesLockRefreshInterval = setInterval(() => {
+            lockManager.refreshLock(this.propertiesLockId);
+        }, 30000);
+    }
+
+    /**
+     * Stop lock keepalive timer
+     */
+    stopPropertiesLockRefresh() {
+        if (this.propertiesLockRefreshInterval) {
+            clearInterval(this.propertiesLockRefreshInterval);
+            this.propertiesLockRefreshInterval = null;
+        }
     }
 
     /**
