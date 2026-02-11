@@ -969,25 +969,30 @@ export default class ModalFilemanager extends Modal {
      * Update footer button states based on current selection
      */
     updateButtonStates() {
-        const hasFileSelection = this.selectedAsset !== null;
+        const selectedFilesCount = this.selectedAssets.length > 0
+            ? this.selectedAssets.length
+            : (this.selectedAsset ? 1 : 0);
+        const hasFileSelection = selectedFilesCount > 0;
         const hasFolderSelection = this.selectedFolder !== null;
         const hasSelection = hasFileSelection || hasFolderSelection;
+        const hasSingleSelection = (selectedFilesCount === 1 && !hasFolderSelection) || (!hasFileSelection && hasFolderSelection);
+        const canInsert = this.multiSelect ? hasFileSelection : selectedFilesCount === 1;
         const isZip = hasFileSelection && (
-            this.selectedAsset.mime === 'application/zip' ||
-            this.selectedAsset.mime === 'application/x-zip-compressed' ||
-            this.selectedAsset.filename?.toLowerCase().endsWith('.zip')
+            this.selectedAsset?.mime === 'application/zip' ||
+            this.selectedAsset?.mime === 'application/x-zip-compressed' ||
+            this.selectedAsset?.filename?.toLowerCase().endsWith('.zip')
         );
 
         // File/folder operation buttons
         if (this.deleteBtn) this.deleteBtn.disabled = !hasSelection;
-        if (this.renameBtn) this.renameBtn.disabled = !hasSelection;
+        if (this.renameBtn) this.renameBtn.disabled = !hasSingleSelection;
         if (this.moveBtn) this.moveBtn.disabled = !hasSelection;
 
         // File-only buttons
-        if (this.downloadBtn) this.downloadBtn.disabled = !hasFileSelection;
-        if (this.duplicateBtn) this.duplicateBtn.disabled = !hasFileSelection;
-        if (this.insertBtn) this.insertBtn.disabled = !hasFileSelection;
-        if (this.moreBtn) this.moreBtn.disabled = !hasFileSelection;
+        if (this.downloadBtn) this.downloadBtn.disabled = selectedFilesCount !== 1;
+        if (this.duplicateBtn) this.duplicateBtn.disabled = selectedFilesCount !== 1;
+        if (this.insertBtn) this.insertBtn.disabled = !canInsert;
+        if (this.moreBtn) this.moreBtn.disabled = selectedFilesCount !== 1;
 
         // Extract button visibility (only for ZIP files)
         if (this.extractBtn) {
@@ -1320,8 +1325,8 @@ export default class ModalFilemanager extends Modal {
         row.appendChild(dateCell);
 
         // Click handler
-        row.addEventListener('click', () => {
-            this.selectAssetInList(asset, row);
+        row.addEventListener('click', (e) => {
+            this.selectAssetInList(asset, row, e);
         });
 
         // Double-click to insert
@@ -1477,8 +1482,10 @@ export default class ModalFilemanager extends Modal {
     /**
      * Select asset in list view
      */
-    async selectAssetInList(asset, rowElement) {
-        if (this.multiSelect) {
+    async selectAssetInList(asset, rowElement, event = null) {
+        const additiveSelection = event?.ctrlKey || event?.metaKey;
+
+        if (this.multiSelect || additiveSelection) {
             // Multi-select mode: toggle selection
             const index = this.selectedAssets.findIndex(a => a.id === asset.id);
             if (index >= 0) {
@@ -1491,11 +1498,13 @@ export default class ModalFilemanager extends Modal {
                 rowElement.classList.add('selected');
             }
 
-            // Update sidebar to show last selected or empty
-            if (this.selectedAssets.length > 0) {
-                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
-                this.selectedAsset = lastSelected;
-                await this.showSidebarContent(lastSelected);
+            // Update sidebar to show aggregate summary for multi-selection
+            if (this.selectedAssets.length > 1) {
+                this.selectedAsset = null;
+                this.showMultiSelectionSidebarContent(this.selectedAssets);
+            } else if (this.selectedAssets.length === 1) {
+                this.selectedAsset = this.selectedAssets[0];
+                await this.showSidebarContent(this.selectedAsset);
             } else {
                 this.selectedAsset = null;
                 this.showSidebarEmpty();
@@ -1616,8 +1625,8 @@ export default class ModalFilemanager extends Modal {
         }
 
         // Click handler
-        item.addEventListener('click', () => {
-            this.selectAsset(asset, item);
+        item.addEventListener('click', (e) => {
+            this.selectAsset(asset, item, e);
         });
 
         // Double-click to insert
@@ -1661,8 +1670,10 @@ export default class ModalFilemanager extends Modal {
      * @param {Object} asset
      * @param {HTMLElement} itemElement
      */
-    async selectAsset(asset, itemElement) {
-        if (this.multiSelect) {
+    async selectAsset(asset, itemElement, event = null) {
+        const additiveSelection = event?.ctrlKey || event?.metaKey;
+
+        if (this.multiSelect || additiveSelection) {
             // Multi-select mode: toggle selection
             const index = this.selectedAssets.findIndex(a => a.id === asset.id);
             if (index >= 0) {
@@ -1675,11 +1686,13 @@ export default class ModalFilemanager extends Modal {
                 itemElement.classList.add('selected');
             }
 
-            // Update sidebar to show last selected or empty
-            if (this.selectedAssets.length > 0) {
-                const lastSelected = this.selectedAssets[this.selectedAssets.length - 1];
-                this.selectedAsset = lastSelected;
-                await this.showSidebarContent(lastSelected);
+            // Update sidebar to show aggregate summary for multi-selection
+            if (this.selectedAssets.length > 1) {
+                this.selectedAsset = null;
+                this.showMultiSelectionSidebarContent(this.selectedAssets);
+            } else if (this.selectedAssets.length === 1) {
+                this.selectedAsset = this.selectedAssets[0];
+                await this.showSidebarContent(this.selectedAsset);
             } else {
                 this.selectedAsset = null;
                 this.showSidebarEmpty();
@@ -1883,6 +1896,46 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Show aggregate sidebar details for multiple selected files
+     * @param {Array} assets
+     */
+    showMultiSelectionSidebarContent(assets) {
+        if (!assets || assets.length < 2) return;
+
+        if (this.sidebarEmpty) this.sidebarEmpty.style.display = 'none';
+        if (this.sidebarContent) this.sidebarContent.style.display = 'flex';
+
+        // Hide all preview elements except generic file preview
+        if (this.previewImg) this.previewImg.style.display = 'none';
+        if (this.previewVideo) this.previewVideo.style.display = 'none';
+        if (this.previewAudio) this.previewAudio.style.display = 'none';
+        if (this.previewPdf) this.previewPdf.style.display = 'none';
+        if (this.previewFile) {
+            this.previewFile.style.display = 'flex';
+            const icon = this.previewFile.querySelector('.file-icon');
+            if (icon) icon.textContent = 'collections';
+        }
+
+        const totalSize = assets.reduce((sum, current) => sum + (current?.size || 0), 0);
+        const countLabel = _('%1 files selected').replace('%1', assets.length);
+
+        if (this.filenameSpan) this.filenameSpan.textContent = countLabel;
+        if (this.typeSpan) this.typeSpan.textContent = _('Multiple files');
+        if (this.sizeSpan) this.sizeSpan.textContent = this.assetManager?.formatFileSize?.(totalSize) || `${totalSize}`;
+        if (this.dimensionsRow) this.dimensionsRow.style.display = 'none';
+        if (this.dateSpan) this.dateSpan.textContent = '-';
+        if (this.usageSpan) this.usageSpan.textContent = '-';
+        if (this.urlInput) this.urlInput.value = '';
+        if (this.locationRow) this.locationRow.style.display = 'none';
+
+        // Ensure folder selection is cleared
+        this.selectedFolder = null;
+        this.selectedFolderPath = null;
+
+        this.updateButtonStates();
+    }
+
+    /**
      * Upload files
      * @param {FileList} files
      */
@@ -1978,22 +2031,30 @@ export default class ModalFilemanager extends Modal {
             return;
         }
 
-        // Delete file
-        if (!this.selectedAsset) return;
+        const filesToDelete = this.selectedAssets.length > 0
+            ? [...this.selectedAssets]
+            : (this.selectedAsset ? [this.selectedAsset] : []);
+        if (filesToDelete.length === 0) return;
 
-        const filename = this.selectedAsset.filename || 'Unknown';
-        const usageCount = this.getAssetUsageCount(this.selectedAsset.id);
-
-        let confirmMsg = _('Delete "%1"?').replace('%1', filename);
-        if (usageCount > 0) {
-            confirmMsg += '\n' + _('This asset is referenced in %1 iDevices.').replace('%1', usageCount);
+        let confirmMsg;
+        if (filesToDelete.length === 1) {
+            const filename = filesToDelete[0].filename || 'Unknown';
+            const usageCount = this.getAssetUsageCount(filesToDelete[0].id);
+            confirmMsg = _('Delete "%1"?').replace('%1', filename);
+            if (usageCount > 0) {
+                confirmMsg += '\n' + _('This asset is referenced in %1 iDevices.').replace('%1', usageCount);
+            }
+        } else {
+            confirmMsg = _('Delete %1 selected files?').replace('%1', filesToDelete.length);
         }
 
         if (!confirm(confirmMsg)) return;
 
         try {
-            await this.assetManager.deleteAsset(this.selectedAsset.id);
-            Logger.log(`[MediaLibrary] Deleted asset: ${this.selectedAsset.id}`);
+            for (const asset of filesToDelete) {
+                await this.assetManager.deleteAsset(asset.id);
+            }
+            Logger.log(`[MediaLibrary] Deleted ${filesToDelete.length} asset(s)`);
 
             // Reload grid
             await this.loadAssets();
@@ -2399,7 +2460,8 @@ export default class ModalFilemanager extends Modal {
         if (!this.folderPicker) return;
 
         // Need either a file or folder selected
-        if (!this.selectedAsset && !this.selectedFolderPath) return;
+        const hasFileSelection = this.selectedAssets.length > 0 || !!this.selectedAsset;
+        if (!hasFileSelection && !this.selectedFolderPath) return;
 
         // Build list of available folders
         this.buildFolderPickerList();
@@ -2601,28 +2663,33 @@ export default class ModalFilemanager extends Modal {
             return;
         }
 
-        // Moving a file
-        if (!this.selectedAsset) {
+        // Moving file(s)
+        const filesToMove = this.selectedAssets.length > 0
+            ? [...this.selectedAssets]
+            : (this.selectedAsset ? [this.selectedAsset] : []);
+        if (filesToMove.length === 0) {
             this.hideFolderPicker();
             return;
         }
 
-        const currentPath = this.selectedAsset.folderPath || '';
-
-        if (currentPath === destinationPath) {
-            eXeLearning.app.toasts.createToast({
-                title: _('Info'),
-                body: _('File is already in this folder'),
-                icon: 'info',
-                modal: true,
-                remove: 3000
-            });
-            return;
-        }
-
         try {
-            await this.assetManager.updateAssetFolderPath(this.selectedAsset.id, destinationPath);
-            Logger.log(`[MediaLibrary] Moved asset ${this.selectedAsset.id} from "${currentPath}" to "${destinationPath}"`);
+            const movableAssets = filesToMove.filter(asset => (asset.folderPath || '') !== destinationPath);
+            if (movableAssets.length === 0) {
+                eXeLearning.app.toasts.createToast({
+                    title: _('Info'),
+                    body: filesToMove.length > 1 ? _('Selected files are already in this folder') : _('File is already in this folder'),
+                    icon: 'info',
+                    modal: true,
+                    remove: 3000
+                });
+                return;
+            }
+
+            for (const asset of movableAssets) {
+                const currentPath = asset.folderPath || '';
+                await this.assetManager.updateAssetFolderPath(asset.id, destinationPath);
+                Logger.log(`[MediaLibrary] Moved asset ${asset.id} from "${currentPath}" to "${destinationPath}"`);
+            }
 
             this.hideFolderPicker();
 
