@@ -2448,6 +2448,51 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('_syncBlockTitle', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      delete global.MathJax;
+    });
+
+    it('updates textContent for non-latex title', () => {
+      const titleEl = { textContent: '', isConnected: true };
+      bridge._syncBlockTitle(titleEl, 'Plain title');
+      expect(titleEl.textContent).toBe('Plain title');
+    });
+
+    it('typesets latex title with MathJax fallback', async () => {
+      const titleEl = { textContent: '', isConnected: true };
+      const typesetPromise = mock(() => Promise.resolve());
+      const typesetClear = mock(() => undefined);
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+        typesetClear,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(typesetClear).toHaveBeenCalledWith([titleEl]);
+      expect(typesetPromise).toHaveBeenCalledWith([titleEl]);
+    });
+
+    it('skips fallback typeset when title node is disconnected', async () => {
+      const titleEl = { textContent: '', isConnected: false };
+      const typesetPromise = mock(() => Promise.resolve());
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+
+      expect(typesetPromise).not.toHaveBeenCalled();
+    });
+  });
+
   describe('syncStructureToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
