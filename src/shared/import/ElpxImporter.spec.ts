@@ -284,6 +284,88 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
     });
+
+    describe('legacy ID remapping', () => {
+        it('should remap legacy page IDs and preserve hierarchy mapping', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-4',
+                    title: 'Root',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [],
+                },
+                {
+                    id: 'page-5',
+                    title: 'Child',
+                    parent_id: 'page-4',
+                    position: 0,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, 'host-parent', 3);
+
+            expect(pageStructures).toHaveLength(2);
+            expect(pageStructures[0].id).not.toBe('page-4');
+            expect(pageStructures[1].id).not.toBe('page-5');
+            expect(pageStructures[0].parentId).toBe('host-parent');
+            expect(pageStructures[0].order).toBe(3);
+            expect(pageStructures[1].parentId).toBe(pageStructures[0].id);
+
+            ydoc.destroy();
+        });
+
+        it('should remap block and component IDs for legacy imports', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-4',
+                    title: 'Root',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-2',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p>Hello</p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+            const block = pageStructures[0].blocks[0];
+            const component = block.components[0];
+
+            expect(block.id).not.toBe('block-1');
+            expect(block.blockId).toBe(block.id);
+            expect(component.id).not.toBe('idevice-2');
+            expect(component.ideviceId).toBe(component.id);
+
+            ydoc.destroy();
+        });
+    });
 });
 
 describe('ElpxImporter - Legacy Format', () => {
