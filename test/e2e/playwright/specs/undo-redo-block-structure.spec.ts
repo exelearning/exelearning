@@ -70,7 +70,7 @@ async function moveFirstBlockToPageViaYjs(page: Page, targetPageId: string): Pro
         throw new Error('No current page selected for move operation');
     }
 
-    const firstBlockId = await page.evaluate((pageId) => {
+    const firstBlockId = await page.evaluate(pageId => {
         const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
         const blocks = bridge?.structureBinding?.getBlocks?.(pageId) || [];
         return blocks[0]?.id || '';
@@ -98,7 +98,7 @@ async function deleteFirstBlockViaYjs(page: Page): Promise<void> {
         throw new Error('No current page selected for delete operation');
     }
 
-    const firstBlockId = await page.evaluate((pageId) => {
+    const firstBlockId = await page.evaluate(pageId => {
         const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
         const blocks = bridge?.structureBinding?.getBlocks?.(pageId) || [];
         return blocks[0]?.id || '';
@@ -171,7 +171,7 @@ async function clearUndoHistory(page: Page): Promise<void> {
 }
 
 async function getYjsBlockCount(page: Page, pageId: string): Promise<number> {
-    return page.evaluate((targetPageId) => {
+    return page.evaluate(targetPageId => {
         const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
         const blocks = bridge?.structureBinding?.getBlocks?.(targetPageId) || [];
         return blocks.length;
