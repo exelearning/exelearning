@@ -42,8 +42,9 @@ var $eXeDragDrop = {
         $eXeDragDrop.options = [];
 
         $eXeDragDrop.activities.each(function (i) {
-            const dl = $('.dragdrop-DataGame', this),
-                mOption = $eXeDragDrop.loadDataGame(dl, this);
+            const dl = $('.dragdrop-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const mOption = $eXeDragDrop.loadDataGame(dl, this);
 
             mOption.scorerp = 0;
             mOption.idevicePath = $eXeDragDrop.idevicePath;

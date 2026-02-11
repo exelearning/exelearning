@@ -1072,7 +1072,7 @@ export default class IdeviceNode {
                     title: _('Discard changes'),
                     body: _('Discard all changes?'),
                     confirmButtonText: _('Yes'),
-                    confirmExec: () => {
+                    confirmExec: async () => {
                         // Clear the inactivity timer
                         this.cleanupInactivityTracker();
 
@@ -1093,14 +1093,9 @@ export default class IdeviceNode {
                                 eXeLearning.app.project.structure.getSelectNodePageId() // Collaborative
                         );
 
-                        let idevicesExceptionsList = [];
-                        this.engine.components.idevices.forEach((idevice) => {
-                            if (idevice.id != this.id) {
-                                idevicesExceptionsList.push(idevice.id);
-                            }
-                        });
-                        this.loadInitScriptIdevice('export');
-                        this.engine.resetCurrentIdevicesExportView([]);
+                        // Re-init this iDevice, then reset the rest
+                        await this.loadInitScriptIdevice('export');
+                        await this.engine.resetCurrentIdevicesExportView([this.id]);
                     },
                 });
             });
@@ -3001,14 +2996,13 @@ export default class IdeviceNode {
             this.goWindowToIdevice(100);
             if (loadPage) {
                 // Reload all components in page
-                this.engine.resetCurrentIdevicesExportView([this.id]);
+                await this.engine.resetCurrentIdevicesExportView([this.id]);
                 await this.loadInitScriptIdevice('export');
             } else {
                 // Only load current idevice
                 await this.loadInitScriptIdevice('export');
-                // Load plugins
             }
-            setTimeout(() => this.loadLegacyExeFunctionalitiesExport(), 100);
+            this.loadLegacyExeFunctionalitiesExport();
             this.engine.unsetIdeviceActive();
         } else {
             this.toogleIdeviceButtonsState(false);

@@ -331,11 +331,11 @@ $exeABCmusic = {
    *
    */
   setButtonsBehaviour() {
-    $(`.abc-audio-tooglebutton`).on('click', function (e) {
+    $(`.abc-audio-tooglebutton`).off('click').on('click', function (e) {
       e.preventDefault();
       $(this).parent().parent().next().toggle();
     });
-    $(`.abc-tooglebutton`).on('click', function (e) {
+    $(`.abc-tooglebutton`).off('click').on('click', function (e) {
       e.preventDefault();
       $(this).parent().parent().next().next().toggle();
     });

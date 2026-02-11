@@ -62,8 +62,9 @@ var $eXeMapa = {
     loadGame: function () {
         $eXeMapa.options = [];
         $eXeMapa.activities.each(function (i) {
-            const dl = $('.mapa-DataGame', this),
-                $imagesLink = $('.mapa-LinkImagesPoints', this),
+            const dl = $('.mapa-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $imagesLink = $('.mapa-LinkImagesPoints', this),
                 $audiosLink = $('.mapa-LinkAudiosPoints', this),
                 $textLink = $('.mapa-LinkTextsPoints', this),
                 $toolTips = $('.mapa-LinkToolTipPoints', this),

@@ -52,8 +52,9 @@ var $eXeDescubre = {
     loadGame: function () {
         $eXeDescubre.options = [];
         $eXeDescubre.activities.each(function (i) {
-            const dl = $('.descubre-DataGame', this),
-                $imagesLink0 = $('.descubre-LinkImages-0', this),
+            const dl = $('.descubre-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $imagesLink0 = $('.descubre-LinkImages-0', this),
                 $audiosLink0 = $('.descubre-LinkAudios-0', this),
                 $imagesLink1 = $('.descubre-LinkImages-1', this),
                 $audiosLink1 = $('.descubre-LinkAudios-1', this),

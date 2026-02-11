@@ -51,6 +51,7 @@ var $eXeListaCotejo = {
 
         $eXeListaCotejo.activities.each(function (i) {
             const dl = $('.listacotejo-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
 
             let img = $('.listacotejo-LinkCommunity', this);
             if (img.length == 1) {
