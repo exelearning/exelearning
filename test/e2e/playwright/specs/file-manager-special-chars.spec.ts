@@ -136,14 +136,19 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
  * This is specific to the special chars tests that need TinyMCE context.
  */
 async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
-    const existingTinyMce = page.locator('.tox-menubar');
-    if ((await existingTinyMce.count()) === 0) {
+    const existingTinyMceUi = page.locator('.tox-editor-container, .tox-toolbar, .tox-edit-area iframe').first();
+    if ((await existingTinyMceUi.count()) === 0) {
         await addTextIdeviceFromPanel(page);
     }
 
-    await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+    // If the inserted iDevice is in view mode, explicitly switch to edit mode.
+    const editBtn = page.locator('#node-content article .idevice_node.text[mode="export"] .btn-edit-idevice').first();
+    if (await editBtn.isVisible().catch(() => false)) {
+        await editBtn.click();
+    }
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
+    await page.waitForSelector('.tox-editor-container, .tox-toolbar, .tox-edit-area iframe', { timeout: 15000 });
     await expect(imageBtn).toBeVisible({ timeout: 10000 });
     await imageBtn.click();
 
