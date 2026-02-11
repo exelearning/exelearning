@@ -137,7 +137,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
  */
 async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
     const closeBlockingModals = async (): Promise<void> => {
-        for (let i = 0; i < 4; i += 1) {
+        for (let i = 0; i < 8; i += 1) {
             const openModal = page.locator('#modalAlert[data-open="true"], .modals-container .modal.show').first();
             if ((await openModal.count()) === 0) {
                 return;
@@ -150,7 +150,7 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
                 .first();
 
             if (await closeBtn.isVisible().catch(() => false)) {
-                await closeBtn.click({ timeout: 3000 }).catch(() => {});
+                await closeBtn.click({ timeout: 3000, force: true }).catch(() => {});
             } else {
                 await page.keyboard.press('Escape').catch(() => {});
             }
@@ -174,7 +174,26 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await page.waitForSelector('.tox-editor-container, .tox-toolbar, .tox-edit-area iframe', { timeout: 15000 });
     await expect(imageBtn).toBeVisible({ timeout: 10000 });
-    await imageBtn.click({ timeout: 10000 });
+    try {
+        await imageBtn.click({ timeout: 6000 });
+    } catch {
+        await closeBlockingModals();
+        const openedByApi = await page.evaluate(() => {
+            const anyWindow = window as any;
+            const tiny =
+                anyWindow?.tinymce ||
+                anyWindow?.$exeTinyMCE?.tinymce ||
+                anyWindow?.$exeTinyMCE;
+            const editor = tiny?.activeEditor || tiny?.editors?.[0] || null;
+            if (!editor || typeof editor.execCommand !== 'function') return false;
+            editor.execCommand('mceImage');
+            return true;
+        });
+
+        if (!openedByApi) {
+            await imageBtn.click({ timeout: 6000, force: true });
+        }
+    }
 
     await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 

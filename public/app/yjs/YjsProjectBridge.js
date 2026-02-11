@@ -1624,6 +1624,11 @@ class YjsProjectBridge {
     if (this.app?.project?.checkOpenIdevice?.()) return;
 
     const undoManager = this.documentManager.undoManager;
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    const blockCountBeforeUndo =
+      currentPageId && currentPageId !== 'root'
+        ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+        : null;
 
     // If there are pending metadata changes but nothing in undoStack yet,
     // flush the pending changes first so they can be undone
@@ -1649,7 +1654,20 @@ class YjsProjectBridge {
       this.forceTitleSync();
       this.forcePageTitlesSync();
       this.forceBlockTitlesSync();
-      this.syncCurrentPageBlocksIfNeeded();
+      const blockCountAfterUndo =
+        currentPageId && currentPageId !== 'root'
+          ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+          : null;
+
+      if (
+        typeof blockCountBeforeUndo === 'number' &&
+        typeof blockCountAfterUndo === 'number' &&
+        blockCountBeforeUndo !== blockCountAfterUndo
+      ) {
+        this.reloadCurrentPage();
+      } else {
+        this.syncCurrentPageBlocksIfNeeded();
+      }
 
       Logger.log('[YjsProjectBridge] Undo performed');
     } finally {
@@ -1666,6 +1684,11 @@ class YjsProjectBridge {
   redo() {
     if (!this.documentManager?.undoManager) return;
     if (this.app?.project?.checkOpenIdevice?.()) return;
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    const blockCountBeforeRedo =
+      currentPageId && currentPageId !== 'root'
+        ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+        : null;
 
     // Clear pending changes flag
     this.hasPendingMetadataChanges = false;
@@ -1681,7 +1704,20 @@ class YjsProjectBridge {
       this.forceTitleSync();
       this.forcePageTitlesSync();
       this.forceBlockTitlesSync();
-      this.syncCurrentPageBlocksIfNeeded();
+      const blockCountAfterRedo =
+        currentPageId && currentPageId !== 'root'
+          ? this.structureBinding?.getBlocks?.(currentPageId)?.length
+          : null;
+
+      if (
+        typeof blockCountBeforeRedo === 'number' &&
+        typeof blockCountAfterRedo === 'number' &&
+        blockCountBeforeRedo !== blockCountAfterRedo
+      ) {
+        this.reloadCurrentPage();
+      } else {
+        this.syncCurrentPageBlocksIfNeeded();
+      }
 
       Logger.log('[YjsProjectBridge] Redo performed');
     } finally {
@@ -1742,22 +1778,49 @@ class YjsProjectBridge {
       clearTimeout(this._syncCurrentPageBlocksTimer);
     }
 
-    // Defer comparison so Yjs undo/redo mutations are fully applied before checking.
-    this._syncCurrentPageBlocksTimer = setTimeout(() => {
+    if (this._syncCurrentPageBlocksInterval) {
+      clearInterval(this._syncCurrentPageBlocksInterval);
+      this._syncCurrentPageBlocksInterval = null;
+    }
+
+    // Run multiple short checks because some undo/redo structural updates are
+    // applied asynchronously and may not be visible on the first tick.
+    let attempts = 0;
+    const maxAttempts = 8;
+    const checkEveryMs = 120;
+
+    const checkAndReloadIfNeeded = () => {
       const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
-      if (!currentPageId || currentPageId === 'root') return;
+      if (!currentPageId || currentPageId === 'root') return false;
 
       const expectedBlockCount = this.structureBinding?.getBlocks?.(currentPageId)?.length;
-      if (typeof expectedBlockCount !== 'number') return;
+      if (typeof expectedBlockCount !== 'number') return false;
 
+      if (typeof document?.querySelectorAll !== 'function') return false;
       const actualBlockCount = document.querySelectorAll('#node-content article.box').length;
-
       if (actualBlockCount !== expectedBlockCount) {
         Logger.log(
           `[YjsProjectBridge] Block count mismatch after undo/redo on page ${currentPageId}: DOM=${actualBlockCount}, Yjs=${expectedBlockCount}. Reloading page content.`
         );
         this.reloadCurrentPage();
+        return true;
       }
+      return false;
+    };
+
+    this._syncCurrentPageBlocksTimer = setTimeout(() => {
+      if (checkAndReloadIfNeeded()) {
+        return;
+      }
+
+      this._syncCurrentPageBlocksInterval = setInterval(() => {
+        attempts += 1;
+        const reloaded = checkAndReloadIfNeeded();
+        if (reloaded || attempts >= maxAttempts) {
+          clearInterval(this._syncCurrentPageBlocksInterval);
+          this._syncCurrentPageBlocksInterval = null;
+        }
+      }, checkEveryMs);
     }, 60);
   }
 

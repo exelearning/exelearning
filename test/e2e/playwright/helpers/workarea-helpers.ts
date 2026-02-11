@@ -417,10 +417,19 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
  * @param nodeId - Navigation node ID
  */
 export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
-    const navItem = page.locator(`.nav-element[nav-id="${nodeId}"] > .nav-element-text`);
-    await navItem.scrollIntoViewIfNeeded();
-    await navItem.click({ force: true });
-    await page.waitForTimeout(500);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        const navItem = page.locator(`.nav-element[nav-id="${nodeId}"] > .nav-element-text`).first();
+        try {
+            await navItem.waitFor({ state: 'visible', timeout: 5000 });
+            await navItem.scrollIntoViewIfNeeded();
+            await navItem.click({ force: true, timeout: 5000 });
+            await page.waitForTimeout(500);
+            return;
+        } catch {
+            await page.waitForTimeout(250);
+        }
+    }
+    throw new Error(`selectNavNode: could not select nav node "${nodeId}"`);
 }
 
 /**
