@@ -335,6 +335,13 @@ export default class projectManager {
             this.app.themes.initYjsBinding();
         }
 
+        // Rebind concurrent users to the current Yjs document manager.
+        // This is required after reinitializeWithProject() because the bridge changes
+        // without a full page reload.
+        if (this.app?.interface?.concurrentUsers?.rebindToCurrentDocumentManager) {
+            this.app.interface.concurrentUsers.rebindToCurrentDocumentManager();
+        }
+
         // Select first page and load its content
         await this.initialiceProject();
 

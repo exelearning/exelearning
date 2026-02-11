@@ -2,6 +2,8 @@ import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixtur
 import { NavigationPage } from '../pages/navigation.page';
 import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
+import { openElpFile } from '../helpers/workarea-helpers';
+import * as path from 'path';
 
 /**
  * Real-Time Collaboration Tests
@@ -12,6 +14,8 @@ import { waitForYjsSync } from '../helpers/sync-helpers';
  */
 
 test.describe('Real-Time Collaboration', () => {
+    const LOCAL_ELPX_FIXTURE = path.resolve(__dirname, '../../../fixtures/really-simple-test-project.elpx');
+
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(120000); // 2 minutes per test
 
@@ -511,6 +515,35 @@ test.describe('Real-Time Collaboration', () => {
                 return parseInt(el?.getAttribute('num') || '0', 10);
             });
             expect(initiatorUserCount).toBe(2);
+        });
+
+        test('should show online users button on initiator after opening local .elpx without page reload', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Open workarea and import a local .elpx (creates/reinitializes project without full reload)
+            await authenticatedPage.goto('/workarea');
+            await openElpFile(authenticatedPage, LOCAL_ELPX_FIXTURE, 1);
+            await waitForYjsSync(authenticatedPage);
+
+            // Initiator alone -> users button hidden
+            const initiatorButton = authenticatedPage.locator('#button-more-exe-concurrent-users');
+            await expect(initiatorButton).toBeHidden({ timeout: 10000 });
+
+            // Joiner opens shared link
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            // Initiator must see joiner without manual F5
+            await expect(initiatorButton).toBeVisible({ timeout: 30000 });
+
+            const initiatorUserCount = await authenticatedPage.evaluate(() => {
+                const el = document.querySelector('#exe-concurrent-users');
+                return parseInt(el?.getAttribute('num') || '0', 10);
+            });
+            expect(initiatorUserCount).toBeGreaterThan(1);
         });
     });
 

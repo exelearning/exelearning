@@ -160,6 +160,49 @@ describe('ConcurrentUsers', () => {
         gravatarUrl: 'http://example.com/avatar.png',
       });
     });
+
+    it('should unsubscribe previous listener before subscribing again', () => {
+      concurrentUsers.subscribeToYjsAwareness();
+      concurrentUsers.subscribeToYjsAwareness();
+
+      expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+      expect(mockDocumentManager.onUsersChange).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('rebindToCurrentDocumentManager', () => {
+    it('should resubscribe when document manager changes', () => {
+      const oldUnsubscribe = vi.fn();
+      const oldManager = {
+        setUserInfo: vi.fn(),
+        onUsersChange: vi.fn(() => oldUnsubscribe),
+        getOnlineUsers: vi.fn(() => []),
+      };
+
+      const newUnsubscribe = vi.fn();
+      const newManager = {
+        setUserInfo: vi.fn(),
+        onUsersChange: vi.fn(() => newUnsubscribe),
+        getOnlineUsers: vi.fn(() => [{ clientId: 1, name: 'User 1' }]),
+      };
+
+      let currentManager = oldManager;
+      mockApp.project._yjsBridge.getDocumentManager = vi.fn(() => currentManager);
+
+      concurrentUsers.rebindToCurrentDocumentManager();
+      currentManager = newManager;
+      concurrentUsers.rebindToCurrentDocumentManager();
+
+      expect(oldUnsubscribe).toHaveBeenCalledTimes(1);
+      expect(newManager.onUsersChange).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not resubscribe when document manager is unchanged', () => {
+      concurrentUsers.rebindToCurrentDocumentManager();
+      concurrentUsers.rebindToCurrentDocumentManager();
+
+      expect(mockDocumentManager.onUsersChange).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('updateUsersDisplay', () => {

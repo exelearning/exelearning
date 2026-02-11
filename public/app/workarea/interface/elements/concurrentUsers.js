@@ -17,6 +17,8 @@ export default class ConcurrentUsers {
         this.currentUsers = [];
         this.app = app;
         this.unsubscribe = null;
+        this._initRetryTimer = null;
+        this._subscribedDocumentManager = null;
     }
 
     /**
@@ -27,16 +29,18 @@ export default class ConcurrentUsers {
         // Wait for Yjs to be ready
         if (!this.isYjsReady()) {
             Logger.log('[ConcurrentUsers] Yjs not ready, waiting...');
-            // Retry after a short delay
-            setTimeout(() => this.init(), 1000);
+            // Retry after a short delay (single pending retry at a time)
+            if (!this._initRetryTimer) {
+                this._initRetryTimer = setTimeout(() => {
+                    this._initRetryTimer = null;
+                    this.init();
+                }, 1000);
+            }
             return;
         }
 
-        // Subscribe to user changes via Yjs Awareness
-        this.subscribeToYjsAwareness();
-
-        // Initial render
-        this.updateUsersDisplay();
+        // Bind to the current Yjs document manager
+        this.rebindToCurrentDocumentManager();
 
         Logger.log('[ConcurrentUsers] Initialized with Yjs Awareness');
     }
@@ -70,6 +74,12 @@ export default class ConcurrentUsers {
             return;
         }
 
+        // Clean previous subscription (old project/document manager)
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
+        }
+
         // Set user info in awareness from current session (only if not already set early)
         if (this.app.user && !documentManager.userInfo?.id) {
             documentManager.setUserInfo({
@@ -85,9 +95,29 @@ export default class ConcurrentUsers {
             this.currentUsers = users;
             this.updateUsersDisplay();
         });
+        this._subscribedDocumentManager = documentManager;
 
         // Get initial users
         this.currentUsers = documentManager.getOnlineUsers();
+    }
+
+    /**
+     * Rebind subscriptions when the active Yjs document manager changes
+     * (for example, after opening a local .elpx without full page reload).
+     */
+    rebindToCurrentDocumentManager() {
+        const documentManager = this.getDocumentManager();
+        if (!documentManager) return;
+
+        // Fast path: already bound to current manager, just refresh UI
+        if (documentManager === this._subscribedDocumentManager) {
+            this.currentUsers = documentManager.getOnlineUsers();
+            this.updateUsersDisplay();
+            return;
+        }
+
+        this.subscribeToYjsAwareness();
+        this.updateUsersDisplay();
     }
 
     /**
@@ -297,10 +327,15 @@ export default class ConcurrentUsers {
      * Clean up subscriptions
      */
     destroy() {
+        if (this._initRetryTimer) {
+            clearTimeout(this._initRetryTimer);
+            this._initRetryTimer = null;
+        }
         if (this.unsubscribe) {
             this.unsubscribe();
             this.unsubscribe = null;
         }
+        this._subscribedDocumentManager = null;
         Logger.log('[ConcurrentUsers] Destroyed');
     }
 }
