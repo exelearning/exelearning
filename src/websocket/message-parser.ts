@@ -40,6 +40,8 @@ const ASSET_MESSAGE_TYPES: Set<string> = new Set([
     'upload-session-ready',
     'upload-file-progress',
     'upload-batch-complete',
+    // Collaboration resync messages
+    'trigger-resync',
 ]);
 
 /**

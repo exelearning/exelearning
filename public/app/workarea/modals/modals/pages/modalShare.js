@@ -429,6 +429,7 @@ export default class ModalShare extends Modal {
             this.inviteButton.textContent = _('Inviting...');
 
             const projectId = eXeLearning.app.project?.odeId;
+            await this.saveProjectBeforeSharing('invite-collaborator');
             const response = await eXeLearning.app.api.addProjectCollaborator(
                 projectId,
                 email,
@@ -455,6 +456,26 @@ export default class ModalShare extends Modal {
         } finally {
             this.inviteButton.disabled = false;
             this.inviteButton.textContent = _('Invite');
+        }
+    }
+
+    /**
+     * Best-effort save before sharing actions.
+     * If save fails, continue with the sharing action.
+     * @param {string} reason
+     */
+    async saveProjectBeforeSharing(reason) {
+        const bridge = eXeLearning.app.project?._yjsBridge;
+        if (!bridge?.saveToServer) {
+            return;
+        }
+
+        try {
+            Logger.log('[Share] Saving project before sharing action:', reason);
+            await bridge.saveToServer();
+            Logger.log('[Share] Project saved successfully');
+        } catch (saveError) {
+            console.warn('[Share] Failed to save before sharing action:', reason, saveError);
         }
     }
 
@@ -570,17 +591,7 @@ export default class ModalShare extends Modal {
             // This ensures the Yjs document is on the server so other clients can load it
             // and don't create duplicate blank pages when joining
             if (newVisibility !== 'private') {
-                const bridge = eXeLearning.app.project?._yjsBridge;
-                if (bridge?.saveToServer) {
-                    Logger.log('[Share] Saving project before visibility change to:', newVisibility);
-                    try {
-                        await bridge.saveToServer();
-                        Logger.log('[Share] Project saved successfully');
-                    } catch (saveError) {
-                        // Log but continue - visibility change can still work
-                        console.warn('[Share] Failed to save before visibility change:', saveError);
-                    }
-                }
+                await this.saveProjectBeforeSharing(`visibility-${newVisibility}`);
             }
 
             const response = await eXeLearning.app.api.updateProjectVisibility(

@@ -478,6 +478,28 @@ class YjsDocumentManager {
   }
 
   /**
+   * Re-broadcast local awareness state without reconnecting the WebSocket.
+   * Useful when a new collaborator joins and we want immediate presence refresh.
+   * @param {string} reason
+   * @returns {boolean} true if rebroadcast was sent
+   */
+  rebroadcastAwareness(reason = 'manual') {
+    if (!this.awareness || !this.wsProvider?.wsconnected) return false;
+
+    const localState = this.awareness.getLocalState();
+    if (!localState) return false;
+
+    const clonedState = {
+      ...localState,
+      user: localState.user ? { ...localState.user } : localState.user,
+    };
+
+    this.awareness.setLocalState(clonedState);
+    Logger.log('[YjsDocumentManager] Awareness re-broadcast sent:', reason);
+    return true;
+  }
+
+  /**
    * Load document state from server
    */
   async loadFromServer() {
@@ -718,6 +740,8 @@ class YjsDocumentManager {
       Logger.log(`[YjsDocumentManager] Connection status: ${status}`);
       if (status === 'connected') {
         this.emit('connectionChange', { connected: true });
+        // Refresh presence immediately after connect/reconnect.
+        this.rebroadcastAwareness('status-connected');
       } else if (status === 'disconnected') {
         this.emit('connectionChange', { connected: false });
       }

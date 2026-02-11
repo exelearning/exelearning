@@ -63,7 +63,20 @@ class MockWebsocketProvider {
     }
   }
 
-  disconnect() {}
+  connect() {
+    this.wsconnected = true;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'connected' }));
+    }
+  }
+
+  disconnect() {
+    this.wsconnected = false;
+    if (this._listeners.status) {
+      this._listeners.status.forEach(cb => cb({ status: 'disconnected' }));
+    }
+  }
+
   destroy() {}
 }
 
@@ -1012,6 +1025,29 @@ describe('YjsDocumentManager', () => {
 
       await manager.waitForWebSocketSync();
       // Should complete without waiting for full sync
+    });
+
+    it('waits for full sync when other users are present', async () => {
+      manager.config.skipSyncWait = false;
+      const mockProvider = {
+        synced: false,
+        once: mock((event, callback) => {
+          if (event === 'sync') {
+            setTimeout(() => callback(true), 10);
+          }
+        }),
+        disconnect: () => {},
+        destroy: () => {},
+      };
+      manager.wsProvider = mockProvider;
+      manager.config.fullSyncTimeout = 1000;
+
+      // Simulate other users present
+      manager.awareness = new MockAwareness();
+      manager.awareness._states.set(99999, { user: { id: 'other-user' } });
+      manager.config.awarenessCheckTimeout = 100;
+
+      await manager.waitForWebSocketSync();
     });
   });
 
@@ -2341,6 +2377,34 @@ describe('YjsDocumentManager', () => {
       // Should not throw
       await newManager.initialize();
       await newManager.destroy();
+    });
+  });
+
+  describe('awareness rebroadcast', () => {
+    it('rebroadcastAwareness returns false when disconnected', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = false;
+
+      expect(manager.rebroadcastAwareness('test')).toBe(false);
+    });
+
+    it('rebroadcastAwareness sends awareness update when connected', async () => {
+      await manager.initialize();
+      await manager.connectWebSocket();
+      manager.wsProvider.wsconnected = true;
+
+      manager.setUserInfo({
+        id: 'user-123',
+        name: 'Test User',
+        email: 'test@example.com',
+      });
+
+      const setLocalStateSpy = spyOn(manager.awareness, 'setLocalState');
+      const result = manager.rebroadcastAwareness('test');
+
+      expect(result).toBe(true);
+      expect(setLocalStateSpy).toHaveBeenCalled();
     });
   });
 });

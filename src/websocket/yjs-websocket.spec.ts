@@ -1456,6 +1456,131 @@ describe('Yjs WebSocket Service', () => {
         });
     });
 
+    describe('trigger-resync on new client join', () => {
+        it('should send trigger-resync to existing clients when a new client joins', async () => {
+            const projectUuid = 'ae5c0c01-1234-5678-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+            mockProjects.set(projectUuid, {
+                id: 800,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                saved_once: 1,
+            });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            // First client connects
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+            expect(ws1.sentMessages.length).toBe(0);
+
+            // Second client connects
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+
+            // Wait for async operations
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // First client should receive trigger-resync
+            const resyncMessages = ws1.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'trigger-resync';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+
+            expect(resyncMessages.length).toBe(1);
+            const resyncMsg = JSON.parse(resyncMessages[0]);
+            expect(resyncMsg.reason).toBe('new-client-joined');
+            expect(resyncMsg.projectUuid).toBe(projectUuid);
+
+            // Second client should also receive trigger-resync (self-rebroadcast for race safety)
+            const ws2ResyncMessages = ws2.sentMessages.filter((msg: any) => {
+                if (typeof msg === 'string') {
+                    try {
+                        const parsed = JSON.parse(msg);
+                        return parsed.type === 'trigger-resync';
+                    } catch {
+                        return false;
+                    }
+                }
+                return false;
+            });
+            expect(ws2ResyncMessages.length).toBe(1);
+        });
+
+        it('should send trigger-resync to all existing clients when third client joins', async () => {
+            const projectUuid = 'be5c0c02-1234-5678-abcd-ef1234567890';
+            const docName = `project-${projectUuid}`;
+
+            mockSessions.set(projectUuid, { sessionId: projectUuid });
+            mockProjects.set(projectUuid, {
+                id: 801,
+                uuid: projectUuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'public',
+                saved_once: 1,
+            });
+
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+            });
+
+            const ws1 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws1, docName, 'valid-token-user-1');
+
+            const ws2 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws2, docName, 'valid-token-user-2');
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // Clear previous messages
+            ws1.sentMessages.length = 0;
+            ws2.sentMessages.length = 0;
+
+            // Third client connects
+            const ws3 = createMockWebSocket() as any;
+            await handleWebSocketOpen(ws3, docName, 'valid-token-admin');
+            await new Promise(resolve => setTimeout(resolve, 50));
+
+            // Both ws1 and ws2 should receive trigger-resync
+            const countResync = (ws: any) =>
+                ws.sentMessages.filter((msg: any) => {
+                    if (typeof msg === 'string') {
+                        try {
+                            return JSON.parse(msg).type === 'trigger-resync';
+                        } catch {
+                            return false;
+                        }
+                    }
+                    return false;
+                }).length;
+
+            expect(countResync(ws1)).toBe(1);
+            expect(countResync(ws2)).toBe(1);
+            expect(countResync(ws3)).toBe(1);
+        });
+    });
+
     describe('handleWebSocketPong', () => {
         it('should call onPong when clientId is present', () => {
             const clientId = 'pong-test-client';

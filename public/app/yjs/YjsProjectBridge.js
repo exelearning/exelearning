@@ -168,6 +168,18 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] AssetWebSocketHandler initialized');
     }
 
+    // Set user info in awareness EARLY, before WebSocket connects
+    // This ensures correct user data is broadcast during the Yjs sync handshake,
+    // not placeholder { id: null, name: 'User' }
+    if (this.app?.user && this.documentManager) {
+      this.documentManager.setUserInfo({
+        id: this.app.user.id,
+        name: this.app.user.name || this.app.user.username,
+        email: this.app.user.email,
+        gravatarUrl: this.app.user.gravatarUrl,
+      });
+    }
+
     // NOW start the WebSocket connection - AFTER AssetWebSocketHandler is ready
     // This ensures JSON messages are properly intercepted and not sent to y-websocket
     if (!config.offline && this.documentManager?.wsProvider) {

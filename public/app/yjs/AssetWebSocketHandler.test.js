@@ -1005,6 +1005,17 @@ describe('AssetWebSocketHandler', () => {
         revokedAt: '2025-01-01T00:00:00Z',
       });
     });
+
+    it('warns on trigger-resync since it is not an asset message type', async () => {
+      await handler._handleAssetMessage({
+        type: 'trigger-resync',
+        data: { reason: 'new-client-joined' },
+      });
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Unknown message type'),
+      );
+    });
   });
 
   describe('access revocation', () => {
@@ -1088,6 +1099,42 @@ describe('AssetWebSocketHandler', () => {
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Access revoked: visibility_changed')
       );
+    });
+  });
+
+  describe('_handleTriggerResync', () => {
+    it('calls rebroadcastAwareness on document manager', () => {
+      const mockDm = { rebroadcastAwareness: mock(() => true) };
+      global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
+
+      handler._handleTriggerResync({ reason: 'new-client-joined' });
+
+      expect(mockDm.rebroadcastAwareness).toHaveBeenCalledWith('server-trigger-resync');
+
+      delete global.eXeLearning;
+    });
+
+    it('does not throw if rebroadcastAwareness is missing', () => {
+      const mockDm = {};
+      global.eXeLearning = { app: { project: { _yjsBridge: { documentManager: mockDm } } } };
+
+      expect(() => handler._handleTriggerResync({ reason: 'new-client-joined' })).not.toThrow();
+
+      delete global.eXeLearning;
+    });
+
+    it('does not throw when document manager is unavailable', () => {
+      global.eXeLearning = undefined;
+
+      expect(() => handler._handleTriggerResync({ reason: 'new-client-joined' })).not.toThrow();
+    });
+
+    it('does not throw when eXeLearning path is partial', () => {
+      global.eXeLearning = { app: {} };
+
+      expect(() => handler._handleTriggerResync({})).not.toThrow();
+
+      delete global.eXeLearning;
     });
   });
 
