@@ -143,9 +143,11 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
                 return;
             }
 
-            const closeBtn = openModal.locator(
-                '.btn-close, button[data-bs-dismiss="modal"], button:has-text("Close"), button:has-text("Cerrar"), button:has-text("OK"), button:has-text("Aceptar"), .btn-primary, .btn-secondary',
-            ).first();
+            const closeBtn = openModal
+                .locator(
+                    '.btn-close, button[data-bs-dismiss="modal"], button:has-text("Close"), button:has-text("Cerrar"), button:has-text("OK"), button:has-text("Aceptar"), .btn-primary, .btn-secondary',
+                )
+                .first();
 
             if (await closeBtn.isVisible().catch(() => false)) {
                 await closeBtn.click({ timeout: 3000 }).catch(() => {});
