@@ -478,6 +478,40 @@ test.describe('Real-Time Collaboration', () => {
             });
             expect(joinerUserCount).toBe(2);
         });
+
+        test('should show online users button on initiator on first join without page reload', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            // Initiator opens project alone first
+            const projectUuid = await createProject(authenticatedPage, 'No Reload Presence Test');
+            await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
+            await waitForYjsSync(authenticatedPage);
+
+            const initiatorButton = authenticatedPage.locator('#button-more-exe-concurrent-users');
+            await expect(initiatorButton).toBeHidden({ timeout: 10000 });
+
+            // Joiner opens the shared link
+            const shareUrl = await getShareUrl(authenticatedPage);
+            await joinSharedProject(secondAuthenticatedPage, shareUrl);
+
+            // Initiator must see the users button without any manual reload/edit action
+            await expect(initiatorButton).toBeVisible({ timeout: 30000 });
+
+            // Keep idle for a few seconds and ensure it remains visible
+            await authenticatedPage.waitForTimeout(8000);
+            await expect(initiatorButton).toBeVisible();
+
+            // Check users count on initiator side
+            const initiatorUserCount = await authenticatedPage.evaluate(() => {
+                const el = document.querySelector('#exe-concurrent-users');
+                return parseInt(el?.getAttribute('num') || '0', 10);
+            });
+            expect(initiatorUserCount).toBe(2);
+        });
     });
 
     test.describe('Bidirectional Content Sync', () => {

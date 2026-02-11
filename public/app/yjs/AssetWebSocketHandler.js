@@ -545,7 +545,14 @@ class AssetWebSocketHandler {
     Logger.log('[AssetWebSocketHandler] Trigger resync received, reason:', data?.reason);
     const dm = eXeLearning?.app?.project?._yjsBridge?.documentManager;
     if (dm?.rebroadcastAwareness) {
-      dm.rebroadcastAwareness('server-trigger-resync');
+      const sent = dm.rebroadcastAwareness('server-trigger-resync');
+      // In rare races the message may arrive before wsconnected flips to true.
+      // Retry once shortly after connection settles.
+      if (!sent) {
+        setTimeout(() => {
+          dm?.rebroadcastAwareness?.('server-trigger-resync-retry');
+        }, 300);
+      }
     }
   }
 

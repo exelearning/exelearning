@@ -1509,7 +1509,7 @@ describe('Yjs WebSocket Service', () => {
             expect(resyncMsg.reason).toBe('new-client-joined');
             expect(resyncMsg.projectUuid).toBe(projectUuid);
 
-            // Second client should NOT receive trigger-resync (it's the new arrival)
+            // Second client should also receive trigger-resync (self-rebroadcast for race safety)
             const ws2ResyncMessages = ws2.sentMessages.filter((msg: any) => {
                 if (typeof msg === 'string') {
                     try {
@@ -1521,7 +1521,7 @@ describe('Yjs WebSocket Service', () => {
                 }
                 return false;
             });
-            expect(ws2ResyncMessages.length).toBe(0);
+            expect(ws2ResyncMessages.length).toBe(1);
         });
 
         it('should send trigger-resync to all existing clients when third client joins', async () => {
@@ -1577,7 +1577,7 @@ describe('Yjs WebSocket Service', () => {
 
             expect(countResync(ws1)).toBe(1);
             expect(countResync(ws2)).toBe(1);
-            expect(countResync(ws3)).toBe(0);
+            expect(countResync(ws3)).toBe(1);
         });
     });
 

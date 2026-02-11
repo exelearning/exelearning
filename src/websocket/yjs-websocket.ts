@@ -322,7 +322,7 @@ export async function handleWebSocketOpen(
         // Ask existing clients to re-broadcast awareness when a new client joins.
         // This keeps presence UI in sync without forcing reconnects.
         for (const existingConn of room.conns) {
-            if (existingConn !== ws && existingConn.readyState === 1) {
+            if (existingConn.readyState === 1) {
                 try {
                     existingConn.send(
                         JSON.stringify({
