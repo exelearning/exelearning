@@ -114,6 +114,17 @@ async function openFileManager(page: Page): Promise<void> {
 }
 
 /**
+ * Helper to open the File Manager modal via Utilities menu.
+ * Useful for imported projects where no editable iDevice is selected yet.
+ */
+async function openFileManagerFromUtilitiesMenu(page: Page): Promise<void> {
+    await page.locator('#dropdownUtilities').click();
+    await page.waitForTimeout(200);
+    await page.locator('#navbar-button-filemanager').click();
+    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+}
+
+/**
  * Helper to close the File Manager modal
  */
 async function closeFileManager(page: Page): Promise<void> {
@@ -293,25 +304,21 @@ async function getFolderCount(page: Page): Promise<number> {
 }
 
 /**
- * Helper to import an ELP/ELPX file via File menu
+ * Helper to import/open an ELP/ELPX file via File menu.
+ * Uses File > Open.
  */
 async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Open File menu
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
-
-    // Click Continue in confirmation dialog (supports both English and Spanish)
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    const openOfflineOption = page.locator('#navbar-button-open-offline');
+    const openOnlineOption = page.locator('#navbar-button-openuserodefiles');
+    const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
+    await expect(openOption).toHaveCount(1);
 
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
-
+    await openOption.click({ force: true });
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
@@ -392,7 +399,7 @@ test.describe('File Manager', () => {
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
             await page.waitForTimeout(1000);
@@ -441,7 +448,7 @@ test.describe('File Manager', () => {
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
             await page.waitForTimeout(1000);

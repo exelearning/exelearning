@@ -4,8 +4,8 @@ import * as path from 'path';
 import type { Page } from '@playwright/test';
 
 /**
- * Import an ELPX fixture via File menu
- * Follows the pattern from yjs-binary-integrity.spec.ts
+ * Import an ELPX fixture.
+ * Uses File > Open.
  */
 async function importElpxFixture(page: Page, fixtureName: string): Promise<void> {
     const fixturePath = path.resolve(__dirname, `../../../fixtures/${fixtureName}`);
@@ -14,18 +14,13 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
-
-    // Click Continue in confirmation dialog
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    const openOfflineOption = page.locator('#navbar-button-open-offline');
+    const openOnlineOption = page.locator('#navbar-button-openuserodefiles');
+    const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
+    await expect(openOption).toHaveCount(1);
 
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
-
+    await openOption.click({ force: true });
     const fileChooser = await fileChooserPromise;
     await fileChooser.setFiles(fixturePath);
 
@@ -142,7 +137,7 @@ test.describe('Theme Import from ELPX', () => {
         //
         // To test manually:
         // 1. Create a new project
-        // 2. File > Import > select download-elpx-link.elpx
+        // 2. File > Open > select download-elpx-link.elpx
         // 3. When "Import style" dialog appears, click "Yes"
         // 4. Open Styles panel > Imported tab
         // 5. Verify "Universal" theme appears
