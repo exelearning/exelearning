@@ -136,6 +136,27 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
  * This is specific to the special chars tests that need TinyMCE context.
  */
 async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
+    const closeBlockingModals = async (): Promise<void> => {
+        for (let i = 0; i < 4; i += 1) {
+            const openModal = page.locator('#modalAlert[data-open="true"], .modals-container .modal.show').first();
+            if ((await openModal.count()) === 0) {
+                return;
+            }
+
+            const closeBtn = openModal.locator(
+                '.btn-close, button[data-bs-dismiss="modal"], button:has-text("Close"), button:has-text("Cerrar"), button:has-text("OK"), button:has-text("Aceptar"), .btn-primary, .btn-secondary',
+            ).first();
+
+            if (await closeBtn.isVisible().catch(() => false)) {
+                await closeBtn.click({ timeout: 3000 }).catch(() => {});
+            } else {
+                await page.keyboard.press('Escape').catch(() => {});
+            }
+
+            await page.waitForTimeout(250);
+        }
+    };
+
     const existingTinyMceUi = page.locator('.tox-editor-container, .tox-toolbar, .tox-edit-area iframe').first();
     if ((await existingTinyMceUi.count()) === 0) {
         await addTextIdeviceFromPanel(page);
@@ -147,10 +168,11 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
         await editBtn.click();
     }
 
+    await closeBlockingModals();
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await page.waitForSelector('.tox-editor-container, .tox-toolbar, .tox-edit-area iframe', { timeout: 15000 });
     await expect(imageBtn).toBeVisible({ timeout: 10000 });
-    await imageBtn.click();
+    await imageBtn.click({ timeout: 10000 });
 
     await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 
