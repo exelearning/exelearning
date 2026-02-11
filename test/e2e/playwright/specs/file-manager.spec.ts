@@ -529,7 +529,7 @@ test.describe('File Manager', () => {
             await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             const folderName = `TestFolder_${Date.now()}`;
             await createFolder(page, folderName);
@@ -932,10 +932,24 @@ test.describe('File Manager', () => {
             // Close file manager
             await closeFileManager(page);
 
-            // Close TinyMCE dialog if open
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
+            // Firefox can keep a TinyMCE backdrop active, which blocks Save button clicks.
+            const tinyDialog = page.locator('.tox-dialog');
+            if ((await tinyDialog.count()) > 0) {
+                const closeBtn = page
+                    .locator(
+                        '.tox-dialog .tox-dialog__header-close, .tox-dialog button[aria-label="Close"], .tox-dialog .tox-button:has-text("Cancel"), .tox-dialog .tox-button:has-text("Cancelar")',
+                    )
+                    .first();
+                if ((await closeBtn.count()) > 0) {
+                    await closeBtn.click({ force: true }).catch(() => {});
+                } else {
+                    await page.keyboard.press('Escape').catch(() => {});
+                }
+                await page
+                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), {
+                        timeout: 5000,
+                    })
+                    .catch(() => {});
             }
 
             // Save project
@@ -946,7 +960,7 @@ test.describe('File Manager', () => {
             await reloadPage(page);
 
             // Open File Manager again
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Verify folder still exists at root
             const folder = page.locator(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`);
