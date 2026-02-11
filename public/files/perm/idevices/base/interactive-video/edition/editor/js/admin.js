@@ -764,7 +764,32 @@ var iAdmin = {
                                 $('#frontpage-type-2').prop('checked', 'checked');
                                 $('#frontpage-type-1-opts').hide();
                                 $('#frontpage-type-2-opts').show();
-                                $('#frontpage-content-alt').val('<img src="' + poster + '" alt="' + alt + '" />');
+                                // For asset:// URLs, resolve to blob URL for display and set data-asset-url
+                                if (poster.indexOf('asset://') === 0) {
+                                    const assetPoster = poster;
+                                    const posterAlt = alt;
+                                    // Wait for TinyMCE to initialize, then set content with resolved blob URL
+                                    const waitForEditor = setInterval(() => {
+                                        const editor = tinyMCE.get('frontpage-content-alt');
+                                        if (editor) {
+                                            clearInterval(waitForEditor);
+                                            const assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                                            if (assetManager && typeof assetManager.resolveAssetURL === 'function') {
+                                                assetManager.resolveAssetURL(assetPoster).then(blobUrl => {
+                                                    if (blobUrl) {
+                                                        editor.setContent('<p><img src="' + blobUrl + '" alt="' + posterAlt + '" data-asset-url="' + assetPoster + '" /></p>');
+                                                    } else {
+                                                        editor.setContent('<p><img src="' + assetPoster + '" alt="' + posterAlt + '" /></p>');
+                                                    }
+                                                }).catch(() => {
+                                                    editor.setContent('<p><img src="' + assetPoster + '" alt="' + posterAlt + '" /></p>');
+                                                });
+                                            }
+                                        }
+                                    }, 100);
+                                } else {
+                                    $('#frontpage-content-alt').val('<img src="' + poster + '" alt="' + alt + '" />');
+                                }
                             }
                         }
                     }
@@ -807,13 +832,30 @@ var iAdmin = {
                 }
                 imgs = imgs.eq(0);
 
-                // Prefer asset:// URL from data attribute over blob:// URL from src
-                var dataAssetUrl = imgs.attr('data-asset-url');
-                var srcUrl = imgs.attr('src');
-                var url = dataAssetUrl || srcUrl;
+                // Resolve the asset URL with clear priority chain
+                // (same pattern as image slide save)
+                var url = '';
 
-                // If URL is blob://, try to convert to asset:// using reverseBlobCache
-                if (url && url.startsWith('blob:') && !dataAssetUrl) {
+                // Priority 1: currentImageAssetUrl (set by file_picker_callback when user picked a NEW image)
+                if (iAdmin.currentImageAssetUrl && iAdmin.currentImageAssetUrl.indexOf('asset://') === 0) {
+                    url = iAdmin.currentImageAssetUrl;
+                }
+
+                // Priority 2: data-asset-url attribute on the img (TinyMCE may preserve it)
+                if (!url) {
+                    var dataAssetUrl = imgs.attr('data-asset-url');
+                    if (dataAssetUrl && dataAssetUrl.indexOf('asset://') === 0) {
+                        url = dataAssetUrl;
+                    }
+                }
+
+                // Priority 3: src attribute (may be asset://, blob:, or legacy path)
+                if (!url) {
+                    url = imgs.attr('src') || '';
+                }
+
+                // Priority 4: If URL is blob://, try to convert to asset:// using reverseBlobCache
+                if (url && url.startsWith('blob:')) {
                     const assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
                     if (assetManager && assetManager.reverseBlobCache?.has(url)) {
                         const assetId = assetManager.reverseBlobCache.get(url);
