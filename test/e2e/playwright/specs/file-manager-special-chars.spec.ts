@@ -180,10 +180,7 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
         await closeBlockingModals();
         const openedByApi = await page.evaluate(() => {
             const anyWindow = window as any;
-            const tiny =
-                anyWindow?.tinymce ||
-                anyWindow?.$exeTinyMCE?.tinymce ||
-                anyWindow?.$exeTinyMCE;
+            const tiny = anyWindow?.tinymce || anyWindow?.$exeTinyMCE?.tinymce || anyWindow?.$exeTinyMCE;
             const editor = tiny?.activeEditor || tiny?.editors?.[0] || null;
             if (!editor || typeof editor.execCommand !== 'function') return false;
             editor.execCommand('mceImage');
