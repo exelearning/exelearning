@@ -19,10 +19,36 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
     await expect(openOption).toHaveCount(1);
 
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
+    // In static mode Open triggers a file chooser; in online mode it opens a modal with file inputs.
+    const fileChooserPromise = page
+        .waitForEvent('filechooser', { timeout: 12000 })
+        .then(fileChooser => ({ type: 'filechooser' as const, fileChooser }))
+        .catch(() => null);
     await openOption.click({ force: true });
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+
+    const modalUploadInput = page.locator('#local-ode-modal-file-upload');
+    const staticOpenInput = page.locator('#static-open-file-input');
+
+    await page
+        .waitForSelector('#local-ode-modal-file-upload, #static-open-file-input', {
+            state: 'attached',
+            timeout: 12000,
+        })
+        .catch(() => {});
+
+    if (await modalUploadInput.count()) {
+        await modalUploadInput.setInputFiles(fixturePath);
+    } else {
+        if (await staticOpenInput.count()) {
+            await staticOpenInput.setInputFiles(fixturePath);
+        } else {
+            const chooserResult = await fileChooserPromise;
+            if (!chooserResult) {
+                throw new Error('Open did not expose a file input or file chooser');
+            }
+            await chooserResult.fileChooser.setFiles(fixturePath);
+        }
+    }
 
     // Wait for loading screen to hide (import progress shows and then hides)
     await waitForLoadingScreen(page);
@@ -30,12 +56,16 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     // Wait for navigation to be populated
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                return navigation && navigation.length >= 1;
+            } catch {
+                return false;
+            }
         },
         { timeout: 30000 },
     );
