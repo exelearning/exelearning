@@ -52,8 +52,9 @@ var $eXeClasifica = {
         $eXeClasifica.options = [];
 
         $eXeClasifica.activities.each(function (i) {
-            const dl = $('.clasifica-DataGame', this),
-                $imagesLink = $('.clasifica-LinkImages', this),
+            const dl = $('.clasifica-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $imagesLink = $('.clasifica-LinkImages', this),
                 $audiosLink = $('.clasifica-LinkAudios', this),
                 $imageBack = $('.clasifica-ImageBack', this),
                 mOption = $eXeClasifica.loadDataGame(

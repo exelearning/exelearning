@@ -56,8 +56,9 @@ var $eXeHiddenImage = {
     loadGame: function () {
         $eXeHiddenImage.options = [];
         $eXeHiddenImage.activities.each(function (i) {
+            const dl = $('.hiddenimage-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.hiddenimage-version', this).eq(0).text(),
-                dl = $('.hiddenimage-DataGame', this),
                 imagesLink = $('.hiddenimage-LinkImages', this),
                 audioLink = $('.hiddenimage-LinkAudios', this),
                 mOption = $eXeHiddenImage.loadDataGame(

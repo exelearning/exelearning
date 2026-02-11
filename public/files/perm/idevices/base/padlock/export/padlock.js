@@ -52,8 +52,9 @@ var $padlock = {
     loadGame: function () {
         $padlock.options = [];
         $padlock.activities.each(function (i) {
+            const dl = $('.candado-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.candado-version', this).eq(0).text(),
-                dl = $('.candado-DataGame', this),
                 mOption = $padlock.loadDataGame(dl, version),
                 msg = mOption.msgs.msgPlayStart;
 

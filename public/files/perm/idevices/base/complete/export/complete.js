@@ -53,8 +53,9 @@ var $eXeCompleta = {
         $eXeCompleta.options = [];
 
         $eXeCompleta.activities.each(function (i) {
-            const dl = $('.completa-DataGame', this),
-                $imageBack = $('.completa-LinkBack', this),
+            const dl = $('.completa-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const $imageBack = $('.completa-LinkBack', this),
                 mOption = $eXeCompleta.loadDataGame(dl),
                 msg = mOption.msgs.msgPlayStart;
 

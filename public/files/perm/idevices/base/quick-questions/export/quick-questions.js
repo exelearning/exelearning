@@ -73,8 +73,9 @@ var $quickquestions = {
     loadGame: function () {
         $quickquestions.options = [];
         $quickquestions.activities.each(function (i) {
+            const dl = $('.quext-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.quext-version', this).eq(0).text(),
-                dl = $('.quext-DataGame', this),
                 imagesLink = $('.quext-LinkImages', this),
                 audioLink = $('.quext-LinkAudios', this),
                 mOption = $quickquestions.loadDataGame(
