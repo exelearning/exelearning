@@ -1967,6 +1967,51 @@ var iAdmin = {
                 
                 /* Custom image picker - returns to dialog form */
                 file_picker_callback: (cb, value, meta) => {
+                    const hostWindow = window.parent || top;
+                    const hostApp = hostWindow?.eXeLearning || top.eXeLearning;
+                    const fileManager = hostApp?.app?.modals?.filemanager;
+                    if (fileManager) {
+                        const hostDoc = hostWindow?.document;
+                        const editorModalEl = hostDoc?.getElementById('modalGenericIframeContainer');
+                        const fileManagerModalEl = hostDoc?.getElementById('modalFileManager');
+                        const editorModal = editorModalEl && hostWindow?.bootstrap?.Modal
+                            ? hostWindow.bootstrap.Modal.getInstance(editorModalEl) || new hostWindow.bootstrap.Modal(editorModalEl)
+                            : null;
+                        const editorWasOpen = !!editorModalEl?.classList?.contains('show');
+                        let restored = false;
+
+                        const restoreEditorModal = () => {
+                            if (restored) return;
+                            restored = true;
+                            if (editorWasOpen && editorModal) {
+                                editorModal.show();
+                            }
+                        };
+
+                        if (editorWasOpen && editorModal) {
+                            editorModal.hide();
+                        }
+
+                        if (fileManagerModalEl) {
+                            fileManagerModalEl.addEventListener('hidden.bs.modal', restoreEditorModal, { once: true });
+                        }
+
+                        fileManager.show({
+                            accept: 'image',
+                            multiSelect: false,
+                            onSelect: (result) => {
+                                if (!result) return;
+                                const assetUrl = result.assetUrl;
+                                const blobUrl = result.blobUrl || assetUrl;
+                                iAdmin.currentImageAssetUrl = assetUrl;
+                                cb(blobUrl, { alt: result.asset?.filename || '' });
+                                restoreEditorModal();
+                            },
+                        });
+                        return;
+                    }
+
+                    // Fallback to native file input when File Manager modal is unavailable
                     var input = document.createElement('input');
                     input.setAttribute('type', 'file');
                     input.setAttribute('accept', 'image/*');
@@ -1975,25 +2020,18 @@ var iAdmin = {
                         if (!file) return;
 
                         try {
-                            // Use AssetManager to store the image
                             const assetManager = top.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                            
+
                             if (!assetManager) {
                                 alert('Error: Asset manager not available');
                                 return;
                             }
 
-                            // Insert image into AssetManager - returns asset:// URL
                             const assetUrl = await assetManager.insertImage(file);
-
-                            // Get blob URL for immediate display in TinyMCE
                             const blobUrl = await assetManager.resolveAssetURL(assetUrl);
 
                             if (blobUrl) {
-                                // Store asset URL globally - this is the source of truth for saving
                                 iAdmin.currentImageAssetUrl = assetUrl;
-                                
-                                // Return blob URL to TinyMCE dialog
                                 cb(blobUrl, { alt: file.name });
                             } else {
                                 alert('Error: Failed to load image');
