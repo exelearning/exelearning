@@ -407,6 +407,10 @@ class YjsProjectBridge {
           this.handleRemoteStructureChanges(events);
         }
 
+        // Ensure local structural changes (including undo/redo) refresh the current page
+        // when blocks are created, deleted, or moved between pages.
+        this.scheduleReloadForBlockStructureChanges(events);
+
         // Notify all registered observers
         for (const observer of this.structureObservers) {
           try {
@@ -438,6 +442,76 @@ class YjsProjectBridge {
         console.error('[YjsProjectBridge] Error in structure observer:', e);
       }
     });
+  }
+
+  /**
+   * Schedule page reloads for block-level structural changes (add/delete/move/reorder).
+   * This handles local transactions too (including undo/redo), which previously left
+   * the content area stale until manual page navigation.
+   *
+   * @param {Array} events - Yjs deep observe events
+   */
+  scheduleReloadForBlockStructureChanges(events) {
+    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events);
+    if (affectedPageIds.size === 0) return;
+
+    affectedPageIds.forEach((pageId) => this.schedulePageReloadIfCurrent(pageId));
+  }
+
+  /**
+   * Extract page IDs affected by block structural mutations from Yjs events.
+   * We intentionally ignore regular component content edits (e.g. htmlContent typing)
+   * to avoid unnecessary full-page reloads.
+   *
+   * @param {Array} events - Yjs deep observe events
+   * @returns {Set<string>}
+   */
+  getAffectedPageIdsForBlockStructureChanges(events) {
+    const affectedPageIds = new Set();
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation || !events || !Array.isArray(events)) {
+      return affectedPageIds;
+    }
+
+    for (const event of events) {
+      if (!event || !Array.isArray(event.path)) continue;
+
+      const path = event.path;
+      const pageIndex = path[0];
+      if (typeof pageIndex !== 'number') continue;
+
+      // Block-only filter: path must include 'blocks'
+      const touchesBlocks = path.includes('blocks');
+      if (!touchesBlocks) continue;
+
+      // Structural mutations to react to:
+      // - Y.Array additions/deletions (create/delete/move across pages)
+      // - Block order key changes (in-page reorder)
+      const hasAdded = event.changes?.added?.size > 0;
+      const hasDeleted = event.changes?.deleted?.size > 0;
+
+      let hasBlockOrderChange = false;
+      if (path.length === 3 && path[1] === 'blocks' && event.changes?.keys) {
+        try {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          hasBlockOrderChange = changedKeys.includes('order');
+        } catch {
+          hasBlockOrderChange = false;
+        }
+      }
+
+      if (!hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        continue;
+      }
+
+      const pageMap = navigation.get(pageIndex);
+      const pageId = pageMap?.get?.('id') || pageMap?.get?.('pageId');
+      if (pageId) {
+        affectedPageIds.add(pageId);
+      }
+    }
+
+    return affectedPageIds;
   }
 
   /**
@@ -1546,6 +1620,7 @@ class YjsProjectBridge {
       this.forceTitleSync();
       this.forcePageTitlesSync();
       this.forceBlockTitlesSync();
+      this.syncCurrentPageBlocksIfNeeded();
 
       Logger.log('[YjsProjectBridge] Undo performed');
     } finally {
@@ -1576,6 +1651,7 @@ class YjsProjectBridge {
       this.forceTitleSync();
       this.forcePageTitlesSync();
       this.forceBlockTitlesSync();
+      this.syncCurrentPageBlocksIfNeeded();
 
       Logger.log('[YjsProjectBridge] Redo performed');
     } finally {
@@ -1624,6 +1700,28 @@ class YjsProjectBridge {
         this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
       }
     }, 50); // Small debounce
+  }
+
+  /**
+   * If current page block count in DOM differs from Yjs, trigger a content reload.
+   * This keeps undo/redo for block structural changes visually in sync without
+   * forcing reloads for pure metadata/title edits.
+   */
+  syncCurrentPageBlocksIfNeeded() {
+    const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+    if (!currentPageId || currentPageId === 'root') return;
+
+    const expectedBlockCount = this.structureBinding?.getBlocks?.(currentPageId)?.length;
+    if (typeof expectedBlockCount !== 'number') return;
+
+    const actualBlockCount = document.querySelectorAll('#node-content article.box').length;
+
+    if (actualBlockCount !== expectedBlockCount) {
+      Logger.log(
+        `[YjsProjectBridge] Block count mismatch after undo/redo on page ${currentPageId}: DOM=${actualBlockCount}, Yjs=${expectedBlockCount}. Reloading page content.`
+      );
+      this.reloadCurrentPage();
+    }
   }
 
   /**
