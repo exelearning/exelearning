@@ -555,9 +555,7 @@ export class ElpxImporter {
         for (const legacyPage of legacyPages) {
             const pageId = pageIdRemap.get(legacyPage.id) || this.generateId('page');
             const parentId =
-                legacyPage.parent_id === null
-                    ? rootParentId
-                    : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
+                legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
             const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
 
             const pageData: PageData = {
@@ -635,7 +633,7 @@ export class ElpxImporter {
             try {
                 htmlView = this.assetHandler.convertContextPathToAssetRefs(htmlView, this.assetMap);
             } catch (convErr) {
-            this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
+                this.logger.warn(`[ElpxImporter] Error converting asset paths for ${legacyIdevice.id}:`, convErr);
             }
         }
 
