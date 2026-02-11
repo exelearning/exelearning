@@ -1169,6 +1169,30 @@ describe('IdeviceBlockNode', () => {
             const editBtn = titleContainer.querySelector('.btn-edit-title');
             expect(editBtn).not.toBeNull();
         });
+
+        it('allows direct editing when clicking the title', async () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+
+            h1.click();
+            await Promise.resolve();
+
+            expect(h1.getAttribute('contenteditable')).toBe('true');
+        });
+
+        it('restores raw LaTeX text when entering edit mode', async () => {
+            block.blockName = '\\(x^2\\)';
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+
+            // Simulate previously rendered title markup.
+            h1.innerHTML = '<mjx-container>rendered</mjx-container>';
+
+            h1.click();
+            await Promise.resolve();
+
+            expect(h1.textContent).toBe('\\(x^2\\)');
+        });
     });
 
     describe('makeBlockButtonsElement', () => {
