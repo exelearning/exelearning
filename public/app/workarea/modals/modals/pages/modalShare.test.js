@@ -326,6 +326,38 @@ describe('ModalShare', () => {
       await modal.handleInvite();
       expect(errorSpy).toHaveBeenCalled();
     });
+
+    it('should save project before inviting collaborator', async () => {
+      const saveToServer = vi.fn().mockResolvedValue({});
+      window.eXeLearning.app.project._yjsBridge = { saveToServer };
+      modal.currentUserIsOwner = true;
+      modal.inviteEmail.value = 'new@example.com';
+
+      await modal.handleInvite();
+
+      expect(saveToServer).toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.addProjectCollaborator).toHaveBeenCalledWith(
+        'proj-123',
+        'new@example.com',
+        'editor'
+      );
+    });
+
+    it('should continue inviting even if save before invite fails', async () => {
+      const saveToServer = vi.fn().mockRejectedValue(new Error('Save failed'));
+      window.eXeLearning.app.project._yjsBridge = { saveToServer };
+      modal.currentUserIsOwner = true;
+      modal.inviteEmail.value = 'new2@example.com';
+
+      await modal.handleInvite();
+
+      expect(saveToServer).toHaveBeenCalled();
+      expect(window.eXeLearning.app.api.addProjectCollaborator).toHaveBeenCalledWith(
+        'proj-123',
+        'new2@example.com',
+        'editor'
+      );
+    });
   });
 
   describe('handleVisibilityChange', () => {
