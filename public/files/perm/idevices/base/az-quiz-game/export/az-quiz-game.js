@@ -58,8 +58,9 @@ var $azquizgame = {
         $azquizgame.options = [];
 
         $('.rosco-IDevice').each(function (i) {
+            const dl = $('.rosco-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.rosco-version', this).eq(0).text(),
-                dl = $('.rosco-DataGame', this),
                 imagesLink = $('.rosco-LinkImages', this),
                 audiosLink = $('.rosco-LinkAudios', this),
                 option = $azquizgame.loadDataGame(

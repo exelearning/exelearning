@@ -206,7 +206,46 @@ make test-coverage                # With coverage
 make test-frontend                # Frontend tests (Vitest)
 make test-integration             # Integration tests
 make test-e2e                     # E2E tests (Playwright)
+make test-e2e-static              # E2E tests in static mode
 ```
+
+### Running Individual Tests
+
+**Frontend tests** (files in `public/`): Use **Vitest**
+```bash
+# Run a specific frontend test file
+npx vitest run public/app/workarea/project/projectManager.test.js
+
+# Run with coverage
+npx vitest run public/app/workarea/project/projectManager.test.js --coverage
+
+# Run specific test by name
+npx vitest run public/app/workarea/project/projectManager.test.js -t "test name"
+
+# Watch mode
+npx vitest public/app/workarea/project/projectManager.test.js
+```
+
+**Backend tests** (files in `src/`): Use **Bun test**
+```bash
+# Run a specific backend test file
+bun test src/services/my-service.spec.ts
+
+# Run with coverage
+bun test src/services/my-service.spec.ts --coverage
+```
+
+**NOTE**: Frontend tests require `happy-dom` environment (configured in `vitest.config.mts`). Do NOT run frontend tests with `bun test` - they will fail with "window is not defined".
+
+### Test File Naming
+
+| Location | Pattern | Runner |
+|----------|---------|--------|
+| `src/**/*.spec.ts` | Backend unit tests | `bun test` |
+| `public/app/**/*.test.js` | Frontend unit tests | `vitest` |
+| `public/libs/**/*.test.js` | Frontend lib tests | `vitest` |
+| `public/files/perm/idevices/**/*.test.js` | iDevice tests | `vitest` |
+| `test/e2e/playwright/specs/*.spec.ts` | E2E tests | `playwright` |
 
 ### Coverage Requirements
 

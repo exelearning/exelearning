@@ -66,8 +66,9 @@ var $quickquestionsmultiplechoice = {
     loadGame: function () {
         $quickquestionsmultiplechoice.options = [];
         $quickquestionsmultiplechoice.activities.each(function (i) {
+            const dl = $('.selecciona-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.selecciona-version', this).eq(0).text(),
-                dl = $('.selecciona-DataGame', this),
                 imagesLink = $('.selecciona-LinkImages', this),
                 audioLink = $('.selecciona-LinkAudios', this),
                 mOption = $quickquestionsmultiplechoice.loadDataGame(

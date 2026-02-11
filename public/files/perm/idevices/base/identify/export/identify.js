@@ -57,8 +57,9 @@ var $eXeIdentifica = {
     loadGame: function () {
         $eXeIdentifica.options = [];
         $eXeIdentifica.activities.each(function (i) {
-            const dl = $('.identifica-DataGame', this),
-                imagesLink = $('.identifica-LinkImages', this),
+            const dl = $('.identifica-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+            const imagesLink = $('.identifica-LinkImages', this),
                 audioLink = $('.identifica-LinkAudios', this),
                 mOption = $eXeIdentifica.loadDataGame(
                     dl,

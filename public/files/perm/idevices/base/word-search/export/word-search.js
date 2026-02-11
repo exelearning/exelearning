@@ -52,8 +52,9 @@ var $eXeSopa = {
 
     loadGame: function () {
         $eXeSopa.activities.each(function (i) {
+            const dl = $('.sopa-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             let version = $('.sopa-version', this).eq(0).text(),
-                dl = $('.sopa-DataGame', this),
                 imagesLink = $('.sopa-LinkImages', this),
                 audioLink = $('.sopa-LinkAudios', this),
                 mOption = $eXeSopa.loadDataGame(

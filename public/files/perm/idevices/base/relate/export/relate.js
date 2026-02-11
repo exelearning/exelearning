@@ -40,6 +40,7 @@ var $eXeRelaciona = {
 
         $eXeRelaciona.activities.each(function (i) {
             const dl = $('.relaciona-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const mOption = $eXeRelaciona.loadDataGame(dl, this);
 
             mOption.scorerp = 0;

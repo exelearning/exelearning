@@ -1730,6 +1730,49 @@ describe('IdevicesEngine', () => {
 
             expect(engine.enableInternalLinks).toHaveBeenCalled();
         });
+
+        it('regenerates HTML content before reloading scripts', async () => {
+            const callOrder = [];
+            const mockIdevice = {
+                id: 'idevice-1',
+                ideviceContent: document.createElement('div'),
+                generateContentExportView: vi.fn().mockImplementation(() => {
+                    callOrder.push('generateHTML');
+                    return Promise.resolve({});
+                }),
+            };
+            engine.components.idevices = [mockIdevice];
+            engine.clearNeedlessScripts = vi.fn().mockImplementation(() => {
+                callOrder.push('clearScripts');
+            });
+            engine.loadIdevicesExportScripts = vi.fn().mockImplementation(() => {
+                callOrder.push('loadScripts');
+            });
+
+            await engine.resetCurrentIdevicesExportView([]);
+
+            expect(callOrder.indexOf('generateHTML')).toBeLessThan(callOrder.indexOf('clearScripts'));
+            expect(callOrder.indexOf('clearScripts')).toBeLessThan(callOrder.indexOf('loadScripts'));
+        });
+
+        it('skips idevices in the exceptions list', async () => {
+            const mockIdevice1 = {
+                id: 'idevice-1',
+                ideviceContent: document.createElement('div'),
+                generateContentExportView: vi.fn().mockResolvedValue({}),
+            };
+            const mockIdevice2 = {
+                id: 'idevice-2',
+                ideviceContent: document.createElement('div'),
+                generateContentExportView: vi.fn().mockResolvedValue({}),
+            };
+            engine.components.idevices = [mockIdevice1, mockIdevice2];
+
+            await engine.resetCurrentIdevicesExportView(['idevice-1']);
+
+            expect(mockIdevice1.generateContentExportView).not.toHaveBeenCalled();
+            expect(mockIdevice2.generateContentExportView).toHaveBeenCalled();
+        });
     });
 
     describe('addEventDragOverToContainer', () => {
@@ -2440,11 +2483,30 @@ describe('IdevicesEngine', () => {
     });
 
     describe('loadComponentsPage', () => {
+        let mockHtmlIdeviceNode, mockJsonIdeviceNode;
+
         beforeEach(() => {
+            mockHtmlIdeviceNode = {
+                idevice: { componentType: 'html' },
+                restartExeIdeviceValue: vi.fn(),
+                generateContentExportView: vi.fn().mockResolvedValue({}),
+                updateMode: vi.fn(),
+                ideviceInitExport: vi.fn().mockResolvedValue({}),
+            };
+            mockJsonIdeviceNode = {
+                idevice: { componentType: 'json' },
+                restartExeIdeviceValue: vi.fn(),
+                generateContentExportView: vi.fn().mockResolvedValue({}),
+                updateMode: vi.fn(),
+                ideviceInitExport: vi.fn().mockResolvedValue({}),
+            };
             vi.spyOn(engine, 'newBlockNode').mockReturnValue({
                 blockContent: document.createElement('div'),
             });
-            vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({});
+            vi.spyOn(engine, 'addIdeviceNodeToContainer').mockImplementation(() => {});
+            vi.spyOn(engine, 'loadIdevicesExportStyles').mockResolvedValue(undefined);
+            vi.spyOn(engine, 'loadIdevicesExportScripts').mockImplementation(() => {});
+            vi.spyOn(engine, 'updateMode').mockImplementation(() => {});
         });
 
         it('creates blocks from pagStructure', async () => {
@@ -2463,8 +2525,115 @@ describe('IdevicesEngine', () => {
 
             await engine.loadComponentsPage(pagStructure);
 
-            // Block should be appended
             expect(engine.nodeContentElement.children.length).toBeGreaterThan(0);
+        });
+
+        it('Phase 1: creates all iDevice nodes before loading scripts', async () => {
+            vi.spyOn(engine, 'newIdeviceNode')
+                .mockResolvedValueOnce(mockHtmlIdeviceNode)
+                .mockResolvedValueOnce(mockHtmlIdeviceNode);
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [
+                    { mode: 'export', odeIdeviceTypeName: 'classify' },
+                    { mode: 'export', odeIdeviceTypeName: 'classify' },
+                ],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            // Both nodes created before any script loading
+            expect(engine.newIdeviceNode).toHaveBeenCalledTimes(2);
+            expect(engine.addIdeviceNodeToContainer).toHaveBeenCalledTimes(2);
+        });
+
+        it('Phase 2: sets HTML content for html-type iDevices before scripts load', async () => {
+            const callOrder = [];
+            mockHtmlIdeviceNode.generateContentExportView = vi.fn().mockImplementation(() => {
+                callOrder.push('generateHTML');
+                return Promise.resolve({});
+            });
+            engine.loadIdevicesExportScripts = vi.fn().mockImplementation(() => {
+                callOrder.push('loadScripts');
+            });
+            vi.spyOn(engine, 'newIdeviceNode').mockResolvedValue(mockHtmlIdeviceNode);
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [{ mode: 'export' }],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(callOrder.indexOf('generateHTML')).toBeLessThan(callOrder.indexOf('loadScripts'));
+        });
+
+        it('Phase 2: does NOT call generateContentExportView for json-type iDevices', async () => {
+            vi.spyOn(engine, 'newIdeviceNode').mockResolvedValue(mockJsonIdeviceNode);
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [{ mode: 'export' }],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(mockJsonIdeviceNode.generateContentExportView).not.toHaveBeenCalled();
+        });
+
+        it('Phase 3: loads styles and scripts after all HTML is set', async () => {
+            vi.spyOn(engine, 'newIdeviceNode').mockResolvedValue(mockHtmlIdeviceNode);
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [{ mode: 'export' }],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(engine.loadIdevicesExportStyles).toHaveBeenCalled();
+            expect(engine.loadIdevicesExportScripts).toHaveBeenCalled();
+        });
+
+        it('Phase 4: calls ideviceInitExport only for json-type iDevices', async () => {
+            vi.spyOn(engine, 'newIdeviceNode')
+                .mockResolvedValueOnce(mockHtmlIdeviceNode)
+                .mockResolvedValueOnce(mockJsonIdeviceNode);
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [
+                    { mode: 'export' },
+                    { mode: 'export' },
+                ],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(mockJsonIdeviceNode.ideviceInitExport).toHaveBeenCalled();
+            expect(mockHtmlIdeviceNode.ideviceInitExport).not.toHaveBeenCalled();
+        });
+
+        it('processes iDevices sequentially (not in parallel)', async () => {
+            const creationOrder = [];
+            vi.spyOn(engine, 'newIdeviceNode').mockImplementation(async (data) => {
+                creationOrder.push(data.odeIdeviceTypeName);
+                return { ...mockHtmlIdeviceNode };
+            });
+
+            const pagStructure = [{
+                blockId: 'block-1',
+                odeComponentsSyncs: [
+                    { mode: 'export', odeIdeviceTypeName: 'first' },
+                    { mode: 'export', odeIdeviceTypeName: 'second' },
+                    { mode: 'export', odeIdeviceTypeName: 'third' },
+                ],
+            }];
+
+            await engine.loadComponentsPage(pagStructure);
+
+            expect(creationOrder).toEqual(['first', 'second', 'third']);
         });
     });
 
