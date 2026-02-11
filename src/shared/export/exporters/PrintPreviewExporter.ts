@@ -182,7 +182,7 @@ export class PrintPreviewExporter {
                 // If v exists (it always does due to default), it appends it?
                 // No, check patchPathsForServer:
                 // const version = options.version === undefined ? 'v1.0.0' : options.version;
-                // if (!version) ... 
+                // if (!version) ...
                 // 'v1.0.0' is truthy. So it always appends version?
                 // Actually, let's look at patchPathsForServer implementation I saw earlier.
                 return `${baseUrl}${cleanBasePath}/${v}/${cleanPath}`;
@@ -390,7 +390,7 @@ ${logoCss}
                             asset.data instanceof Blob
                                 ? asset.data
                                 : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                new Blob([asset.data as any], { type: asset.mime });
+                                  new Blob([asset.data as any], { type: asset.mime });
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
