@@ -25,9 +25,9 @@
 
 ## About the Project
 
-eXeLearning 3+ is a modern re-implementation of the original eXeLearning authoring tool, initially created in the eXeLearning.org project in New Zealand and subsequently continued by eXeLearning.net project by the Spanish Ministry of Education, Vocational Training and Sports (MEFPD) through Cedec-INTEF.
+eXeLearning is a free and open source authoring tool for creating interactive educational resources. It was originally developed within the eXeLearning.org project in New Zealand and, since 2010,it has been maintained and further developed by the eXeLearning.net project, led by the Spanish Ministry of Education, Vocational Training and Sports (MEFPD) through Cedec-INTEF.
 
-The new code has been created within the collaboration between the MEFPD and the regional educational administrations of Andalucía and Extremadura. The revision and further developments of eXe 3.0 are carried out also with the participation of other regional administrations (Canarias, Madrid, Comunidad Valenciana and Galicia).
+Currently, the development of the code is carried out in a coordinated manner between the MEFPD and the regional administrations, ensuring its continuous evolution, the improvement of its architecture, and the incorporation of new features.
 
 This version is built with modern technologies (Bun, Elysia, Kysely) and provides an accessible and up-to-date user interface for creating interactive educational content.
 
