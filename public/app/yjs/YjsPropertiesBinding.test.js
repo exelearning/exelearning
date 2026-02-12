@@ -553,6 +553,16 @@ describe('YjsPropertiesBinding', () => {
       expect(headerTitle.textContent).toBe('Updated Title');
     });
 
+    it('delegates to odeTitleElement for immediate render updates', () => {
+      const onRemoteTitleChange = mock(() => undefined);
+      window.eXeLearning.app.interface.odeTitleElement.onRemoteTitleChange = onRemoteTitleChange;
+
+      binding.metadata.set('title', 'Updated Title');
+      binding.syncTitleToHeader();
+
+      expect(onRemoteTitleChange).toHaveBeenCalledWith('Updated Title');
+    });
+
     it('skips update if element is in editing mode', () => {
       const headerTitle = document.querySelector('#exe-title > .exe-title.content');
       headerTitle.setAttribute('contenteditable', 'true');
