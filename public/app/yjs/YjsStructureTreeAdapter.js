@@ -271,7 +271,7 @@ class YjsStructureTreeAdapter {
       const siblings = this.structureBinding.getPages().filter((p) => p.parentId === newParentId);
       const newOrder = siblings.length;
 
-      this.structureBinding.movePage(pageId, newOrder, newParentId);
+      this.structureBinding.movePage(pageId, newParentId, newOrder);
       Logger.log(`[YjsStructureTreeAdapter] Moved page ${pageId} under ${newParentId}`);
     } finally {
       this._isUpdating = false;

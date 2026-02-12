@@ -1169,6 +1169,105 @@ describe('IdeviceBlockNode', () => {
             const editBtn = titleContainer.querySelector('.btn-edit-title');
             expect(editBtn).not.toBeNull();
         });
+
+        it('schedules title render after attaching to DOM', () => {
+            const originalRaf = global.requestAnimationFrame;
+            const rafMock = vi.fn((cb) => {
+                cb();
+                return 1;
+            });
+            global.requestAnimationFrame = rafMock;
+            const renderSpy = vi
+                .spyOn(block, 'renderBlockTitle')
+                .mockImplementation(() => {});
+
+            block.makeBlockTitleElementText();
+
+            expect(rafMock).toHaveBeenCalled();
+            expect(renderSpy).toHaveBeenCalled();
+
+            global.requestAnimationFrame = originalRaf;
+        });
+
+        it('allows direct editing when clicking the title', async () => {
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+
+            h1.click();
+            await Promise.resolve();
+
+            expect(h1.getAttribute('contenteditable')).toBe('true');
+        });
+
+        it('restores raw LaTeX text when entering edit mode', async () => {
+            block.blockName = '\\(x^2\\)';
+            const titleContainer = block.makeBlockTitleElementText();
+            const h1 = titleContainer.querySelector('h1');
+
+            // Simulate previously rendered title markup.
+            h1.innerHTML = '<mjx-container>rendered</mjx-container>';
+
+            h1.click();
+            await Promise.resolve();
+
+            expect(h1.textContent).toBe('\\(x^2\\)');
+        });
+    });
+
+    describe('renderBlockTitle', () => {
+        beforeEach(() => {
+            block.blockNameElementText = document.createElement('h1');
+            delete global.MathJax;
+        });
+
+        it('sets plain text and skips MathJax for non-latex title', async () => {
+            const typesetPromise = vi.fn(() => Promise.resolve());
+            global.MathJax = {
+                startup: { promise: Promise.resolve() },
+                typesetPromise,
+            };
+            block.blockName = 'Plain title';
+            document.body.appendChild(block.blockNameElementText);
+
+            block.renderBlockTitle();
+            await Promise.resolve();
+
+            expect(block.blockNameElementText.textContent).toBe('Plain title');
+            expect(typesetPromise).not.toHaveBeenCalled();
+        });
+
+        it('typesets latex when node is connected', async () => {
+            const typesetPromise = vi.fn(() => Promise.resolve());
+            const typesetClear = vi.fn(() => undefined);
+            global.MathJax = {
+                startup: { promise: Promise.resolve() },
+                typesetPromise,
+                typesetClear,
+            };
+            block.blockName = '\\(x^2\\)';
+            document.body.appendChild(block.blockNameElementText);
+
+            block.renderBlockTitle();
+            await Promise.resolve();
+            await Promise.resolve();
+
+            expect(typesetClear).toHaveBeenCalled();
+            expect(typesetPromise).toHaveBeenCalledWith([block.blockNameElementText]);
+        });
+
+        it('skips typeset when title node is not connected', async () => {
+            const typesetPromise = vi.fn(() => Promise.resolve());
+            global.MathJax = {
+                startup: { promise: Promise.resolve() },
+                typesetPromise,
+            };
+            block.blockName = '\\(x^2\\)';
+
+            block.renderBlockTitle();
+            await Promise.resolve();
+
+            expect(typesetPromise).not.toHaveBeenCalled();
+        });
     });
 
     describe('makeBlockButtonsElement', () => {

@@ -164,8 +164,10 @@ export class YjsDocumentAdapter implements ExportDocument {
     private sortPagesHierarchically(pages: ExportPage[]): ExportPage[] {
         // Build children map: parentId -> children[]
         const childrenMap = new Map<string | null, ExportPage[]>();
+        const pageIds = new Set<string>();
 
         for (const page of pages) {
+            pageIds.add(page.id);
             const parentId = page.parentId;
             if (!childrenMap.has(parentId)) {
                 childrenMap.set(parentId, []);
@@ -180,17 +182,58 @@ export class YjsDocumentAdapter implements ExportDocument {
 
         // Build result in reading order using DFS
         const result: ExportPage[] = [];
+        const visited = new Set<string>();
+        const recursionStack = new Set<string>();
 
-        const addPageAndChildren = (parentId: string | null): void => {
+        const addPageAndChildren = (parentId: string | null, path: string[] = []): void => {
             const children = childrenMap.get(parentId) || [];
             for (const child of children) {
+                // Avoid duplicate visits from malformed structures
+                if (visited.has(child.id)) {
+                    continue;
+                }
+
+                // Detect cyclic parent-child references and skip problematic branch
+                if (recursionStack.has(child.id)) {
+                    console.warn(
+                        `[YjsDocumentAdapter] Detected cycle in page hierarchy: ${[...path, child.id].join(' -> ')}`,
+                    );
+                    continue;
+                }
+
+                recursionStack.add(child.id);
                 result.push(child);
-                addPageAndChildren(child.id);
+                visited.add(child.id);
+                addPageAndChildren(child.id, [...path, child.id]);
+                recursionStack.delete(child.id);
             }
         };
 
         // Start with root pages (parentId = null)
         addPageAndChildren(null);
+
+        // Include pages that were unreachable from root (orphaned/cyclic structures)
+        for (const page of pages) {
+            if (visited.has(page.id)) {
+                continue;
+            }
+
+            if (!page.parentId || !pageIds.has(page.parentId)) {
+                console.warn(
+                    `[YjsDocumentAdapter] Found orphan page "${page.id}" (parentId: ${String(page.parentId)}), adding as root`,
+                );
+                addPageAndChildren(page.parentId ?? null, [page.id]);
+                if (!visited.has(page.id)) {
+                    result.push(page);
+                    visited.add(page.id);
+                }
+                continue;
+            }
+
+            console.warn(`[YjsDocumentAdapter] Found unreachable page "${page.id}", adding directly`);
+            result.push(page);
+            visited.add(page.id);
+        }
 
         return result;
     }
