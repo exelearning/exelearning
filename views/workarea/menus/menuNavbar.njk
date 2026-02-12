@@ -24,7 +24,8 @@
                         </ul>
                     </li>
                     {% if not config.isOfflineInstallation %}
-                    <li><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                    {# Hidden to reduce Open/Import confusion (issue #1223) #}
+                    <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                     {% endif %}
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
@@ -45,7 +46,8 @@
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-share" href="#" data-shortcut="Mod+Alt+S" aria-keyshortcuts="Control+Alt+S Meta+Alt+S"><span class="small-icon share-icon"></span> {{ t.share or 'Share' }}</a></li>
                     {% if config.isOfflineInstallation %}
                         <li><a class="dropdown-item" id="navbar-button-open-offline" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
-                        <li><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                        {# Hidden to reduce Open/Import confusion (issue #1223) #}
+                        <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                         <li class="dropdown-divider"></li>
                         <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
                         <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span> {{ t.save_as or 'Save as' }}</a></li>
