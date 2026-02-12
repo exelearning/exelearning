@@ -3238,28 +3238,6 @@ body[mode="advanced"] .modal .form-properties .exe-properties-form-content {
         }
     }
 
-    .print-preview-close-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        background: transparent;
-        color: var(--white, white);
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.2s;
-
-        .exe-icon {
-            font-size: 28px;
-        }
-
-        &:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-    }
-
     .print-preview-content {
         flex: 1;
         display: flex;

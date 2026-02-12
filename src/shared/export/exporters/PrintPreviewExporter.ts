@@ -2,26 +2,19 @@
  * PrintPreviewExporter
  *
  * Generates a single-page HTML preview for printing.
- * All pages are rendered together in one document, optimized for print.
- *
- * Key differences from Html5Exporter:
- * - All pages visible at once (not SPA)
- * - Body class includes 'exe-single-page' for print styles
- * - Navigation uses anchor links (not JavaScript page switching)
- * - No prev/next buttons
- * - Optimized for @media print CSS rules
+ * Wraps PageRenderer (Single Page export logic) and patches paths for browser preview.
  */
-import type {
+import {
     ExportDocument,
     ExportPage,
+    ExportComponent,
     ResourceProvider,
+    AssetProvider,
     LatexPreRenderResult,
     MermaidPreRenderResult,
-} from '../interfaces';
+} from '../../interfaces';
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
-import { normalizeIdeviceType, shouldShowLicenseFooter } from '../constants';
-import { LibraryDetector } from '../utils/LibraryDetector';
-import { getIdeviceExportFiles } from '../../../services/idevice-config';
+import { PageRenderer } from '../renderers/PageRenderer';
 
 /**
  * Options for print preview generation
@@ -52,6 +45,10 @@ export interface PrintPreviewOptions {
      * When provided and successful, Mermaid library (~2.7MB) will NOT be included.
      */
     preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
+    /**
+     * If true, enables auto-print mode (injects print scripts and onload handler).
+     */
+    printMode?: boolean;
 }
 
 /**
@@ -65,22 +62,35 @@ export interface PrintPreviewResult {
 
 /**
  * PrintPreviewExporter class
- * Generates single-page HTML for printing
+ * Generates single-page HTML for printing by wrapping PageRenderer (Single Page export logic)
+ * and adapting the output (paths) for browser preview.
  */
 export class PrintPreviewExporter {
     private document: ExportDocument;
     private ideviceRenderer: IdeviceRenderer;
+    private pageRenderer: PageRenderer;
+    private assets: AssetProvider | null;
     private resources: ResourceProvider;
+    private assetExportPathMap: Map<string, string> | null = null;
 
     /**
      * Create a PrintPreviewExporter
      * @param document - Export document adapter
      * @param resourceProvider - Resource provider for theme/iDevice info
+     * @param assetProvider - Asset provider for resolving asset URLs (optional but recommended)
      */
-    constructor(document: ExportDocument, resourceProvider: ResourceProvider) {
+    constructor(
+        document: ExportDocument,
+        resourceProvider: ResourceProvider,
+        assetProvider: AssetProvider | null = null,
+    ) {
         this.document = document;
         this.resources = resourceProvider;
+        this.assets = assetProvider;
+        // User IdeviceRenderer to render content.
+        // We initialize it here to use it for single-page rendering and icon resolution
         this.ideviceRenderer = new IdeviceRenderer();
+        this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
 
     /**
@@ -97,7 +107,13 @@ export class PrintPreviewExporter {
                 return { success: false, error: 'No pages to preview' };
             }
 
-            // Fetch theme files and configure icon resolution
+            // Pre-process pages to resolve asset URLs (replace asset://UUID with keys for map)
+            let processedPages = await this.preprocessPages(pages);
+
+            // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
+            processedPages = this.deduplicateComponents(processedPages);
+
+            // Fetch theme files and configure icon resolution (from main)
             const themeName = meta.theme || 'base';
             try {
                 const themeFilesMap = await this.resources.fetchTheme(themeName);
@@ -106,16 +122,381 @@ export class PrintPreviewExporter {
                 // Theme fetch not available - icons will use .png fallback
             }
 
-            // Get all used iDevice types
-            const usedIdevices = this.getUsedIdevices(pages);
+            const usedIdevices = this.getUsedIdevices(processedPages);
 
-            // Generate the single-page HTML
-            const html = await this.generateSinglePageHtml(pages, meta, usedIdevices, options);
+            // Access version safely from window object
+            const windowConfig =
+                typeof window !== 'undefined'
+                    ? (window as unknown as { eXeLearning?: { config?: { version?: string } } })
+                    : undefined;
+            const version = windowConfig?.eXeLearning?.config?.version || 'v1.0.0';
 
+            // Generate the single-page HTML components using PageRenderer
+            // This ensures we use the exact same logic as the "Single Page" export
+            let html = this.pageRenderer.renderSinglePage(processedPages, {
+                projectTitle: meta.title || 'eXeLearning',
+                projectSubtitle: meta.subtitle || '',
+                language: meta.language || 'en',
+                customStyles: meta.customStyles || '',
+                usedIdevices,
+                author: meta.author || '',
+                license: meta.license || '',
+                addExeLink: meta.addExeLink ?? true,
+                userFooterContent: meta.footer || '',
+                version, // From browser context
+            });
+
+            // Post-process HTML:
+            // 1. Pre-render LaTeX/Mermaid (if hooks provided)
+            html = await this.preRenderContent(html, meta, options);
+
+            // 2. Patch relative paths (libs/, theme/) to server absolute paths
+            html = this.patchPathsForServer(html, meta.theme || 'base', usedIdevices, options);
+
+            // 3. Make hidden feedback elements visible (remove display: none)
+            html = this.revealFeedback(html);
+
+            // 4. Hide unwanted print elements (versions, bns, map images)
+            html = this.hidePrintExtras(html);
+
+            // 5. Inject styles to avoid horizontal scroll
+            // Calculate logo URL for fix (same logic as patchPathsForServer)
+            const baseUrl = options.baseUrl || '';
+            const basePath = options.basePath || '';
+            // Determine version (priority: options > window > default)
+            let versionStr = options.version;
+            if (versionStr === undefined) {
+                versionStr = version !== 'v1.0.0' ? version : undefined;
+            }
+            // If version is still undefined/null, default to nothing or v1.0.0 depending on logic.
+            // patchPathsForServer uses options.version ?? 'v1.0.0' logic roughly.
+            // Let's use the exact same logic helper if possible, or replicate:
+            const effectiveVersion = options.version ?? version; // Use window version if options not present
+
+            const getPath = (path: string) => {
+                const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+                const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+                // If version is provided/detected, include it
+                if (effectiveVersion && effectiveVersion !== 'v1.0.0') {
+                    return `${baseUrl}${cleanBasePath}/${effectiveVersion}/${cleanPath}`;
+                }
+                // Default to no version in path if v1.0.0 or missing (usually dev)
+                // NOTE: build-static-bundle usually puts everything under version folder?
+                // patchPathsForServer logic:
+                // if (!version) return ... else return .../${version}/...
+                // It used `options.version === undefined ? 'v1.0.0' : options.version`
+                // and checked `if (!version)` (which is never true if it defaults to v1.0.0 string?)
+                // Wait, patchPathsForServer uses local scope version variable.
+
+                // Replicating patchPathsForServer logic exactly:
+                const v = options.version === undefined ? 'v1.0.0' : options.version;
+                // If v exists (it always does due to default), it appends it?
+                // No, check patchPathsForServer:
+                // const version = options.version === undefined ? 'v1.0.0' : options.version;
+                // if (!version) ...
+                // 'v1.0.0' is truthy. So it always appends version?
+                // Actually, let's look at patchPathsForServer implementation I saw earlier.
+                return `${baseUrl}${cleanBasePath}/${v}/${cleanPath}`;
+            };
+
+            const logoUrl = getPath('app/common/exe_powered_logo/exe_powered_logo.png');
+            html = this.injectPreviewStyles(html, logoUrl);
+
+            // 4. Inject Print scripts and CSS (if printMode)
+            if (options.printMode) {
+                html = this.injectPrintSpecifics(html);
+            } else {
+                // Even in normal preview mode, we need to force init scripts because window.eXeLearning is defined
+                html = this.injectInitScripts(html);
+            }
             return { success: true, html };
         } catch (error) {
+            console.error('PrintPreview generate error:', error);
             const errorMessage = error instanceof Error ? error.message : String(error);
             return { success: false, error: errorMessage };
+        }
+    }
+
+    /**
+     * Filter out pages that are marked as not visible in export
+     */
+    private filterVisiblePages(pages: ExportPage[]): ExportPage[] {
+        return (
+            pages
+                .filter(page => {
+                    // Check visibility property. Default is visible if undefined.
+                    // strict check for false or 'false'
+                    const isHidden = page.properties?.visibility === false || page.properties?.visibility === 'false';
+                    return !isHidden;
+                })
+                // Recursively filter children (though ExportPage definition implies flat list,
+                // if PageRenderer handles hierarchy via other means, this is safe for future proofing
+                // or if ExportPage has children property not shown in interface file but present in runtime)
+                .map(page => {
+                    // Clone page to avoid mutation
+                    const newPage = { ...page };
+                    if (newPage.children && Array.isArray(newPage.children)) {
+                        newPage.children = this.filterVisiblePages(newPage.children);
+                    }
+                    return newPage;
+                })
+        );
+    }
+
+    /**
+     * Inject styles to force content to fit within the page width
+     */
+    private injectPreviewStyles(html: string, logoUrl?: string): string {
+        const logoCss = logoUrl
+            ? `
+/* Fix for eXe logo 404 */
+#made-with-eXe a {
+    background-image: url("${logoUrl}") !important;
+}`
+            : '';
+
+        const styles = `
+<style>
+/* PREVIEW MODE (Screen) */
+/* Create space around the document in preview mode */
+body {
+    padding: 40px;
+    background-color: #f5f5f5; /* Light grey background for the "paper" effect */
+}
+/* The page content acts as the paper */
+.exe-single-page {
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    max-width: 210mm; /* A4 width approx */
+    margin: 0 auto;
+    padding: 20mm; /* A4 margins approx */
+    box-sizing: border-box;
+}
+
+/* Force content to fit within the page (no horizontal scroll) */
+img, figure, video, object, iframe, table, svg, canvas {
+    max-width: 100%;
+    height: auto;
+    box-sizing: border-box;
+}
+/* Ensure figures behave responsively */
+figure {
+    margin: 1em 0;
+}
+figure img {
+    max-width: 100%;
+    height: auto;
+}
+/* Fix for specific eXe layout issues */
+.iDevice_content {
+    overflow-x: auto;
+}
+
+/* FIX: Force visibility globally (Screen & Print) */
+/* The div with coordinates in Map iDevice should be visible even if js-hidden */
+.mapa-LinkTextsPoints,
+.js-hidden.mapa-LinkTextsPoints,
+.js .js-hidden.mapa-LinkTextsPoints,
+.mapa-IDevice .js-hidden.mapa-LinkTextsPoints {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force visibility for Definition List descriptions */
+.js .exe-dl dd {
+    display: block !important;
+}
+
+/* Force visibility for UDL Content Blocks */
+.exe-udlContent-block,.exe-udlContent-block.js-hidden,
+.js .exe-udlContent-block.js-hidden {
+    display: block !important;
+}
+
+/* PRINT MODE */
+@media print {
+    /* Reset preview-specific styles */
+    body {
+        padding: 0 !important;
+        background-color: transparent !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    .exe-single-page {
+        box-shadow: none !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* 1. Avoid cutting images between pages */
+    img, figure, video, object, iframe, table, svg, canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    
+    pre, blockquote {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        white-space: pre-wrap;
+    }
+
+    /* 2. Hide Title and Subtitle (Header) */
+    /* The main header contains the project title and subtitle */
+    /* Ensure package header (Project Title) is visible on the first page only */
+    .package-header {
+        display: block !important;
+        visibility: visible !important; 
+        position: static !important; /* Ensure it flows normally */
+    }
+
+    /* Hide individual page headers if needed, or other decorations */
+    #nodeDecoration { 
+        display: none !important; 
+    }
+
+    /* Hide navigation in print mode */
+    #siteNav, .single-page-nav { display: none !important; }
+    
+    #made-with-eXe { display: none; }
+    
+    .single-page-section {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        border-bottom: none;
+    }
+}
+
+/* Force visibility for feedback elements even if JS tries to hide them */
+.feedback.js-hidden {
+    display: block !important;
+}
+${logoCss}
+</style>
+`;
+        return html.replace('</head>', `${styles}</head>`);
+    }
+
+    /**
+     * Pre-process pages to resolve asset URLs
+     * Replaces asset://UUID with content/resources/FILENAME
+     */
+    private async preprocessPages(pages: ExportPage[]): Promise<ExportPage[]> {
+        if (!this.assets) return this.filterVisiblePages(pages);
+
+        // Build path map if not already done
+        if (!this.assetExportPathMap) {
+            await this.buildAssetExportPathMap();
+        }
+
+        // Filter out hidden pages
+        const visiblePages = this.filterVisiblePages(pages);
+
+        // Note: filterVisiblePages returns shallow copies, but preprocessPages was deep cloning.
+        // Let's do a deep clone of the filtered result to be safe and consistent with previous logic
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(visiblePages));
+
+        for (const page of clonedPages) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        component.content = await this.resolveAssetUrls(component.content);
+                    }
+                    if (component.properties) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.resolveAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
+                    }
+                }
+            }
+        }
+        return clonedPages;
+    }
+
+    /**
+     * Resolve asset:// and content/resources/ URLs to Blob URLs
+     */
+    private async resolveAssetUrls(content: string): Promise<string> {
+        if (!content || !this.assetExportPathMap) return content;
+
+        // Replace asset://UUID or content/resources/UUID with blob:URL
+        // Capture group 1 is the ID/Filename
+        // IMPORTANT: Exclude \ (backslash) to prevent consuming JSON escape characters (e.g. \")
+        return content.replace(/(?:asset:\/\/|content\/resources\/)([^"'\s\\]+)/gi, (_match, idOrFilename) => {
+            // 1. Try direct lookup (UUID or Filename as is)
+            let blobUrl = this.assetExportPathMap?.get(idOrFilename) || this.assetFilenameMap?.get(idOrFilename);
+
+            // 2. Try removing extension (e.g. UUID.png -> UUID)
+            if (!blobUrl && idOrFilename.includes('.')) {
+                const idWithoutExt = idOrFilename.substring(0, idOrFilename.lastIndexOf('.'));
+                blobUrl = this.assetExportPathMap?.get(idWithoutExt);
+            }
+
+            if (blobUrl) {
+                return blobUrl;
+            }
+
+            // Fallback: If it was asset://, convert to path. If it was already path, keep it.
+            if (_match.startsWith('asset://')) {
+                return `content/resources/${idOrFilename}`;
+            }
+            return _match;
+        });
+    }
+
+    private assetFilenameMap: Map<string, string> | null = null;
+
+    /**
+     * Build map of asset UUIDs to Blob URLs
+     */
+    private async buildAssetExportPathMap(): Promise<void> {
+        if (!this.assets) {
+            console.warn('[PrintPreviewExporter] No assets provider available');
+            return;
+        }
+
+        this.assetExportPathMap = new Map();
+        this.assetFilenameMap = new Map();
+
+        try {
+            const assets = await this.assets.getAllAssets();
+            console.log(`[PrintPreview] Building asset map for ${assets.length} assets`);
+
+            if (assets.length > 0) {
+                console.log('[PrintPreview] First asset sample:', assets[0]);
+            }
+
+            for (const asset of assets) {
+                // Create Blob URL
+                let blobUrl = '';
+                if (asset.data) {
+                    try {
+                        const blob =
+                            asset.data instanceof Blob
+                                ? asset.data
+                                : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
+                                  new Blob([asset.data as any], { type: asset.mime });
+                        blobUrl = URL.createObjectURL(blob);
+                    } catch (err) {
+                        console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
+                    }
+                } else {
+                    console.warn('[PrintPreview] Asset has no data:', asset.id);
+                }
+
+                if (blobUrl) {
+                    this.assetExportPathMap.set(asset.id, blobUrl);
+                    if (asset.filename) {
+                        this.assetFilenameMap.set(asset.filename, blobUrl);
+                    }
+                }
+            }
+            console.log('[PrintPreview] Asset map built. Size:', this.assetExportPathMap.size);
+        } catch (e) {
+            console.warn('[PrintPreviewExporter] Failed to build asset map:', e);
         }
     }
 
@@ -125,8 +506,8 @@ export class PrintPreviewExporter {
     private getUsedIdevices(pages: ExportPage[]): string[] {
         const types = new Set<string>();
         for (const page of pages) {
-            for (const block of page.blocks) {
-                for (const component of block.components) {
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
                     if (component.type) {
                         types.add(component.type);
                     }
@@ -137,702 +518,378 @@ export class PrintPreviewExporter {
     }
 
     /**
-     * Get versioned asset path for server resources
+     * Pre-render dynamic content (LaTeX, Mermaid) using provided hooks
      */
-    private getVersionedPath(path: string, options: PrintPreviewOptions): string {
-        const baseUrl = options.baseUrl || '';
-        const basePath = options.basePath || '';
-        const version = options.version || 'v1.0.0';
-        const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-        // Avoid double slashes when basePath ends with /
-        const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-        return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
-    }
-
-    /**
-     * Libraries that are located in /libs/ instead of /app/common/
-     */
-    private static readonly LIBS_FOLDER_LIBRARIES = new Set(['jquery-ui', 'fflate', 'exe_atools', 'exe_elpx_download']);
-
-    /**
-     * Get the correct server path for a detected library file
-     */
-    private getLibraryServerPath(file: string, options: PrintPreviewOptions): string {
-        const firstPart = file.split('/')[0];
-        if (
-            PrintPreviewExporter.LIBS_FOLDER_LIBRARIES.has(firstPart) ||
-            PrintPreviewExporter.LIBS_FOLDER_LIBRARIES.has(file)
-        ) {
-            return this.getVersionedPath(`/libs/${file}`, options);
-        }
-        return this.getVersionedPath(`/app/common/${file}`, options);
-    }
-
-    /**
-     * Check if a page is visible in export
-     */
-    private isPageVisible(page: ExportPage, allPages: ExportPage[]): boolean {
-        if (page.id === allPages[0]?.id) {
-            return true;
-        }
-        const visibility = page.properties?.visibility;
-        if (visibility === false || visibility === 'false') {
-            return false;
-        }
-        if (page.parentId) {
-            const parent = allPages.find(p => p.id === page.parentId);
-            if (parent && !this.isPageVisible(parent, allPages)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Check if a page has highlight property enabled
-     */
-    private isPageHighlighted(page: ExportPage): boolean {
-        const highlight = page.properties?.highlight;
-        return highlight === true || highlight === 'true';
-    }
-
-    /**
-     * Check if a page's title should be hidden
-     */
-    private shouldHidePageTitle(page: ExportPage): boolean {
-        const hideTitle = page.properties?.hidePageTitle;
-        return hideTitle === true || hideTitle === 'true';
-    }
-
-    /**
-     * Get effective page title
-     */
-    private getEffectivePageTitle(page: ExportPage): string {
-        const editableInPage = page.properties?.editableInPage;
-        if (editableInPage === true || editableInPage === 'true') {
-            const titlePage = page.properties?.titlePage as string;
-            if (titlePage) return titlePage;
-        }
-        return page.title;
-    }
-
-    /**
-     * Generate complete single-page HTML for printing
-     */
-    private async generateSinglePageHtml(
-        pages: ExportPage[],
+    private async preRenderContent(
+        html: string,
         meta: ReturnType<ExportDocument['getMetadata']>,
-        usedIdevices: string[],
         options: PrintPreviewOptions,
     ): Promise<string> {
-        const lang = meta.language || 'en';
-        const projectTitle = meta.title || 'eXeLearning';
-        const customStyles = meta.customStyles || '';
-        const license = meta.license || '';
-        const themeName = meta.theme || 'base';
-        const userFooterContent = meta.footer || '';
+        let finalHtml = html;
 
-        // Export options
-        const addExeLink = meta.addExeLink ?? true;
-        const addAccessibilityToolbar = meta.addAccessibilityToolbar ?? false;
-
-        // Filter to only visible pages
-        const visiblePages = pages.filter(page => this.isPageVisible(page, pages));
-
-        // Generate all page sections (all visible at once)
-        let sectionsHtml = '';
-        for (const page of visiblePages) {
-            sectionsHtml += this.renderPageSection(page, options, themeName);
-        }
-
-        // Render "Made with eXeLearning"
-        const madeWithExeHtml = addExeLink ? this.renderMadeWithEXe(lang) : '';
-
-        // Build the body content
-        const bodyContent = `<div class="exe-content exe-export pre-js">
-${this.renderSinglePageNav(pages)}
-<main class="single-page-content">
-<header class="package-header"><h1 class="package-title">${this.escapeHtml(projectTitle)}</h1></header>
-${sectionsHtml}
-</main>
-${this.renderFooterSection({ license, userFooterContent })}
-</div>
-${madeWithExeHtml}`;
-
-        // Pre-render LaTeX if needed
-        let finalBodyContent = bodyContent;
-        let latexWasRendered = false;
-        let mermaidWasRendered = false;
+        // LaTeX Pre-rendering
         if (!meta.addMathJax) {
             if (options.preRenderDataGameLatex) {
                 try {
-                    const result = await options.preRenderDataGameLatex(bodyContent);
-                    if (result.count > 0) {
-                        finalBodyContent = result.html;
-                        latexWasRendered = true;
-                    }
-                } catch (error) {
-                    console.warn('[PrintPreview] DataGame LaTeX pre-render failed:', error);
+                    const result = await options.preRenderDataGameLatex(finalHtml);
+                    if (result.count > 0) finalHtml = result.html;
+                } catch (e) {
+                    console.warn('DataGame LaTeX pre-render error:', e);
                 }
             }
             if (options.preRenderLatex) {
                 try {
-                    const result = await options.preRenderLatex(finalBodyContent);
-                    if (result.latexRendered) {
-                        finalBodyContent = result.html;
-                        latexWasRendered = true;
-                    }
-                } catch (error) {
-                    console.warn('[PrintPreview] LaTeX pre-render failed:', error);
+                    const result = await options.preRenderLatex(finalHtml);
+                    if (result.latexRendered) finalHtml = result.html;
+                } catch (e) {
+                    console.warn('LaTeX pre-render error:', e);
                 }
             }
         }
 
-        // Pre-render Mermaid diagrams to static SVG if hook is provided
+        // Mermaid Pre-rendering
         if (options.preRenderMermaid) {
             try {
-                const result = await options.preRenderMermaid(finalBodyContent);
+                const result = await options.preRenderMermaid(finalHtml);
                 if (result.mermaidRendered) {
-                    finalBodyContent = result.html;
-                    mermaidWasRendered = true;
-                    console.log(`[PrintPreview] Pre-rendered ${result.count} Mermaid diagram(s) to SVG`);
+                    finalHtml = result.html;
+                    console.log(`[PrintPreview] Pre-rendered ${result.count} Mermaid diagrams`);
                 }
-            } catch (error) {
-                console.warn('[PrintPreview] Mermaid pre-render failed:', error);
+            } catch (e) {
+                console.warn('Mermaid pre-render error:', e);
             }
         }
 
-        // Detect required libraries
-        // Note: Mermaid is never included - diagrams are always pre-rendered to SVG
-        const libraryDetector = new LibraryDetector();
-        const detectedLibraries = libraryDetector.detectLibraries(finalBodyContent, {
-            includeAccessibilityToolbar: addAccessibilityToolbar,
-            includeMathJax: meta.addMathJax === true,
-            skipMathJax: latexWasRendered && !meta.addMathJax,
-        });
-
-        return `<!DOCTYPE html>
-<html lang="${lang}">
-<head>
-${this.generateHead(themeName, usedIdevices, projectTitle, customStyles, options, addAccessibilityToolbar, detectedLibraries)}
-</head>
-<body class="exe-web-site exe-export exe-single-page exe-preview">
-<script>document.body.className+=" js"</script>
-${finalBodyContent}
-${this.generateScripts(themeName, usedIdevices, options, addAccessibilityToolbar, detectedLibraries)}
-</body>
-</html>`;
+        return finalHtml;
     }
 
     /**
-     * Render a page as a section (for single-page layout)
+     * Patch relative paths generated by PageRenderer to point to server resources
      */
-    private renderPageSection(page: ExportPage, options: PrintPreviewOptions, themeName: string = 'base'): string {
-        const hideTitle = this.shouldHidePageTitle(page);
-        const effectiveTitle = this.getEffectivePageTitle(page);
-        const headerStyle = hideTitle ? ' style="display:none"' : '';
-
-        const ideviceBasePath = this.getVersionedPath('/files/perm/idevices/base/', options);
-        // Use themeUrl from options if provided (handles admin themes)
-        const themeBase = options.themeUrl
-            ? options.themeUrl.replace(/\/$/, '')
-            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
-        const themeIconBasePath = `${themeBase}/icons/`;
-
-        let blockHtml = '';
-        for (const block of page.blocks || []) {
-            blockHtml += this.ideviceRenderer.renderBlock(block, {
-                basePath: ideviceBasePath,
-                includeDataAttributes: true,
-                themeIconBasePath,
-            });
-        }
-
-        return `<section id="section-${page.id}" class="single-page-section">
-<header class="page-header"${headerStyle}>
-<h2 class="page-title">${this.escapeHtml(effectiveTitle)}</h2>
-</header>
-<div class="page-content">
-${blockHtml}
-</div>
-</section>
-`;
-    }
-
-    /**
-     * Render navigation for single-page (anchor links)
-     */
-    private renderSinglePageNav(pages: ExportPage[]): string {
-        const rootPages = pages.filter(p => !p.parentId);
-
-        let html = '<nav id="siteNav" class="single-page-nav">\n<ul>\n';
-        for (const page of rootPages) {
-            html += this.renderNavItem(page, pages);
-        }
-        html += '</ul>\n</nav>';
-
-        return html;
-    }
-
-    /**
-     * Render a navigation item for single-page (anchor links)
-     */
-    private renderNavItem(page: ExportPage, allPages: ExportPage[]): string {
-        if (!this.isPageVisible(page, allPages)) {
-            return '';
-        }
-
-        const children = allPages.filter(p => p.parentId === page.id && this.isPageVisible(p, allPages));
-        const hasChildren = children.length > 0;
-
-        const linkClasses: string[] = [];
-        linkClasses.push(hasChildren ? 'daddy' : 'no-ch');
-        if (this.isPageHighlighted(page)) {
-            linkClasses.push('highlighted-link');
-        }
-
-        let html = '<li>';
-        html += ` <a href="#section-${page.id}" class="${linkClasses.join(' ')}">${this.escapeHtml(page.title)}</a>\n`;
-
-        if (hasChildren) {
-            html += '<ul class="other-section">\n';
-            for (const child of children) {
-                html += this.renderNavItem(child, allPages);
-            }
-            html += '</ul>\n';
-        }
-
-        html += '</li>\n';
-        return html;
-    }
-
-    /**
-     * Render footer section
-     */
-    private renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/', userFooterContent } = options;
-
-        let userFooterHtml = '';
-        if (userFooterContent) {
-            userFooterHtml = `<div id="siteUserFooter"><div>${userFooterContent}</div></div>`;
-        }
-
-        // Skip license section for empty, "propietary license", and "not appropriate"
-        if (!shouldShowLicenseFooter(license)) {
-            return `<footer id="siteFooter"><div id="siteFooterContent">${userFooterHtml}</div></footer>`;
-        }
-
-        return `<footer id="siteFooter"><div id="siteFooterContent"><div id="packageLicense" class="cc cc-by-sa"><p><span class="license-label">Licencia: </span><a href="${licenseUrl}" class="license">${this.escapeHtml(license)}</a></p>
-</div>
-${userFooterHtml}</div></footer>`;
-    }
-
-    /**
-     * Translations for "Made with eXeLearning" text
-     */
-    private static readonly MADE_WITH_TRANSLATIONS: Record<string, string> = {
-        en: 'Made with eXeLearning',
-        es: 'Creado con eXeLearning',
-        ca: 'Creat amb eXeLearning',
-        eu: 'eXeLearning-ekin egina',
-        gl: 'Creado con eXeLearning',
-        pt: 'Criado com eXeLearning',
-        va: 'Creat amb eXeLearning',
-        ro: 'Creat cu eXeLearning',
-        eo: 'Kreita per eXeLearning',
-    };
-
-    /**
-     * Render "Made with eXeLearning" credit
-     */
-    private renderMadeWithEXe(lang: string): string {
-        const text =
-            PrintPreviewExporter.MADE_WITH_TRANSLATIONS[lang] || PrintPreviewExporter.MADE_WITH_TRANSLATIONS['en'];
-        return `<p id="made-with-eXe"><a href="https://exelearning.net/" target="_blank" rel="noopener"><span>${this.escapeHtml(text)} </span></a></p>`;
-    }
-
-    /**
-     * Generate <head> content
-     */
-    private generateHead(
+    private patchPathsForServer(
+        html: string,
         themeName: string,
         usedIdevices: string[],
-        projectTitle: string,
-        customStyles: string,
         options: PrintPreviewOptions,
-        addAccessibilityToolbar: boolean = false,
-        detectedLibraries: { libraries: Array<{ name: string; files: string[] }>; files: string[]; count: number } = {
-            libraries: [],
-            files: [],
-            count: 0,
-        },
     ): string {
-        const bootstrapCss = this.getVersionedPath('/libs/bootstrap/bootstrap.min.css', options);
-        // Use themeUrl from options if provided (handles admin themes)
-        const themeBasePath = options.themeUrl
-            ? options.themeUrl.replace(/\/$/, '')
-            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
-        const themeCss = `${themeBasePath}/style.css`;
-        const fallbackCss = this.getVersionedPath('/style/content.css', options);
+        const baseUrl = options.baseUrl || '';
+        const basePath = options.basePath || '';
+        const version = options.version === undefined ? 'v1.0.0' : options.version;
 
-        // Check if jQuery UI CSS is needed
-        const jqueryUiRequiredTypes = new Set([
-            'ordena',
-            'sort',
-            'clasifica',
-            'classify',
-            'relaciona',
-            'relate',
-            'dragdrop',
-            'complete',
-            'completa',
-        ]);
-        let needsJqueryUiCss = false;
-        for (const idevice of usedIdevices) {
-            const typeName = idevice
-                .toLowerCase()
-                .replace(/idevice$/i, '')
-                .replace(/-idevice$/i, '');
-            if (jqueryUiRequiredTypes.has(typeName)) {
-                needsJqueryUiCss = true;
-                break;
+        const getPath = (path: string) => {
+            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+            const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+
+            if (!version) {
+                return `${baseUrl}${cleanBasePath}/${cleanPath}`;
             }
+
+            return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
+        };
+
+        let processed = html;
+
+        // Path Mappings
+        const mappings: Record<string, string> = {
+            // Core libraries (in zip: libs/ -> on server: /app/common/ or /libs/)
+            'libs/jquery/jquery.min.js': getPath('libs/jquery/jquery.min.js'),
+            'libs/bootstrap/bootstrap.bundle.min.js': getPath('libs/bootstrap/bootstrap.bundle.min.js'),
+            'libs/bootstrap/bootstrap.min.css': getPath('libs/bootstrap/bootstrap.min.css'),
+            'libs/common.js': getPath('app/common/common.js'),
+            'libs/common_i18n.js': getPath('app/common/common_i18n.js'),
+            'libs/exe_export.js': getPath('app/common/exe_export.js'),
+            'libs/exe_math/tex-mml-svg.js': getPath('app/common/exe_math/tex-mml-svg.js'),
+            'libs/favicon.ico': getPath('favicon.ico'),
+
+            // Base CSS
+            'content/css/base.css': getPath('style/workarea/base.css'), // Fallback/Core CSS
+
+            // Theme (in zip: theme/ -> on server: /files/perm/themes/base/...)
+            'theme/style.css': options.themeUrl
+                ? `${options.themeUrl.replace(/\/$/, '')}/style.css`
+                : getPath(`files/perm/themes/base/${themeName}/style.css`),
+            'theme/style.js': options.themeUrl
+                ? `${options.themeUrl.replace(/\/$/, '')}/style.js`
+                : getPath(`files/perm/themes/base/${themeName}/style.js`),
+
+            // Highlighter (exe_highlighter)
+            // PageRenderer outputs libs/exe_highlighter/...
+            // Server has it in app/common/exe_highlighter/...
+            'libs/exe_highlighter/exe_highlighter.js': getPath('app/common/exe_highlighter/exe_highlighter.js'),
+            'libs/exe_highlighter/exe_highlighter.css': getPath('app/common/exe_highlighter/exe_highlighter.css'),
+
+            // ABC Music (abcjs)
+            // PageRenderer outputs libs/abcjs/...
+            // Server has it in libs/abcjs/... (direct mapping to public/libs)
+            'libs/abcjs/abcjs-basic-min.js': getPath('libs/abcjs/abcjs-basic-min.js'),
+            'libs/abcjs/exe_abc_music.js': getPath('libs/abcjs/exe_abc_music.js'),
+            'libs/abcjs/abcjs-audio.css': getPath('libs/abcjs/abcjs-audio.css'),
+        };
+
+        // Apply direct string replacements
+        for (const [key, value] of Object.entries(mappings)) {
+            // Replace refs in src="..." and href="..."
+            processed = processed.replaceAll(`src="${key}"`, `src="${value}"`);
+            processed = processed.replaceAll(`href="${key}"`, `href="${value}"`);
         }
 
-        let jqueryUiCssLink = '';
-        if (needsJqueryUiCss) {
-            const jqueryUiCss = this.getVersionedPath('/libs/jquery-ui/jquery-ui.min.css', options);
-            jqueryUiCssLink = `\n<link rel="stylesheet" href="${jqueryUiCss}">`;
-        }
+        // Handle iDevice resources (in zip: idevices/ -> on server: /files/perm/idevices/base/...)
+        const serverIdeviceBase = getPath('files/perm/idevices/base/');
 
-        // Build detected library CSS links
-        let detectedLibraryCss = '';
-        for (const file of detectedLibraries.files) {
-            if (file.endsWith('.css')) {
-                const serverPath = this.getLibraryServerPath(file, options);
-                detectedLibraryCss += `\n<link rel="stylesheet" href="${serverPath}" onerror="this.remove()">`;
-            }
-        }
+        // Regex to match "idevices/TYPE/FILE" and transform to "SERVER_BASE/TYPE/export/FILE"
+        // PageRenderer typically outputs `src="idevices/{type}/{file}"` when basePath is empty
+        const idevicePattern = /(src|href)=["']idevices\/([^/"']+)\/([^/"']+)["']/g;
 
-        let head = `<meta charset="utf-8">
-<meta name="generator" content="eXeLearning 4.0 - exelearning.net (Print Preview)">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${this.escapeHtml(projectTitle)} - Print</title>
-<script>document.querySelector("html").classList.add("js");</script>
+        processed = processed.replace(idevicePattern, (match, attr, type, file) => {
+            return `${attr}="${serverIdeviceBase}${type}/export/${file}"`;
+        });
 
-<!-- Server-hosted libraries -->
-<link rel="stylesheet" href="${bootstrapCss}">${jqueryUiCssLink}${detectedLibraryCss}
+        // Fallback for simple 'idevices/' replacement if regex doesn't match specific structure
+        processed = processed.replaceAll('src="idevices/', `src="${serverIdeviceBase}`);
+        processed = processed.replaceAll('href="idevices/', `href="${serverIdeviceBase}`);
 
-<!-- Print-specific CSS -->
-<style>
-${this.getPrintPreviewCss(options)}
-</style>
+        // Handle content/resources/ (assets) -> server path
+        // This is crucial for previewing images/media in Blob/iframe
+        const serverResourceBase = getPath('content/resources/');
+        // Replace src="content/resources/FILE" with src="SERVER_BASE/FILE"
+        // Also href="..."
+        // We use a regex to capture filenames to avoid double-slash issues if any
 
-<!-- Theme from server -->
-<link rel="stylesheet" href="${themeCss}" onerror="this.href='${fallbackCss}'">`;
+        const resourcePattern = /(src|href)=["']content\/resources\/([^"']+)["']/g;
+        processed = processed.replace(resourcePattern, (match, attr, filename) => {
+            return `${attr}="${serverResourceBase}${filename}"`;
+        });
 
-        // iDevice CSS
-        const seen = new Set<string>();
-        for (const idevice of usedIdevices) {
-            const typeName = normalizeIdeviceType(idevice);
-            if (!seen.has(typeName)) {
-                seen.add(typeName);
-                const cssFiles = getIdeviceExportFiles(typeName, '.css');
-                for (const cssFile of cssFiles) {
-                    const ideviceCss = this.getVersionedPath(
-                        `/files/perm/idevices/base/${typeName}/export/${cssFile}`,
-                        options,
-                    );
-                    head += `\n<link rel="stylesheet" href="${ideviceCss}" onerror="this.remove()">`;
-                }
-            }
-        }
-
-        // Custom styles
-        if (customStyles) {
-            head += `\n<style>\n${customStyles}\n</style>`;
-        }
-
-        // Accessibility toolbar CSS
-        if (addAccessibilityToolbar) {
-            const atoolsCss = this.getVersionedPath('/libs/exe_atools/exe_atools.css', options);
-            head += `\n<link rel="stylesheet" href="${atoolsCss}">`;
-        }
-
-        // Made-with-eXe CSS
-        head += `\n<style>\n${this.getMadeWithExeCss(options)}\n</style>`;
-
-        return head;
+        return processed;
     }
 
     /**
-     * Get print preview specific CSS
+     * Inject scripts/CSS required for the in-window Print Overlay
      */
-    private getPrintPreviewCss(options: PrintPreviewOptions): string {
-        return `/* Single-page Print Preview Styles */
+    private injectPrintSpecifics(html: string): string {
+        const printScript = `
+<script>
+window.onload = function() {
+    // Force init for Print Preview (since window.eXeLearning is defined, auto-init doesn't run)
+    if (typeof $exeABCmusic !== 'undefined' && typeof $exeABCmusic.init === 'function') {
+         $exeABCmusic.init();
+    }
+    if (typeof $exeHighlighter !== 'undefined' && typeof $exeHighlighter.init === 'function') {
+         $exeHighlighter.init();
+    }
 
-/* All sections visible */
-.single-page-section {
-    border-bottom: 2px solid #e0e0e0;
-    padding-bottom: 40px;
-    margin-bottom: 40px;
+    setTimeout(function() {
+        window.print();
+    }, 1000);
+};
+</script>
+<style>
+/* Inject Single Page CSS (normally loaded from content/css/single-page.css in export) */
+.exe-single-page .single-page-section {
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 40px;
+  margin-bottom: 40px;
 }
 
-.single-page-section:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
+.exe-single-page .single-page-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
-/* Navigation styling */
-.single-page-nav {
-    position: sticky;
-    top: 0;
-    max-height: 100vh;
-    overflow-y: auto;
+.exe-single-page .single-page-nav {
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
-.single-page-content {
-    padding: 20px 30px;
+.exe-single-page .single-page-content {
+  padding: 20px 30px;
 }
 
 /* Smooth scrolling for anchor links */
 html {
-    scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
-/* Section target offset */
+/* Section target offset for fixed header */
 .single-page-section:target {
-    scroll-margin-top: 20px;
+  scroll-margin-top: 20px;
 }
 
-/* JavaScript visibility classes */
-.js-hidden { display: none; }
-.exe-hidden, .js-required, .js .js-hidden, .exe-mindmap-code { display: none; }
-.js .js-required { display: block; }
-
-/* Teacher mode - hide teacher-only content */
-html:not(.mode-teacher) .js .teacher-only {
-    display: none !important;
-}
-
-/* Block minimized - hide content */
-.exe-export article.minimized .box-content {
-    display: none;
-}
-
-/* Block/iDevice novisible */
-.exe-export article.novisible.box {
-    display: none !important;
-}
-.exe-export article.box .idevice_node.novisible {
-    display: none !important;
-}
-
-/* Pre-rendered LaTeX */
-.exe-math-rendered { display: inline-block; vertical-align: middle; }
-.exe-math-rendered[data-display="block"] { display: block; text-align: center; margin: 1em 0; }
-.exe-math-rendered svg { vertical-align: middle; max-width: 100%; height: auto; }
-.exe-math-rendered svg line.mjx-solid { stroke-width: 60 !important; }
-.exe-math-rendered svg rect[data-frame="true"] { fill: none; stroke-width: 60 !important; }
-.exe-math-rendered math { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-
-/* Print-specific styles */
 @media print {
-    .single-page-nav {
-        display: none;
-    }
+    /* Hide navigation in print mode (matches user request) */
+    #siteNav, .single-page-nav { display: none !important; }
+    
+    #made-with-eXe { display: none; }
+    /* Ensure no scrollbars in print */
+    body { overflow: visible !important; height: auto !important; }
+    
     .single-page-section {
         page-break-inside: avoid;
         border-bottom: none;
     }
-    #made-with-eXe {
-        display: none;
-    }
-    .nav-buttons {
-        display: none;
-    }
-}`;
+}
+/* Ensure overlay content fits */
+html, body { height: 100%; margin: 0; padding: 0; }
+</style>
+`;
+        return html.replace('</body>', `${printScript}</body>`);
     }
 
     /**
-     * Get Made-with-eXe CSS
+     * Inject specific initialization scripts without print dialog
      */
-    private getMadeWithExeCss(options: PrintPreviewOptions): string {
-        const logoUrl = this.getVersionedPath('/app/common/exe_powered_logo/exe_powered_logo.png', options);
-
-        return `/* Made with eXeLearning */
-#made-with-eXe {
-    margin: 0;
-    position: fixed;
-    bottom: 0;
-    right: 0;
-    z-index: 9999;
-}
-#made-with-eXe a {
-    text-decoration: none;
-    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
-    border-top-left-radius: 4px;
-    color: #222;
-    font-size: 11px;
-    font-family: Arial, sans-serif;
-    line-height: 35px;
-    width: 35px;
-    height: 35px;
-    background: #fff url(${logoUrl}) no-repeat 3px 50%;
-    display: block;
-    background-size: auto 20px;
-    transition: .5s;
-    opacity: .8;
-    overflow: hidden;
-}
-#made-with-eXe span {
-    padding-left: 35px;
-    padding-right: 5px;
-    white-space: nowrap;
-}
-#made-with-eXe a:hover {
-    width: auto;
-    padding: 0 5px;
-    background-position: 5px 50%;
-    opacity: 1;
-}
-@media print {
-    #made-with-eXe { display: none; }
-}`;
+    private injectInitScripts(html: string): string {
+        const initScript = `
+<script>
+$(function() {
+    // Force init for Print Preview (since window.eXeLearning is defined, auto-init doesn't run)
+    if (typeof $exeABCmusic !== 'undefined' && typeof $exeABCmusic.init === 'function') {
+         $exeABCmusic.init();
     }
-
-    /**
-     * Generate scripts section
-     */
-    private generateScripts(
-        themeName: string,
-        usedIdevices: string[],
-        options: PrintPreviewOptions,
-        addAccessibilityToolbar: boolean = false,
-        detectedLibraries: { libraries: Array<{ name: string; files: string[] }>; files: string[]; count: number } = {
-            libraries: [],
-            files: [],
-            count: 0,
-        },
-    ): string {
-        const jqueryJs = this.getVersionedPath('/libs/jquery/jquery.min.js', options);
-        const bootstrapJs = this.getVersionedPath('/libs/bootstrap/bootstrap.bundle.min.js', options);
-        const commonJs = this.getVersionedPath('/app/common/common.js', options);
-        const commonI18nJs = this.getVersionedPath('/app/common/common_i18n.js', options);
-        const exeExportJs = this.getVersionedPath('/app/common/exe_export.js', options);
-        // Use themeUrl from options if provided (handles admin themes), otherwise construct from name
-        const themeJsBasePath = options.themeUrl
-            ? options.themeUrl.replace(/\/$/, '') // Remove trailing slash if present
-            : this.getVersionedPath(`/files/perm/themes/base/${themeName}`, options);
-        const themeJs = `${themeJsBasePath}/style.js`;
-
-        // Check if jQuery UI is needed
-        const jqueryUiRequiredTypes = new Set([
-            'ordena',
-            'sort',
-            'clasifica',
-            'classify',
-            'relaciona',
-            'relate',
-            'dragdrop',
-            'complete',
-            'completa',
-        ]);
-        let needsJqueryUi = false;
-        for (const idevice of usedIdevices) {
-            const typeName = idevice
-                .toLowerCase()
-                .replace(/idevice$/i, '')
-                .replace(/-idevice$/i, '');
-            if (jqueryUiRequiredTypes.has(typeName)) {
-                needsJqueryUi = true;
-                break;
-            }
-        }
-
-        let jqueryUiScript = '';
-        if (needsJqueryUi) {
-            const jqueryUiJs = this.getVersionedPath('/libs/jquery-ui/jquery-ui.min.js', options);
-            jqueryUiScript = `\n<script src="${jqueryUiJs}"></script>`;
-        }
-
-        // Check if MathJax is needed
-        const needsMathJax = detectedLibraries.libraries.some(
-            lib => lib.name === 'exe_math' || lib.name === 'exe_math_datagame',
-        );
-
-        let mathJaxScripts = '';
-        if (needsMathJax) {
-            const mathJaxJs = this.getVersionedPath('/app/common/exe_math/tex-mml-svg.js', options);
-            mathJaxScripts = `\n<script>
-window.MathJax = {
-    startup: {
-        typeset: true
+    if (typeof $exeHighlighter !== 'undefined' && typeof $exeHighlighter.init === 'function') {
+         $exeHighlighter.init();
     }
-};
+});
 </script>
-<script src="${mathJaxJs}"></script>`;
-        }
+`;
+        return html.replace('</body>', `${initScript}</body>`);
+    }
 
-        // Build detected library JS scripts
-        let detectedLibraryScripts = '';
-        for (const file of detectedLibraries.files) {
-            if (file.endsWith('.js')) {
-                const serverPath = this.getLibraryServerPath(file, options);
-                detectedLibraryScripts += `\n<script src="${serverPath}" onerror="this.remove()"></script>`;
+    /**
+     * Reveal hidden feedback elements by removing display: none style
+     * Targets divs with classes 'feedback' and 'js-hidden'
+     */
+    private revealFeedback(html: string): string {
+        // Regex to match opening div tags
+        return html.replace(/<div([^>]*)>/gi, (match, attributes) => {
+            // Check if it has the required classes
+            // We look for class="..." containing both 'feedback' and 'js-hidden'
+            const classMatch = /class=["']([^"']*)["']/i.exec(attributes);
+            if (!classMatch) return match;
+
+            const classes = classMatch[1].split(/\s+/);
+            if (classes.includes('feedback') && classes.includes('js-hidden')) {
+                // It's a feedback div. Remove display properties from inline style
+                // Replace style="..." completely if it checks out, or just modify content
+                const newAttributes = attributes.replace(/style=(["'])(.*?)\1/i, (styleMatch, quote, styleContent) => {
+                    // Remove display: none (case insensitive, optional space, optional semicolon)
+                    // Also robust against 'display:none' without space
+                    const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
+                    // If style is empty after removal, we can return empty string or style=""
+                    return newStyle ? `style=${quote}${newStyle}${quote}` : '';
+                });
+                return `<div${newAttributes}>`;
             }
-        }
 
-        // iDevice scripts
-        let ideviceScripts = '';
-        const seenJs = new Set<string>();
-        for (const idevice of usedIdevices) {
-            const typeName = normalizeIdeviceType(idevice);
-            if (!seenJs.has(typeName)) {
-                seenJs.add(typeName);
-                const jsFiles = getIdeviceExportFiles(typeName, '.js');
-                for (const jsFile of jsFiles) {
-                    const ideviceJs = this.getVersionedPath(
-                        `/files/perm/idevices/base/${typeName}/export/${jsFile}`,
-                        options,
-                    );
-                    ideviceScripts += `\n<script src="${ideviceJs}" onerror="this.remove()"></script>`;
+            return match;
+        });
+    }
+
+    /**
+     * Deduplicate consecutive components that share the same type and ID prefix (timestamp)
+     * This handles cases like 'Complete' iDevice where it splits into multiple components
+     * but we only want to show the first one in print.
+     */
+    private deduplicateComponents(pages: ExportPage[]): ExportPage[] {
+        return pages.map(page => {
+            const blocks = page.blocks || [];
+            const newBlocks = blocks.map(block => {
+                const components = block.components || [];
+                const uniqueComponents: ExportComponent[] = [];
+                let lastComponent: ExportComponent | null = null;
+
+                for (const component of components) {
+                    let isDuplicate = false;
+
+                    if (lastComponent && lastComponent.type === component.type) {
+                        // Check ID prefix (first 14 chars are usually timestamp YYYYMMDDHHMMSS)
+                        // Example ID: 20251021091936ZBADPV
+                        const prefixLength = 14;
+                        if (
+                            lastComponent.id &&
+                            component.id &&
+                            lastComponent.id.substring(0, prefixLength) === component.id.substring(0, prefixLength)
+                        ) {
+                            isDuplicate = true;
+                        }
+                    }
+
+                    if (!isDuplicate) {
+                        uniqueComponents.push(component);
+                        lastComponent = component;
+                    }
+                }
+
+                return {
+                    ...block,
+                    components: uniqueComponents,
+                };
+            });
+
+            return {
+                ...page,
+                blocks: newBlocks,
+                // ExportPage is flat list, no children property
+            };
+        });
+    }
+
+    /**
+     * Hide specific elements from print preview based on class patterns
+     * - divs with class ending in -version or -bns AND js-hidden
+     * - imgs/links with class containing 'image', 'audio', 'video' AND js-hidden
+     * - specific classes: exe-mindmap-code, form-Data, completa-DataGame
+     */
+    private hidePrintExtras(html: string): string {
+        return html.replace(/<(div|img|a|p)([^>]*)>/gi, (match, tagName, attributes) => {
+            const classMatch = /class=["']([^"']*)["']/i.exec(attributes);
+            if (!classMatch) return match;
+
+            const classes = classMatch[1].split(/\s+/);
+            const lowerTagName = tagName.toLowerCase();
+            let shouldHide = false;
+
+            // 1. Check specific classes that don't depend on js-hidden
+            // "The text that starts with that tag <p class="exe-mindmap-code">"
+            if (lowerTagName === 'p' && classes.includes('exe-mindmap-code')) {
+                shouldHide = true;
+            }
+
+            // 2. Checks that require js-hidden
+            if (!shouldHide && classes.includes('js-hidden')) {
+                if (lowerTagName === 'div') {
+                    // Check for classes that match *-version or *-bns
+                    // Regex for class: /.+-(version|bns)$/
+                    if (classes.some(c => /.+-(version|bns)$/i.test(c))) {
+                        shouldHide = true;
+                    }
+                    // Specific divs requested: form-Data, completa-DataGame
+                    if (classes.includes('form-Data') || classes.includes('completa-DataGame')) {
+                        shouldHide = true;
+                    }
+                } else if (lowerTagName === 'img' || lowerTagName === 'a') {
+                    // Check for classes containing 'image', 'audio', 'video' (case insensitive)
+                    if (classes.some(c => /image|audio|video/i.test(c))) {
+                        shouldHide = true;
+                    }
                 }
             }
-        }
 
-        // Accessibility toolbar script
-        let atoolsScript = '';
-        if (addAccessibilityToolbar) {
-            const atoolsJs = this.getVersionedPath('/libs/exe_atools/exe_atools.js', options);
-            atoolsScript = `\n<script src="${atoolsJs}"></script>`;
-        }
+            if (shouldHide) {
+                // Inject style="display: none !important"
+                // Check if style attribute exists
+                if (/style=(["'])/i.test(attributes)) {
+                    return match.replace(/style=(["'])(.*?)\1/i, (m, q, c) => {
+                        return `style=${q}${c}; display: none !important;${q}`;
+                    });
+                } else {
+                    return `<${tagName} ${attributes} style="display: none !important">`;
+                }
+            }
 
-        return `<script src="${jqueryJs}"></script>
-<script src="${bootstrapJs}"></script>${jqueryUiScript}
-<script src="${commonJs}"></script>
-<script src="${commonI18nJs}"></script>
-<script src="${exeExportJs}"></script>${mathJaxScripts}${detectedLibraryScripts}${ideviceScripts}${atoolsScript}
-<script src="${themeJs}" onerror="this.remove()"></script>
-<script>
-// Initialize iDevices after DOM is ready
-if (typeof $exeExport !== 'undefined' && $exeExport.init) {
-    $exeExport.init();
-}
-</script>`;
-    }
-
-    /**
-     * Escape HTML special characters
-     */
-    private escapeHtml(text: string): string {
-        const escapes: Record<string, string> = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;',
-        };
-        return text.replace(/[&<>"']/g, char => escapes[char] || char);
+            return match;
+        });
     }
 }

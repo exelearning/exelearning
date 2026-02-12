@@ -893,6 +893,8 @@ ${userFooterHtml}</div></footer>`;
             addMathJax?: boolean;
             addAccessibilityToolbar?: boolean;
             version?: string;
+            addExeLink?: boolean;
+            userFooterContent?: string;
         } = {},
     ): string {
         const {
@@ -914,6 +916,9 @@ ${userFooterHtml}</div></footer>`;
         } = options;
 
         let contentHtml = '';
+        // Collect content for library detection
+        const allContentParts: string[] = [];
+
         for (const page of allPages) {
             // Check if page title should be hidden and get effective title
             const hideTitle = this.shouldHidePageTitle(page);
@@ -922,6 +927,9 @@ ${userFooterHtml}</div></footer>`;
             // This ensures title stays hidden even when theme JS (flux, neo, nova, zen)
             // moves the .page-title element out of .page-header via movePageTitle()
             const pageTitleClass = hideTitle ? 'page-title sr-av' : 'page-title';
+
+            // Collect raw content from page components for library detection
+            allContentParts.push(this.collectPageContent(page));
 
             // Single-page sections use main-header > page-header structure for CSS compatibility
             contentHtml += `<section>
@@ -948,6 +956,24 @@ ${this.renderPageContent(page, '', projectTitle)}
             }
         }
 
+        // Detect content libraries
+        const contentLibraries = this.detectContentLibraries(allContentParts.join('\n'));
+        let libIncludes = '';
+        for (const libName of contentLibraries) {
+            const libPattern = LIBRARY_PATTERNS.find(p => p.name === libName);
+            if (!libPattern) continue;
+
+            const jsFiles = libPattern.files.filter(f => f.endsWith('.js'));
+            const cssFiles = libPattern.files.filter(f => f.endsWith('.css'));
+
+            for (const jsFile of jsFiles) {
+                libIncludes += `\n<script src="libs/${jsFile}"> </script>`;
+            }
+            for (const cssFile of cssFiles) {
+                libIncludes += `\n<link rel="stylesheet" href="libs/${cssFile}">`;
+            }
+        }
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -961,7 +987,7 @@ ${this.renderPageContent(page, '', projectTitle)}
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
-<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}
+<link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libIncludes}
 <link rel="stylesheet" href="content/css/base.css">
 <script src="theme/style.js"> </script>
 <link rel="stylesheet" href="theme/style.css">
