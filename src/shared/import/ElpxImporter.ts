@@ -165,12 +165,39 @@ export class ElpxImporter {
         let isLegacyFormat = false;
 
         if (!contentFile) {
+            // Check for legacy format
             contentFile = workingZip['contentv3.xml'];
             isLegacyFormat = true;
         }
 
         if (!contentFile) {
-            throw new Error('No content.xml found in .elpx file');
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (workingZip['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml)');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(workingZip)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        // Keep other files (like mimetype) as is, or ignore?
+                        // For eXeLearning import, we mainly care about what's inside EPUB/
+                        // but let's keep them just in case, though they won't be found by relative lookups
+                        rootedZip[path] = data;
+                    }
+                }
+                workingZip = rootedZip;
+                contentFile = workingZip['content.xml'];
+                isLegacyFormat = false; // EPUB3 uses modern format
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
         }
 
         const contentXml = new TextDecoder().decode(contentFile);
@@ -235,7 +262,31 @@ export class ElpxImporter {
         }
 
         if (!contentFile) {
-            throw new Error('No content.xml found in provided files');
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (zipContents['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml) in zip contents');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(zipContents)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        rootedZip[path] = data;
+                    }
+                }
+                // Update the reference to use the rooted zip
+                zipContents = rootedZip;
+                contentFile = zipContents['content.xml'];
+                isLegacyFormat = false;
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
         }
 
         const contentXml = new TextDecoder().decode(contentFile);
