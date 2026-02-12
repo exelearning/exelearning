@@ -265,7 +265,7 @@ describe('PrintPreviewExporter', () => {
                 baseUrl: 'http://localhost:3001',
                 version: 'v1.0.0',
             });
-            expect(result.html).toContain('/v1.0.0/files/perm/themes/base/base/style.css');
+            expect(result.html).toContain('/files/perm/themes/base/base/style.css');
         });
     });
 
@@ -1176,6 +1176,375 @@ describe('PrintPreviewExporter', () => {
 
             expect(result.success).toBe(true);
             expect(result.html).toContain('icons/activity.png');
+        });
+    });
+
+    describe('User Reported Broken Images', () => {
+        // Helper to check if paths are patched to server paths (mocked as http://localhost:3000/...)
+        const SERVER_BASE = 'http://localhost:3000';
+
+        it('should patch "quick-questions" (hyphenated) iDevice images', async () => {
+            const htmlSnippet =
+                '<img src="idevices/quick-questions/quextHome.png" class="QXTP-Cover" id="quextCover-0" alt="Pregunta sin imágenes">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/quick-questions/export/quextHome.png`,
+            );
+        });
+
+        it('should patch iDevice paths that already include "export/" segment', async () => {
+            // Some renderers or contexts might output src="idevices/guess/export/adivinaHome.png"
+            // The current regex `idevices/TYPE/FILE` fails if there is an extra segment.
+            const htmlSnippet = '<img src="idevices/guess/export/adivinaHome.png" alt="Test">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/guess/export/adivinaHome.png`,
+            );
+        });
+
+        it('should patch iDevice paths that start with "./" or "/"', async () => {
+            // Example: <img src="./idevices/guess/adivinaHome.png">
+            const htmlSnippet = '<img src="./idevices/guess/adivinaHome.png" alt="Test">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/guess/export/adivinaHome.png`,
+            );
+        });
+
+        it('should patch content/resources even if they are absolute URLs (e.g. localhost)', async () => {
+            // Example from user: <img src="http://localhost:8080/content/resources/notacion_musical.png.png" alt="Notación musical" width="492" height="395">
+            const htmlSnippet =
+                '<img src="http://localhost:8080/content/resources/notacion_musical.png.png" alt="Notación musical">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(`${SERVER_BASE}/app/v1/content/resources/notacion_musical.png.png`);
+        });
+
+        it('should patch "guess" iDevice images', async () => {
+            const htmlSnippet =
+                '<img src="idevices/guess/adivinaHome.png" class="ADVNP-Cover" id="adivinaCover-0" alt="Pregunta sin imágenes">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/guess/export/adivinaHome.png`,
+            );
+        });
+
+        it('should identify and patch "identify" iDevice images', async () => {
+            const htmlSnippet = '<img class="IDFP-Clue" src="idevices/identify/identificaPistaOpen.svg" alt="Clue 5">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/identify/export/identificaPistaOpen.svg`,
+            );
+        });
+
+        it('should patch "relate" iDevice images', async () => {
+            const htmlSnippet = '<img src="idevices/relate/exequextplayaudio.svg" class="FLCDSP-RLCP" alt="Audio">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/relate/export/exequextplayaudio.svg`,
+            );
+        });
+
+        it('should patch "hidden-image" iDevice icon', async () => {
+            const htmlSnippet = '<img src="idevices/hidden-image/hidden-image-icon.png" alt="Pulse aquí para jugar">';
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `${SERVER_BASE}/app/v1/files/perm/idevices/base/hidden-image/export/hidden-image-icon.png`,
+            );
+        });
+
+        it('should repair broken/versioned iDevice paths (User Scenario)', async () => {
+            // Simulating the user's log: /v0.0.0-alpha.../files/perm/idevices/base/magnifier/export/hood.jpg
+            // This needs to be repointed to the correct server base
+            const brokenPath = '/v0.0.0-alpha/files/perm/idevices/base/magnifier/export/hood.jpg';
+            const htmlSnippet = `<img src="${brokenPath}" alt="Hood">`;
+
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            // We use a clean version setup for the "correct" output
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: '' });
+
+            // Should strip the old version/base and use the new one
+            // Expect: SERVER_BASE/app/files/perm/idevices/base/magnifier/export/hood.jpg
+            const expectedPath = `${SERVER_BASE}/app/files/perm/idevices/base/magnifier/export/hood.jpg`;
+            expect(result.html).toContain(expectedPath);
+        });
+
+        it('should patch "data-idevice-path" attribute for dynamic scripts', async () => {
+            // Example: <div ... data-idevice-path="idevices/relate/">
+            // This needs to be patched to absolute server path so JS can load assets
+            const htmlSnippet = '<div class="iDevice_wrapper" data-idevice-path="idevices/relate/">Content</div>';
+
+            const doc = createMockDocument([
+                {
+                    id: 'p1',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b1',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c1',
+                                    type: 'text',
+                                    order: 0,
+                                    properties: {},
+                                    content: htmlSnippet,
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ]);
+
+            const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+            const result = await exp.generatePreview({ baseUrl: SERVER_BASE, basePath: '/app', version: 'v1' });
+
+            expect(result.html).toContain(
+                `data-idevice-path="${SERVER_BASE}/app/v1/files/perm/idevices/base/relate/export/"`,
+            );
         });
     });
 });

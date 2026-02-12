@@ -574,17 +574,19 @@ ${logoCss}
     ): string {
         const baseUrl = options.baseUrl || '';
         const basePath = options.basePath || '';
-        const version = options.version === undefined ? 'v1.0.0' : options.version;
+        const version = options.version;
 
         const getPath = (path: string) => {
             const cleanPath = path.startsWith('/') ? path.slice(1) : path;
             const cleanBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
 
-            if (!version) {
-                return `${baseUrl}${cleanBasePath}/${cleanPath}`;
+            // Only include version in path if it is explicitly defined and not empty
+            // This fixes issues where 'v1.0.0' was being forced into paths that didn't need it
+            if (version && version !== 'v1.0.0') {
+                return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
             }
 
-            return `${baseUrl}${cleanBasePath}/${version}/${cleanPath}`;
+            return `${baseUrl}${cleanBasePath}/${cleanPath}`;
         };
 
         let processed = html;
@@ -636,12 +638,53 @@ ${logoCss}
         // Handle iDevice resources (in zip: idevices/ -> on server: /files/perm/idevices/base/...)
         const serverIdeviceBase = getPath('files/perm/idevices/base/');
 
-        // Regex to match "idevices/TYPE/FILE" and transform to "SERVER_BASE/TYPE/export/FILE"
-        // PageRenderer typically outputs `src="idevices/{type}/{file}"` when basePath is empty
-        const idevicePattern = /(src|href)=["']idevices\/([^/"']+)\/([^/"']+)["']/g;
+        // Regex to match ANY "src" or "href" containing "idevices/"
+        // We capture the full attribute content and parse it manually for robustness
 
-        processed = processed.replace(idevicePattern, (match, attr, type, file) => {
-            return `${attr}="${serverIdeviceBase}${type}/export/${file}"`;
+        // Added handling for potential whitespace around '='
+        // Updated to include data-idevice-path and handle directory paths
+        const idevicePattern = /(src|href|data-idevice-path)\s*=\s*["']([^"']*idevices\/[^"']*)["']/gi;
+
+        processed = processed.replace(idevicePattern, (match, attr, content) => {
+            // 1. Remove ignore check for 'files/perm/idevices' to fix broken absolute/versioned paths
+            // if (content.includes('files/perm/idevices')) return match;
+
+            // 2. Extract the part after 'idevices/'
+            // Content might be "idevices/identify/home.png"
+            // OR "/v1/files/perm/idevices/base/identify/export/home.png"
+            const parts = content.split('idevices/');
+            if (parts.length < 2) return match;
+
+            let relativePart = parts[1]; // e.g. "identify/home.png" or "base/identify/export/home.png"
+
+            // Remove leading slashes if any
+            if (relativePart.startsWith('/')) relativePart = relativePart.substring(1);
+
+            const segments = relativePart.split('/');
+
+            // Handle 'base/' prefix if present (common in server paths)
+            let typeIndex = 0;
+            if (segments[0] === 'base') {
+                typeIndex = 1;
+            }
+
+            // We need at least TYPE/FILE (2 segments after base)
+            if (segments.length < typeIndex + 1) return match;
+
+            const type = segments[typeIndex];
+            let rest = segments.slice(typeIndex + 1).join('/');
+
+            // 3. Remove 'export/' prefix if present in the file part to avoid duplication
+            if (rest.startsWith('export/')) {
+                rest = rest.substring(7);
+            }
+
+            const file = rest;
+
+            // Force reconstruction using the correct local server base
+            const suffix = file ? `export/${file}` : 'export/';
+
+            return `${attr}="${serverIdeviceBase}${type}/${suffix}"`;
         });
 
         // Fallback for simple 'idevices/' replacement if regex doesn't match specific structure
@@ -655,7 +698,7 @@ ${logoCss}
         // Also href="..."
         // We use a regex to capture filenames to avoid double-slash issues if any
 
-        const resourcePattern = /(src|href)=["']content\/resources\/([^"']+)["']/g;
+        const resourcePattern = /(src|href)=["'](?:(?:https?:\/\/[^/]+)?\/)?content\/resources\/([^"']+)["']/g;
         processed = processed.replace(resourcePattern, (match, attr, filename) => {
             return `${attr}="${serverResourceBase}${filename}"`;
         });
