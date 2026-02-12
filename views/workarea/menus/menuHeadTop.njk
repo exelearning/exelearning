@@ -59,7 +59,8 @@
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-new" href="#">{{ t.new or 'New' }}</a></li>
                     <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-openuserodefiles" href="#">{{ t.open or 'Open' }}</a></li>
                     <li class="d-md-none exe-online"><a class="dropdown-item" id="mobile-navbar-button-save" href="#">{{ t.save or 'Save' }}</a></li>
-                    <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
+                    {# Hidden to reduce Open/Import confusion (issue #1223) #}
+                    <li class="d-none"><a class="dropdown-item" id="mobile-navbar-button-import-elp" href="#">{{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                     <li class="dropdown-divider d-md-none"></li>
                     <li class="d-md-none mobile-menu-header"><small class="dropdown-header">{{ t.download_as or 'Download as' }}</small></li>
                     <li class="d-md-none"><a class="dropdown-item" id="mobile-navbar-button-export-html5" href="#">{{ t.website or 'Website' }}</a></li>

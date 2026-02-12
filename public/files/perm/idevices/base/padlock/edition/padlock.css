@@ -135,7 +135,7 @@
     font-weight: 500
 }
 
-.candadoToggle {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle {
     margin: 0 0 10px;
     box-sizing: border-box;
     font-size: 0;
@@ -149,14 +149,14 @@
     align-items: stretch;
 }
 
-.candadoToggle input {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input {
     width: 0;
     height: 0;
     position: absolute;
     left: -9999px;
 }
 
-.candadoToggle input+label {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input+label {
     cursor: pointer;
     margin: 0;
     padding: .75rem 1.5rem;
@@ -165,7 +165,7 @@
     display: inline-block;
     border: solid 1px #DDD;
     background-color: #FFF;
-    font-size: 1rem;
+    font-size: 1rem !important;
     line-height: 110%;
     font-weight: 600;
     text-align: center;
@@ -174,28 +174,28 @@
     transition: border-color .15s ease-out, color .25s ease-out, background-color .15s ease-out, box-shadow .15s ease-out;
 }
 
-.candadoToggle input+label:first-of-type {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input+label:first-of-type {
     border-radius: 6px 0 0 6px;
     border-right: none;
 }
 
-.candadoToggle input+label:last-of-type {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input+label:last-of-type {
     border-radius: 0 6px 6px 0;
     border-left: none;
 }
 
-.candadoToggle input:hover+label {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input:hover+label {
     border-color: #0BA1A1;
 }
 
-.candadoToggle input:checked+label {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input:checked+label {
     background-color: #0BA1A1;
     color: #fff;
     border-color: #CCC;
     z-index: 1;
 }
 
-.candadoToggle input:focus+label {
+article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input:focus+label {
     outline: dotted 1px #CCC;
     outline-offset: .45rem;
 }
@@ -223,7 +223,7 @@
 }
 
 @media (max-width: 400px) {
-    .candadoToggle input+label {
+    article.box.idevice-element-in-content .idevice_node[mode="edition"] .candadoToggle input+label {
         padding: .75rem .25rem;
         -webkit-box-flex: 0;
         flex: 0 0 50%;

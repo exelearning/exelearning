@@ -66,20 +66,20 @@ async function addDigcompeduIdeviceFromPanel(page: Page): Promise<void> {
             // Continue anyway
         });
 
-    // Expand "Assessment and tracking" category in iDevices panel
-    const assessmentCategory = page
+    // Expand "Information and presentation" category in iDevices panel
+    const informationCategory = page
         .locator('.idevice_category')
         .filter({
-            has: page.locator('h3.idevice_category_name').filter({ hasText: /Assessment|Evaluación/i }),
+            has: page.locator('h3.idevice_category_name').filter({ hasText: /Information|Información/i }),
         })
         .first();
 
-    if ((await assessmentCategory.count()) > 0) {
+    if ((await informationCategory.count()) > 0) {
         // Check if category is collapsed (has "off" class)
-        const isCollapsed = await assessmentCategory.evaluate(el => el.classList.contains('off'));
+        const isCollapsed = await informationCategory.evaluate(el => el.classList.contains('off'));
         if (isCollapsed) {
             // Click on the .label to expand
-            const label = assessmentCategory.locator('.label');
+            const label = informationCategory.locator('.label');
             await label.click();
             await page.waitForTimeout(800);
         }

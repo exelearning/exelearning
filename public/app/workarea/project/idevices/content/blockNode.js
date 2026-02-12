@@ -432,7 +432,7 @@ export default class IdeviceBlockNode {
         this.blockNameElementText = document.createElement('h1');
         this.blockNameElementText.classList.add('box-title');
         this.blockNameElementText.classList.add('idevice-element-in-content');
-        this.blockNameElementText.innerHTML = this.blockName;
+        this.blockNameElementText.textContent = this.blockName || '';
 
         const btnEdit = document.createElement('button');
         btnEdit.classList.add(
@@ -449,7 +449,8 @@ export default class IdeviceBlockNode {
 
         btnEdit.appendChild(icon);
 
-        btnEdit.addEventListener('click', () => {
+        const startTitleEditing = () => {
+            if (this.blockNameElementText.hasAttribute('contenteditable')) return;
             // To review (see #579) if (eXeLearning.app.project.checkOpenIdevice()) return;
             eXeLearning.app.project
                 .isAvalaibleOdeComponent(this.blockId, null)
@@ -457,10 +458,12 @@ export default class IdeviceBlockNode {
                     if (response.responseMessage !== 'OK') {
                         eXeLearning.app.modals.alert.show({
                             title: _('iDevice error'),
-                            body: _(response.responseMessage),
-                            contentId: 'error',
-                        });
+                                body: _(response.responseMessage),
+                                contentId: 'error',
+                            });
                     } else {
+                        // Restore raw title text before editing (avoid editing rendered MathJax DOM).
+                        this.blockNameElementText.textContent = this.blockName || '';
                         this.blockNameElementText.setAttribute(
                             'contenteditable',
                             'true'
@@ -477,10 +480,12 @@ export default class IdeviceBlockNode {
 
                         // Sync title in real-time while typing via Yjs
                         const onInput = () => {
+                            const rawTitle = this.blockNameElementText.textContent.trim();
+                            this.blockName = rawTitle;
                             const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
                             if (binding) {
                                 binding.updateBlock(this.blockId, {
-                                    blockName: this.blockNameElementText.textContent.trim()
+                                    blockName: rawTitle
                                 });
                             }
                         };
@@ -489,13 +494,16 @@ export default class IdeviceBlockNode {
                         const finishEditing = () => {
                             if (finished) return;
                             finished = true;
+                            const finalTitle = this.blockNameElementText.textContent.trim();
                             this.blockNameElementText.removeAttribute(
                                 'contenteditable'
                             );
                             this.blockNameElementText.removeEventListener('input', onInput);
+                            this.blockNameElementText.removeEventListener('blur', finishEditing);
+                            this.blockNameElementText.removeEventListener('keydown', onKeydown);
                             btnEdit.style.display = '';
                             this.apiUpdateTitle(
-                                this.blockNameElementText.textContent.trim()
+                                finalTitle
                             );
                         };
                         const onKeydown = (e) => {
@@ -514,9 +522,15 @@ export default class IdeviceBlockNode {
                         );
                     }
                 });
-        });
+        };
+
+        btnEdit.addEventListener('click', startTitleEditing);
+        this.blockNameElementText.addEventListener('click', startTitleEditing);
         container.appendChild(this.blockNameElementText);
         container.appendChild(btnEdit);
+
+        // Typeset after the title is attached to the DOM and layout is stable.
+        requestAnimationFrame(() => this.renderBlockTitle());
 
         eXeLearning.app.common.initTooltips(container);
 
@@ -524,6 +538,36 @@ export default class IdeviceBlockNode {
         this.addBehaviourChangeIcon();
 
         return container;
+    }
+
+    /**
+     * Render block title from raw text and typeset LaTeX when present.
+     */
+    renderBlockTitle() {
+        if (!this.blockNameElementText) return;
+
+        const title = this.blockName || '';
+        this.blockNameElementText.textContent = title;
+
+        // Avoid unstable glyph scaling when typesetting detached nodes.
+        if (!this.blockNameElementText.isConnected) return;
+
+        if (title && /(?:\\\(|\\\[|\\begin\{)/.test(title)) {
+            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                const node = this.blockNameElementText;
+                const startup = MathJax.startup?.promise || Promise.resolve();
+                startup
+                    .then(() => {
+                        if (typeof MathJax.typesetClear === 'function') {
+                            MathJax.typesetClear([node]);
+                        }
+                        return MathJax.typesetPromise([node]);
+                    })
+                    .catch((err) => {
+                        Logger.log('[BlockNode] MathJax typeset error:', err);
+                    });
+            }
+        }
     }
 
     /**
@@ -1352,7 +1396,7 @@ export default class IdeviceBlockNode {
         let params = ['odePagStructureSyncId', 'blockName'];
         // Save new title text
         this.blockName = title;
-        this.blockNameElementText.innerHTML = title;
+        this.renderBlockTitle();
         // Note: Yjs sync is handled by putSaveBlock -> apiCallManager
         // Do not sync here to avoid duplicate undo entries
         // If block exist save in bbdd

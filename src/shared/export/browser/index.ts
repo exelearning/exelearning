@@ -114,6 +114,8 @@ function createNullResourceProvider() {
         fetchSchemas: async () => new Map<string, Uint8Array>(),
         fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
+        fetchExeLogo: async () => null,
+        fetchGlobalFontFiles: async () => new Map<string, Uint8Array>(),
     };
 }
 
@@ -155,23 +157,36 @@ export function createExporter(
     }
 
     // Create adapters with null-safe wrappers
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
 
     // Create resource provider with null-safe fallback
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
+    // Create resource provider with null-safe fallback
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
 
     // Create asset provider with null-safe fallback
     // BrowserAssetProvider now supports both assetCache and assetManager
     // assetManager is preferred as it contains actual imported assets
-    const assets =
-        assetCache || assetManager
-            ? new BrowserAssetProvider(
-                  assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                  assetManager as Parameters<typeof BrowserAssetProvider>[1],
-              )
-            : createNullAssetProvider();
+    // Create asset provider with null-safe fallback
+    // BrowserAssetProvider now supports both assetCache and assetManager
+    // assetManager is preferred as it contains actual imported assets
+    let assets;
+    if (assetCache || assetManager) {
+        assets = new BrowserAssetProvider(
+            // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+            assetCache as any,
+            // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+            assetManager as any,
+        );
+    } else {
+        assets = createNullAssetProvider();
+    }
 
     const zip = new FflateZipProvider();
 
@@ -370,7 +385,8 @@ export async function exportAndDownload(
     const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
-    const blob = new Blob([result.data], { type: 'application/zip' });
+    // biome-ignore lint/suspicious/noExplicitAny: legacy blob data compatibility
+    const blob = new Blob([result.data as any], { type: 'application/zip' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -390,31 +406,59 @@ export async function exportAndDownload(
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional, for theme info)
  * @param options - Preview options (baseUrl, basePath, version)
+ * @param assetProvider - Optional AssetProvider (or manager/cache to create it)
  * @returns Preview result with HTML string
  */
 export async function generatePrintPreview(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
     options?: PrintPreviewOptions,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): Promise<PrintPreviewResult> {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    const exporter = new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        // Determine if it's the new Manager or old Cache based on property check
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    const exporter = new PrintPreviewExporter(
+        document,
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource provider compatibility
+        resources as any,
+        assets,
+    );
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
     const latexHooks = getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
 
-    options = {
+    const previewOptions = {
         ...options,
         ...latexHooks,
         ...mermaidHooks,
     };
 
-    return exporter.generatePreview(options);
+    return exporter.generatePreview(previewOptions);
 }
 
 /**
@@ -422,17 +466,44 @@ export async function generatePrintPreview(
  *
  * @param documentManager - YjsDocumentManager instance
  * @param resourceFetcher - ResourceFetcher instance (optional)
+ * @param assetManager - AssetManager instance (optional)
  * @returns PrintPreviewExporter instance
  */
 export function createPrintPreviewExporter(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
+    assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): PrintPreviewExporter {
-    const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
-    const resources = resourceFetcher
-        ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-        : createNullResourceProvider();
-    return new PrintPreviewExporter(document, resources as Parameters<typeof PrintPreviewExporter>[1]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+    const document = new YjsDocumentAdapter(documentManager as any);
+
+    let resources;
+    if (resourceFetcher) {
+        // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+        resources = new BrowserResourceProvider(resourceFetcher as any);
+    } else {
+        resources = createNullResourceProvider();
+    }
+
+    // Construct AssetProvider
+    let assets: BrowserAssetProvider | null = null;
+    if (assetManager) {
+        const isNewManager = 'getProjectAssets' in assetManager;
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+        const cache = isNewManager ? null : (assetManager as any);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+        const manager = isNewManager ? (assetManager as any) : null;
+
+        assets = new BrowserAssetProvider(cache, manager);
+    }
+
+    return new PrintPreviewExporter(
+        document,
+        // biome-ignore lint/suspicious/noExplicitAny: resource provider compatibility
+        resources as any,
+        assets,
+    );
 }
 
 /**
@@ -471,21 +542,32 @@ export async function generatePreviewForSW(
         }
 
         // Create adapters with null-safe wrappers
-        const document = new YjsDocumentAdapter(documentManager as Parameters<typeof YjsDocumentAdapter>[0]);
+        // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
+        const document = new YjsDocumentAdapter(documentManager as any);
 
         // Create resource provider with null-safe fallback
-        const resources = resourceFetcher
-            ? new BrowserResourceProvider(resourceFetcher as Parameters<typeof BrowserResourceProvider>[0])
-            : createNullResourceProvider();
+        // Create resource provider with null-safe fallback
+        let resources;
+        if (resourceFetcher) {
+            // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
+            resources = new BrowserResourceProvider(resourceFetcher as any);
+        } else {
+            resources = createNullResourceProvider();
+        }
 
         // Create asset provider with null-safe fallback
-        const assets =
-            assetCache || assetManager
-                ? new BrowserAssetProvider(
-                      assetCache as Parameters<typeof BrowserAssetProvider>[0],
-                      assetManager as Parameters<typeof BrowserAssetProvider>[1],
-                  )
-                : createNullAssetProvider();
+        // Create asset provider with null-safe fallback
+        let assets;
+        if (assetCache || assetManager) {
+            assets = new BrowserAssetProvider(
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset cache compatibility
+                assetCache as any,
+                // biome-ignore lint/suspicious/noExplicitAny: legacy asset manager compatibility
+                assetManager as any,
+            );
+        } else {
+            assets = createNullAssetProvider();
+        }
 
         // Create a null zip provider (not needed for preview files)
         const zip = new FflateZipProvider();
@@ -506,13 +588,20 @@ export async function generatePreviewForSW(
         const files: Record<string, ArrayBuffer> = {};
         for (const [path, content] of filesMap) {
             if (content instanceof Uint8Array) {
-                files[path] = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength);
+                files[path] = content.buffer.slice(
+                    content.byteOffset,
+                    content.byteOffset + content.byteLength,
+                ) as ArrayBuffer;
             } else if (typeof content === 'string') {
                 const encoder = new TextEncoder();
                 const encoded = encoder.encode(content);
-                files[path] = encoded.buffer.slice(encoded.byteOffset, encoded.byteOffset + encoded.byteLength);
+                files[path] = encoded.buffer.slice(
+                    encoded.byteOffset,
+                    encoded.byteOffset + encoded.byteLength,
+                ) as ArrayBuffer;
             } else {
-                files[path] = content as ArrayBuffer;
+                // biome-ignore lint/suspicious/noExplicitAny: fallback for unknown content types
+                files[path] = content as any;
             }
         }
 
