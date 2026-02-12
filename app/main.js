@@ -159,6 +159,8 @@ log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'lo
 
 // files to open after app ready
 let pendingOpenFiles = [];
+// Pending .elpx path per renderer WebContents id (sent when renderer is ready)
+const pendingOpenFileByWebContentsId = new Map();
 
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = false;
@@ -1336,23 +1338,38 @@ function createNewProjectWindow(filePath) {
             preload: path.join(__dirname, 'preload.js'),
         },
         tabbingIdentifier: 'mainGroup', // macOS native tabs support
-        show: true,
+        show: false,
     });
 
     newWindow.setMenuBarVisibility(isDev);
     newWindow.loadURL('app://localhost/');
+    newWindow.once('ready-to-show', () => {
+        if (!newWindow.isDestroyed()) {
+            newWindow.show();
+        }
+    });
 
     // Note: Tab bar visibility is controlled by AppleWindowTabbingMode preference (set at app start)
 
-    // Send file path once window is ready
-    newWindow.webContents.on('did-finish-load', () => {
-        newWindow.webContents.send('app:open-file', filePath);
+    // Send the file only when renderer explicitly confirms it registered the open-file handler
+    const newWindowWcId = newWindow.webContents.id;
+    pendingOpenFileByWebContentsId.set(newWindowWcId, filePath);
+    newWindow.on('closed', () => {
+        pendingOpenFileByWebContentsId.delete(newWindowWcId);
     });
 
     attachOpenHandler(newWindow);
 
     return newWindow;
 }
+
+ipcMain.on('app:renderer-ready-for-open-file', (event) => {
+    const wcId = event.sender.id;
+    const filePath = pendingOpenFileByWebContentsId.get(wcId);
+    if (!filePath) return;
+    event.sender.send('app:open-file', filePath);
+    pendingOpenFileByWebContentsId.delete(wcId);
+});
 
 /**
  * Handle opening an .elpx file

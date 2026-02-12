@@ -47,6 +47,8 @@ export default class App {
         this.shortcuts = new Shortcuts(this);
         this.sessionMonitor = null;
         this.sessionExpirationHandled = false;
+        this.electronFileOpenHandlerBound = false;
+        this.pendingElectronOpenFiles = [];
 
         if (!this.eXeLearning.config.isOfflineInstallation) {
             this.setupSessionMonitor();
@@ -57,6 +59,9 @@ export default class App {
      *
      */
     async init() {
+        // Register file-open listener as early as possible to avoid losing IPC events.
+        this.bindElectronFileOpenHandler();
+
         // Initialize API (loads static data if in static mode)
         await this.api.init();
 
@@ -79,6 +84,7 @@ export default class App {
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
+        await this.flushPendingElectronOpenFiles();
         // Load idevices installed
         await this.loadIdevicesInstalled();
         // Load themes installed
@@ -102,9 +108,6 @@ export default class App {
 
         // Electron: show toast with final saved path
         this.bindElectronDownloadToasts();
-
-        // Electron: handle files opened via file association
-        this.bindElectronFileOpenHandler();
 
         // Handle exe-package:elp protocol for download-source-file iDevice
         this.initExePackageProtocolHandler();
@@ -1093,16 +1096,24 @@ export default class App {
      * Bind handler for files opened via Electron file association
      */
     bindElectronFileOpenHandler() {
+        if (this.electronFileOpenHandlerBound) return;
         if (
             !window.electronAPI ||
             typeof window.electronAPI.onOpenFile !== 'function'
         )
             return;
 
+        this.electronFileOpenHandlerBound = true;
         window.electronAPI.onOpenFile(async (filePath) => {
             console.log('[App] Received file to open:', filePath);
             await this.openFileFromPath(filePath);
         });
+
+        if (
+            typeof window.electronAPI.notifyRendererReadyForOpenFile === 'function'
+        ) {
+            window.electronAPI.notifyRendererReadyForOpenFile();
+        }
     }
 
     /**
@@ -1111,6 +1122,14 @@ export default class App {
      */
     async openFileFromPath(filePath) {
         try {
+            if (
+                !this.modals?.openuserodefiles ||
+                typeof this.modals.openuserodefiles.largeFilesUpload !== 'function'
+            ) {
+                this.pendingElectronOpenFiles.push(filePath);
+                return;
+            }
+
             // Read file via Electron API
             const res = await window.electronAPI.readFile(filePath);
 
@@ -1144,6 +1163,22 @@ export default class App {
             this.modals.openuserodefiles.largeFilesUpload(file);
         } catch (error) {
             console.error('[App] Error opening file:', error);
+        }
+    }
+
+    async flushPendingElectronOpenFiles() {
+        if (
+            !this.modals?.openuserodefiles ||
+            typeof this.modals.openuserodefiles.largeFilesUpload !== 'function' ||
+            this.pendingElectronOpenFiles.length === 0
+        ) {
+            return;
+        }
+
+        const filesToOpen = [...this.pendingElectronOpenFiles];
+        this.pendingElectronOpenFiles = [];
+        for (const filePath of filesToOpen) {
+            await this.openFileFromPath(filePath);
         }
     }
 
