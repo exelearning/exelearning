@@ -2361,6 +2361,7 @@ describe('YjsProjectBridge', () => {
         blockName: 'Old Name',
         iconName: 'edit',
         blockNameElementText: { innerHTML: '' },
+        renderBlockTitle: mock(() => {}),
         makeIconNameElement: mock(() => {}),
         properties: {},
         generateBlockContentNode: mock(() => {}),
@@ -2384,6 +2385,7 @@ describe('YjsProjectBridge', () => {
 
       expect(mockBlockNode.blockName).toBe('New Name');
       expect(mockBlockNode.iconName).toBe('star');
+      expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
     });
 
     it('updates block with properties object', async () => {
@@ -2443,6 +2445,51 @@ describe('YjsProjectBridge', () => {
       await bridge.updateRemoteBlock({ id: 'remote-block-id', blockName: 'New' }, 'page-1');
 
       expect(mockBlockNode.blockName).toBe('New');
+    });
+  });
+
+  describe('_syncBlockTitle', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      delete global.MathJax;
+    });
+
+    it('updates textContent for non-latex title', () => {
+      const titleEl = { textContent: '', isConnected: true };
+      bridge._syncBlockTitle(titleEl, 'Plain title');
+      expect(titleEl.textContent).toBe('Plain title');
+    });
+
+    it('typesets latex title with MathJax fallback', async () => {
+      const titleEl = { textContent: '', isConnected: true };
+      const typesetPromise = mock(() => Promise.resolve());
+      const typesetClear = mock(() => undefined);
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+        typesetClear,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(typesetClear).toHaveBeenCalledWith([titleEl]);
+      expect(typesetPromise).toHaveBeenCalledWith([titleEl]);
+    });
+
+    it('skips fallback typeset when title node is disconnected', async () => {
+      const titleEl = { textContent: '', isConnected: false };
+      const typesetPromise = mock(() => Promise.resolve());
+      global.MathJax = {
+        startup: { promise: Promise.resolve() },
+        typesetPromise,
+      };
+
+      bridge._syncBlockTitle(titleEl, '\\(x^2\\)');
+      await Promise.resolve();
+
+      expect(typesetPromise).not.toHaveBeenCalled();
     });
   });
 
@@ -2809,6 +2856,62 @@ describe('YjsProjectBridge', () => {
       bridge.forceBlockTitlesSync();
 
       expect(mockTitleEl.textContent).toBe('New Title');
+    });
+
+    it('uses blockNode renderBlockTitle when available', () => {
+      const mockTitleEl = { textContent: 'Old Title' };
+      const mockHeader = {
+        getAttribute: (attr) => attr === 'block-id' ? 'block-123' : null,
+        querySelector: (selector) => {
+          if (selector === '.box-title') return mockTitleEl;
+          if (selector === '.box-icon') return null;
+          return null;
+        },
+      };
+
+      global.document.querySelectorAll = mock((selector) => {
+        if (selector === 'header[block-id]') return [mockHeader];
+        return [];
+      });
+
+      const mockBlockNode = {
+        blockName: 'Old Title',
+        iconName: '',
+        renderBlockTitle: mock(() => {}),
+      };
+
+      bridge.app = {
+        project: {
+          idevices: {
+            getBlockById: mock(() => mockBlockNode),
+          },
+        },
+      };
+
+      const mockBlockMap = {
+        get: (key) => {
+          if (key === 'id') return 'block-123';
+          if (key === 'blockName') return 'New Title';
+          if (key === 'iconName') return '';
+          return undefined;
+        },
+      };
+      const mockBlocks = {
+        length: 1,
+        get: () => mockBlockMap,
+      };
+      const mockPageMap = {
+        get: (key) => key === 'blocks' ? mockBlocks : undefined,
+      };
+      const mockNavigation = {
+        length: 1,
+        get: () => mockPageMap,
+      };
+      bridge.documentManager.getNavigation = () => mockNavigation;
+
+      bridge.forceBlockTitlesSync();
+
+      expect(mockBlockNode.renderBlockTitle).toHaveBeenCalled();
     });
 
     it('does not update when blockName matches current title', () => {
