@@ -510,12 +510,12 @@ export default class MenuStructureCompose {
             liNew.append(btnNew);
             dropdownList.append(liNew);
 
-            // 2. Import Page
+            // 2. Import
             const liImport = document.createElement('li');
             const btnImport = document.createElement('button');
             btnImport.classList.add('dropdown-item', 'button-action-block', 'action_import_idevices');
             btnImport.setAttribute('data-nav-id', node.id);
-            btnImport.innerHTML = `<span class="small-icon import-icon-green" aria-hidden="true"></span>${_('Import page')}`;
+            btnImport.innerHTML = `<span class="small-icon import-icon-green" aria-hidden="true"></span>${_('Import')}`;
             liImport.append(btnImport);
             dropdownList.append(liImport);
 

@@ -456,7 +456,13 @@ export class ElpxImporter {
         const metadata = this.getMetadata();
 
         // Convert legacy pages to PageData format
-        const pageStructures: PageData[] = this.convertLegacyPagesToPageData(parsedData.pages, parentId);
+        // IMPORTANT: On incremental imports, apply order offset so new root pages append after existing siblings.
+        let orderOffset = 0;
+        if (!clearExisting) {
+            orderOffset = this.getNextAvailableOrder(parentId);
+            this.logger.log('[ElpxImporter] Legacy order offset for import:', orderOffset, 'at parent:', parentId);
+        }
+        const pageStructures: PageData[] = this.convertLegacyPagesToPageData(parsedData.pages, parentId, orderOffset);
 
         this.logger.log('[ElpxImporter] Converted legacy pages:', pageStructures.length);
 
@@ -532,20 +538,33 @@ export class ElpxImporter {
     /**
      * Convert legacy pages to PageData format
      */
-    private convertLegacyPagesToPageData(legacyPages: LegacyPage[], rootParentId: string | null): PageData[] {
+    private convertLegacyPagesToPageData(
+        legacyPages: LegacyPage[],
+        rootParentId: string | null,
+        rootOrderOffset = 0,
+    ): PageData[] {
         const pageStructures: PageData[] = [];
+        const pageIdRemap = new Map<string, string>();
+
+        // Legacy IDs are stable inside .elp files (e.g. page-4, idevice-2).
+        // On repeated imports into the same Y.Doc we must remap to unique IDs to avoid collisions.
+        for (const legacyPage of legacyPages) {
+            pageIdRemap.set(legacyPage.id, this.generateId('page'));
+        }
 
         for (const legacyPage of legacyPages) {
-            // Determine parent ID: use rootParentId for top-level pages, otherwise use the mapped parent
-            const parentId = legacyPage.parent_id === null ? rootParentId : legacyPage.parent_id;
+            const pageId = pageIdRemap.get(legacyPage.id) || this.generateId('page');
+            const parentId =
+                legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
+            const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
 
             const pageData: PageData = {
-                id: legacyPage.id,
-                pageId: legacyPage.id,
+                id: pageId,
+                pageId: pageId,
                 pageName: legacyPage.title,
                 title: legacyPage.title,
                 parentId: parentId,
-                order: legacyPage.position,
+                order: order,
                 createdAt: new Date().toISOString(),
                 blocks: [],
                 properties: {},
@@ -567,9 +586,11 @@ export class ElpxImporter {
      * Convert legacy block to BlockData format
      */
     private convertLegacyBlockToBlockData(legacyBlock: LegacyBlock): BlockData {
+        const blockId = this.generateId('block');
+
         const blockData: BlockData = {
-            id: legacyBlock.id,
-            blockId: legacyBlock.id,
+            id: blockId,
+            blockId: blockId,
             blockName: legacyBlock.name,
             iconName: legacyBlock.iconName,
             order: legacyBlock.position,
@@ -591,6 +612,8 @@ export class ElpxImporter {
      * Convert legacy iDevice to ComponentData format
      */
     private convertLegacyIdeviceToComponentData(legacyIdevice: LegacyIdevice): ComponentData {
+        const componentId = this.generateId('idevice');
+
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
 
@@ -625,8 +648,8 @@ export class ElpxImporter {
         }
 
         const componentData: ComponentData = {
-            id: legacyIdevice.id,
-            ideviceId: legacyIdevice.id,
+            id: componentId,
+            ideviceId: componentId,
             ideviceType: legacyIdevice.type,
             type: legacyIdevice.type,
             order: legacyIdevice.position,

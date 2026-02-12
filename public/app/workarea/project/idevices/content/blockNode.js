@@ -594,10 +594,10 @@ export default class IdeviceBlockNode {
                 <span class="small-icon dots-menu-vertical-icon"></span>
             </button>
             <ul class="dropdown-menu button-action-block exe-advanced" aria-labelledby="dropdownMenuButton${id}">
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Properties')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to')}</button></li>
-                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-properties${id}"><span class="small-icon settings-icon-green"></span>${_('Box properties')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-clone${id}"><span class="small-icon duplicate-icon-green"></span>${_('Clone box')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-move${id}"><span class="small-icon move-icon-green"></span>${_('Move to page')}</button></li>
+                <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-export${id}"><span class="small-icon download-icon-green"></span>${_('Export box')}</button></li>
                 <li><button class="dropdown-item button-action-block" id="deleteBlock${id}"><span class="small-icon delete-icon-red"></span><span>${_('Delete box')}</span></button></li>
              </ul>
         </div>`;
@@ -926,7 +926,7 @@ export default class IdeviceBlockNode {
                                 this.generateModalMoveToPageBody();
                             // Show modal
                             eXeLearning.app.modals.confirm.show({
-                                title: _('Move Block to page'),
+                                title: _('Move box to page'),
                                 body: bodyElement.innerHTML,
                                 contentId: 'modal-move-to-page',
                                 confirmButtonText: _('Move'),
@@ -1082,7 +1082,7 @@ export default class IdeviceBlockNode {
             if (!result.success || !result.data || !result.filename) {
                 eXeLearning.app.modals.alert.show({
                     title: _('Download error'),
-                    body: result.error || _('Failed to export block'),
+                    body: result.error || _('Failed to export box'),
                     contentId: 'error',
                 });
                 return;

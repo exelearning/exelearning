@@ -14,6 +14,21 @@ describe('ModalProperties', () => {
     // Mock eXeLearning global
     window.eXeLearning = {
       app: {
+        modals: {
+          alert: {
+            show: vi.fn(),
+          },
+        },
+        project: {
+          _yjsBridge: {
+            lockManager: {
+              requestLock: vi.fn(() => true),
+              releaseLock: vi.fn(),
+              refreshLock: vi.fn(),
+              getLockInfo: vi.fn(() => ({ user: { name: 'Remote User' } })),
+            },
+          },
+        },
         common: {
           generateId: vi.fn().mockReturnValue('123'),
         },
@@ -174,6 +189,103 @@ describe('ModalProperties', () => {
       
       await modal.saveAction();
       expect(mockNode.apiSaveProperties).toHaveBeenCalled();
+    });
+  });
+
+  describe('page-properties locking', () => {
+    it('acquires lock when opening page-properties modal', () => {
+      vi.useFakeTimers();
+      const node = {
+        id: 'page-1',
+        constructor: { name: 'StructureNode' },
+        apiSaveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      };
+      const properties = {
+        p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' }
+      };
+
+      modal.show({ node, contentId: 'page-properties', properties });
+      vi.advanceTimersByTime(500);
+
+      expect(window.eXeLearning.app.project._yjsBridge.lockManager.requestLock)
+        .toHaveBeenCalledWith('page-properties:page-1');
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('does not open page-properties modal when already locked by another user', () => {
+      vi.useFakeTimers();
+      window.eXeLearning.app.project._yjsBridge.lockManager.requestLock = vi.fn(() => false);
+      const node = {
+        id: 'page-1',
+        constructor: { name: 'StructureNode' },
+        apiSaveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      };
+
+      modal.show({ node, contentId: 'page-properties', properties: {} });
+      vi.advanceTimersByTime(500);
+
+      expect(mockBootstrapModal.show).not.toHaveBeenCalled();
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('releases page-properties lock on confirm', async () => {
+      vi.useFakeTimers();
+      const node = {
+        id: 'page-1',
+        constructor: { name: 'StructureNode' },
+        apiSaveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      };
+      const properties = {
+        p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' }
+      };
+
+      modal.show({ node, contentId: 'page-properties', properties });
+      vi.advanceTimersByTime(500);
+      await modal.confirm();
+
+      expect(window.eXeLearning.app.project._yjsBridge.lockManager.releaseLock)
+        .toHaveBeenCalledWith('page-properties:page-1');
+      vi.useRealTimers();
+    });
+
+    it('acquires lock when opening block-properties modal', () => {
+      vi.useFakeTimers();
+      const node = {
+        blockId: 'block-1',
+        apiSaveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      };
+      const properties = {
+        p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' }
+      };
+
+      modal.show({ node, contentId: 'block-properties', properties });
+      vi.advanceTimersByTime(500);
+
+      expect(window.eXeLearning.app.project._yjsBridge.lockManager.requestLock)
+        .toHaveBeenCalledWith('block-properties:block-1');
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('acquires lock when opening idevice-properties modal', () => {
+      vi.useFakeTimers();
+      const node = {
+        odeIdeviceId: 'idevice-1',
+        apiSaveProperties: vi.fn().mockResolvedValue({ responseMessage: 'OK' }),
+      };
+      const properties = {
+        p1: { title: 'P1', type: 'text', value: 'v1', category: 'C1' }
+      };
+
+      modal.show({ node, contentId: 'idevice-properties', properties });
+      vi.advanceTimersByTime(500);
+
+      expect(window.eXeLearning.app.project._yjsBridge.lockManager.requestLock)
+        .toHaveBeenCalledWith('idevice-properties:idevice-1');
+      expect(mockBootstrapModal.show).toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 });
