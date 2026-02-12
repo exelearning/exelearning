@@ -441,6 +441,14 @@ class YjsPropertiesBinding {
 
     const title = this.metadata.get('title') || _('Untitled document');
 
+    // Delegate to title component when available so raw title text is kept in sync
+    // and LaTeX gets typeset immediately for collaborative updates.
+    const titleElementController = window.eXeLearning?.app?.interface?.odeTitleElement;
+    if (titleElementController?.onRemoteTitleChange) {
+      titleElementController.onRemoteTitleChange(title);
+      return;
+    }
+
     // Only update if different
     if (headerTitle.textContent !== title) {
       headerTitle.textContent = title;
