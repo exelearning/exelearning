@@ -5549,6 +5549,31 @@ describe('YjsProjectBridge', () => {
       expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/456');
     });
 
+    it('only revokes blob URLs (skips data URLs)', async () => {
+      const mockRevokeObjectURL = mock(() => {});
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('blob-asset', 'blob:http://test/123');
+      bridge.assetManager.blobURLCache.set('data-asset', 'data:image/png;base64,AAAA');
+
+      await bridge.clearAssetsForNewProject();
+
+      expect(mockRevokeObjectURL).toHaveBeenCalledTimes(1);
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+    });
+
+    it('does not fail when revokeObjectURL throws', async () => {
+      const mockRevokeObjectURL = mock(() => {
+        throw new Error('revoke failed');
+      });
+      global.URL = { revokeObjectURL: mockRevokeObjectURL };
+
+      bridge.assetManager.blobURLCache.set('blob-asset', 'blob:http://test/123');
+
+      await expect(bridge.clearAssetsForNewProject()).resolves.not.toThrow();
+      expect(mockRevokeObjectURL).toHaveBeenCalledWith('blob:http://test/123');
+    });
+
     it('clears Yjs assets map when it has entries', async () => {
       // Setup: add asset metadata to Yjs
       mockAssetsData.set('test-asset', { id: 'test-asset', filename: 'test.jpg' });

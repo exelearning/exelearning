@@ -1035,6 +1035,28 @@ describe('App utility methods', () => {
       delete window.electronAPI;
     });
 
+    it('queues file in static mode when Yjs bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+
+      window.electronAPI = {
+        readFile: vi.fn().mockResolvedValue({
+          ok: true,
+          base64: btoa('test content'),
+          mtimeMs: Date.now(),
+        }),
+      };
+
+      await appInstance.openFileFromPath('/test/static-queued.elpx');
+
+      expect(appInstance.pendingElectronOpenFiles).toEqual(['/test/static-queued.elpx']);
+      expect(window.electronAPI.readFile).not.toHaveBeenCalled();
+      delete window.electronAPI;
+    });
+
     it('handles file read error', async () => {
       window.electronAPI = {
         readFile: vi.fn().mockResolvedValue({ ok: false, error: 'Read error' }),
@@ -1120,6 +1142,23 @@ describe('App utility methods', () => {
       await appInstance.flushPendingElectronOpenFiles();
 
       expect(openFileFromPathSpy).not.toHaveBeenCalled();
+    });
+
+    it('keeps queue in static mode when Yjs bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+      appInstance.pendingElectronOpenFiles = ['/a.elpx'];
+      const openFileFromPathSpy = vi
+        .spyOn(appInstance, 'openFileFromPath')
+        .mockResolvedValue(undefined);
+
+      await appInstance.flushPendingElectronOpenFiles();
+
+      expect(openFileFromPathSpy).not.toHaveBeenCalled();
+      expect(appInstance.pendingElectronOpenFiles).toEqual(['/a.elpx']);
     });
   });
 

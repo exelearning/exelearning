@@ -84,7 +84,6 @@ export default class App {
         this.initializedToasts();
         // Compose and initialized modals
         this.initializedModals();
-        await this.flushPendingElectronOpenFiles();
         // Load idevices installed
         await this.loadIdevicesInstalled();
         // Load themes installed
@@ -93,6 +92,8 @@ export default class App {
         await this.loadUser();
         // Show LOPDGDD modal if necessary and load project data
         await this.showModalLopd();
+        // Process any pending Electron file-open events after project init.
+        await this.flushPendingElectronOpenFiles();
         // "Not for production use" warning
         await this.showProvisionalDemoWarning();
         // To review (showProvisionalToDoWarning might be useful for future beta releases)
@@ -1123,6 +1124,14 @@ export default class App {
     async openFileFromPath(filePath) {
         try {
             if (
+                this.runtimeConfig?.isStaticMode?.() &&
+                !this.isYjsBridgeReadyForElectronOpen()
+            ) {
+                this.pendingElectronOpenFiles.push(filePath);
+                return;
+            }
+
+            if (
                 !this.modals?.openuserodefiles ||
                 typeof this.modals.openuserodefiles.largeFilesUpload !== 'function'
             ) {
@@ -1166,7 +1175,22 @@ export default class App {
         }
     }
 
+    isYjsBridgeReadyForElectronOpen() {
+        const bridge = this.project?._yjsBridge;
+        if (!bridge) return false;
+        const getDocumentManager = bridge.getDocumentManager;
+        if (typeof getDocumentManager !== 'function') return false;
+        return !!getDocumentManager.call(bridge);
+    }
+
     async flushPendingElectronOpenFiles() {
+        if (
+            this.runtimeConfig?.isStaticMode?.() &&
+            !this.isYjsBridgeReadyForElectronOpen()
+        ) {
+            return;
+        }
+
         if (
             !this.modals?.openuserodefiles ||
             typeof this.modals.openuserodefiles.largeFilesUpload !== 'function' ||

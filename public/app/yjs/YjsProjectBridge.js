@@ -3073,16 +3073,27 @@ class YjsProjectBridge {
 
     // Clear AssetManager caches (memory + Cache API)
     if (this.assetManager) {
-      // Revoke blob URLs and clear memory caches
+      // Revoke only blob: URLs. Some environments may fallback to data: URLs,
+      // which must not be passed to revokeObjectURL.
       for (const blobURL of this.assetManager.blobURLCache.values()) {
-        URL.revokeObjectURL(blobURL);
+        if (typeof blobURL === 'string' && blobURL.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(blobURL);
+          } catch (e) {
+            Logger.warn?.('[YjsProjectBridge] Failed to revoke blob URL:', e);
+          }
+        }
       }
       this.assetManager.blobURLCache.clear();
       this.assetManager.reverseBlobCache.clear();
       this.assetManager.blobCache.clear();
 
-      // Clear Cache API storage
-      await this.assetManager.clearCache();
+      // Clear Cache API storage (best-effort)
+      try {
+        await this.assetManager.clearCache();
+      } catch (e) {
+        Logger.warn?.('[YjsProjectBridge] Failed to clear asset cache:', e);
+      }
 
       Logger.log('[YjsProjectBridge] AssetManager caches cleared');
     }
