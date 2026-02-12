@@ -335,6 +335,13 @@ export default class projectManager {
             this.app.themes.initYjsBinding();
         }
 
+        // Rebind concurrent users to the current Yjs document manager.
+        // This is required after reinitializeWithProject() because the bridge changes
+        // without a full page reload.
+        if (this.app?.interface?.concurrentUsers?.rebindToCurrentDocumentManager) {
+            this.app.interface.concurrentUsers.rebindToCurrentDocumentManager();
+        }
+
         // Select first page and load its content
         await this.initialiceProject();
 
@@ -2000,14 +2007,14 @@ export default class projectManager {
             nodeContentElement.children[cloneBlockNode.order]
         );
         // Load Idevices in block
-        newOdeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+        for (const idevice of newOdeBlockSync.odeComponentsSyncs) {
             idevice.mode = 'export';
             await this.idevices.createIdeviceInContent(
                 idevice,
                 cloneBlockNode.blockContent,
                 elementOnModeEdition
             );
-        });
+        }
     }
 
     /**
@@ -2043,9 +2050,10 @@ export default class projectManager {
         );
 
         // Load Idevices in block if node-content is on mode "view"
-        var loadIdevicesOnBlock = setInterval(() => {
+        var loadIdevicesOnBlock = setInterval(async () => {
             if (nodeContentElement.getAttribute('mode') == 'view') {
-                odeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+                clearInterval(loadIdevicesOnBlock);
+                for (const idevice of odeBlockSync.odeComponentsSyncs) {
                     // Exclude empty idevices
                     if (idevice.htmlView !== null) {
                         idevice.mode = 'export';
@@ -2055,8 +2063,7 @@ export default class projectManager {
                             elementOnModeEdition
                         );
                     }
-                });
-                clearInterval(loadIdevicesOnBlock);
+                }
             }
         }, this.syncIntervalTime);
     }
@@ -2295,15 +2302,15 @@ export default class projectManager {
             );
         }
 
-        // Load Idevices in block
-        newOdeBlockSync.odeComponentsSyncs.forEach(async (idevice) => {
+        // Load Idevices in block (sequential to avoid race conditions)
+        for (const idevice of newOdeBlockSync.odeComponentsSyncs) {
             idevice.mode = 'export';
-            let ideviceNode = await this.idevices.createIdeviceInContent(
+            await this.idevices.createIdeviceInContent(
                 idevice,
                 cloneBlockNode.blockContent,
                 elementOnModeEdition
             );
-        });
+        }
 
         // Reset view of idevices to load plugins
         var loadIdevicesExportVIew = setInterval(() => {

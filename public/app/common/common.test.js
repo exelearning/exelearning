@@ -844,6 +844,77 @@ describe('common.js $exeDevices', () => {
     document.body.innerHTML = '';
   });
 
+  describe('gamification.initGame', () => {
+    const getInitGame = () => global.$exeDevices.iDevice.gamification.initGame;
+
+    let mockGame;
+
+    beforeEach(() => {
+      // Setup eXe global (isInExe check)
+      global.eXe = {
+        app: {
+          isInExe: vi.fn().mockReturnValue(true),
+          getIdeviceInstalledExportPath: vi.fn().mockReturnValue('/path/'),
+        },
+      };
+      mockGame = {
+        hasSCORMbutton: false,
+        isInExe: false,
+        idevicePath: '',
+        activities: $(),
+        enable: vi.fn(),
+      };
+    });
+
+    afterEach(() => {
+      delete global.eXe;
+    });
+
+    it('returns early when no activities are found', () => {
+      document.body.innerHTML = '';
+      const initGame = getInitGame();
+
+      initGame(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+
+      expect(mockGame.enable).not.toHaveBeenCalled();
+    });
+
+    it('finds all activities matching the ideviceClass', () => {
+      document.body.innerHTML = `
+        <div class="test-IDevice">Activity 1</div>
+        <div class="test-IDevice">Activity 2</div>
+        <div class="test-IDevice">Activity 3</div>
+      `;
+      const initGame = getInitGame();
+
+      initGame(mockGame, 'TestGame', 'testgame', 'test-IDevice');
+
+      expect(mockGame.activities.length).toBe(3);
+    });
+
+    it('assigns all matching activities to $game.activities without filtering', () => {
+      document.body.innerHTML = `
+        <div class="classify-IDevice">Activity 1</div>
+        <div class="classify-IDevice">Activity 2</div>
+        <div class="classify-IDevice">Activity 3</div>
+        <div class="classify-IDevice">Activity 4</div>
+        <div class="classify-IDevice">Activity 5</div>
+      `;
+      const initGame = getInitGame();
+
+      // initGame may throw due to missing eXe global in test env,
+      // but activities should be assigned before that point
+      try {
+        initGame(mockGame, 'Classify', 'classify', 'classify-IDevice');
+      } catch (e) {
+        // Expected: eXe global not fully available in test env
+      }
+
+      // All 5 activities are found (no guard that only checks first)
+      expect(mockGame.activities.length).toBe(5);
+    });
+  });
+
   describe('gamification.helpers', () => {
     const getHelpers = () => global.$exeDevices.iDevice.gamification.helpers;
 

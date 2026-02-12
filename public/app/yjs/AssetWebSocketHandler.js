@@ -240,6 +240,11 @@ class AssetWebSocketHandler {
             this._handleRequestSyncState(parsed);
             return;
           }
+          // Handle trigger-resync from server (new client joined, refresh presence)
+          if (parsed.type === 'trigger-resync') {
+            this._handleTriggerResync(parsed);
+            return;
+          }
           Logger.log('[AssetWebSocketHandler] Ignoring unknown JSON message:', parsed.type || 'no type');
         } catch {
           Logger.log('[AssetWebSocketHandler] Ignoring non-JSON string message');
@@ -527,6 +532,27 @@ class AssetWebSocketHandler {
       Logger.log('[AssetWebSocketHandler] Project state synced due to collaboration');
     } catch (error) {
       console.error('[AssetWebSocketHandler] Failed to sync project state:', error);
+    }
+  }
+
+  /**
+   * Handle trigger-resync message from server (new client joined).
+   * Re-broadcasts local awareness without reconnecting WebSocket.
+   * @param {Object} data - The trigger-resync message
+   * @param {string} [data.reason] - Why resync was triggered
+   */
+  _handleTriggerResync(data) {
+    Logger.log('[AssetWebSocketHandler] Trigger resync received, reason:', data?.reason);
+    const dm = eXeLearning?.app?.project?._yjsBridge?.documentManager;
+    if (dm?.rebroadcastAwareness) {
+      const sent = dm.rebroadcastAwareness('server-trigger-resync');
+      // In rare races the message may arrive before wsconnected flips to true.
+      // Retry once shortly after connection settles.
+      if (!sent) {
+        setTimeout(() => {
+          dm?.rebroadcastAwareness?.('server-trigger-resync-retry');
+        }, 300);
+      }
     }
   }
 

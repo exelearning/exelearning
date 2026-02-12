@@ -87,8 +87,9 @@ var $eXeDesafio = {
         $eXeDesafio.options = [];
 
         $eXeDesafio.activities.each(function (i) {
+            const dl = $('.desafio-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
             const version = $('.desafio-version', this).eq(0).text(),
-                dl = $('.desafio-DataGame', this),
                 mOption = $eXeDesafio.loadDataGame(dl, version),
                 msg = mOption.msgs.msgPlayStart;
 

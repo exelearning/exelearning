@@ -70,6 +70,7 @@ export class PrintPreviewExporter {
     private ideviceRenderer: IdeviceRenderer;
     private pageRenderer: PageRenderer;
     private assets: AssetProvider | null;
+    private resources: ResourceProvider;
     private assetExportPathMap: Map<string, string> | null = null;
 
     /**
@@ -84,8 +85,10 @@ export class PrintPreviewExporter {
         assetProvider: AssetProvider | null = null,
     ) {
         this.document = document;
+        this.resources = resourceProvider;
         this.assets = assetProvider;
-        // ResourceProvider usage pending refactor of IdeviceRenderer
+        // User IdeviceRenderer to render content.
+        // We initialize it here to use it for single-page rendering and icon resolution
         this.ideviceRenderer = new IdeviceRenderer();
         this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
@@ -109,6 +112,15 @@ export class PrintPreviewExporter {
 
             // Deduplicate components to remove artifacts from complex iDevices (e.g. Complete)
             processedPages = this.deduplicateComponents(processedPages);
+
+            // Fetch theme files and configure icon resolution (from main)
+            const themeName = meta.theme || 'base';
+            try {
+                const themeFilesMap = await this.resources.fetchTheme(themeName);
+                this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
+            } catch {
+                // Theme fetch not available - icons will use .png fallback
+            }
 
             const usedIdevices = this.getUsedIdevices(processedPages);
 

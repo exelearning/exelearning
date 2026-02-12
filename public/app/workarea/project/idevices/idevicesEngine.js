@@ -1606,18 +1606,18 @@ export default class IdevicesEngine {
      * @param {*} exceptionsIds
      */
     async resetCurrentIdevicesExportView(exceptionsIds) {
-        // Remove scripts/styles tags
-        this.clearNeedlessScripts();
         // Load styles of idevices
         await this.loadIdevicesExportStyles();
-        // Reload body of components
-        this.components.idevices.forEach(async (idevice) => {
+        // Reload body of components (sequential to avoid race conditions)
+        for (const idevice of this.components.idevices) {
             if (!exceptionsIds.includes(idevice.id)) {
                 // Reload export html
                 await idevice.generateContentExportView();
             }
-        });
-        // Load scripts of idevices
+        }
+        // Remove old scripts and reload them
+        // (forces re-initialization of HTML-type iDevices after all HTML is in DOM)
+        this.clearNeedlessScripts();
         this.loadIdevicesExportScripts();
         // Load legacy functions
         this.loadLegacyExeFunctionalitiesExport();
@@ -1848,10 +1848,6 @@ export default class IdevicesEngine {
         if (data && data.odePagStructureSyncs) {
             // Load components in page content
             await this.loadComponentsPage(data.odePagStructureSyncs);
-            // Load idevices styles files
-            await this.loadIdevicesExportStyles();
-            // Load idevices script files
-            this.loadIdevicesExportScripts();
             // Set parents and children (blocks and idevices)
             this.setParentsAndChildrenIdevicesBlocks();
             // Promise to delay content loading
@@ -2134,8 +2130,10 @@ export default class IdevicesEngine {
      * @param {Object} components
      */
     async loadComponentsPage(pagStructure) {
-        // Load components - use for...of to properly await async operations
-        // (forEach with async callbacks doesn't wait for completion)
+        const ideviceNodes = [];
+
+        // Phase 1: Create all iDevice nodes and add HTML to DOM
+        // (without loading scripts, so auto-exec doesn't fire prematurely)
         for (const block of pagStructure) {
             // Create block
             let blockNode = this.newBlockNode(block, true);
@@ -2144,13 +2142,39 @@ export default class IdevicesEngine {
             blockContent.classList.add('loading');
             // Add block element to node container
             this.nodeContentElement.append(blockContent);
-            // Load Idevices in block - await each iDevice creation
+            // Create iDevices in block (without loading scripts)
             for (const idevice of block.odeComponentsSyncs) {
                 idevice.mode = 'export';
-                let ideviceNode = await this.createIdeviceInContent(
-                    idevice,
-                    blockContent
-                );
+                let ideviceNode = await this.newIdeviceNode(idevice);
+                if (ideviceNode) {
+                    this.addIdeviceNodeToContainer(ideviceNode, blockContent);
+                    ideviceNodes.push(ideviceNode);
+                }
+            }
+        }
+
+        // Phase 2: Set HTML content for HTML-type iDevices
+        // (all HTML must be in DOM before scripts load, so auto-exec finds all activities)
+        for (const node of ideviceNodes) {
+            node.restartExeIdeviceValue();
+            const isJsonType = node.idevice?.componentType === 'json';
+            if (!isJsonType) {
+                await node.generateContentExportView();
+            }
+            node.updateMode('export');
+        }
+        this.updateMode();
+
+        // Phase 3: Load styles and scripts
+        // (scripts' auto-exec $(function(){ init() }) will find ALL HTML-type content in DOM)
+        await this.loadIdevicesExportStyles();
+        this.loadIdevicesExportScripts();
+
+        // Phase 4: Init JSON-type iDevices (need export object from loaded scripts)
+        for (const node of ideviceNodes) {
+            const isJsonType = node.idevice?.componentType === 'json';
+            if (isJsonType) {
+                await node.ideviceInitExport();
             }
         }
     }

@@ -1275,8 +1275,8 @@ describe('IdeviceRenderer', () => {
                 includeDataAttributes: true,
             });
 
-            // Should use iconName as-is
-            expect(html).toContain('theme/icons/share');
+            // Should fall back to .png extension when setThemeIconFiles is not called
+            expect(html).toContain('theme/icons/share.png');
         });
 
         it('should resolve icon and apply themeIconBasePath together', () => {

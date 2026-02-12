@@ -903,3 +903,79 @@ $("." + k + "-accordion").each(function (i) {
         expect(contentStr).toContain('href="javascript:void(0)"');
     });
 });
+
+describe('Icon Resolution via setThemeIconFiles', () => {
+    let document: MockDocument;
+    let resources: MockResourceProvider;
+    let assets: MockAssetProvider;
+    let zip: MockZipProvider;
+    let exporter: Epub3Exporter;
+
+    beforeEach(() => {
+        resources = new MockResourceProvider();
+        assets = new MockAssetProvider();
+        zip = new MockZipProvider();
+    });
+
+    it('should resolve SVG icons when theme has SVG icon files', async () => {
+        const pagesWithIcon: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Test Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity',
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pagesWithIcon);
+
+        resources.fetchTheme = async (_name: string) => {
+            const files = new Map<string, Buffer>();
+            files.set('style.css', Buffer.from('/* theme css */'));
+            files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
+            return files;
+        };
+
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+        await exporter.export();
+
+        const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(indexXhtml).toContain('theme/icons/activity.svg');
+    });
+
+    it('should fall back to .png when theme has no icon files', async () => {
+        const pagesWithIcon: ExportPage[] = [
+            {
+                id: 'page-1',
+                title: 'Test Page',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-1',
+                        name: 'Block with Icon',
+                        order: 0,
+                        components: [],
+                        iconName: 'activity',
+                    },
+                ],
+            },
+        ];
+
+        document = new MockDocument({}, pagesWithIcon);
+        exporter = new Epub3Exporter(document, resources, assets, zip);
+        await exporter.export();
+
+        const indexXhtml = zip.files.get('EPUB/index.xhtml') as string;
+        expect(indexXhtml).toContain('theme/icons/activity.png');
+    });
+});

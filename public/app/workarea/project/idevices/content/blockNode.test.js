@@ -1070,6 +1070,26 @@ describe('IdeviceBlockNode', () => {
             const iconEl = block.makeIconNameElement();
             expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
         });
+
+        it('uses fallback search by icon.id when direct lookup fails', () => {
+            // iconName is 'my-icon-id' but the key in themeIcons is 'different-key'
+            block.iconName = 'my-icon-id';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                'different-key': { id: 'my-icon-id', value: '/path/to/icon.svg', title: 'Icon' },
+            }));
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
+
+        it('uses fallback search by icon.value when direct lookup fails', () => {
+            // iconName is the icon value path
+            block.iconName = '/path/to/icon.svg';
+            eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
+                'some-key': { id: 'some-id', value: '/path/to/icon.svg', title: 'Icon' },
+            }));
+            const iconEl = block.makeIconNameElement();
+            expect(iconEl.classList.contains('exe-no-icon')).toBe(false);
+        });
     });
 
     describe('makeModalChangeIconBody', () => {

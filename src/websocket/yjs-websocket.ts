@@ -319,6 +319,24 @@ export async function handleWebSocketOpen(
             }
         })();
 
+        // Ask existing clients to re-broadcast awareness when a new client joins.
+        // This keeps presence UI in sync without forcing reconnects.
+        for (const existingConn of room.conns) {
+            if (existingConn.readyState === 1) {
+                try {
+                    existingConn.send(
+                        JSON.stringify({
+                            type: 'trigger-resync',
+                            reason: 'new-client-joined',
+                            projectUuid,
+                        }),
+                    );
+                } catch {
+                    /* ignore individual send errors */
+                }
+            }
+        }
+
         deps.assetCoordinator.onCollaborationDetected(projectUuid).catch(err => {
             console.error('[YjsWebSocket] Error in collaboration detection:', err);
         });
