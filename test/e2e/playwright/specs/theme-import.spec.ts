@@ -4,8 +4,8 @@ import * as path from 'path';
 import type { Page } from '@playwright/test';
 
 /**
- * Import an ELPX fixture via File menu
- * Follows the pattern from yjs-binary-integrity.spec.ts
+ * Import an ELPX fixture.
+ * Uses File > Open.
  */
 async function importElpxFixture(page: Page, fixtureName: string): Promise<void> {
     const fixturePath = path.resolve(__dirname, `../../../fixtures/${fixtureName}`);
@@ -14,20 +14,41 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
+    const openOfflineOption = page.locator('#navbar-button-open-offline');
+    const openOnlineOption = page.locator('#navbar-button-openuserodefiles');
+    const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
+    await expect(openOption).toHaveCount(1);
 
-    // Click Continue in confirmation dialog
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    // In static mode Open triggers a file chooser; in online mode it opens a modal with file inputs.
+    const fileChooserPromise = page
+        .waitForEvent('filechooser', { timeout: 12000 })
+        .then(fileChooser => ({ type: 'filechooser' as const, fileChooser }))
+        .catch(() => null);
+    await openOption.click({ force: true });
 
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
+    const modalUploadInput = page.locator('#local-ode-modal-file-upload');
+    const staticOpenInput = page.locator('#static-open-file-input');
 
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+    await page
+        .waitForSelector('#local-ode-modal-file-upload, #static-open-file-input', {
+            state: 'attached',
+            timeout: 12000,
+        })
+        .catch(() => {});
+
+    if (await modalUploadInput.count()) {
+        await modalUploadInput.setInputFiles(fixturePath);
+    } else {
+        if (await staticOpenInput.count()) {
+            await staticOpenInput.setInputFiles(fixturePath);
+        } else {
+            const chooserResult = await fileChooserPromise;
+            if (!chooserResult) {
+                throw new Error('Open did not expose a file input or file chooser');
+            }
+            await chooserResult.fileChooser.setFiles(fixturePath);
+        }
+    }
 
     // Wait for loading screen to hide (import progress shows and then hides)
     await waitForLoadingScreen(page);
@@ -35,12 +56,16 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
     // Wait for navigation to be populated
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                return navigation && navigation.length >= 1;
+            } catch {
+                return false;
+            }
         },
         { timeout: 30000 },
     );
@@ -68,14 +93,37 @@ test.describe('Theme Import from ELPX', () => {
         // Import the fixture
         await importElpxFixture(page, 'download-elpx-link.elpx');
 
+        // Wait until Yjs is initialized and imported navigation is available.
+        await page.waitForFunction(
+            () => {
+                try {
+                    const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                    if (!bridge) return false;
+                    const documentManager = bridge.getDocumentManager();
+                    if (!documentManager?._initialized) return false;
+                    const yDoc = documentManager.getDoc();
+                    if (!yDoc) return false;
+                    const navigation = yDoc.getArray('navigation');
+                    return (navigation?.length || 0) > 0;
+                } catch {
+                    return false;
+                }
+            },
+            { timeout: 60000 },
+        );
+
         // Verify import completed (check that content was imported)
         const navigationCount = await page.evaluate(() => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return 0;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return 0;
-            const navigation = yDoc.getArray('navigation');
-            return navigation?.length || 0;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return 0;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return 0;
+                const navigation = yDoc.getArray('navigation');
+                return navigation?.length || 0;
+            } catch {
+                return 0;
+            }
         });
 
         // Should have at least 1 page imported
@@ -83,12 +131,16 @@ test.describe('Theme Import from ELPX', () => {
 
         // Check theme in Yjs metadata (even if not fully installed, it should be recorded)
         const themeMetadata = await page.evaluate(() => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return null;
-            const documentManager = bridge.getDocumentManager();
-            if (!documentManager) return null;
-            const metadata = documentManager.getMetadata();
-            return metadata?.get('theme') || null;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return null;
+                const documentManager = bridge.getDocumentManager();
+                if (!documentManager?._initialized) return null;
+                const metadata = documentManager.getMetadata();
+                return metadata?.get('theme') || null;
+            } catch {
+                return null;
+            }
         });
 
         // Theme should be recorded in metadata (either 'universal' or fallback to default)
@@ -142,7 +194,7 @@ test.describe('Theme Import from ELPX', () => {
         //
         // To test manually:
         // 1. Create a new project
-        // 2. File > Import > select download-elpx-link.elpx
+        // 2. File > Open > select download-elpx-link.elpx
         // 3. When "Import style" dialog appears, click "Yes"
         // 4. Open Styles panel > Imported tab
         // 5. Verify "Universal" theme appears

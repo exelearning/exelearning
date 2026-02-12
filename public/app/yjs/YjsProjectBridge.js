@@ -898,9 +898,7 @@ class YjsProjectBridge {
       // Update block title if changed
       if (blockData.blockName !== undefined && blockNode.blockName !== blockData.blockName) {
         blockNode.blockName = blockData.blockName;
-        if (blockNode.blockNameElementText) {
-          blockNode.blockNameElementText.innerHTML = blockData.blockName;
-        }
+        this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
       // Update icon if changed
@@ -1360,7 +1358,7 @@ class YjsProjectBridge {
             // Sync title
             const blockName = blockMap.get('blockName');
             if (titleEl && blockName !== undefined && titleEl.textContent !== blockName) {
-              titleEl.textContent = blockName;
+              this._syncBlockTitle(titleEl, blockName);
               Logger.log(`[YjsProjectBridge] Synced block title: ${blockId} -> ${blockName}`);
             }
 
@@ -1378,6 +1376,7 @@ class YjsProjectBridge {
               // Update blockNode.blockName if needed
               if (blockName !== undefined && blockNode.blockName !== blockName) {
                 blockNode.blockName = blockName;
+                this._syncBlockTitle(titleEl || blockNode.blockNameElementText, blockName, blockNode);
                 Logger.log(`[YjsProjectBridge] Synced blockNode.blockName: ${blockId} -> ${blockName}`);
               }
 
@@ -1398,6 +1397,39 @@ class YjsProjectBridge {
         }
       }
     });
+  }
+
+  /**
+   * Sync a block title and render LaTeX when applicable.
+   * Prefer blockNode.renderBlockTitle() to keep raw LaTeX/edit state consistent.
+   * @param {HTMLElement|null} titleEl
+   * @param {string} blockName
+   * @param {Object|null} blockNode
+   */
+  _syncBlockTitle(titleEl, blockName, blockNode = null) {
+    if (blockNode?.renderBlockTitle) {
+      blockNode.renderBlockTitle();
+      return;
+    }
+
+    if (!titleEl) return;
+    titleEl.textContent = blockName || '';
+
+    if (!blockName || !/(?:\\\(|\\\[|\\begin\{)/.test(blockName)) return;
+    if (typeof MathJax === 'undefined' || !MathJax.typesetPromise) return;
+    if (Object.prototype.hasOwnProperty.call(titleEl, 'isConnected') && titleEl.isConnected === false) return;
+
+    const startup = MathJax.startup?.promise || Promise.resolve();
+    startup
+      .then(() => {
+        if (typeof MathJax.typesetClear === 'function') {
+          MathJax.typesetClear([titleEl]);
+        }
+        return MathJax.typesetPromise([titleEl]);
+      })
+      .catch((err) => {
+        Logger.log('[YjsProjectBridge] Block title MathJax typeset error:', err);
+      });
   }
 
   /**
