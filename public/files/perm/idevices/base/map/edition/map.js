@@ -19,6 +19,7 @@ var $exeDevice = {
     activeSlide: 0,
     activeTest: 0,
     slides: [],
+    tests: [],
     testsPoint: [],
     points: [],
     selectsGame: [],
@@ -252,6 +253,9 @@ var $exeDevice = {
         );
         msgs.msgCloseSlide = _(
             'You must close the edited presentation before saving the activity.'
+        );
+        msgs.msgCloseTest = _(
+            'You must close the edited questionnaire before saving the activity.'
         );
         msgs.msgEOneSlide = _(
             'There must be at least one slide in the presentation.'
@@ -1076,8 +1080,6 @@ var $exeDevice = {
         $('#mapaPFooter').val(p.footer);
 
         $exeDevice.setIconType(p.iconType);
-         console.log('El tipo es', p.type);
-
         $('#mapaIdentify').val(p.question);
         $('#mapaLink').val(p.link);
         $('#mapaURLAudioIdentify').val(p.question_audio);
@@ -1879,6 +1881,11 @@ var $exeDevice = {
 
         if ($exeDevice.slides.length > 0) {
             $exeDevice.showMessage($exeDevice.msgs.msgCloseSlide);
+            return false;
+        }
+
+        if ($exeDevice.tests && $exeDevice.tests.length > 0) {
+            $exeDevice.showMessage($exeDevice.msgs.msgCloseTest);
             return false;
         }
 
@@ -4582,8 +4589,7 @@ var $exeDevice = {
             message = true;
         } else {
             $exeDevice.showMessage(message);
-            m;
-            essage = false;
+            message = false;
         }
         return message;
     },

@@ -667,7 +667,7 @@ export interface IdeviceConfig {
  */
 export interface LibraryPattern {
     name: string;
-    type: 'class' | 'rel' | 'regex';
+    type: 'class' | 'rel' | 'regex' | 'data';
     pattern: string | RegExp;
     files: string[];
     requiresLatexCheck?: boolean;

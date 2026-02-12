@@ -104,7 +104,13 @@ const versionInput = versionArg || process.env.VERSION || process.env.APP_VERSIO
 const buildVersion = resolveVersion(versionInput);
 
 // Log version resolution for CI/CD debugging
-const versionSource = versionArg ? 'CLI' : (process.env.VERSION ? 'VERSION env' : (process.env.APP_VERSION ? 'APP_VERSION env' : 'default'));
+const versionSource = versionArg
+    ? 'CLI'
+    : process.env.VERSION
+      ? 'VERSION env'
+      : process.env.APP_VERSION
+        ? 'APP_VERSION env'
+        : 'default';
 console.log(`[Version] Input: ${versionInput || '(none)'} (${versionSource}) → Output: ${buildVersion}`);
 
 // Get git commit hash for cache busting (ensures cache invalidation on each deploy)
@@ -318,8 +324,12 @@ export function parseIdeviceConfig(xmlContent: string, ideviceId: string, basePa
                 const extension = tag.includes('js') ? '.js' : '.css';
                 if (fs.existsSync(folderPath)) {
                     try {
-                        filenames = fs.readdirSync(folderPath)
-                            .filter(file => file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'))
+                        filenames = fs
+                            .readdirSync(folderPath)
+                            .filter(
+                                file =>
+                                    file.endsWith(extension) && !file.includes('.test.') && !file.includes('.spec.'),
+                            )
                             .sort((a, b) => {
                                 if (a === `${ideviceId}${extension}`) return -1;
                                 if (b === `${ideviceId}${extension}`) return 1;
@@ -629,69 +639,48 @@ export function processNjkTemplateContent(content: string, version: string): str
     // 1a. Handle {{ 'Text' | trans }} in known attributes
     content = content.replace(
         /title="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
-        'title="$1" data-i18n-title="$1"'
+        'title="$1" data-i18n-title="$1"',
     );
     content = content.replace(
         /placeholder="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
-        'placeholder="$1" data-i18n-placeholder="$1"'
+        'placeholder="$1" data-i18n-placeholder="$1"',
     );
     content = content.replace(
         /aria-label="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
-        'aria-label="$1" data-i18n-aria-label="$1"'
+        'aria-label="$1" data-i18n-aria-label="$1"',
     );
-    content = content.replace(
-        /alt="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
-        'alt="$1" data-i18n-alt="$1"'
-    );
+    content = content.replace(/alt="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g, 'alt="$1" data-i18n-alt="$1"');
 
     // 1b. Handle {{ t.xxx or 'Text' }} in known attributes
     content = content.replace(
         /title="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
-        'title="$1" data-i18n-title="$1"'
+        'title="$1" data-i18n-title="$1"',
     );
     content = content.replace(
         /placeholder="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
-        'placeholder="$1" data-i18n-placeholder="$1"'
+        'placeholder="$1" data-i18n-placeholder="$1"',
     );
     content = content.replace(
         /aria-label="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
-        'aria-label="$1" data-i18n-aria-label="$1"'
+        'aria-label="$1" data-i18n-aria-label="$1"',
     );
-    content = content.replace(
-        /alt="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
-        'alt="$1" data-i18n-alt="$1"'
-    );
+    content = content.replace(/alt="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g, 'alt="$1" data-i18n-alt="$1"');
 
     // 1c. Handle translations in OTHER attributes (just use text, can't add data-i18n)
     // This catches data-*, aria-*, and any other attributes we don't specifically handle
-    content = content.replace(
-        /(\w[-\w]*)="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g,
-        '$1="$2"'
-    );
-    content = content.replace(
-        /(\w[-\w]*)="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g,
-        '$1="$2"'
-    );
+    content = content.replace(/(\w[-\w]*)="\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}"/g, '$1="$2"');
+    content = content.replace(/(\w[-\w]*)="\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}"/g, '$1="$2"');
 
     // STEP 2: Handle translations in ELEMENT CONTENT
 
     // 2a. Handle {{ 'Text' | trans }} that is the SOLE content of an element
-    content = content.replace(
-        />(\s*)\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}(\s*)</g,
-        ' data-i18n="$2">$1$2$3<'
-    );
+    content = content.replace(/>(\s*)\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}(\s*)</g, ' data-i18n="$2">$1$2$3<');
 
     // 2b. Handle remaining {{ 'Text' | trans }} (mixed with other content)
-    content = content.replace(
-        /\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g,
-        '<span data-i18n="$1">$1</span>'
-    );
+    content = content.replace(/\{\{\s*['"]([^'"]+)['"]\s*\|\s*trans\s*\}\}/g, '<span data-i18n="$1">$1</span>');
 
     // 2c. Handle {{ t.xxx or 'Text' }} in content (wrap in span)
-    content = content.replace(
-        /\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}/g,
-        '<span data-i18n="$1">$1</span>'
-    );
+    content = content.replace(/\{\{\s*t\.\w+\s+or\s+['"]([^'"]+)['"]\s*\}\}/g, '<span data-i18n="$1">$1</span>');
 
     // Replace {{ basePath }}/path with ./path (relative paths for static mode)
     content = content.replace(/\{\{\s*basePath\s*\}\}\//g, './');
@@ -707,16 +696,10 @@ export function processNjkTemplateContent(content: string, version: string): str
     // Keep content if version contains '-', remove otherwise
     if (version.includes('-')) {
         // Keep the content, just remove the conditional tags
-        content = content.replace(
-            /\{%\s*if\s+'-'\s+in\s+app_version\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
-            '$1'
-        );
+        content = content.replace(/\{%\s*if\s+'-'\s+in\s+app_version\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g, '$1');
     } else {
         // Remove the entire conditional block
-        content = content.replace(
-            /\{%\s*if\s+'-'\s+in\s+app_version\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
-            ''
-        );
+        content = content.replace(/\{%\s*if\s+'-'\s+in\s+app_version\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g, '');
     }
 
     // Replace other simple {{ variable }} patterns (remove them for static)
@@ -724,28 +707,16 @@ export function processNjkTemplateContent(content: string, version: string): str
 
     // Process conditionals for isOfflineInstallation (true in static mode):
     // KEEP content inside {% if config.isOfflineInstallation %}...{% endif %}
-    content = content.replace(
-        /\{%\s*if\s+config\.isOfflineInstallation\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g,
-        '$1'
-    );
+    content = content.replace(/\{%\s*if\s+config\.isOfflineInstallation\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g, '$1');
     // REMOVE content inside {% if not config.isOfflineInstallation %}...{% endif %}
-    content = content.replace(
-        /\{%\s*if\s+not\s+config\.isOfflineInstallation\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
-        ''
-    );
+    content = content.replace(/\{%\s*if\s+not\s+config\.isOfflineInstallation\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g, '');
     // Process conditionals for platformIntegration (false in static mode):
     // REMOVE content inside {% if config.platformIntegration %}...{% endif %}
-    content = content.replace(
-        /\{%\s*if\s+config\.platformIntegration\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
-        ''
-    );
+    content = content.replace(/\{%\s*if\s+config\.platformIntegration\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g, '');
 
     // REMOVE user-related conditionals (no user in static mode)
     // Matches {% if user.something %}...{% else %}...{% endif %} or {% if user.something %}...{% endif %}
-    content = content.replace(
-        /\{%\s*if\s+user\.\w+\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g,
-        ''
-    );
+    content = content.replace(/\{%\s*if\s+user\.\w+\s*%\}[\s\S]*?\{%\s*endif\s*%\}/g, '');
 
     // Remove remaining {% ... %} tags (other conditionals, includes, etc.)
     content = content.replace(/\{%[\s\S]*?%\}/g, '');
@@ -1071,7 +1042,7 @@ export function buildApiParameters(): ApiParameters {
                         default: 'Theme default',
                         opendyslexic: 'OpenDyslexic',
                         andika: 'Andika',
-                        'atkinson-hyperlegible-next':'Atkinson Hyperlegible Next',
+                        'atkinson-hyperlegible-next': 'Atkinson Hyperlegible Next',
                         nunito: 'Nunito',
                         'playwrite-es': 'Playwrite ES',
                     },
@@ -1102,7 +1073,13 @@ export function buildApiParameters(): ApiParameters {
         odeProjectSyncCataloguingConfig: {},
         // Component properties
         odeComponentsSyncPropertiesConfig: {
-            visibility: { title: 'Visible in export', value: 'true', type: 'checkbox', category: null, heritable: true },
+            visibility: {
+                title: 'Visible in export',
+                value: 'true',
+                type: 'checkbox',
+                category: null,
+                heritable: true,
+            },
             teacherOnly: { title: 'Teacher only', value: 'false', type: 'checkbox', category: null, heritable: true },
             identifier: { title: 'ID', value: '', type: 'text', category: null, heritable: false },
             cssClass: { title: 'CSS Class', value: '', type: 'text', category: null, heritable: true },
@@ -1110,20 +1087,62 @@ export function buildApiParameters(): ApiParameters {
         // Navigation structure properties
         odeNavStructureSyncPropertiesConfig: {
             titleNode: { title: 'Title', value: '', type: 'text', category: 'General', heritable: false },
-            hidePageTitle: { title: 'Hide page title', type: 'checkbox', category: 'General', value: 'false', heritable: false },
+            hidePageTitle: {
+                title: 'Hide page title',
+                type: 'checkbox',
+                category: 'General',
+                value: 'false',
+                heritable: false,
+            },
             titleHtml: { title: 'Title HTML', value: '', type: 'text', category: 'Advanced (SEO)', heritable: false },
-            editableInPage: { title: 'Different title on the page', type: 'checkbox', category: 'General', value: 'false', alwaysVisible: true },
+            editableInPage: {
+                title: 'Different title on the page',
+                type: 'checkbox',
+                category: 'General',
+                value: 'false',
+                alwaysVisible: true,
+            },
             titlePage: { title: 'Title in page', value: '', type: 'text', category: 'General', heritable: false },
-            visibility: { title: 'Visible in export', value: 'true', type: 'checkbox', category: 'General', heritable: true },
-            highlight: { title: 'Highlight this page', value: 'false', type: 'checkbox', category: 'General', heritable: false },
-            description: { title: 'Description', value: '', type: 'textarea', category: 'Advanced (SEO)', heritable: false },
+            visibility: {
+                title: 'Visible in export',
+                value: 'true',
+                type: 'checkbox',
+                category: 'General',
+                heritable: true,
+            },
+            highlight: {
+                title: 'Highlight this page',
+                value: 'false',
+                type: 'checkbox',
+                category: 'General',
+                heritable: false,
+            },
+            description: {
+                title: 'Description',
+                value: '',
+                type: 'textarea',
+                category: 'Advanced (SEO)',
+                heritable: false,
+            },
         },
         // Block/page structure properties
         odePagStructureSyncPropertiesConfig: {
             identifier: { title: 'ID', value: '', type: 'text', category: null, heritable: false },
-            visibility: { title: 'Visible in export', value: 'true', type: 'checkbox', category: null, heritable: true },
+            visibility: {
+                title: 'Visible in export',
+                value: 'true',
+                type: 'checkbox',
+                category: null,
+                heritable: true,
+            },
             teacherOnly: { title: 'Teacher only', value: 'false', type: 'checkbox', category: null, heritable: true },
-            allowToggle: { title: 'Allows to minimize/display content', value: 'true', type: 'checkbox', category: null, heritable: true },
+            allowToggle: {
+                title: 'Allows to minimize/display content',
+                value: 'true',
+                type: 'checkbox',
+                category: null,
+                heritable: true,
+            },
             minimized: { title: 'Start minimized', value: 'false', type: 'checkbox', category: null, heritable: true },
             cssClass: { title: 'CSS Class', value: '', type: 'text', category: null, heritable: true },
         },
@@ -1163,64 +1182,68 @@ function generateStaticHtml(bundleData: object): string {
  * @returns JSON string of the manifest
  */
 export function generatePwaManifestContent(version: string, hash: string): string {
-    return JSON.stringify({
-        name: `eXeLearning Editor (${version})`,
-        short_name: 'eXeLearning',
-        description: 'Create interactive educational content offline. Open source authoring tool for educators.',
-        start_url: './index.html',
-        scope: './',
-        display: 'standalone',
-        orientation: 'any',
-        background_color: '#ffffff',
-        theme_color: '#00a99d',
-        categories: ['education', 'productivity'],
-        lang: 'en',
-        dir: 'ltr',
-        icons: [
-            {
-                src: './favicon.ico',
-                sizes: '48x48',
-                type: 'image/x-icon',
-            },
-            {
-                src: './exelearning.png',
-                sizes: '96x96',
-                type: 'image/png',
-                purpose: 'any',
-            },
-            {
-                src: './images/logo.svg',
-                sizes: 'any',
-                type: 'image/svg+xml',
-                purpose: 'any maskable',
-            },
-        ],
-        file_handlers: [
-            {
+    return JSON.stringify(
+        {
+            name: `eXeLearning Editor (${version})`,
+            short_name: 'eXeLearning',
+            description: 'Create interactive educational content offline. Open source authoring tool for educators.',
+            start_url: './index.html',
+            scope: './',
+            display: 'standalone',
+            orientation: 'any',
+            background_color: '#ffffff',
+            theme_color: '#00a99d',
+            categories: ['education', 'productivity'],
+            lang: 'en',
+            dir: 'ltr',
+            icons: [
+                {
+                    src: './favicon.ico',
+                    sizes: '48x48',
+                    type: 'image/x-icon',
+                },
+                {
+                    src: './exelearning.png',
+                    sizes: '96x96',
+                    type: 'image/png',
+                    purpose: 'any',
+                },
+                {
+                    src: './images/logo.svg',
+                    sizes: 'any',
+                    type: 'image/svg+xml',
+                    purpose: 'any maskable',
+                },
+            ],
+            file_handlers: [
+                {
+                    action: './index.html',
+                    accept: {
+                        'application/x-exelearning': ['.elpx', '.elp'],
+                    },
+                },
+            ],
+            share_target: {
                 action: './index.html',
-                accept: {
-                    'application/x-exelearning': ['.elpx', '.elp'],
+                method: 'POST',
+                enctype: 'multipart/form-data',
+                params: {
+                    files: [
+                        {
+                            name: 'file',
+                            accept: ['.elpx', '.elp', 'application/zip'],
+                        },
+                    ],
                 },
             },
-        ],
-        share_target: {
-            action: './index.html',
-            method: 'POST',
-            enctype: 'multipart/form-data',
-            params: {
-                files: [
-                    {
-                        name: 'file',
-                        accept: ['.elpx', '.elp', 'application/zip'],
-                    },
-                ],
+            launch_handler: {
+                client_mode: 'navigate-existing',
             },
+            id: `exelearning-${version}-${hash}`,
         },
-        launch_handler: {
-            client_mode: 'navigate-existing',
-        },
-        id: `exelearning-${version}-${hash}`,
-    }, null, 2);
+        null,
+        2,
+    );
 }
 
 /**
@@ -1341,7 +1364,7 @@ function copyDirRecursive(
     src: string,
     dest: string,
     exclude: string[] = [],
-    excludePatterns: string[] = ['.test.js', '.spec.js']
+    excludePatterns: string[] = ['.test.js', '.spec.js'],
 ) {
     if (!fs.existsSync(src)) {
         console.warn(`Source not found: ${src}`);
@@ -1355,7 +1378,7 @@ function copyDirRecursive(
         if (entry.name.startsWith('.')) continue;
         if (exclude.includes(entry.name)) continue;
         // Skip test files
-        if (excludePatterns.some((pattern) => entry.name.endsWith(pattern))) continue;
+        if (excludePatterns.some(pattern => entry.name.endsWith(pattern))) continue;
 
         const srcPath = path.join(src, entry.name);
         const destPath = path.join(dest, entry.name);
@@ -1410,10 +1433,7 @@ async function buildStaticBundle() {
     // Write bundle.json
     const dataDir = path.join(outputDir, 'data');
     fs.mkdirSync(dataDir, { recursive: true });
-    fs.writeFileSync(
-        path.join(dataDir, 'bundle.json'),
-        JSON.stringify(bundleData, null, 2)
-    );
+    fs.writeFileSync(path.join(dataDir, 'bundle.json'), JSON.stringify(bundleData, null, 2));
     console.log('  Created data/bundle.json');
 
     // 2. Generate static HTML
@@ -1433,46 +1453,28 @@ async function buildStaticBundle() {
     console.log('\n4. Copying static assets...');
 
     // Copy app folder
-    copyDirRecursive(
-        path.join(projectRoot, 'public/app'),
-        path.join(outputDir, 'app'),
-        ['test', 'spec']
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/app'), path.join(outputDir, 'app'), ['test', 'spec']);
     console.log('  Copied app/');
 
     // Copy libs folder
-    copyDirRecursive(
-        path.join(projectRoot, 'public/libs'),
-        path.join(outputDir, 'libs')
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'));
+
     console.log('  Copied libs/');
 
     // Copy style folder
-    copyDirRecursive(
-        path.join(projectRoot, 'public/style'),
-        path.join(outputDir, 'style')
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/style'), path.join(outputDir, 'style'));
     console.log('  Copied style/');
 
     // Copy bundles folder (pre-built resource ZIPs)
-    copyDirRecursive(
-        path.join(projectRoot, 'public/bundles'),
-        path.join(outputDir, 'bundles')
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/bundles'), path.join(outputDir, 'bundles'));
     console.log('  Copied bundles/');
 
     // Copy files/perm (themes, iDevices, favicon)
-    copyDirRecursive(
-        path.join(projectRoot, 'public/files/perm'),
-        path.join(outputDir, 'files/perm')
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/files/perm'), path.join(outputDir, 'files/perm'));
     console.log('  Copied files/perm/');
 
     // Copy images folder (default-avatar.svg, logo.svg, etc.)
-    copyDirRecursive(
-        path.join(projectRoot, 'public/images'),
-        path.join(outputDir, 'images')
-    );
+    copyDirRecursive(path.join(projectRoot, 'public/images'), path.join(outputDir, 'images'));
     console.log('  Copied images/');
 
     // Copy exelearning.png to root
