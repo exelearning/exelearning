@@ -85,6 +85,7 @@ export class PrintPreviewExporter {
     ) {
         this.document = document;
         this.assets = assetProvider;
+        // ResourceProvider usage pending refactor of IdeviceRenderer
         this.ideviceRenderer = new IdeviceRenderer();
         this.pageRenderer = new PageRenderer(this.ideviceRenderer);
     }
@@ -276,85 +277,91 @@ figure img {
 }
 /* Fix for specific eXe layout issues */
 .iDevice_content {
-    /* 3. Force visibility for maps, definition lists and UDL content blocks globally */
-    .mapa-LinkTextsPoints,
-    .js-hidden.mapa-LinkTextsPoints,
-    .js .js-hidden.mapa-LinkTextsPoints,
-    .mapa-IDevice .js-hidden.mapa-LinkTextsPoints {
+    overflow-x: auto;
+}
+
+/* FIX: Force visibility globally (Screen & Print) */
+/* The div with coordinates in Map iDevice should be visible even if js-hidden */
+.mapa-LinkTextsPoints,
+.js-hidden.mapa-LinkTextsPoints,
+.js .js-hidden.mapa-LinkTextsPoints,
+.mapa-IDevice .js-hidden.mapa-LinkTextsPoints {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Force visibility for Definition List descriptions */
+.js .exe-dl dd {
+    display: block !important;
+}
+
+/* Force visibility for UDL Content Blocks */
+.exe-udlContent-block,.exe-udlContent-block.js-hidden,
+.js .exe-udlContent-block.js-hidden {
+    display: block !important;
+}
+
+/* PRINT MODE */
+@media print {
+    /* Reset preview-specific styles */
+    body {
+        padding: 0 !important;
+        background-color: transparent !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    .exe-single-page {
+        box-shadow: none !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* 1. Avoid cutting images between pages */
+    img, figure, video, object, iframe, table, svg, canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+    
+    pre, blockquote {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        white-space: pre-wrap;
+    }
+
+    /* 2. Hide Title and Subtitle (Header) */
+    /* The main header contains the project title and subtitle */
+    /* Ensure package header (Project Title) is visible on the first page only */
+    .package-header {
         display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
+        visibility: visible !important; 
+        position: static !important; /* Ensure it flows normally */
     }
 
-    .js .exe-dl dd {
-        display: block !important;
+    /* Hide individual page headers if needed, or other decorations */
+    #nodeDecoration { 
+        display: none !important; 
     }
 
-    .exe-udlContent-block,
-    .exe-udlContent-block.js-hidden,
-    .js .exe-udlContent-block.js-hidden {
-        display: block !important;
+    /* Hide navigation in print mode */
+    #siteNav, .single-page-nav { display: none !important; }
+    
+    #made-with-eXe { display: none; }
+    
+    .single-page-section {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        border-bottom: none;
     }
+}
 
-    /* PRINT MODE */
-    @media print {
-        /* Reset preview-specific styles */
-        body {
-            padding: 0 !important;
-            background-color: transparent !important;
-            overflow: visible !important;
-            height: auto !important;
-        }
-        .exe-single-page {
-            box-shadow: none !important;
-            max-width: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        /* Avoid cutting images between pages */
-        img, figure, video, object, iframe, table, svg, canvas {
-            max-width: 100% !important;
-            height: auto !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-        }
-        
-        pre, blockquote {
-            page-break-inside: avoid;
-            break-inside: avoid;
-            white-space: pre-wrap;
-        }
-
-        /* Hide Headers and Subtitles */
-        .main-header, 
-        #nodeDecoration { 
-            display: none !important; 
-        }
-
-        /* Ensure Package Header is visible on first page */
-        .package-header {
-            display: block !important;
-            visibility: visible !important; 
-            position: static !important;
-        }
-
-        /* Hide navigation */
-        #siteNav, .single-page-nav { display: none !important; }
-        
-        #made-with-eXe { display: none; }
-        
-        .single-page-section {
-            page-break-inside: avoid;
-            break-inside: avoid;
-            border-bottom: none;
-        }
-    }
-
-    /* Force visibility for feedback elements */
-    .feedback.js-hidden {
-        display: block !important;
-    }
+/* Force visibility for feedback elements even if JS tries to hide them */
+.feedback.js-hidden {
+    display: block !important;
+}
 ${logoCss}
 </style>
 `;
@@ -459,7 +466,7 @@ ${logoCss}
                             asset.data instanceof Blob
                                 ? asset.data
                                 : // biome-ignore lint/suspicious/noExplicitAny: legacy data type compatibility
-                                new Blob([asset.data as any], { type: asset.mime });
+                                  new Blob([asset.data as any], { type: asset.mime });
                         blobUrl = URL.createObjectURL(blob);
                     } catch (err) {
                         console.error('[PrintPreview] Failed to create Blob URL for asset:', asset.id, err);
