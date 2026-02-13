@@ -34,9 +34,11 @@ export default class UserPreferences {
 
         // Final fallback to minimal defaults
         // Note: advancedMode defaults to 'true' in static mode so all features are visible
+        // locale defaults to the app's configured locale (from server config)
         if (!preferencesConfig) {
+            const appLocale = app.eXeLearning?.config?.locale || 'es';
             preferencesConfig = {
-                locale: { title: 'Language', value: 'en', type: 'select' },
+                locale: { title: 'Language', value: appLocale, type: 'select' },
                 advancedMode: { title: 'Advanced Mode', value: isStaticMode ? 'true' : 'false', type: 'checkbox' },
                 versionControl: { title: 'Version Control', value: 'false', type: 'checkbox' },
             };
