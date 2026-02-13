@@ -194,6 +194,7 @@ let appDataPath;
 let mainWindow;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
+let youtubeHeadersConfigured = false;
 
 // Environment variables container
 let customEnv;
@@ -524,6 +525,43 @@ function attachOpenHandler(win) {
     });
 }
 
+/**
+ * Ensure YouTube embeds receive HTTP headers required by their anti-abuse checks.
+ * In Electron with custom protocols (app://), Referer can be missing/unsupported,
+ * which may trigger YouTube error 153.
+ */
+function configureYouTubeEmbedHeaders() {
+    if (youtubeHeadersConfigured) return;
+    youtubeHeadersConfigured = true;
+
+    const filter = {
+        urls: [
+            '*://youtube.com/*',
+            '*://*.youtube.com/*',
+            '*://youtube-nocookie.com/*',
+            '*://*.youtube-nocookie.com/*',
+        ],
+    };
+
+    session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+        const headers = details.requestHeaders || {};
+        const referer = headers.Referer || headers.referer || '';
+
+        // app:// and file:// referers are not accepted by YouTube embed checks.
+        const hasInvalidReferer =
+            !referer ||
+            referer.startsWith('app://') ||
+            referer.startsWith('file://');
+
+        if (hasInvalidReferer) {
+            headers.Referer = 'https://localhost/';
+            headers.Origin = headers.Origin || headers.origin || 'https://localhost';
+        }
+
+        callback({ requestHeaders: headers });
+    });
+}
+
 async function createWindow() {
     initializePaths(); // Initialize paths before using them
     initializeEnv(); // Initialize environment variables afterward
@@ -536,6 +574,7 @@ async function createWindow() {
     // Register the app:// protocol handler for serving static files
     // This replaces the HTTP server and enables Service Workers
     registerProtocolHandler();
+    configureYouTubeEmbedHeaders();
 
     const isDev = determineDevMode();
 
