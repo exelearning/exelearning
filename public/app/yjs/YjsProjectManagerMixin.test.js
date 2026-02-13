@@ -644,6 +644,10 @@ describe('YjsProjectManagerMixin', () => {
 
     it('updates both pageName and title', async () => {
       mockBridge.updatePage = mock(() => undefined);
+      const mockUpdatePageProperties = mock(() => true);
+      mockBridge.structureBinding = {
+        updatePageProperties: mockUpdatePageProperties,
+      };
       await projectManager.enableYjsMode(123, 'token');
 
       const result = projectManager.renamePageViaYjs('page-1', 'New Name');
@@ -651,6 +655,10 @@ describe('YjsProjectManagerMixin', () => {
       expect(mockBridge.updatePage).toHaveBeenCalledWith('page-1', {
         pageName: 'New Name',
         title: 'New Name',
+      });
+      // Also updates properties.titleNode so the modal reads the correct value
+      expect(mockUpdatePageProperties).toHaveBeenCalledWith('page-1', {
+        titleNode: 'New Name',
       });
       expect(result).toBe(true);
     });

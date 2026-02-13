@@ -748,6 +748,10 @@ export default class MenuStructureCompose {
         });
 
         function onTreeKeydown(e) {
+            // Skip tree shortcuts during inline editing (contenteditable)
+            if (document.activeElement?.getAttribute('contenteditable') === 'true' ||
+                document.activeElement?.closest('[contenteditable="true"]')) return;
+
             const currentItem = document.activeElement.closest(
                 '.nav-element[role="treeitem"]'
             );
