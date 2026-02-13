@@ -859,8 +859,18 @@ export default class MenuStructureBehaviour {
                 if (textElement) {
                     textElement.setAttribute('title', newTitle);
                 }
+                // Typeset LaTeX in both page title and nav span
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    const elementsToTypeset = [textSpan];
+                    if (pageTitle) elementsToTypeset.push(pageTitle);
+                    MathJax.typesetPromise(elementsToTypeset).catch(() => {});
+                }
             } else {
                 textSpan.textContent = originalText;
+                // Re-typeset nav span to restore rendered LaTeX
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([textSpan]).catch(() => {});
+                }
             }
         };
 
