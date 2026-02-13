@@ -165,6 +165,18 @@ export default class UserPreferences {
                 }
             }
 
+            // First launch: persist detected preferences (including browser-detected locale)
+            // so they are anchored and won't change if the browser language changes later
+            if (!stored && this.preferences.locale?.value) {
+                const toStore = { userPreferences: {} };
+                for (const [key, pref] of Object.entries(this.preferences)) {
+                    if (pref && typeof pref === 'object' && 'value' in pref) {
+                        toStore.userPreferences[key] = { value: pref.value };
+                    }
+                }
+                localStorage.setItem('exe_user_preferences', JSON.stringify(toStore));
+            }
+
             // Apply preferences to UI
             if (this.preferences.advancedMode) {
                 this.manager.reloadMode(this.preferences.advancedMode.value);
