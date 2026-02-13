@@ -49,6 +49,7 @@ export default class App {
         this.sessionExpirationHandled = false;
         this.electronFileOpenHandlerBound = false;
         this.pendingElectronOpenFiles = [];
+        this.pendingStaticOpenFiles = [];
 
         if (!this.eXeLearning.config.isOfflineInstallation) {
             this.setupSessionMonitor();
@@ -61,6 +62,11 @@ export default class App {
     async init() {
         // Register file-open listener as early as possible to avoid losing IPC events.
         this.bindElectronFileOpenHandler();
+        // Pick up pending PWA/static file opens queued before app init.
+        if (window.__pendingImportFile instanceof File) {
+            this.pendingStaticOpenFiles.push(window.__pendingImportFile);
+            window.__pendingImportFile = null;
+        }
 
         // Initialize API (loads static data if in static mode)
         await this.api.init();
@@ -92,6 +98,8 @@ export default class App {
         await this.loadUser();
         // Show LOPDGDD modal if necessary and load project data
         await this.showModalLopd();
+        // Process pending static/PWA files after project init.
+        await this.flushPendingStaticOpenFilesWhenReady();
         // Process any pending Electron file-open events after project init.
         await this.flushPendingElectronOpenFilesWhenReady();
         // "Not for production use" warning
@@ -1177,6 +1185,23 @@ export default class App {
         }
     }
 
+    async openStaticFile(file) {
+        if (!(file instanceof File)) return;
+        if (!this.runtimeConfig?.isStaticMode?.()) return;
+
+        if (
+            !this.isYjsBridgeReadyForElectronOpen() ||
+            !this.modals?.openuserodefiles ||
+            typeof this.modals.openuserodefiles.largeFilesUpload !== 'function'
+        ) {
+            this.pendingStaticOpenFiles.push(file);
+            void this.flushPendingStaticOpenFilesWhenReady();
+            return;
+        }
+
+        this.modals.openuserodefiles.largeFilesUpload(file);
+    }
+
     isYjsBridgeReadyForElectronOpen() {
         const bridge = this.project?._yjsBridge;
         if (!bridge) return false;
@@ -1203,6 +1228,35 @@ export default class App {
         }
 
         await this.flushPendingElectronOpenFiles();
+    }
+
+    async flushPendingStaticOpenFilesWhenReady(maxWaitMs = 20000, pollMs = 150) {
+        if (this.pendingStaticOpenFiles.length === 0) return;
+
+        if (this.runtimeConfig?.isStaticMode?.()) {
+            const start = Date.now();
+            while (
+                this.pendingStaticOpenFiles.length > 0 &&
+                !this.isYjsBridgeReadyForElectronOpen() &&
+                Date.now() - start < maxWaitMs
+            ) {
+                await new Promise((resolve) => setTimeout(resolve, pollMs));
+            }
+        }
+
+        if (
+            !this.modals?.openuserodefiles ||
+            typeof this.modals.openuserodefiles.largeFilesUpload !== 'function' ||
+            this.pendingStaticOpenFiles.length === 0
+        ) {
+            return;
+        }
+
+        const filesToOpen = [...this.pendingStaticOpenFiles];
+        this.pendingStaticOpenFiles = [];
+        for (const file of filesToOpen) {
+            this.modals.openuserodefiles.largeFilesUpload(file);
+        }
     }
 
     async flushPendingElectronOpenFiles() {

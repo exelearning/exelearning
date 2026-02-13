@@ -1162,6 +1162,40 @@ describe('App utility methods', () => {
     });
   });
 
+  describe('openStaticFile', () => {
+    it('queues file when static mode bridge is not ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: vi.fn() },
+      };
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+      await appInstance.openStaticFile(mockFile);
+
+      expect(appInstance.pendingStaticOpenFiles).toEqual([mockFile]);
+      expect(appInstance.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+
+    it('uploads file when static mode is ready', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = {
+        _yjsBridge: {
+          getDocumentManager: vi.fn(() => ({})),
+        },
+      };
+      const largeFilesUploadSpy = vi.fn();
+      appInstance.modals = {
+        openuserodefiles: { largeFilesUpload: largeFilesUploadSpy },
+      };
+
+      const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
+      await appInstance.openStaticFile(mockFile);
+
+      expect(largeFilesUploadSpy).toHaveBeenCalledWith(mockFile);
+    });
+  });
+
   describe('initializedToasts', () => {
     it('calls toasts.init', async () => {
       const initSpy = vi.fn();
