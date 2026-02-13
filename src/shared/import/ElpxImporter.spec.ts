@@ -279,7 +279,9 @@ describe('ElpxImporter', () => {
                 'empty.txt': new Uint8Array([]),
             });
 
-            await expect(importer.importFromBuffer(emptyZip)).rejects.toThrow('No content.xml');
+            await expect(importer.importFromBuffer(emptyZip)).rejects.toThrow(
+                'Unable to open this file: content.xml is missing',
+            );
 
             ydoc.destroy();
         });
@@ -697,7 +699,7 @@ describe('ElpxImporter - Legacy Format', () => {
             const ydoc = new Y.Doc();
             const importer = new ElpxImporter(ydoc, null, silentLogger);
 
-            await expect(importer.importFromZipContents(zipContents)).rejects.toThrow('No content.xml');
+            await expect(importer.importFromZipContents(zipContents)).rejects.toThrow('content.xml is missing');
 
             ydoc.destroy();
         });
