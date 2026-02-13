@@ -748,6 +748,19 @@ describe('ProjectManager', () => {
             expect(projectManager._forceStructureImport).toBe(true);
         });
 
+        it('resets preview panel state when available', () => {
+            const resetSpy = vi.fn();
+            mockApp.interface.previewButton = {
+                getPanel: vi.fn(() => ({
+                    resetToDefaultState: resetSpy,
+                })),
+            };
+
+            projectManager.resetProject();
+
+            expect(resetSpy).toHaveBeenCalled();
+        });
+
         it('clears navigation tree DOM', () => {
             const nav = document.getElementById('structure-menu-nav');
             nav.innerHTML = '<div>Old content</div>';

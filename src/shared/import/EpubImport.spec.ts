@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as Y from 'yjs';
-import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { ElpxImporter } from './ElpxImporter';
-import { FileSystemAssetHandler } from './FileSystemAssetHandler';
 import type { Logger } from './interfaces';
 import * as fflate from 'fflate';
 
