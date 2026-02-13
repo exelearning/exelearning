@@ -374,6 +374,11 @@ const YjsProjectManagerMixin = {
         // Update both pageName and title to ensure Preview and exports show the new name
         // ELPX imports set both fields, and YjsDocumentAdapter.convertPage() prioritizes 'title'
         this._yjsBridge.updatePage(pageId, { pageName: newName, title: newName });
+        // Also update properties.titleNode so the properties modal reflects the new name
+        // (getPageProperties returns titleNode from the properties map when set, not pageName)
+        if (this._yjsBridge.structureBinding) {
+          this._yjsBridge.structureBinding.updatePageProperties(pageId, { titleNode: newName });
+        }
         Logger.log('[YjsProjectManager] Renamed page via Yjs:', pageId, newName);
         return true;
       }

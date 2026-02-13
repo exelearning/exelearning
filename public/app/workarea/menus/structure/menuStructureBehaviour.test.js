@@ -433,6 +433,113 @@ describe('MenuStructureBehaviour', () => {
             expect(selectSpy).not.toHaveBeenCalled();
         });
     });
+
+    describe('startInlinePageRename', () => {
+        it('activates contenteditable on the node-text-span', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            expect(span.getAttribute('contenteditable')).toBe('true');
+        });
+
+        it('calls renameNodeAndReload on blur with new text', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            span.textContent = 'Renamed Page';
+            span.dispatchEvent(new Event('blur'));
+            expect(mockStructureEngine.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'Renamed Page');
+        });
+
+        it('calls renameNodeAndReload on Enter key', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            span.textContent = 'Enter Renamed';
+            span.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            expect(mockStructureEngine.renameNodeAndReload).toHaveBeenCalledWith('node-1', 'Enter Renamed');
+        });
+
+        it('restores original text on Escape key', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            span.textContent = 'Changed';
+            span.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            expect(span.textContent).toBe('Node 1');
+            expect(mockStructureEngine.renameNodeAndReload).not.toHaveBeenCalled();
+        });
+
+        it('does not activate for root node', () => {
+            const rootElement = document.querySelector('.nav-element[nav-id="root"]');
+            behaviour.startInlinePageRename(rootElement);
+            const span = rootElement.querySelector('.node-text-span');
+            expect(span.hasAttribute('contenteditable')).toBe(false);
+        });
+
+        it('does not activate when already editing', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            const span = navElement.querySelector('.node-text-span');
+            span.setAttribute('contenteditable', 'true');
+            behaviour.startInlinePageRename(navElement);
+            // Should not throw and span should still have the original contenteditable
+            expect(span.getAttribute('contenteditable')).toBe('true');
+        });
+
+        it('disables draggable during editing and restores on finish', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            const textEl = navElement.querySelector('.nav-element-text');
+            textEl.setAttribute('draggable', 'true');
+            behaviour.startInlinePageRename(navElement);
+            expect(textEl.getAttribute('draggable')).toBe('false');
+            const span = navElement.querySelector('.node-text-span');
+            span.dispatchEvent(new Event('blur'));
+            expect(textEl.getAttribute('draggable')).toBe('true');
+        });
+
+        it('does not call rename when text has not changed', () => {
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            // Text stays as 'Node 1'
+            span.dispatchEvent(new Event('blur'));
+            expect(mockStructureEngine.renameNodeAndReload).not.toHaveBeenCalled();
+        });
+
+        it('updates #page-title-node-content after rename', () => {
+            const pageTitle = document.createElement('h1');
+            pageTitle.id = 'page-title-node-content';
+            pageTitle.textContent = 'Node 1';
+            document.body.appendChild(pageTitle);
+
+            const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.startInlinePageRename(navElement);
+            const span = navElement.querySelector('.node-text-span');
+            span.textContent = 'Updated Title';
+            span.dispatchEvent(new Event('blur'));
+
+            expect(pageTitle.textContent).toBe('Updated Title');
+            pageTitle.remove();
+        });
+
+        it('triggers inline rename on re-click of already-selected node', async () => {
+            const renameSpy = vi.spyOn(behaviour, 'startInlinePageRename').mockImplementation(() => {});
+            behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
+
+            behaviour.addEventNavElementOnclick();
+            const label = document.querySelector('.nav-element[nav-id="node-1"] > .nav-element-text');
+
+            // Mock selectNode to resolve the same element
+            vi.spyOn(behaviour, 'selectNode').mockResolvedValue(
+                document.querySelector('.nav-element[nav-id="node-1"]')
+            );
+
+            label.click();
+            await Promise.resolve();
+
+            expect(renameSpy).toHaveBeenCalled();
+        });
+    });
     
     // ... Keeping rest of tests for non-modified features ...
     
