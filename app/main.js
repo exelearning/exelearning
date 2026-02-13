@@ -201,6 +201,7 @@ let env;
 
 // ──────────────  Save/Export helpers  ──────────────
 const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
+const DEFAULT_EXTENSION = '.elpx';
 
 /**
  * Extract a known extension from a file path or suggested name.
@@ -236,35 +237,50 @@ function isLegacyElp(p) {
     }
 }
 
-function proposeElpxPath(currentPath, suggestedName = null) {
+function getDialogFilterForExt(ext) {
+    switch ((ext || '').toLowerCase()) {
+        case '.elpx':
+            return { name: 'eXeLearning project', extensions: ['elpx'] };
+        case '.zip':
+            return { name: 'ZIP archive', extensions: ['zip'] };
+        case '.epub':
+            return { name: 'EPUB', extensions: ['epub'] };
+        case '.xml':
+            return { name: 'XML document', extensions: ['xml'] };
+        default:
+            return null;
+    }
+}
+
+function proposeSavePath(currentPath, suggestedName = null) {
     try {
+        const ext = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
         const dir = currentPath ? path.dirname(currentPath) : app.getPath('documents');
-        // Use suggestedName if provided and no currentPath, otherwise extract from currentPath
         let base;
         if (currentPath) {
             base = path.basename(currentPath, path.extname(currentPath));
         } else if (suggestedName) {
-            // Extract base name from suggestedName (remove extension if present)
             base = path.basename(suggestedName, path.extname(suggestedName));
         } else {
             base = 'document';
         }
-        return path.join(dir, `${base}.elpx`);
+        return path.join(dir, `${base}${ext}`);
     } catch (_e) {
-        return suggestedName || 'document.elpx';
+        return suggestedName || `document${DEFAULT_EXTENSION}`;
     }
 }
 
-async function promptElpxSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
+async function promptSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
+    const inferredExt = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
+    const filter = getDialogFilterForExt(inferredExt);
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
         title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-        defaultPath: proposeElpxPath(currentPath, suggestedName),
+        defaultPath: proposeSavePath(currentPath, suggestedName),
         buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
-        filters: [{ name: 'eXeLearning project', extensions: ['elpx'] }],
+        ...(filter ? { filters: [filter] } : {}),
     });
     if (canceled || !filePath) return null;
-    // force .elpx if not included
-    return ensureExt(filePath, suggestedName || 'document.elpx');
+    return ensureExt(filePath, suggestedName || `document${DEFAULT_EXTENSION}`);
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -1150,13 +1166,13 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
 
         if (!targetPath) {
             // non remembered path → ask (use suggestedName for default filename)
-            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
         } else if (isLegacyElp(targetPath)) {
             // remembered path is .elp → forzar "Save as..." to .elpx
-            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
@@ -1247,13 +1263,13 @@ ipcMain.handle('app:saveBuffer', async (e, { base64Data, projectKey, suggestedNa
         let targetPath = getSavedPath(key);
         if (!targetPath) {
             // No remembered path → ask (use suggestedName for default filename)
-            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
         } else if (isLegacyElp(targetPath)) {
             // Remembered path is .elp → force "Save as..." to .elpx
-            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
