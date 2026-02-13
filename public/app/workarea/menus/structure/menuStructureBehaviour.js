@@ -112,8 +112,10 @@ export default class MenuStructureBehaviour {
                 // Ignore clicks from dropdown menu or trigger (let them bubble to menuNav delegation)
                 if (event.target.closest('.dropdown-menu') || event.target.closest('.page-settings-trigger')) return;
                 
-                // FIX: Close any open dropdowns before checking IDEvice or stopping propagation
-                // because this stopPropagation prevents the document click listener from closing them.
+                // Ignore clicks when inline editing is active
+                if (event.target.closest('.node-text-span[contenteditable="true"]')) return;
+
+                // Close any open dropdowns before checking iDevice or stopping propagation
                 const openDropdowns = document.querySelectorAll('.dropdown-menu.show');
                 openDropdowns.forEach(menu => {
                      const toggle = menu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
@@ -125,12 +127,18 @@ export default class MenuStructureBehaviour {
 
                 event.stopPropagation();
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                this.selectNode(element.parentElement).then((nodeElement) => {
+
+                const navElement = element.parentElement;
+                const wasAlreadySelected = this.nodeSelected &&
+                    navElement.getAttribute('nav-id') === this.nodeSelected.getAttribute('nav-id');
+
+                this.selectNode(navElement).then((nodeElement) => {
                     if (eXeLearning.app.project.checkOpenIdevice()) return;
-                    // Check dbclick
                     if (nodeElement && this.dbclickNode) {
                         this.showModalPropertiesNode();
                         this.dbclickNode = false;
+                    } else if (wasAlreadySelected && nodeElement) {
+                        this.startInlinePageRename(nodeElement);
                     }
                 });
             });
@@ -795,8 +803,109 @@ export default class MenuStructureBehaviour {
     }
 
     /**
+     * Activate inline contenteditable editing on a page title in the navigation tree.
+     * Follows the same pattern as block title editing (IdeviceBlockNode.makeBlockTitleElementText).
      *
+     * @param {Element} navElement - The .nav-element to rename
      */
+    startInlinePageRename(navElement) {
+        const navId = navElement.getAttribute('nav-id');
+        if (navId === 'root') return;
+
+        const textSpan = navElement.querySelector('.node-text-span');
+        if (!textSpan || textSpan.getAttribute('contenteditable') === 'true') return;
+
+        const node = this.structureEngine.getNode(navId);
+        if (!node) return;
+
+        const originalText = node.pageName;
+        const textElement = navElement.querySelector('.nav-element-text');
+
+        // Restore raw title text before editing (the span may contain rendered MathJax DOM)
+        const rawTitle = textElement?.getAttribute('title') || originalText;
+        textSpan.textContent = rawTitle;
+
+        textSpan.setAttribute('contenteditable', 'true');
+        textSpan.focus();
+
+        const range = document.createRange();
+        range.selectNodeContents(textSpan);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+
+        if (textElement) {
+            textElement.setAttribute('draggable', 'false');
+        }
+
+        let finished = false;
+
+        const finishEditing = (save) => {
+            if (finished) return;
+            finished = true;
+
+            const newTitle = textSpan.textContent.trim();
+            textSpan.removeAttribute('contenteditable');
+            textSpan.removeEventListener('blur', onBlur);
+            textSpan.removeEventListener('keydown', onKeydown);
+
+            if (textElement) {
+                textElement.setAttribute('draggable', 'true');
+            }
+
+            if (save && newTitle && newTitle !== rawTitle) {
+                this.structureEngine.renameNodeAndReload(navId, newTitle);
+                // Eagerly update in-memory property so the modal shows the new title
+                if (node.properties?.titleNode) {
+                    node.properties.titleNode.value = newTitle;
+                }
+                // Only update page title h1 if "Título diferente en la página" is NOT active
+                const editableInPage = node.properties?.editableInPage?.value;
+                const isEditableInPage = editableInPage === true || editableInPage === 'true';
+                const pageTitle = document.querySelector('#page-title-node-content');
+                if (pageTitle && !isEditableInPage) {
+                    pageTitle.textContent = newTitle;
+                }
+                if (textElement) {
+                    textElement.setAttribute('title', newTitle);
+                }
+                // Update properties modal input if it exists
+                const propInput = document.querySelector('input[property="titleNode"]');
+                if (propInput) {
+                    propInput.value = newTitle;
+                }
+                // Typeset LaTeX in both page title and nav span
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    const elementsToTypeset = [textSpan];
+                    if (pageTitle && !isEditableInPage) elementsToTypeset.push(pageTitle);
+                    MathJax.typesetPromise(elementsToTypeset).catch(() => {});
+                }
+            } else {
+                textSpan.textContent = originalText;
+                // Re-typeset nav span to restore rendered LaTeX
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([textSpan]).catch(() => {});
+                }
+            }
+        };
+
+        const onBlur = () => finishEditing(true);
+
+        const onKeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEditing(true);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                finishEditing(false);
+            }
+        };
+
+        textSpan.addEventListener('blur', onBlur);
+        textSpan.addEventListener('keydown', onKeydown);
+    }
+
     showModalPropertiesNode() {
         let node = this.structureEngine.getNode(
             this.nodeSelected.getAttribute('nav-id')
