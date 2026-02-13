@@ -432,6 +432,36 @@ describe('MenuStructureBehaviour', () => {
             // Should NOT have called selectNode because the handler ignores .dropdown-item
             expect(selectSpy).not.toHaveBeenCalled();
         });
+
+        it('supports Ctrl/Cmd additive multi-selection', () => {
+            const node1 = document.querySelector('.nav-element[nav-id="node-1"]');
+            const node2 = document.querySelector('.nav-element[nav-id="node-2"]');
+
+            behaviour.setNodeSelected(node1);
+            behaviour.handleMultiSelectionClick(
+                node2,
+                new MouseEvent('click', { ctrlKey: true, bubbles: true })
+            );
+
+            expect(behaviour.getSelectedNodeIds({ excludeRoot: false })).toEqual(
+                expect.arrayContaining(['node-1', 'node-2'])
+            );
+        });
+
+        it('supports Shift range multi-selection', () => {
+            const node1 = document.querySelector('.nav-element[nav-id="node-1"]');
+            const node2 = document.querySelector('.nav-element[nav-id="node-2"]');
+
+            behaviour.setNodeSelected(node1);
+            behaviour.handleMultiSelectionClick(
+                node2,
+                new MouseEvent('click', { shiftKey: true, bubbles: true })
+            );
+
+            expect(behaviour.getSelectedNodeIds({ excludeRoot: false })).toEqual(
+                expect.arrayContaining(['node-1', 'node-2'])
+            );
+        });
     });
 
     describe('startInlinePageRename', () => {
@@ -564,6 +594,20 @@ describe('MenuStructureBehaviour', () => {
             args.confirmExec();
             expect(mockStructureEngine.removeNodeCompleteAndReload).toHaveBeenCalledWith('node-1');
         });
+
+        it('deletes all selected pages in batch mode', () => {
+            behaviour.nodeSelected = document.querySelector('.nav-element[nav-id="node-1"]');
+            behaviour.selectedNodeIds = new Set(['node-1', 'node-2']);
+            vi.spyOn(behaviour, '_getAffectedUsersForDeletion').mockReturnValue([]);
+            vi.spyOn(behaviour, '_nodeHasDescendants').mockReturnValue(false);
+
+            behaviour.showModalRemoveNode();
+
+            const args = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+            args.confirmExec();
+            expect(mockStructureEngine.removeNodeCompleteAndReload).toHaveBeenCalledWith('node-1');
+            expect(mockStructureEngine.removeNodeCompleteAndReload).toHaveBeenCalledWith('node-2');
+        });
     });
     
     // ... existing tests definitions ...
@@ -685,6 +729,14 @@ describe('MenuStructureBehaviour', () => {
             const btn = document.querySelector('.button_nav_action.action_move_next');
             btn.click();
             expect(mockStructureEngine.moveNodeNext).toHaveBeenCalledWith('node-1');
+        });
+
+        it('moves all selected nodes', () => {
+            behaviour.selectedNodeIds = new Set(['node-1', 'node-2']);
+            const btn = document.querySelector('.button_nav_action.action_move_prev');
+            btn.click();
+            expect(mockStructureEngine.moveNodePrev).toHaveBeenCalledWith('node-1');
+            expect(mockStructureEngine.moveNodePrev).toHaveBeenCalledWith('node-2');
         });
 
         it('enables/disables buttons based on Yjs binding', () => {
@@ -1364,4 +1416,3 @@ describe('MenuStructureBehaviour', () => {
         });
     });
 });
-
