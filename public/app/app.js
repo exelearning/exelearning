@@ -93,7 +93,7 @@ export default class App {
         // Show LOPDGDD modal if necessary and load project data
         await this.showModalLopd();
         // Process any pending Electron file-open events after project init.
-        await this.flushPendingElectronOpenFiles();
+        await this.flushPendingElectronOpenFilesWhenReady();
         // "Not for production use" warning
         await this.showProvisionalDemoWarning();
         // To review (showProvisionalToDoWarning might be useful for future beta releases)
@@ -1128,6 +1128,7 @@ export default class App {
                 !this.isYjsBridgeReadyForElectronOpen()
             ) {
                 this.pendingElectronOpenFiles.push(filePath);
+                void this.flushPendingElectronOpenFilesWhenReady();
                 return;
             }
 
@@ -1136,6 +1137,7 @@ export default class App {
                 typeof this.modals.openuserodefiles.largeFilesUpload !== 'function'
             ) {
                 this.pendingElectronOpenFiles.push(filePath);
+                void this.flushPendingElectronOpenFilesWhenReady();
                 return;
             }
 
@@ -1181,6 +1183,26 @@ export default class App {
         const getDocumentManager = bridge.getDocumentManager;
         if (typeof getDocumentManager !== 'function') return false;
         return !!getDocumentManager.call(bridge);
+    }
+
+    async flushPendingElectronOpenFilesWhenReady(
+        maxWaitMs = 20000,
+        pollMs = 150
+    ) {
+        if (this.pendingElectronOpenFiles.length === 0) return;
+
+        if (this.runtimeConfig?.isStaticMode?.()) {
+            const start = Date.now();
+            while (
+                this.pendingElectronOpenFiles.length > 0 &&
+                !this.isYjsBridgeReadyForElectronOpen() &&
+                Date.now() - start < maxWaitMs
+            ) {
+                await new Promise((resolve) => setTimeout(resolve, pollMs));
+            }
+        }
+
+        await this.flushPendingElectronOpenFiles();
     }
 
     async flushPendingElectronOpenFiles() {
