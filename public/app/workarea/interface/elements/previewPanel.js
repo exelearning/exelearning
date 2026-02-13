@@ -47,9 +47,23 @@ export default class PreviewPanelManager {
     init() {
         this.bindEvents();
         this.subscribeToChanges();
-        this.restorePinnedState();
+        this.resetToDefaultState();
         this._setupVisibilityHandler();
         Logger.log('[PreviewPanel] Initialized');
+    }
+
+    /**
+     * Reset preview state to default (closed + unpinned)
+     * This is used on app startup and project open.
+     */
+    resetToDefaultState() {
+        this.isPinned = false;
+        this.isOpen = false;
+        this.panel?.classList.remove('active');
+        this.overlay?.classList.remove('active');
+
+        const workarea = document.getElementById('workarea');
+        workarea?.setAttribute('data-preview-pinned', 'false');
     }
 
     /**
@@ -345,9 +359,6 @@ export default class PreviewPanelManager {
         // Refresh content in pinned iframe
         await this.refresh();
 
-        // Store preference
-        this.savePinnedPreference(true);
-
         Logger.log('[PreviewPanel] Preview pinned to layout');
     }
 
@@ -369,9 +380,6 @@ export default class PreviewPanelManager {
 
         // Refresh content
         this.refresh();
-
-        // Store preference
-        this.savePinnedPreference(false);
 
         Logger.log('[PreviewPanel] Preview unpinned');
     }
@@ -650,54 +658,6 @@ export default class PreviewPanelManager {
             </html>
         `;
         this.injectHtmlToIframe(errorHtml);
-    }
-
-    /**
-     * Save pinned preference to localStorage
-     * @param {boolean} isPinned - Pinned state
-     */
-    savePinnedPreference(isPinned) {
-        try {
-            localStorage.setItem('exe-preview-pinned', isPinned ? 'true' : 'false');
-        } catch (e) {
-            // localStorage not available
-        }
-    }
-
-    /**
-     * Load pinned preference from localStorage
-     * @returns {boolean} Stored pinned state
-     */
-    loadPinnedPreference() {
-        try {
-            return localStorage.getItem('exe-preview-pinned') === 'true';
-        } catch (e) {
-            return false;
-        }
-    }
-
-    /**
-     * Restore pinned state on load (if preference was saved)
-     */
-    async restorePinnedState() {
-        if (this.loadPinnedPreference()) {
-            // Wait for project to be ready
-            const waitForProject = () => {
-                return new Promise((resolve) => {
-                    const check = () => {
-                        if (eXeLearning?.app?.project?._yjsBridge?.documentManager) {
-                            resolve();
-                        } else {
-                            setTimeout(check, 500);
-                        }
-                    };
-                    check();
-                });
-            };
-
-            await waitForProject();
-            await this.pin();
-        }
     }
 
     /**

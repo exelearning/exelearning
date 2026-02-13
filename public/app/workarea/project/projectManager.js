@@ -512,6 +512,12 @@ export default class projectManager {
         }
         Logger.log('[ProjectManager] ProjectState reset done');
 
+        // Reset preview panel state so each project starts with closed/unpinned preview
+        const previewPanel = this.app.interface?.previewButton?.getPanel?.();
+        if (previewPanel?.resetToDefaultState) {
+            previewPanel.resetToDefaultState();
+        }
+
         // CRITICAL: Clear navigation tree DOM first
         // This ensures old nodes are removed even if the structure engine fails
         const navTree = document.querySelector('#structure-menu-nav');

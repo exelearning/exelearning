@@ -143,14 +143,14 @@ describe('PreviewPanelManager', () => {
     it('should bind events and subscribe to changes', () => {
       const bindSpy = vi.spyOn(manager, 'bindEvents');
       const subscribeSpy = vi.spyOn(manager, 'subscribeToChanges');
-      const restoreSpy = vi.spyOn(manager, 'restorePinnedState').mockImplementation(() => Promise.resolve());
+      const resetSpy = vi.spyOn(manager, 'resetToDefaultState').mockImplementation(() => {});
       const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler').mockImplementation(() => {});
 
       manager.init();
 
       expect(bindSpy).toHaveBeenCalled();
       expect(subscribeSpy).toHaveBeenCalled();
-      expect(restoreSpy).toHaveBeenCalled();
+      expect(resetSpy).toHaveBeenCalled();
       expect(visibilitySpy).toHaveBeenCalled();
     });
   });
@@ -707,51 +707,20 @@ describe('PreviewPanelManager', () => {
   // as part of Phase 4 cleanup. These methods were used for the legacy blob URL
   // approach and are no longer needed with the Service Worker-based preview.
 
-  describe('restorePinnedState', () => {
-    it('should restore pinned state from localStorage', async () => {
-      const mockLocalStorage = {
-        getItem: vi.fn(() => 'true'),
-      };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
+  describe('resetToDefaultState', () => {
+    it('should close preview and clear pinned state', () => {
+      manager.isOpen = true;
+      manager.isPinned = true;
+      mockElements.previewsidenav.classList.add('active');
+      mockElements['preview-sidenav-overlay'].classList.add('active');
 
-      const pinSpy = vi.spyOn(manager, 'pin').mockImplementation(() => Promise.resolve());
-      await manager.restorePinnedState();
+      manager.resetToDefaultState();
 
-      expect(mockLocalStorage.getItem).toHaveBeenCalledWith('exe-preview-pinned');
-      expect(pinSpy).toHaveBeenCalled();
-    });
-
-    it('should not pin if localStorage value is not true', async () => {
-      const mockLocalStorage = {
-        getItem: vi.fn(() => 'false'),
-      };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      const pinSpy = vi.spyOn(manager, 'pin');
-      await manager.restorePinnedState();
-
-      expect(pinSpy).not.toHaveBeenCalled();
-    });
-
-    it('should handle localStorage errors gracefully', async () => {
-      const mockLocalStorage = {
-        getItem: vi.fn(() => {
-          throw new Error('localStorage error');
-        }),
-      };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      // Should not throw
-      await expect(manager.restorePinnedState()).resolves.not.toThrow();
+      expect(manager.isOpen).toBe(false);
+      expect(manager.isPinned).toBe(false);
+      expect(mockElements.previewsidenav.classList.contains('active')).toBe(false);
+      expect(mockElements['preview-sidenav-overlay'].classList.contains('active')).toBe(false);
+      expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
     });
   });
 
@@ -1158,73 +1127,24 @@ describe('PreviewPanelManager', () => {
     });
   });
 
-  describe('savePinnedPreference and loadPinnedPreference', () => {
-    it('should save true to localStorage', () => {
-      const mockLocalStorage = { setItem: vi.fn() };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      manager.savePinnedPreference(true);
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('exe-preview-pinned', 'true');
-    });
-
-    it('should save false to localStorage', () => {
-      const mockLocalStorage = { setItem: vi.fn() };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      manager.savePinnedPreference(false);
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('exe-preview-pinned', 'false');
-    });
-
-    it('should handle localStorage error on save gracefully', () => {
+  describe('pin state persistence', () => {
+    it('should not read or write pin state in localStorage', async () => {
       const mockLocalStorage = {
-        setItem: vi.fn(() => { throw new Error('localStorage error'); }),
+        getItem: vi.fn(),
+        setItem: vi.fn(),
       };
       Object.defineProperty(window, 'localStorage', {
         value: mockLocalStorage,
         writable: true,
       });
+      vi.spyOn(manager, 'refresh').mockResolvedValue();
 
-      expect(() => manager.savePinnedPreference(true)).not.toThrow();
-    });
+      manager.init();
+      await manager.pin();
+      manager.unpin();
 
-    it('should load true from localStorage', () => {
-      const mockLocalStorage = { getItem: vi.fn(() => 'true') };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      expect(manager.loadPinnedPreference()).toBe(true);
-    });
-
-    it('should return false for non-true values', () => {
-      const mockLocalStorage = { getItem: vi.fn(() => 'false') };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      expect(manager.loadPinnedPreference()).toBe(false);
-    });
-
-    it('should handle localStorage error on load gracefully', () => {
-      const mockLocalStorage = {
-        getItem: vi.fn(() => { throw new Error('localStorage error'); }),
-      };
-      Object.defineProperty(window, 'localStorage', {
-        value: mockLocalStorage,
-        writable: true,
-      });
-
-      expect(manager.loadPinnedPreference()).toBe(false);
+      expect(mockLocalStorage.getItem).not.toHaveBeenCalled();
+      expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
   });
 
