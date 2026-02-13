@@ -821,6 +821,10 @@ export default class MenuStructureBehaviour {
         const originalText = node.pageName;
         const textElement = navElement.querySelector('.nav-element-text');
 
+        // Restore raw title text before editing (the span may contain rendered MathJax DOM)
+        const rawTitle = textElement?.getAttribute('title') || originalText;
+        textSpan.textContent = rawTitle;
+
         textSpan.setAttribute('contenteditable', 'true');
         textSpan.focus();
 
@@ -850,19 +854,31 @@ export default class MenuStructureBehaviour {
                 textElement.setAttribute('draggable', 'true');
             }
 
-            if (save && newTitle && newTitle !== originalText) {
+            if (save && newTitle && newTitle !== rawTitle) {
                 this.structureEngine.renameNodeAndReload(navId, newTitle);
+                // Eagerly update in-memory property so the modal shows the new title
+                if (node.properties?.titleNode) {
+                    node.properties.titleNode.value = newTitle;
+                }
+                // Only update page title h1 if "Título diferente en la página" is NOT active
+                const editableInPage = node.properties?.editableInPage?.value;
+                const isEditableInPage = editableInPage === true || editableInPage === 'true';
                 const pageTitle = document.querySelector('#page-title-node-content');
-                if (pageTitle) {
+                if (pageTitle && !isEditableInPage) {
                     pageTitle.textContent = newTitle;
                 }
                 if (textElement) {
                     textElement.setAttribute('title', newTitle);
                 }
+                // Update properties modal input if it exists
+                const propInput = document.querySelector('input[property="titleNode"]');
+                if (propInput) {
+                    propInput.value = newTitle;
+                }
                 // Typeset LaTeX in both page title and nav span
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                     const elementsToTypeset = [textSpan];
-                    if (pageTitle) elementsToTypeset.push(pageTitle);
+                    if (pageTitle && !isEditableInPage) elementsToTypeset.push(pageTitle);
                     MathJax.typesetPromise(elementsToTypeset).catch(() => {});
                 }
             } else {
