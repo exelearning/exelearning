@@ -1086,11 +1086,229 @@ describe('ProjectManager', () => {
     });
 
     describe('checkAndImportElp', () => {
+        let originalFetch;
+        let originalHistoryReplaceState;
+
+        beforeEach(() => {
+            originalFetch = global.fetch;
+            originalHistoryReplaceState = window.history.replaceState;
+            window.__exeInitialProjectImported = undefined;
+
+            projectManager.app.modals.loader = {
+                show: vi.fn(),
+                hide: vi.fn(),
+            };
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue({
+                pages: 1,
+                blocks: 1,
+                components: 1,
+            });
+            projectManager._yjsBridge = {
+                documentManager: {
+                    saveToServer: vi.fn().mockResolvedValue(undefined),
+                },
+            };
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+            window.history.replaceState = originalHistoryReplaceState;
+            delete window.__exeInitialProjectImported;
+        });
+
         it('returns early when no import parameter in URL', async () => {
             // No import param, should just return without doing anything
             await projectManager.checkAndImportElp();
             // No error thrown means success
             expect(true).toBe(true);
+        });
+
+        it('imports from embedding initialProjectUrl and prevents duplicate import', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/course.elpx',
+                },
+            };
+
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+
+            await projectManager.checkAndImportElp();
+            await projectManager.checkAndImportElp();
+
+            expect(global.fetch).toHaveBeenCalledTimes(1);
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalledTimes(1);
+            expect(window.__exeInitialProjectImported).toBe('https://cdn.example.com/course.elpx');
+        });
+
+        it('imports from URL param, prefixes basePath and executes cleanup', async () => {
+            const OriginalURLSearchParams = global.URLSearchParams;
+            const OriginalURL = global.URL;
+            global.URLSearchParams = class MockURLSearchParams {
+                get(key) {
+                    return key === 'import' ? '/tmp/project.elpx' : null;
+                }
+            };
+            global.URL = class MockURL {
+                constructor(value) {
+                    const str = String(value || '');
+                    if (str.includes('/tmp/project.elpx')) {
+                        this.pathname = '/tmp/project.elpx';
+                        return;
+                    }
+                    this.searchParams = { delete: vi.fn() };
+                }
+            };
+            window.eXeLearning.config.basePath = '/exelearning';
+
+            const replaceStateSpy = vi.fn();
+            window.history.replaceState = replaceStateSpy;
+
+            global.fetch = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                });
+
+            try {
+                await projectManager.checkAndImportElp();
+
+                expect(global.fetch).toHaveBeenNthCalledWith(1, '/exelearning/tmp/project.elpx', { credentials: 'include' });
+                expect(global.fetch).toHaveBeenNthCalledWith(
+                    2,
+                    '/exelearning/api/project/cleanup-import?path=%2Ftmp%2Fproject.elpx',
+                    { method: 'DELETE' },
+                );
+                expect(replaceStateSpy).toHaveBeenCalled();
+            } finally {
+                global.URLSearchParams = OriginalURLSearchParams;
+                global.URL = OriginalURL;
+            }
+        });
+
+        it('shows alert and hides loader on fetch failure', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/fail.elpx',
+                },
+            };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: false,
+                statusText: 'Forbidden',
+            });
+
+            await projectManager.checkAndImportElp();
+
+            expect(projectManager.app.modals.loader.hide).toHaveBeenCalled();
+            expect(projectManager.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'Import Error',
+                    body: expect.stringContaining('Forbidden'),
+                }),
+            );
+        });
+
+        it('continues when saveToServer fails', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: 'https://cdn.example.com/course.elpx',
+                },
+            };
+            projectManager._yjsBridge.documentManager.saveToServer = vi
+                .fn()
+                .mockRejectedValue(new Error('save failed'));
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+            expect(warnSpy).toHaveBeenCalled();
+        });
+
+        it('uses fallback filename when URL parsing fails', async () => {
+            projectManager.app.runtimeConfig = {
+                embeddingConfig: {
+                    initialProjectUrl: '/path/to/from-split.elpx',
+                },
+            };
+            const OriginalURL = global.URL;
+            global.URL = class MockURLThatThrows {
+                constructor() {
+                    throw new Error('bad url');
+                }
+            };
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+            });
+
+            try {
+                await projectManager.checkAndImportElp();
+                const importedFile = projectManager.importFromElpxViaYjs.mock.calls[0][0];
+                expect(importedFile.name).toBe('from-split.elpx');
+            } finally {
+                global.URL = OriginalURL;
+            }
+        });
+
+        it('continues when cleanup-import request fails', async () => {
+            const OriginalURLSearchParams = global.URLSearchParams;
+            const OriginalURL = global.URL;
+            global.URLSearchParams = class MockURLSearchParams {
+                get(key) {
+                    return key === 'import' ? '/tmp/project.elpx' : null;
+                }
+            };
+            global.URL = class MockURL {
+                constructor(value) {
+                    const str = String(value || '');
+                    if (str.includes('/tmp/project.elpx')) {
+                        this.pathname = '/tmp/project.elpx';
+                        return;
+                    }
+                    this.searchParams = { delete: vi.fn() };
+                }
+            };
+            window.eXeLearning.config.basePath = '/exelearning';
+            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            global.fetch = vi
+                .fn()
+                .mockResolvedValueOnce({
+                    ok: true,
+                    blob: vi.fn().mockResolvedValue(new Blob(['abc'])),
+                })
+                .mockRejectedValueOnce(new Error('cleanup failed'));
+
+            try {
+                await expect(projectManager.checkAndImportElp()).resolves.toBeUndefined();
+                expect(warnSpy).toHaveBeenCalled();
+            } finally {
+                global.URLSearchParams = OriginalURLSearchParams;
+                global.URL = OriginalURL;
+            }
+        });
+    });
+
+    describe('_resolveDocumentReady', () => {
+        it('dispatches event and resolves app.documentReady once', () => {
+            const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+            const resolveSpy = vi.fn();
+            projectManager.app._documentReadyResolve = resolveSpy;
+
+            projectManager._resolveDocumentReady();
+
+            expect(dispatchSpy).toHaveBeenCalledWith(expect.any(CustomEvent));
+            expect(resolveSpy).toHaveBeenCalledTimes(1);
+            expect(projectManager.app._documentReadyResolve).toBeNull();
         });
     });
 

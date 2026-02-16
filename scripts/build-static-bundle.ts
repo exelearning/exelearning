@@ -33,7 +33,9 @@ import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundl
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
 
 const projectRoot = path.resolve(import.meta.dir, '..');
-const outputDir = path.join(projectRoot, 'dist/static');
+const outputDir = process.env.OUTPUT_DIR
+    ? path.resolve(process.env.OUTPUT_DIR)
+    : path.join(projectRoot, 'dist/static');
 
 // Read version from environment variable or package.json
 // VERSION is used by GitHub Actions workflows, APP_VERSION is used by the backend

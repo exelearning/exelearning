@@ -21,6 +21,9 @@ import SessionMonitor from './common/sessionMonitor.js';
 // Core infrastructure - mode detection
 import { RuntimeConfig } from './core/RuntimeConfig.js';
 import { Capabilities } from './core/Capabilities.js';
+// Embedding bridge for iframe communication
+import EmbeddingBridge from './core/EmbeddingBridge.js';
+import { HIDE_UI_ATTR_MAP, applyHideUI } from './core/ui-visibility.js';
 // DOM translation for static mode
 import DOMTranslator from './locate/domTranslator.js';
 
@@ -31,6 +34,28 @@ export default class App {
 
         // Detect and initialize static/offline mode
         this.initializeModeDetection();
+
+        // Embedding bridge for iframe communication
+        this.embeddingBridge = null;
+        if (this.capabilities.embedded.enabled) {
+            const embeddingConfig = this.runtimeConfig.embeddingConfig;
+            this.embeddingBridge = new EmbeddingBridge(this, {
+                trustedOrigins: embeddingConfig?.trustedOrigins || [],
+            });
+        }
+
+        // Ready promise for external consumers (plugins, LMS integrations)
+        this._readyResolve = null;
+        window.eXeLearning.ready = new Promise((resolve) => {
+            this._readyResolve = resolve;
+        });
+
+        // Document ready promise — resolves when the project document is fully loaded
+        // and ready for interaction (save, export, get state, etc.)
+        this._documentReadyResolve = null;
+        window.eXeLearning.documentReady = new Promise((resolve) => {
+            this._documentReadyResolve = resolve;
+        });
 
         this.api = new ApiCallManager(this);
         this.locale = new Locale(this);
@@ -120,6 +145,25 @@ export default class App {
 
         // Handle exe-package:elp protocol for download-source-file iDevice
         this.initExePackageProtocolHandler();
+
+        // Apply embedded UI visibility (CSS-driven via body data attributes)
+        if (this.capabilities.embedded.enabled) {
+            this._applyEmbeddedUIVisibility();
+        }
+
+        // Initialize embedding bridge — announces EXELEARNING_READY to parent
+        if (this.embeddingBridge) {
+            this.embeddingBridge.init();
+        }
+
+        // Resolve the ready promise
+        if (this._readyResolve) {
+            this._readyResolve({
+                version: window.eXeLearning.version,
+                capabilities: this.embeddingBridge?.getCapabilities() || [],
+            });
+            this._readyResolve = null;
+        }
     }
 
     /**
@@ -146,9 +190,10 @@ export default class App {
             return this._previewSwRegistrationPromise;
         }
 
-        // Derive paths from pathname (eXeViewer pattern)
-        const pathname = window.location.pathname;
-        const basePath = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+        // Derive paths from explicit embedding config first; otherwise use current pathname.
+        // Avoid using generic app config basePath here because it can represent API base paths
+        // (not necessarily the static asset path for Service Worker registration).
+        const basePath = this._resolvePreviewServiceWorkerBasePath();
         const swPath = basePath + 'preview-sw.js';
 
         this._previewSwRegistrationPromise = (async () => {
@@ -203,6 +248,38 @@ export default class App {
         })();
 
         return this._previewSwRegistrationPromise;
+    }
+
+    /**
+     * Resolve base path for preview Service Worker registration.
+     * Priority:
+     * 1) runtime embeddingConfig.basePath (explicit static assets base path)
+     * 2) current pathname directory
+     * @returns {string} Normalized absolute path with trailing slash (e.g. "/", "/exelearning/")
+     * @private
+     */
+    _resolvePreviewServiceWorkerBasePath() {
+        let rawBasePath = this.runtimeConfig?.embeddingConfig?.basePath;
+
+        if (!rawBasePath) {
+            const pathname = window.location.pathname || '/';
+            rawBasePath = pathname.substring(0, pathname.lastIndexOf('/') + 1) || '/';
+        }
+
+        try {
+            rawBasePath = new URL(rawBasePath, window.location.origin).pathname;
+        } catch {
+            // Keep raw value if it's not URL-parseable.
+        }
+
+        let normalized = String(rawBasePath || '/').trim();
+        if (!normalized.startsWith('/')) {
+            normalized = '/' + normalized;
+        }
+        normalized = normalized.replace(/\/{2,}/g, '/');
+        normalized = normalized.replace(/\/+$/, '');
+
+        return (normalized || '') + '/';
     }
 
     /**
@@ -622,6 +699,16 @@ export default class App {
                     window.eXeLearning.symfony.basePath = detectedBase;
                 }
             }
+
+            // Override basePath from embedding config if provided
+            const embeddingBasePath = this.runtimeConfig.embeddingConfig?.basePath;
+            if (embeddingBasePath) {
+                this.eXeLearning.config.basePath = embeddingBasePath.replace(/\/+$/, '');
+                if (window.eXeLearning.symfony) {
+                    window.eXeLearning.symfony.basePath = this.eXeLearning.config.basePath;
+                }
+                console.log('[App] BasePath from embedding config:', this.eXeLearning.config.basePath);
+            }
         }
 
         // Log capabilities for debugging
@@ -630,6 +717,26 @@ export default class App {
             remoteStorage: this.capabilities.storage.remote,
             auth: this.capabilities.auth.required,
         });
+    }
+
+    /**
+     * Apply embedded UI visibility using body data attributes.
+     * CSS rules in main.scss handle the actual hiding based on these attributes.
+     * @private
+     */
+    _applyEmbeddedUIVisibility() {
+        document.body.setAttribute('data-embedded', 'true');
+
+        const ui = this.capabilities.ui;
+        const hideFlags = {};
+        for (const key of Object.keys(HIDE_UI_ATTR_MAP)) {
+            // Convert "fileMenu" → "showFileMenu" capability key
+            const capKey = 'show' + key.charAt(0).toUpperCase() + key.slice(1);
+            if (!ui[capKey]) {
+                hideFlags[key] = true;
+            }
+        }
+        applyHideUI(hideFlags);
     }
 
     /**
