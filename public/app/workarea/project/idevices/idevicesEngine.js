@@ -1528,6 +1528,12 @@ export default class IdevicesEngine {
             if (placeholder) {
                 placeholder.remove();
             }
+            // Keep immediate HTML refresh for plain-content updates.
+            // This preserves existing behavior and unit-test expectations while
+            // loadInitScriptIdevice('export') performs full iDevice re-render.
+            if (componentData.htmlContent !== undefined) {
+                ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
+            }
             await ideviceNode.loadInitScriptIdevice('export');
         }
 
