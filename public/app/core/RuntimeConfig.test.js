@@ -126,6 +126,19 @@ describe('RuntimeConfig', () => {
             expect(config.staticDataPath).toBe('/custom/path/data/bundle.json');
         });
 
+        it('should normalize embedding basePath without leading slash', () => {
+            window.__EXE_STATIC_MODE__ = true;
+            delete window.electronAPI;
+            window.__EXE_EMBEDDING_CONFIG__ = {
+                basePath: 'custom/path/',
+            };
+
+            const config = RuntimeConfig.fromEnvironment();
+
+            expect(config.baseUrl).toBe('/custom/path');
+            expect(config.staticDataPath).toBe('/custom/path/data/bundle.json');
+        });
+
         it('should set isEmbedded when config is present even without iframe', () => {
             window.__EXE_STATIC_MODE__ = true;
             delete window.electronAPI;

@@ -2322,6 +2322,37 @@ describe('registerPreviewServiceWorker secure context checks', () => {
   });
 });
 
+describe('_resolvePreviewServiceWorkerBasePath', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+  });
+
+  it('uses embeddingConfig basePath when available', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: '/embed/path/' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+
+  it('normalizes embeddingConfig basePath without leading slash', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: 'embed/path//' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+});
+
 describe('sendContentToPreviewSW READY_VERIFIED path', () => {
   let appInstance;
   let mockController;

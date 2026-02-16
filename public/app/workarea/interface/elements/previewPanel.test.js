@@ -1055,6 +1055,72 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('_generatePreviewFiles', () => {
+    it('should call SharedExporters.generatePreviewForSW with normalized deps', async () => {
+      window.eXeLearning.app.themes = { selected: { name: 'base' } };
+      mockBridge.resourceFetcher = null;
+      mockBridge.assetManager = null;
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
+
+      await manager._generatePreviewFiles();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalledWith(
+        mockDocumentManager,
+        null,
+        null,
+        null,
+        { theme: 'base' },
+      );
+    });
+  });
+
+  describe('_injectBlobNavigationHandler', () => {
+    it('should inject script before closing body tag', () => {
+      const html = '<html><body><p>hello</p></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-blob-navigate');
+      expect(result.indexOf('exe-blob-navigate')).toBeLessThan(result.indexOf('</body>'));
+    });
+
+    it('should append script when body tag is missing', () => {
+      const html = '<html><head></head></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-blob-navigate');
+      expect(result).toMatch(/<\/script>\s*$/);
+    });
+  });
+
+  describe('_resolveRelativePath', () => {
+    it('should resolve dot segments', () => {
+      expect(manager._resolveRelativePath('a/b/../c/./d.html')).toBe('a/c/d.html');
+    });
+  });
+
+  describe('_findFileContent', () => {
+    it('should resolve leading ../ segments', () => {
+      const files = { 'content/style.css': 'ok' };
+      expect(manager._findFileContent(files, '../content/style.css')).toBe('ok');
+    });
+
+    it('should resolve content/resources by filename fallback', () => {
+      const files = { 'content/resources/theme/custom/file.png': new Uint8Array([1, 2]) };
+      const content = manager._findFileContent(files, 'https://x.test/content/resources/other/file.png');
+      expect(content).toBeInstanceOf(Uint8Array);
+    });
+  });
+
+  describe('_isPreviewIframeSource', () => {
+    it('should allow missing source for synthetic events', () => {
+      expect(manager._isPreviewIframeSource(undefined)).toBe(true);
+    });
+
+    it('should reject unrelated source objects', () => {
+      expect(manager._isPreviewIframeSource({})).toBe(false);
+    });
+  });
+
   describe('_decodeFileContent', () => {
     it('should return null for falsy content', () => {
       expect(manager._decodeFileContent(null)).toBeNull();

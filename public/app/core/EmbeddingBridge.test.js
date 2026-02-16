@@ -456,6 +456,23 @@ describe('EmbeddingBridge', () => {
             expect(mockApp.project.importFromElpxViaYjs).toHaveBeenCalled();
         });
 
+        it('should fallback to importElpxFile when modern import methods are not available', async () => {
+            mockApp.project.importElpDirectly = undefined;
+            mockApp.project.importFromElpxViaYjs = undefined;
+            const bytes = new ArrayBuffer(8);
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'OPEN_FILE',
+                    data: { bytes, filename: 'test.elpx' },
+                    requestId: 'req-open-legacy',
+                },
+            });
+
+            expect(mockApp.project.importElpxFile).toHaveBeenCalledWith(expect.any(File));
+        });
+
         it('should throw error if no import method available', async () => {
             mockApp.project.importElpDirectly = undefined;
             mockApp.project.importFromElpxViaYjs = undefined;
@@ -874,6 +891,32 @@ describe('EmbeddingBridge', () => {
                 }),
                 'https://parent.com'
             );
+        });
+    });
+
+    describe('utility methods', () => {
+        it('normalizeExportData should handle TypedArray views', async () => {
+            const view = new Uint8Array([1, 2, 3, 4]);
+            const result = await bridge.normalizeExportData(view);
+            expect(result.bytes).toBeInstanceOf(ArrayBuffer);
+            expect(result.mimeType).toBe('application/octet-stream');
+        });
+
+        it('normalizeExportData should handle Blob payloads', async () => {
+            const blob = new Blob(['abc'], { type: 'text/plain' });
+            const result = await bridge.normalizeExportData(blob);
+            expect(result.bytes).toBeInstanceOf(ArrayBuffer);
+            expect(result.mimeType).toBe('text/plain');
+        });
+
+        it('normalizeExportData should reject unsupported data', async () => {
+            await expect(bridge.normalizeExportData({})).rejects.toThrow('Unsupported export data format');
+        });
+
+        it('getDefaultExportFilename should map known formats', () => {
+            expect(bridge.getDefaultExportFilename('epub3')).toBe('project.epub');
+            expect(bridge.getDefaultExportFilename('component')).toBe('project.elp');
+            expect(bridge.getDefaultExportFilename('html5')).toBe('project.zip');
         });
     });
 
