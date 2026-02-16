@@ -174,9 +174,72 @@ export default class NavbarFile {
      *
      */
     setNewProjectEvent() {
-        this.newButton.addEventListener('click', () => {
+        // In static/offline mode, "New" should open the current static entry URL.
+        // This keeps versioned query params (e.g. ?v=...) and avoids forcing /workarea.
+        const newProjectUrl = this.resolveNewProjectWindowUrl();
+        if (this.newButton?.setAttribute) {
+            this.newButton.setAttribute('href', newProjectUrl);
+        }
+
+        this.newButton.addEventListener('click', (event) => {
+            // Electron does not always honor Cmd/Ctrl-click on in-app links.
+            // Force opening a new tab/window for modifier/middle clicks.
+            if (this.shouldOpenNewProjectInNewTab(event)) {
+                event?.preventDefault?.();
+                this.openNewProjectInNewWindow();
+                return;
+            }
+
+            event?.preventDefault?.();
             this.newProjectEvent();
         });
+    }
+
+    /**
+     * Return true when the New action should open using native link behavior
+     * (Ctrl/Cmd-click, Shift-click, middle-click, etc.).
+     *
+     * @param {MouseEvent | undefined} event
+     * @returns {boolean}
+     */
+    shouldOpenNewProjectInNewTab(event) {
+        if (!event) return false;
+        return (
+            event.metaKey ||
+            event.ctrlKey ||
+            event.button === 1
+        );
+    }
+
+    /**
+     * Open the New project URL in a new browser/Electron window.
+     */
+    openNewProjectInNewWindow() {
+        const newProjectUrl = this.resolveNewProjectWindowUrl();
+        const popup = window.open(newProjectUrl, '_blank');
+        popup?.focus?.();
+    }
+
+    /**
+     * Resolve the URL used by File -> New when opening in a new tab/window.
+     * In static/offline mode we keep the current URL; in online mode we use /workarea.
+     *
+     * @returns {string}
+     */
+    resolveNewProjectWindowUrl() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        const hasRemoteStorage = capabilities?.storage?.remote;
+        const isStaticOrOffline =
+            window.__EXE_STATIC_MODE__ === true ||
+            eXeLearning?.config?.isOfflineInstallation === true ||
+            hasRemoteStorage === false;
+
+        if (isStaticOrOffline) {
+            return window.location.href;
+        }
+
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        return `${window.location.origin}${basePath}/workarea`;
     }
 
     /**
