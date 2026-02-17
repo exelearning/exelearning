@@ -46,6 +46,26 @@ body[installation-type="online"] .exe-offline {
     display: none !important;
 }
 
+/* Embedded mode - UI element visibility controlled by data attributes */
+body[data-exe-hide-file-menu="true"] .nav-item:has(> #dropdownFile) {
+    display: none !important;
+}
+body[data-exe-hide-save="true"] #head-top-save-button {
+    display: none !important;
+}
+body[data-exe-hide-share="true"] #head-top-share-button {
+    display: none !important;
+}
+body[data-exe-hide-user-menu="true"] #head-bottom-user-logged {
+    display: none !important;
+}
+body[data-exe-hide-download="true"] #head-top-download-button {
+    display: none !important;
+}
+body[data-exe-hide-help="true"] #dropdownHelpItem {
+    display: none !important;
+}
+
 /* TinyMCE fullscreen mode */
 body:has(iframe.tox-edit-area__iframe[style="height: 100%; width: 100%;"]) .idevice_actions {
     z-index: 10000;

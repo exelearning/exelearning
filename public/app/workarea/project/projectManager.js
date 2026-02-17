@@ -72,6 +72,8 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
 
         // Static mode: check for pending file import
         const capabilities = this.app?.capabilities;
@@ -347,27 +349,44 @@ export default class projectManager {
 
         // Show workarea
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
 
         Logger.log('[ProjectManager] UI refreshed after direct import');
     }
 
     /**
-     * Check URL for import parameter and import ELP file if present
-     * Uses ElpxImporter to import the ELP content into the Yjs document
+     * Check URL/config for import path and import ELPX file if present.
      *
-     * Server-side mode: &import=/path/to/file.elp - fetches file from server
-     * (Client-side import now uses direct in-memory processing via reinitializeWithProject)
+     * Supported sources:
+     * - URL query: ?import=/path/to/file.elpx (server-side workflows)
+     * - Embedding config: __EXE_EMBEDDING_CONFIG__.initialProjectUrl (iframe boot workflows)
      */
     async checkAndImportElp() {
         const urlParams = new URLSearchParams(window.location.search);
-        const importPath = urlParams.get('import');
+        const importPathFromUrl = urlParams.get('import');
+        const importPathFromEmbedding = this.app?.runtimeConfig?.embeddingConfig?.initialProjectUrl || '';
+        const importPath = importPathFromUrl || importPathFromEmbedding;
+        const fromUrlParam = !!importPathFromUrl;
 
         if (!importPath) {
-            Logger.log('[ProjectManager] No import parameter found');
+            Logger.log('[ProjectManager] No import source found');
             return;
         }
 
-        Logger.log('[ProjectManager] Import parameter detected:', importPath);
+        Logger.log(
+            `[ProjectManager] Import source detected (${fromUrlParam ? 'url' : 'embedding'}):`,
+            importPath
+        );
+
+        // Prevent duplicate bootstrap imports when embedding config is reused.
+        if (!fromUrlParam) {
+            if (window.__exeInitialProjectImported === importPath) {
+                Logger.log('[ProjectManager] initialProjectUrl already imported, skipping');
+                return;
+            }
+            window.__exeInitialProjectImported = importPath;
+        }
 
         try {
             // Show loading indicator
@@ -375,20 +394,28 @@ export default class projectManager {
                 this.app.modals.loader.show({ message: _('Importing project...') });
             }
 
-            // Add basePath to import path if it starts with / (relative server path)
+            // URL query imports may be server-relative. Embedding imports are expected as final URL.
             const basePath = window.eXeLearning?.config?.basePath || '';
-            const fetchPath = importPath.startsWith('/') && basePath && !importPath.startsWith(basePath)
+            const fetchPath = fromUrlParam &&
+                importPath.startsWith('/') &&
+                basePath &&
+                !importPath.startsWith(basePath)
                 ? `${basePath}${importPath}`
                 : importPath;
 
-            // Fetch the ELP file from the server
-            const response = await fetch(fetchPath);
+            // Fetch the ELPX file with credentials for same-origin pluginfile URLs.
+            const response = await fetch(fetchPath, { credentials: 'include' });
             if (!response.ok) {
                 throw new Error(`Failed to fetch ELP file: ${response.statusText}`);
             }
 
             const blob = await response.blob();
-            const fileName = importPath.split('/').pop() || 'imported.elp';
+            let fileName = importPath.split('/').pop() || 'imported.elpx';
+            try {
+                fileName = new URL(importPath, window.location.href).pathname.split('/').pop() || fileName;
+            } catch (e) {
+                // Keep fallback split result.
+            }
             const file = new File([blob], fileName, { type: 'application/octet-stream' });
 
             Logger.log('[ProjectManager] ELP file fetched, size:', file.size);
@@ -407,18 +434,20 @@ export default class projectManager {
                 // Continue anyway - data is at least saved locally
             }
 
-            // Remove import parameter from URL (keep project parameter)
-            const newUrl = new URL(window.location);
-            newUrl.searchParams.delete('import');
-            window.history.replaceState({}, '', newUrl);
+            if (fromUrlParam) {
+                // Remove import parameter from URL (keep project parameter)
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('import');
+                window.history.replaceState({}, '', newUrl);
 
-            // Cleanup: Request server to delete temp file
-            try {
-                await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
-                    method: 'DELETE'
-                });
-            } catch (cleanupError) {
-                console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
+                // Cleanup: Request server to delete temp file (URL-import workflow only)
+                try {
+                    await fetch(`${basePath}/api/project/cleanup-import?path=${encodeURIComponent(importPath)}`, {
+                        method: 'DELETE'
+                    });
+                } catch (cleanupError) {
+                    console.warn('[ProjectManager] Failed to cleanup temp file:', cleanupError);
+                }
             }
 
             // Hide loading indicator
@@ -599,6 +628,8 @@ export default class projectManager {
         await this.initialiceProject();
         // Show workarea of app
         this.showScreen();
+        // Signal that the document is fully loaded and ready for interaction
+        this._resolveDocumentReady();
         // Set offline atributtes
         this.setInstallationTypeAttribute();
         // Run autosave
@@ -1405,6 +1436,22 @@ export default class projectManager {
         setTimeout(() => {
             this.app.interface.loadingScreen.hide();
         }, 250);
+    }
+
+    /**
+     * Resolve the documentReady promise, signaling that the project document
+     * is fully loaded and ready for interaction (save, export, get state, etc.).
+     * Also emits an EXE_DOCUMENT_READY event so embedded bridges can react
+     * on every document load (including file imports after app startup).
+     * @private
+     */
+    _resolveDocumentReady() {
+        window.dispatchEvent(new CustomEvent('EXE_DOCUMENT_READY'));
+        const resolve = this.app?._documentReadyResolve;
+        if (resolve) {
+            resolve();
+            this.app._documentReadyResolve = null;
+        }
     }
 
     /**
