@@ -117,6 +117,30 @@ export class ElpxImporter {
     }
 
     /**
+     * Resolve package source from a ZIP container.
+     * If the ZIP includes a single top-level .elp/.elpx file, use it as the import source.
+     * This keeps behavior consistent when opening legacy export ZIPs that bundle the original project.
+     */
+    private resolveProjectZipSource(zip: Record<string, Uint8Array>): Record<string, Uint8Array> {
+        const topLevelProjectFiles = Object.keys(zip).filter(
+            name =>
+                !name.includes('/') && (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
+        );
+
+        if (topLevelProjectFiles.length > 1) {
+            throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
+        }
+
+        if (topLevelProjectFiles.length === 1) {
+            const bundledProject = topLevelProjectFiles[0];
+            this.logger.log(`[ElpxImporter] Found bundled project file: ${bundledProject}, extracting...`);
+            return fflate.unzipSync(zip[bundledProject]);
+        }
+
+        return zip;
+    }
+
+    /**
      * Import from a buffer (Uint8Array)
      * This is the main entry point for server-side usage
      * @param buffer - ELP/ELPX file as Uint8Array
@@ -141,33 +165,16 @@ export class ElpxImporter {
         // Report decompression complete (10%)
         this.reportProgress('decompress', 10, 'File decompressed');
 
-        // Check for nested ELP file
-        let workingZip = zip;
-
-        if (!zip['content.xml'] && !zip['contentv3.xml']) {
-            const elpFiles = Object.keys(zip).filter(
-                name =>
-                    !name.includes('/') &&
-                    (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
-            );
-
-            if (elpFiles.length === 1) {
-                this.logger.log(`[ElpxImporter] Found nested ELP file: ${elpFiles[0]}, extracting...`);
-                const nestedElpData = zip[elpFiles[0]];
-                workingZip = fflate.unzipSync(nestedElpData);
-            } else if (elpFiles.length > 1) {
-                throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
-            }
-        }
+        // Some legacy ZIP exports contain the original .elp/.elpx inside the package.
+        // Prefer that bundled project to avoid importing runtime export assets as user files.
+        let workingZip = this.resolveProjectZipSource(zip);
 
         // Find content.xml
         let contentFile = workingZip['content.xml'];
-        let isLegacyFormat = false;
 
         if (!contentFile) {
             // Check for legacy format
             contentFile = workingZip['contentv3.xml'];
-            isLegacyFormat = true;
         }
 
         if (!contentFile) {
@@ -190,7 +197,6 @@ export class ElpxImporter {
                 }
                 workingZip = rootedZip;
                 contentFile = workingZip['content.xml'];
-                isLegacyFormat = false; // EPUB3 uses modern format
             }
         }
 
@@ -252,13 +258,15 @@ export class ElpxImporter {
         // Skip decompression phase since contents are already extracted
         this.reportProgress('decompress', 10, 'Files ready');
 
+        // Some legacy ZIP exports contain the original .elp/.elpx inside the package.
+        // Prefer that bundled project to avoid importing runtime export assets as user files.
+        zipContents = this.resolveProjectZipSource(zipContents);
+
         // Find content.xml
         let contentFile = zipContents['content.xml'];
-        let isLegacyFormat = false;
 
         if (!contentFile) {
             contentFile = zipContents['contentv3.xml'];
-            isLegacyFormat = true;
         }
 
         if (!contentFile) {
@@ -279,7 +287,6 @@ export class ElpxImporter {
                 // Update the reference to use the rooted zip
                 zipContents = rootedZip;
                 contentFile = zipContents['content.xml'];
-                isLegacyFormat = false;
             }
         }
 

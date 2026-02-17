@@ -7,6 +7,7 @@ import * as Y from 'yjs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync, mkdirSync, rmSync } from 'fs';
+import * as fflate from 'fflate';
 
 import { ElpxImporter } from './ElpxImporter';
 import { FileSystemAssetHandler } from './FileSystemAssetHandler';
@@ -252,6 +253,62 @@ describe('ElpxImporter', () => {
             expect(typeof result.zipContents).toBe('object');
             // Should contain content.xml (the main content file)
             expect(result.zipContents!['content.xml']).toBeDefined();
+
+            ydoc.destroy();
+        });
+
+        it('should prefer bundled .elp when importing legacy export ZIP containers', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Container Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Home"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const nestedElp = fflate.zipSync({
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'user-image.png': new Uint8Array([1, 2, 3]),
+            });
+
+            const outerZip = fflate.zipSync({
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'icon_alert.png': new Uint8Array([9, 9, 9]),
+                'base.css': new TextEncoder().encode('body{}'),
+                'radioexploradores.elp': nestedElp,
+            });
+
+            let extractedKeys: string[] = [];
+            const mockAssetHandler = {
+                storeAsset: async (id: string) => id,
+                extractAssetsFromZip: async (zip: Record<string, Uint8Array>) => {
+                    extractedKeys = Object.keys(zip);
+                    return new Map<string, string>();
+                },
+                convertContextPathToAssetRefs: (html: string) => html,
+            };
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, mockAssetHandler, silentLogger);
+            const result = await importer.importFromBuffer(outerZip);
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(extractedKeys).toContain('user-image.png');
+            expect(extractedKeys).not.toContain('icon_alert.png');
+            expect(extractedKeys).not.toContain('radioexploradores.elp');
 
             ydoc.destroy();
         });
@@ -603,7 +660,6 @@ describe('ElpxImporter - Legacy Format', () => {
 
     describe('importFromZipContents with legacy format', () => {
         it('should import from pre-extracted legacy ZIP contents', async () => {
-            const fflate = await import('fflate');
             const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
             const elpBuffer = await fs.readFile(elpPath);
 
@@ -619,6 +675,61 @@ describe('ElpxImporter - Legacy Format', () => {
 
             const navigation = ydoc.getArray('navigation');
             expect(navigation.length).toBe(result.pages);
+
+            ydoc.destroy();
+        });
+
+        it('should prefer bundled .elp when importing pre-extracted ZIP contents', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Container Zip Contents Test"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Home"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const nestedElp = fflate.zipSync({
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'user-file.pdf': new Uint8Array([37, 80, 68, 70]),
+            });
+
+            const zipContents: Record<string, Uint8Array> = {
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'icon_alert.png': new Uint8Array([7, 7, 7]),
+                'radioexploradores.elp': nestedElp,
+            };
+
+            let extractedKeys: string[] = [];
+            const mockAssetHandler = {
+                storeAsset: async (id: string) => id,
+                extractAssetsFromZip: async (zip: Record<string, Uint8Array>) => {
+                    extractedKeys = Object.keys(zip);
+                    return new Map<string, string>();
+                },
+                convertContextPathToAssetRefs: (html: string) => html,
+            };
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, mockAssetHandler, silentLogger);
+            const result = await importer.importFromZipContents(zipContents);
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(extractedKeys).toContain('user-file.pdf');
+            expect(extractedKeys).not.toContain('icon_alert.png');
+            expect(extractedKeys).not.toContain('radioexploradores.elp');
 
             ydoc.destroy();
         });
