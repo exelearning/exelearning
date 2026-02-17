@@ -3271,6 +3271,17 @@ describe('extractAssetsFromZip', () => {
       expect(assetMap.has('custom/')).toBe(false);
       expect(assetMap.has('custom/image.png')).toBe(true);
     });
+
+    it('ignores custom/.gitkeep placeholder file', async () => {
+      const zipData = {
+        'content.xml': new Uint8Array([60, 63]),
+        'custom/.gitkeep': new Uint8Array([]),
+        'custom/image.png': new Uint8Array([1, 2, 3, 4]),
+      };
+      const assetMap = await assetManager.extractAssetsFromZip(zipData);
+      expect(assetMap.has('custom/.gitkeep')).toBe(false);
+      expect(assetMap.has('custom/image.png')).toBe(true);
+    });
   });
 });
 
@@ -3390,6 +3401,17 @@ describe('convertContextPathToAssetRefs', () => {
       const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
       expect(result).toContain('asset://');
       expect(result).toContain('uuid-space');
+    });
+
+    it('resolves file_manager paths with spaces to custom/ assets', () => {
+      const assetMap = new Map([
+        ['custom/Captura de pantalla 2021-12-13 a las 10.57.42.png', 'uuid-captura'],
+      ]);
+      const html =
+        '<img src="{{context_path}}/file_manager/Captura de pantalla 2021-12-13 a las 10.57.42.png" alt="">';
+      const result = assetManager.convertContextPathToAssetRefs(html, assetMap);
+      expect(result).toContain('asset://');
+      expect(result).toContain('uuid-captura');
     });
 
     it('finds custom/ asset via denormalization when no normalized mapping exists', () => {

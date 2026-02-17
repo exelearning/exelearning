@@ -508,9 +508,6 @@ export default class ModalIdeviceManager extends Modal {
         label.classList.add('toggle-label', 'idevice-title');
         label.setAttribute('for', `tgl-${idevice.id}`);
         label.textContent = idevice.title || idevice.id;
-        if (idevice.type === eXeLearning.config.ideviceTypeUser) {
-            label.textContent = label.textContent + ' *';
-        }
 
         const control = document.createElement('div');
         control.className = 'toggle-control';
