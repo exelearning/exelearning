@@ -815,12 +815,7 @@ var $exeDevice = {
             solution: 'A',
             solutionQuestion: '',
             percentageShow: 35,
-            hit: -1,
-            error: -1,
-            msgHit: '',
-            msgError: '',
-            customScore: 1,
-            description :''
+            description: c_('Circuit with a battery connected in series with two resistors')
         };
         return p;
     },
