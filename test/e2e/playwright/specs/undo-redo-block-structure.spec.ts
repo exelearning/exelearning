@@ -1,6 +1,7 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import { gotoWorkarea, waitForAppReady, waitForLoadingScreen, selectNavNode } from '../helpers/workarea-helpers';
+import { waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
 /**
  * E2E regression tests for issue #1129:
@@ -64,27 +65,13 @@ async function addBlockViaYjs(page: Page, pageId: string, blockName: string): Pr
     return blockId;
 }
 
-async function moveFirstBlockToPageViaYjs(page: Page, targetPageId: string): Promise<void> {
-    const sourcePageId = await getCurrentPageId(page);
-    if (!sourcePageId) {
-        throw new Error('No current page selected for move operation');
-    }
-
-    const firstBlockId = await page.evaluate(pageId => {
-        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-        const blocks = bridge?.structureBinding?.getBlocks?.(pageId) || [];
-        return blocks[0]?.id || '';
-    }, sourcePageId);
-    if (!firstBlockId) {
-        throw new Error('No block found to move');
-    }
-
+async function moveBlockToPageViaYjs(page: Page, blockId: string, targetPageId: string): Promise<void> {
     const moved = await page.evaluate(
         ({ blockId, newPageId }) => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
             return bridge?.structureBinding?.moveBlockToPage?.(blockId, newPageId) === true;
         },
-        { blockId: firstBlockId, newPageId: targetPageId },
+        { blockId, newPageId: targetPageId },
     );
 
     if (!moved) {
@@ -92,27 +79,13 @@ async function moveFirstBlockToPageViaYjs(page: Page, targetPageId: string): Pro
     }
 }
 
-async function deleteFirstBlockViaYjs(page: Page): Promise<void> {
-    const currentPageId = await getCurrentPageId(page);
-    if (!currentPageId) {
-        throw new Error('No current page selected for delete operation');
-    }
-
-    const firstBlockId = await page.evaluate(pageId => {
-        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-        const blocks = bridge?.structureBinding?.getBlocks?.(pageId) || [];
-        return blocks[0]?.id || '';
-    }, currentPageId);
-    if (!firstBlockId) {
-        throw new Error('No block found to delete');
-    }
-
+async function deleteBlockViaYjs(page: Page, pageId: string, blockId: string): Promise<void> {
     const deleted = await page.evaluate(
         ({ pageId, blockId }) => {
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
             return bridge?.structureBinding?.deleteBlock?.(pageId, blockId) === true;
         },
-        { pageId: currentPageId, blockId: firstBlockId },
+        { pageId, blockId },
     );
 
     if (!deleted) {
@@ -138,6 +111,53 @@ async function waitForBlockCountChange(page: Page, previousCount: number, timeou
         { timeout },
     );
     return countBlocks(page);
+}
+
+async function waitForDomAndYjsBlockCount(
+    page: Page,
+    pageId: string,
+    expectedCount: number,
+    timeout = 10000,
+): Promise<void> {
+    await page.waitForFunction(
+        ({ targetPageId, expected }) => {
+            const domCount = document.querySelectorAll('#node-content article.box').length;
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const yjsCount = bridge?.structureBinding?.getBlocks?.(targetPageId)?.length ?? -1;
+            return domCount === expected && yjsCount === expected;
+        },
+        { targetPageId: pageId, expected: expectedCount },
+        { timeout },
+    );
+}
+
+async function waitForYjsBlockCount(page: Page, pageId: string, expectedCount: number, timeout = 10000): Promise<void> {
+    await page.waitForFunction(
+        ({ targetPageId, expected }) => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const yjsCount = bridge?.structureBinding?.getBlocks?.(targetPageId)?.length ?? -1;
+            return yjsCount === expected;
+        },
+        { targetPageId: pageId, expected: expectedCount },
+        { timeout },
+    );
+}
+
+async function waitForDomBlockCount(page: Page, expectedCount: number, timeout = 10000): Promise<void> {
+    await page.waitForFunction(
+        expected => document.querySelectorAll('#node-content article.box').length === expected,
+        expectedCount,
+        { timeout },
+    );
+}
+
+async function reloadCurrentPageFromBridge(page: Page): Promise<void> {
+    await page.evaluate(async () => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        if (!bridge?.reloadCurrentPage) return;
+        await bridge.reloadCurrentPage();
+    });
+    await page.waitForTimeout(250);
 }
 
 async function reloadCurrentPageFromYjs(page: Page): Promise<void> {
@@ -179,7 +199,7 @@ async function getYjsBlockCount(page: Page, pageId: string): Promise<number> {
 }
 
 async function clickUndoButton(page: Page): Promise<void> {
-    const undoBtn = page.locator('button[title*="Undo"]').first();
+    const undoBtn = page.locator('#yjs-undo-redo .btn-undo').first();
     await undoBtn.waitFor({ state: 'visible', timeout: 5000 });
     await expect(undoBtn).toBeEnabled();
     await undoBtn.click();
@@ -213,7 +233,7 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
         expect(countAfterCreate).not.toBe(initialCount);
 
         const countBeforeUndo = await countBlocks(page);
-        await page.waitForTimeout(700);
+        await waitForUndoAvailable(page);
         await clickUndoButton(page);
         const countAfterUndo = await waitForBlockCountChange(page, countBeforeUndo);
         expect(countAfterUndo).not.toBe(countBeforeUndo);
@@ -231,11 +251,8 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
         await selectPageNode(page);
         const sourcePageId = await getCurrentPageId(page);
         expect(sourcePageId).not.toBe('');
-        const refreshPageId = await createTargetPageViaYjs(page);
-        expect(refreshPageId).not.toBe('');
-        await selectNavNode(page, sourcePageId);
 
-        await addBlockViaYjs(page, sourcePageId, `Delete test block ${Date.now()}`);
+        const createdBlockId = await addBlockViaYjs(page, sourcePageId, `Delete test block ${Date.now()}`);
         await reloadCurrentPageFromYjs(page);
         await clearUndoHistory(page);
 
@@ -243,21 +260,23 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
         expect(countBeforeDelete).toBeGreaterThan(0);
 
         const yjsCountBeforeDelete = await getYjsBlockCount(page, sourcePageId);
-        await deleteFirstBlockViaYjs(page);
+        await deleteBlockViaYjs(page, sourcePageId, createdBlockId);
         const yjsCountAfterDelete = await getYjsBlockCount(page, sourcePageId);
         expect(yjsCountAfterDelete).toBeLessThan(yjsCountBeforeDelete);
 
-        // Force visual refresh without mutating Yjs/undo history.
-        await selectNavNode(page, refreshPageId);
-        await selectNavNode(page, sourcePageId);
+        // Force visual sync to the Yjs state without creating new navigation undo entries.
+        await reloadCurrentPageFromBridge(page);
+        await page.waitForTimeout(300);
         const countAfterDelete = await countBlocks(page);
         expect(countAfterDelete).toBeLessThan(countBeforeDelete);
 
         const countBeforeUndo = await countBlocks(page);
-        await page.waitForTimeout(700);
+        await waitForUndoAvailable(page);
         await clickUndoButton(page);
-        const countAfterUndo = await waitForBlockCountChange(page, countBeforeUndo);
-        expect(countAfterUndo).not.toBe(countBeforeUndo);
+        await waitForYjsBlockCount(page, sourcePageId, yjsCountBeforeDelete);
+        await waitForDomBlockCount(page, yjsCountBeforeDelete);
+        const countAfterUndo = await countBlocks(page);
+        expect(countAfterUndo).toBe(yjsCountBeforeDelete);
     });
 
     test('undo should immediately restore block moved to another page without navigation', async ({
@@ -279,27 +298,29 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
 
         await selectNavNode(page, sourcePageId);
 
-        await addBlockViaYjs(page, sourcePageId, `Move test block ${Date.now()}`);
+        const createdBlockId = await addBlockViaYjs(page, sourcePageId, `Move test block ${Date.now()}`);
         await reloadCurrentPageFromYjs(page);
         const sourceCountBeforeMove = await countBlocks(page);
         expect(sourceCountBeforeMove).toBeGreaterThan(0);
         await clearUndoHistory(page);
 
         const yjsCountBeforeMove = await getYjsBlockCount(page, sourcePageId);
-        await moveFirstBlockToPageViaYjs(page, targetPageId);
+        await moveBlockToPageViaYjs(page, createdBlockId, targetPageId);
         const yjsCountAfterMove = await getYjsBlockCount(page, sourcePageId);
         expect(yjsCountAfterMove).toBeLessThan(yjsCountBeforeMove);
 
-        // Force visual refresh without mutating Yjs/undo history.
-        await selectNavNode(page, targetPageId);
-        await selectNavNode(page, sourcePageId);
+        // Force visual sync to the Yjs state without creating new navigation undo entries.
+        await reloadCurrentPageFromBridge(page);
+        await page.waitForTimeout(300);
         const sourceCountAfterMove = await countBlocks(page);
         expect(sourceCountAfterMove).toBeLessThan(sourceCountBeforeMove);
 
         const countBeforeUndo = await countBlocks(page);
-        await page.waitForTimeout(700);
+        await waitForUndoAvailable(page);
         await clickUndoButton(page);
-        const sourceCountAfterUndo = await waitForBlockCountChange(page, countBeforeUndo);
-        expect(sourceCountAfterUndo).not.toBe(countBeforeUndo);
+        await waitForYjsBlockCount(page, sourcePageId, yjsCountBeforeMove);
+        await waitForDomBlockCount(page, yjsCountBeforeMove);
+        const sourceCountAfterUndo = await countBlocks(page);
+        expect(sourceCountAfterUndo).toBe(yjsCountBeforeMove);
     });
 });
