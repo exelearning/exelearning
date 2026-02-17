@@ -150,13 +150,13 @@ export default class MenuEngine {
                     const menus = document.querySelectorAll(
                         '[data-bs-toggle="dropdown"].show'
                     );
+                    const clickedDropdownToggle =
+                        event.target?.closest?.('.dropdown-toggle');
                     if (menus.length > 0) {
                         menus.forEach((menu) => {
                             if (
                                 !menu.contains(event.target) &&
-                                !event.target.classList.contains(
-                                    'dropdown-toggle'
-                                )
+                                !clickedDropdownToggle
                             ) {
                                 menu.click();
                             }
