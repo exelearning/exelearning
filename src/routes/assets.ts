@@ -631,14 +631,34 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // GET /:assetId - Get/Download asset
             .get('/:assetId', async ({ params, set }) => {
-                const assetId = parseInt(params.assetId, 10);
+                const { projectId, assetId } = params;
 
-                if (isNaN(assetId)) {
-                    set.status = 400;
-                    return { success: false, error: 'Invalid asset ID' };
+                // Get numeric project ID (handles both UUID and numeric strings)
+                const projectIdNum = await getNumericProjectId(projectId);
+                if (projectIdNum === null) {
+                    set.status = 404;
+                    return { success: false, error: 'Project not found' };
                 }
 
-                const asset = await queries.findAssetById(database, assetId);
+                // IMPORTANT:
+                // AssetManager uses UUID-like client IDs in asset:// URLs and calls this endpoint.
+                // If we use parseInt() directly, UUIDs that start with a digit are misparsed
+                // (e.g. "960c..." => 960), causing random 404/400 responses.
+                // So we only treat strictly numeric values as DB numeric IDs.
+                const isNumericAssetId = /^\d+$/.test(assetId);
+
+                let asset: Asset | undefined;
+                if (isNumericAssetId) {
+                    const numericAssetId = parseInt(assetId, 10);
+                    const found = await queries.findAssetById(database, numericAssetId);
+                    // Ensure requested project matches asset ownership
+                    if (found && found.project_id === projectIdNum) {
+                        asset = found;
+                    }
+                } else {
+                    asset = await queries.findAssetByClientId(database, assetId, projectIdNum);
+                }
+
                 if (!asset) {
                     set.status = 404;
                     return { success: false, error: 'Asset not found' };
