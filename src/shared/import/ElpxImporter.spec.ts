@@ -312,6 +312,73 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should not unwrap embedded .elp when current package already has project XML and no export markers', async () => {
+            const legacyXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Main Package"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Main Home"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const nestedXml = `<?xml version="1.0" encoding="utf-8"?>
+<instance class="exe.engine.package.Package" reference="1">
+  <dictionary>
+    <string role="key" value="_title"/>
+    <unicode value="Nested Package"/>
+    <string role="key" value="_lang"/>
+    <unicode value="en"/>
+    <string role="key" value="_root"/>
+    <instance class="exe.engine.node.Node" reference="2">
+      <dictionary>
+        <string role="key" value="_title"/>
+        <unicode value="Nested Home"/>
+        <string role="key" value="parent"/>
+        <none/>
+        <string role="key" value="idevices"/>
+        <list/>
+      </dictionary>
+    </instance>
+  </dictionary>
+</instance>`;
+
+            const nestedElp = fflate.zipSync({
+                'contentv3.xml': new TextEncoder().encode(nestedXml),
+            });
+
+            const mainElpLikeZip = fflate.zipSync({
+                'contentv3.xml': new TextEncoder().encode(legacyXml),
+                'attached-resource.elp': nestedElp,
+                'some-image.png': new Uint8Array([1, 2, 3, 4]),
+            });
+
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            await importer.importFromBuffer(mainElpLikeZip);
+
+            const metadata = ydoc.getMap('metadata');
+            expect(metadata.get('title')).toBe('Main Package');
+
+            const navigation = ydoc.getArray('navigation');
+            const firstPage = navigation.get(0) as Y.Map<unknown>;
+            expect(firstPage.get('pageName')).toBe('Main Home');
+
+            ydoc.destroy();
+        });
     });
 
     describe('error handling', () => {
@@ -709,6 +776,7 @@ describe('ElpxImporter - Legacy Format', () => {
             const zipContents: Record<string, Uint8Array> = {
                 'contentv3.xml': new TextEncoder().encode(legacyXml),
                 'icon_alert.png': new Uint8Array([7, 7, 7]),
+                'index.html': new TextEncoder().encode('<html></html>'),
                 'radioexploradores.elp': nestedElp,
             };
 

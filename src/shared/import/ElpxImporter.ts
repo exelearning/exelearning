@@ -122,6 +122,7 @@ export class ElpxImporter {
      * This keeps behavior consistent when opening legacy export ZIPs that bundle the original project.
      */
     private resolveProjectZipSource(zip: Record<string, Uint8Array>): Record<string, Uint8Array> {
+        const hasDirectProjectXml = Boolean(zip['content.xml'] || zip['contentv3.xml']);
         const topLevelProjectFiles = Object.keys(zip).filter(
             name =>
                 !name.includes('/') && (name.toLowerCase().endsWith('.elp') || name.toLowerCase().endsWith('.elpx')),
@@ -129,6 +130,19 @@ export class ElpxImporter {
 
         if (topLevelProjectFiles.length > 1) {
             throw new Error('ZIP contains multiple ELP files. Please extract and open one at a time.');
+        }
+
+        if (topLevelProjectFiles.length === 0) {
+            return zip;
+        }
+
+        // Only unwrap embedded project files when we are likely in an export container ZIP:
+        // - no direct content.xml/contentv3.xml in this zip, or
+        // - export runtime markers at root (typical web export package).
+        const hasExportRuntimeMarkers = Boolean(zip['index.html'] || zip['base.css'] || zip['common.js']);
+        const shouldUnwrapBundledProject = !hasDirectProjectXml || hasExportRuntimeMarkers;
+        if (!shouldUnwrapBundledProject) {
+            return zip;
         }
 
         if (topLevelProjectFiles.length === 1) {
