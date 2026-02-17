@@ -581,6 +581,7 @@ class YjsProjectBridge {
                   id: compMap.get('id'),
                   ideviceType: compMap.get('ideviceType'),
                   htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+                  jsonProperties: compMap.get('jsonProperties'),
                   lockedBy: compMap.get('lockedBy'),
                   lockUserName: compMap.get('lockUserName'),
                   lockUserColor: compMap.get('lockUserColor'),
@@ -615,7 +616,7 @@ class YjsProjectBridge {
 
           // Check if htmlContent, lockedBy, or other relevant keys changed
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['htmlContent', 'lockedBy', 'lockUserName', 'lockUserColor'];
+          const relevantKeys = ['htmlContent', 'jsonProperties', 'lockedBy', 'lockUserName', 'lockUserColor'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -643,6 +644,7 @@ class YjsProjectBridge {
               id: compMap.get('id'),
               ideviceType: compMap.get('ideviceType'),
               htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+              jsonProperties: compMap.get('jsonProperties'),
               lockedBy: compMap.get('lockedBy'),
               lockUserName: compMap.get('lockUserName'),
               lockUserColor: compMap.get('lockUserColor'),
@@ -683,6 +685,7 @@ class YjsProjectBridge {
             id: compMap.get('id'),
             ideviceType: compMap.get('ideviceType'),
             htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+            jsonProperties: compMap.get('jsonProperties'),
             lockedBy: compMap.get('lockedBy'),
             lockUserName: compMap.get('lockUserName'),
             lockUserColor: compMap.get('lockUserColor'),
@@ -1000,9 +1003,7 @@ class YjsProjectBridge {
       // Update block title if changed
       if (blockData.blockName !== undefined && blockNode.blockName !== blockData.blockName) {
         blockNode.blockName = blockData.blockName;
-        if (blockNode.blockNameElementText) {
-          blockNode.blockNameElementText.innerHTML = blockData.blockName;
-        }
+        this._syncBlockTitle(blockNode.blockNameElementText, blockData.blockName, blockNode);
       }
 
       // Update icon if changed
@@ -1462,7 +1463,7 @@ class YjsProjectBridge {
             // Sync title
             const blockName = blockMap.get('blockName');
             if (titleEl && blockName !== undefined && titleEl.textContent !== blockName) {
-              titleEl.textContent = blockName;
+              this._syncBlockTitle(titleEl, blockName);
               Logger.log(`[YjsProjectBridge] Synced block title: ${blockId} -> ${blockName}`);
             }
 
@@ -1480,6 +1481,7 @@ class YjsProjectBridge {
               // Update blockNode.blockName if needed
               if (blockName !== undefined && blockNode.blockName !== blockName) {
                 blockNode.blockName = blockName;
+                this._syncBlockTitle(titleEl || blockNode.blockNameElementText, blockName, blockNode);
                 Logger.log(`[YjsProjectBridge] Synced blockNode.blockName: ${blockId} -> ${blockName}`);
               }
 
@@ -1500,6 +1502,39 @@ class YjsProjectBridge {
         }
       }
     });
+  }
+
+  /**
+   * Sync a block title and render LaTeX when applicable.
+   * Prefer blockNode.renderBlockTitle() to keep raw LaTeX/edit state consistent.
+   * @param {HTMLElement|null} titleEl
+   * @param {string} blockName
+   * @param {Object|null} blockNode
+   */
+  _syncBlockTitle(titleEl, blockName, blockNode = null) {
+    if (blockNode?.renderBlockTitle) {
+      blockNode.renderBlockTitle();
+      return;
+    }
+
+    if (!titleEl) return;
+    titleEl.textContent = blockName || '';
+
+    if (!blockName || !/(?:\\\(|\\\[|\\begin\{)/.test(blockName)) return;
+    if (typeof MathJax === 'undefined' || !MathJax.typesetPromise) return;
+    if (Object.prototype.hasOwnProperty.call(titleEl, 'isConnected') && titleEl.isConnected === false) return;
+
+    const startup = MathJax.startup?.promise || Promise.resolve();
+    startup
+      .then(() => {
+        if (typeof MathJax.typesetClear === 'function') {
+          MathJax.typesetClear([titleEl]);
+        }
+        return MathJax.typesetPromise([titleEl]);
+      })
+      .catch((err) => {
+        Logger.log('[YjsProjectBridge] Block title MathJax typeset error:', err);
+      });
   }
 
   /**
@@ -3239,16 +3274,27 @@ class YjsProjectBridge {
 
     // Clear AssetManager caches (memory + Cache API)
     if (this.assetManager) {
-      // Revoke blob URLs and clear memory caches
+      // Revoke only blob: URLs. Some environments may fallback to data: URLs,
+      // which must not be passed to revokeObjectURL.
       for (const blobURL of this.assetManager.blobURLCache.values()) {
-        URL.revokeObjectURL(blobURL);
+        if (typeof blobURL === 'string' && blobURL.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(blobURL);
+          } catch (e) {
+            Logger.warn?.('[YjsProjectBridge] Failed to revoke blob URL:', e);
+          }
+        }
       }
       this.assetManager.blobURLCache.clear();
       this.assetManager.reverseBlobCache.clear();
       this.assetManager.blobCache.clear();
 
-      // Clear Cache API storage
-      await this.assetManager.clearCache();
+      // Clear Cache API storage (best-effort)
+      try {
+        await this.assetManager.clearCache();
+      } catch (e) {
+        Logger.warn?.('[YjsProjectBridge] Failed to clear asset cache:', e);
+      }
 
       Logger.log('[YjsProjectBridge] AssetManager caches cleared');
     }

@@ -595,6 +595,19 @@ console.log('Debug:', JSON.stringify(debugInfo, null, 2));
 
 **Tests should NOT accept 404 errors** - all library loading must work correctly.
 
+## Embedding in LMS Plugins
+
+The static editor can be embedded inside LMS plugins (WordPress, Moodle, Drupal, Omeka-S) via an iframe with a `postMessage`-based protocol. Key components:
+
+- **`RuntimeConfig.js`**: Reads `window.__EXE_EMBEDDING_CONFIG__` for basePath, parentOrigin, trustedOrigins, locale, hideUI
+- **`Capabilities.js`**: `ui` capability group maps `hideUI` flags to `showFileMenu`, `showSaveButton`, etc.
+- **`EmbeddingBridge.js`**: Handles postMessage commands: `OPEN_FILE`, `REQUEST_SAVE`, `REQUEST_EXPORT`, `GET_PROJECT_INFO`, `GET_STATE`, `CONFIGURE`
+- **`app.js`**: Wires the bridge, creates `window.eXeLearning.ready` Promise, applies UI visibility via body data attributes
+- **`previewPanel.js`**: Falls back to blob URL when Service Worker is unavailable (cross-origin iframes)
+- **`main.scss`**: CSS rules hide UI elements via `body[data-exe-hide-*="true"]` selectors
+
+Full documentation: `doc/development/embedding.md`
+
 ## External Resources
 
 - GitHub: https://github.com/exelearning/exelearning

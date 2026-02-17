@@ -563,6 +563,347 @@ class YjsStructureBinding {
   }
 
   /**
+   * Normalize selected IDs for grouped movement:
+   * - keep existing pages only
+   * - remove duplicates
+   * - keep only top-most selected nodes (exclude descendants of selected nodes)
+   * @param {Array<string>} pageIds
+   * @returns {Array<string>}
+   */
+  _normalizeGroupSelection(pageIds) {
+    const uniqueIds = [];
+    const seen = new Set();
+    (pageIds || []).forEach((id) => {
+      if (!id || seen.has(id)) return;
+      if (!this.getPageMap(id)) return;
+      seen.add(id);
+      uniqueIds.push(id);
+    });
+
+    return uniqueIds.filter((id) => {
+      return !uniqueIds.some((otherId) => otherId !== id && this.isDescendant(id, otherId));
+    });
+  }
+
+  /**
+   * Get child IDs for a parent sorted by order.
+   * parentId may be null for top-level pages.
+   * @param {string|null} parentId
+   * @returns {Array<string>}
+   */
+  _getChildrenIds(parentId) {
+    const navigation = this.manager.getNavigation();
+    const children = [];
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const currentParentId = pageMap.get('parentId') ?? null;
+      if (currentParentId === (parentId ?? null)) {
+        children.push({
+          id: pageMap.get('id'),
+          order: pageMap.get('order') ?? i,
+        });
+      }
+    }
+
+    return children.sort((a, b) => a.order - b.order).map((child) => child.id);
+  }
+
+  /**
+   * Check grouped move up feasibility (all-or-nothing).
+   * A grouped selection cannot move up if the first sibling in any affected parent group is selected.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupPrev(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    for (const [parentId, selectedSet] of byParent.entries()) {
+      const siblings = this._getChildrenIds(parentId);
+      if (siblings.length > 0 && selectedSet.has(siblings[0])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Move grouped selection up (all affected groups move one position up as a block).
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupPrev(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupPrev(selectedIds)) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    this.manager.getDoc().transact(() => {
+      for (const [parentId, selectedSet] of byParent.entries()) {
+        const siblings = this._getChildrenIds(parentId);
+        const reordered = [...siblings];
+
+        for (let i = 1; i < reordered.length; i++) {
+          if (selectedSet.has(reordered[i]) && !selectedSet.has(reordered[i - 1])) {
+            const temp = reordered[i - 1];
+            reordered[i - 1] = reordered[i];
+            reordered[i] = temp;
+          }
+        }
+
+        reordered.forEach((id, index) => {
+          const pageMap = this.getPageMap(id);
+          if (pageMap) pageMap.set('order', index);
+        });
+      }
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(`[YjsStructureBinding] Group moved up: ${selectedIds.join(', ')}`);
+    return true;
+  }
+
+  /**
+   * Check grouped move down feasibility (all-or-nothing).
+   * A grouped selection cannot move down if the last sibling in any affected parent group is selected.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupNext(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    for (const [parentId, selectedSet] of byParent.entries()) {
+      const siblings = this._getChildrenIds(parentId);
+      if (siblings.length > 0 && selectedSet.has(siblings[siblings.length - 1])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Move grouped selection down (all affected groups move one position down as a block).
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupNext(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupNext(selectedIds)) return false;
+
+    const byParent = new Map();
+    selectedIds.forEach((id) => {
+      const parentId = this.getPageMap(id)?.get('parentId') ?? null;
+      if (!byParent.has(parentId)) byParent.set(parentId, new Set());
+      byParent.get(parentId).add(id);
+    });
+
+    this.manager.getDoc().transact(() => {
+      for (const [parentId, selectedSet] of byParent.entries()) {
+        const siblings = this._getChildrenIds(parentId);
+        const reordered = [...siblings];
+
+        for (let i = reordered.length - 2; i >= 0; i--) {
+          if (selectedSet.has(reordered[i]) && !selectedSet.has(reordered[i + 1])) {
+            const temp = reordered[i + 1];
+            reordered[i + 1] = reordered[i];
+            reordered[i] = temp;
+          }
+        }
+
+        reordered.forEach((id, index) => {
+          const pageMap = this.getPageMap(id);
+          if (pageMap) pageMap.set('order', index);
+        });
+      }
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(`[YjsStructureBinding] Group moved down: ${selectedIds.join(', ')}`);
+    return true;
+  }
+
+  /**
+   * Check grouped move right feasibility (all-or-nothing).
+   * Rule: all selected roots must be siblings, and first selected must have a previous sibling.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupRight(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    if (!firstMap) return false;
+    const sourceParentId = firstMap.get('parentId') ?? null;
+
+    // Keep coherent group semantics: same parent only
+    const sameParent = selectedIds.every((id) => {
+      const map = this.getPageMap(id);
+      return (map?.get('parentId') ?? null) === sourceParentId;
+    });
+    if (!sameParent) return false;
+
+    const siblings = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = siblings.filter((id) => selectedSet.has(id));
+    if (orderedSelected.length === 0) return false;
+
+    const firstSelectedId = orderedSelected[0];
+    const firstIndex = siblings.indexOf(firstSelectedId);
+    return firstIndex > 0;
+  }
+
+  /**
+   * Move grouped selection right as a block.
+   * Rule: all selected roots become children of the sibling preceding the first selected root.
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupRight(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupRight(selectedIds)) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    const siblings = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = siblings.filter((id) => selectedSet.has(id));
+    const firstSelectedId = orderedSelected[0];
+    const firstIndex = siblings.indexOf(firstSelectedId);
+    const targetParentId = siblings[firstIndex - 1];
+
+    const remainingSource = siblings.filter((id) => !selectedSet.has(id));
+    const targetChildren = this._getChildrenIds(targetParentId);
+    const newTargetChildren = [...targetChildren, ...orderedSelected];
+
+    this.manager.getDoc().transact(() => {
+      orderedSelected.forEach((id) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) {
+          pageMap.set('parentId', targetParentId);
+        }
+      });
+
+      remainingSource.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+
+      newTargetChildren.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(
+      `[YjsStructureBinding] Group moved right under ${targetParentId}: ${orderedSelected.join(', ')}`
+    );
+    return true;
+  }
+
+  /**
+   * Check grouped move left feasibility (all-or-nothing).
+   * Rule: all selected roots must share parent, and that parent must exist (not top-level).
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  canMoveGroupLeft(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (selectedIds.length === 0) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    if (!firstMap) return false;
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    if (sourceParentId === null) return false;
+
+    const sameParent = selectedIds.every((id) => {
+      const map = this.getPageMap(id);
+      return (map?.get('parentId') ?? null) === sourceParentId;
+    });
+    if (!sameParent) return false;
+
+    return !!this.getPageMap(sourceParentId);
+  }
+
+  /**
+   * Move grouped selection left as a block.
+   * Rule: selected roots keep order and are inserted after their current parent.
+   * Preserves internal order and hierarchy.
+   * @param {Array<string>} pageIds
+   * @returns {boolean}
+   */
+  movePageGroupLeft(pageIds) {
+    const selectedIds = this._normalizeGroupSelection(pageIds);
+    if (!this.canMoveGroupLeft(selectedIds)) return false;
+
+    const firstMap = this.getPageMap(selectedIds[0]);
+    const sourceParentId = firstMap.get('parentId') ?? null;
+    const sourceParentMap = this.getPageMap(sourceParentId);
+    const grandparentId = sourceParentMap?.get('parentId') ?? null;
+
+    const sourceChildren = this._getChildrenIds(sourceParentId);
+    const selectedSet = new Set(selectedIds);
+    const orderedSelected = sourceChildren.filter((id) => selectedSet.has(id));
+    const remainingSource = sourceChildren.filter((id) => !selectedSet.has(id));
+
+    const grandChildren = this._getChildrenIds(grandparentId);
+    const insertPos = Math.max(0, grandChildren.indexOf(sourceParentId) + 1);
+    const newGrandChildren = [
+      ...grandChildren.slice(0, insertPos),
+      ...orderedSelected,
+      ...grandChildren.slice(insertPos),
+    ];
+
+    this.manager.getDoc().transact(() => {
+      orderedSelected.forEach((id) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) {
+          pageMap.set('parentId', grandparentId);
+        }
+      });
+
+      remainingSource.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+
+      newGrandChildren.forEach((id, index) => {
+        const pageMap = this.getPageMap(id);
+        if (pageMap) pageMap.set('order', index);
+      });
+    }, this.manager.getDoc().clientID);
+
+    Logger.log(
+      `[YjsStructureBinding] Group moved left to parent ${grandparentId}: ${orderedSelected.join(', ')}`
+    );
+    return true;
+  }
+
+  /**
    * Move page UP (↑) - swap with previous sibling
    * @param {string} pageId
    * @returns {boolean}

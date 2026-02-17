@@ -335,6 +335,11 @@ describe('NavbarFile', () => {
     });
 
     describe('event listener setup', () => {
+        const getHandlerByEventName = (mockFn, eventName) => {
+            const call = mockFn.mock.calls.find(([name]) => name === eventName);
+            return call?.[1];
+        };
+
         beforeEach(() => {
             navbarFile = new NavbarFile(mockMenu);
         });
@@ -342,6 +347,254 @@ describe('NavbarFile', () => {
         it('setNewProjectEvent should add click listener', () => {
             navbarFile.setNewProjectEvent();
             expect(mockButtons.newButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+            expect(mockButtons.newButton.addEventListener).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+            expect(mockButtons.newButton.addEventListener).toHaveBeenCalledWith('mousedown', expect.any(Function));
+            expect(window.addEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), true);
+            expect(window.addEventListener).toHaveBeenCalledWith('keyup', expect.any(Function), true);
+            expect(window.addEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
+        });
+
+        it('setNewProjectEvent should prevent default and create a new project on regular click', () => {
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            navbarFile.setNewProjectEvent();
+
+            const handler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+            handler({
+                preventDefault,
+                ctrlKey: false,
+                metaKey: false,
+                shiftKey: false,
+                altKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(newProjectSpy).toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should open a new window on Ctrl/Cmd click', () => {
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            navbarFile.setNewProjectEvent();
+
+            const handler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+            handler({
+                preventDefault,
+                ctrlKey: true,
+                metaKey: false,
+                shiftKey: false,
+                altKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should open current URL on Ctrl/Cmd click in static mode', () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.location.href = 'http://localhost:64522/?v=v0.0.0-alpha';
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            navbarFile.setNewProjectEvent();
+
+            const handler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+            handler({
+                preventDefault,
+                ctrlKey: false,
+                metaKey: true,
+                shiftKey: false,
+                altKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:64522/?v=v0.0.0-alpha', '_blank');
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should keep Ctrl/Cmd intent from mousedown if click modifiers are missing', () => {
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            navbarFile.setNewProjectEvent();
+
+            const mousedownHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'mousedown'
+            );
+            const clickHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+
+            mousedownHandler({
+                ctrlKey: true,
+                metaKey: false,
+                button: 0,
+            });
+            clickHandler({
+                preventDefault,
+                ctrlKey: false,
+                metaKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should keep Ctrl/Cmd intent from pointerdown if click modifiers are missing', () => {
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            navbarFile.setNewProjectEvent();
+
+            const pointerdownHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'pointerdown'
+            );
+            const clickHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+
+            pointerdownHandler({
+                ctrlKey: true,
+                metaKey: false,
+                button: 0,
+            });
+            clickHandler({
+                preventDefault,
+                ctrlKey: false,
+                metaKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should open new tab when Ctrl/Cmd key state is tracked globally', () => {
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+            const preventDefault = vi.fn();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            navbarFile.setNewProjectEvent();
+
+            const keydownCall = window.addEventListener.mock.calls.find(
+                ([eventName]) => eventName === 'keydown'
+            );
+            const clickHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+
+            keydownCall?.[1]({ key: 'Control' });
+            clickHandler({
+                preventDefault,
+                ctrlKey: false,
+                metaKey: false,
+                button: 0,
+            });
+
+            expect(preventDefault).toHaveBeenCalled();
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should suppress immediate duplicate newProjectEvent after opening new tab', () => {
+            const realNewProjectEvent = NavbarFile.prototype.newProjectEvent;
+            const newSessionSpy = vi.spyOn(navbarFile, 'newSession').mockResolvedValue();
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            const preventDefault = vi.fn();
+            const stopPropagation = vi.fn();
+            navbarFile.setNewProjectEvent();
+
+            const clickHandler = getHandlerByEventName(
+                mockButtons.newButton.addEventListener,
+                'click'
+            );
+            clickHandler({
+                preventDefault,
+                stopPropagation,
+                ctrlKey: true,
+                metaKey: false,
+                button: 0,
+            });
+
+            // Simulate a stale duplicated listener trying to execute in same gesture.
+            realNewProjectEvent.call(navbarFile);
+
+            expect(openSpy).toHaveBeenCalledWith('http://localhost:8080/workarea', '_blank');
+            expect(newSessionSpy).not.toHaveBeenCalled();
+        });
+
+        it('setNewProjectEvent should not duplicate listeners when called twice', () => {
+            const removeSpy = vi.spyOn(mockButtons.newButton, 'removeEventListener');
+            const openSpy = vi.spyOn(window, 'open').mockReturnValue({
+                focus: vi.fn(),
+            });
+            const newProjectSpy = vi.spyOn(navbarFile, 'newProjectEvent');
+
+            navbarFile.setNewProjectEvent();
+            navbarFile.setNewProjectEvent();
+
+            expect(removeSpy).toHaveBeenCalledWith(
+                'click',
+                expect.any(Function)
+            );
+
+            const clickCall = mockButtons.newButton.addEventListener.mock.calls
+                .filter(([eventName]) => eventName === 'click')
+                .at(-1);
+            const clickHandler = clickCall?.[1];
+            clickHandler({
+                preventDefault: vi.fn(),
+                stopPropagation: vi.fn(),
+                ctrlKey: true,
+                metaKey: false,
+                button: 0,
+            });
+
+            expect(openSpy).toHaveBeenCalledTimes(1);
+            expect(newProjectSpy).not.toHaveBeenCalled();
+        });
+
+        it('newProjectEvent should respect global suppression flag from other instances', () => {
+            const newSessionSpy = vi.spyOn(navbarFile, 'newSession').mockResolvedValue();
+            window.__exeSuppressNewProjectUntil = Date.now() + 1000;
+
+            navbarFile.newProjectEvent();
+
+            expect(newSessionSpy).not.toHaveBeenCalled();
+            expect(window.__exeSuppressNewProjectUntil).toBe(0);
         });
 
         it('setNewFromTemplateEvent should add click listener', () => {
@@ -1964,8 +2217,11 @@ describe('NavbarFile', () => {
             vi.spyOn(navbarFile, 'saveOdeEvent');
 
             // Click new button
-            const newHandler = mockButtons.newButton.addEventListener.mock.calls[0][1];
-            newHandler();
+            const newCall = mockButtons.newButton.addEventListener.mock.calls.find(
+                ([eventName]) => eventName === 'click'
+            );
+            const newHandler = newCall?.[1];
+            newHandler({ preventDefault: vi.fn() });
             expect(navbarFile.newProjectEvent).toHaveBeenCalled();
 
             // Click new from template button

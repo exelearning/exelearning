@@ -380,6 +380,7 @@
         // Initialize static mode - load bundle data and validate locale
         async function initStaticMode() {
             await loadStaticData();
+            registerPwaFileOpenHandlers();
 
             // Validate and set locale after bundle.json is loaded
             const localeOptions = window.__EXE_STATIC_DATA__?.parameters?.userPreferencesConfig?.locale?.options;
@@ -406,38 +407,54 @@
             }, 100);
         }
 
+        // Route an incoming file (from PWA file handlers) to the app when ready.
+        function routeIncomingStaticFile(file) {
+            if (!(file instanceof File)) return;
+            window.__pendingImportFile = file;
+
+            // Ensure there is a projectId so app bootstrap can proceed.
+            if (!window.eXeLearning.projectId) {
+                window.eXeLearning.projectId = generateUUID();
+            }
+
+            const app = window.eXeLearning?.app;
+            if (app && typeof app.openStaticFile === 'function') {
+                app.openStaticFile(file);
+                return;
+            }
+
+            if (typeof window.__startExeApp === 'function') {
+                window.__startExeApp();
+            }
+        }
+
+        // Handle OS-level "Open with PWA" file launches (manifest file_handlers).
+        function registerPwaFileOpenHandlers() {
+            if (!('launchQueue' in window) || typeof window.launchQueue.setConsumer !== 'function') {
+                return;
+            }
+
+            window.launchQueue.setConsumer(async (launchParams) => {
+                try {
+                    const files = launchParams?.files || [];
+                    if (!files.length) return;
+
+                    for (const handle of files) {
+                        if (!handle || typeof handle.getFile !== 'function') continue;
+                        const file = await handle.getFile();
+                        routeIncomingStaticFile(file);
+                    }
+                } catch (error) {
+                    console.error('[Static/PWA] Failed to process launched file(s):', error);
+                }
+            });
+        }
+
         // Setup File menu handlers for static mode
         function setupFileMenuHandlers() {
-            // File > New - create new blank project
-            const newBtn = document.getElementById('navbar-button-new');
-            if (newBtn) {
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
-                    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                    const hasUnsavedAssets =
-                        assetManager &&
-                        typeof assetManager.hasUnsavedAssets === 'function' &&
-                        assetManager.hasUnsavedAssets();
-                    const hasUnsaved = docManager?.isDirty === true || hasUnsavedAssets;
-
-                    if (!hasUnsaved) {
-                        window.newProject();
-                        return;
-                    }
-
-                    // Use the same "save before leaving" modal as online mode
-                    if (window.eXeLearning?.app?.modals?.sessionlogout) {
-                        window.eXeLearning.app.modals.sessionlogout.show({
-                            title: (typeof _ === 'function' ? _('New file') : 'New file'),
-                            forceOpen: (typeof _ === 'function'
-                                ? _('Create new file without saving')
-                                : 'Create new file without saving'),
-                            newFile: true,
-                        });
-                    }
-                });
-            }
+            // File > New is handled by navbarFile.js.
+            // Avoid duplicate listeners here, which can cause current-tab reload
+            // while opening a new tab on Cmd/Ctrl-click.
 
             // File > Open is handled by navbarFile.js openUserOdeFilesEvent()
             // which detects __EXE_STATIC_MODE__ and uses openFileInputStatic()

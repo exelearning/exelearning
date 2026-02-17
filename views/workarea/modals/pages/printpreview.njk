@@ -1,17 +1,15 @@
 <!-- Print Preview Overlay (not using Bootstrap modal) -->
 <div id="printPreviewOverlay" class="print-preview-overlay" data-visible="false">
-    <div class="print-preview-header">
-        <div class="print-preview-title">
-            <span class="exe-icon">print</span>
+    <div class="print-preview-header d-flex justify-content-between align-items-center p-2 border-bottom">
+        <div class="print-preview-title h5 mb-0">
             <span>{{ 'Print preview' | trans }}</span>
         </div>
-        <div class="print-preview-actions">
-            <button type="button" class="print-preview-print-btn" title="{{ 'Print' | trans }}">
-                <span class="exe-icon">print</span>
-                <span class="btn-text">{{ 'Print' | trans }}</span>
+        <div class="print-preview-actions d-flex gap-2">
+            <button type="button" class="print-preview-print-btn btn btn-primary" title="{{ 'Print' | trans }}">
+                {{ 'Print' | trans }}
             </button>
-            <button type="button" class="print-preview-close-btn" title="{{ 'Close' | trans }}">
-                <span class="exe-icon">close</span>
+            <button type="button" class="print-preview-close-btn btn btn-secondary" title="{{ 'Close' | trans }}">
+                {{ 'Close' | trans }}
             </button>
         </div>
     </div>

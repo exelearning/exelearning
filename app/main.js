@@ -159,6 +159,8 @@ log.transports.file.resolvePathFn = () => path.join(app.getPath('userData'), 'lo
 
 // files to open after app ready
 let pendingOpenFiles = [];
+// Pending .elpx path per renderer WebContents id (sent when renderer is ready)
+const pendingOpenFileByWebContentsId = new Map();
 
 autoUpdater.logger = log;
 autoUpdater.allowPrerelease = false;
@@ -194,6 +196,7 @@ let appDataPath;
 let mainWindow;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
+let youtubeHeadersConfigured = false;
 
 // Environment variables container
 let customEnv;
@@ -201,6 +204,7 @@ let env;
 
 // ──────────────  Save/Export helpers  ──────────────
 const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
+const DEFAULT_EXTENSION = '.elpx';
 
 /**
  * Extract a known extension from a file path or suggested name.
@@ -236,35 +240,50 @@ function isLegacyElp(p) {
     }
 }
 
-function proposeElpxPath(currentPath, suggestedName = null) {
+function getDialogFilterForExt(ext) {
+    switch ((ext || '').toLowerCase()) {
+        case '.elpx':
+            return { name: 'eXeLearning project', extensions: ['elpx'] };
+        case '.zip':
+            return { name: 'ZIP archive', extensions: ['zip'] };
+        case '.epub':
+            return { name: 'EPUB', extensions: ['epub'] };
+        case '.xml':
+            return { name: 'XML document', extensions: ['xml'] };
+        default:
+            return null;
+    }
+}
+
+function proposeSavePath(currentPath, suggestedName = null) {
     try {
+        const ext = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
         const dir = currentPath ? path.dirname(currentPath) : app.getPath('documents');
-        // Use suggestedName if provided and no currentPath, otherwise extract from currentPath
         let base;
         if (currentPath) {
             base = path.basename(currentPath, path.extname(currentPath));
         } else if (suggestedName) {
-            // Extract base name from suggestedName (remove extension if present)
             base = path.basename(suggestedName, path.extname(suggestedName));
         } else {
             base = 'document';
         }
-        return path.join(dir, `${base}.elpx`);
+        return path.join(dir, `${base}${ext}`);
     } catch (_e) {
-        return suggestedName || 'document.elpx';
+        return suggestedName || `document${DEFAULT_EXTENSION}`;
     }
 }
 
-async function promptElpxSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
+async function promptSave(owner, currentPath, titleKey, buttonKey, suggestedName = null) {
+    const inferredExt = getKnownExt(suggestedName) || getKnownExt(currentPath) || DEFAULT_EXTENSION;
+    const filter = getDialogFilterForExt(inferredExt);
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
         title: tOrDefault(titleKey, defaultLocale === 'es' ? 'Guardar como…' : 'Save as…'),
-        defaultPath: proposeElpxPath(currentPath, suggestedName),
+        defaultPath: proposeSavePath(currentPath, suggestedName),
         buttonLabel: tOrDefault(buttonKey, defaultLocale === 'es' ? 'Guardar' : 'Save'),
-        filters: [{ name: 'eXeLearning project', extensions: ['elpx'] }],
+        ...(filter ? { filters: [filter] } : {}),
     });
     if (canceled || !filePath) return null;
-    // force .elpx if not included
-    return ensureExt(filePath, suggestedName || 'document.elpx');
+    return ensureExt(filePath, suggestedName || `document${DEFAULT_EXTENSION}`);
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -508,6 +527,43 @@ function attachOpenHandler(win) {
     });
 }
 
+/**
+ * Ensure YouTube embeds receive HTTP headers required by their anti-abuse checks.
+ * In Electron with custom protocols (app://), Referer can be missing/unsupported,
+ * which may trigger YouTube error 153.
+ */
+function configureYouTubeEmbedHeaders() {
+    if (youtubeHeadersConfigured) return;
+    youtubeHeadersConfigured = true;
+
+    const filter = {
+        urls: [
+            '*://youtube.com/*',
+            '*://*.youtube.com/*',
+            '*://youtube-nocookie.com/*',
+            '*://*.youtube-nocookie.com/*',
+        ],
+    };
+
+    session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+        const headers = details.requestHeaders || {};
+        const referer = headers.Referer || headers.referer || '';
+
+        // app:// and file:// referers are not accepted by YouTube embed checks.
+        const hasInvalidReferer =
+            !referer ||
+            referer.startsWith('app://') ||
+            referer.startsWith('file://');
+
+        if (hasInvalidReferer) {
+            headers.Referer = 'https://localhost/';
+            headers.Origin = headers.Origin || headers.origin || 'https://localhost';
+        }
+
+        callback({ requestHeaders: headers });
+    });
+}
+
 async function createWindow() {
     initializePaths(); // Initialize paths before using them
     initializeEnv(); // Initialize environment variables afterward
@@ -520,6 +576,7 @@ async function createWindow() {
     // Register the app:// protocol handler for serving static files
     // This replaces the HTTP server and enables Service Workers
     registerProtocolHandler();
+    configureYouTubeEmbedHeaders();
 
     const isDev = determineDevMode();
 
@@ -1150,13 +1207,13 @@ ipcMain.handle('app:save', async (e, { downloadUrl, projectKey, suggestedName })
 
         if (!targetPath) {
             // non remembered path → ask (use suggestedName for default filename)
-            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
         } else if (isLegacyElp(targetPath)) {
             // remembered path is .elp → forzar "Save as..." to .elpx
-            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
@@ -1247,13 +1304,13 @@ ipcMain.handle('app:saveBuffer', async (e, { base64Data, projectKey, suggestedNa
         let targetPath = getSavedPath(key);
         if (!targetPath) {
             // No remembered path → ask (use suggestedName for default filename)
-            const picked = await promptElpxSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, null, 'save.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
         } else if (isLegacyElp(targetPath)) {
             // Remembered path is .elp → force "Save as..." to .elpx
-            const picked = await promptElpxSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
+            const picked = await promptSave(owner, targetPath, 'saveAs.dialogTitle', 'save.button', suggestedName);
             if (!picked) return false;
             targetPath = picked;
             setSavedPath(key, targetPath);
@@ -1336,23 +1393,38 @@ function createNewProjectWindow(filePath) {
             preload: path.join(__dirname, 'preload.js'),
         },
         tabbingIdentifier: 'mainGroup', // macOS native tabs support
-        show: true,
+        show: false,
     });
 
     newWindow.setMenuBarVisibility(isDev);
     newWindow.loadURL('app://localhost/');
+    newWindow.once('ready-to-show', () => {
+        if (!newWindow.isDestroyed()) {
+            newWindow.show();
+        }
+    });
 
     // Note: Tab bar visibility is controlled by AppleWindowTabbingMode preference (set at app start)
 
-    // Send file path once window is ready
-    newWindow.webContents.on('did-finish-load', () => {
-        newWindow.webContents.send('app:open-file', filePath);
+    // Send the file only when renderer explicitly confirms it registered the open-file handler
+    const newWindowWcId = newWindow.webContents.id;
+    pendingOpenFileByWebContentsId.set(newWindowWcId, filePath);
+    newWindow.on('closed', () => {
+        pendingOpenFileByWebContentsId.delete(newWindowWcId);
     });
 
     attachOpenHandler(newWindow);
 
     return newWindow;
 }
+
+ipcMain.on('app:renderer-ready-for-open-file', (event) => {
+    const wcId = event.sender.id;
+    const filePath = pendingOpenFileByWebContentsId.get(wcId);
+    if (!filePath) return;
+    event.sender.send('app:open-file', filePath);
+    pendingOpenFileByWebContentsId.delete(wcId);
+});
 
 /**
  * Handle opening an .elpx file

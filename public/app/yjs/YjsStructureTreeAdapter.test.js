@@ -433,6 +433,7 @@ describe('YjsStructureTreeAdapter', () => {
       adapter.movePageToParent('page-2', 'page-1');
 
       expect(mockStructureBinding.movePage).toHaveBeenCalled();
+      expect(mockStructureBinding.movePage).toHaveBeenCalledWith('page-2', 'page-1', expect.any(Number));
     });
 
     it('renders tree after moving', () => {

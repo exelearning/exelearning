@@ -2544,7 +2544,9 @@ class AssetManager {
         if (!shouldInclude) {
           const isCustomFolderFile = relativePath.startsWith('custom/') &&
                                      !relativePath.endsWith('/');
-          if (isCustomFolderFile) {
+          const customFilename = isCustomFolderFile ? relativePath.split('/').pop() : '';
+          const isCustomPlaceholder = Boolean(customFilename) && customFilename.startsWith('.');
+          if (isCustomFolderFile && !isCustomPlaceholder) {
             shouldInclude = true;
             Logger.log(`[AssetManager] Detected custom/ folder asset: ${relativePath}`);
           }
@@ -2742,7 +2744,7 @@ class AssetManager {
     };
 
     // Pattern 1: {{context_path}}/path/to/file.jpg
-    const contextPathRegex = /\{\{context_path\}\}\/([^"'\s<>]+)/g;
+    const contextPathRegex = /\{\{context_path\}\}\/([^"'<>]+)/g;
     convertedHTML = convertedHTML.replace(contextPathRegex, (fullMatch, assetPath) => {
       const url = findAssetUrl(assetPath);
       if (url) return url;

@@ -42,6 +42,9 @@ window.electronAPI = {
             mtimeMs: Date.now(),
         });
     },
+    notifyRendererReadyForOpenFile: () => {
+        Logger.log('MOCK [notifyRendererReadyForOpenFile] called.');
+    },
     exportToFolder: (options) => {
         Logger.log('MOCK [exportToFolder] called with:', options);
         return Promise.resolve({ ok: true, dir: '/fake/export/dir' });

@@ -165,12 +165,39 @@ export class ElpxImporter {
         let isLegacyFormat = false;
 
         if (!contentFile) {
+            // Check for legacy format
             contentFile = workingZip['contentv3.xml'];
             isLegacyFormat = true;
         }
 
         if (!contentFile) {
-            throw new Error('No content.xml found in .elpx file');
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (workingZip['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml)');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(workingZip)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        // Keep other files (like mimetype) as is, or ignore?
+                        // For eXeLearning import, we mainly care about what's inside EPUB/
+                        // but let's keep them just in case, though they won't be found by relative lookups
+                        rootedZip[path] = data;
+                    }
+                }
+                workingZip = rootedZip;
+                contentFile = workingZip['content.xml'];
+                isLegacyFormat = false; // EPUB3 uses modern format
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
         }
 
         const contentXml = new TextDecoder().decode(contentFile);
@@ -235,7 +262,31 @@ export class ElpxImporter {
         }
 
         if (!contentFile) {
-            throw new Error('No content.xml found in provided files');
+            // Check for EPUB3 format (content.xml inside EPUB directory)
+            if (zipContents['EPUB/content.xml']) {
+                this.logger.log('[ElpxImporter] Detected EPUB3 structure (EPUB/content.xml) in zip contents');
+
+                // Create a new zip object with "rooted" paths (stripping EPUB/ prefix)
+                const rootedZip: Record<string, Uint8Array> = {};
+                for (const [path, data] of Object.entries(zipContents)) {
+                    if (path.startsWith('EPUB/')) {
+                        const newPath = path.substring(5); // Remove 'EPUB/'
+                        rootedZip[newPath] = data;
+                    } else {
+                        rootedZip[path] = data;
+                    }
+                }
+                // Update the reference to use the rooted zip
+                zipContents = rootedZip;
+                contentFile = zipContents['content.xml'];
+                isLegacyFormat = false;
+            }
+        }
+
+        if (!contentFile) {
+            throw new Error(
+                'Unable to open this file: content.xml is missing. Ensure this is a valid eXeLearning package or editable export.',
+            );
         }
 
         const contentXml = new TextDecoder().decode(contentFile);
@@ -456,7 +507,13 @@ export class ElpxImporter {
         const metadata = this.getMetadata();
 
         // Convert legacy pages to PageData format
-        const pageStructures: PageData[] = this.convertLegacyPagesToPageData(parsedData.pages, parentId);
+        // IMPORTANT: On incremental imports, apply order offset so new root pages append after existing siblings.
+        let orderOffset = 0;
+        if (!clearExisting) {
+            orderOffset = this.getNextAvailableOrder(parentId);
+            this.logger.log('[ElpxImporter] Legacy order offset for import:', orderOffset, 'at parent:', parentId);
+        }
+        const pageStructures: PageData[] = this.convertLegacyPagesToPageData(parsedData.pages, parentId, orderOffset);
 
         this.logger.log('[ElpxImporter] Converted legacy pages:', pageStructures.length);
 
@@ -532,20 +589,33 @@ export class ElpxImporter {
     /**
      * Convert legacy pages to PageData format
      */
-    private convertLegacyPagesToPageData(legacyPages: LegacyPage[], rootParentId: string | null): PageData[] {
+    private convertLegacyPagesToPageData(
+        legacyPages: LegacyPage[],
+        rootParentId: string | null,
+        rootOrderOffset = 0,
+    ): PageData[] {
         const pageStructures: PageData[] = [];
+        const pageIdRemap = new Map<string, string>();
+
+        // Legacy IDs are stable inside .elp files (e.g. page-4, idevice-2).
+        // On repeated imports into the same Y.Doc we must remap to unique IDs to avoid collisions.
+        for (const legacyPage of legacyPages) {
+            pageIdRemap.set(legacyPage.id, this.generateId('page'));
+        }
 
         for (const legacyPage of legacyPages) {
-            // Determine parent ID: use rootParentId for top-level pages, otherwise use the mapped parent
-            const parentId = legacyPage.parent_id === null ? rootParentId : legacyPage.parent_id;
+            const pageId = pageIdRemap.get(legacyPage.id) || this.generateId('page');
+            const parentId =
+                legacyPage.parent_id === null ? rootParentId : (pageIdRemap.get(legacyPage.parent_id) ?? rootParentId);
+            const order = legacyPage.parent_id === null ? rootOrderOffset + legacyPage.position : legacyPage.position;
 
             const pageData: PageData = {
-                id: legacyPage.id,
-                pageId: legacyPage.id,
+                id: pageId,
+                pageId: pageId,
                 pageName: legacyPage.title,
                 title: legacyPage.title,
                 parentId: parentId,
-                order: legacyPage.position,
+                order: order,
                 createdAt: new Date().toISOString(),
                 blocks: [],
                 properties: {},
@@ -567,9 +637,11 @@ export class ElpxImporter {
      * Convert legacy block to BlockData format
      */
     private convertLegacyBlockToBlockData(legacyBlock: LegacyBlock): BlockData {
+        const blockId = this.generateId('block');
+
         const blockData: BlockData = {
-            id: legacyBlock.id,
-            blockId: legacyBlock.id,
+            id: blockId,
+            blockId: blockId,
             blockName: legacyBlock.name,
             iconName: legacyBlock.iconName,
             order: legacyBlock.position,
@@ -591,6 +663,8 @@ export class ElpxImporter {
      * Convert legacy iDevice to ComponentData format
      */
     private convertLegacyIdeviceToComponentData(legacyIdevice: LegacyIdevice): ComponentData {
+        const componentId = this.generateId('idevice');
+
         // Build HTML view with feedback if present
         let htmlView = legacyIdevice.htmlView || '';
 
@@ -625,8 +699,8 @@ export class ElpxImporter {
         }
 
         const componentData: ComponentData = {
-            id: legacyIdevice.id,
-            ideviceId: legacyIdevice.id,
+            id: componentId,
+            ideviceId: componentId,
             ideviceType: legacyIdevice.type,
             type: legacyIdevice.type,
             order: legacyIdevice.position,

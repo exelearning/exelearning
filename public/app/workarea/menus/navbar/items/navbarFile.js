@@ -174,9 +174,155 @@ export default class NavbarFile {
      *
      */
     setNewProjectEvent() {
-        this.newButton.addEventListener('click', () => {
+        // In static/offline mode, "New" should open the current static entry URL.
+        // This keeps versioned query params (e.g. ?v=...) and avoids forcing /workarea.
+        const newProjectUrl = this.resolveNewProjectWindowUrl();
+        if (this.newButton?.setAttribute) {
+            this.newButton.setAttribute('href', newProjectUrl);
+        }
+        this.newProjectOpenInNewTabIntent = false;
+        this.newProjectModifierPressed = false;
+        this.attachNewProjectModifierTracking();
+
+        // Some environments lose modifier flags between mousedown and click.
+        // Capture the user's original intent here and consume it on click.
+        const previousHandlers = this.newButton.__exeNewProjectHandlers;
+        if (previousHandlers?.pointerdown) {
+            this.newButton.removeEventListener(
+                'pointerdown',
+                previousHandlers.pointerdown
+            );
+        }
+        if (previousHandlers?.mousedown) {
+            this.newButton.removeEventListener(
+                'mousedown',
+                previousHandlers.mousedown
+            );
+        }
+        if (previousHandlers?.click) {
+            this.newButton.removeEventListener('click', previousHandlers.click);
+        }
+
+        this._onNewProjectPointerDown = (event) => {
+            this.newProjectOpenInNewTabIntent =
+                this.newProjectOpenInNewTabIntent ||
+                this.shouldOpenNewProjectInNewTab(event);
+        };
+        this._onNewProjectMouseDown = (event) => {
+            this.newProjectOpenInNewTabIntent =
+                this.newProjectOpenInNewTabIntent ||
+                this.shouldOpenNewProjectInNewTab(event);
+        };
+        this._onNewProjectClick = (event) => {
+            // Electron does not always honor Cmd/Ctrl-click on in-app links.
+            // Force opening a new tab/window for modifier/middle clicks.
+            const shouldOpenInNewTab =
+                this.newProjectOpenInNewTabIntent ||
+                this.newProjectModifierPressed ||
+                this.shouldOpenNewProjectInNewTab(event);
+            this.newProjectOpenInNewTabIntent = false;
+
+            if (shouldOpenInNewTab) {
+                event?.preventDefault?.();
+                event?.stopPropagation?.();
+                // Defensive guard: if another stale/duplicate listener fires in the
+                // same user gesture, ignore its in-place "new project" navigation.
+                this.suppressNewProjectEventUntil = Date.now() + 1000;
+                window.__exeSuppressNewProjectUntil = this.suppressNewProjectEventUntil;
+                this.openNewProjectInNewWindow();
+                return;
+            }
+
+            event?.preventDefault?.();
             this.newProjectEvent();
-        });
+        };
+
+        this.newButton.addEventListener(
+            'pointerdown',
+            this._onNewProjectPointerDown
+        );
+        this.newButton.addEventListener('mousedown', this._onNewProjectMouseDown);
+        this.newButton.addEventListener('click', this._onNewProjectClick);
+        this.newButton.__exeNewProjectHandlers = {
+            pointerdown: this._onNewProjectPointerDown,
+            mousedown: this._onNewProjectMouseDown,
+            click: this._onNewProjectClick,
+        };
+    }
+
+    /**
+     * Track Ctrl/Cmd pressed state to handle environments where click events
+     * lose modifier flags.
+     */
+    attachNewProjectModifierTracking() {
+        if (this._newProjectModifierTrackingAttached) return;
+
+        this._newProjectModifierTrackingAttached = true;
+        this._onNewProjectModifierKeyDown = (event) => {
+            if (event?.key === 'Control' || event?.key === 'Meta') {
+                this.newProjectModifierPressed = true;
+            }
+        };
+        this._onNewProjectModifierKeyUp = (event) => {
+            if (event?.key === 'Control' || event?.key === 'Meta') {
+                this.newProjectModifierPressed = false;
+            }
+        };
+        this._onNewProjectModifierWindowBlur = () => {
+            this.newProjectModifierPressed = false;
+        };
+
+        window.addEventListener('keydown', this._onNewProjectModifierKeyDown, true);
+        window.addEventListener('keyup', this._onNewProjectModifierKeyUp, true);
+        window.addEventListener('blur', this._onNewProjectModifierWindowBlur);
+    }
+
+    /**
+     * Return true when the New action should open using native link behavior
+     * (Ctrl/Cmd-click, Shift-click, middle-click, etc.).
+     *
+     * @param {MouseEvent | undefined} event
+     * @returns {boolean}
+     */
+    shouldOpenNewProjectInNewTab(event) {
+        if (!event) return false;
+        return (
+            event.metaKey ||
+            event.ctrlKey ||
+            event.shiftKey ||
+            event.button === 1
+        );
+    }
+
+    /**
+     * Open the New project URL in a new browser/Electron window.
+     */
+    openNewProjectInNewWindow() {
+        const newProjectUrl = this.resolveNewProjectWindowUrl();
+        const popup = window.open(newProjectUrl, '_blank');
+        popup?.focus?.();
+    }
+
+    /**
+     * Resolve the URL used by File -> New when opening in a new tab/window.
+     * In static/offline mode we keep the current URL; in online mode we use /workarea.
+     *
+     * @returns {string}
+     */
+    resolveNewProjectWindowUrl() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        const hasRemoteStorage = capabilities?.storage?.remote;
+        const isStaticOrOffline =
+            window.__EXE_STATIC_MODE__ === true ||
+            eXeLearning?.config?.isOfflineInstallation === true ||
+            hasRemoteStorage === false;
+
+        if (isStaticOrOffline) {
+            return window.location.href;
+        }
+
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        return `${window.location.origin}${basePath}/workarea`;
     }
 
     /**
@@ -1034,6 +1180,19 @@ export default class NavbarFile {
      *
      */
     newProjectEvent() {
+        const globalSuppressUntil = window.__exeSuppressNewProjectUntil || 0;
+        if (
+            this.suppressNewProjectEventUntil &&
+            Date.now() < this.suppressNewProjectEventUntil
+        ) {
+            this.suppressNewProjectEventUntil = 0;
+            return;
+        }
+        if (globalSuppressUntil && Date.now() < globalSuppressUntil) {
+            window.__exeSuppressNewProjectUntil = 0;
+            return;
+        }
+
         let odeSessionId = eXeLearning.app.project.odeSession;
         this.newSession(odeSessionId);
     }

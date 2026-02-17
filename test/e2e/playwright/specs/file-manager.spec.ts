@@ -114,6 +114,17 @@ async function openFileManager(page: Page): Promise<void> {
 }
 
 /**
+ * Helper to open the File Manager modal via Utilities menu.
+ * Useful for imported projects where no editable iDevice is selected yet.
+ */
+async function openFileManagerFromUtilitiesMenu(page: Page): Promise<void> {
+    await page.locator('#dropdownUtilities').click();
+    await page.waitForTimeout(200);
+    await page.locator('#navbar-button-filemanager').click();
+    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+}
+
+/**
  * Helper to close the File Manager modal
  */
 async function closeFileManager(page: Page): Promise<void> {
@@ -293,37 +304,63 @@ async function getFolderCount(page: Page): Promise<number> {
 }
 
 /**
- * Helper to import an ELP/ELPX file via File menu
+ * Helper to import/open an ELP/ELPX file via File menu.
+ * Uses File > Open.
  */
 async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Open File menu
     await page.locator('#dropdownFile').click();
     await page.waitForTimeout(300);
 
-    // Click Import ELP option
-    const importOption = page.locator('#navbar-button-import-elp');
-    await expect(importOption).toBeVisible({ timeout: 5000 });
-    await importOption.click();
+    const openOfflineOption = page.locator('#navbar-button-open-offline');
+    const openOnlineOption = page.locator('#navbar-button-openuserodefiles');
+    const openOption = ((await openOfflineOption.count()) > 0 ? openOfflineOption : openOnlineOption).first();
+    await expect(openOption).toHaveCount(1);
 
-    // Click Continue in confirmation dialog (supports both English and Spanish)
-    const continueButton = page.getByRole('button', { name: /Continue|Continuar/i });
-    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    // In static mode Open triggers a file chooser; in online mode it opens a modal with file inputs.
+    const fileChooserPromise = page
+        .waitForEvent('filechooser', { timeout: 12000 })
+        .then(fileChooser => ({ type: 'filechooser' as const, fileChooser }))
+        .catch(() => null);
+    await openOption.click({ force: true });
 
-    const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 15000 });
-    await continueButton.click();
+    const modalUploadInput = page.locator('#local-ode-modal-file-upload');
+    const staticOpenInput = page.locator('#static-open-file-input');
 
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(fixturePath);
+    await page
+        .waitForSelector('#local-ode-modal-file-upload, #static-open-file-input', {
+            state: 'attached',
+            timeout: 12000,
+        })
+        .catch(() => {});
+
+    if (await modalUploadInput.count()) {
+        await modalUploadInput.setInputFiles(fixturePath);
+    } else {
+        if (await staticOpenInput.count()) {
+            await staticOpenInput.setInputFiles(fixturePath);
+        } else {
+            const chooserResult = await fileChooserPromise;
+            if (!chooserResult) {
+                throw new Error('Open did not expose a file input or file chooser');
+            }
+            await chooserResult.fileChooser.setFiles(fixturePath);
+        }
+    }
 
     // Wait for import to complete by checking Yjs navigation has pages
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            return navigation && navigation.length >= 1;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                return navigation && navigation.length >= 1;
+            } catch {
+                return false;
+            }
         },
         { timeout: 90000 },
     );
@@ -331,28 +368,32 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Wait for page count to stabilize (no changes for 2 seconds)
     await page.waitForFunction(
         () => {
-            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-            if (!bridge) return false;
-            const yDoc = bridge.getDocumentManager()?.getDoc();
-            if (!yDoc) return false;
-            const navigation = yDoc.getArray('navigation');
-            if (!navigation) return false;
+            try {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                if (!bridge) return false;
+                const yDoc = bridge.getDocumentManager()?.getDoc();
+                if (!yDoc) return false;
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return false;
 
-            const win = window as any;
-            const currentCount = navigation.length;
-            if (!win.__importPageCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
+                const win = window as any;
+                const currentCount = navigation.length;
+                if (!win.__importPageCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                if (win.__importPageCount !== currentCount) {
+                    win.__importPageCount = currentCount;
+                    win.__importStableTime = Date.now();
+                    return false;
+                }
+
+                return Date.now() - win.__importStableTime >= 2000;
+            } catch {
                 return false;
             }
-
-            if (win.__importPageCount !== currentCount) {
-                win.__importPageCount = currentCount;
-                win.__importStableTime = Date.now();
-                return false;
-            }
-
-            return Date.now() - win.__importStableTime >= 2000;
         },
         { timeout: 90000, polling: 500 },
     );
@@ -392,7 +433,7 @@ test.describe('File Manager', () => {
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
             await page.waitForTimeout(1000);
@@ -441,7 +482,7 @@ test.describe('File Manager', () => {
             await importElpFile(page, fixturePath);
 
             // Open File Manager
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
             await page.waitForTimeout(1000);
@@ -488,7 +529,7 @@ test.describe('File Manager', () => {
             await gotoWorkarea(page, projectUuid);
 
             await waitForAppReady(page);
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             const folderName = `TestFolder_${Date.now()}`;
             await createFolder(page, folderName);
@@ -891,10 +932,24 @@ test.describe('File Manager', () => {
             // Close file manager
             await closeFileManager(page);
 
-            // Close TinyMCE dialog if open
-            const cancelBtn = page.locator('.tox-dialog .tox-button:has-text("Cancel")');
-            if ((await cancelBtn.count()) > 0) {
-                await cancelBtn.click();
+            // Firefox can keep a TinyMCE backdrop active, which blocks Save button clicks.
+            const tinyDialog = page.locator('.tox-dialog');
+            if ((await tinyDialog.count()) > 0) {
+                const closeBtn = page
+                    .locator(
+                        '.tox-dialog .tox-dialog__header-close, .tox-dialog button[aria-label="Close"], .tox-dialog .tox-button:has-text("Cancel"), .tox-dialog .tox-button:has-text("Cancelar")',
+                    )
+                    .first();
+                if ((await closeBtn.count()) > 0) {
+                    await closeBtn.click({ force: true }).catch(() => {});
+                } else {
+                    await page.keyboard.press('Escape').catch(() => {});
+                }
+                await page
+                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), {
+                        timeout: 5000,
+                    })
+                    .catch(() => {});
             }
 
             // Save project
@@ -905,7 +960,7 @@ test.describe('File Manager', () => {
             await reloadPage(page);
 
             // Open File Manager again
-            await openFileManager(page);
+            await openFileManagerFromUtilitiesMenu(page);
 
             // Verify folder still exists at root
             const folder = page.locator(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`);

@@ -342,6 +342,33 @@ describe('YjsDocumentAdapter', () => {
             expect(page2Children[0].id).toBe('page-2-1');
         });
 
+        it('should not overflow stack when page hierarchy contains a cycle', () => {
+            const cyclicRoot = createMockPage('cycle-a', 'Cycle A', [], 'cycle-b', 0);
+            const cyclicChild = createMockPage('cycle-b', 'Cycle B', [], 'cycle-a', 0);
+
+            manager = new MockYjsDocumentManager({}, [cyclicRoot, cyclicChild]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages).toHaveLength(2);
+            expect(pages.map(p => p.id).sort()).toEqual(['cycle-a', 'cycle-b']);
+        });
+
+        it('should include orphan pages with missing parents', () => {
+            const root = createMockPage('root', 'Root', [], null, 0);
+            const orphan = createMockPage('orphan', 'Orphan', [], 'missing-parent', 0);
+
+            manager = new MockYjsDocumentManager({}, [root, orphan]);
+            adapter = new YjsDocumentAdapter(manager as any);
+
+            const pages = adapter.getNavigation();
+
+            expect(pages).toHaveLength(2);
+            expect(pages.map(p => p.id)).toContain('root');
+            expect(pages.map(p => p.id)).toContain('orphan');
+        });
+
         it('should convert blocks correctly', () => {
             const component = createMockComponent('c1', 'FreeTextIdevice', '<p>Content</p>');
             const block = createMockBlock('b1', 'Block 1', [component]);
