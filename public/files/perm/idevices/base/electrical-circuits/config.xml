@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<idevice>
+    <title>Electrical circuits</title>
+    <css-class>electrical-circuits</css-class>
+    <category>Science</category>
+    <icon>
+        <name>electrical-circuits-icon</name>
+        <url>electrical-circuits-icon.png</url>
+        <type>img</type>
+    </icon>
+    <downloadable>0</downloadable>
+</idevice>
