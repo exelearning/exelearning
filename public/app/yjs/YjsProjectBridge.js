@@ -479,6 +479,7 @@ class YjsProjectBridge {
                   id: compMap.get('id'),
                   ideviceType: compMap.get('ideviceType'),
                   htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+                  jsonProperties: compMap.get('jsonProperties'),
                   lockedBy: compMap.get('lockedBy'),
                   lockUserName: compMap.get('lockUserName'),
                   lockUserColor: compMap.get('lockUserColor'),
@@ -513,7 +514,7 @@ class YjsProjectBridge {
 
           // Check if htmlContent, lockedBy, or other relevant keys changed
           const changedKeys = Array.from(event.changes.keys.keys());
-          const relevantKeys = ['htmlContent', 'lockedBy', 'lockUserName', 'lockUserColor'];
+          const relevantKeys = ['htmlContent', 'jsonProperties', 'lockedBy', 'lockUserName', 'lockUserColor'];
 
           if (changedKeys.some(key => relevantKeys.includes(key))) {
             const pageIndex = path[0];
@@ -541,6 +542,7 @@ class YjsProjectBridge {
               id: compMap.get('id'),
               ideviceType: compMap.get('ideviceType'),
               htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+              jsonProperties: compMap.get('jsonProperties'),
               lockedBy: compMap.get('lockedBy'),
               lockUserName: compMap.get('lockUserName'),
               lockUserColor: compMap.get('lockUserColor'),
@@ -581,6 +583,7 @@ class YjsProjectBridge {
             id: compMap.get('id'),
             ideviceType: compMap.get('ideviceType'),
             htmlContent: compMap.get('htmlContent')?.toString?.() || '',
+            jsonProperties: compMap.get('jsonProperties'),
             lockedBy: compMap.get('lockedBy'),
             lockUserName: compMap.get('lockUserName'),
             lockUserColor: compMap.get('lockUserColor'),

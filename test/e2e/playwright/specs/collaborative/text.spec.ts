@@ -121,6 +121,17 @@ async function saveTextIdevice(page: Page): Promise<void> {
     );
 }
 
+/**
+ * Helper to open text iDevice in edition mode and verify TinyMCE is ready
+ */
+async function openTextIdeviceEditor(page: Page): Promise<void> {
+    const textIdeviceNode = page.locator('#node-content article .idevice_node.text').first();
+    const editBtn = textIdeviceNode.locator('.btn-edit-idevice');
+    await expect(editBtn).toBeVisible({ timeout: 10000 });
+    await editBtn.click();
+    await textIdeviceNode.locator('iframe.tox-edit-area__iframe').first().waitFor({ timeout: 15000 });
+}
+
 test.describe('Collaborative Text iDevice', () => {
     // Collaboration tests need more time for WebSocket sync between clients
     test.setTimeout(180000); // 3 minutes per test
@@ -263,6 +274,56 @@ test.describe('Collaborative Text iDevice', () => {
             // Verify text iDevice is visible on Client B
             const textIdeviceOnB = pageB.locator('#node-content article .idevice_node.text');
             await expect(textIdeviceOnB).toBeVisible({ timeout: 15000 });
+        });
+
+        test('should keep synced text visible and available when second user opens editor', async ({
+            authenticatedPage,
+            secondAuthenticatedPage,
+            createProject,
+            getShareUrl,
+            joinSharedProject,
+        }) => {
+            const pageA = authenticatedPage;
+            const pageB = secondAuthenticatedPage;
+
+            const projectUuid = await createProject(pageA, 'Collaborative Text Editor Sync Test');
+            await pageA.goto(`/workarea?project=${projectUuid}`);
+            await waitForYjsBridge(pageA);
+            await waitForLoadingScreen(pageA);
+
+            const shareUrl = await getShareUrl(pageA);
+            await joinSharedProject(pageB, shareUrl);
+            await waitForYjsSync(pageA);
+            await waitForYjsSync(pageB);
+
+            await addTextIdevice(pageA);
+            await pageA.waitForSelector('.tox-menubar', { timeout: 15000 });
+
+            const uniqueText = `Collaborative editor sync content ${Date.now()}`;
+            await typeInTinyMCE(pageA, uniqueText);
+            await saveTextIdevice(pageA);
+
+            try {
+                await navigateToPageByTitle(pageB, 'New page');
+            } catch {
+                await navigateToPageByTitle(pageB, 'Nueva página');
+            }
+
+            // User B must see stable text in view mode (no disappearing after a short wait).
+            await waitForTextInContent(pageB, uniqueText, 25000);
+            await pageB.waitForTimeout(1500);
+            await expect(pageB.locator('#node-content')).toContainText(uniqueText, { timeout: 10000 });
+
+            // User B opens the same iDevice editor and should get User A content immediately.
+            await openTextIdeviceEditor(pageB);
+            const tinyMceFrame = pageB
+                .locator('#node-content article .idevice_node.text')
+                .first()
+                .locator('iframe.tox-edit-area__iframe')
+                .first();
+            const frame = await (await tinyMceFrame.elementHandle())?.contentFrame();
+            const editorText = (await frame?.textContent('body')) || '';
+            expect(editorText).toContain(uniqueText);
         });
     });
 });

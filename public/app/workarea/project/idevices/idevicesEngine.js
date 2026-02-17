@@ -1486,36 +1486,55 @@ export default class IdevicesEngine {
 
         Logger.log(`[IdevicesEngine] Updating remote iDevice content: ${componentData.id}`);
 
-        // Update the HTML content
-        ideviceNode.htmlView = componentData.htmlContent || '';
+        const hasContentUpdate =
+            componentData.htmlContent !== undefined ||
+            componentData.jsonProperties !== undefined;
 
-        // Remove lock status since content was saved
-        ideviceNode.lockedByRemote = false;
-        ideviceNode.lockUserName = null;
-        ideviceNode.lockUserColor = null;
+        // Update in-memory content first (used when opening edition mode later)
+        if (componentData.htmlContent !== undefined) {
+            ideviceNode.htmlView = componentData.htmlContent || '';
+        }
+        if (componentData.jsonProperties !== undefined) {
+            try {
+                ideviceNode.jsonProperties =
+                    typeof componentData.jsonProperties === 'string'
+                        ? JSON.parse(componentData.jsonProperties || '{}')
+                        : componentData.jsonProperties || {};
+            } catch {
+                ideviceNode.jsonProperties = {};
+            }
+        }
+
+        // Update lock status from remote data
+        if (componentData.lockedBy || componentData.lockUserName) {
+            ideviceNode.lockedByRemote = true;
+            ideviceNode.lockUserName = componentData.lockUserName || 'Another user';
+            ideviceNode.lockUserColor = componentData.lockUserColor || '#999';
+        } else {
+            ideviceNode.lockedByRemote = false;
+            ideviceNode.lockUserName = null;
+            ideviceNode.lockUserColor = null;
+        }
 
         // Remove loading attribute from the iDevice container
         if (ideviceNode.ideviceContent) {
             ideviceNode.ideviceContent.setAttribute('loading', 'false');
         }
 
-        // Re-render the iDevice body with new content
-        if (ideviceNode.ideviceBody) {
-            // For simple HTML content, just update the body
-            if (ideviceNode.idevice?.componentType !== 'json' || componentData.htmlContent) {
-                // Remove placeholder if present
-                const placeholder = ideviceNode.ideviceBody.querySelector('.idevice-locked-placeholder');
-                if (placeholder) {
-                    placeholder.remove();
-                }
-
-                // Update content based on iDevice type
-                if (ideviceNode.mode === 'export') {
-                    // In view mode, update the displayed content
-                    ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
-                    await ideviceNode.loadInitScriptIdevice('export');
-                }
+        // Re-render the iDevice body with new content when not being edited locally.
+        // This avoids stale/flickering UI for JSON iDevices whose source of truth is jsonProperties.
+        if (hasContentUpdate && ideviceNode.ideviceBody && ideviceNode.mode === 'export') {
+            const placeholder = ideviceNode.ideviceBody.querySelector('.idevice-locked-placeholder');
+            if (placeholder) {
+                placeholder.remove();
             }
+            // Keep immediate HTML refresh for plain-content updates.
+            // This preserves existing behavior and unit-test expectations while
+            // loadInitScriptIdevice('export') performs full iDevice re-render.
+            if (componentData.htmlContent !== undefined) {
+                ideviceNode.ideviceBody.innerHTML = componentData.htmlContent || '';
+            }
+            await ideviceNode.loadInitScriptIdevice('export');
         }
 
         // Update the lock indicator in the header

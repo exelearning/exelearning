@@ -430,14 +430,13 @@ describe('PreviewPanelManager', () => {
   });
 
   describe('refresh', () => {
-    it('should show error when Service Worker is not available', async () => {
-      // Simulate SW not available
-      const errorSpy = vi.spyOn(manager, 'showError').mockImplementation(() => {});
+    it('should fall back to blob URL when Service Worker is not available', async () => {
       vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(false);
+      const blobSpy = vi.spyOn(manager, 'refreshWithBlobUrl').mockResolvedValue();
 
       await manager.refresh();
 
-      expect(errorSpy).toHaveBeenCalledWith('Preview Service Worker not available. Please reload the page.');
+      expect(blobSpy).toHaveBeenCalled();
     });
 
     it('should use SW-based preview when available', async () => {
@@ -1002,6 +1001,238 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('refreshWithBlobUrl', () => {
+    beforeEach(() => {
+      window.eXeLearning.app.themes = { selected: { id: 'base' } };
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: true,
+        files: {
+          'index.html': new TextEncoder().encode('<html><head><link rel="stylesheet" href="style.css"></head><body>Preview</body></html>'),
+          'style.css': new TextEncoder().encode('body { color: red; }'),
+        },
+      });
+      mockBridge.resourceFetcher = {};
+      mockBridge.assetManager = {};
+    });
+
+    it('should generate preview and load via blob URL', async () => {
+      const blobLoadSpy = vi.spyOn(manager, '_loadBlobUrlInIframe').mockImplementation(() => {});
+
+      await manager.refreshWithBlobUrl();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalled();
+      expect(blobLoadSpy).toHaveBeenCalledWith(expect.stringContaining('Preview'));
+    });
+
+    it('should throw when Yjs document manager not available', async () => {
+      window.eXeLearning.app.project._yjsBridge.documentManager = null;
+
+      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('Yjs document manager not available');
+    });
+
+    it('should throw when SharedExporters not available', async () => {
+      window.SharedExporters.generatePreviewForSW = undefined;
+
+      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('SharedExporters.generatePreviewForSW not available');
+    });
+
+    it('should throw when no index.html in generated files', async () => {
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: true,
+        files: { 'other.html': new TextEncoder().encode('<html></html>') },
+      });
+
+      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('No index.html in generated files');
+    });
+
+    it('should throw when generation fails', async () => {
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({
+        success: false,
+        error: 'Generation failed',
+      });
+
+      await expect(manager.refreshWithBlobUrl()).rejects.toThrow('Generation failed');
+    });
+  });
+
+  describe('_generatePreviewFiles', () => {
+    it('should call SharedExporters.generatePreviewForSW with normalized deps', async () => {
+      window.eXeLearning.app.themes = { selected: { name: 'base' } };
+      mockBridge.resourceFetcher = null;
+      mockBridge.assetManager = null;
+      window.SharedExporters.generatePreviewForSW = vi.fn().mockResolvedValue({ success: true, files: {} });
+
+      await manager._generatePreviewFiles();
+
+      expect(window.SharedExporters.generatePreviewForSW).toHaveBeenCalledWith(
+        mockDocumentManager,
+        null,
+        null,
+        null,
+        { theme: 'base' },
+      );
+    });
+  });
+
+  describe('_injectBlobNavigationHandler', () => {
+    it('should inject script before closing body tag', () => {
+      const html = '<html><body><p>hello</p></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-blob-navigate');
+      expect(result.indexOf('exe-blob-navigate')).toBeLessThan(result.indexOf('</body>'));
+    });
+
+    it('should append script when body tag is missing', () => {
+      const html = '<html><head></head></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-blob-navigate');
+      expect(result).toMatch(/<\/script>\s*$/);
+    });
+  });
+
+  describe('_resolveRelativePath', () => {
+    it('should resolve dot segments', () => {
+      expect(manager._resolveRelativePath('a/b/../c/./d.html')).toBe('a/c/d.html');
+    });
+  });
+
+  describe('_findFileContent', () => {
+    it('should resolve leading ../ segments', () => {
+      const files = { 'content/style.css': 'ok' };
+      expect(manager._findFileContent(files, '../content/style.css')).toBe('ok');
+    });
+
+    it('should resolve content/resources by filename fallback', () => {
+      const files = { 'content/resources/theme/custom/file.png': new Uint8Array([1, 2]) };
+      const content = manager._findFileContent(files, 'https://x.test/content/resources/other/file.png');
+      expect(content).toBeInstanceOf(Uint8Array);
+    });
+  });
+
+  describe('_isPreviewIframeSource', () => {
+    it('should allow missing source for synthetic events', () => {
+      expect(manager._isPreviewIframeSource(undefined)).toBe(true);
+    });
+
+    it('should reject unrelated source objects', () => {
+      expect(manager._isPreviewIframeSource({})).toBe(false);
+    });
+  });
+
+  describe('_decodeFileContent', () => {
+    it('should return null for falsy content', () => {
+      expect(manager._decodeFileContent(null)).toBeNull();
+      expect(manager._decodeFileContent(undefined)).toBeNull();
+    });
+
+    it('should return string content as-is', () => {
+      expect(manager._decodeFileContent('hello')).toBe('hello');
+    });
+
+    it('should decode Uint8Array to string', () => {
+      const encoded = new TextEncoder().encode('hello world');
+      expect(manager._decodeFileContent(encoded)).toBe('hello world');
+    });
+
+    it('should decode ArrayBuffer to string', () => {
+      const encoded = new TextEncoder().encode('test content');
+      expect(manager._decodeFileContent(encoded.buffer)).toBe('test content');
+    });
+  });
+
+  describe('_inlineResources', () => {
+    it('should inline CSS link tags', () => {
+      const html = '<html><head><link rel="stylesheet" href="style.css"></head></html>';
+      const files = { 'style.css': 'body { color: red; }' };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<style>');
+      expect(result).toContain('body { color: red; }');
+      expect(result).not.toContain('<link');
+    });
+
+    it('should inline CSS link with reversed attribute order', () => {
+      const html = '<html><head><link href="theme.css" rel="stylesheet"></head></html>';
+      const files = { 'theme.css': '.theme { display: block; }' };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<style>');
+      expect(result).toContain('.theme { display: block; }');
+    });
+
+    it('should inline JS script tags', () => {
+      const html = '<html><body><script src="app.js"></script></body></html>';
+      const files = { 'app.js': 'console.log("hello")' };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<script>');
+      expect(result).toContain('console.log("hello")');
+      expect(result).not.toContain('src="app.js"');
+    });
+
+    it('should leave tags unchanged when file not found', () => {
+      const html = '<html><head><link rel="stylesheet" href="missing.css"></head></html>';
+      const files = {};
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<link');
+      expect(result).toContain('missing.css');
+    });
+
+    it('should handle files with ArrayBuffer content for CSS/JS', () => {
+      const html = '<html><head><link rel="stylesheet" href="style.css"></head></html>';
+      const files = { 'style.css': new TextEncoder().encode('body { margin: 0; }') };
+
+      const result = manager._inlineResources(html, files);
+
+      expect(result).toContain('<style>');
+      expect(result).toContain('body { margin: 0; }');
+    });
+  });
+
+  describe('_loadBlobUrlInIframe', () => {
+    it('should revoke previous blob URL', () => {
+      mockElements['preview-iframe']._blobUrl = 'blob:old-url';
+
+      manager._loadBlobUrlInIframe('<html></html>');
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:old-url');
+    });
+
+    it('should create blob URL and set iframe src', () => {
+      manager._loadBlobUrlInIframe('<html><body>test</body></html>');
+
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockElements['preview-iframe'].src).toBe('blob:test-url');
+      expect(mockElements['preview-iframe']._blobUrl).toBe('blob:test-url');
+    });
+
+    it('should use pinned iframe when pinned', () => {
+      manager.isPinned = true;
+
+      manager._loadBlobUrlInIframe('<html></html>');
+
+      expect(mockElements['preview-pinned-iframe'].src).toBe('blob:test-url');
+    });
+
+    it('should not throw when no iframe available', () => {
+      vi.spyOn(document, 'getElementById').mockImplementation(id => {
+        if (id === 'preview-iframe' || id === 'preview-pinned-iframe') return null;
+        return mockElements[id] || null;
+      });
+
+      const newManager = new PreviewPanelManager();
+
+      expect(() => newManager._loadBlobUrlInIframe('<html></html>')).not.toThrow();
+    });
+  });
+
   describe('refreshWithServiceWorker', () => {
     beforeEach(() => {
       // Setup complete mock environment
@@ -1290,9 +1521,11 @@ describe('PreviewPanelManager', () => {
       manager.bindEvents();
       const mockExport = vi.fn().mockResolvedValue();
       window.eXeLearning.app.project.exportToElpxViaYjs = mockExport;
+      const previewSource = mockElements['preview-iframe'].contentWindow;
 
       const event = new MessageEvent('message', {
         data: { type: 'exe-download-elpx' },
+        source: previewSource,
       });
       window.dispatchEvent(event);
 
@@ -1303,6 +1536,7 @@ describe('PreviewPanelManager', () => {
     it('should show error when exportToElpxViaYjs not available', async () => {
       manager.bindEvents();
       window.eXeLearning.app.project.exportToElpxViaYjs = undefined;
+      const previewSource = mockElements['preview-iframe'].contentWindow;
 
       // Mock alert
       const originalAlert = window.alert;
@@ -1310,6 +1544,7 @@ describe('PreviewPanelManager', () => {
 
       const event = new MessageEvent('message', {
         data: { type: 'exe-download-elpx' },
+        source: previewSource,
       });
       window.dispatchEvent(event);
 
@@ -1322,12 +1557,14 @@ describe('PreviewPanelManager', () => {
     it('should handle ELPX export error', async () => {
       manager.bindEvents();
       window.eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('Export failed'));
+      const previewSource = mockElements['preview-iframe'].contentWindow;
 
       const originalAlert = window.alert;
       window.alert = vi.fn();
 
       const event = new MessageEvent('message', {
         data: { type: 'exe-download-elpx' },
+        source: previewSource,
       });
       window.dispatchEvent(event);
 

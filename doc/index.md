@@ -31,6 +31,8 @@ Use the sections below to jump to what you need.
 - Version Control: [Branching and PRs](development/version-control.md)
 - Installers: [Installers](development/installers.md)
 
+- Embedding: [Embedding the editor in LMS plugins](development/embedding.md)
+
 - [REST API](development/rest-api.md)
 - [Authentication](development/authentication.md)
 

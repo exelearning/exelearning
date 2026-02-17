@@ -54,7 +54,10 @@ describe('EmbeddingBridge', () => {
         // Create mock app
         mockApp = {
             project: {
+                importElpDirectly: vi.fn().mockResolvedValue(undefined),
+                importFromElpxViaYjs: vi.fn().mockResolvedValue(undefined),
                 importElpxFile: vi.fn().mockResolvedValue(undefined),
+                refreshAfterDirectImport: vi.fn().mockResolvedValue(undefined),
                 exportToElpxBlob: vi.fn().mockResolvedValue(new Blob(['test'])),
                 getExportFilename: vi.fn(() => 'test-project.elpx'),
                 _yjsBridge: {
@@ -107,7 +110,6 @@ describe('EmbeddingBridge', () => {
             expect(bridge.parentOrigin).toBeNull();
             expect(bridge.version).toBe('3.0.0');
             expect(bridge.messageHandler).toBeNull();
-            expect(bridge.pendingRequests).toBeInstanceOf(Map);
         });
 
         it('should accept trusted origins option', () => {
@@ -171,15 +173,6 @@ describe('EmbeddingBridge', () => {
             expect(bridge.messageHandler).toBeNull();
         });
 
-        it('should clear pending requests', () => {
-            bridge.pendingRequests.set('req-1', { resolve: vi.fn() });
-            bridge.pendingRequests.set('req-2', { resolve: vi.fn() });
-
-            bridge.destroy();
-
-            expect(bridge.pendingRequests.size).toBe(0);
-        });
-
         it('should do nothing if not initialized', () => {
             bridge.destroy();
 
@@ -194,6 +187,9 @@ describe('EmbeddingBridge', () => {
             expect(capabilities).toContain('OPEN_FILE');
             expect(capabilities).toContain('REQUEST_SAVE');
             expect(capabilities).toContain('GET_PROJECT_INFO');
+            expect(capabilities).toContain('REQUEST_EXPORT');
+            expect(capabilities).toContain('GET_STATE');
+            expect(capabilities).toContain('CONFIGURE');
         });
     });
 
@@ -370,7 +366,7 @@ describe('EmbeddingBridge', () => {
             );
         });
 
-        it('should import file using project.importElpxFile', async () => {
+        it('should import file using project.importElpDirectly', async () => {
             const bytes = new ArrayBuffer(8);
 
             await messageHandler({
@@ -382,10 +378,26 @@ describe('EmbeddingBridge', () => {
                 },
             });
 
-            expect(mockApp.project.importElpxFile).toHaveBeenCalledWith(
-                expect.any(File)
+            expect(mockApp.project.importElpDirectly).toHaveBeenCalledWith(
+                expect.any(File),
+                { clearExisting: true }
             );
             expect(window.eXeLearning.projectId).toBe('test-uuid-1234');
+        });
+
+        it('should refresh UI after direct import when available', async () => {
+            const bytes = new ArrayBuffer(8);
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'OPEN_FILE',
+                    data: { bytes, filename: 'test.elpx' },
+                    requestId: 'req-open-refresh',
+                },
+            });
+
+            expect(mockApp.project.refreshAfterDirectImport).toHaveBeenCalled();
         });
 
         it('should send success response with project ID', async () => {
@@ -422,13 +434,14 @@ describe('EmbeddingBridge', () => {
                 },
             });
 
-            expect(mockApp.project.importElpxFile).toHaveBeenCalledWith(
-                expect.objectContaining({ name: 'project.elpx' })
+            expect(mockApp.project.importElpDirectly).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'project.elpx' }),
+                { clearExisting: true }
             );
         });
 
-        it('should fallback to _yjsBridge.importer if importElpxFile not available', async () => {
-            mockApp.project.importElpxFile = undefined;
+        it('should fallback to importFromElpxViaYjs if importElpDirectly not available', async () => {
+            mockApp.project.importElpDirectly = undefined;
             const bytes = new ArrayBuffer(8);
 
             await messageHandler({
@@ -440,10 +453,29 @@ describe('EmbeddingBridge', () => {
                 },
             });
 
-            expect(mockApp.project._yjsBridge.importer.importFromFile).toHaveBeenCalled();
+            expect(mockApp.project.importFromElpxViaYjs).toHaveBeenCalled();
+        });
+
+        it('should fallback to importElpxFile when modern import methods are not available', async () => {
+            mockApp.project.importElpDirectly = undefined;
+            mockApp.project.importFromElpxViaYjs = undefined;
+            const bytes = new ArrayBuffer(8);
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'OPEN_FILE',
+                    data: { bytes, filename: 'test.elpx' },
+                    requestId: 'req-open-legacy',
+                },
+            });
+
+            expect(mockApp.project.importElpxFile).toHaveBeenCalledWith(expect.any(File));
         });
 
         it('should throw error if no import method available', async () => {
+            mockApp.project.importElpDirectly = undefined;
+            mockApp.project.importFromElpxViaYjs = undefined;
             mockApp.project.importElpxFile = undefined;
             mockApp.project._yjsBridge.importer = undefined;
             const bytes = new ArrayBuffer(8);
@@ -639,6 +671,335 @@ describe('EmbeddingBridge', () => {
         });
     });
 
+    describe('handleExportRequest', () => {
+        beforeEach(() => {
+            bridge.init();
+            bridge.parentOrigin = 'https://parent.com';
+
+            // Mock SharedExporters.quickExport
+            window.SharedExporters = {
+                quickExport: vi.fn().mockResolvedValue({
+                    success: true,
+                    data: new ArrayBuffer(16),
+                }),
+            };
+
+            // Setup yjsBridge with needed properties
+            mockApp.project._yjsBridge.resourceFetcher = {};
+            mockApp.project._yjsBridge.assetManager = {};
+        });
+
+        afterEach(() => {
+            delete window.SharedExporters;
+        });
+
+        it('should export with default elpx format', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: {},
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledWith(
+                'elpx',
+                expect.anything(),
+                null,
+                expect.anything(),
+                {},
+                expect.anything(),
+            );
+        });
+
+        it('should export with specified format', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: { format: 'html5' },
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledWith(
+                'html5',
+                expect.anything(),
+                null,
+                expect.anything(),
+                {},
+                expect.anything(),
+            );
+        });
+
+        it('should return EXPORT_FILE with bytes and filename', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: { format: 'elpx', filename: 'my-project.elpx' },
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'EXPORT_FILE',
+                    requestId: 'req-export',
+                    bytes: expect.any(ArrayBuffer),
+                    filename: 'my-project.elpx',
+                    format: 'elpx',
+                    size: expect.any(Number),
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should throw error when no project loaded', async () => {
+            mockApp.project._yjsBridge = null;
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: {},
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'REQUEST_EXPORT_ERROR',
+                    error: 'No project loaded',
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should throw error when export system not available', async () => {
+            delete window.SharedExporters;
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: {},
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'REQUEST_EXPORT_ERROR',
+                    error: 'Export system not available',
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should throw error when export fails', async () => {
+            window.SharedExporters.quickExport = vi.fn().mockResolvedValue({
+                success: false,
+                error: 'Invalid format',
+            });
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: { format: 'invalid' },
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'REQUEST_EXPORT_ERROR',
+                    error: 'Invalid format',
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should use default filename when not provided', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'REQUEST_EXPORT',
+                    data: { format: 'html5' },
+                    requestId: 'req-export',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    filename: 'project.zip',
+                }),
+                'https://parent.com'
+            );
+        });
+    });
+
+    describe('handleGetState', () => {
+        beforeEach(() => {
+            bridge.init();
+            bridge.parentOrigin = 'https://parent.com';
+        });
+
+        it('should return editor state', async () => {
+            mockApp.project._yjsBridge.documentManager.isDirty = true;
+            mockApp.project._yjsBridge.documentManager.getNavigation = vi.fn(() => ({ length: 5 }));
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'GET_STATE',
+                    requestId: 'req-state',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'STATE',
+                    requestId: 'req-state',
+                    isDirty: true,
+                    hasProject: true,
+                    pageCount: 5,
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should return defaults when no project loaded', async () => {
+            mockApp.project._yjsBridge = null;
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'GET_STATE',
+                    requestId: 'req-state',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'STATE',
+                    isDirty: false,
+                    hasProject: false,
+                    pageCount: 0,
+                }),
+                'https://parent.com'
+            );
+        });
+    });
+
+    describe('utility methods', () => {
+        it('normalizeExportData should handle TypedArray views', async () => {
+            const view = new Uint8Array([1, 2, 3, 4]);
+            const result = await bridge.normalizeExportData(view);
+            expect(result.bytes).toBeInstanceOf(ArrayBuffer);
+            expect(result.mimeType).toBe('application/octet-stream');
+        });
+
+        it('normalizeExportData should handle Blob payloads', async () => {
+            const blob = new Blob(['abc'], { type: 'text/plain' });
+            const result = await bridge.normalizeExportData(blob);
+            expect(result.bytes).toBeInstanceOf(ArrayBuffer);
+            expect(result.mimeType).toBe('text/plain');
+        });
+
+        it('normalizeExportData should reject unsupported data', async () => {
+            await expect(bridge.normalizeExportData({})).rejects.toThrow('Unsupported export data format');
+        });
+
+        it('getDefaultExportFilename should map known formats', () => {
+            expect(bridge.getDefaultExportFilename('epub3')).toBe('project.epub');
+            expect(bridge.getDefaultExportFilename('component')).toBe('project.elp');
+            expect(bridge.getDefaultExportFilename('html5')).toBe('project.zip');
+        });
+    });
+
+    describe('handleConfigure', () => {
+        beforeEach(() => {
+            bridge.init();
+            bridge.parentOrigin = 'https://parent.com';
+        });
+
+        it('should set body data attributes to hide UI elements', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'CONFIGURE',
+                    data: {
+                        hideUI: { fileMenu: true, saveButton: true },
+                    },
+                    requestId: 'req-config',
+                },
+            });
+
+            expect(document.body.getAttribute('data-exe-hide-file-menu')).toBe('true');
+            expect(document.body.getAttribute('data-exe-hide-save')).toBe('true');
+            expect(document.body.getAttribute('data-exe-hide-share')).toBeNull();
+        });
+
+        it('should remove body data attributes to show UI elements', async () => {
+            // First hide
+            document.body.setAttribute('data-exe-hide-file-menu', 'true');
+
+            // Then show
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'CONFIGURE',
+                    data: {
+                        hideUI: { fileMenu: false },
+                    },
+                    requestId: 'req-config',
+                },
+            });
+
+            expect(document.body.getAttribute('data-exe-hide-file-menu')).toBeNull();
+        });
+
+        it('should send CONFIGURE_SUCCESS response', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'CONFIGURE',
+                    data: { hideUI: { saveButton: true } },
+                    requestId: 'req-config',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'CONFIGURE_SUCCESS',
+                    requestId: 'req-config',
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should send success even without hideUI data', async () => {
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: {
+                    type: 'CONFIGURE',
+                    data: {},
+                    requestId: 'req-config',
+                },
+            });
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'CONFIGURE_SUCCESS',
+                }),
+                'https://parent.com'
+            );
+        });
+    });
+
     describe('postToParent', () => {
         it('should not post if not in iframe', () => {
             // Create a mock postMessage on window (since window.parent === window)
@@ -768,6 +1129,111 @@ describe('EmbeddingBridge', () => {
                 },
                 'https://parent.com'
             );
+        });
+    });
+
+    describe('DOCUMENT_LOADED notification', () => {
+        it('should send DOCUMENT_LOADED when documentReady resolves', async () => {
+            // Create a resolvable documentReady promise
+            let resolveDocReady;
+            window.eXeLearning.documentReady = new Promise((resolve) => {
+                resolveDocReady = resolve;
+            });
+
+            // Set up yjsBridge with document info
+            mockApp.project._yjsBridge.documentManager.isDirty = false;
+            mockApp.project._yjsBridge.documentManager.getNavigation = vi.fn(() => ({ length: 5 }));
+
+            bridge.init();
+
+            // Set parentOrigin (normally set when receiving a message)
+            bridge.parentOrigin = 'https://parent.com';
+
+            // Resolve documentReady
+            resolveDocReady();
+            // Wait for microtask to process the .then()
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'DOCUMENT_LOADED',
+                    projectId: 'project-123',
+                    isDirty: false,
+                    pageCount: 5,
+                }),
+                'https://parent.com'
+            );
+        });
+
+        it('should use * as target origin when parentOrigin is not set', async () => {
+            let resolveDocReady;
+            window.eXeLearning.documentReady = new Promise((resolve) => {
+                resolveDocReady = resolve;
+            });
+
+            bridge.init();
+            // parentOrigin is null by default
+
+            resolveDocReady();
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            // Should have posted DOCUMENT_LOADED with '*' origin
+            const docLoadedCall = window.parent.postMessage.mock.calls.find(
+                call => call[0]?.type === 'DOCUMENT_LOADED'
+            );
+            expect(docLoadedCall).toBeTruthy();
+            expect(docLoadedCall[1]).toBe('*');
+        });
+
+        it('should handle missing yjsBridge gracefully in DOCUMENT_LOADED', async () => {
+            let resolveDocReady;
+            window.eXeLearning.documentReady = new Promise((resolve) => {
+                resolveDocReady = resolve;
+            });
+
+            mockApp.project._yjsBridge = null;
+
+            bridge.init();
+            resolveDocReady();
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            const docLoadedCall = window.parent.postMessage.mock.calls.find(
+                call => call[0]?.type === 'DOCUMENT_LOADED'
+            );
+            expect(docLoadedCall).toBeTruthy();
+            expect(docLoadedCall[0].projectId).toBeNull();
+            expect(docLoadedCall[0].isDirty).toBe(false);
+            expect(docLoadedCall[0].pageCount).toBe(0);
+        });
+
+        it('should not send DOCUMENT_LOADED when documentReady is not available', () => {
+            delete window.eXeLearning.documentReady;
+
+            bridge.init();
+
+            const docLoadedCall = window.parent.postMessage.mock.calls.find(
+                call => call[0]?.type === 'DOCUMENT_LOADED'
+            );
+            expect(docLoadedCall).toBeUndefined();
+        });
+
+        it('should not send DOCUMENT_LOADED when not in iframe', async () => {
+            let resolveDocReady;
+            window.eXeLearning.documentReady = new Promise((resolve) => {
+                resolveDocReady = resolve;
+            });
+
+            // Make window.parent === window (not in iframe)
+            Object.defineProperty(window, 'parent', {
+                value: window,
+                writable: true,
+                configurable: true,
+            });
+
+            bridge.init();
+
+            // init() should have returned early, so no message handler set
+            expect(bridge.messageHandler).toBeNull();
         });
     });
 
