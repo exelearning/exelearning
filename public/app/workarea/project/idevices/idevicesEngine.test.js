@@ -3113,6 +3113,60 @@ describe('IdevicesEngine', () => {
 
             expect(mockIdevice.ideviceBody.querySelector('.idevice-locked-placeholder')).toBeNull();
         });
+
+        it('parses jsonProperties string and applies remote lock metadata', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: false,
+                lockUserName: null,
+                lockUserColor: null,
+                jsonProperties: {},
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                jsonProperties: '{"textTextarea":"hello"}',
+                lockedBy: 'client-2',
+                lockUserName: 'Remote User',
+            });
+
+            expect(mockIdevice.jsonProperties).toEqual({ textTextarea: 'hello' });
+            expect(mockIdevice.lockedByRemote).toBe(true);
+            expect(mockIdevice.lockUserName).toBe('Remote User');
+            expect(mockIdevice.lockUserColor).toBe('#999');
+            expect(mockIdevice.loadInitScriptIdevice).toHaveBeenCalledWith('export');
+        });
+
+        it('falls back to empty jsonProperties when remote payload is invalid json', async () => {
+            const mockIdevice = {
+                odeIdeviceId: 'comp-1',
+                htmlView: 'old',
+                mode: 'export',
+                ideviceContent: document.createElement('div'),
+                ideviceBody: document.createElement('div'),
+                lockedByRemote: false,
+                lockUserName: null,
+                lockUserColor: null,
+                jsonProperties: { before: true },
+                updateLockIndicator: vi.fn(),
+                loadInitScriptIdevice: vi.fn().mockResolvedValue(undefined),
+            };
+            engine.components.idevices = [mockIdevice];
+
+            await engine.updateRemoteIdeviceContent({
+                id: 'comp-1',
+                jsonProperties: '{invalid json',
+            });
+
+            expect(mockIdevice.jsonProperties).toEqual({});
+        });
     });
 
     describe('loadLegacyExeFunctionalitiesExport', () => {
