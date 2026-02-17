@@ -7,7 +7,6 @@
  * ELPX files contain everything HTML5 exports have, plus:
  * - content.xml (ODE format with full project structure for re-import)
  * - content.dtd (DTD for XML validation)
- * - custom/ directory
  *
  * Structure:
  * - index.html (main page)
@@ -19,7 +18,6 @@
  * - idevices/ (iDevice-specific CSS/JS)
  * - content.xml (ODE format)
  * - content.dtd
- * - custom/
  *
  * The ODE XML format is a hierarchical structure:
  * - odeProperties (metadata)
@@ -279,9 +277,6 @@ export class ElpxExporter extends Html5Exporter {
 
             // 2.2 Add DTD file
             this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
-
-            // 2.3 Add custom/ directory (empty marker file)
-            this.zip.addFile('custom/.gitkeep', '');
 
             // =========================================================================
             // SECTION 3: Generate final ZIP
