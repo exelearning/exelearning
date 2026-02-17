@@ -1346,9 +1346,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 // =====================================================
                 // Duplicate assets (physical files + database records)
-                // Build client_id mapping for Yjs document update
                 // =====================================================
-                const clientIdMapping = new Map<string, string>();
                 const sourceAssets = await findAllAssetsForProject(db, project.id);
 
                 if (sourceAssets.length > 0) {
@@ -1393,8 +1391,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // Copy Yjs document state if exists, updating the title in metadata
-                // and replacing old client_ids with new ones
+                // Copy Yjs document state if exists, updating title in metadata
                 const snapshot = findSnapshotByProjectId ? await findSnapshotByProjectId(db, project.id) : null;
                 if (snapshot) {
                     // Import Yjs to modify the document
@@ -1407,112 +1404,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     // Update title in metadata
                     const metadata = ydoc.getMap('metadata');
                     metadata.set('title', `${project.title} (copy)`);
-
-                    // Replace old client_ids with new ones in all string fields
-                    // across the whole Y.Doc (not only legacy pages/blocks/idevices paths).
-                    if (clientIdMapping.size > 0) {
-                        const replaceClientIds = (text: string): string => {
-                            let result = text;
-                            for (const [oldId, newId] of clientIdMapping) {
-                                result = result.replaceAll(oldId, newId);
-                            }
-                            return result;
-                        };
-
-                        const visited = new Set<unknown>();
-                        const replaceInValue = (value: unknown): unknown => {
-                            if (typeof value === 'string') {
-                                return replaceClientIds(value);
-                            }
-                            if (!value || visited.has(value)) {
-                                return value;
-                            }
-
-                            if (value instanceof Y.Map) {
-                                visited.add(value);
-                                for (const key of value.keys()) {
-                                    const current = value.get(key);
-                                    if (typeof current === 'string') {
-                                        const replaced = replaceClientIds(current);
-                                        if (replaced !== current) {
-                                            value.set(key, replaced);
-                                        }
-                                    } else {
-                                        replaceInValue(current);
-                                    }
-                                }
-                                return value;
-                            }
-
-                            if (value instanceof Y.Array) {
-                                visited.add(value);
-                                for (let i = 0; i < value.length; i++) {
-                                    const current = value.get(i);
-                                    if (typeof current === 'string') {
-                                        const replaced = replaceClientIds(current);
-                                        if (replaced !== current) {
-                                            value.delete(i, 1);
-                                            value.insert(i, [replaced]);
-                                        }
-                                    } else {
-                                        replaceInValue(current);
-                                    }
-                                }
-                                return value;
-                            }
-
-                            return value;
-                        };
-
-                        // Traverse all shared roots (covers current + legacy Yjs shapes).
-                        for (const [, rootType] of ydoc.share.entries()) {
-                            replaceInValue(rootType);
-                        }
-
-                        // Fallback for legacy page/block/idevice shape used by some snapshots/tests.
-                        const pages = ydoc.getMap('pages');
-                        for (const pageId of pages.keys()) {
-                            const page = pages.get(pageId) as Y.Map<unknown> | undefined;
-                            if (!(page instanceof Y.Map)) continue;
-
-                            const blocks = page.get('blocks') as Y.Map<unknown> | undefined;
-                            if (!(blocks instanceof Y.Map)) continue;
-
-                            for (const blockId of blocks.keys()) {
-                                const block = blocks.get(blockId) as Y.Map<unknown> | undefined;
-                                if (!(block instanceof Y.Map)) continue;
-
-                                const idevices = block.get('idevices') as Y.Map<unknown> | undefined;
-                                if (!(idevices instanceof Y.Map)) continue;
-
-                                for (const ideviceId of idevices.keys()) {
-                                    const idevice = idevices.get(ideviceId) as Y.Map<unknown> | undefined;
-                                    if (!(idevice instanceof Y.Map)) continue;
-
-                                    const innerHtml = idevice.get('innerHtml');
-                                    if (typeof innerHtml === 'string') {
-                                        const replaced = replaceClientIds(innerHtml);
-                                        if (replaced !== innerHtml) {
-                                            idevice.set('innerHtml', replaced);
-                                        }
-                                    }
-
-                                    const fields = idevice.get('fields') as Y.Map<unknown> | undefined;
-                                    if (!(fields instanceof Y.Map)) continue;
-
-                                    for (const fieldKey of fields.keys()) {
-                                        const fieldValue = fields.get(fieldKey);
-                                        if (typeof fieldValue === 'string') {
-                                            const replaced = replaceClientIds(fieldValue);
-                                            if (replaced !== fieldValue) {
-                                                fields.set(fieldKey, replaced);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // Encode modified state
                     const newState = Y.encodeStateAsUpdate(ydoc);

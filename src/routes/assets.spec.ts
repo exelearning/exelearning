@@ -399,6 +399,31 @@ describe('Assets Routes', () => {
             expect(res.status).toBe(404);
         });
 
+        it('should return 404 for non-existent project UUID', async () => {
+            const res = await app.handle(new Request(`http://localhost/api/projects/non-existent-uuid/assets/1`));
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Project not found');
+        });
+
+        it('should return 404 when numeric asset belongs to another project', async () => {
+            const filePath = path.join(testDir, 'other-project-asset.txt');
+            await fs.writeFile(filePath, 'Other project content');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 2, // Deliberately different project
+                filename: 'other-project-asset.txt',
+                storage_path: filePath,
+                mime_type: 'text/plain',
+            });
+
+            const res = await app.handle(new Request(`http://localhost/api/projects/1/assets/1`));
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Asset not found');
+        });
+
         it('should resolve UUID-like client_id in :assetId param', async () => {
             const filePath = path.join(testDir, 'uuid-client-asset.txt');
             await fs.writeFile(filePath, 'UUID client asset content');
