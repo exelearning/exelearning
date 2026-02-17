@@ -403,6 +403,7 @@ describe('MenuEngine', () => {
       if (clickHandler) {
         const mockEvent = {
           target: {
+            closest: vi.fn(() => null),
             classList: {
               contains: vi.fn(() => false),
             },
@@ -426,6 +427,7 @@ describe('MenuEngine', () => {
       if (clickHandler) {
         const mockEvent = {
           target: {
+            closest: vi.fn(() => null),
             classList: {
               contains: vi.fn(() => false),
             },
@@ -448,6 +450,7 @@ describe('MenuEngine', () => {
       if (clickHandler) {
         const mockEvent = {
           target: {
+            closest: vi.fn((selector) => (selector === '.dropdown-toggle' ? {} : null)),
             classList: {
               contains: vi.fn((className) => className === 'dropdown-toggle'),
             },
