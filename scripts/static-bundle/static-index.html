@@ -452,36 +452,9 @@
 
         // Setup File menu handlers for static mode
         function setupFileMenuHandlers() {
-            // File > New - create new blank project
-            const newBtn = document.getElementById('navbar-button-new');
-            if (newBtn) {
-                newBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
-                    const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-                    const hasUnsavedAssets =
-                        assetManager &&
-                        typeof assetManager.hasUnsavedAssets === 'function' &&
-                        assetManager.hasUnsavedAssets();
-                    const hasUnsaved = docManager?.isDirty === true || hasUnsavedAssets;
-
-                    if (!hasUnsaved) {
-                        window.newProject();
-                        return;
-                    }
-
-                    // Use the same "save before leaving" modal as online mode
-                    if (window.eXeLearning?.app?.modals?.sessionlogout) {
-                        window.eXeLearning.app.modals.sessionlogout.show({
-                            title: (typeof _ === 'function' ? _('New file') : 'New file'),
-                            forceOpen: (typeof _ === 'function'
-                                ? _('Create new file without saving')
-                                : 'Create new file without saving'),
-                            newFile: true,
-                        });
-                    }
-                });
-            }
+            // File > New is handled by navbarFile.js.
+            // Avoid duplicate listeners here, which can cause current-tab reload
+            // while opening a new tab on Cmd/Ctrl-click.
 
             // File > Open is handled by navbarFile.js openUserOdeFilesEvent()
             // which detects __EXE_STATIC_MODE__ and uses openFileInputStatic()
