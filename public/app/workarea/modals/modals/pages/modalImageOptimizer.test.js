@@ -391,6 +391,34 @@ describe('ModalImageOptimizer', () => {
             const badge = modal.getStatusBadge('unknown');
             expect(badge).toBe('');
         });
+
+        it('should return badge for already optimized status', () => {
+            const badge = modal.getStatusBadge('already_optimized');
+            expect(badge).toContain('Already optimized');
+        });
+    });
+
+    describe('isAlreadyOptimized', () => {
+        it('should be true when estimated size is larger than original', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 1200,
+            })).toBe(true);
+        });
+
+        it('should be true when savings percent is below minimum threshold', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 995, // 0.5%
+            })).toBe(true);
+        });
+
+        it('should be false when savings percent is at or above minimum threshold', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 990, // 1.0%
+            })).toBe(false);
+        });
     });
 
     describe('buildImageRow', () => {
@@ -563,6 +591,23 @@ describe('ModalImageOptimizer', () => {
             expect(statusCell.innerHTML).toContain('Ready');
         });
 
+        it('should mark row as already optimized and disable selection', () => {
+            modal.selectedAssets.add('asset-1');
+
+            modal.updateImageRow('asset-1', {
+                status: STATUS.READY,
+                originalSize: 1000,
+                estimatedSize: 1002,
+            });
+
+            const statusCell = row.querySelector('.image-optimizer-status');
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(statusCell.innerHTML).toContain('Already optimized');
+            expect(checkbox.disabled).toBe(true);
+            expect(checkbox.checked).toBe(false);
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
+        });
+
         it('should not throw for unknown asset', () => {
             expect(() => {
                 modal.updateImageRow('unknown-asset', { status: STATUS.READY });
@@ -605,6 +650,19 @@ describe('ModalImageOptimizer', () => {
             modal.onRowCheckboxChange('asset-1', false);
 
             expect(modal.selectedAssets.has('asset-1')).toBe(false);
+        });
+
+        it('should keep asset unselected when row is not selectable', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            const row = modal.buildImageRow({ id: 'asset-1', filename: 'test.png', mime: 'image/png' }, blob, false);
+            row.dataset.selectable = 'false';
+            modal.rowElements.set('asset-1', row);
+
+            modal.onRowCheckboxChange('asset-1', true);
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(checkbox.checked).toBe(false);
         });
     });
 
@@ -662,6 +720,18 @@ describe('ModalImageOptimizer', () => {
                 const checkbox = row.querySelector('.image-optimizer-row-checkbox');
                 expect(checkbox.checked).toBe(false);
             }
+        });
+
+        it('should skip non-selectable assets when selecting all', () => {
+            const row1 = modal.rowElements.get('asset-1');
+            row1.dataset.selectable = 'false';
+            const checkbox1 = row1.querySelector('.image-optimizer-row-checkbox');
+
+            modal.selectAll();
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
+            expect(checkbox1.checked).toBe(false);
+            expect(modal.selectedAssets.has('asset-2')).toBe(true);
         });
     });
 
