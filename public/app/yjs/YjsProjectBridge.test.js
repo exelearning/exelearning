@@ -430,6 +430,243 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('block structure reload detection', () => {
+    it('detects affected page IDs for block additions', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('ignores non-structural component content updates', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components', 0, 'htmlContent'],
+          delta: [{ insert: 'x' }],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('schedules reload for each affected page on remote transactions', () => {
+      const pageMap0 = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      const pageMap1 = { get: mock((key) => (key === 'id' ? 'page-2' : undefined)) };
+
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => {
+            if (idx === 0) return pageMap0;
+            if (idx === 1) return pageMap1;
+            return null;
+          }),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+        {
+          path: [1, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+      expect(scheduleSpy).toHaveBeenCalledWith('page-2');
+    });
+
+    it('does not schedule reload for regular local transactions', () => {
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('schedules reload for local undo/redo transactions', () => {
+      const undoManager = {};
+      bridge.documentManager = {
+        undoManager,
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: undoManager }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('schedules reload while undo/redo operation is in progress', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('reloads on block-touching key changes during undo/redo even without add/delete', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks', 0],
+            changes: {
+              added: { size: 0 },
+              deleted: { size: 0 },
+              keys: new Map([['someKey', { action: 'update' }]]),
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('syncCurrentPageBlocksIfNeeded', () => {
+    it('reloads current page when DOM and Yjs block counts differ', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }, { id: 'b2' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}, {} , {}]); // DOM has 3 blocks
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).toHaveBeenCalled();
+    });
+
+    it('does not reload when DOM and Yjs block counts match', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}]); // DOM has 1 block
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('disconnect', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
