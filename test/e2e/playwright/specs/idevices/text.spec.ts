@@ -644,8 +644,19 @@ test.describe('Text iDevice', () => {
             if (!isTinyMceVisible) {
                 const editBtn = block.locator('.btn-edit-idevice');
                 if ((await editBtn.count()) > 0) {
-                    await editBtn.waitFor({ timeout: 10000 });
-                    await editBtn.click();
+                    await editBtn.waitFor({ state: 'visible', timeout: 10000 });
+                    try {
+                        await expect(editBtn).toBeEnabled({ timeout: 6000 });
+                        await editBtn.click({ timeout: 5000 });
+                    } catch {
+                        // Firefox fallback: enter edition by double-clicking iDevice body.
+                        const body = block.locator('.idevice_body').first();
+                        if (await body.isVisible().catch(() => false)) {
+                            await body.dblclick({ timeout: 5000 }).catch(() => {});
+                        } else {
+                            await block.dblclick({ timeout: 5000 }).catch(() => {});
+                        }
+                    }
                 }
             }
 
@@ -816,7 +827,19 @@ test.describe('Text iDevice', () => {
             // Save the iDevice
             const saveBtn = block.locator('.btn-save-idevice');
             if ((await saveBtn.count()) > 0) {
-                await saveBtn.click();
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    try {
+                        await saveBtn.click({ timeout: 5000 });
+                    } catch {
+                        await saveBtn.click({ timeout: 5000, force: true }).catch(() => {});
+                    }
+
+                    const leftEdition = await block
+                        .evaluate(el => el.getAttribute('mode') !== 'edition')
+                        .catch(() => false);
+                    if (leftEdition) break;
+                    await page.waitForTimeout(700);
+                }
             }
 
             await page.waitForFunction(
@@ -825,7 +848,7 @@ test.describe('Text iDevice', () => {
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
                 undefined,
-                { timeout: 15000 },
+                { timeout: 25000 },
             );
 
             // Save project

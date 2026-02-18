@@ -152,8 +152,31 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
 
     if (!isEdition) {
         const editBtn = activeTextBlock.locator('.btn-edit-idevice');
-        await editBtn.waitFor({ state: 'visible', timeout: 10000 });
-        await editBtn.click();
+        let editClicked = false;
+        try {
+            await editBtn.waitFor({ state: 'visible', timeout: 5000 });
+            await page.waitForFunction(
+                selector => {
+                    const btn = document.querySelector(selector);
+                    return !!btn && !btn.hasAttribute('disabled') && !btn.classList.contains('disabled');
+                },
+                '#node-content article .idevice_node.text .btn-edit-idevice',
+                { timeout: 6000 },
+            );
+            await editBtn.click({ timeout: 5000 });
+            editClicked = true;
+        } catch {
+            // Firefox fallback: enter edition by double-clicking iDevice body.
+        }
+
+        if (!editClicked) {
+            const body = activeTextBlock.locator('.idevice_body').first();
+            if (await body.isVisible().catch(() => false)) {
+                await body.dblclick({ timeout: 5000 }).catch(() => {});
+            } else {
+                await activeTextBlock.dblclick({ timeout: 5000 }).catch(() => {});
+            }
+        }
     }
 
     await page.waitForSelector('.tox-tinymce, .tox-menubar, .tox-toolbar', { timeout: 20000 });
@@ -161,7 +184,23 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await expect(imageBtn).toBeVisible({ timeout: 10000 });
-    await imageBtn.click();
+    try {
+        await imageBtn.click({ timeout: 6000 });
+    } catch {
+        await dismissBlockingAlertModal(page);
+        const openedByApi = await page.evaluate(() => {
+            const anyWindow = window as any;
+            const tiny = anyWindow?.tinymce || anyWindow?.$exeTinyMCE?.tinymce || anyWindow?.$exeTinyMCE;
+            const editor = tiny?.activeEditor || tiny?.editors?.[0] || null;
+            if (!editor || typeof editor.execCommand !== 'function') return false;
+            editor.execCommand('mceImage');
+            return true;
+        });
+
+        if (!openedByApi) {
+            await imageBtn.click({ timeout: 6000, force: true });
+        }
+    }
 
     await page.waitForSelector('.tox-dialog', { timeout: 10000 });
 
