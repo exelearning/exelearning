@@ -40,6 +40,7 @@ export async function waitForTinyMCE(page: Page, timeout = 15000): Promise<void>
             const tinymce = (window as any).tinymce;
             return tinymce?.activeEditor?.initialized === true;
         },
+        undefined,
         { timeout },
     );
 }

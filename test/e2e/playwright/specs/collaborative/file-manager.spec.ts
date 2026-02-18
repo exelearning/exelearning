@@ -1,6 +1,6 @@
 import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
-import { waitForLoadingScreen, waitForAppReady } from '../../helpers/workarea-helpers';
+import { waitForLoadingScreen, waitForAppReady, dismissBlockingAlertModal } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 import { addTextIdevice } from '../../helpers/workarea-helpers';
 
@@ -17,12 +17,27 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
  * Helper to open the File Manager modal via TinyMCE image dialog
  */
 async function openFileManager(page: Page): Promise<void> {
-    const existingTinyMce = page.locator('.tox-menubar');
-    if ((await existingTinyMce.count()) === 0) {
+    const textBlocks = page.locator('#node-content article .idevice_node.text');
+    if ((await textBlocks.count()) === 0) {
         await addTextIdevice(page);
     }
 
-    await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+    const editionBlock = page
+        .locator(
+            '#node-content article .idevice_node.text[mode="edition"], #node-content article .idevice_node.text:has(.tox-tinymce)',
+        )
+        .first();
+
+    if ((await editionBlock.count()) === 0) {
+        const editableEditBtn = page
+            .locator('#node-content article .idevice_node.text .btn-edit-idevice:not([disabled])')
+            .first();
+        await editableEditBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await editableEditBtn.click();
+    }
+
+    await page.waitForSelector('.tox-tinymce, .tox-menubar, .tox-toolbar', { timeout: 20000 });
+    await dismissBlockingAlertModal(page);
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await expect(imageBtn).toBeVisible({ timeout: 10000 });

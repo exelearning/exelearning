@@ -1,4 +1,7 @@
 import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { promises as fs } from 'fs';
+import os from 'os';
+import path from 'path';
 import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
@@ -44,7 +47,70 @@ export interface AuthFixtures {
     createProject: (page: Page, title?: string) => Promise<string>;
 }
 
-export const test = base.extend<AuthFixtures>({
+interface AuthWorkerFixtures {
+    /** Worker-scoped storage state path with authenticated guest session (dynamic mode only) */
+    guestStorageStatePath: string | null;
+}
+
+export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
+    /**
+     * Build guest-authenticated storage state once per worker.
+     * This avoids repeating /login/guest for every single test.
+     */
+    guestStorageStatePath: [
+        async ({ browser }, use, workerInfo) => {
+            if (workerInfo.project.name.includes('static')) {
+                await use(null);
+                return;
+            }
+
+            const baseURL = String(
+                workerInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001',
+            );
+            const safeProjectName = workerInfo.project.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const statePath = path.join(
+                os.tmpdir(),
+                `pw-guest-state-${process.pid}-${workerInfo.parallelIndex}-${safeProjectName}.json`,
+            );
+
+            const authContext = await browser.newContext({ baseURL });
+            const authPage = await authContext.newPage();
+            const loginResponse = await authPage.request.post('/login/guest', {
+                form: { guest_login_nonce: '' },
+                timeout: 30000,
+            });
+            if (!loginResponse.ok()) {
+                await authContext.close();
+                throw new Error(`Failed to prepare guest storage state: ${loginResponse.status()}`);
+            }
+
+            await authContext.storageState({ path: statePath });
+            await authContext.close();
+
+            await use(statePath);
+
+            await fs.unlink(statePath).catch(() => {});
+        },
+        { scope: 'worker' },
+    ],
+
+    /**
+     * Override context so all tests in dynamic mode start already authenticated.
+     * Keeps normal per-test isolation while skipping repeated login calls.
+     */
+    context: async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+        const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+        const context = await browser.newContext({
+            ...contextOptions,
+            baseURL,
+            storageState: isStaticProject(testInfo)
+                ? contextOptions.storageState
+                : (guestStorageStatePath ?? undefined),
+        });
+        await use(context);
+        await context.close();
+    },
+
     /**
      * Provides a page with guest login already performed
      * and navigated to the workarea
@@ -65,13 +131,7 @@ export const test = base.extend<AuthFixtures>({
             return;
         }
 
-        // Server mode: use direct API login to avoid slow UI auth flow per test
-        const loginResponse = await page.request.post('/login/guest', {
-            form: { guest_login_nonce: '' },
-            timeout: 30000,
-        });
-        expect(loginResponse.ok()).toBeTruthy();
-
+        // Server mode: guest auth already loaded via worker storage state
         await page.goto('/workarea');
 
         // Wait for workarea to load
@@ -108,14 +168,7 @@ export const test = base.extend<AuthFixtures>({
             return;
         }
 
-        // Server mode: perform guest login via API (faster than UI flow)
-        const response = await page.request.post('/login/guest', {
-            form: { guest_login_nonce: '' },
-            timeout: 30000,
-        });
-
-        expect(response.ok()).toBeTruthy();
-
+        // Server mode: guest auth already loaded via worker storage state
         await use(page);
     },
 

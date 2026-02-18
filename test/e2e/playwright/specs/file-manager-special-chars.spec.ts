@@ -25,6 +25,7 @@ import {
     downloadProject,
     zipContainsFile,
     openElpFile,
+    dismissBlockingAlertModal,
 } from '../helpers/workarea-helpers';
 import {
     uploadFileWithSpecialName,
@@ -137,12 +138,26 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
  * This is specific to the special chars tests that need TinyMCE context.
  */
 async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
-    const existingTinyMce = page.locator('.tox-menubar');
-    if ((await existingTinyMce.count()) === 0) {
+    const textBlock = page.locator('#node-content article .idevice_node.text').last();
+    if ((await textBlock.count()) === 0) {
         await addTextIdeviceFromPanel(page);
     }
 
-    await page.waitForSelector('.tox-menubar', { timeout: 15000 });
+    const activeTextBlock = page.locator('#node-content article .idevice_node.text').last();
+    const isEdition = await activeTextBlock.evaluate(el => {
+        const hasMode = el.getAttribute('mode') === 'edition';
+        const hasTinyMce = el.querySelector('.tox-tinymce') !== null;
+        return hasMode || hasTinyMce;
+    });
+
+    if (!isEdition) {
+        const editBtn = activeTextBlock.locator('.btn-edit-idevice');
+        await editBtn.waitFor({ state: 'visible', timeout: 10000 });
+        await editBtn.click();
+    }
+
+    await page.waitForSelector('.tox-tinymce, .tox-menubar, .tox-toolbar', { timeout: 20000 });
+    await dismissBlockingAlertModal(page);
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
     await expect(imageBtn).toBeVisible({ timeout: 10000 });

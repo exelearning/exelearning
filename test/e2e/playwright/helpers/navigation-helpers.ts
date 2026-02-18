@@ -272,6 +272,7 @@ export async function waitForPageContentReady(page: Page, timeout = 10000): Prom
             // Content area should have children and not be showing project metadata
             return nodeContent && nodeContent.children.length > 0 && (!metadata || !metadata.closest('.show'));
         },
+        undefined,
         { timeout },
     );
     await page.waitForTimeout(300);

@@ -94,6 +94,7 @@ async function waitForCopyInList(page: Page, timeout = 20000): Promise<void> {
             const titles = document.querySelectorAll('.ode-files-list .ode-title');
             return Array.from(titles).some(el => el.textContent?.includes('(copy)'));
         },
+        undefined,
         { timeout },
     );
 }

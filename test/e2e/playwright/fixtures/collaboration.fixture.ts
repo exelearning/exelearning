@@ -29,8 +29,13 @@ export const test = authTest.extend<CollaborationFixtures>({
      * Second browser context for complete isolation
      * This ensures cookies, local storage, and session are independent
      */
-    secondContext: async ({ browser }, use) => {
-        const context = await browser.newContext();
+    secondContext: async ({ browser, guestStorageStatePath, contextOptions }, use, testInfo) => {
+        const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+        const context = await browser.newContext({
+            ...contextOptions,
+            baseURL,
+            storageState: guestStorageStatePath ?? undefined,
+        });
         await use(context);
         await context.close();
     },
@@ -41,14 +46,7 @@ export const test = authTest.extend<CollaborationFixtures>({
      */
     secondAuthenticatedPage: async ({ secondContext }, use) => {
         const page = await secondContext.newPage();
-        // Use direct guest login via API to keep fixture fast and deterministic
-        const loginResponse = await page.request.post('/login/guest', {
-            form: { guest_login_nonce: '' },
-            timeout: 30000,
-        });
-        if (!loginResponse.ok()) {
-            throw new Error(`Guest login failed for second client: ${loginResponse.status()}`);
-        }
+
         await page.goto('/workarea');
 
         // Wait for workarea to load

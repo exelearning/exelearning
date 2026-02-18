@@ -1924,6 +1924,37 @@ export async function waitForTinyMCEReady(page: Page, timeout = 15000): Promise<
 }
 
 /**
+ * Dismiss alert modal(s) that can block clicks on top navigation/dropdowns.
+ * Useful in Firefox where modal overlays may linger briefly after operations.
+ */
+export async function dismissBlockingAlertModal(page: Page, attempts = 3): Promise<void> {
+    for (let i = 0; i < attempts; i++) {
+        const alertModal = page
+            .locator('#modalAlert[data-open="true"], #modalAlert.show, .modal.show[data-testid="modal-alert"]')
+            .first();
+
+        if (!(await alertModal.isVisible().catch(() => false))) {
+            return;
+        }
+
+        const closeBtn = alertModal
+            .locator(
+                'button:has-text("Close"), button:has-text("Cerrar"), button:has-text("OK"), button:has-text("Aceptar"), .btn-close, [data-bs-dismiss="modal"], .btn-primary, .btn-secondary, .close',
+            )
+            .first();
+
+        if (await closeBtn.isVisible().catch(() => false)) {
+            await closeBtn.click({ force: true }).catch(() => {});
+        } else {
+            await page.keyboard.press('Escape').catch(() => {});
+        }
+
+        await alertModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(100);
+    }
+}
+
+/**
  * Set content in the active TinyMCE editor
  *
  * @param page - Playwright page
@@ -2128,46 +2159,58 @@ export async function downloadProject(page: Page): Promise<Download> {
         }
     }
 
+    await dismissBlockingAlertModal(page);
+
     // Detect static mode (no remote storage capability)
     const isStaticMode = await page.evaluate(() => {
         const capabilities = (window as any).eXeLearning?.app?.capabilities;
         return capabilities && !capabilities.storage?.remote;
     });
 
-    // Wait for download event
-    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    const triggerDownload = async (): Promise<void> => {
+        if (isStaticMode) {
+            // STATIC MODE: The save button triggers download in offline mode
+            const saveBtn = page.locator('#head-top-save-button');
+            await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+            await saveBtn.click();
+            return;
+        }
 
-    if (isStaticMode) {
-        // STATIC MODE: The save button triggers download in offline mode
-        // (see saveButton.js: downloadProjectEvent() is called when isOfflineInstallation is true)
-        const saveBtn = page.locator('#head-top-save-button');
-        await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
-        await saveBtn.click();
-    } else {
         // ONLINE MODE: Navigate through File menu dropdown
-        // Enable advanced mode to make download button visible
         await page.evaluate(() => {
             document.querySelector('body')?.setAttribute('mode', 'advanced');
         });
-        await page.waitForTimeout(300);
 
-        // Open File menu dropdown
-        await page.locator('#dropdownFile').click();
-        await page.waitForTimeout(300);
+        // Open File menu dropdown (retry if alert modal intercepts clicks)
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                await dismissBlockingAlertModal(page);
+                await page.locator('#dropdownFile').click({ timeout: 5000 });
+                await page.locator('#dropdownFile[aria-expanded="true"], .dropdown-menu.show').first().waitFor({
+                    state: 'visible',
+                    timeout: 3000,
+                });
+                break;
+            } catch (error) {
+                if (attempt === 2) throw error;
+                await dismissBlockingAlertModal(page);
+                await page.waitForTimeout(150);
+            }
+        }
 
         // Click "Download as" submenu to open nested dropdown (Bootstrap dropend)
         const downloadAsSubmenu = page.locator('#dropdownExportAs').first();
         await downloadAsSubmenu.waitFor({ state: 'visible', timeout: 5000 });
         await downloadAsSubmenu.click();
-        await page.waitForTimeout(300);
 
         // Click Download project as ELPX
         const downloadBtn = page.locator('#navbar-button-download-project').first();
         await downloadBtn.waitFor({ state: 'visible', timeout: 5000 });
         await downloadBtn.click();
-    }
+    };
 
-    return await downloadPromise;
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), triggerDownload()]);
+    return download;
 }
 
 /**
