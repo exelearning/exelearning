@@ -10,11 +10,14 @@ async function waitForAppReady(page: Page): Promise<void> {
     await page.waitForLoadState('networkidle');
 
     // Wait for Yjs bridge initialization
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
+    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, undefined, {
+        timeout: 30000,
+    });
 
     // Wait for loading screen to disappear
     await page.waitForFunction(
         () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+        undefined,
         { timeout: 30000 },
     );
 }
@@ -56,7 +59,7 @@ async function uploadTheme(page: Page, fixtureName: string): Promise<string> {
     await fileInput.setInputFiles(fixturePath);
 
     // Wait for theme to be processed (small timeout to allow async processing)
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Get the theme name from config.xml (should be extracted by the upload process)
     // The theme name is sanitized: lowercase, alphanumeric + underscore/dash only
@@ -76,7 +79,7 @@ async function checkThemeInImportedTab(page: Page, themeName: string): Promise<b
     await openImportedStylesTab(page);
 
     // Wait for content to be populated
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Look for the theme in the user themes list
     // Themes are displayed as .user-theme-item elements
@@ -327,7 +330,7 @@ test.describe('Theme Persistence Across Projects', () => {
         await page.evaluate(async (name: string) => {
             await (window as any).eXeLearning?.app?.themes?.selectTheme(name, false, true);
         }, themeName);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Verify icons have proper blob URLs after theme selection
         const iconUrls = await page.evaluate(() => {

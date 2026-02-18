@@ -25,6 +25,8 @@
 
 import type { Page, FrameLocator, Download } from '@playwright/test';
 
+const IMPORT_STABILITY_MS = 1800;
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // APP INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -40,6 +42,7 @@ export async function waitForAppReady(page: Page, timeout = 30000): Promise<void
             const app = (window as any).eXeLearning?.app;
             return app?.project?._yjsBridge !== undefined;
         },
+        undefined,
         { timeout },
     );
 
@@ -53,7 +56,56 @@ export async function waitForAppReady(page: Page, timeout = 30000): Promise<void
 export async function waitForLoadingScreen(page: Page, timeout = 30000): Promise<void> {
     await page.waitForFunction(
         () => document.querySelector('#load-screen-main')?.getAttribute('data-visible') === 'false',
+        undefined,
         { timeout },
+    );
+}
+
+/**
+ * Wait for project synchronization to settle.
+ * In static mode this returns quickly; in online mode it waits for Yjs/provider sync.
+ */
+export async function waitForProjectSynced(page: Page, timeout = 15000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            if (!bridge) return true;
+
+            const manager = bridge.getDocumentManager?.() || bridge.documentManager;
+            if (!manager) return true;
+
+            const provider = manager.wsProvider;
+            if (!provider) return true;
+
+            return provider.synced === true || provider.wsconnected === true;
+        },
+        undefined,
+        { timeout, polling: 100 },
+    );
+}
+
+/**
+ * Wait until import-related UI and sync state are stable.
+ */
+export async function waitForImportSettled(page: Page, timeout = 30000): Promise<void> {
+    await waitForLoadingScreen(page, timeout);
+    await page.waitForFunction(() => !document.querySelector('#import-progress-overlay'), undefined, { timeout });
+    await waitForProjectSynced(page, Math.min(timeout, 15000));
+}
+
+/**
+ * Wait for TinyMCE editor to be ready and interactive.
+ */
+export async function waitForTinyMceReady(page: Page, timeout = 15000): Promise<void> {
+    await page.waitForFunction(
+        () => {
+            const editorRoot = document.querySelector('.tox-tinymce');
+            const iframe = document.querySelector('.tox-edit-area iframe');
+            const busy = document.querySelector('.tox .tox-progress-indicator');
+            return !!editorRoot && !!iframe && !busy;
+        },
+        undefined,
+        { timeout, polling: 100 },
     );
 }
 
@@ -81,7 +133,6 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
 
     // Open File menu dropdown
     await page.locator('#dropdownFile').click();
-    await page.waitForTimeout(300);
 
     if (isStaticMode) {
         // STATIC MODE: File input is triggered directly, no modal
@@ -141,10 +192,10 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
         { timeout: 90000 },
     );
 
-    // Wait for page count to stabilize (no changes for 3 seconds)
-    // This is critical for Firefox which may be slower to process large ELPs
+    // Wait for page count to stabilize briefly after import.
+    // Keeping this short avoids adding multiple fixed seconds per import-heavy test.
     await page.waitForFunction(
-        () => {
+        stableMs => {
             try {
                 const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
                 if (!bridge) return false;
@@ -171,7 +222,7 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
 
                 // Store/check the page count to detect stabilization
                 const win = window as any;
-                if (!win.__importPageCount) {
+                if (win.__importPageCount === undefined) {
                     win.__importPageCount = currentCount;
                     win.__importStableTime = Date.now();
                     return false;
@@ -183,13 +234,14 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
                     return false;
                 }
 
-                // Page count stable for 3 seconds = import complete
-                return Date.now() - win.__importStableTime >= 3000;
+                // Keep a small stability window to reduce flakiness while minimizing runtime.
+                return Date.now() - win.__importStableTime >= stableMs;
             } catch {
                 return false;
             }
         },
-        { timeout: 120000, polling: 500 },
+        IMPORT_STABILITY_MS,
+        { timeout: 60000, polling: 200 },
     );
 
     // Clean up temporary window variables
@@ -200,13 +252,7 @@ export async function openElpFile(page: Page, fixturePath: string, minPages = 1)
     });
 
     // Wait for loading screen to hide
-    await waitForLoadingScreen(page, 30000);
-
-    // Wait for import progress overlay to disappear (if present)
-    await page.waitForFunction(() => !document.querySelector('#import-progress-overlay'), { timeout: 30000 });
-
-    // Additional wait for all handlers to complete
-    await page.waitForTimeout(2000);
+    await waitForImportSettled(page, 30000);
 }
 
 /**
@@ -240,8 +286,7 @@ export async function saveProject(page: Page): Promise<void> {
     if (isStaticMode) {
         // In static mode, project data is automatically saved to IndexedDB
         // No need to click save button (which would trigger download)
-        // Just wait briefly for any pending Yjs operations
-        await page.waitForTimeout(500);
+        await waitForProjectSynced(page, 5000);
         return;
     }
 
@@ -254,11 +299,12 @@ export async function saveProject(page: Page): Promise<void> {
             const saveBtn = document.querySelector('#head-top-save-button');
             return saveBtn && !saveBtn.classList.contains('saving');
         },
+        undefined,
         { timeout: 30000 },
     );
 
-    // Additional wait for async operations
-    await page.waitForTimeout(500);
+    // Wait for Yjs/provider synchronization after save
+    await waitForProjectSynced(page, 10000);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -289,7 +335,7 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
     if (isStaticMode) {
         // Static mode: workarea is pre-loaded at root, no /workarea route exists
         await page.goto('/');
-        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, { timeout: 30000 });
+        await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, { timeout: 30000 });
         await waitForLoadingScreen(page);
         return; // CRITICAL: return here to prevent server mode code from executing
     }
@@ -297,7 +343,9 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
     // Server mode: navigate to workarea with project UUID
     await page.goto(`/workarea?project=${projectUuid}`);
     await page.waitForLoadState('networkidle');
-    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, { timeout: 30000 });
+    await page.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsEnabled, undefined, {
+        timeout: 30000,
+    });
     await waitForLoadingScreen(page);
 }
 
@@ -308,7 +356,59 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
  * @param title - Page title to click (partial match supported)
  */
 export async function navigateToPageByTitle(page: Page, title: string): Promise<void> {
-    const navItem = page.locator('.nav-element .nav-element-text', { hasText: title }).first();
+    const normalize = (value: string) =>
+        value
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
+
+    const normalizedTitle = normalize(title);
+    const titleCandidates = new Set<string>([normalizedTitle]);
+
+    // Common localization aliases used by default newly created pages.
+    if (normalizedTitle === 'new page' || normalizedTitle === 'nueva pagina') {
+        titleCandidates.add('new page');
+        titleCandidates.add('nueva pagina');
+    }
+
+    await page.waitForFunction(
+        candidates => {
+            const normalizeInner = (value: string) =>
+                value
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim();
+            const candidateList = candidates as string[];
+            const items = document.querySelectorAll('.nav-element .nav-element-text');
+            return Array.from(items).some(item => {
+                const text = normalizeInner(item.textContent || '');
+                return candidateList.some(candidate => text.includes(candidate));
+            });
+        },
+        Array.from(titleCandidates),
+        { timeout: 25000, polling: 200 },
+    );
+
+    const navItems = page.locator('.nav-element .nav-element-text');
+    const count = await navItems.count();
+    let targetIndex = -1;
+
+    for (let i = 0; i < count; i++) {
+        const textContent = (await navItems.nth(i).textContent()) || '';
+        const normalizedText = normalize(textContent);
+        if (Array.from(titleCandidates).some(candidate => normalizedText.includes(candidate))) {
+            targetIndex = i;
+            break;
+        }
+    }
+
+    if (targetIndex === -1) {
+        throw new Error(`Page with title "${title}" not found in navigation tree`);
+    }
+
+    const navItem = navItems.nth(targetIndex);
     await navItem.scrollIntoViewIfNeeded();
     await navItem.click({ force: true });
 
@@ -318,6 +418,7 @@ export async function navigateToPageByTitle(page: Page, title: string): Promise<
             const nodeContent = document.querySelector('#node-content');
             return nodeContent && nodeContent.children.length > 0;
         },
+        undefined,
         { timeout: 10000 },
     );
     await page.waitForTimeout(500);
@@ -351,60 +452,126 @@ export async function navigateToIdevicePage(page: Page, ideviceId: string, idevi
     // Wait for navigation to be ready
     await navElements.first().waitFor({ state: 'attached', timeout: 10000 });
 
-    const count = await navElements.count();
+    for (let pass = 0; pass < 3; pass++) {
+        const count = await page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').count();
 
-    for (let i = 0; i < count; i++) {
-        // Re-query on each iteration to get fresh reference (DOM may have changed)
-        const navItem = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').nth(i);
+        for (let i = 0; i < count; i++) {
+            // Re-query on each iteration to get fresh reference (DOM may have changed)
+            const navItem = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').nth(i);
 
-        try {
-            await navItem.waitFor({ state: 'attached', timeout: 5000 });
-            await navItem.scrollIntoViewIfNeeded();
+            try {
+                await navItem.waitFor({ state: 'attached', timeout: 5000 });
+                await navItem.scrollIntoViewIfNeeded();
 
-            // Capture current page heading before clicking (to detect content change)
-            const currentHeading = await page.evaluate(() => {
-                const heading = document.querySelector('#node-content h1');
-                return heading?.textContent || '';
-            });
+                // Capture current page heading before clicking (to detect content change)
+                const currentHeading = await page.evaluate(() => {
+                    const heading = document.querySelector('#node-content h1');
+                    return heading?.textContent || '';
+                });
 
-            await navItem.click({ force: true });
+                await navItem.click({ force: true });
 
-            // Wait for content area to update by detecting heading change or iDevice presence
-            await page.waitForFunction(
-                ({ prevHeading, targetId, targetType }) => {
-                    // Check if the target iDevice is now visible
-                    const targetEl = document.getElementById(targetId);
-                    if (targetEl?.classList.contains(targetType)) {
-                        return true;
+                // Wait for content area to update by detecting heading change or iDevice presence
+                await page.waitForFunction(
+                    ({ prevHeading, targetId, targetType }) => {
+                        // Check if the target iDevice is now visible
+                        const targetEl = document.getElementById(targetId);
+                        if (targetEl?.classList.contains(targetType)) {
+                            return true;
+                        }
+
+                        // Check if the heading changed (indicating page navigation completed)
+                        const nodeContent = document.querySelector('#node-content');
+                        if (!nodeContent || nodeContent.children.length === 0) {
+                            return false;
+                        }
+                        const newHeading = nodeContent.querySelector('h1')?.textContent || '';
+                        return newHeading !== prevHeading;
+                    },
+                    { prevHeading: currentHeading, targetId: ideviceId, targetType: ideviceType },
+                    { timeout: 10000 },
+                );
+
+                // Check if iDevice is now visible
+                const found = await page.evaluate(
+                    ({ id, type }) => {
+                        const el = document.getElementById(id);
+                        return el?.classList.contains(type);
+                    },
+                    { id: ideviceId, type: ideviceType },
+                );
+
+                if (found) {
+                    // Small buffer for any remaining DOM settling
+                    await page.waitForTimeout(200);
+                    return true;
+                }
+            } catch {}
+        }
+
+        // Fallback: find page name in Yjs for the target iDevice and jump directly by title
+        const pageName = await page.evaluate(
+            ({ targetId, targetType }) => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                const yDoc = bridge?.getDocumentManager?.()?.getDoc?.();
+                if (!yDoc) return null;
+
+                const searchInPage = (pageMap: any): string | null => {
+                    const currentName = pageMap?.get('name') || null;
+                    const blocks = pageMap?.get('blocks');
+                    if (blocks) {
+                        for (let i = 0; i < blocks.length; i++) {
+                            const blockMap = blocks.get(i);
+                            const components = blockMap?.get('components');
+                            if (!components) continue;
+                            for (let j = 0; j < components.length; j++) {
+                                const c = components.get(j);
+                                if (c?.get('type') === targetType && c?.get('elementId') === targetId) {
+                                    return currentName;
+                                }
+                            }
+                        }
                     }
 
-                    // Check if the heading changed (indicating page navigation completed)
-                    const nodeContent = document.querySelector('#node-content');
-                    if (!nodeContent || nodeContent.children.length === 0) {
-                        return false;
+                    const children = pageMap?.get('children');
+                    if (children) {
+                        for (let i = 0; i < children.length; i++) {
+                            const foundInChild = searchInPage(children.get(i));
+                            if (foundInChild) return foundInChild;
+                        }
                     }
-                    const newHeading = nodeContent.querySelector('h1')?.textContent || '';
-                    return newHeading !== prevHeading;
-                },
-                { prevHeading: currentHeading, targetId: ideviceId, targetType: ideviceType },
-                { timeout: 5000 },
-            );
+                    return null;
+                };
 
-            // Check if iDevice is now visible
-            const found = await page.evaluate(
-                ({ id, type }) => {
-                    const el = document.getElementById(id);
-                    return el?.classList.contains(type);
-                },
-                { id: ideviceId, type: ideviceType },
-            );
+                const navigation = yDoc.getArray('navigation');
+                if (!navigation) return null;
+                for (let i = 0; i < navigation.length; i++) {
+                    const found = searchInPage(navigation.get(i));
+                    if (found) return found;
+                }
+                return null;
+            },
+            { targetId: ideviceId, targetType: ideviceType },
+        );
 
-            if (found) {
-                // Small buffer for any remaining DOM settling
-                await page.waitForTimeout(200);
-                return true;
-            }
-        } catch {}
+        if (pageName) {
+            try {
+                await navigateToPageByTitle(page, pageName);
+                const foundAfterFallback = await page.evaluate(
+                    ({ id, type }) => {
+                        const el = document.getElementById(id);
+                        return el?.classList.contains(type);
+                    },
+                    { id: ideviceId, type: ideviceType },
+                );
+                if (foundAfterFallback) return true;
+            } catch {}
+        }
+
+        if (pass < 2) {
+            await waitForProjectSynced(page, 6000);
+            await page.waitForTimeout(300);
+        }
     }
 
     return false;
@@ -437,7 +604,7 @@ export async function selectFirstPage(page: Page): Promise<void> {
         const pageNode = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').first();
         await pageNode.scrollIntoViewIfNeeded();
         await pageNode.click({ force: true });
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
     }
 }
 
@@ -459,6 +626,7 @@ export async function openPreviewPanel(page: Page): Promise<void> {
                     navigator.serviceWorker?.controller !== null
                 );
             },
+            undefined,
             { timeout: 15000 },
         )
         .catch(() => {
@@ -477,7 +645,7 @@ export async function openPreviewPanel(page: Page): Promise<void> {
     await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
     // Give time for preview generation
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -534,7 +702,7 @@ export async function navigateInPreview(page: Page, linkText: string): Promise<v
     const navLinks = iframe.locator('nav a, .menu a, #siteNav a');
     const link = navLinks.filter({ hasText: linkText }).first();
     await link.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -753,7 +921,7 @@ export async function verifyInPreview(
 
             try {
                 await link.click();
-                await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
 
                 results = await checkSelectors();
                 anyFound = Object.values(results).some(r => r.found);
@@ -893,7 +1061,7 @@ export async function changeTheme(page: Page, themeId: string): Promise<void> {
     }, themeId);
 
     // Wait for theme to be applied
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Verify theme was changed
     await page.waitForFunction(
@@ -972,7 +1140,7 @@ export async function expandIdeviceCategory(page: Page, categoryPattern: RegExp)
             // Click on the h3 heading directly (it's the clickable element)
             const heading = category.locator('h3.idevice_category_name');
             await heading.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -995,7 +1163,7 @@ export async function enableSearchOption(page: Page): Promise<void> {
     await propertiesButton.click();
 
     // Wait for properties to appear in the content area
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for the "Export options" tab to be present in DOM
     // Project properties now use tabs instead of accordion (commit f4383b83)
@@ -1037,6 +1205,7 @@ export async function enableSearchOption(page: Page): Promise<void> {
             const value = metadata?.get('addSearchBox');
             return value === true || value === 'true';
         },
+        undefined,
         { timeout: 5000 },
     );
 }
@@ -1049,14 +1218,16 @@ export async function cloneCurrentPage(page: Page): Promise<void> {
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Close rename modal by pressing Escape
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
 
     // Wait for modal to close
-    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 }).catch(() => {});
+    await page
+        .waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 })
+        .catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1119,7 +1290,7 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
         throw lastError;
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for page content area to be ready
     await page
@@ -1129,6 +1300,7 @@ export async function selectPageByIndex(page: Page, pageIndex: number = 0): Prom
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -1223,6 +1395,7 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
             () => {
                 return (window as any).ComponentImporter !== undefined;
             },
+            undefined,
             { timeout: 15000 },
         );
     } catch {
@@ -1244,7 +1417,7 @@ export async function importComponent(page: Page, filePath: string): Promise<voi
     await fileInput.setInputFiles(filePath);
 
     // Wait for import to complete - watch for iDevice to appear in the page
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(500);
 
     // Close any error modal if present
     const errorModal = page.locator('.modal.show:has-text("Import error"), .modal.show:has-text("Error")');
@@ -1418,7 +1591,7 @@ export async function addTextIdevice(page: Page): Promise<void> {
         const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
         if (isCollapsed) {
             await infoCategory.locator('.label').click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -1496,6 +1669,7 @@ export async function editTextIdevice(page: Page, content: string): Promise<void
             const isEditionMode = idevice.getAttribute('mode') === 'edition';
             return !hasTinyMCE && !isEditionMode;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -1584,7 +1758,7 @@ export async function changeBlockIcon(page: Page, blockIndex: number, iconIndex:
     await saveBtn.click();
 
     // 6. Wait for modal to close completely
-    await page.waitForFunction(() => !document.querySelector('.modal.show'), { timeout: 5000 });
+    await page.waitForFunction(() => !document.querySelector('.modal.show'), undefined, { timeout: 5000 });
     // Small delay to ensure Bootstrap modal transition completes
     await page.waitForTimeout(300);
 
@@ -1796,8 +1970,40 @@ export async function waitForTinyMCEReady(page: Page, timeout = 15000): Promise<
             const editor = (window as any).tinymce?.activeEditor;
             return !!editor && editor.initialized;
         },
+        undefined,
         { timeout },
     );
+}
+
+/**
+ * Dismiss alert modal(s) that can block clicks on top navigation/dropdowns.
+ * Useful in Firefox where modal overlays may linger briefly after operations.
+ */
+export async function dismissBlockingAlertModal(page: Page, attempts = 3): Promise<void> {
+    for (let i = 0; i < attempts; i++) {
+        const alertModal = page
+            .locator('#modalAlert[data-open="true"], #modalAlert.show, .modal.show[data-testid="modal-alert"]')
+            .first();
+
+        if (!(await alertModal.isVisible().catch(() => false))) {
+            return;
+        }
+
+        const closeBtn = alertModal
+            .locator(
+                'button:has-text("Close"), button:has-text("Cerrar"), button:has-text("OK"), button:has-text("Aceptar"), .btn-close, [data-bs-dismiss="modal"], .btn-primary, .btn-secondary, .close',
+            )
+            .first();
+
+        if (await closeBtn.isVisible().catch(() => false)) {
+            await closeBtn.click({ force: true }).catch(() => {});
+        } else {
+            await page.keyboard.press('Escape').catch(() => {});
+        }
+
+        await alertModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(100);
+    }
 }
 
 /**
@@ -1839,6 +2045,7 @@ export async function waitForServiceWorker(page: Page, timeout = 15000): Promise
                     navigator.serviceWorker?.controller !== null
                 );
             },
+            undefined,
             { timeout },
         )
         .catch(() => {
@@ -1902,7 +2109,7 @@ export async function openPreviewAndWaitForContent(page: Page, timeout = 30000):
     await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
     // Give time for preview generation to start
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(500);
 
     // Click refresh button to force preview regeneration if available
     const refreshBtn = page.locator(
@@ -1910,7 +2117,7 @@ export async function openPreviewAndWaitForContent(page: Page, timeout = 30000):
     );
     if (await refreshBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await refreshBtn.click();
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(500);
     }
 
     // Wait for any content to be present in the iframe
@@ -1931,11 +2138,12 @@ export async function openPreviewAndWaitForContent(page: Page, timeout = 30000):
                 return false;
             }
         },
+        undefined,
         { timeout },
     );
 
     // Additional wait for content to fully render
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -1966,6 +2174,7 @@ export async function addTextIdeviceWithContent(page: Page, content: string): Pr
             const idevice = document.querySelector('#node-content article .idevice_node.text');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 20000 },
     );
 }
@@ -2002,46 +2211,58 @@ export async function downloadProject(page: Page): Promise<Download> {
         }
     }
 
+    await dismissBlockingAlertModal(page);
+
     // Detect static mode (no remote storage capability)
     const isStaticMode = await page.evaluate(() => {
         const capabilities = (window as any).eXeLearning?.app?.capabilities;
         return capabilities && !capabilities.storage?.remote;
     });
 
-    // Wait for download event
-    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+    const triggerDownload = async (): Promise<void> => {
+        if (isStaticMode) {
+            // STATIC MODE: The save button triggers download in offline mode
+            const saveBtn = page.locator('#head-top-save-button');
+            await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+            await saveBtn.click();
+            return;
+        }
 
-    if (isStaticMode) {
-        // STATIC MODE: The save button triggers download in offline mode
-        // (see saveButton.js: downloadProjectEvent() is called when isOfflineInstallation is true)
-        const saveBtn = page.locator('#head-top-save-button');
-        await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
-        await saveBtn.click();
-    } else {
         // ONLINE MODE: Navigate through File menu dropdown
-        // Enable advanced mode to make download button visible
         await page.evaluate(() => {
             document.querySelector('body')?.setAttribute('mode', 'advanced');
         });
-        await page.waitForTimeout(300);
 
-        // Open File menu dropdown
-        await page.locator('#dropdownFile').click();
-        await page.waitForTimeout(300);
+        // Open File menu dropdown (retry if alert modal intercepts clicks)
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                await dismissBlockingAlertModal(page);
+                await page.locator('#dropdownFile').click({ timeout: 5000 });
+                await page.locator('#dropdownFile[aria-expanded="true"], .dropdown-menu.show').first().waitFor({
+                    state: 'visible',
+                    timeout: 3000,
+                });
+                break;
+            } catch (error) {
+                if (attempt === 2) throw error;
+                await dismissBlockingAlertModal(page);
+                await page.waitForTimeout(150);
+            }
+        }
 
         // Click "Download as" submenu to open nested dropdown (Bootstrap dropend)
         const downloadAsSubmenu = page.locator('#dropdownExportAs').first();
         await downloadAsSubmenu.waitFor({ state: 'visible', timeout: 5000 });
         await downloadAsSubmenu.click();
-        await page.waitForTimeout(300);
 
         // Click Download project as ELPX
         const downloadBtn = page.locator('#navbar-button-download-project').first();
         await downloadBtn.waitFor({ state: 'visible', timeout: 5000 });
         await downloadBtn.click();
-    }
+    };
 
-    return await downloadPromise;
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), triggerDownload()]);
+    return download;
 }
 
 /**

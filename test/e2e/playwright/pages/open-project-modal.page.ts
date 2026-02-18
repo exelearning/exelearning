@@ -319,14 +319,28 @@ export class OpenProjectModalPage {
      * Wait until a project with a matching title substring appears in the list
      */
     async waitForProjectInList(titleSubstring: string, timeout = 15000): Promise<void> {
-        await this.page.waitForFunction(
-            substring => {
-                const titles = document.querySelectorAll('.ode-files-list .ode-title');
-                return Array.from(titles).some(el => el.textContent?.includes(substring));
-            },
-            titleSubstring,
-            { timeout },
-        );
+        const deadline = Date.now() + timeout;
+        let lastRefresh = 0;
+
+        while (Date.now() < deadline) {
+            const matchingTitle = this.projectList.locator('.ode-title', { hasText: titleSubstring }).first();
+            if ((await matchingTitle.count()) > 0 && (await matchingTitle.isVisible().catch(() => false))) {
+                return;
+            }
+
+            if (Date.now() - lastRefresh > 3000) {
+                if (await this.isSharedWithMeTabActive().catch(() => false)) {
+                    await this.sharedWithMeTab.click().catch(() => {});
+                } else if (await this.isMyProjectsTabActive().catch(() => false)) {
+                    await this.myProjectsTab.click().catch(() => {});
+                }
+                lastRefresh = Date.now();
+            }
+
+            await this.page.waitForTimeout(250);
+        }
+
+        throw new Error(`Project with title containing "${titleSubstring}" did not appear within ${timeout}ms`);
     }
 
     /**

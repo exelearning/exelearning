@@ -47,7 +47,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -56,6 +56,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -147,6 +148,7 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
             return items.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -201,6 +203,7 @@ async function navigateToRoot(page: Page): Promise<void> {
             const items = breadcrumbs?.querySelectorAll('.breadcrumb-item');
             return items && items.length === 1;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -254,7 +257,7 @@ async function duplicateSelectedFile(page: Page, expectedCount: number): Promise
     await duplicateBtn.click();
 
     // Wait for the duplicate operation to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Print all console logs related to MediaLibrary
     const mediaLogs = consoleLogs.filter(
@@ -362,6 +365,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
                 return false;
             }
         },
+        undefined,
         { timeout: 90000 },
     );
 
@@ -395,6 +399,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
                 return false;
             }
         },
+        undefined,
         { timeout: 90000, polling: 500 },
     );
 
@@ -408,7 +413,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Wait for loading screen to hide
     await waitForLoadingScreen(page);
 
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 test.describe('File Manager', () => {
@@ -436,7 +441,7 @@ test.describe('File Manager', () => {
             await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are folders in the file manager (from content/resources/*)
             const folderCount = await getFolderCount(page);
@@ -485,7 +490,7 @@ test.describe('File Manager', () => {
             await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are files at root level (no folder structure in legacy format)
             const fileCount = await getFileCount(page);
@@ -804,6 +809,7 @@ test.describe('File Manager', () => {
                     );
                     return items.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -851,6 +857,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -901,6 +908,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -946,7 +954,7 @@ test.describe('File Manager', () => {
                     await page.keyboard.press('Escape').catch(() => {});
                 }
                 await page
-                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), {
+                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), undefined, {
                         timeout: 5000,
                     })
                     .catch(() => {});
@@ -954,7 +962,7 @@ test.describe('File Manager', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
             await reloadPage(page);
@@ -1097,7 +1105,7 @@ test.describe('File Manager', () => {
             await uploadFile(page, 'test/fixtures/sample-2.jpg');
 
             // Wait for async operations
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the correct log message appears (not "Asset already exists for this project")
             // The fix should show "Storing blob for current project" instead
@@ -1190,6 +1198,7 @@ test.describe('File Manager', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 

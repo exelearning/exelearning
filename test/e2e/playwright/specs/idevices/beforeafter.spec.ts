@@ -51,7 +51,7 @@ async function selectPageNode(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -61,6 +61,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -90,7 +91,7 @@ async function addBeforeAfterIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = interactiveCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -156,6 +157,7 @@ async function uploadImageViaFilePicker(page: Page, inputSelector: string, fixtu
             const modal = document.querySelector('#modalFileManager');
             return !modal || !modal.classList.contains('show');
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -207,6 +209,7 @@ async function saveBeforeAfterIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.beforeafter');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -335,7 +338,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -349,7 +352,7 @@ test.describe('BeforeAfter iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // CRITICAL TEST: Verify first image rendered correctly
             // This catches the cached image race condition bug
@@ -389,7 +392,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -401,7 +404,7 @@ test.describe('BeforeAfter iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify we start at image 1/3
             const numberInfo = iframe.locator('.BFAFP-NumberInfo').first();
@@ -410,7 +413,7 @@ test.describe('BeforeAfter iDevice', () => {
             // Click Next button
             const nextBtn = iframe.locator('[id^="bfafNext-"]').first();
             await nextBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify we're now at image 2/3
             await expect(numberInfo).toContainText(/2.*3/, { timeout: 5000 });
@@ -425,13 +428,13 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Click Next again to go to image 3
             await nextBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             await expect(numberInfo).toContainText(/3.*3/, { timeout: 5000 });
 
             // Click Previous to go back to image 2
             const prevBtn = iframe.locator('[id^="bfafPrevious-"]').first();
             await prevBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             await expect(numberInfo).toContainText(/2.*3/, { timeout: 5000 });
         });
 
@@ -453,7 +456,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -465,7 +468,7 @@ test.describe('BeforeAfter iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for beforeafter to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify slider is present
             const slider = iframe.locator('.BFAFP-Slider').first();
@@ -500,7 +503,7 @@ test.describe('BeforeAfter iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);

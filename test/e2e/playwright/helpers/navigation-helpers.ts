@@ -44,6 +44,7 @@ export async function createPage(page: Page, title?: string): Promise<string> {
             const navElements = document.querySelectorAll('.nav-element:not([nav-id="root"])');
             return navElements.length > 0;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -170,7 +171,7 @@ export async function clonePage(page: Page): Promise<void> {
     );
     await cloneOption.first().click();
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -271,6 +272,7 @@ export async function waitForPageContentReady(page: Page, timeout = 10000): Prom
             // Content area should have children and not be showing project metadata
             return nodeContent && nodeContent.children.length > 0 && (!metadata || !metadata.closest('.show'));
         },
+        undefined,
         { timeout },
     );
     await page.waitForTimeout(300);

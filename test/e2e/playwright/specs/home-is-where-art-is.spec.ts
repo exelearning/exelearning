@@ -62,7 +62,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
 
             // Navigate to the page with the gallery
             await page.locator('text=Local art expedition').click();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open the preview panel (uses Service Worker to serve content)
             await page.click('#head-bottom-preview');
@@ -70,7 +70,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
 
             // Wait for preview to load
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Navigate to the gallery page in preview (multi-page format = actual navigation)
             // Use polling to click the link and wait for navigation
@@ -451,7 +451,7 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             await openElpFile(page, ELP_FIXTURE_PATH, 5);
 
             // Wait for processing
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Verify no critical errors
             expect(errors.length).toBeLessThan(5);
