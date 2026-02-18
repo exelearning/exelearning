@@ -791,7 +791,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     user_menu: trans('User menu', {}, locale),
                     users_online: trans('Users online', {}, locale),
                     exit: trans('Exit', {}, locale),
-                    change_title: trans('Change title', {}, locale),
+                    change_title: trans('Edit title', {}, locale),
                     move_up: trans('Move up', {}, locale),
                     move_down: trans('Move down', {}, locale),
                     move_left: trans('Move left (up in hierarchy)', {}, locale),
