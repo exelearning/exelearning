@@ -393,8 +393,8 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
             groups: { export: GROUPS_TITLE.export },
         },
         pp_addMathJax: {
-            title: `${TRANS_PREFIX}MathJax (formulas)`,
-            help: `${TRANS_PREFIX}Always include the MathJax library for mathematical formulas. Enables accessibility features and context menus for LaTeX/MathML content.`,
+            title: `${TRANS_PREFIX}Include MathJax (advanced features)`,
+            help: `${TRANS_PREFIX}Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.`,
             value: 'false',
             type: 'checkbox',
             category: 'properties',
