@@ -356,7 +356,59 @@ export async function gotoWorkarea(page: Page, projectUuid: string): Promise<voi
  * @param title - Page title to click (partial match supported)
  */
 export async function navigateToPageByTitle(page: Page, title: string): Promise<void> {
-    const navItem = page.locator('.nav-element .nav-element-text', { hasText: title }).first();
+    const normalize = (value: string) =>
+        value
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .trim();
+
+    const normalizedTitle = normalize(title);
+    const titleCandidates = new Set<string>([normalizedTitle]);
+
+    // Common localization aliases used by default newly created pages.
+    if (normalizedTitle === 'new page' || normalizedTitle === 'nueva pagina') {
+        titleCandidates.add('new page');
+        titleCandidates.add('nueva pagina');
+    }
+
+    await page.waitForFunction(
+        candidates => {
+            const normalizeInner = (value: string) =>
+                value
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .trim();
+            const candidateList = candidates as string[];
+            const items = document.querySelectorAll('.nav-element .nav-element-text');
+            return Array.from(items).some(item => {
+                const text = normalizeInner(item.textContent || '');
+                return candidateList.some(candidate => text.includes(candidate));
+            });
+        },
+        Array.from(titleCandidates),
+        { timeout: 25000, polling: 200 },
+    );
+
+    const navItems = page.locator('.nav-element .nav-element-text');
+    const count = await navItems.count();
+    let targetIndex = -1;
+
+    for (let i = 0; i < count; i++) {
+        const textContent = (await navItems.nth(i).textContent()) || '';
+        const normalizedText = normalize(textContent);
+        if (Array.from(titleCandidates).some(candidate => normalizedText.includes(candidate))) {
+            targetIndex = i;
+            break;
+        }
+    }
+
+    if (targetIndex === -1) {
+        throw new Error(`Page with title "${title}" not found in navigation tree`);
+    }
+
+    const navItem = navItems.nth(targetIndex);
     await navItem.scrollIntoViewIfNeeded();
     await navItem.click({ force: true });
 
