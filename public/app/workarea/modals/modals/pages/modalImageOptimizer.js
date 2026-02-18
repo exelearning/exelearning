@@ -50,6 +50,9 @@ const STATUS_BADGE_CONFIG = {
     [STATUS.FAILED]: (error) => `<span class="badge bg-danger" title="${error || _('Error')}">${_('Failed')}</span>`,
 };
 
+const ALREADY_OPTIMIZED_MIN_SAVINGS_PERCENT = 1;
+const STATUS_ALREADY_OPTIMIZED = 'already_optimized';
+
 /**
  * ModalImageOptimizer
  *
@@ -498,10 +501,12 @@ export default class ModalImageOptimizer extends Modal {
     updateImageRow(assetId, data) {
         const row = this.rowElements.get(assetId);
         if (!row) return;
+        const isAlreadyOptimized = this.isAlreadyOptimized(data);
+        const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
+        const savingsCell = row.querySelector('.image-optimizer-savings');
 
         // Update estimated size
         if (data.estimatedSize !== null && data.estimatedSize !== undefined) {
-            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
             if (estimatedCell) {
                 estimatedCell.textContent = this.formatSize(data.estimatedSize);
                 estimatedCell.classList.remove('text-muted');
@@ -510,7 +515,6 @@ export default class ModalImageOptimizer extends Modal {
 
         // Update optimized size (after optimization)
         if (data.optimizedSize !== null && data.optimizedSize !== undefined) {
-            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
             if (estimatedCell) {
                 estimatedCell.textContent = this.formatSize(data.optimizedSize);
                 estimatedCell.classList.add('fw-bold');
@@ -518,7 +522,6 @@ export default class ModalImageOptimizer extends Modal {
         }
 
         // Update savings
-        const savingsCell = row.querySelector('.image-optimizer-savings');
         if (savingsCell) {
             const originalSize = data.originalSize || 0;
             const finalSize = data.optimizedSize || data.estimatedSize;
@@ -535,11 +538,25 @@ export default class ModalImageOptimizer extends Modal {
             }
         }
 
+        if (isAlreadyOptimized) {
+            if (estimatedCell) {
+                estimatedCell.textContent = _('N/A');
+                estimatedCell.classList.add('text-muted');
+                estimatedCell.classList.remove('fw-bold');
+            }
+            if (savingsCell) {
+                savingsCell.textContent = _('N/A');
+            }
+        }
+
         // Update status
         const statusCell = row.querySelector('.image-optimizer-status');
         if (statusCell) {
-            statusCell.innerHTML = this.getStatusBadge(data.status, data.error);
+            const status = isAlreadyOptimized ? STATUS_ALREADY_OPTIMIZED : data.status;
+            statusCell.innerHTML = this.getStatusBadge(status, data.error);
         }
+
+        this.setAssetSelectable(assetId, !isAlreadyOptimized);
 
         // Highlight row when optimizing starts
         if (data.status === STATUS.OPTIMIZING && this.viewState === 'progress') {
@@ -562,8 +579,51 @@ export default class ModalImageOptimizer extends Modal {
      * @returns {string}
      */
     getStatusBadge(status, error = null) {
+        if (status === STATUS_ALREADY_OPTIMIZED) {
+            return `<span class="badge bg-secondary">${_('Already optimized')}</span>`;
+        }
         const badgeGenerator = STATUS_BADGE_CONFIG[status];
         return badgeGenerator ? badgeGenerator(error) : '';
+    }
+
+    isAlreadyOptimized(data) {
+        const originalSize = data.originalSize || 0;
+        const finalSize = data.optimizedSize || data.estimatedSize;
+        if (!originalSize || finalSize === null || finalSize === undefined) {
+            return false;
+        }
+
+        const savedBytes = originalSize - finalSize;
+        if (savedBytes <= 0) {
+            return true;
+        }
+
+        const savedPercent = (savedBytes / originalSize) * 100;
+        return savedPercent < ALREADY_OPTIMIZED_MIN_SAVINGS_PERCENT;
+    }
+
+    setAssetSelectable(assetId, selectable) {
+        const row = this.rowElements.get(assetId);
+        if (!row) return;
+
+        row.dataset.selectable = selectable ? 'true' : 'false';
+        const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+        if (!checkbox) return;
+
+        if (!selectable) {
+            checkbox.checked = false;
+            this.selectedAssets.delete(assetId);
+        }
+
+        const canInteract = this.viewState === 'normal';
+        checkbox.disabled = !selectable || !canInteract;
+        this.updateSelectionState();
+    }
+
+    isAssetSelectable(assetId) {
+        const row = this.rowElements.get(assetId);
+        if (!row) return true;
+        return row.dataset.selectable !== 'false';
     }
 
     /**
@@ -584,6 +644,13 @@ export default class ModalImageOptimizer extends Modal {
      * @param {boolean} checked - Whether checked
      */
     onRowCheckboxChange(assetId, checked) {
+        if (!this.isAssetSelectable(assetId)) {
+            this.setRowCheckboxState(assetId, false);
+            this.selectedAssets.delete(assetId);
+            this.updateSelectionState();
+            return;
+        }
+
         if (checked) {
             this.selectedAssets.add(assetId);
         } else {
@@ -606,6 +673,9 @@ export default class ModalImageOptimizer extends Modal {
      */
     selectAll() {
         for (const assetId of this.optimizerManager.queue.keys()) {
+            if (!this.isAssetSelectable(assetId)) {
+                continue;
+            }
             this.selectedAssets.add(assetId);
             this.setRowCheckboxState(assetId, true);
         }
@@ -641,8 +711,20 @@ export default class ModalImageOptimizer extends Modal {
      */
     updateToggleAllState() {
         if (!this.toggleAllCheckbox) return;
-        const total = this.optimizerManager.queue.size;
-        const selected = this.selectedAssets.size;
+        const queueKeys = this.optimizerManager?.queue?.keys?.();
+        const assetIds = queueKeys ? Array.from(queueKeys) : Array.from(this.rowElements.keys());
+
+        let total = 0;
+        let selected = 0;
+        for (const assetId of assetIds) {
+            if (!this.isAssetSelectable(assetId)) {
+                continue;
+            }
+            total++;
+            if (this.selectedAssets.has(assetId)) {
+                selected++;
+            }
+        }
         this.toggleAllCheckbox.checked = total > 0 && selected === total;
         this.toggleAllCheckbox.indeterminate = selected > 0 && selected < total;
     }
@@ -652,7 +734,9 @@ export default class ModalImageOptimizer extends Modal {
      */
     updateButtons() {
         const hasSelection = this.selectedAssets.size > 0;
-        const isProcessing = this.optimizerManager?.isInProgress();
+        const isProcessing = typeof this.optimizerManager?.isInProgress === 'function'
+            ? this.optimizerManager.isInProgress()
+            : false;
 
         // Optimize only enabled if at least one selected item is READY (estimated)
         let hasReadyItems = false;
@@ -776,10 +860,10 @@ export default class ModalImageOptimizer extends Modal {
      * @param {boolean} interactive - Whether rows should be interactive
      */
     setRowsInteractive(interactive) {
-        for (const row of this.rowElements.values()) {
+        for (const [assetId, row] of this.rowElements.entries()) {
             const checkbox = row.querySelector('.image-optimizer-row-checkbox');
             if (checkbox) {
-                checkbox.disabled = !interactive;
+                checkbox.disabled = !interactive || !this.isAssetSelectable(assetId);
             }
         }
         if (this.toggleAllCheckbox) {
