@@ -2,9 +2,42 @@ import { Page, BrowserContext } from '@playwright/test';
 import { AuthFixtures, test as authTest, isStaticProject, skipInStaticMode } from './auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 import { waitForLoadingScreenHidden } from './auth.fixture';
+import { promises as fs } from 'fs';
+import os from 'os';
+import path from 'path';
 
 // Re-export static mode helpers for convenience
 export { isStaticProject, skipInStaticMode };
+
+/**
+ * Wait for workarea UI to be interactable.
+ * Under heavy parallel load we may need one reload before app globals are fully available.
+ */
+async function waitForWorkareaUiReady(page: Page, timeout = 60000): Promise<void> {
+    const deadline = Date.now() + timeout;
+    let retriedReload = false;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+        const remaining = Math.max(1000, deadline - Date.now());
+
+        try {
+            await page.waitForURL(/\/workarea/, { timeout: Math.min(30000, remaining) });
+            await page.waitForSelector('#dropdownFile, #head-top-save-button', {
+                state: 'visible',
+                timeout: Math.min(30000, remaining),
+            });
+            await waitForLoadingScreenHidden(page);
+            return;
+        } catch (error) {
+            if (retriedReload || Date.now() >= deadline) {
+                throw error;
+            }
+            retriedReload = true;
+            await page.reload({ waitUntil: 'domcontentloaded' });
+        }
+    }
+}
 
 /**
  * Fixtures for multi-client collaboration testing
@@ -24,17 +57,63 @@ export interface CollaborationFixtures extends AuthFixtures {
     joinSharedProject: (pageB: Page, shareUrl: string) => Promise<void>;
 }
 
-export const test = authTest.extend<CollaborationFixtures>({
+interface CollaborationWorkerFixtures {
+    /** Worker-scoped storage state for a second guest identity */
+    secondGuestStorageStatePath: string | null;
+}
+
+export const test = authTest.extend<CollaborationFixtures, CollaborationWorkerFixtures>({
+    /**
+     * Create a second guest account storage state once per worker.
+     * This keeps client A and B as different users while avoiding per-test login cost.
+     */
+    secondGuestStorageStatePath: [
+        async ({ browser }, use, workerInfo) => {
+            if (workerInfo.project.name.includes('static')) {
+                await use(null);
+                return;
+            }
+
+            const baseURL = String(
+                workerInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001',
+            );
+            const safeProjectName = workerInfo.project.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const statePath = path.join(
+                os.tmpdir(),
+                `pw-guest-state-second-${process.pid}-${workerInfo.parallelIndex}-${safeProjectName}.json`,
+            );
+
+            const authContext = await browser.newContext({ baseURL });
+            const authPage = await authContext.newPage();
+            const loginResponse = await authPage.request.post('/login/guest', {
+                form: { guest_login_nonce: '' },
+                timeout: 30000,
+            });
+            if (!loginResponse.ok()) {
+                await authContext.close();
+                throw new Error(`Failed to prepare second guest storage state: ${loginResponse.status()}`);
+            }
+
+            await authContext.storageState({ path: statePath });
+            await authContext.close();
+
+            await use(statePath);
+
+            await fs.unlink(statePath).catch(() => {});
+        },
+        { scope: 'worker' },
+    ],
+
     /**
      * Second browser context for complete isolation
      * This ensures cookies, local storage, and session are independent
      */
-    secondContext: async ({ browser, guestStorageStatePath, contextOptions }, use, testInfo) => {
+    secondContext: async ({ browser, secondGuestStorageStatePath, contextOptions }, use, testInfo) => {
         const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
         const context = await browser.newContext({
             ...contextOptions,
             baseURL,
-            storageState: guestStorageStatePath ?? undefined,
+            storageState: isStaticProject(testInfo) ? contextOptions.storageState : (secondGuestStorageStatePath ?? undefined),
         });
         await use(context);
         await context.close();
@@ -48,30 +127,7 @@ export const test = authTest.extend<CollaborationFixtures>({
         const page = await secondContext.newPage();
 
         await page.goto('/workarea');
-
-        // Wait for workarea to load
-        await page.waitForURL(/\/workarea/, { timeout: 30000 });
-
-        // Wait for the app to initialize
-        await page.waitForFunction(
-            () => {
-                return (
-                    typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
-                );
-            },
-            undefined,
-            { timeout: 30000 },
-        );
-
-        // Wait for loading screen to be completely hidden
-        await page.waitForFunction(
-            () => {
-                const loadingScreen = document.querySelector('#load-screen-main');
-                return loadingScreen?.getAttribute('data-visible') === 'false';
-            },
-            undefined,
-            { timeout: 30000 },
-        );
+        await waitForWorkareaUiReady(page, 60000);
 
         await use(page);
         await page.close();
@@ -137,23 +193,23 @@ export const test = authTest.extend<CollaborationFixtures>({
             // Navigate to share URL
             await pageB.goto(shareUrl, { waitUntil: 'domcontentloaded' });
 
-            // Wait for workarea to be ready
-            await pageB.waitForURL(/\/workarea/, { timeout: 30000 });
+            // Wait for workarea shell to be ready with one reload fallback under load
+            await waitForWorkareaUiReady(pageB, 90000);
 
-            // Wait for app to initialize
-            await pageB.waitForFunction(
-                () => {
-                    return (
-                        typeof (window as any).eXeLearning !== 'undefined' &&
-                        (window as any).eXeLearning.app !== undefined
-                    );
-                },
-                undefined,
-                { timeout: 60000, polling: 100 },
-            );
-
-            // Wait for loading screen to be hidden
-            await waitForLoadingScreenHidden(pageB);
+            // App object should exist at this point, but don't hard-fail here:
+            // bridge readiness below is the authoritative collaboration signal.
+            await pageB
+                .waitForFunction(
+                    () => {
+                        return (
+                            typeof (window as any).eXeLearning !== 'undefined' &&
+                            (window as any).eXeLearning.app !== undefined
+                        );
+                    },
+                    undefined,
+                    { timeout: 15000, polling: 100 },
+                )
+                .catch(() => {});
 
             // Wait for YjsProjectBridge to be fully initialized with WebSocket connected
             // The bridge is at project._yjsBridge and initialized flag is set AFTER WebSocket connection

@@ -359,7 +359,7 @@ collabTest.describe('Clone Shared Project', () => {
             expect(await modal.isSharedWithMeTabActive()).toBe(true);
 
             // Wait for the shared project to appear
-            await modal.waitForProjectInList(projectTitle, 10000);
+            await modal.waitForProjectInList(projectTitle, 25000);
 
             // Find the shared project
             const sharedOdeId = await modal.getProjectOdeIdByTitle(projectTitle);

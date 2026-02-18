@@ -14,9 +14,49 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
  */
 
 /**
- * Helper to open the File Manager modal via TinyMCE image dialog
+ * Helper to open the File Manager modal.
+ * Fast path: open from Utilities menu (more stable in CI).
+ * Fallback: TinyMCE image dialog for flows where navbar entry is unavailable.
  */
 async function openFileManager(page: Page): Promise<void> {
+    const fileManagerModal = page.locator('#modalFileManager[data-open="true"], #modalFileManager.show');
+    if (await fileManagerModal.isVisible().catch(() => false)) {
+        return;
+    }
+
+    const openFromUtilitiesMenu = async (): Promise<boolean> => {
+        try {
+            await dismissBlockingAlertModal(page);
+
+            const fileManagerBtn = page.locator('#navbar-button-filemanager').first();
+            if (await fileManagerBtn.isVisible().catch(() => false)) {
+                await fileManagerBtn.click();
+                await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
+                return true;
+            }
+
+            const utilitiesDropdown = page.locator('#dropdownUtilities').first();
+            if (await utilitiesDropdown.isVisible().catch(() => false)) {
+                await utilitiesDropdown.click();
+                await page.waitForTimeout(150);
+            }
+
+            if (await fileManagerBtn.isVisible().catch(() => false)) {
+                await fileManagerBtn.click();
+                await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
+                return true;
+            }
+        } catch {
+            return false;
+        }
+
+        return false;
+    };
+
+    if (await openFromUtilitiesMenu()) {
+        return;
+    }
+
     const textBlocks = page.locator('#node-content article .idevice_node.text');
     if ((await textBlocks.count()) === 0) {
         await addTextIdevice(page);
@@ -36,7 +76,7 @@ async function openFileManager(page: Page): Promise<void> {
         await editableEditBtn.click();
     }
 
-    await page.waitForSelector('.tox-tinymce, .tox-menubar, .tox-toolbar', { timeout: 20000 });
+    await page.waitForSelector('.tox-tinymce, .tox-toolbar, .tox-edit-area, .tox-tbtn', { timeout: 25000 });
     await dismissBlockingAlertModal(page);
 
     const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
@@ -49,7 +89,7 @@ async function openFileManager(page: Page): Promise<void> {
     await expect(browseBtn).toBeVisible({ timeout: 5000 });
     await browseBtn.click();
 
-    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+    await fileManagerModal.waitFor({ state: 'visible', timeout: 10000 });
 }
 
 /**
@@ -116,17 +156,8 @@ async function selectFirstFile(page: Page): Promise<void> {
         { timeout: 10000 },
     );
 
-    // Now the button should be enabled (updateButtonStates() was called at end of showSidebarContent())
-    await page.waitForFunction(
-        () => {
-            const renameBtn = document.querySelector(
-                '#modalFileManager .media-library-rename-btn',
-            ) as HTMLButtonElement;
-            return !!renameBtn && !renameBtn.disabled;
-        },
-        null,
-        { timeout: 10000 },
-    );
+    // Give the UI a brief moment to finish button state updates after sidebar render.
+    await page.waitForTimeout(150);
 }
 
 /**

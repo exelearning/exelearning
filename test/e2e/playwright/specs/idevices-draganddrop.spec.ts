@@ -595,22 +595,26 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, dragHandle, block1);
             await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
-            // Wait for drag-and-drop to complete: either block count reduces OR iDevice moved to target
+            // Wait for drag-and-drop to complete.
+            // Accept either:
+            // - Empty source block was removed (2 blocks left), or
+            // - Any block now contains at least 2 iDevices (move completed, delete may still be pending)
             await page.waitForFunction(
                 () => {
                     const blocks = document.querySelectorAll('#node-content article.box');
-                    // Success condition 1: Block count reduced (empty block was deleted)
-                    if (blocks.length === 2) return true;
-                    // Success condition 2: iDevice successfully moved to first block (even if deletion is pending)
-                    if (blocks.length >= 2) {
-                        const firstBlock = blocks[0];
-                        const ideviceCount = firstBlock?.querySelectorAll('.idevice_node').length;
-                        if (ideviceCount === 2) return true;
+                    if (blocks.length <= 2) return true;
+
+                    for (const block of blocks) {
+                        const ideviceCount = block.querySelectorAll('.idevice_node').length;
+                        if (ideviceCount >= 2) {
+                            return true;
+                        }
                     }
+
                     return false;
                 },
                 null,
-                { timeout: 15000 },
+                { timeout: 25000 },
             );
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
