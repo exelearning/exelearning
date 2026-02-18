@@ -113,7 +113,9 @@ export const test = authTest.extend<CollaborationFixtures, CollaborationWorkerFi
         const context = await browser.newContext({
             ...contextOptions,
             baseURL,
-            storageState: isStaticProject(testInfo) ? contextOptions.storageState : (secondGuestStorageStatePath ?? undefined),
+            storageState: isStaticProject(testInfo)
+                ? contextOptions.storageState
+                : (secondGuestStorageStatePath ?? undefined),
         });
         await use(context);
         await context.close();
