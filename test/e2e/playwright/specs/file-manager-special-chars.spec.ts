@@ -164,10 +164,38 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
         await addTextIdeviceFromPanel(page);
     }
 
-    // If the inserted iDevice is in view mode, explicitly switch to edit mode.
-    const editBtn = page.locator('#node-content article .idevice_node.text[mode="export"] .btn-edit-idevice').first();
-    if (await editBtn.isVisible().catch(() => false)) {
-        await editBtn.click();
+    // If the inserted iDevice is in view mode, switch to edit mode robustly (Firefox-safe).
+    const textIdevice = page.locator('#node-content article .idevice_node.text').first();
+    await textIdevice.waitFor({ state: 'visible', timeout: 10000 });
+
+    const mode = await textIdevice.getAttribute('mode');
+    if (mode !== 'edition') {
+        const editBtn = textIdevice.locator('.btn-edit-idevice').first();
+        let editClicked = false;
+        try {
+            await editBtn.waitFor({ state: 'visible', timeout: 5000 });
+            await page.waitForFunction(
+                selector => {
+                    const btn = document.querySelector(selector);
+                    return !!btn && !btn.hasAttribute('disabled') && !btn.classList.contains('disabled');
+                },
+                '#node-content article .idevice_node.text .btn-edit-idevice',
+                { timeout: 6000 },
+            );
+            await editBtn.click({ timeout: 5000 });
+            editClicked = true;
+        } catch {
+            // fall through to double-click fallback
+        }
+
+        if (!editClicked) {
+            const body = textIdevice.locator('.idevice_body').first();
+            if (await body.isVisible().catch(() => false)) {
+                await body.dblclick({ timeout: 5000 }).catch(() => {});
+            } else {
+                await textIdevice.dblclick({ timeout: 5000 }).catch(() => {});
+            }
+        }
     }
 
     await closeBlockingModals();

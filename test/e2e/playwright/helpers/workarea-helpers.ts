@@ -589,7 +589,37 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
 export async function editIdevice(page: Page, ideviceId: string): Promise<void> {
     const idevice = page.locator(`#${ideviceId}`);
     const editBtn = idevice.locator('.btn-edit-idevice');
-    await editBtn.click();
+    await idevice.waitFor({ state: 'visible', timeout: 10000 });
+
+    // Firefox can keep the edit button disabled for a short time after render.
+    // Wait briefly for enablement and fallback to body double-click if needed.
+    let enteredEdition = false;
+    try {
+        await editBtn.waitFor({ state: 'visible', timeout: 5000 });
+        await page.waitForFunction(
+            id => {
+                const host = document.getElementById(id);
+                const btn = host?.querySelector('.btn-edit-idevice');
+                if (!btn) return false;
+                return !btn.hasAttribute('disabled') && !btn.classList.contains('disabled');
+            },
+            ideviceId,
+            { timeout: 6000 },
+        );
+        await editBtn.click({ timeout: 5000 });
+        enteredEdition = true;
+    } catch {
+        // Fallback below
+    }
+
+    if (!enteredEdition) {
+        const body = idevice.locator('.idevice_body').first();
+        if (await body.isVisible().catch(() => false)) {
+            await body.dblclick({ timeout: 5000 }).catch(() => {});
+        } else {
+            await idevice.dblclick({ timeout: 5000 }).catch(() => {});
+        }
+    }
 
     // Wait for edition mode
     await page.waitForFunction(
