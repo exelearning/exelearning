@@ -158,17 +158,12 @@
     const SKIP_CONTENT_TAGS = new Set(['script', 'style', 'code', 'pre', 'textarea', 'noscript']);
 
     /**
-     * Pattern to detect <span style="...color:..."> which indicates example code
-     * Users show LaTeX examples in colored spans, while using \color{} for actual colored math
-     */
-    const COLORED_SPAN_PATTERN = /<span\s+[^>]*style\s*=\s*["'][^"']*color\s*:/i;
-
-    /**
-     * Check if a position in HTML is inside an attribute value, skip element, or colored span
+     * Check if a position in HTML is inside an attribute value, skip element,
+     * or inside an already pre-rendered math wrapper.
      * This prevents processing LaTeX that appears in:
      * - title="...", data-*="...", etc.
      * - <script>...</script>, <code>...</code>, <pre>...</pre>, etc.
-     * - <span style="color:...">...</span> (example code shown in color)
+     * - <span class="exe-math-rendered">...</span> (already rendered math)
      * @param {string} html - The HTML string
      * @param {number} position - Position to check
      * @returns {boolean} True if position should be skipped
@@ -178,7 +173,7 @@
         let inAttrValue = false;
         let attrQuoteChar = null;
         let skipElementStack = []; // Stack of skip element names we're inside
-        let coloredSpanDepth = 0; // Track nested colored spans
+        let renderedSpanDepth = 0; // Track nested already-rendered spans
 
         for (let i = 0; i < position; i++) {
             const char = html[i];
@@ -216,19 +211,19 @@
                     }
                 }
 
-                // Check for colored span (span with style containing color:)
+                // Track already pre-rendered math wrappers to avoid double-processing
                 if (tagName === 'span') {
                     if (isClosing) {
-                        if (coloredSpanDepth > 0) {
-                            coloredSpanDepth--;
+                        if (renderedSpanDepth > 0) {
+                            renderedSpanDepth--;
                         }
                     } else {
-                        // Find the end of this tag to check for style="...color:..."
+                        // Find the end of this tag and check for class="...exe-math-rendered..."
                         let tagEnd = html.indexOf('>', i);
                         if (tagEnd !== -1) {
                             const tagContent = html.substring(i, tagEnd + 1);
-                            if (/style\s*=\s*["'][^"']*color\s*:/i.test(tagContent)) {
-                                coloredSpanDepth++;
+                            if (/class\s*=\s*["'][^"']*\bexe-math-rendered\b[^"']*["']/i.test(tagContent)) {
+                                renderedSpanDepth++;
                             }
                         }
                     }
@@ -251,8 +246,8 @@
             }
         }
 
-        // Skip if inside attribute value, skip element, OR colored span
-        return inAttrValue || skipElementStack.length > 0 || coloredSpanDepth > 0;
+        // Skip if inside attribute value, skip element, OR already-rendered wrapper
+        return inAttrValue || skipElementStack.length > 0 || renderedSpanDepth > 0;
     }
 
     /**
@@ -336,12 +331,6 @@
 
         // Quick check
         if (!HAS_LATEX_PATTERN.test(innerHTML)) {
-            return { replaced: 0, errors: 0 };
-        }
-
-        // Skip if content already has pre-rendered LaTeX
-        // This prevents double-processing which corrupts data-latex attributes
-        if (innerHTML.includes('exe-math-rendered')) {
             return { replaced: 0, errors: 0 };
         }
 
@@ -527,6 +516,104 @@
             const result = await processNode(child, doc);
             totalReplaced += result.replaced;
             totalErrors += result.errors;
+        }
+
+        return { replaced: totalReplaced, errors: totalErrors };
+    }
+
+    /**
+     * Fallback pass: process LaTeX in text nodes directly.
+     * Used when the main innerHTML pass finds LaTeX but renders 0 expressions.
+     * This guarantees inline formulas in simple span/text structures are not missed.
+     * @param {Document} doc
+     * @returns {Promise<{replaced: number, errors: number}>}
+     */
+    async function processTextNodesFallback(doc) {
+        let totalReplaced = 0;
+        let totalErrors = 0;
+
+        const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        let current = walker.nextNode();
+        while (current) {
+            textNodes.push(current);
+            current = walker.nextNode();
+        }
+
+        for (const textNode of textNodes) {
+            const parent = textNode.parentElement;
+            if (!parent) continue;
+
+            const parentTag = parent.tagName.toLowerCase();
+            if (SKIP_ELEMENTS.has(parentTag)) continue;
+            if (parent.closest('.exe-math-rendered')) continue;
+
+            const text = textNode.nodeValue || '';
+            if (!HAS_LATEX_PATTERN.test(text)) continue;
+
+            const matches = [];
+            for (const pattern of LATEX_PATTERNS) {
+                pattern.regex.lastIndex = 0;
+                let match;
+                while ((match = pattern.regex.exec(text)) !== null) {
+                    matches.push({
+                        value: match[0],
+                        start: match.index,
+                        end: match.index + match[0].length,
+                        display: pattern.display,
+                    });
+                }
+            }
+
+            if (matches.length === 0) continue;
+            matches.sort((a, b) => a.start - b.start);
+
+            const filtered = [];
+            let lastEnd = -1;
+            for (const m of matches) {
+                if (m.start >= lastEnd) {
+                    filtered.push(m);
+                    lastEnd = m.end;
+                }
+            }
+
+            if (filtered.length === 0) continue;
+
+            const fragment = doc.createDocumentFragment();
+            let cursor = 0;
+            let nodeChanged = false;
+
+            for (const m of filtered) {
+                if (m.start > cursor) {
+                    fragment.appendChild(doc.createTextNode(text.slice(cursor, m.start)));
+                }
+
+                const cleanLatex = cleanLatexFromHtml(m.value);
+                try {
+                    const { svg, mathml } = await renderLatexExpression(cleanLatex, m.display);
+                    const wrapper = doc.createElement('span');
+                    wrapper.className = 'exe-math-rendered';
+                    if (m.display === 'block') wrapper.setAttribute('data-display', 'block');
+                    wrapper.setAttribute('data-latex', cleanLatex);
+                    wrapper.innerHTML = svg + (mathml || '');
+                    fragment.appendChild(wrapper);
+                    totalReplaced++;
+                    nodeChanged = true;
+                } catch (error) {
+                    fragment.appendChild(doc.createTextNode(m.value));
+                    totalErrors++;
+                }
+
+                cursor = m.end;
+            }
+
+            if (cursor < text.length) {
+                fragment.appendChild(doc.createTextNode(text.slice(cursor)));
+            }
+
+            if (nodeChanged && textNode.parentNode) {
+                textNode.parentNode.replaceChild(fragment, textNode);
+            }
         }
 
         return { replaced: totalReplaced, errors: totalErrors };
@@ -726,9 +813,6 @@
         for (const container of allContainers) {
             // Skip if inside an iDevice (already processed)
             if (container.closest('.idevice_node')) continue;
-            // Skip if already has rendered math
-            if (container.querySelector('.exe-math-rendered')) continue;
-
             const result = await processNode(container, doc);
             totalReplaced += result.replaced;
             totalErrors += result.errors;
@@ -810,6 +894,15 @@
 
         // Process the document body
         const result = await processNode(doc.body, doc);
+
+        if (result.replaced === 0) {
+            // Fallback for cases missed by innerHTML pass (e.g. some inline span formulas)
+            const fallback = await processTextNodesFallback(doc);
+            if (fallback.replaced > 0) {
+                result.replaced = fallback.replaced;
+                result.errors += fallback.errors;
+            }
+        }
 
         if (result.replaced === 0) {
             return {
@@ -903,12 +996,6 @@
      */
     async function preRenderString(text) {
         if (!text || typeof text !== 'string' || !hasLatex(text)) {
-            return text;
-        }
-
-        // Skip if text already contains pre-rendered LaTeX
-        // This prevents double-processing which corrupts data-latex attributes
-        if (text.includes('exe-math-rendered')) {
             return text;
         }
 

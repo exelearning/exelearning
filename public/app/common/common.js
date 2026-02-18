@@ -234,15 +234,29 @@ var $exe = {
             // Check if content is pre-rendered (SVG+MathML)
             // Pre-rendered LaTeX uses class "exe-math-rendered"
             // If ALL LaTeX is pre-rendered and no explicit exe-math-engine elements exist,
-            // no need for MathJax library (similar pattern to Mermaid pre-rendering)
+            // no need for MathJax library (similar pattern to Mermaid pre-rendering).
+            // IMPORTANT: in mixed content (some pre-rendered + some raw LaTeX),
+            // we MUST still load MathJax for the raw formulas.
             var hasPreRendered = $(".exe-math-rendered").length > 0;
             var hasExplicitEngine = $(".exe-math-engine").length > 0;
 
             if (hasPreRendered && !hasExplicitEngine) {
-                // Content was pre-rendered to SVG+MathML, no need for MathJax library
-                // Still create links for code/image access if needed
-                $exe.math.createLinks(math);
-                return;
+                // Remove already rendered wrappers before scanning for pending raw LaTeX.
+                // This avoids false positives from data-latex attributes and rendered internals.
+                var bodyHtml = $('body').html() || '';
+                var htmlWithoutRendered = bodyHtml.replace(
+                    /<span\b[^>]*class\s*=\s*["'][^"']*\bexe-math-rendered\b[^"']*["'][^>]*>[\s\S]*?<\/span>/gi,
+                    ''
+                );
+
+                var hasPendingRawLatex = /(?:\\\(|\\\[|\$\$|\\begin\{.*?}|\\(?:eq)?ref\{)/.test(htmlWithoutRendered);
+
+                if (!hasPendingRawLatex) {
+                    // Content was fully pre-rendered to SVG+MathML, no need for MathJax library
+                    // Still create links for code/image access if needed
+                    $exe.math.createLinks(math);
+                    return;
+                }
             }
 
             if (math.length > 0 || $("body").hasClass("exe-auto-math")) {
