@@ -94,6 +94,7 @@ async function waitForCopyInList(page: Page, timeout = 20000): Promise<void> {
             const titles = document.querySelectorAll('.ode-files-list .ode-title');
             return Array.from(titles).some(el => el.textContent?.includes('(copy)'));
         },
+        undefined,
         { timeout },
     );
 }
@@ -125,7 +126,7 @@ async function insertImageIntoTextIdevice(page: Page, fixturePath: string): Prom
     const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
     await expect(insertBtn).toBeVisible({ timeout: 5000 });
     await insertBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
     if ((await altTextInput.count()) > 0) {
@@ -140,7 +141,7 @@ async function insertImageIntoTextIdevice(page: Page, fixturePath: string): Prom
         await tinyMceSaveBtn.first().click();
     }
 
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -165,7 +166,7 @@ async function countAssetsByFilenameFromApi(page: Page, projectUuid: string, fil
 // ─── Test 1: Duplicate in My Projects ───
 
 authTest.describe('Project Duplicate', () => {
-    authTest.setTimeout(180000);
+    authTest.setTimeout(90000);
 
     authTest.beforeEach(({}, testInfo) => {
         if (testInfo.project.name.includes('static')) {
@@ -208,9 +209,13 @@ authTest.describe('Project Duplicate', () => {
         await waitForCopyInList(page);
 
         // Wait for the selection to happen
-        await page.waitForFunction(() => document.querySelector('.ode-files-list .ode-row.selected') !== null, {
-            timeout: 10000,
-        });
+        await page.waitForFunction(
+            () => document.querySelector('.ode-files-list .ode-row.selected') !== null,
+            undefined,
+            {
+                timeout: 10000,
+            },
+        );
 
         // Assert: My Projects tab is active
         expect(await modal.isMyProjectsTabActive()).toBe(true);
@@ -252,6 +257,7 @@ authTest.describe('Project Duplicate', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -310,7 +316,7 @@ authTest.describe('Project Duplicate', () => {
 // ─── Test 2: Clone from Shared ───
 
 collabTest.describe('Clone Shared Project', () => {
-    collabTest.setTimeout(180000);
+    collabTest.setTimeout(90000);
 
     collabTest.beforeEach(async ({}, testInfo) => {
         skipInStaticMode(collabTest, testInfo, 'requires server + collaboration');
@@ -353,7 +359,7 @@ collabTest.describe('Clone Shared Project', () => {
             expect(await modal.isSharedWithMeTabActive()).toBe(true);
 
             // Wait for the shared project to appear
-            await modal.waitForProjectInList(projectTitle, 10000);
+            await modal.waitForProjectInList(projectTitle, 25000);
 
             // Find the shared project
             const sharedOdeId = await modal.getProjectOdeIdByTitle(projectTitle);
@@ -377,9 +383,13 @@ collabTest.describe('Clone Shared Project', () => {
 
             // Assert: cloned project is selected (wait briefly for selection)
             await pageB
-                .waitForFunction(() => document.querySelector('.ode-files-list .ode-row.selected') !== null, {
-                    timeout: 10000,
-                })
+                .waitForFunction(
+                    () => document.querySelector('.ode-files-list .ode-row.selected') !== null,
+                    undefined,
+                    {
+                        timeout: 10000,
+                    },
+                )
                 .catch(() => {}); // Selection is secondary; project appearing is the main test
 
             const selectedUuid = await modal.getSelectedProjectUuid();

@@ -23,6 +23,7 @@ test.describe('Open Project Modal - Tabs', () => {
             () => {
                 return typeof (window as any).eXeLearning !== 'undefined';
             },
+            undefined,
             { timeout: 30000 },
         );
 

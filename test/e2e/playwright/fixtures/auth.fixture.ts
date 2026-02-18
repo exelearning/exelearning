@@ -1,4 +1,7 @@
 import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { promises as fs } from 'fs';
+import os from 'os';
+import path from 'path';
 import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
@@ -44,7 +47,70 @@ export interface AuthFixtures {
     createProject: (page: Page, title?: string) => Promise<string>;
 }
 
-export const test = base.extend<AuthFixtures>({
+interface AuthWorkerFixtures {
+    /** Worker-scoped storage state path with authenticated guest session (dynamic mode only) */
+    guestStorageStatePath: string | null;
+}
+
+export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
+    /**
+     * Build guest-authenticated storage state once per worker.
+     * This avoids repeating /login/guest for every single test.
+     */
+    guestStorageStatePath: [
+        async ({ browser }, use, workerInfo) => {
+            if (workerInfo.project.name.includes('static')) {
+                await use(null);
+                return;
+            }
+
+            const baseURL = String(
+                workerInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001',
+            );
+            const safeProjectName = workerInfo.project.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const statePath = path.join(
+                os.tmpdir(),
+                `pw-guest-state-${process.pid}-${workerInfo.parallelIndex}-${safeProjectName}.json`,
+            );
+
+            const authContext = await browser.newContext({ baseURL });
+            const authPage = await authContext.newPage();
+            const loginResponse = await authPage.request.post('/login/guest', {
+                form: { guest_login_nonce: '' },
+                timeout: 30000,
+            });
+            if (!loginResponse.ok()) {
+                await authContext.close();
+                throw new Error(`Failed to prepare guest storage state: ${loginResponse.status()}`);
+            }
+
+            await authContext.storageState({ path: statePath });
+            await authContext.close();
+
+            await use(statePath);
+
+            await fs.unlink(statePath).catch(() => {});
+        },
+        { scope: 'worker' },
+    ],
+
+    /**
+     * Override context so all tests in dynamic mode start already authenticated.
+     * Keeps normal per-test isolation while skipping repeated login calls.
+     */
+    context: async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+        const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
+        const context = await browser.newContext({
+            ...contextOptions,
+            baseURL,
+            storageState: isStaticProject(testInfo)
+                ? contextOptions.storageState
+                : (guestStorageStatePath ?? undefined),
+        });
+        await use(context);
+        await context.close();
+    },
+
     /**
      * Provides a page with guest login already performed
      * and navigated to the workarea
@@ -56,50 +122,17 @@ export const test = base.extend<AuthFixtures>({
         if (isStaticProject(testInfo)) {
             // Static mode: no login, navigate to root (index.html)
             await page.goto('/');
-
-            // Wait for the app to initialize
-            await page.waitForFunction(
-                () => {
-                    return (
-                        typeof (window as any).eXeLearning !== 'undefined' &&
-                        (window as any).eXeLearning.app !== undefined
-                    );
-                },
-                { timeout: 30000 },
-            );
-
-            // Wait for loading screen to be completely hidden
-            await page.waitForFunction(
-                () => {
-                    const loadingScreen = document.querySelector('#load-screen-main');
-                    return loadingScreen?.getAttribute('data-visible') === 'false';
-                },
-                { timeout: 30000 },
-            );
+            await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, {
+                timeout: 30000,
+            });
+            await waitForLoadingScreenHidden(page);
 
             await use(page);
             return;
         }
 
-        // Server mode: existing login flow
-        // Navigate to login page
-        await page.goto('/login');
-
-        // Click guest login button
-        const guestButton = page.locator(
-            '#login-link-guest, button[name="guest_login"], .btn-guest-login, [data-action="guest-login"]',
-        );
-
-        // If there's a guest login button, click it
-        if ((await guestButton.count()) > 0) {
-            await guestButton.first().click();
-        } else {
-            // Fallback: POST directly to guest login endpoint
-            await page.request.post('/login/guest', {
-                form: { guest_login_nonce: '' },
-            });
-            await page.goto('/workarea');
-        }
+        // Server mode: guest auth already loaded via worker storage state
+        await page.goto('/workarea');
 
         // Wait for workarea to load
         await page.waitForURL(/\/workarea/, { timeout: 30000 });
@@ -111,17 +144,12 @@ export const test = base.extend<AuthFixtures>({
                     typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
                 );
             },
+            undefined,
             { timeout: 30000 },
         );
 
         // Wait for loading screen to be completely hidden
-        await page.waitForFunction(
-            () => {
-                const loadingScreen = document.querySelector('#load-screen-main');
-                return loadingScreen?.getAttribute('data-visible') === 'false';
-            },
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         await use(page);
     },
@@ -140,13 +168,7 @@ export const test = base.extend<AuthFixtures>({
             return;
         }
 
-        // Server mode: perform guest login via API
-        const response = await page.request.post('/login/guest', {
-            form: { guest_login_nonce: '' },
-        });
-
-        expect(response.ok()).toBeTruthy();
-
+        // Server mode: guest auth already loaded via worker storage state
         await use(page);
     },
 
@@ -221,6 +243,7 @@ export async function waitForLoadingScreenHidden(page: Page): Promise<void> {
             const loadingScreen = document.querySelector('#load-screen-main');
             return loadingScreen?.getAttribute('data-visible') === 'false';
         },
+        undefined,
         { timeout: 30000 },
     );
 }

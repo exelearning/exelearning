@@ -121,10 +121,10 @@ export default defineConfig({
         video: 'on-first-retry',
 
         /* Maximum time each action can take */
-        actionTimeout: 60000,
+        actionTimeout: 20000,
 
         /* Navigation timeout */
-        navigationTimeout: 30000,
+        navigationTimeout: 15000,
     },
 
     /* Configure projects for major browsers */
@@ -163,10 +163,10 @@ export default defineConfig({
     webServer: getWebServerConfig(),
 
     /* Global timeout for each test */
-    timeout: 60000,
+    timeout: 45000,
 
     /* Expect timeout */
     expect: {
-        timeout: 10000,
+        timeout: 7000,
     },
 });

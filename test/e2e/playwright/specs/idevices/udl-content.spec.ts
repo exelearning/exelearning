@@ -58,7 +58,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -68,6 +68,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -91,7 +92,7 @@ async function addUdlContentIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = infoCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -139,6 +140,7 @@ async function saveIdevice(page: Page): Promise<void> {
             const tinyMce = document.querySelector('#node-content article .idevice_node.udl-content .tox-menubar');
             return !tinyMce;
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -267,7 +269,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -279,7 +281,7 @@ test.describe('UDL Content iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Verify content persisted
@@ -418,7 +420,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -469,7 +471,7 @@ test.describe('UDL Content iDevice', () => {
             await enterEditMode(page);
 
             // Wait for TinyMCE to be ready
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Insert audio element via TinyMCE API (not directly into iframe body)
             // This ensures the content is properly tracked and saved
@@ -491,7 +493,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -508,7 +510,7 @@ test.describe('UDL Content iDevice', () => {
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
             await expect(button).toBeVisible({ timeout: 10000 });
             await button.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the content is visible
             const mainContent = previewIframe.locator('.exe-udlContent-content-main');
@@ -559,7 +561,7 @@ test.describe('UDL Content iDevice', () => {
             await enterEditMode(page);
 
             // Wait for TinyMCE to be ready
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Insert audio element via TinyMCE API (not directly into iframe body)
             // This ensures the content is properly tracked and saved
@@ -581,7 +583,7 @@ test.describe('UDL Content iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -598,7 +600,7 @@ test.describe('UDL Content iDevice', () => {
             const button = previewIframe.locator('.udl-btn, .udl-character').first();
             await expect(button).toBeVisible({ timeout: 10000 });
             await button.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Check MEJS container classes
             const mejsContainer = previewIframe.locator('.exe-udlContent-content-main .mejs-container').first();
