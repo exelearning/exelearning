@@ -502,10 +502,11 @@ export default class ModalImageOptimizer extends Modal {
         const row = this.rowElements.get(assetId);
         if (!row) return;
         const isAlreadyOptimized = this.isAlreadyOptimized(data);
+        const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
+        const savingsCell = row.querySelector('.image-optimizer-savings');
 
         // Update estimated size
         if (data.estimatedSize !== null && data.estimatedSize !== undefined) {
-            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
             if (estimatedCell) {
                 estimatedCell.textContent = this.formatSize(data.estimatedSize);
                 estimatedCell.classList.remove('text-muted');
@@ -514,7 +515,6 @@ export default class ModalImageOptimizer extends Modal {
 
         // Update optimized size (after optimization)
         if (data.optimizedSize !== null && data.optimizedSize !== undefined) {
-            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
             if (estimatedCell) {
                 estimatedCell.textContent = this.formatSize(data.optimizedSize);
                 estimatedCell.classList.add('fw-bold');
@@ -522,7 +522,6 @@ export default class ModalImageOptimizer extends Modal {
         }
 
         // Update savings
-        const savingsCell = row.querySelector('.image-optimizer-savings');
         if (savingsCell) {
             const originalSize = data.originalSize || 0;
             const finalSize = data.optimizedSize || data.estimatedSize;
@@ -536,6 +535,17 @@ export default class ModalImageOptimizer extends Modal {
                 } else {
                     savingsCell.textContent = '0%';
                 }
+            }
+        }
+
+        if (isAlreadyOptimized) {
+            if (estimatedCell) {
+                estimatedCell.textContent = _('N/A');
+                estimatedCell.classList.add('text-muted');
+                estimatedCell.classList.remove('fw-bold');
+            }
+            if (savingsCell) {
+                savingsCell.textContent = _('N/A');
             }
         }
 

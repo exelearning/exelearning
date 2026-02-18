@@ -573,7 +573,7 @@ describe('ModalImageOptimizer', () => {
             expect(savingsCell.innerHTML).toContain('25.0%');
         });
 
-        it('should update savings with negative value (size increased)', () => {
+        it('should show N/A savings when size would increase (already optimized)', () => {
             modal.updateImageRow('asset-1', {
                 originalSize: 1000,
                 estimatedSize: 1200,
@@ -581,7 +581,7 @@ describe('ModalImageOptimizer', () => {
             });
 
             const savingsCell = row.querySelector('.image-optimizer-savings');
-            expect(savingsCell.innerHTML).toContain('text-warning');
+            expect(savingsCell.textContent).toBe('N/A');
         });
 
         it('should update status badge', () => {
@@ -601,8 +601,12 @@ describe('ModalImageOptimizer', () => {
             });
 
             const statusCell = row.querySelector('.image-optimizer-status');
+            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
+            const savingsCell = row.querySelector('.image-optimizer-savings');
             const checkbox = row.querySelector('.image-optimizer-row-checkbox');
             expect(statusCell.innerHTML).toContain('Already optimized');
+            expect(estimatedCell.textContent).toBe('N/A');
+            expect(savingsCell.textContent).toBe('N/A');
             expect(checkbox.disabled).toBe(true);
             expect(checkbox.checked).toBe(false);
             expect(modal.selectedAssets.has('asset-1')).toBe(false);
