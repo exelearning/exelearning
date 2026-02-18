@@ -47,7 +47,7 @@ async function addMagnifierIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content
     await page
@@ -57,6 +57,7 @@ async function addMagnifierIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -137,7 +138,7 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
     await insertBtn.click();
 
     // Wait for modal to close and input to update
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Verify the input was updated
     const inputValue = await page.locator('#mnfFileInput').inputValue();
@@ -220,6 +221,7 @@ test.describe('Magnifier iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 30000 },
             );
 
@@ -234,7 +236,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Debug: log the image src
             const imgSrc = await viewModeImg.getAttribute('src');
@@ -286,6 +288,7 @@ test.describe('Magnifier iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 30000 },
             );
 
@@ -300,7 +303,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(viewModeImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
             const naturalWidth = await viewModeImg.evaluate((el: HTMLImageElement) => el.naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
 
@@ -338,6 +341,7 @@ test.describe('Magnifier iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 30000 },
             );
 
@@ -352,7 +356,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(magnifierImg).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the magnifier is set up with proper data attributes
             // The image should have data-magnifysrc and data-zoom attributes for the magnifier effect
@@ -399,12 +403,13 @@ test.describe('Magnifier iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.magnifier');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 30000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -424,7 +429,7 @@ test.describe('Magnifier iDevice', () => {
             await expect(previewImg.first()).toBeVisible({ timeout: 10000 });
 
             // Wait for image to load
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify image loaded correctly (not broken)
             const naturalWidth = await previewImg.first().evaluate((el: HTMLImageElement) => el.naturalWidth);

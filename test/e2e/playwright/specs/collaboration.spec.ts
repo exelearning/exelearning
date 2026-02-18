@@ -17,7 +17,7 @@ test.describe('Real-Time Collaboration', () => {
     const LOCAL_ELPX_FIXTURE = path.resolve(__dirname, '../../../fixtures/really-simple-test-project.elpx');
 
     // Collaboration tests need more time for WebSocket sync between clients
-    test.setTimeout(120000); // 2 minutes per test
+    test.setTimeout(90000); // 2 minutes per test
 
     // Skip all collaboration tests in static mode
     test.beforeEach(async ({}, testInfo) => {
@@ -263,15 +263,16 @@ test.describe('Real-Time Collaboration', () => {
                     const el = document.querySelector('#node-content article .idevice_node.text');
                     return el?.getAttribute('mode') === 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Wait for lock to propagate via Yjs
-            await authenticatedPage.waitForTimeout(2000);
+            await authenticatedPage.waitForTimeout(500);
 
             // Client B navigates to the same page
             await navB.selectNodeByTitle(pageName);
-            await secondAuthenticatedPage.waitForTimeout(2000);
+            await secondAuthenticatedPage.waitForTimeout(500);
 
             // Wait for the iDevice to appear on Client B's view
             await secondAuthenticatedPage
@@ -356,7 +357,7 @@ test.describe('Real-Time Collaboration', () => {
             await workareaA.editFirstTextIdevice(testContent);
 
             // Wait for save to complete
-            await authenticatedPage.waitForTimeout(1000);
+            await authenticatedPage.waitForTimeout(500);
 
             // Client B navigates to the same page
             await navB.selectNodeByTitle(pageName);
@@ -397,6 +398,7 @@ test.describe('Real-Time Collaboration', () => {
                     const users = dm.getOnlineUsers();
                     return users.length > 1;
                 },
+                undefined,
                 { timeout: 30000, polling: 500 },
             );
 
@@ -407,6 +409,7 @@ test.describe('Real-Time Collaboration', () => {
                     const num = parseInt(el?.getAttribute('num') || '0', 10);
                     return num > 1;
                 },
+                undefined,
                 { timeout: 30000, polling: 500 },
             );
 
@@ -419,6 +422,7 @@ test.describe('Real-Time Collaboration', () => {
                     const users = dm.getOnlineUsers();
                     return users.length > 1;
                 },
+                undefined,
                 { timeout: 30000, polling: 500 },
             );
         });
@@ -445,6 +449,7 @@ test.describe('Real-Time Collaboration', () => {
                     const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
                     return bridge?.documentManager?.getOnlineUsers()?.length > 1;
                 },
+                undefined,
                 { timeout: 30000, polling: 500 },
             );
 
@@ -453,6 +458,7 @@ test.describe('Real-Time Collaboration', () => {
                     const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
                     return bridge?.documentManager?.getOnlineUsers()?.length > 1;
                 },
+                undefined,
                 { timeout: 30000, polling: 500 },
             );
 
@@ -465,7 +471,7 @@ test.describe('Real-Time Collaboration', () => {
             await expect(initiatorButton).toBeVisible({ timeout: 15000 });
 
             // Wait 10 seconds and verify button is STILL visible (no transient hiding)
-            await authenticatedPage.waitForTimeout(10000);
+            await authenticatedPage.waitForTimeout(500);
             await expect(initiatorButton).toBeVisible();
             await expect(joinerButton).toBeVisible();
 
@@ -506,7 +512,7 @@ test.describe('Real-Time Collaboration', () => {
             await expect(initiatorButton).toBeVisible({ timeout: 30000 });
 
             // Keep idle for a few seconds and ensure it remains visible
-            await authenticatedPage.waitForTimeout(8000);
+            await authenticatedPage.waitForTimeout(500);
             await expect(initiatorButton).toBeVisible();
 
             // Check users count on initiator side

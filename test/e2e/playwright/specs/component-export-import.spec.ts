@@ -71,7 +71,7 @@ test.describe('Component Export/Import', () => {
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 3. Add a text iDevice with content
         await addTextIdevice(page);
@@ -109,13 +109,13 @@ test.describe('Component Export/Import', () => {
 
         // 7. Add two new pages for importing
         await addPage(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
         await addPage(page);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 8. Select page 2 and import the block
         await selectPageByIndex(page, 1);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Import the block file
         await importComponent(page, blockFilePath);
@@ -126,6 +126,7 @@ test.describe('Component Export/Import', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -137,7 +138,7 @@ test.describe('Component Export/Import', () => {
 
         // 9. Select page 3 and import the iDevice
         await selectPageByIndex(page, 2);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Import the iDevice file
         await importComponent(page, ideviceFilePath);
@@ -148,6 +149,7 @@ test.describe('Component Export/Import', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -160,7 +162,7 @@ test.describe('Component Export/Import', () => {
         // 10. Verify all three pages have content
         // Go back to page 1 and verify original content
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         const originalContent = page.locator('#node-content article .idevice_node.text').first();
         await expect(originalContent).toBeVisible({ timeout: 10000 });
@@ -263,7 +265,7 @@ test.describe('Component Export/Import', () => {
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 3. Import the test iDevice file that contains an image
         // The file is located at test/fixtures/idevice-mkg5tfoo-i0k5qzyvx.idevice
@@ -286,6 +288,7 @@ test.describe('Component Export/Import', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -298,7 +301,7 @@ test.describe('Component Export/Import', () => {
         // 5. KEY TEST: Verify the image is visible WITHOUT refreshing the page
         // The bug was that images wouldn't appear until refresh
         // Wait for asset resolution to complete
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // Check for images in the iDevice content
         const imagesInIdevice = await page.evaluate(() => {
@@ -351,6 +354,7 @@ test.describe('Component Export/Import', () => {
                     isLoaded: img.complete && img.naturalWidth > 0,
                 };
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -373,6 +377,7 @@ test.describe('Component Export/Import', () => {
                 // Image is loaded when complete and has dimensions
                 return img.complete && img.naturalWidth > 0 && img.naturalHeight > 0;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -385,13 +390,13 @@ test.describe('Component Export/Import', () => {
         const fileManagerBtn = page.locator('[data-bs-target="#modalFileManager"], #head-bottom-filemanager');
         if ((await fileManagerBtn.count()) > 0) {
             await fileManagerBtn.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Check if the modal opened
             const modal = page.locator('#modalFileManager[data-open="true"], #modalFileManager.show');
             if (await modal.isVisible().catch(() => false)) {
                 // Wait for assets to load
-                await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
 
                 // Check for media items in the file manager
                 const mediaItems = await page.locator('#modalFileManager .media-library-item').count();
@@ -579,6 +584,7 @@ test.describe('Component Export/Import with Images', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -589,7 +595,7 @@ test.describe('Component Export/Import with Images', () => {
         console.log('Block imported successfully');
 
         // 10. Wait for asset resolution
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 11. Verify the image is loaded correctly
         const imageVerification = await verifyIdeviceImages(page, 1);
@@ -625,7 +631,7 @@ test.describe('Component Export/Import with Images', () => {
 
         // 2. Navigate to "Apartado uno" page
         await navigateToPageByTitle(page, 'Apartado uno');
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(500);
 
         // 3. Get the block and iDevice IDs (first block on the page)
         const { blockId, ideviceId } = await getBlockAndIdeviceIdsByIndex(page, 0);
@@ -661,7 +667,7 @@ test.describe('Component Export/Import with Images', () => {
 
         // 7. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 8. Import the iDevice file
         await importComponent(page, ideviceFilePath);
@@ -672,6 +678,7 @@ test.describe('Component Export/Import with Images', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -682,7 +689,7 @@ test.describe('Component Export/Import with Images', () => {
         console.log('iDevice imported successfully');
 
         // 10. Wait for asset resolution
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 11. Verify all 3 images are loaded correctly
         const imageVerification = await verifyIdeviceImages(page, 3);
@@ -719,7 +726,7 @@ test.describe('Component Export/Import with Images', () => {
 
         // 2. Navigate to "Inicio" page
         await navigateToPageByTitle(page, 'Inicio');
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(500);
 
         // 3. Export the block
         const { blockId } = await getBlockAndIdeviceIdsByIndex(page, 0);
@@ -734,7 +741,7 @@ test.describe('Component Export/Import with Images', () => {
 
         // 5. Select the first page and import the block
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
         await importComponent(page, blockFilePath);
 
         // 6. Wait for import and asset resolution
@@ -743,9 +750,10 @@ test.describe('Component Export/Import with Images', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 7. Open preview panel and wait for content using shared helper
         const contentLoaded = await waitForPreviewContent(page, 30000);
@@ -837,7 +845,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 3. Add a text iDevice
         await addTextIdevice(page);
@@ -904,7 +912,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
     });
 
     test('should preserve block icon during import to new project', async ({ authenticatedPage, createProject }) => {
-        test.setTimeout(120000);
+        test.setTimeout(90000);
         /**
          * This test verifies the full export/import cycle for block icons:
          * 1. Create block with icon
@@ -920,7 +928,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Add text iDevice and set icon
         await addTextIdevice(page);
@@ -966,7 +974,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
 
         // 3. Select page and import the block
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         await importComponent(page, blockFilePath);
 
@@ -976,6 +984,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -986,7 +995,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         console.log('Block imported successfully');
 
         // 5. Wait for icon to be rendered
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // Find the correct block index (imported block is appended after the default welcome block)
         const blockCount = await page.locator('#node-content article.box').count();
@@ -1031,7 +1040,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Add text iDevice (icon stays empty)
         await addTextIdevice(page);
@@ -1065,7 +1074,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         await importComponent(page, blockFilePath);
 
@@ -1075,10 +1084,11 @@ test.describe('Block Icon Preservation during Export/Import', () => {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 1;
             },
+            undefined,
             { timeout: 15000 },
         );
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Verify block still has empty icon after import
         const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);
