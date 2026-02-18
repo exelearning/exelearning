@@ -1046,14 +1046,39 @@ export default class IdeviceNode {
                                 contentId: 'error',
                             });
                         } else {
+                            const isLastInBlock =
+                                this.block &&
+                                this.block.idevices.length === 1;
+                            const checkboxId =
+                                'delete-associated-box-' +
+                                this.odeIdeviceId;
+                            const checkboxHtml = isLastInBlock
+                                ? `<div class="delete-idevice-option-box">
+                                    <label>
+                                        <input type="checkbox" id="${checkboxId}" checked>
+                                        ${_('Also delete associated box')}
+                                    </label>
+                                   </div>`
+                                : '';
+
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete iDevice'),
-                                body: _(
-                                    'Delete iDevice? This cannot be undone.'
-                                ),
+                                body:
+                                    _(
+                                        'Delete iDevice? This cannot be undone.'
+                                    ) + checkboxHtml,
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
+                                    const alsoDeleteBox =
+                                        isLastInBlock &&
+                                        document.getElementById(checkboxId)
+                                            ?.checked;
+                                    this._skipBlockRemoveDialog = true;
                                     this.remove(true);
+                                    if (alsoDeleteBox && this.block) {
+                                        this.block.remove(true);
+                                        eXeLearning.app.menus.menuStructure.menuStructureBehaviour.checkIfEmptyNode();
+                                    }
                                 },
                             });
                         }
@@ -3124,6 +3149,10 @@ export default class IdeviceNode {
      * @returns
      */
     removeBlockParentProcess(bbdd) {
+        if (this._skipBlockRemoveDialog) {
+            this._skipBlockRemoveDialog = false;
+            return;
+        }
         // Check if the block has more idevices
         if (this.block?.idevices?.length == 0) {
             // Collaborative

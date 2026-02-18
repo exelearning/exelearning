@@ -87,6 +87,9 @@ global.eXeLearning = {
                         createAddTextBtn: vi.fn(),
                     },
                 },
+                menuStructureBehaviour: {
+                    checkIfEmptyNode: vi.fn(),
+                },
             },
         },
     },
@@ -1642,6 +1645,16 @@ describe('IdeviceNode', () => {
             expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
             vi.useRealTimers();
         });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block.askForRemoveIfEmpty = true;
+            idevice._skipBlockRemoveDialog = true;
+
+            idevice.removeBlockParentProcess(true);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+        });
     });
 
     describe('lockScreen / unlockScreen', () => {
@@ -2707,6 +2720,25 @@ describe('IdeviceNode', () => {
             idevice.removeBlockParentProcess(true);
 
             expect(idevice.block.remove).not.toHaveBeenCalled();
+        });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block = {
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            idevice._skipBlockRemoveDialog = true;
+            vi.useFakeTimers();
+
+            idevice.removeBlockParentProcess(true);
+            vi.advanceTimersByTime(300);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice.block.remove).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+            vi.useRealTimers();
         });
     });
 
@@ -4418,6 +4450,111 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('shows checkbox when iDevice is last in block', () => {
+            idevice.block = {
+                idevices: [idevice],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).toContain('delete-associated-box-');
+                expect(capturedBody).toContain('checkbox');
+            });
+        });
+
+        it('does not show checkbox when block has multiple iDevices', () => {
+            idevice.block = {
+                idevices: [idevice, { id: 'other' }],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).not.toContain('delete-associated-box-');
+            });
+        });
+
+        it('deletes both iDevice and block when checkbox is checked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                // Inject the checkbox HTML into the DOM so getElementById works
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).toHaveBeenCalledWith(true);
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
+        });
+
+        it('deletes only iDevice when checkbox is unchecked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                // Uncheck the checkbox
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                checkbox.checked = false;
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).not.toHaveBeenCalled();
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
         });
     });
 
