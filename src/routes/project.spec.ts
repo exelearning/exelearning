@@ -1405,7 +1405,7 @@ describe('Project Routes', () => {
             expect(newSnapshot?.project_id).toBe(newProjectId);
         });
 
-        it('should duplicate project assets with new client_ids', async () => {
+        it('should duplicate project assets preserving client_ids', async () => {
             const sourceProject = createTestProject(902, 'uuid-902-with-assets', 1);
 
             // Create source asset file on disk
@@ -1440,12 +1440,12 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Verify new asset was created with different client_id
+            // Verify new asset was created preserving client_id
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(1);
-            expect(newAssets![0].client_id).not.toBe(sourceClientId);
+            expect(newAssets![0].client_id).toBe(sourceClientId);
             expect(newAssets![0].filename).toBe('test-image.png');
             expect(newAssets![0].project_id).toBe(newProjectId);
         });
@@ -1570,15 +1570,15 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Get the new asset's client_id
+            // Get duplicated asset client_id (should be preserved)
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(1);
             const newClientId = newAssets![0].client_id;
-            expect(newClientId).not.toBe(sourceClientId);
+            expect(newClientId).toBe(sourceClientId);
 
-            // Verify Yjs document was updated with new client_id
+            // Verify Yjs document still references the same client_id
             const newSnapshot = mockSnapshots.get(newProjectId);
             expect(newSnapshot).toBeDefined();
 
@@ -1594,7 +1594,6 @@ describe('Project Routes', () => {
             const newInnerHtml = newIdevice?.get('innerHtml') as string;
 
             expect(newInnerHtml).toContain(newClientId);
-            expect(newInnerHtml).not.toContain(sourceClientId);
             newYdoc.destroy();
         });
 
@@ -1635,15 +1634,15 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.success).toBe(true);
 
-            // Verify all assets were duplicated with new client_ids
+            // Verify all assets were duplicated preserving client_ids
             const newProjectId = body.project.id;
             const newAssets = mockAssets.get(newProjectId);
             expect(newAssets).toBeDefined();
             expect(newAssets!.length).toBe(3);
 
-            // Verify all client_ids are new (not in original list)
+            // Verify all original client_ids are present
             for (const newAsset of newAssets!) {
-                expect(clientIds).not.toContain(newAsset.client_id);
+                expect(clientIds).toContain(newAsset.client_id as string);
             }
         });
     });

@@ -1,7 +1,14 @@
 import { test as collabTest, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { test as authTest } from '../fixtures/auth.fixture';
-import { saveProject, gotoWorkarea } from '../helpers/workarea-helpers';
+import {
+    addTextIdevice,
+    saveProject,
+    selectFirstPage,
+    waitForAppReady,
+    gotoWorkarea,
+} from '../helpers/workarea-helpers';
 import { OpenProjectModalPage } from '../pages/open-project-modal.page';
+import { closeFileManager, getAllFilenames, getFileCount, fileExistsInManager } from '../helpers/file-manager-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -91,6 +98,70 @@ async function waitForCopyInList(page: Page, timeout = 20000): Promise<void> {
     );
 }
 
+/**
+ * Helper: insert an image into the active Text iDevice via TinyMCE + File Manager.
+ * Fills alternative text when requested to avoid accessibility warning prompts.
+ */
+async function insertImageIntoTextIdevice(page: Page, fixturePath: string): Promise<void> {
+    const imageBtn = page.locator('.tox-tbtn[aria-label*="image" i], .tox-tbtn[aria-label*="imagen" i]').first();
+    await expect(imageBtn).toBeVisible({ timeout: 10000 });
+    await imageBtn.click();
+
+    await page.waitForSelector('.tox-dialog', { timeout: 10000 });
+
+    const browseBtn = page.locator('.tox-dialog .tox-browse-url').first();
+    await expect(browseBtn).toBeVisible({ timeout: 5000 });
+    await browseBtn.click();
+
+    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+
+    const fileInput = page.locator('#modalFileManager .media-library-upload-input');
+    await fileInput.setInputFiles(fixturePath);
+
+    const imageItem = page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').first();
+    await imageItem.waitFor({ state: 'visible', timeout: 10000 });
+    await imageItem.click();
+
+    const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
+    await expect(insertBtn).toBeVisible({ timeout: 5000 });
+    await insertBtn.click();
+    await page.waitForTimeout(1000);
+
+    const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+    if ((await altTextInput.count()) > 0) {
+        const currentAlt = await altTextInput.inputValue().catch(() => '');
+        if (!currentAlt) {
+            await altTextInput.fill('duplicate-image-test');
+        }
+    }
+
+    const tinyMceSaveBtn = page.locator('.tox-dialog .tox-button:has-text("Save"), .tox-dialog .tox-button--primary');
+    if ((await tinyMceSaveBtn.count()) > 0) {
+        await tinyMceSaveBtn.first().click();
+    }
+
+    await page.waitForTimeout(800);
+}
+
+/**
+ * Helper: open File Manager from Utilities menu.
+ * This is more stable in flows where toolbar shortcuts are hidden.
+ */
+async function openFileManagerFromUtilitiesMenu(page: Page): Promise<void> {
+    await page.locator('#dropdownUtilities').click();
+    await page.waitForTimeout(200);
+    await page.locator('#navbar-button-filemanager').click();
+    await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+}
+
+async function countAssetsByFilenameFromApi(page: Page, projectUuid: string, filename: string): Promise<number> {
+    const response = await page.request.get(`/api/projects/${projectUuid}/assets`);
+    expect(response.ok()).toBeTruthy();
+    const body = (await response.json()) as { success?: boolean; data?: Array<{ filename?: string }> };
+    const rows = Array.isArray(body?.data) ? body.data : [];
+    return rows.filter(row => row.filename === filename).length;
+}
+
 // ─── Test 1: Duplicate in My Projects ───
 
 authTest.describe('Project Duplicate', () => {
@@ -156,6 +227,84 @@ authTest.describe('Project Duplicate', () => {
         // Assert: Open button is enabled
         expect(await modal.isOpenButtonEnabled()).toBe(true);
     });
+
+    authTest(
+        'duplicated project opened from Open dialog should keep linked and renderable images',
+        async ({ authenticatedPage, createProject }) => {
+            const page = authenticatedPage;
+            const imageName = 'sample-2.jpg';
+
+            const projectUuid = await createProject(page, `Duplicate Image Test ${Date.now()}`);
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addTextIdevice(page);
+            await insertImageIntoTextIdevice(page, `test/fixtures/${imageName}`);
+
+            const textIdevice = page.locator('#node-content article .idevice_node.text').first();
+            const saveIdeviceBtn = textIdevice.locator('.btn-save-idevice');
+            if ((await saveIdeviceBtn.count()) > 0) {
+                await saveIdeviceBtn.first().click();
+            }
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            await saveProject(page);
+
+            await openFileManagerFromUtilitiesMenu(page);
+            expect(await fileExistsInManager(page, imageName)).toBe(true);
+            const sourceFilenames = await getAllFilenames(page);
+            const sourceImageCount = sourceFilenames.filter(name => name === imageName).length;
+            expect(sourceImageCount).toBeGreaterThanOrEqual(1);
+            await closeFileManager(page);
+            const sourceImageCountApi = await countAssetsByFilenameFromApi(page, projectUuid, imageName);
+            expect(sourceImageCountApi).toBeGreaterThanOrEqual(1);
+
+            const modal = await openProjectModal(page);
+            await modal.clickMyProjectsTab();
+            await modal.waitForProjectInList('Duplicate Image Test', 10000);
+
+            const responsePromise = interceptDuplicateResponse(page);
+            await modal.clickDuplicateForProject(projectUuid);
+            const apiResponse = await responsePromise;
+            expect(apiResponse.status).toBe(200);
+
+            await waitForCopyInList(page, 30000);
+            const duplicatedUuid = await modal.getSelectedProjectUuid();
+            expect(duplicatedUuid).toBeTruthy();
+            expect(duplicatedUuid).not.toBe(projectUuid);
+
+            await modal.clickOpenButton();
+            await page.waitForURL(new RegExp(`/workarea\\?project=${duplicatedUuid}`), { timeout: 30000 });
+            await waitForAppReady(page);
+            await selectFirstPage(page);
+
+            const duplicatedTextIdevice = page.locator('#node-content article .idevice_node.text').first();
+            await expect(duplicatedTextIdevice).toBeVisible({ timeout: 15000 });
+
+            const imageInWorkarea = duplicatedTextIdevice.locator('img').first();
+            await expect(imageInWorkarea).toBeVisible({ timeout: 15000 });
+            const naturalWidth = await imageInWorkarea.evaluate((el: HTMLImageElement) => el.naturalWidth);
+            expect(naturalWidth).toBeGreaterThan(0);
+
+            await openFileManagerFromUtilitiesMenu(page);
+            expect(await fileExistsInManager(page, imageName)).toBe(true);
+            const duplicatedFilenames = await getAllFilenames(page);
+            const duplicatedImageCount = duplicatedFilenames.filter(name => name === imageName).length;
+            expect(duplicatedImageCount).toBeGreaterThanOrEqual(1);
+            expect(await getFileCount(page)).toBeGreaterThanOrEqual(1);
+            await closeFileManager(page);
+
+            const duplicatedImageCountApi = await countAssetsByFilenameFromApi(page, duplicatedUuid!, imageName);
+            expect(duplicatedImageCountApi).toBe(sourceImageCountApi);
+        },
+    );
 });
 
 // ─── Test 2: Clone from Shared ───

@@ -399,12 +399,56 @@ describe('Assets Routes', () => {
             expect(res.status).toBe(404);
         });
 
-        it('should return 400 for invalid asset ID', async () => {
+        it('should return 404 for non-existent project UUID', async () => {
+            const res = await app.handle(new Request(`http://localhost/api/projects/non-existent-uuid/assets/1`));
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Project not found');
+        });
+
+        it('should return 404 when numeric asset belongs to another project', async () => {
+            const filePath = path.join(testDir, 'other-project-asset.txt');
+            await fs.writeFile(filePath, 'Other project content');
+
+            mockAssets.set(1, {
+                id: 1,
+                project_id: 2, // Deliberately different project
+                filename: 'other-project-asset.txt',
+                storage_path: filePath,
+                mime_type: 'text/plain',
+            });
+
+            const res = await app.handle(new Request(`http://localhost/api/projects/1/assets/1`));
+            expect(res.status).toBe(404);
+            const body = await res.json();
+            expect(body.error).toContain('Asset not found');
+        });
+
+        it('should resolve UUID-like client_id in :assetId param', async () => {
+            const filePath = path.join(testDir, 'uuid-client-asset.txt');
+            await fs.writeFile(filePath, 'UUID client asset content');
+
+            const clientId = '960cbe4b-0c2c-4466-95d4-6a3c4d7fd275';
+            mockAssets.set(1, {
+                id: 101,
+                project_id: 1,
+                filename: 'uuid-client-asset.txt',
+                storage_path: filePath,
+                mime_type: 'text/plain',
+                client_id: clientId,
+            });
+
+            const res = await app.handle(new Request(`http://localhost/api/projects/1/assets/${clientId}`));
+            expect(res.status).toBe(200);
+            expect(await res.text()).toBe('UUID client asset content');
+        });
+
+        it('should return 404 for non-numeric and non-existent client_id', async () => {
             const res = await app.handle(new Request(`http://localhost/api/projects/1/assets/invalid`));
 
-            expect(res.status).toBe(400);
+            expect(res.status).toBe(404);
             const body = await res.json();
-            expect(body.error).toContain('Invalid asset ID');
+            expect(body.error).toContain('Asset not found');
         });
 
         it('should return 404 when file not on disk', async () => {
