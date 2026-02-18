@@ -35,6 +35,7 @@ export async function waitForYjsSync(page: Page, timeout: number = 30000): Promi
             // Check WebSocket connection state
             return provider.wsconnected === true || provider.synced === true;
         },
+        undefined,
         { timeout, polling: 100 },
     );
 }

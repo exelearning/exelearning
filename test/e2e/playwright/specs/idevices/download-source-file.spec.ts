@@ -55,7 +55,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -64,6 +64,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -88,7 +89,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
         if (isCollapsed) {
             const label = infoCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -103,7 +104,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
     await page.locator('#node-content article .idevice_node.download-source-file').first().waitFor({ timeout: 15000 });
 
     // Wait for the form to be created
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for the TinyMCE editor to be visible
     await page
@@ -112,6 +113,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
                 const editor = document.querySelector('.tox-editor-header');
                 return editor !== null;
             },
+            undefined,
             { timeout: 15000 },
         )
         .catch(() => {});
@@ -221,7 +223,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for edition mode to end
     await page
@@ -230,6 +232,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
                 const idevice = document.querySelector('#node-content article .idevice_node.download-source-file');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -324,7 +327,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -336,7 +339,7 @@ test.describe('Download Source File iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Wait for the iDevice to be rendered
@@ -346,6 +349,7 @@ test.describe('Download Source File iDevice', () => {
                         const idevice = document.querySelector('#node-content .download-source-file');
                         return idevice !== null;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .catch(() => {});
@@ -440,7 +444,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -471,7 +475,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -521,7 +525,7 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -560,12 +564,12 @@ test.describe('Download Source File iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click edit button to enter edit mode
             const editBtn = page.locator('#node-content .download-source-file button:has-text("Edit")').first();
             await editBtn.click();
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Wait for the form to load
             await page.locator('#dpiButtonText').waitFor({ state: 'visible', timeout: 10000 });

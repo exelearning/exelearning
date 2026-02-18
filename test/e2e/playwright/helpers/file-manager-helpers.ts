@@ -121,11 +121,8 @@ export async function uploadFileWithSpecialName(page: Page, filename: string): P
         { timeout: 15000 },
     );
 
-    // Then verify the specific file appeared
-    await waitForFileInGrid(page, filename, 10000);
-
-    // Small delay to let UI settle
-    await page.waitForTimeout(300);
+    // Then verify the specific file appeared with a usable thumbnail
+    await waitForUploadAndThumbnail(page, filename, 10000);
 }
 
 /**
@@ -136,18 +133,38 @@ export async function uploadFileWithSpecialName(page: Page, filename: string): P
  * @param fixturePath - Path to the fixture file
  */
 export async function uploadFixtureFile(page: Page, fixturePath: string): Promise<void> {
+    const initialCount = await page.locator('#modalFileManager .media-library-item:not(.media-library-folder)').count();
     const fileInput = page.locator('#modalFileManager .media-library-upload-input');
     await fileInput.setInputFiles(fixturePath);
 
     await page.waitForFunction(
-        () => {
+        initial => {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
-            return items.length > 0;
+            return items.length > initial;
         },
+        initialCount,
         { timeout: 15000 },
     );
+}
 
-    await page.waitForTimeout(500);
+/**
+ * Wait for uploaded file to appear in the grid and render a valid thumbnail.
+ */
+export async function waitForUploadAndThumbnail(page: Page, filename: string, timeout = 10000): Promise<void> {
+    await waitForFileInGrid(page, filename, timeout);
+    await page.waitForFunction(
+        name => {
+            const items = document.querySelectorAll('#modalFileManager .media-library-item');
+            const item = Array.from(items).find(el => el.getAttribute('data-filename') === name);
+            if (!item) return false;
+            const img = item.querySelector('img');
+            if (!img) return false;
+            const i = img as HTMLImageElement;
+            return i.complete && (i.naturalWidth > 0 || i.src.startsWith('blob:'));
+        },
+        filename,
+        { timeout },
+    );
 }
 
 /**
@@ -242,8 +259,14 @@ export async function selectFileInManager(page: Page, fileName: string): Promise
     const fileItem = modal.locator('.media-library-item', { hasText: fileName }).first();
     await fileItem.waitFor({ state: 'visible', timeout: 5000 });
     await fileItem.click();
-
-    await page.waitForTimeout(300);
+    await page.waitForFunction(
+        name => {
+            const filenameEl = document.querySelector('#modalFileManager .media-library-filename');
+            return filenameEl?.textContent === name;
+        },
+        fileName,
+        { timeout: 5000 },
+    );
 }
 
 /**
@@ -496,10 +519,9 @@ export async function navigateToRoot(page: Page): Promise<void> {
             const items = breadcrumbs?.querySelectorAll('.breadcrumb-item');
             return items && items.length === 1;
         },
+        undefined,
         { timeout: 10000 },
     );
-
-    await page.waitForTimeout(300);
 }
 
 /**
@@ -514,7 +536,9 @@ export async function navigateToParentFolder(page: Page): Promise<void> {
     const parentBtn = modal.locator('.media-library-parent-btn, .media-library-item:has-text("..")');
     await parentBtn.first().click();
 
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+        timeout: 5000,
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -577,7 +601,14 @@ export async function renameFileInManager(page: Page, newName: string): Promise<
     );
     await renameBtn.first().click();
 
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+        name => {
+            const filenameEl = document.querySelector('#modalFileManager .media-library-filename');
+            return filenameEl?.textContent === name;
+        },
+        newName,
+        { timeout: 5000 },
+    );
 }
 
 /**
@@ -609,7 +640,15 @@ export async function searchFiles(page: Page, searchTerm: string): Promise<void>
     await searchInput.fill(searchTerm);
 
     // Wait for debounce and search to complete
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+        term => {
+            const input = document.querySelector('#modalFileManager .media-library-search') as HTMLInputElement | null;
+            const loading = document.querySelector('#modalFileManager .media-library-loading');
+            return input?.value === term && !loading;
+        },
+        searchTerm,
+        { timeout: 5000 },
+    );
 }
 
 /**
@@ -637,7 +676,14 @@ export async function clearSearch(page: Page): Promise<void> {
         const searchInput = page.locator('#modalFileManager .media-library-search');
         await searchInput.fill('');
     }
-    await page.waitForTimeout(300);
+    await page.waitForFunction(
+        () => {
+            const input = document.querySelector('#modalFileManager .media-library-search') as HTMLInputElement | null;
+            return (input?.value || '') === '';
+        },
+        undefined,
+        { timeout: 5000 },
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -696,7 +742,9 @@ export async function deleteFileInManager(page: Page): Promise<void> {
     );
     await deleteBtn.first().click();
 
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+        timeout: 5000,
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -741,7 +789,14 @@ export async function insertFileIntoEditor(page: Page, filename: string): Promis
         await saveBtn.first().click();
     }
 
-    await page.waitForTimeout(500);
+    await page.waitForFunction(
+        () => {
+            const d = document.querySelector('#modalFileManager');
+            return !d || d.getAttribute('data-open') !== 'true';
+        },
+        undefined,
+        { timeout: 5000 },
+    );
 }
 
 /**
@@ -781,8 +836,12 @@ export async function verifyImageInEditor(page: Page, expectedFilename: string):
         // Wait for the TinyMCE body to be available
         await editorFrame.locator('body').waitFor({ state: 'attached', timeout: 10000 });
 
-        // Wait a bit for image to load
-        await page.waitForTimeout(500);
+        // Wait for first image candidate in editor
+        await editorFrame
+            .locator('img')
+            .first()
+            .waitFor({ state: 'attached', timeout: 5000 })
+            .catch(() => {});
 
         // Use evaluate to check for images with various attributes
         return await editorFrame.locator('body').evaluate((body, filename) => {
@@ -842,7 +901,11 @@ export async function verifyImageInPreview(page: Page, expectedFilename: string)
     try {
         // Wait for any content to be in the iframe
         await iframe.locator('body').waitFor({ state: 'attached', timeout: 10000 });
-        await page.waitForTimeout(500);
+        await iframe
+            .locator('img')
+            .first()
+            .waitFor({ state: 'attached', timeout: 5000 })
+            .catch(() => {});
 
         // Verify image exists using evaluate for more flexibility
         return await iframe.locator('body').evaluate((body, filename) => {

@@ -91,7 +91,7 @@ test.describe('Theme Yjs Cleanup', () => {
         await page.evaluate(async name => {
             await (window as any).eXeLearning.app.themes.selectTheme(name, true, false);
         }, themeName);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 4. Verify theme is in Yjs themeFiles
         const themeInYjsBefore = await page.evaluate(name => {
@@ -116,7 +116,7 @@ test.describe('Theme Yjs Cleanup', () => {
         await page.evaluate(async () => {
             await (window as any).eXeLearning.app.themes.selectTheme('base', true, false);
         });
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 7. Verify theme is REMOVED from Yjs themeFiles
         const themeInYjsAfter = await page.evaluate(name => {

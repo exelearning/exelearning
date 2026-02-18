@@ -31,6 +31,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -47,6 +48,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -81,6 +83,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -93,6 +96,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -135,6 +139,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -147,6 +152,7 @@ test.describe('Save Detection - ELPX Upload', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
