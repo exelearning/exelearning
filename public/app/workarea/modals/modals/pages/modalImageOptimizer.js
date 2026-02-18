@@ -110,6 +110,12 @@ export default class ModalImageOptimizer extends Modal {
 
         /** @type {'normal'|'confirm'|'progress'|'done'} */
         this.viewState = 'normal';
+
+        /** @type {Promise|null} Tracks the active estimateSelected promise for cancellation */
+        this._estimatePromise = null;
+
+        /** @type {number|null} Debounce timer for quality slider re-estimation */
+        this._reEstimateTimeout = null;
     }
 
     /**
@@ -374,11 +380,15 @@ export default class ModalImageOptimizer extends Modal {
         console.log('[ModalImageOptimizer] Starting auto-estimate for', selectedIds.length, 'images');
 
         try {
-            await this.optimizerManager.estimateSelected(selectedIds);
+            const p = this.optimizerManager.estimateSelected(selectedIds);
+            this._estimatePromise = p;
+            await p;
             // Enable optimize button after estimation completes
             this.updateButtons();
         } catch (error) {
             console.error('[ModalImageOptimizer] Auto-estimate error:', error);
+        } finally {
+            this._estimatePromise = null;
         }
     }
 
@@ -806,6 +816,9 @@ export default class ModalImageOptimizer extends Modal {
                 this.qualityValue.textContent = presetQualities[preset];
             }
         }
+
+        // Re-analyze immediately with new settings
+        this.reEstimate();
     }
 
     /**
@@ -817,6 +830,61 @@ export default class ModalImageOptimizer extends Modal {
             this.qualityValue.textContent = quality;
         }
         this.optimizerManager?.setJpegQuality(quality / 100);
+
+        // Debounce re-analysis to avoid re-running on every slider tick
+        clearTimeout(this._reEstimateTimeout);
+        this._reEstimateTimeout = setTimeout(() => this.reEstimate(), 500);
+    }
+
+    /**
+     * Cancel any ongoing estimation, reset all estimates, and re-estimate
+     * with the current settings. Called when preset or quality settings change.
+     */
+    async reEstimate() {
+        if (this.viewState !== 'normal') return;
+        if (!this.optimizerManager) return;
+
+        // Cancel and wait for any ongoing estimation to finish
+        if (this.optimizerManager.isInProgress()) {
+            this.optimizerManager.cancel();
+            if (this._estimatePromise) {
+                try {
+                    await this._estimatePromise;
+                } catch (_) {
+                    // Ignore errors from cancelled estimation
+                }
+            }
+        }
+
+        // Reset all estimated/failed items back to PENDING
+        this.optimizerManager.resetEstimates();
+
+        // Re-enable items previously disabled as "already optimized" and re-add to selection,
+        // since new settings may make them optimizable
+        for (const [assetId, row] of this.rowElements.entries()) {
+            if (row.dataset.selectable === 'false') {
+                this.selectedAssets.add(assetId);
+                const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            }
+        }
+
+        // Update all rows to show PENDING state
+        for (const assetId of this.rowElements.keys()) {
+            const item = this.optimizerManager.getQueueItem(assetId);
+            if (item) {
+                this.updateImageRow(assetId, { ...item });
+            }
+        }
+
+        this.updateSelectionState();
+
+        // Restart estimation for all selected assets
+        if (this.selectedAssets.size > 0) {
+            this.startAutoEstimate();
+        }
     }
 
     /**
@@ -1126,6 +1194,10 @@ export default class ModalImageOptimizer extends Modal {
      * Clean up when modal is hidden
      */
     onHide() {
+        // Clear any pending re-estimate timeout
+        clearTimeout(this._reEstimateTimeout);
+        this._reEstimateTimeout = null;
+
         // Terminate worker
         if (this.optimizerManager) {
             this.optimizerManager.cancel();
