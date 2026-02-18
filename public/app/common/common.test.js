@@ -829,6 +829,29 @@ describe('common.js $exe helpers', () => {
 
       loadMathJaxSpy.mockRestore();
     });
+
+    it('init loads MathJax for mixed content (pre-rendered + pending raw LaTeX)', () => {
+      document.body.innerHTML = `
+        <span class="exe-math-rendered" data-latex="\\(x^2\\)">
+          <svg><text>x²</text></svg>
+        </span>
+        <p>\\(\\mathrm{ABCdef}\\)</p>
+      `;
+
+      global.MathJax = {
+        typesetPromise: vi.fn().mockReturnValue(Promise.resolve()),
+      };
+      const loadMathJaxSpy = vi.spyOn(global.$exe.math, 'loadMathJax').mockImplementation((cb) => {
+        if (cb) cb();
+      });
+
+      global.$exe.math.init();
+
+      expect(loadMathJaxSpy).toHaveBeenCalled();
+
+      loadMathJaxSpy.mockRestore();
+      delete global.MathJax;
+    });
   });
 });
 
