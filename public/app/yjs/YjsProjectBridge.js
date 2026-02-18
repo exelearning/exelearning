@@ -1557,9 +1557,9 @@ class YjsProjectBridge {
 
     const undoManager = this.documentManager.undoManager;
 
-    // If there are pending metadata changes but nothing in undoStack yet,
-    // flush the pending changes first so they can be undone
-    if (this.hasPendingMetadataChanges && undoManager.undoStack.length === 0) {
+    // Always flush pending metadata changes before undo so we don't leave
+    // debounced field edits (e.g. subtitle typing) committing after undo.
+    if (this.hasPendingMetadataChanges) {
       this.flushPendingMetadataChanges();
     }
 
@@ -1597,6 +1597,11 @@ class YjsProjectBridge {
   redo() {
     if (!this.documentManager?.undoManager) return;
 
+    // Flush pending metadata edits first to avoid replaying redo over stale UI state
+    if (this.hasPendingMetadataChanges) {
+      this.flushPendingMetadataChanges();
+    }
+
     // Clear pending changes flag
     this.hasPendingMetadataChanges = false;
 
@@ -1626,10 +1631,18 @@ class YjsProjectBridge {
    * This commits any debounced changes immediately to Yjs
    */
   flushPendingMetadataChanges() {
-    // Find all property inputs and trigger their blur to flush debounced changes
+    const activeElement = document.activeElement;
+    if (activeElement?.classList?.contains('property-value')) {
+      // Blur the active field first. This flushes the pending debounce timer of
+      // the field currently being edited and closes its undo capture group.
+      activeElement.dispatchEvent(new Event('blur', { bubbles: true }));
+      Logger.log('[YjsProjectBridge] Flushed pending metadata changes from active input');
+      return;
+    }
+
+    // Fallback when focus is not in a property field
     const inputs = document.querySelectorAll('.property-value');
     inputs.forEach(input => {
-      // Dispatch blur event to trigger the blur listener which flushes pending changes
       input.dispatchEvent(new Event('blur', { bubbles: true }));
     });
     Logger.log('[YjsProjectBridge] Flushed pending metadata changes');

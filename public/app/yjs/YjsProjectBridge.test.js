@@ -1123,6 +1123,17 @@ describe('YjsProjectBridge', () => {
       expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
     });
 
+    it('undo flushes pending metadata changes even when undoStack has items', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.undo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
+      expect(bridge.documentManager.undoManager.undo).toHaveBeenCalled();
+    });
+
     it('undo sets isUndoRedoInProgress flag', () => {
       bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
 
@@ -1139,6 +1150,16 @@ describe('YjsProjectBridge', () => {
     it('redo calls undoManager.redo', () => {
       bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
       bridge.redo();
+      expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
+    });
+
+    it('redo with pending metadata changes flushes them first', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.redo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
       expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
     });
 
@@ -1870,10 +1891,29 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('dispatches blur to active property-value input first', () => {
+      const activeInput = {
+        classList: { contains: (cls) => cls === 'property-value' },
+        dispatchEvent: mock(() => {}),
+      };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => activeInput,
+      });
+
+      bridge.flushPendingMetadataChanges();
+
+      expect(activeInput.dispatchEvent).toHaveBeenCalled();
+    });
+
     it('dispatches blur events to property inputs', () => {
       const input = {
         dispatchEvent: mock(() => {}),
       };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => null,
+      });
       global.document.querySelectorAll = mock(() => [input]);
 
       bridge.flushPendingMetadataChanges();
