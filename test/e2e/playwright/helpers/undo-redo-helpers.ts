@@ -15,6 +15,7 @@ export async function waitForUndoAvailable(page: Page, timeout = 10000): Promise
             const undoBtn = document.querySelector('button[title*="Undo"]');
             return undoBtn && !undoBtn.hasAttribute('disabled');
         },
+        undefined,
         { timeout },
     );
 }
@@ -28,6 +29,7 @@ export async function waitForRedoAvailable(page: Page, timeout = 10000): Promise
             const redoBtn = document.querySelector('button[title*="Redo"]');
             return redoBtn && !redoBtn.hasAttribute('disabled');
         },
+        undefined,
         { timeout },
     );
 }
