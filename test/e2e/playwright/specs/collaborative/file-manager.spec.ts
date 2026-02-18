@@ -60,6 +60,7 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
             return items.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -129,7 +130,7 @@ async function waitForYjsBridge(page: Page): Promise<void> {
 
 test.describe('Collaborative File Manager', () => {
     // Collaboration tests need more time for WebSocket sync between clients
-    test.setTimeout(180000); // 3 minutes per test
+    test.setTimeout(90000); // 3 minutes per test
 
     // Skip all collaboration tests in static mode
     test.beforeEach(async ({}, testInfo) => {
@@ -171,7 +172,7 @@ test.describe('Collaborative File Manager', () => {
             await uploadFile(pageA, 'test/fixtures/sample-2.jpg');
 
             // Wait for asset to sync via WebSocket (asset-announced message)
-            await pageA.waitForTimeout(2000);
+            await pageA.waitForTimeout(500);
 
             // Client A selects the file and renames it
             await selectFirstFile(pageA);
@@ -211,7 +212,7 @@ test.describe('Collaborative File Manager', () => {
             }
 
             // Wait for WebSocket sync (asset-renamed message)
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager to verify the renamed file
             await openFileManager(pageB);
@@ -224,6 +225,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -273,7 +275,7 @@ test.describe('Collaborative File Manager', () => {
             await uploadFile(pageA, 'test/fixtures/sample-2.jpg');
 
             // Wait for asset to sync via WebSocket
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager BEFORE the rename happens
             await openFileManager(pageB);
@@ -286,6 +288,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -312,7 +315,7 @@ test.describe('Collaborative File Manager', () => {
 
             // Wait for WebSocket sync to propagate to Client B
             // The File Manager should auto-refresh when receiving asset-renamed event
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B selects the file to view its current name
             await selectFirstFile(pageB);
@@ -384,7 +387,7 @@ test.describe('Collaborative File Manager', () => {
             await pageA.waitForTimeout(500);
 
             // Wait for sync
-            await pageA.waitForTimeout(2000);
+            await pageA.waitForTimeout(500);
 
             // Client A renames the folder
             const folderToRename = pageA.locator(
@@ -417,7 +420,7 @@ test.describe('Collaborative File Manager', () => {
             }
 
             // Wait for WebSocket sync
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client B opens File Manager and verifies the renamed folder
             await openFileManager(pageB);
@@ -491,12 +494,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for asset to sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A gets share URL
             const shareUrl = await getShareUrl(pageA);
@@ -506,7 +510,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Client B waits for WebSocket to sync asset metadata from server
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -519,6 +523,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -595,12 +600,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A shares and Client B joins
             const shareUrl = await getShareUrl(pageA);
@@ -608,7 +614,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Wait for metadata sync
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -631,6 +637,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -777,12 +784,13 @@ test.describe('Collaborative File Manager', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.text');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 10000 },
                 );
             }
 
             // Wait for asset to sync to server
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Client A makes project public and gets share URL
             const shareUrl = await getShareUrl(pageA);
@@ -792,7 +800,7 @@ test.describe('Collaborative File Manager', () => {
             await waitForYjsSync(pageB);
 
             // Wait for WebSocket to sync asset metadata
-            await pageB.waitForTimeout(3000);
+            await pageB.waitForTimeout(500);
 
             // Client B opens File Manager
             await openFileManager(pageB);
@@ -805,6 +813,7 @@ test.describe('Collaborative File Manager', () => {
                     );
                     return items.length > 0;
                 },
+                undefined,
                 { timeout: 20000 },
             );
 

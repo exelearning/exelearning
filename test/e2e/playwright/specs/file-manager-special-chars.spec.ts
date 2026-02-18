@@ -89,7 +89,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -98,6 +98,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -191,7 +192,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -227,7 +228,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -263,7 +264,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -299,7 +300,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -335,7 +336,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -370,7 +371,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -403,7 +404,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -436,7 +437,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -469,7 +470,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -504,7 +505,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -537,7 +538,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -570,7 +571,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -596,7 +597,7 @@ test.describe('File Manager - Special Characters', () => {
             // First file
             await uploadFileWithSpecialName(page, filename1);
             await waitForFileInGrid(page, filename1);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Second file
             await uploadFileWithSpecialName(page, filename2);
@@ -726,7 +727,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Open file manager via TinyMCE to navigate back to root
@@ -820,7 +821,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -858,7 +859,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -895,7 +896,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -933,7 +934,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -971,7 +972,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -1008,7 +1009,7 @@ test.describe('File Manager - Special Characters', () => {
             const saveIdeviceBtn = page.locator('#node-content article .idevice_node .btn-save-idevice').first();
             if (await saveIdeviceBtn.isVisible().catch(() => false)) {
                 await saveIdeviceBtn.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -1196,7 +1197,7 @@ test.describe('File Manager - Special Characters', () => {
 
             // Save project
             await saveProject(page);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
             await reloadPage(page);
@@ -1293,7 +1294,7 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -1350,7 +1351,7 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -1411,7 +1412,7 @@ test.describe('File Manager - Special Characters', () => {
                     .catch(() => false)
             ) {
                 await saveIdeviceBtn.first().click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Save project
@@ -1507,7 +1508,7 @@ test.describe('File Manager - Special Characters', () => {
             // Upload one unicode file (simpler test for persistence)
             const filename = getUniqueTestFilename('中文文件.jpg');
             await uploadFileWithSpecialName(page, filename);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Close file manager and dialogs
             await closeFileManager(page);
@@ -1518,7 +1519,7 @@ test.describe('File Manager - Special Characters', () => {
 
             // Save project
             await saveProject(page);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
             await reloadPage(page);
@@ -1561,7 +1562,7 @@ test.describe('File Manager - Special Characters', () => {
 
             // Save project
             await saveProject(page);
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
             await reloadPage(page);

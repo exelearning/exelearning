@@ -67,6 +67,7 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
                 return false;
             }
         },
+        undefined,
         { timeout: 30000 },
     );
 }
@@ -109,6 +110,7 @@ test.describe('Theme Import from ELPX', () => {
                     return false;
                 }
             },
+            undefined,
             { timeout: 60000 },
         );
 

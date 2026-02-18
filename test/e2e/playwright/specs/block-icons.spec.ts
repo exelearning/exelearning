@@ -35,7 +35,7 @@ test.describe('Block Icon Selection Modal', () => {
         await addTextIdevice(page);
 
         // Wait a moment for the UI to stabilize
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Click on the block icon button (the + icon with dashed border) to open the icon selection modal
         // The button has aria-label="Select an icon"

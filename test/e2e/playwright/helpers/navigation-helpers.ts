@@ -44,6 +44,7 @@ export async function createPage(page: Page, title?: string): Promise<string> {
             const navElements = document.querySelectorAll('.nav-element:not([nav-id="root"])');
             return navElements.length > 0;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -170,7 +171,7 @@ export async function clonePage(page: Page): Promise<void> {
     );
     await cloneOption.first().click();
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**

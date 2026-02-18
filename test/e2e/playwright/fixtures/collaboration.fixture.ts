@@ -41,24 +41,15 @@ export const test = authTest.extend<CollaborationFixtures>({
      */
     secondAuthenticatedPage: async ({ secondContext }, use) => {
         const page = await secondContext.newPage();
-
-        // Navigate to login page
-        await page.goto('/login');
-
-        // Click guest login button
-        const guestButton = page.locator(
-            '#login-link-guest, button[name="guest_login"], .btn-guest-login, [data-action="guest-login"]',
-        );
-
-        if ((await guestButton.count()) > 0) {
-            await guestButton.first().click();
-        } else {
-            // Fallback: POST directly to guest login endpoint
-            await page.request.post('/login/guest', {
-                form: { guest_login_nonce: '' },
-            });
-            await page.goto('/workarea');
+        // Use direct guest login via API to keep fixture fast and deterministic
+        const loginResponse = await page.request.post('/login/guest', {
+            form: { guest_login_nonce: '' },
+            timeout: 30000,
+        });
+        if (!loginResponse.ok()) {
+            throw new Error(`Guest login failed for second client: ${loginResponse.status()}`);
         }
+        await page.goto('/workarea');
 
         // Wait for workarea to load
         await page.waitForURL(/\/workarea/, { timeout: 30000 });
@@ -70,6 +61,7 @@ export const test = authTest.extend<CollaborationFixtures>({
                     typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
                 );
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -79,6 +71,7 @@ export const test = authTest.extend<CollaborationFixtures>({
                 const loadingScreen = document.querySelector('#load-screen-main');
                 return loadingScreen?.getAttribute('data-visible') === 'false';
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -101,7 +94,7 @@ export const test = authTest.extend<CollaborationFixtures>({
                 const alertCloseBtn = alertModal.locator('.btn-close, .close, [data-bs-dismiss="modal"], .btn-primary');
                 if (await alertCloseBtn.first().isVisible()) {
                     await alertCloseBtn.first().click();
-                    await page.waitForTimeout(500);
+                    await alertModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
                 }
             }
 
@@ -115,8 +108,14 @@ export const test = authTest.extend<CollaborationFixtures>({
 
             // Make project public for collaboration to work
             await shareModal.setVisibility('public');
-            // Wait for visibility change to be applied
-            await page.waitForTimeout(500);
+            await page.waitForFunction(
+                () => {
+                    const help = document.querySelector('#modalProjectShare .visibility-help');
+                    return !help || help.textContent !== '';
+                },
+                undefined,
+                { timeout: 5000 },
+            );
 
             // Get the share URL
             const shareUrl = await shareModal.getShareLink();
@@ -138,7 +137,7 @@ export const test = authTest.extend<CollaborationFixtures>({
     joinSharedProject: async ({}, use) => {
         const joinSharedProjectFn = async (pageB: Page, shareUrl: string): Promise<void> => {
             // Navigate to share URL
-            await pageB.goto(shareUrl);
+            await pageB.goto(shareUrl, { waitUntil: 'domcontentloaded' });
 
             // Wait for workarea to be ready
             await pageB.waitForURL(/\/workarea/, { timeout: 30000 });
@@ -151,7 +150,8 @@ export const test = authTest.extend<CollaborationFixtures>({
                         (window as any).eXeLearning.app !== undefined
                     );
                 },
-                { timeout: 30000 },
+                undefined,
+                { timeout: 60000, polling: 100 },
             );
 
             // Wait for loading screen to be hidden
@@ -185,7 +185,8 @@ export const test = authTest.extend<CollaborationFixtures>({
                     // Check if WebSocket is connected
                     return provider.wsconnected === true || provider.synced === true;
                 },
-                { timeout: 45000, polling: 100 },
+                undefined,
+                { timeout: 60000, polling: 100 },
             );
         };
 

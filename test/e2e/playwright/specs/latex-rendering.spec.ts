@@ -39,11 +39,11 @@ async function openLatexFixture(page: Page): Promise<void> {
     const latexPageLink = page.getByText('Primeras fórmulas').first();
     if (await latexPageLink.isVisible({ timeout: 3000 }).catch(() => false)) {
         await latexPageLink.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
     }
 
     // Give time for MathJax to initialize and process
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -59,7 +59,7 @@ async function enableMathJaxViaUI(page: Page): Promise<void> {
     await propertiesButton.click();
 
     // Wait for properties to appear in the content area
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // The properties form is in #node-content
     const nodeContent = page.locator('#node-content');
@@ -145,7 +145,7 @@ test.describe('LaTeX Rendering', () => {
             await expect(nodeContent).toBeVisible({ timeout: 10000 });
 
             // Wait for MathJax to process content
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Comprehensive check for LaTeX rendering in the editor
             const latexCheck = await page.evaluate(() => {
@@ -249,7 +249,9 @@ test.describe('LaTeX Rendering', () => {
             const projectUuid = await createProject(page, 'MathJax Check');
             await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', { timeout: 30000 });
+            await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', undefined, {
+                timeout: 30000,
+            });
 
             // Verify MathJax has the required methods
             const mathJaxInfo = await page.evaluate(() => {
@@ -372,7 +374,7 @@ test.describe('LaTeX Rendering', () => {
             await delimitadoresPage.click();
 
             // Wait for the page content to load
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify LaTeX formulas are rendered in the workarea
             const workareaContent = page.locator('#node-content');
@@ -463,7 +465,7 @@ test.describe('LaTeX Rendering', () => {
             const escrituraExists = (await escrituraMenuItem.count()) > 0;
             if (escrituraExists) {
                 await escrituraMenuItem.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Now click on Delimitadores
@@ -472,7 +474,7 @@ test.describe('LaTeX Rendering', () => {
             if (navLinkExists) {
                 // Use force:true in case it's in a submenu that needs expanding
                 await previewNavLink.click({ force: true });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             } else {
                 // Alternative: navigate directly using JavaScript
                 await iframe.locator('body').evaluate(() => {
@@ -480,7 +482,7 @@ test.describe('LaTeX Rendering', () => {
                     const link = document.querySelector('a[href*="delimitadores"]') as HTMLAnchorElement;
                     if (link) link.click();
                 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Verify LaTeX formulas are rendered in preview
@@ -752,6 +754,7 @@ test.describe('LaTeX Rendering', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -761,7 +764,7 @@ test.describe('LaTeX Rendering', () => {
             const iframe = getPreviewFrame(page);
 
             // Additional wait for MathJax to process at runtime
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // When addMathJax is enabled, MathJax should render the content at runtime
             const mathRendered = await iframe.locator('body').evaluate(body => {
@@ -953,6 +956,7 @@ test.describe('LaTeX Rendering', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -962,7 +966,7 @@ test.describe('LaTeX Rendering', () => {
             const iframe = getPreviewFrame(page);
 
             // Additional wait for preview to render
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify all three LaTeX expressions rendered without corruption
             const renderCheck = await iframe.locator('body').evaluate(body => {
@@ -1092,7 +1096,7 @@ test.describe('LaTeX Rendering', () => {
                 }, latexTitle);
 
                 // Wait for MathJax to render in the title
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
 
                 // Verify LaTeX renders in the page title (h2.exe-title or #change_title)
                 const pageTitleElement = page.locator('h2.exe-title, #change_title').first();
@@ -1166,7 +1170,7 @@ test.describe('LaTeX Rendering', () => {
                 await expect(openModal).toBeVisible({ timeout: 10000 });
 
                 // Wait for the file list to load
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
 
                 // Find the project in the list by looking for the LaTeX rendered title
                 // The title should be in .ode-title or .ode-file-title element
@@ -1395,7 +1399,7 @@ test.describe('LaTeX Rendering', () => {
             }, latexTitle);
 
             // Wait for changes to propagate
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Save the project
             await saveProject(page);
@@ -1404,7 +1408,7 @@ test.describe('LaTeX Rendering', () => {
             await reloadPage(page);
 
             // Wait for MathJax to render
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify the title was persisted and renders correctly
             const persistenceCheck = await page.evaluate(() => {

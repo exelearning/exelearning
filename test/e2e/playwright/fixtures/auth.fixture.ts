@@ -56,50 +56,23 @@ export const test = base.extend<AuthFixtures>({
         if (isStaticProject(testInfo)) {
             // Static mode: no login, navigate to root (index.html)
             await page.goto('/');
-
-            // Wait for the app to initialize
-            await page.waitForFunction(
-                () => {
-                    return (
-                        typeof (window as any).eXeLearning !== 'undefined' &&
-                        (window as any).eXeLearning.app !== undefined
-                    );
-                },
-                { timeout: 30000 },
-            );
-
-            // Wait for loading screen to be completely hidden
-            await page.waitForFunction(
-                () => {
-                    const loadingScreen = document.querySelector('#load-screen-main');
-                    return loadingScreen?.getAttribute('data-visible') === 'false';
-                },
-                { timeout: 30000 },
-            );
+            await page.waitForFunction(() => (window as any).eXeLearning?.app !== undefined, undefined, {
+                timeout: 30000,
+            });
+            await waitForLoadingScreenHidden(page);
 
             await use(page);
             return;
         }
 
-        // Server mode: existing login flow
-        // Navigate to login page
-        await page.goto('/login');
+        // Server mode: use direct API login to avoid slow UI auth flow per test
+        const loginResponse = await page.request.post('/login/guest', {
+            form: { guest_login_nonce: '' },
+            timeout: 30000,
+        });
+        expect(loginResponse.ok()).toBeTruthy();
 
-        // Click guest login button
-        const guestButton = page.locator(
-            '#login-link-guest, button[name="guest_login"], .btn-guest-login, [data-action="guest-login"]',
-        );
-
-        // If there's a guest login button, click it
-        if ((await guestButton.count()) > 0) {
-            await guestButton.first().click();
-        } else {
-            // Fallback: POST directly to guest login endpoint
-            await page.request.post('/login/guest', {
-                form: { guest_login_nonce: '' },
-            });
-            await page.goto('/workarea');
-        }
+        await page.goto('/workarea');
 
         // Wait for workarea to load
         await page.waitForURL(/\/workarea/, { timeout: 30000 });
@@ -111,17 +84,12 @@ export const test = base.extend<AuthFixtures>({
                     typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
                 );
             },
+            undefined,
             { timeout: 30000 },
         );
 
         // Wait for loading screen to be completely hidden
-        await page.waitForFunction(
-            () => {
-                const loadingScreen = document.querySelector('#load-screen-main');
-                return loadingScreen?.getAttribute('data-visible') === 'false';
-            },
-            { timeout: 30000 },
-        );
+        await waitForLoadingScreenHidden(page);
 
         await use(page);
     },
@@ -140,9 +108,10 @@ export const test = base.extend<AuthFixtures>({
             return;
         }
 
-        // Server mode: perform guest login via API
+        // Server mode: perform guest login via API (faster than UI flow)
         const response = await page.request.post('/login/guest', {
             form: { guest_login_nonce: '' },
+            timeout: 30000,
         });
 
         expect(response.ok()).toBeTruthy();
@@ -221,6 +190,7 @@ export async function waitForLoadingScreenHidden(page: Page): Promise<void> {
             const loadingScreen = document.querySelector('#load-screen-main');
             return loadingScreen?.getAttribute('data-visible') === 'false';
         },
+        undefined,
         { timeout: 30000 },
     );
 }
