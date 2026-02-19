@@ -442,12 +442,12 @@ test.describe('Collaborative File Manager', () => {
             await pageA.waitForTimeout(300);
 
             const newFolderName = `RenamedFolder_${Date.now()}`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFolderName);
-            });
-
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameFolderInput = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameFolderInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameFolderInput.fill(newFolderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder rename on Client A
             await pageA.waitForSelector(
