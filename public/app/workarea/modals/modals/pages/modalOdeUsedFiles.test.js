@@ -402,6 +402,47 @@ describe('ModalOdeUsedFiles', () => {
       expect(span).not.toBeNull();
       expect(span.textContent).toBe('relative/path/image.png');
     });
+
+    it('should show italic "Untitled" placeholder for empty block name', () => {
+      const data = {
+        usedFiles: [
+          {
+            usedFiles: 'image.png',
+            usedFilesPath: '/api/assets/image.png',
+            usedFilesSize: '100KB',
+            pageNamesUsedFiles: 'Home',
+            blockNamesUsedFiles: '',
+            typeComponentSyncUsedFiles: 'Image',
+            orderComponentSyncUsedFiles: 1
+          }
+        ]
+      };
+      const tbody = modal.makeTbodyElements(data);
+      const blockNameCell = tbody.querySelectorAll('td')[4];
+      const em = blockNameCell.querySelector('em');
+      expect(em).not.toBeNull();
+      expect(em.textContent).toBe('Untitled');
+    });
+
+    it('should show normal text when block name is provided', () => {
+      const data = {
+        usedFiles: [
+          {
+            usedFiles: 'image.png',
+            usedFilesPath: '/api/assets/image.png',
+            usedFilesSize: '100KB',
+            pageNamesUsedFiles: 'Home',
+            blockNamesUsedFiles: 'My Block',
+            typeComponentSyncUsedFiles: 'Image',
+            orderComponentSyncUsedFiles: 1
+          }
+        ]
+      };
+      const tbody = modal.makeTbodyElements(data);
+      const blockNameCell = tbody.querySelectorAll('td')[4];
+      expect(blockNameCell.querySelector('em')).toBeNull();
+      expect(blockNameCell.textContent).toBe('My Block');
+    });
   });
 
   describe('makeOdeListElements', () => {
