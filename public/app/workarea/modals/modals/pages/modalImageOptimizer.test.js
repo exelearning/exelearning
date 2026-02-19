@@ -18,6 +18,7 @@ vi.mock('../../../utils/ImageOptimizerManager.js', () => ({
         getAllItems: vi.fn(() => []),
         setPreset: vi.fn(),
         setJpegQuality: vi.fn(),
+        resetEstimates: vi.fn(),
         getSettings: vi.fn(() => ({ preset: 'medium', jpegQuality: 0.85 })),
         getStats: vi.fn(() => ({
             total: 0, estimated: 0, optimized: 0, failed: 0,
@@ -923,6 +924,13 @@ describe('ModalImageOptimizer', () => {
         beforeEach(() => {
             modal.optimizerManager = {
                 setPreset: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn(() => null),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map(),
+                getStatsForSelection: vi.fn(() => ({ selected: 0, totalOriginal: 0, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
             };
         });
 
@@ -940,13 +948,33 @@ describe('ModalImageOptimizer', () => {
             expect(modal.qualitySlider.value).toBe('75');
             expect(modal.qualityValue.textContent).toBe('75');
         });
+
+        it('should trigger re-estimation', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.presetSelect.value = 'strong';
+            modal.onPresetChange();
+
+            expect(reEstimateSpy).toHaveBeenCalled();
+        });
     });
 
     describe('onQualityChange', () => {
         beforeEach(() => {
+            vi.useFakeTimers();
             modal.optimizerManager = {
                 setJpegQuality: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn(() => null),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map(),
+                getStatsForSelection: vi.fn(() => ({ selected: 0, totalOriginal: 0, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
             };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
         });
 
         it('should update manager quality', () => {
@@ -961,6 +989,110 @@ describe('ModalImageOptimizer', () => {
             modal.onQualityChange();
 
             expect(modal.qualityValue.textContent).toBe('75');
+        });
+
+        it('should trigger re-estimation after debounce delay', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.qualitySlider.value = '75';
+            modal.onQualityChange();
+
+            expect(reEstimateSpy).not.toHaveBeenCalled();
+            vi.runAllTimers();
+            expect(reEstimateSpy).toHaveBeenCalled();
+        });
+
+        it('should debounce re-estimation on rapid slider changes', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.qualitySlider.value = '75';
+            modal.onQualityChange();
+            modal.onQualityChange();
+            modal.onQualityChange();
+
+            vi.runAllTimers();
+            expect(reEstimateSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('reEstimate', () => {
+        beforeEach(() => {
+            modal.optimizerManager = {
+                setPreset: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn((id) => modal.optimizerManager.queue.get(id)),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map([
+                    ['asset-1', { assetId: 'asset-1', status: 'pending', estimatedSize: null, originalSize: 1000 }],
+                ]),
+                getStatsForSelection: vi.fn(() => ({ selected: 1, totalOriginal: 1000, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
+                cancel: vi.fn(),
+            };
+
+            const blob = new Blob(['test'], { type: 'image/png' });
+            const row = modal.buildImageRow({ id: 'asset-1', filename: 'test.png', mime: 'image/png', size: 1000 }, blob, true);
+            modal.rowElements.set('asset-1', row);
+            modal.selectedAssets.add('asset-1');
+        });
+
+        it('should do nothing when viewState is not normal', async () => {
+            modal.viewState = 'progress';
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.resetEstimates).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when optimizerManager is null', async () => {
+            modal.optimizerManager = null;
+
+            // Should not throw
+            await expect(modal.reEstimate()).resolves.toBeUndefined();
+        });
+
+        it('should reset estimates on the manager', async () => {
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.resetEstimates).toHaveBeenCalled();
+        });
+
+        it('should restart estimation for currently selected assets', async () => {
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.estimateSelected).toHaveBeenCalledWith(['asset-1']);
+        });
+
+        it('should cancel ongoing estimation before re-estimating', async () => {
+            modal.optimizerManager.isInProgress = vi.fn(() => true);
+            modal._estimatePromise = Promise.resolve();
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.cancel).toHaveBeenCalled();
+        });
+
+        it('should re-enable and re-select previously disabled "already optimized" items', async () => {
+            const row = modal.rowElements.get('asset-1');
+            row.dataset.selectable = 'false';
+            modal.selectedAssets.delete('asset-1');
+
+            await modal.reEstimate();
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(true);
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(checkbox.disabled).toBe(false);
+        });
+
+        it('should not start estimation when no assets are selected', async () => {
+            modal.selectedAssets.clear();
+            // All rows remain selectable but none are selected
+            for (const row of modal.rowElements.values()) {
+                row.dataset.selectable = 'true';
+            }
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.estimateSelected).not.toHaveBeenCalled();
         });
     });
 
