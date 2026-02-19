@@ -149,8 +149,15 @@ export default class ModalOdeUsedFiles extends Modal {
                 // Column 1 (index 1) is the path - make it clickable
                 if (tdCount === 1) {
                     td.appendChild(this.createPathLink(tdContent[tdCount]));
-                } else if (tdCount === 4 && !tdContent[tdCount]) {
-                    // Column 4 is block name - show italic placeholder when empty
+                } else if (
+                    tdCount === 4
+                    && (
+                        !tdContent[tdCount]
+                        || tdContent[tdCount] === '-'
+                        || String(tdContent[tdCount]).trim() === ''
+                    )
+                ) {
+                    // Column 4 is block name - show italic placeholder when missing
                     let em = document.createElement('em');
                     em.textContent = _('Untitled');
                     td.appendChild(em);

@@ -424,6 +424,27 @@ describe('ModalOdeUsedFiles', () => {
       expect(em.textContent).toBe('Untitled');
     });
 
+    it('should show italic "Untitled" placeholder for dash block name', () => {
+      const data = {
+        usedFiles: [
+          {
+            usedFiles: 'image.png',
+            usedFilesPath: '/api/assets/image.png',
+            usedFilesSize: '100KB',
+            pageNamesUsedFiles: 'Home',
+            blockNamesUsedFiles: '-',
+            typeComponentSyncUsedFiles: 'Image',
+            orderComponentSyncUsedFiles: 1
+          }
+        ]
+      };
+      const tbody = modal.makeTbodyElements(data);
+      const blockNameCell = tbody.querySelectorAll('td')[4];
+      const em = blockNameCell.querySelector('em');
+      expect(em).not.toBeNull();
+      expect(em.textContent).toBe('Untitled');
+    });
+
     it('should show normal text when block name is provided', () => {
       const data = {
         usedFiles: [
