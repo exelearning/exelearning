@@ -2395,19 +2395,28 @@
                     const createdAt = project.created_at ? new Date(project.created_at).toLocaleDateString() : '-';
                     const isChecked = selectedProjectIds.has(project.id) ? 'checked' : '';
 
+                    const isPublic = project.visibility === 'public';
                     const tr = document.createElement('tr');
                     tr.dataset.projectId = project.id;
                     tr.innerHTML = `
                         <td>
                             <input type="checkbox" class="bulk-checkbox project-checkbox" data-project-id="${project.id}" ${isChecked}>
                         </td>
-                        <td style="font-weight: 600; color: var(--admin-text-muted);">#${project.id}</td>
+                        <td style="font-weight: 600; color: var(--admin-text-muted);" title="${project.uuid}">#${project.id}</td>
                         <td>${project.title || '-'}</td>
                         <td>${ownerLabel}</td>
                         <td><span class="badge-role ${statusClass}">${project.status}</span></td>
                         <td><span class="badge-role ${visibilityClass}">${project.visibility}</span></td>
                         <td>${createdAt}</td>
                         <td>
+                            ${isPublic ? `
+                            <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
+                                <span class="mi mi-sm">open_in_new</span>
+                            </a>
+                            <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id}, '${(project.title || '').replace(/'/g, "\\'")}')" title="{{ t.download_elpx or 'Download .elpx' }}">
+                                <span class="mi mi-sm">download</span>
+                            </button>
+                            ` : ''}
                             <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, '${nextStatus}')" title="${toggleLabel}">
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
@@ -2717,6 +2726,26 @@
             } catch (err) {
                 console.error('Failed to delete project:', err);
                 alert(err.message || 'Failed to delete project');
+            }
+        }
+
+        async function downloadProjectElpx(projectId, projectTitle) {
+            try {
+                const res = await fetch(`${API_BASE}/projects/${projectId}/download`, { credentials: 'include' });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.message || T.error_downloading || 'Download failed');
+                    return;
+                }
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = res.headers.get('content-disposition')?.match(/filename="([^"]+)"/)?.[1] || `project-${projectId}.elpx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Download failed:', err);
             }
         }
 
