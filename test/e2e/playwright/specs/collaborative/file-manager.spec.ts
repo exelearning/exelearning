@@ -228,15 +228,14 @@ test.describe('Collaborative File Manager', () => {
             const originalFilename = await filenameSpanA.textContent();
             expect(originalFilename).toContain('sample-2');
 
-            // Set up rename dialog handler
+            // Click rename button on Client A and fill in the custom rename dialog
             const newFilename = `synced-rename-${Date.now()}.jpg`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFilename);
-            });
-
-            // Click rename button on Client A
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameInputA = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameInputA.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInputA.fill(newFilename);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for rename to complete on Client A
             await pageA.waitForFunction(
@@ -342,12 +341,12 @@ test.describe('Collaborative File Manager', () => {
             await selectFirstFile(pageA);
 
             const newFilename = `live-sync-rename-${Date.now()}.jpg`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFilename);
-            });
-
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameInputA2 = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameInputA2.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInputA2.fill(newFilename);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for rename to complete on Client A
             await pageA.waitForFunction(
@@ -443,12 +442,12 @@ test.describe('Collaborative File Manager', () => {
             await pageA.waitForTimeout(300);
 
             const newFolderName = `RenamedFolder_${Date.now()}`;
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(newFolderName);
-            });
-
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
             await renameBtn.click();
+            const renameFolderInput = pageA.locator('#modalFileManager .rename-dialog-input');
+            await renameFolderInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameFolderInput.fill(newFolderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder rename on Client A
             await pageA.waitForSelector(

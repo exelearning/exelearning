@@ -1273,6 +1273,88 @@
             }
         }
     }
+
+    // Rename Dialog (nested inside File Manager modal)
+    .media-library-rename-dialog {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+
+        .rename-dialog-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .rename-dialog-content {
+            position: relative;
+            background: var(--white, #fff);
+            border-radius: var(--radius, 8px);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+            width: 400px;
+            max-width: 90%;
+            display: flex;
+            flex-direction: column;
+            z-index: 1;
+        }
+
+        .rename-dialog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200, #e2e8f0);
+
+            .rename-dialog-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: var(--gray-800, #2d3748);
+                margin: 0;
+            }
+
+            .rename-dialog-close {
+                background: none;
+                border: none;
+                font-size: 24px;
+                line-height: 1;
+                color: var(--gray-500, #718096);
+                cursor: pointer;
+                padding: 0;
+
+                &:hover {
+                    color: var(--gray-800, #2d3748);
+                }
+            }
+        }
+
+        .rename-dialog-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .rename-dialog-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 16px 20px;
+            border-top: 1px solid var(--gray-200, #e2e8f0);
+
+            .btn {
+                min-width: 100px;
+            }
+        }
+    }
 }
 
 /* Modal stylemanager */

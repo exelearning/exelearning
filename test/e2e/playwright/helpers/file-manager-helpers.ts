@@ -547,7 +547,7 @@ export async function navigateToParentFolder(page: Page): Promise<void> {
 
 /**
  * Rename a file to a new name.
- * Handles the native dialog for entering the new name.
+ * Interacts with the custom rename dialog (not a native browser dialog).
  *
  * @param page - Playwright page
  * @param oldName - Current filename
@@ -560,13 +560,13 @@ export async function renameFile(page: Page, oldName: string, newName: string): 
     // Click rename button
     const renameBtn = page.locator('#modalFileManager .media-library-rename-btn');
     await renameBtn.waitFor({ state: 'visible', timeout: 5000 });
-
-    // Set up dialog handler BEFORE clicking (using page.once pattern)
-    page.once('dialog', async dialog => {
-        await dialog.accept(newName);
-    });
-
     await renameBtn.click();
+
+    // Fill in the custom rename dialog
+    const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+    await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+    await renameInput.fill(newName);
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     // Wait for the rename to complete
     await page.waitForFunction(
@@ -590,16 +590,17 @@ export async function renameFile(page: Page, oldName: string, newName: string): 
 export async function renameFileInManager(page: Page, newName: string): Promise<void> {
     const modal = page.locator('#modalFileManager');
 
-    // Set up dialog handler BEFORE clicking (using page.once pattern)
-    page.once('dialog', async dialog => {
-        await dialog.accept(newName);
-    });
-
     // Click rename button
     const renameBtn = modal.locator(
         '.media-library-rename-btn, [data-action="rename"], button:has-text("Rename"), button:has-text("Renombrar")',
     );
     await renameBtn.first().click();
+
+    // Fill in the custom rename dialog
+    const renameInput = modal.locator('.rename-dialog-input');
+    await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+    await renameInput.fill(newName);
+    await modal.locator('.rename-dialog-confirm').click();
 
     await page.waitForFunction(
         name => {
