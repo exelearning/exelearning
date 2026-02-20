@@ -231,11 +231,11 @@ describe('ModalOdeUsedFiles', () => {
   });
 
   describe('makeTheadElements', () => {
-    it('should create thead with 7 columns', () => {
+    it('should create thead with 6 columns', () => {
       const thead = modal.makeTheadElements();
       expect(thead.tagName).toBe('THEAD');
       const headers = thead.querySelectorAll('th');
-      expect(headers.length).toBe(7);
+      expect(headers.length).toBe(6);
     });
 
     it('should have correct column titles', () => {
@@ -247,7 +247,6 @@ describe('ModalOdeUsedFiles', () => {
       expect(headers[3].textContent).toBe('Page name');
       expect(headers[4].textContent).toBe('Block name');
       expect(headers[5].textContent).toBe('iDevice');
-      expect(headers[6].textContent).toBe('Position');
     });
   });
 
@@ -314,7 +313,7 @@ describe('ModalOdeUsedFiles', () => {
       expect(tbody.querySelectorAll('tr').length).toBe(3);
     });
 
-    it('should populate all 7 columns correctly', () => {
+    it('should populate all 6 columns correctly', () => {
       const data = {
         usedFiles: [
           {
@@ -330,14 +329,13 @@ describe('ModalOdeUsedFiles', () => {
       };
       const tbody = modal.makeTbodyElements(data);
       const cells = tbody.querySelectorAll('td');
-      expect(cells.length).toBe(7);
+      expect(cells.length).toBe(6);
       expect(cells[0].textContent).toBe('test.png');
       // cells[1] is the path link
       expect(cells[2].textContent).toBe('50KB');
       expect(cells[3].textContent).toBe('TestPage');
       expect(cells[4].textContent).toBe('TestBlock');
       expect(cells[5].textContent).toBe('ImageTest');
-      expect(cells[6].textContent).toBe('42');
     });
 
     it('should make path column clickable for server paths', () => {
