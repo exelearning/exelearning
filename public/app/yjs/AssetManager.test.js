@@ -599,6 +599,19 @@ describe('AssetManager', () => {
 
       expect(url).toBeNull();
     });
+
+    it('returns null when metadata exists but blob is not local', async () => {
+      assetManager.getAsset = mock(() => undefined).mockResolvedValue({
+        id: 'asset-1',
+        blob: null,
+      });
+      const createBlobURLSpy = spyOn(assetManager, 'createBlobURL');
+
+      const url = await assetManager.resolveAssetURL('asset://asset-1');
+
+      expect(url).toBeNull();
+      expect(createBlobURLSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('resolveAssetURLSync', () => {
@@ -2177,6 +2190,32 @@ describe('AssetManager.updateDomImagesForAsset (iframe coverage)', () => {
     expect(iframe.getAttribute('data-asset-loading')).toBeNull();
     expect(iframe.src).toBe('http://localhost/html-fallback');
   });
+
+  it('updates media elements using data-asset-url fallback when data-asset-id is missing', async () => {
+    const assetId = '44444444-4444-4444-4444-444444444444';
+    const blobUrl = 'blob:http://localhost/fallback-media';
+
+    const img = document.createElement('img');
+    img.setAttribute('data-asset-url', `asset://${assetId}.jpg`);
+    img.setAttribute('data-asset-loading', 'true');
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+
+    const link = document.createElement('a');
+    link.setAttribute('data-asset-url', `asset://${assetId}.jpg`);
+    link.setAttribute('href', `asset://${assetId}.jpg`);
+
+    document.body.appendChild(img);
+    document.body.appendChild(link);
+
+    vi.spyOn(assetManager, 'resolveAssetURL').mockResolvedValue(blobUrl);
+
+    const count = await assetManager.updateDomImagesForAsset(assetId);
+
+    expect(count).toBe(2);
+    expect(img.src).toBe(blobUrl);
+    expect(img.getAttribute('data-asset-loading')).toBeNull();
+    expect(link.getAttribute('href')).toBe(blobUrl);
+  });
 });
 
 describe('window.resolveAssetUrls global function', () => {
@@ -3581,6 +3620,40 @@ describe('resolveAssetURLWithPlaceholder', () => {
     expect(result.isPlaceholder).toBe(true);
     expect(result.url).toContain('not%20found');
   });
+
+  it('extracts asset ID from simplified URL format (asset://uuid.ext)', async () => {
+    assetManager.getAsset = mock(() => Promise.resolve(null));
+    const mockWsHandler = {
+      requestAsset: mock(() => Promise.resolve()),
+    };
+
+    const result = await assetManager.resolveAssetURLWithPlaceholder('asset://abc12345-def6-7890-abcd-ef1234567890.jpg', {
+      wsHandler: mockWsHandler,
+    });
+
+    expect(result.isPlaceholder).toBe(true);
+    expect(result.assetId).toBe('abc12345-def6-7890-abcd-ef1234567890');
+    expect(mockWsHandler.requestAsset).toHaveBeenCalledWith('abc12345-def6-7890-abcd-ef1234567890');
+  });
+
+  it('treats metadata-only asset as missing and requests it', async () => {
+    assetManager.getAsset = mock(() =>
+      Promise.resolve({
+        id: 'metadata-only',
+        blob: null,
+      }),
+    );
+    const mockWsHandler = {
+      requestAsset: mock(() => Promise.resolve()),
+    };
+
+    const result = await assetManager.resolveAssetURLWithPlaceholder('asset://metadata-only', {
+      wsHandler: mockWsHandler,
+    });
+
+    expect(result.isPlaceholder).toBe(true);
+    expect(mockWsHandler.requestAsset).toHaveBeenCalledWith('metadata-only');
+  });
 });
 
 describe('resolveAssetURLWithPriority', () => {
@@ -3669,6 +3742,29 @@ describe('resolveAssetURLWithPriority', () => {
 
     expect(mockWsHandler.sendPriorityUpdate).toHaveBeenCalledWith('missing', 100, 'render', 'page-1');
     expect(mockWsHandler.requestAssetWithPriority).toHaveBeenCalled();
+  });
+
+  it('treats metadata-only asset as missing and enqueues priority fetch', async () => {
+    assetManager.getAsset = mock(() =>
+      Promise.resolve({
+        id: 'missing-with-metadata',
+        blob: null,
+      }),
+    );
+    const mockQueue = { enqueue: mock(() => {}) };
+    assetManager.priorityQueue = mockQueue;
+
+    const result = await assetManager.resolveAssetURLWithPriority('asset://missing-with-metadata.jpg', {
+      pageId: 'page-1',
+      reason: 'render',
+    });
+
+    expect(result.isPlaceholder).toBe(true);
+    expect(result.assetId).toBe('missing-with-metadata');
+    expect(mockQueue.enqueue).toHaveBeenCalledWith('missing-with-metadata', 100, {
+      reason: 'render',
+      pageId: 'page-1',
+    });
   });
 });
 
