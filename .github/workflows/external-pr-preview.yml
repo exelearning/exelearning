@@ -1,3 +1,16 @@
+# =============================================================================
+# Deploy External PR Preview
+# =============================================================================
+# Deploys a static preview of pull requests from external contributors (forks)
+# to GitHub Pages under /pr-preview/pr-{number}/.
+#
+# Previews are automatically cleaned up when the PR is closed or merged.
+#
+# ⚠️  SECURITY NOTE: This workflow uses `pull_request_target`, which means it
+# requires maintainer approval before running. Since it builds and deploys code
+# from external forks, maintainers MUST carefully review the PR changes before
+# approving the workflow run to prevent malicious code execution.
+# =============================================================================
 name: Deploy external PR Preview
 
 on:
