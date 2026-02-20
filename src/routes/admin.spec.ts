@@ -1715,4 +1715,66 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(404);
         });
     });
+
+    describe('GET /api/admin/projects/:id/download', () => {
+        it('should return 400 for invalid project id', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/invalid/download', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const body = await response.json();
+            expect(body.error).toBe('BAD_REQUEST');
+        });
+
+        it('should return 404 for non-existent project', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectById: async () => undefined,
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/999/download', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(404);
+            const body = await response.json();
+            expect(body.error).toBe('NOT_FOUND');
+        });
+
+        it('should return 403 for private project', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findProjectById: async () => mockProject({ id: 1, visibility: 'private' }),
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/1/download', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const body = await response.json();
+            expect(body.error).toBe('FORBIDDEN');
+        });
+    });
 });
