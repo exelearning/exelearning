@@ -4343,7 +4343,7 @@ describe('IdeviceNode', () => {
             idevice.ideviceButtons.innerHTML = `
                 <button id="editIdeviceidevice-123">Edit</button>
                 <button id="minifyIdeviceidevice-123">
-                    <span id="minifyIdeviceidevice-123icon" class="chevron-up-icon-green"></span>
+                    <span id="minifyIdeviceidevice-123icon" class="chevron-expand-icon-green"></span>
                 </button>
             `;
 
@@ -4381,12 +4381,12 @@ describe('IdeviceNode', () => {
             // Verify: iDevice body should be visible (jQuery.show() removes display:none)
             expect(ideviceBody.style.display).not.toBe('none');
 
-            // Verify: icon should change from chevron-up to chevron-down
+            // Verify: icon should change from chevron-expand to chevron-contract
             const minifyIcon = idevice.ideviceButtons.querySelector(
                 '#minifyIdeviceidevice-123icon'
             );
-            expect(minifyIcon.classList.contains('chevron-down-icon-green')).toBe(true);
-            expect(minifyIcon.classList.contains('chevron-up-icon-green')).toBe(false);
+            expect(minifyIcon.classList.contains('chevron-contract-icon-green')).toBe(true);
+            expect(minifyIcon.classList.contains('chevron-expand-icon-green')).toBe(false);
 
             // Clean up
             document.body.removeChild(ideviceBody);

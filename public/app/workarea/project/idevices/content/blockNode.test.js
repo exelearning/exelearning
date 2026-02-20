@@ -804,7 +804,7 @@ describe('IdeviceBlockNode', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('div');
             block.toggleElement = document.createElement('button');
-            block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
+            block.toggleElement.innerHTML = '<span class="small-icon chevron-contract-icon"></span>';
             block.toggleElement.classList.add('box-toggle-on');
         });
 
@@ -828,7 +828,9 @@ describe('IdeviceBlockNode', () => {
         it('updates toggle element title and icon', () => {
             block.toggleOff();
             expect(block.toggleElement.getAttribute('title')).toBe('Show');
-            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_up');
+            const span = block.toggleElement.querySelector('span');
+            expect(span.classList.contains('chevron-expand-icon')).toBe(true);
+            expect(span.classList.contains('chevron-contract-icon')).toBe(false);
         });
     });
 
@@ -837,7 +839,7 @@ describe('IdeviceBlockNode', () => {
             block.blockContent = document.createElement('div');
             block.blockContent.classList.add('hidden-idevices');
             block.toggleElement = document.createElement('button');
-            block.toggleElement.innerHTML = '<span>keyboard_arrow_up</span>';
+            block.toggleElement.innerHTML = '<span class="small-icon chevron-expand-icon"></span>';
             block.toggleElement.classList.add('box-toggle-off');
         });
 
@@ -855,7 +857,9 @@ describe('IdeviceBlockNode', () => {
         it('updates toggle element title and icon', () => {
             block.toggleOn();
             expect(block.toggleElement.getAttribute('title')).toBe('Hide');
-            expect(block.toggleElement.querySelector('span').innerHTML).toBe('keyboard_arrow_down');
+            const span = block.toggleElement.querySelector('span');
+            expect(span.classList.contains('chevron-contract-icon')).toBe(true);
+            expect(span.classList.contains('chevron-expand-icon')).toBe(false);
         });
     });
 
