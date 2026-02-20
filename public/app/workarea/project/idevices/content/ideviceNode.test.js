@@ -4691,12 +4691,16 @@ describe('IdeviceNode', () => {
     });
 
     describe('addBehaviourMinifyIdeviceButton', () => {
+        let ideviceBodyEl;
+
         beforeEach(() => {
             idevice.odeIdeviceId = 'idevice-123';
             idevice.ideviceButtons = document.createElement('div');
-            idevice.ideviceButtons.innerHTML = `<button id="minifyIdeviceidevice-123"><span id="minifyIdeviceidevice-123icon" class="chevron-down-icon-green"></span></button>`;
-            idevice.ideviceBody = document.createElement('div');
-            idevice.ideviceBody.style.display = 'block';
+            idevice.ideviceButtons.innerHTML = `<button id="minifyIdeviceidevice-123"><span id="minifyIdeviceidevice-123icon" class="small-icon chevron-contract-icon-green"></span></button>`;
+            ideviceBodyEl = document.createElement('div');
+            ideviceBodyEl.className = 'idevice_body';
+            ideviceBodyEl.setAttribute('idevice-id', 'idevice-123');
+            document.body.appendChild(ideviceBodyEl);
         });
 
         it('adds click listener without throwing', () => {
@@ -4704,6 +4708,31 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('collapses idevice body and swaps icon to expand on click when expanded', () => {
+            idevice.addBehaviourMinifyIdeviceButton();
+
+            const btn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123');
+            btn.click();
+
+            const icn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123icon');
+            expect(icn.classList.contains('chevron-expand-icon-green')).toBe(true);
+            expect(icn.classList.contains('chevron-contract-icon-green')).toBe(false);
+        });
+
+        it('expands idevice body and swaps icon to contract on click when collapsed', () => {
+            const icn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123icon');
+            icn.classList.remove('chevron-contract-icon-green');
+            icn.classList.add('chevron-expand-icon-green');
+
+            idevice.addBehaviourMinifyIdeviceButton();
+
+            const btn = idevice.ideviceButtons.querySelector('#minifyIdeviceidevice-123');
+            btn.click();
+
+            expect(icn.classList.contains('chevron-contract-icon-green')).toBe(true);
+            expect(icn.classList.contains('chevron-expand-icon-green')).toBe(false);
         });
     });
 
