@@ -15,8 +15,79 @@
         {# Additional JavaScript will be added here #}
         {% endblock %}
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        {% if impersonation and impersonation.isActive %}
+        <style>
+            body {
+                padding-top: 52px;
+            }
+
+            .impersonation-banner {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 5000;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1rem;
+                padding: 0.75rem 1rem;
+                background: #fff7e6;
+                border-bottom: 1px solid #f6d28b;
+                color: #7a5400;
+                font-size: 0.95rem;
+                line-height: 1.2;
+            }
+
+            .impersonation-banner button {
+                border: 1px solid #d89c1d;
+                border-radius: 6px;
+                background: #fff;
+                color: #7a5400;
+                padding: 0.35rem 0.7rem;
+                font-size: 0.88rem;
+                font-weight: 600;
+                cursor: pointer;
+            }
+        </style>
+        {% endif %}
     </head>
     <body class="{% block class %}{% endblock %}" id="{% block id %}{% endblock %}">
+        {% if impersonation and impersonation.isActive %}
+        <div class="impersonation-banner" id="impersonation-banner" data-session-id="{{ impersonation.sessionId }}">
+            <span>
+                You are logged in as <strong>{{ impersonation.impersonatedEmail }}</strong>
+                (admin: {{ impersonation.impersonatorEmail }})
+            </span>
+            <button type="button" id="impersonation-return-button">Return to admin</button>
+        </div>
+        <script>
+            document.getElementById('impersonation-return-button')?.addEventListener('click', async () => {
+                const endpoint = `{{ basePath }}/api/auth/impersonation/stop`;
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    if (!response.ok) {
+                        let message = 'Failed to return to admin session';
+                        try {
+                            const data = await response.json();
+                            if (data?.message) {
+                                message = data.message;
+                            }
+                        } catch {}
+                        alert(message);
+                        return;
+                    }
+                    window.location.href = `{{ basePath }}/admin`;
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Failed to return to admin session';
+                    alert(message);
+                }
+            });
+        </script>
+        {% endif %}
         {% block body %}{% endblock %}
         <script src="{{ '/app/workarea/custom.js' | asset }}"></script>
     </body>

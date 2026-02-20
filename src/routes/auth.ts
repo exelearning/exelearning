@@ -14,6 +14,7 @@ import {
     findUserById as findUserByIdDefault,
     createUser as createUserDefault,
 } from '../db/queries';
+import { endImpersonationAuditSession } from '../db/queries/impersonation';
 import { randomBytes, createHash } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
@@ -53,6 +54,9 @@ export interface JwtPayload {
     roles: string[];
     isGuest?: boolean;
     authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
+    isImpersonated?: boolean;
+    impersonatedBy?: number;
+    impersonationSessionId?: string;
     iat?: number;
     exp?: number;
 }
@@ -60,6 +64,15 @@ export interface JwtPayload {
 // Get JWT secret from environment
 const getJwtSecret = (): string => {
     return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
+};
+
+const getRequestClientIp = (request: Request): string | null => {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (forwardedFor) {
+        const firstIp = forwardedFor.split(',')[0]?.trim();
+        if (firstIp) return firstIp;
+    }
+    return null;
 };
 
 // Login request body schema
@@ -186,6 +199,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             // POST /api/auth/logout - Logout
             .post('/api/auth/logout', async ({ cookie, auth }) => {
                 cookie.auth.remove();
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
                 return {
                     message: 'Logged out successfully',
                     wasAuthenticated: auth?.isAuthenticated || false,
@@ -206,6 +221,62 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 return {
                     user: sanitizeUser(auth.user),
                     isGuest: auth.isGuest,
+                };
+            })
+
+            // POST /api/auth/impersonation/stop - Restore original admin session
+            .post('/api/auth/impersonation/stop', async ({ jwt, cookie, request, set }) => {
+                const originalToken = cookie.impersonator_auth?.value;
+                const sessionId = cookie.impersonation_session?.value || null;
+
+                if (!originalToken) {
+                    set.status = 400;
+                    return { error: 'BAD_REQUEST', message: 'No active impersonation session' };
+                }
+
+                const originalPayload = (await jwt.verify(originalToken)) as JwtPayload | false;
+                if (!originalPayload || !originalPayload.sub) {
+                    cookie.impersonator_auth.remove();
+                    cookie.impersonation_session.remove();
+                    set.status = 401;
+                    return { error: 'UNAUTHORIZED', message: 'Original session is no longer valid' };
+                }
+
+                const originalUser = await findUserById(db, Number(originalPayload.sub));
+                if (!originalUser) {
+                    cookie.impersonator_auth.remove();
+                    cookie.impersonation_session.remove();
+                    set.status = 401;
+                    return { error: 'UNAUTHORIZED', message: 'Original user no longer exists' };
+                }
+
+                cookie.auth.set({
+                    value: originalToken,
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'lax',
+                    maxAge: 7 * 24 * 60 * 60,
+                    path: '/',
+                });
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
+
+                if (sessionId) {
+                    try {
+                        await endImpersonationAuditSession(db, {
+                            sessionId,
+                            endedByIp: getRequestClientIp(request),
+                            endedUserAgent: request.headers.get('user-agent'),
+                        });
+                    } catch (error) {
+                        console.error('[Impersonation] Failed to write end audit event:', error);
+                    }
+                }
+
+                return {
+                    success: true,
+                    message: 'Impersonation ended',
+                    user: sanitizeUser(originalUser),
                 };
             })
 
@@ -303,6 +374,8 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
 
                 // Remove auth cookie first
                 cookie.auth.remove();
+                cookie.impersonator_auth.remove();
+                cookie.impersonation_session.remove();
 
                 // Build callback URL for SSO logout (include BASE_PATH)
                 const url = new URL(request.url);
@@ -968,6 +1041,12 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
             roles: payload.roles as string[],
             isGuest: payload.isGuest as boolean | undefined,
             authMethod: payload.authMethod as JwtPayload['authMethod'],
+            isImpersonated: payload.isImpersonated as boolean | undefined,
+            impersonatedBy:
+                typeof payload.impersonatedBy === 'string'
+                    ? parseInt(payload.impersonatedBy, 10)
+                    : (payload.impersonatedBy as number | undefined),
+            impersonationSessionId: payload.impersonationSessionId as string | undefined,
             iat: payload.iat,
             exp: payload.exp,
         };
