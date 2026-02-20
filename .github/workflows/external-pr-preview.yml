@@ -1,0 +1,82 @@
+# =============================================================================
+# Deploy External PR Preview
+# =============================================================================
+# Deploys a static preview of pull requests from external contributors (forks)
+# to GitHub Pages under /pr-preview/pr-{number}/.
+#
+# Previews are automatically cleaned up when the PR is closed or merged.
+#
+# ⚠️  SECURITY NOTE: This workflow uses `pull_request_target`, which means it
+# requires maintainer approval before running. Since it builds and deploys code
+# from external forks, maintainers MUST carefully review the PR changes before
+# approving the workflow run to prevent malicious code execution.
+# =============================================================================
+name: Deploy external PR Preview
+
+on:
+  # Runs after the approve workflow completes for fork PRs
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+    paths-ignore:
+      - 'doc/**'
+      - 'test/**'
+      - '*.md'
+
+concurrency: preview-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    # Only for external PRs (forks)
+    if: github.event.pull_request.head.repo.fork == true
+    steps:
+      - name: Checkout PR head safely
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Setup Bun
+        if: github.event.action != 'closed'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: github.event.action != 'closed'
+        run: bun install
+
+      - name: Generate version string
+        id: version
+        run: |
+          VERSION="v0.0.0-pr${{ github.event.pull_request.number }}-$(date +%Y%m%d%H%M)"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build static distribution
+        if: github.event.action != 'closed'
+        run: VERSION=${{ steps.version.outputs.version }} bun run build:static
+
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./dist/static/
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto
+          qr-code: true
+          pages-base-url: exelearning-external-pr.pages.dev
+          wait-for-pages-deployment: false
+
+      - name: Add preview URL to summary
+        if: github.event.action != 'closed'
+        run: |
+          echo "## 🚀 PR Preview Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Preview URL:** https://exelearning-external-pr.pages.dev/pr-preview/pr-${{ github.event.pull_request.number }}/" >> $GITHUB_STEP_SUMMARY
