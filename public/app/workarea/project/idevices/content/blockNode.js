@@ -307,9 +307,8 @@ export default class IdeviceBlockNode {
         btn.id = `toggleBox${idBlock}`;
         btn.title = _('Hide');
         const spanIcon = document.createElement('span');
-        spanIcon.className = 'auto-icon';
+        spanIcon.className = 'small-icon chevron-contract-icon';
         spanIcon.setAttribute('aria-hidden', 'true');
-        spanIcon.textContent = 'keyboard_arrow_down';
         const spanHidden = document.createElement('span');
         spanHidden.className = 'visually-hidden';
         spanHidden.textContent = _('Hide');
@@ -1122,8 +1121,9 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.add('box-toggle-off');
         this.toggleElement.classList.remove('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Show'));
-        this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_up';
+        const spanOff = this.toggleElement.querySelector('span');
+        spanOff.classList.remove('chevron-contract-icon');
+        spanOff.classList.add('chevron-expand-icon');
     }
 
     /**
@@ -1135,8 +1135,9 @@ export default class IdeviceBlockNode {
         this.toggleElement.classList.remove('box-toggle-off');
         this.toggleElement.classList.add('box-toggle-on');
         this.toggleElement.setAttribute('title', _('Hide'));
-        this.toggleElement.querySelector('span').innerHTML =
-            'keyboard_arrow_down';
+        const spanOn = this.toggleElement.querySelector('span');
+        spanOn.classList.remove('chevron-expand-icon');
+        spanOn.classList.add('chevron-contract-icon');
     }
 
     /*********************************

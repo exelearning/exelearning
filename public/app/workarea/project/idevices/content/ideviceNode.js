@@ -372,12 +372,12 @@ export default class IdeviceNode {
                     lockIndicator = `<span class="lock-indicator visually-hidden">${lockUserName}</span>`;
                 }
                 // Set the Minify iDevice icon
-                let minifyIdeviceIcon = 'chevron-down-icon-green';
+                let minifyIdeviceIcon = 'chevron-contract-icon-green';
                 const iDevice = $(
                     "div.idevice_body[idevice-id='" + this.odeIdeviceId + "']"
                 );
                 if (iDevice.is(':hidden')) {
-                    minifyIdeviceIcon = 'chevron-up-icon-green';
+                    minifyIdeviceIcon = 'chevron-expand-icon-green';
                 }
                 // Build iDevice type icon
                 const ideviceTypeIcon = this._getIdeviceTypeIconHtml();
@@ -945,7 +945,7 @@ export default class IdeviceNode {
                             if (
                                 minifyIcon &&
                                 minifyIcon.classList.contains(
-                                    'chevron-up-icon-green'
+                                    'chevron-expand-icon-green'
                                 )
                             ) {
                                 const iDeviceBody = $(
@@ -955,10 +955,10 @@ export default class IdeviceNode {
                                 );
                                 iDeviceBody.show();
                                 minifyIcon.classList.remove(
-                                    'chevron-up-icon-green'
+                                    'chevron-expand-icon-green'
                                 );
                                 minifyIcon.classList.add(
-                                    'chevron-down-icon-green'
+                                    'chevron-contract-icon-green'
                                 );
                             }
                             this.edition();
@@ -1373,13 +1373,13 @@ export default class IdeviceNode {
                 const icn = this.ideviceButtons.querySelector(
                     '#minifyIdevice' + this.odeIdeviceId + 'icon'
                 );
-                if (icn.classList.contains('chevron-down-icon-green')) {
-                    icn.classList.remove('chevron-down-icon-green');
-                    icn.classList.add('chevron-up-icon-green');
+                if (icn.classList.contains('chevron-contract-icon-green')) {
+                    icn.classList.remove('chevron-contract-icon-green');
+                    icn.classList.add('chevron-expand-icon-green');
                     iDevice.hide();
                 } else {
-                    icn.classList.remove('chevron-up-icon-green');
-                    icn.classList.add('chevron-down-icon-green');
+                    icn.classList.remove('chevron-expand-icon-green');
+                    icn.classList.add('chevron-contract-icon-green');
                     iDevice.show();
                 }
                 return false;
