@@ -3066,6 +3066,28 @@ describe('YjsProjectBridge', () => {
       expect(mockInput.value).toBe('New Title');
     });
 
+    it('clears stale text inputs when metadata key is missing', () => {
+      const mockInput = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_subtitle';
+          if (attr === 'data-type') return 'text';
+          return null;
+        },
+        type: 'text',
+        value: 'stale subtitle',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+
+      const mockMetadata = {
+        get: () => undefined,
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.value).toBe('');
+    });
+
     it('skips inputs without property attribute', () => {
       const mockInput = {
         getAttribute: () => null,

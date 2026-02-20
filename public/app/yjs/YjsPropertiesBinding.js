@@ -394,8 +394,8 @@ class YjsPropertiesBinding {
       if (isOwnInputChange) return;
 
       event.changes.keys.forEach((change, key) => {
-        if (change.action === 'add' || change.action === 'update') {
-          this.onMetadataKeyChanged(key);
+        if (change.action === 'add' || change.action === 'update' || change.action === 'delete') {
+          this.onMetadataKeyChanged(key, change.action);
         }
       });
     };
@@ -508,8 +508,9 @@ class YjsPropertiesBinding {
   /**
    * Handle metadata key change from remote
    * @param {string} metadataKey - The changed key
+   * @param {string} action - Yjs key change action ('add' | 'update' | 'delete')
    */
-  onMetadataKeyChanged(metadataKey) {
+  onMetadataKeyChanged(metadataKey, action = 'update') {
     // Skip internal keys
     if (metadataKey === 'modifiedAt' || metadataKey === 'createdAt') return;
 
@@ -521,7 +522,23 @@ class YjsPropertiesBinding {
       const input = this.formElement.querySelector(`.property-value[property="${propertyKey}"]`);
       if (input) {
         const inputType = input.getAttribute('data-type') || input.type;
-        this.updateInputFromYjs(input, metadataKey, inputType);
+        if (action === 'delete') {
+          this.isUpdatingFromYjs = true;
+          try {
+            if (inputType === 'checkbox') {
+              input.checked = false;
+            } else {
+              input.value = '';
+              if (inputType === 'select') {
+                this.removeLegacyWarning(input);
+              }
+            }
+          } finally {
+            this.isUpdatingFromYjs = false;
+          }
+        } else {
+          this.updateInputFromYjs(input, metadataKey, inputType);
+        }
         Logger.log(`[YjsPropertiesBinding] Remote update: ${metadataKey}`);
       }
     }

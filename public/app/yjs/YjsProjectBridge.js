@@ -1406,9 +1406,19 @@ class YjsProjectBridge {
 
       const metadataKey = propertyKeyMap[propertyKey] || propertyKey;
       const value = metadata.get(metadataKey);
-      if (value === undefined) return;
 
       const inputType = input.getAttribute('data-type') || input.type;
+
+      // Missing metadata keys can happen after undo (e.g., subtitle returning
+      // to initial empty state). Clear stale UI values explicitly.
+      if (value === undefined) {
+        if (inputType === 'checkbox') {
+          input.checked = false;
+        } else {
+          input.value = '';
+        }
+        return;
+      }
 
       switch (inputType) {
         case 'checkbox':
