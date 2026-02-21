@@ -8,6 +8,8 @@ import { waitForUndoAvailable } from '../helpers/undo-redo-helpers';
  * Undo must visually update block structure immediately (no page switch/reload required).
  */
 
+const BLOCK_SELECTOR = '#node-content article.box:not(#empty_articles)';
+
 async function selectPageNode(page: Page): Promise<void> {
     const pageNodeSelectors = [
         '.nav-element:not([nav-id="root"]) .nav-element-text',
@@ -101,13 +103,13 @@ async function getCurrentPageId(page: Page): Promise<string> {
 }
 
 async function countBlocks(page: Page): Promise<number> {
-    return page.locator('#node-content article.box').count();
+    return page.locator(BLOCK_SELECTOR).count();
 }
 
 async function waitForBlockCountChange(page: Page, previousCount: number, timeout = 10000): Promise<number> {
     await page.waitForFunction(
-        prev => document.querySelectorAll('#node-content article.box').length !== prev,
-        previousCount,
+        ({ selector, prev }) => document.querySelectorAll(selector).length !== prev,
+        { selector: BLOCK_SELECTOR, prev: previousCount },
         { timeout },
     );
     return countBlocks(page);
@@ -120,13 +122,13 @@ async function waitForDomAndYjsBlockCount(
     timeout = 10000,
 ): Promise<void> {
     await page.waitForFunction(
-        ({ targetPageId, expected }) => {
-            const domCount = document.querySelectorAll('#node-content article.box').length;
+        ({ selector, targetPageId, expected }) => {
+            const domCount = document.querySelectorAll(selector).length;
             const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
             const yjsCount = bridge?.structureBinding?.getBlocks?.(targetPageId)?.length ?? -1;
             return domCount === expected && yjsCount === expected;
         },
-        { targetPageId: pageId, expected: expectedCount },
+        { selector: BLOCK_SELECTOR, targetPageId: pageId, expected: expectedCount },
         { timeout },
     );
 }
@@ -145,8 +147,8 @@ async function waitForYjsBlockCount(page: Page, pageId: string, expectedCount: n
 
 async function waitForDomBlockCount(page: Page, expectedCount: number, timeout = 10000): Promise<void> {
     await page.waitForFunction(
-        expected => document.querySelectorAll('#node-content article.box').length === expected,
-        expectedCount,
+        ({ selector, expected }) => document.querySelectorAll(selector).length === expected,
+        { selector: BLOCK_SELECTOR, expected: expectedCount },
         { timeout },
     );
 }
