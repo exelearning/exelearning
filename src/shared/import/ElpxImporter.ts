@@ -450,7 +450,7 @@ export class ElpxImporter {
                     }
                 }
                 this.logger.log('[ElpxImporter] All pages created');
-            });
+            }, this.ydoc.clientID);
             this.logger.log('[ElpxImporter] Transaction completed successfully');
 
             // Structure imported (80%)
@@ -557,7 +557,7 @@ export class ElpxImporter {
                     }
                 }
                 this.logger.log('[ElpxImporter] All legacy pages created');
-            });
+            }, this.ydoc.clientID);
             this.logger.log('[ElpxImporter] Legacy transaction completed successfully');
 
             // Structure imported (80%)

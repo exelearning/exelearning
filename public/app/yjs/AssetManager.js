@@ -94,6 +94,37 @@ class AssetManager {
     Logger.log('[AssetManager] Yjs bridge attached');
   }
 
+  /**
+   * Announce locally available blobs to peers via WebSocket.
+   * Safe no-op when collaboration handler is unavailable.
+   * @param {string} reason - Debug context
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _announceAssetAvailability(reason = 'asset update') {
+    if (!this.wsHandler || typeof this.wsHandler.announceAssetAvailability !== 'function') {
+      return;
+    }
+
+    try {
+      await this.wsHandler.announceAssetAvailability();
+    } catch (err) {
+      console.warn(`[AssetManager] Failed to announce assets (${reason}):`, err);
+    }
+  }
+
+  /**
+   * Schedule asset availability announcement without blocking caller flow.
+   * @param {string} reason - Debug context
+   * @param {number} delayMs - Delay before announcement
+   * @private
+   */
+  _scheduleAssetAvailabilityAnnouncement(reason = 'asset update', delayMs = 100) {
+    setTimeout(() => {
+      this._announceAssetAvailability(reason);
+    }, delayMs);
+  }
+
   // ===== Cache API Methods (persistent storage across page reloads) =====
 
   /**
@@ -1874,13 +1905,7 @@ class AssetManager {
       this.reverseBlobCache.set(blobUrl, assetId);
 
       // Announce to peers
-      if (this.wsHandler?.connected) {
-        setTimeout(() => {
-          this.wsHandler.announceAssetAvailability().catch(err => {
-            console.warn('[AssetManager] Failed to announce new asset:', err);
-          });
-        }, 100);
-      }
+      this._scheduleAssetAvailabilityAnnouncement('insertImage:reused-asset');
 
       return this.getAssetUrl(assetId, file.name);
     }
@@ -1909,14 +1934,8 @@ class AssetManager {
     Logger.log(`[AssetManager] Cached blob URL for ${assetId}`);
 
     // 7. Announce new asset to server so peers can request it
-    if (this.wsHandler?.connected) {
-      // Use setTimeout to not block the upload flow
-      setTimeout(() => {
-        this.wsHandler.announceAssetAvailability().catch(err => {
-          console.warn('[AssetManager] Failed to announce new asset:', err);
-        });
-      }, 100);
-    }
+    // Use deferred call to keep insert flow responsive.
+    this._scheduleAssetAvailabilityAnnouncement('insertImage:new-asset');
 
     // 8. Return asset:// URL with extension only (e.g., asset://uuid.jpg)
     return this.getAssetUrl(assetId, file.name);
@@ -2002,6 +2021,10 @@ class AssetManager {
   async resolveAssetURL(assetUrl) {
     // Extract ID from asset://uuid or asset://uuid/filename
     const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      console.warn('[AssetManager] Invalid asset URL:', assetUrl);
+      return null;
+    }
 
     // Check cache first (using synced method to ensure reverseBlobCache consistency)
     const cachedBlobUrl = this.getBlobURLSynced(assetId);
@@ -2013,6 +2036,10 @@ class AssetManager {
     const asset = await this.getAsset(assetId);
     if (!asset) {
       console.warn(`[AssetManager] Asset not found: ${assetId}`);
+      return null;
+    }
+    if (!asset.blob || typeof asset.blob.arrayBuffer !== 'function') {
+      Logger.log(`[AssetManager] Asset ${assetId.substring(0, 8)}... has metadata but no local blob`);
       return null;
     }
 
@@ -2463,6 +2490,7 @@ class AssetManager {
   async extractAssetsFromZip(zip, onAssetProgress = null) {
     const assetMap = new Map();
     const assetFiles = [];
+    let storedAssetsCount = 0;
 
     // Detect format: legacy .elp has contentv3.xml, new .elpx has content.xml
     const isLegacyFormat = Object.keys(zip).some(path => path === 'contentv3.xml' || path.endsWith('/contentv3.xml'));
@@ -2614,6 +2642,7 @@ class AssetManager {
             folderPath
           };
           await this.putAsset(reusedAsset);
+          storedAssetsCount++;
           assetMap.set(path, assetId);
           continue;
         }
@@ -2634,6 +2663,7 @@ class AssetManager {
         };
 
         await this.putAsset(asset);
+        storedAssetsCount++;
         assetMap.set(path, assetId);
 
         // =====================================================================
@@ -2653,6 +2683,11 @@ class AssetManager {
       } catch (e) {
         console.error(`[AssetManager] Failed to extract ${path}:`, e);
       }
+    }
+
+    // Announce once after batch import so peers can request newly available blobs.
+    if (storedAssetsCount > 0) {
+      await this._announceAssetAvailability('extractAssetsFromZip');
     }
 
     return assetMap;
@@ -3108,13 +3143,27 @@ class AssetManager {
     }
 
     let count = 0;
+    const updatedElements = new Set();
+    const markUpdated = (element) => {
+      if (!updatedElements.has(element)) {
+        updatedElements.add(element);
+        count++;
+      }
+    };
+    const matchesAssetUrl = (value) => {
+      return (
+        typeof value === 'string' &&
+        value.startsWith('asset://') &&
+        this.extractAssetId(value) === assetId
+      );
+    };
 
     // Find all images with data-asset-id attribute matching this asset
     const images = document.querySelectorAll(`img[data-asset-id="${assetId}"]`);
     for (const img of images) {
       img.src = blobUrl;
       img.removeAttribute('data-asset-loading');
-      count++;
+      markUpdated(img);
     }
 
     // Also check for background images in style attributes
@@ -3123,7 +3172,7 @@ class AssetManager {
       if (el.style.backgroundImage && el.style.backgroundImage.includes('data:image')) {
         el.style.backgroundImage = `url(${blobUrl})`;
         el.removeAttribute('data-asset-loading');
-        count++;
+        markUpdated(el);
       }
     }
 
@@ -3145,7 +3194,58 @@ class AssetManager {
         iframe.src = iframeUrl;
         iframe.removeAttribute('data-asset-loading');
         iframe.removeAttribute('data-asset-id');
-        count++;
+        markUpdated(iframe);
+      }
+    }
+
+    // Fallback matching for renderers that only preserve data-asset-url/data-asset-src.
+    // This is common for async MutationObserver resolution when the blob is not local yet.
+    const fallbackElements = document.querySelectorAll(
+      `[data-asset-url*="${assetId}"],[data-asset-src*="${assetId}"],[data-asset-origin*="${assetId}"]`
+    );
+    for (const el of fallbackElements) {
+      if (updatedElements.has(el)) {
+        continue;
+      }
+      const assetUrlAttr = el.getAttribute?.('data-asset-url');
+      const assetSrcAttr = el.getAttribute?.('data-asset-src');
+      const assetOriginAttr = el.getAttribute?.('data-asset-origin');
+      const matches =
+        matchesAssetUrl(assetUrlAttr) ||
+        matchesAssetUrl(assetSrcAttr) ||
+        matchesAssetUrl(assetOriginAttr);
+      if (!matches) continue;
+
+      const tagName = (el.tagName || '').toUpperCase();
+      let updated = false;
+
+      if (matchesAssetUrl(assetOriginAttr)) {
+        el.setAttribute('origin', blobUrl);
+        updated = true;
+      }
+
+      if (tagName === 'A') {
+        el.setAttribute('href', blobUrl);
+        updated = true;
+      } else if (['IMG', 'IFRAME', 'VIDEO', 'AUDIO', 'SOURCE'].includes(tagName)) {
+        el.src = blobUrl;
+        updated = true;
+
+        if (tagName === 'VIDEO' || tagName === 'AUDIO') {
+          if (typeof el.load === 'function') {
+            el.load();
+          }
+        } else if (tagName === 'SOURCE') {
+          const parent = el.parentElement;
+          if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO') && typeof parent.load === 'function') {
+            parent.load();
+          }
+        }
+      }
+
+      if (updated) {
+        el.removeAttribute('data-asset-loading');
+        markUpdated(el);
       }
     }
 
@@ -3164,7 +3264,14 @@ class AssetManager {
    * @returns {Promise<{url: string, isPlaceholder: boolean, assetId: string}>}
    */
   async resolveAssetURLWithPlaceholder(assetUrl, options = {}) {
-    const assetId = assetUrl.replace('asset://', '');
+    const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      return {
+        url: this.generatePlaceholder('Image not found', 'notfound'),
+        isPlaceholder: true,
+        assetId: '',
+      };
+    }
     const { wsHandler = null, returnPlaceholder = true } = options;
 
     // Check cache first
@@ -3178,7 +3285,7 @@ class AssetManager {
 
     // Try to load from memory
     const asset = await this.getAsset(assetId);
-    if (asset) {
+    if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
       const blobURL = await this.createBlobURL(asset.blob);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
@@ -3224,6 +3331,13 @@ class AssetManager {
    */
   async resolveAssetURLWithPriority(assetUrl, options = {}) {
     const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      return {
+        url: this.generatePlaceholder('Image not found', 'notfound'),
+        isPlaceholder: true,
+        assetId: '',
+      };
+    }
     const { pageId = null, reason = 'render' } = options;
 
     // Check cache first
@@ -3237,7 +3351,7 @@ class AssetManager {
 
     // Try to load from memory
     const asset = await this.getAsset(assetId);
-    if (asset) {
+    if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
       const blobURL = await this.createBlobURL(asset.blob);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
@@ -3308,7 +3422,7 @@ class AssetManager {
     for (const assetId of assetIds) {
       if (!this.blobURLCache.has(assetId)) {
         const asset = await this.getAsset(assetId);
-        if (!asset) {
+        if (!asset?.blob) {
           missingAssets.push(assetId);
         }
       }
@@ -3495,6 +3609,82 @@ class AssetManager {
     if (!options.skipServerDelete) {
       this._deleteFromServer(id).catch(() => {}); // Errors are logged inside _deleteFromServer
     }
+  }
+
+  /**
+   * Invalidate local blob/cache for an asset while keeping Yjs metadata.
+   * Used when metadata hash changes remotely but assetId remains stable.
+   *
+   * @param {string} assetId
+   * @param {Object} options
+   * @param {boolean} options.markAsMissing - Mark asset as missing for re-fetch (default true)
+   * @param {boolean} options.markDomAsLoading - Reset matching DOM elements to loading state (default false)
+   * @param {string} options.reason - Debug reason
+   * @returns {Promise<void>}
+   */
+  async invalidateLocalBlob(assetId, options = {}) {
+    if (!assetId) return;
+
+    const {
+      markAsMissing = true,
+      markDomAsLoading = false,
+      reason = 'metadata-update',
+    } = options;
+
+    const existingBlobUrl = this.blobURLCache.get(assetId);
+    if (existingBlobUrl && typeof existingBlobUrl === 'string' && existingBlobUrl.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(existingBlobUrl);
+      } catch (e) {
+        console.warn(`[AssetManager] Failed to revoke stale blob URL for ${assetId.substring(0, 8)}...`, e);
+      }
+    }
+
+    if (existingBlobUrl) {
+      this.blobURLCache.delete(assetId);
+      this.reverseBlobCache.delete(existingBlobUrl);
+    }
+
+    this.blobCache.delete(assetId);
+    await this._deleteFromCache(assetId).catch(() => {});
+
+    this.pendingFetches.delete(assetId);
+    this.failedAssets.delete(assetId);
+
+    if (markAsMissing) {
+      this.missingAssets.add(assetId);
+    }
+
+    if (markDomAsLoading) {
+      const placeholder = this.generatePlaceholder('Loading...', 'loading');
+      const elements = document.querySelectorAll(
+        `[data-asset-id="${assetId}"],[data-asset-url*="${assetId}"],[data-asset-src*="${assetId}"],[data-asset-origin*="${assetId}"]`
+      );
+
+      for (const el of elements) {
+        const tagName = (el.tagName || '').toUpperCase();
+
+        if (tagName === 'IMG') {
+          el.src = placeholder;
+        } else if (tagName === 'IFRAME') {
+          el.src = 'about:blank';
+        } else if (tagName === 'A') {
+          const original = el.getAttribute('data-asset-url');
+          if (original && original.startsWith('asset://')) {
+            el.setAttribute('href', original);
+          }
+        } else if (tagName === 'VIDEO' || tagName === 'AUDIO' || tagName === 'SOURCE') {
+          el.removeAttribute('src');
+        }
+
+        el.setAttribute('data-asset-id', assetId);
+        el.setAttribute('data-asset-loading', 'true');
+      }
+    }
+
+    Logger.log(
+      `[AssetManager] Invalidated local blob for ${assetId.substring(0, 8)}... (reason: ${reason})`
+    );
   }
 
   /**
