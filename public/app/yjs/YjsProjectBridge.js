@@ -55,6 +55,10 @@ class YjsProjectBridge {
     // Asset refresh coordination (for late asset arrivals during first page render)
     this._assetRefreshTimer = null;
     this._pendingAssetRefreshIds = new Set();
+
+    // Asset metadata observer references (for hash-change invalidation)
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
   }
 
   /**
@@ -273,6 +277,7 @@ class YjsProjectBridge {
     // Set up observers
     this.setupStructureObserver();
     this.setupMetadataObserver();
+    this.setupAssetsObserver();
     this.setupUndoRedoHandlers();
 
     // Inject save status indicator
@@ -1187,6 +1192,66 @@ class YjsProjectBridge {
       // Update undo/redo button states after metadata changes
       this.updateUndoRedoButtons();
     });
+  }
+
+  /**
+   * Set up observer for assets metadata changes.
+   * When a remote client updates an existing asset hash (same assetId),
+   * invalidate local stale blobs and request a fresh copy.
+   */
+  setupAssetsObserver() {
+    const assetsMap = this.documentManager?.getAssets?.();
+    if (!assetsMap || typeof assetsMap.observe !== 'function') {
+      return;
+    }
+
+    this._assetsMap = assetsMap;
+
+    this._onAssetsMapChange = async (event, transaction) => {
+      const isRemote = transaction?.origin === 'remote';
+      if (!isRemote || !this.assetManager) {
+        return;
+      }
+
+      const changedHashes = [];
+
+      for (const [assetId, change] of event.changes.keys) {
+        if (change.action !== 'update') {
+          continue;
+        }
+
+        const oldHash = change.oldValue?.hash || '';
+        const newHash = assetsMap.get(assetId)?.hash || '';
+
+        if (!oldHash || !newHash || oldHash === newHash) {
+          continue;
+        }
+
+        changedHashes.push(assetId);
+      }
+
+      if (changedHashes.length === 0) {
+        return;
+      }
+
+      for (const assetId of changedHashes) {
+        Logger.log(`[YjsProjectBridge] Remote hash update detected for asset ${assetId.substring(0, 8)}...`);
+
+        await this.assetManager.invalidateLocalBlob(assetId, {
+          markAsMissing: true,
+          markDomAsLoading: true,
+          reason: 'remote-hash-update',
+        });
+
+        if (this.assetWebSocketHandler?.requestAsset) {
+          this.assetWebSocketHandler.requestAsset(assetId).catch((err) => {
+            console.warn(`[YjsProjectBridge] Failed requesting updated asset ${assetId.substring(0, 8)}...`, err);
+          });
+        }
+      }
+    };
+
+    assetsMap.observe(this._onAssetsMapChange);
   }
 
   /**
@@ -3373,6 +3438,12 @@ class YjsProjectBridge {
    */
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
+
+    if (this._assetsMap && this._onAssetsMapChange && typeof this._assetsMap.unobserve === 'function') {
+      this._assetsMap.unobserve(this._onAssetsMapChange);
+    }
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
 
     if (this._assetRefreshTimer) {
       clearTimeout(this._assetRefreshTimer);

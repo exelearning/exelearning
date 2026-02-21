@@ -2145,6 +2145,88 @@ describe('YjsProjectBridge', () => {
       // Verify wsHandler is now set
       expect(newBridge.saveManager.wsHandler).toEqual({ id: 'mock-ws-handler' });
     });
+
+    it('invalidates stale local blob and requests asset on remote hash update', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'new-hash-123' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const event = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'old-hash-999' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(event, { origin: 'remote' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).toHaveBeenCalledWith(
+        'asset-1',
+        expect.objectContaining({
+          reason: 'remote-hash-update',
+          markAsMissing: true,
+          markDomAsLoading: true,
+        })
+      );
+      expect(bridge.assetWebSocketHandler.requestAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('ignores non-remote or same-hash asset updates', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'same-hash' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const sameHashEvent = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'same-hash' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(sameHashEvent, { origin: 'remote' });
+      await assetsObserver(sameHashEvent, { origin: 'local' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).not.toHaveBeenCalled();
+      expect(bridge.assetWebSocketHandler.requestAsset).not.toHaveBeenCalled();
+    });
   });
 
   describe('enableAutoSync', () => {

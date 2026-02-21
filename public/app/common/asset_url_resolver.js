@@ -24,13 +24,31 @@
 
     // Cache de URLs resueltas para evitar múltiples resoluciones
     const resolvedCache = new Map();
+    // Deduplicate in-flight peer requests for missing assets
+    const pendingPeerRequests = new Map();
+
+    /**
+     * Get Yjs bridge instance
+     * @returns {Object|null}
+     */
+    function getYjsBridge() {
+        return window.eXeLearning?.app?.project?._yjsBridge || null;
+    }
 
     /**
      * Get the AssetManager instance
      * @returns {Object|null} AssetManager or null if not available
      */
     function getAssetManager() {
-        return window.eXeLearning?.app?.project?._yjsBridge?.assetManager || null;
+        return getYjsBridge()?.assetManager || null;
+    }
+
+    /**
+     * Get the AssetWebSocketHandler instance
+     * @returns {Object|null} handler or null if not available
+     */
+    function getAssetWebSocketHandler() {
+        return getYjsBridge()?.assetWebSocketHandler || null;
     }
 
     /**
@@ -53,6 +71,37 @@
         if (!isAssetUrl(assetUrl)) return null;
         const match = assetUrl.match(/asset:\/\/(?:asset\/+)?([a-z0-9-]+)/i);
         return match ? match[1] : null;
+    }
+
+    /**
+     * Request missing asset from peers (deduplicated by assetId).
+     * Fire-and-forget: resolver still returns null immediately.
+     *
+     * @param {string} assetUrl
+     */
+    function requestMissingAssetFromPeers(assetUrl) {
+        const assetId = extractAssetId(assetUrl);
+        if (!assetId) return;
+
+        const wsHandler = getAssetWebSocketHandler();
+        if (!wsHandler || typeof wsHandler.requestAsset !== 'function') {
+            return;
+        }
+
+        if (pendingPeerRequests.has(assetId)) {
+            return;
+        }
+
+        const requestPromise = Promise.resolve()
+            .then(() => wsHandler.requestAsset(assetId))
+            .catch((err) => {
+                console.warn('[AssetResolver] Failed requesting missing asset from peers:', assetId, err);
+            })
+            .finally(() => {
+                pendingPeerRequests.delete(assetId);
+            });
+
+        pendingPeerRequests.set(assetId, requestPromise);
     }
 
     /**
@@ -114,6 +163,10 @@
                 console.warn('[AssetResolver] Error resolving:', url, e);
             }
         }
+
+        // If not resolved locally, ask peers to provide the blob (deduplicated).
+        requestMissingAssetFromPeers(url);
+
         // Return null instead of invalid asset:// URL to prevent browser errors
         console.warn('[AssetResolver] Could not resolve asset URL:', url);
         return null;
@@ -591,6 +644,7 @@
          */
         clearCache: function() {
             resolvedCache.clear();
+            pendingPeerRequests.clear();
         },
 
         /**

@@ -1045,6 +1045,8 @@ export default class ModalImageOptimizer extends Modal {
             throw new Error('AssetManager not available');
         }
 
+        let replacedAssetsCount = 0;
+
         for (const assetId of assetIds) {
             const item = this.optimizerManager.getQueueItem(assetId);
             if (!item || item.status !== STATUS.DONE || !item.optimizedBlob) {
@@ -1089,11 +1091,25 @@ export default class ModalImageOptimizer extends Modal {
                 this.assetManager.blobURLCache.set(assetId, newBlobURL);
                 this.assetManager.reverseBlobCache.set(newBlobURL, assetId);
 
+                // Refresh any already-rendered elements referencing this asset.
+                if (typeof this.assetManager.updateDomImagesForAsset === 'function') {
+                    await this.assetManager.updateDomImagesForAsset(assetId);
+                }
+
                 // Upload to server
                 await this.uploadAsset(assetId, item.optimizedBlob, newFilename, item.outputFormat);
+                replacedAssetsCount++;
 
             } catch (error) {
                 console.error(`[ModalImageOptimizer] Failed to replace asset ${assetId}:`, error);
+            }
+        }
+
+        // Notify peers once at the end so they can request updated blobs if needed.
+        if (replacedAssetsCount > 0) {
+            const bridge = eXeLearning?.app?.project?._yjsBridge;
+            if (bridge && typeof bridge.announceAssets === 'function') {
+                await bridge.announceAssets();
             }
         }
     }

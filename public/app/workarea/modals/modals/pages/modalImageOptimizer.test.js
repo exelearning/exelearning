@@ -78,12 +78,14 @@ describe('ModalImageOptimizer', () => {
                     odeId: 'proj-123',
                     getProjectUuid: vi.fn(() => 'proj-uuid-123'),
                     _yjsBridge: {
+                        announceAssets: vi.fn().mockResolvedValue(),
                         assetManager: {
                             getProjectAssets: vi.fn().mockResolvedValue([]),
                             getBlob: vi.fn().mockResolvedValue(null),
                             putBlob: vi.fn().mockResolvedValue(),
                             getAssetMetadata: vi.fn().mockReturnValue({ filename: 'test.png', mime: 'image/png' }),
                             setAssetMetadata: vi.fn(),
+                            updateDomImagesForAsset: vi.fn().mockResolvedValue(1),
                             getAssetUrl: vi.fn((id, filename) => `asset://${id}/${filename}`),
                             resolveAssetURL: vi.fn().mockResolvedValue('blob:resolved-url'),
                             blobURLCache: new Map(),
@@ -1475,6 +1477,8 @@ describe('ModalImageOptimizer', () => {
             await modal.replaceOptimizedAssets(['asset-1']);
 
             expect(window.eXeLearning.app.project._yjsBridge.assetManager.putBlob).toHaveBeenCalledWith('asset-1', optimizedBlob);
+            expect(window.eXeLearning.app.project._yjsBridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+            expect(window.eXeLearning.app.project._yjsBridge.announceAssets).toHaveBeenCalledTimes(1);
         });
     });
 

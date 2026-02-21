@@ -1219,6 +1219,43 @@ describe('AssetManager', () => {
     });
   });
 
+  describe('invalidateLocalBlob', () => {
+    it('clears local blob/url caches and marks asset as missing', async () => {
+      assetManager.blobCache.set('asset-1', new Blob(['old']));
+      assetManager.blobURLCache.set('asset-1', 'blob:test-stale');
+      assetManager.reverseBlobCache.set('blob:test-stale', 'asset-1');
+      assetManager.failedAssets.set('asset-1', { count: 2, lastAttempt: Date.now(), permanent: false });
+      assetManager.pendingFetches.add('asset-1');
+
+      await assetManager.invalidateLocalBlob('asset-1', { reason: 'test' });
+
+      expect(assetManager.blobCache.has('asset-1')).toBe(false);
+      expect(assetManager.blobURLCache.has('asset-1')).toBe(false);
+      expect(assetManager.reverseBlobCache.has('blob:test-stale')).toBe(false);
+      expect(assetManager.missingAssets.has('asset-1')).toBe(true);
+      expect(assetManager.failedAssets.has('asset-1')).toBe(false);
+      expect(assetManager.pendingFetches.has('asset-1')).toBe(false);
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:test-stale');
+    });
+
+    it('marks existing DOM media as loading when requested', async () => {
+      const img = document.createElement('img');
+      img.setAttribute('data-asset-id', 'asset-dom');
+      img.setAttribute('data-asset-url', 'asset://asset-dom/image.png');
+      img.src = 'blob:test-dom';
+      document.body.appendChild(img);
+
+      assetManager.blobURLCache.set('asset-dom', 'blob:test-dom');
+      assetManager.reverseBlobCache.set('blob:test-dom', 'asset-dom');
+
+      await assetManager.invalidateLocalBlob('asset-dom', { markDomAsLoading: true });
+
+      expect(img.getAttribute('data-asset-loading')).toBe('true');
+      expect(img.src.startsWith('data:image/svg+xml')).toBe(true);
+      img.remove();
+    });
+  });
+
   describe('_deleteFromServer', () => {
     it('calls fetch with correct URL and headers', async () => {
       assetManager.projectId = 'project-uuid-123';
@@ -2728,6 +2765,33 @@ describe('extractAssetsFromZip', () => {
 
     expect(assetMap.size).toBe(2);
     expect(assetManager.putAsset).toHaveBeenCalledTimes(2);
+  });
+
+  it('announces asset availability after extracting new assets', async () => {
+    const announceAssetAvailability = mock(() => Promise.resolve());
+    assetManager.wsHandler = { announceAssetAvailability };
+
+    const zipData = {
+      'resources/image.png': new Uint8Array([1, 2, 3, 4]),
+    };
+
+    await assetManager.extractAssetsFromZip(zipData);
+
+    expect(announceAssetAvailability).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not announce when import only finds already-local assets', async () => {
+    const announceAssetAvailability = mock(() => Promise.resolve());
+    assetManager.wsHandler = { announceAssetAvailability };
+    assetManager.getAsset = mock(() => Promise.resolve({ projectId: 'project-123' }));
+
+    const zipData = {
+      'resources/image.png': new Uint8Array([1, 2, 3, 4]),
+    };
+
+    await assetManager.extractAssetsFromZip(zipData);
+
+    expect(announceAssetAvailability).not.toHaveBeenCalled();
   });
 
   it('extracts assets from content/resources/ folder', async () => {
