@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('AssetUrlResolver', () => {
   let mockAssetManager;
+  let mockAssetWebSocketHandler;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,6 +22,9 @@ describe('AssetUrlResolver', () => {
     // Create mock AssetManager
     mockAssetManager = {
       resolveAssetURL: vi.fn(),
+    };
+    mockAssetWebSocketHandler = {
+      requestAsset: vi.fn().mockResolvedValue(false),
     };
   });
 
@@ -84,6 +88,7 @@ describe('AssetUrlResolver', () => {
           project: {
             _yjsBridge: {
               assetManager: mockAssetManager,
+              assetWebSocketHandler: mockAssetWebSocketHandler,
             },
           },
         },
@@ -194,6 +199,27 @@ describe('AssetUrlResolver', () => {
           '[AssetResolver] Could not resolve asset URL:',
           assetUrl
         );
+        expect(mockAssetWebSocketHandler.requestAsset).toHaveBeenCalledWith('null-result');
+      });
+
+      it('deduplicates peer requests while same asset request is in-flight', async () => {
+        mockAssetManager.resolveAssetURL.mockResolvedValue(null);
+        let releaseRequest;
+        mockAssetWebSocketHandler.requestAsset.mockImplementation(
+          () => new Promise((resolve) => {
+            releaseRequest = resolve;
+          })
+        );
+
+        const assetUrl = 'asset://dedup-asset/image.png';
+
+        const first = resolver.resolve(assetUrl);
+        const second = resolver.resolve(assetUrl);
+
+        await Promise.all([first, second]);
+
+        expect(mockAssetWebSocketHandler.requestAsset).toHaveBeenCalledTimes(1);
+        releaseRequest(false);
       });
 
       it('returns null and logs warning on error', async () => {
