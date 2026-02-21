@@ -51,6 +51,10 @@ class YjsProjectBridge {
 
     // Current save status for UI tracking
     this.currentSaveStatus = 'saved';
+
+    // Asset refresh coordination (for late asset arrivals during first page render)
+    this._assetRefreshTimer = null;
+    this._pendingAssetRefreshIds = new Set();
   }
 
   /**
@@ -160,7 +164,12 @@ class YjsProjectBridge {
       this.assetWebSocketHandler.on('assetReceived', async ({ assetId }) => {
         Logger.log('[YjsProjectBridge] Asset received from peer:', assetId.substring(0, 8) + '...');
         // Update any DOM images waiting for this asset
-        await this.assetManager.updateDomImagesForAsset(assetId);
+        const updated = await this.assetManager.updateDomImagesForAsset(assetId);
+        // If nothing was updated, the asset likely arrived before the page finished rendering.
+        // Queue a single debounced refresh of the current page to avoid requiring a second manual click.
+        if (updated === 0) {
+          this.scheduleAssetRefreshForCurrentPage(assetId);
+        }
         // Also preload into cache for future use
         await this.assetManager.preloadAllAssets();
       });
@@ -832,6 +841,123 @@ class YjsProjectBridge {
         }
       }, 100); // Small debounce
     }
+  }
+
+  /**
+   * Schedule a debounced refresh of the current page when an asset arrives
+   * but no waiting DOM elements were found yet.
+   * This fixes "first click shows no image, second click shows image" timing races.
+   *
+   * @param {string} assetId
+   */
+  scheduleAssetRefreshForCurrentPage(assetId) {
+    if (!assetId) return;
+
+    this._pendingAssetRefreshIds.add(assetId);
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+    }
+
+    this._assetRefreshTimer = setTimeout(async () => {
+      const pendingIds = Array.from(this._pendingAssetRefreshIds);
+      this._pendingAssetRefreshIds.clear();
+
+      const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+      if (!currentPageId || currentPageId === 'root') {
+        return;
+      }
+
+      const idevicesEngine = this.app?.project?.idevices;
+      if (!idevicesEngine) return;
+
+      // If page is still being rendered, retry shortly.
+      if (idevicesEngine.loadingPage) {
+        pendingIds.forEach((id) => this._pendingAssetRefreshIds.add(id));
+        this.scheduleAssetRefreshForCurrentPage(pendingIds[0]);
+        return;
+      }
+
+      // Reload only when current page actually references one of the pending assets.
+      const hasRelevantAsset = pendingIds.some((id) => this.currentPageHasAssetReference(currentPageId, id));
+      if (!hasRelevantAsset) {
+        return;
+      }
+
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${currentPageId}"]`
+      );
+      if (!pageElement) return;
+
+      Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
+      await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
+
+      // One more patch pass after reload in case elements are now in DOM.
+      if (this.assetManager) {
+        for (const id of pendingIds) {
+          await this.assetManager.updateDomImagesForAsset(id);
+        }
+      }
+    }, 180);
+  }
+
+  /**
+   * Check whether the currently selected page references the given asset ID.
+   * Looks at htmlContent, htmlView, and serialized jsonProperties.
+   *
+   * @param {string} pageId
+   * @param {string} assetId
+   * @returns {boolean}
+   */
+  currentPageHasAssetReference(pageId, assetId) {
+    if (!this.documentManager || !pageId || !assetId) return false;
+
+    const navigation = this.documentManager.getNavigation?.();
+    if (!navigation) return false;
+
+    let pageMap = null;
+    for (let i = 0; i < navigation.length; i++) {
+      const page = navigation.get(i);
+      if (!page) continue;
+      const id = page.get('id') || page.get('pageId');
+      if (id === pageId) {
+        pageMap = page;
+        break;
+      }
+    }
+    if (!pageMap) return false;
+
+    const marker = `asset://${assetId}`;
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return false;
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks.get(i);
+      const components = block?.get('components');
+      if (!components) continue;
+
+      for (let j = 0; j < components.length; j++) {
+        const component = components.get(j);
+        if (!component) continue;
+
+        const htmlContent = component.get('htmlContent');
+        const htmlView = component.get('htmlView');
+        const jsonProperties = component.get('jsonProperties');
+        const values = [htmlContent, htmlView, jsonProperties];
+
+        for (const value of values) {
+          const stringValue =
+            typeof value === 'string'
+              ? value
+              : (value && typeof value.toString === 'function' ? value.toString() : '');
+          if (stringValue && stringValue.includes(marker)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
@@ -3247,6 +3373,14 @@ class YjsProjectBridge {
    */
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+      this._assetRefreshTimer = null;
+    }
+    if (this._pendingAssetRefreshIds) {
+      this._pendingAssetRefreshIds.clear();
+    }
 
     if (this.documentManager) {
       await this.documentManager.destroy();

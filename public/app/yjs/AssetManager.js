@@ -2002,6 +2002,10 @@ class AssetManager {
   async resolveAssetURL(assetUrl) {
     // Extract ID from asset://uuid or asset://uuid/filename
     const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      console.warn('[AssetManager] Invalid asset URL:', assetUrl);
+      return null;
+    }
 
     // Check cache first (using synced method to ensure reverseBlobCache consistency)
     const cachedBlobUrl = this.getBlobURLSynced(assetId);
@@ -2013,6 +2017,10 @@ class AssetManager {
     const asset = await this.getAsset(assetId);
     if (!asset) {
       console.warn(`[AssetManager] Asset not found: ${assetId}`);
+      return null;
+    }
+    if (!asset.blob || typeof asset.blob.arrayBuffer !== 'function') {
+      Logger.log(`[AssetManager] Asset ${assetId.substring(0, 8)}... has metadata but no local blob`);
       return null;
     }
 
@@ -3108,13 +3116,27 @@ class AssetManager {
     }
 
     let count = 0;
+    const updatedElements = new Set();
+    const markUpdated = (element) => {
+      if (!updatedElements.has(element)) {
+        updatedElements.add(element);
+        count++;
+      }
+    };
+    const matchesAssetUrl = (value) => {
+      return (
+        typeof value === 'string' &&
+        value.startsWith('asset://') &&
+        this.extractAssetId(value) === assetId
+      );
+    };
 
     // Find all images with data-asset-id attribute matching this asset
     const images = document.querySelectorAll(`img[data-asset-id="${assetId}"]`);
     for (const img of images) {
       img.src = blobUrl;
       img.removeAttribute('data-asset-loading');
-      count++;
+      markUpdated(img);
     }
 
     // Also check for background images in style attributes
@@ -3123,7 +3145,7 @@ class AssetManager {
       if (el.style.backgroundImage && el.style.backgroundImage.includes('data:image')) {
         el.style.backgroundImage = `url(${blobUrl})`;
         el.removeAttribute('data-asset-loading');
-        count++;
+        markUpdated(el);
       }
     }
 
@@ -3145,7 +3167,58 @@ class AssetManager {
         iframe.src = iframeUrl;
         iframe.removeAttribute('data-asset-loading');
         iframe.removeAttribute('data-asset-id');
-        count++;
+        markUpdated(iframe);
+      }
+    }
+
+    // Fallback matching for renderers that only preserve data-asset-url/data-asset-src.
+    // This is common for async MutationObserver resolution when the blob is not local yet.
+    const fallbackElements = document.querySelectorAll(
+      `[data-asset-url*="${assetId}"],[data-asset-src*="${assetId}"],[data-asset-origin*="${assetId}"]`
+    );
+    for (const el of fallbackElements) {
+      if (updatedElements.has(el)) {
+        continue;
+      }
+      const assetUrlAttr = el.getAttribute?.('data-asset-url');
+      const assetSrcAttr = el.getAttribute?.('data-asset-src');
+      const assetOriginAttr = el.getAttribute?.('data-asset-origin');
+      const matches =
+        matchesAssetUrl(assetUrlAttr) ||
+        matchesAssetUrl(assetSrcAttr) ||
+        matchesAssetUrl(assetOriginAttr);
+      if (!matches) continue;
+
+      const tagName = (el.tagName || '').toUpperCase();
+      let updated = false;
+
+      if (matchesAssetUrl(assetOriginAttr)) {
+        el.setAttribute('origin', blobUrl);
+        updated = true;
+      }
+
+      if (tagName === 'A') {
+        el.setAttribute('href', blobUrl);
+        updated = true;
+      } else if (['IMG', 'IFRAME', 'VIDEO', 'AUDIO', 'SOURCE'].includes(tagName)) {
+        el.src = blobUrl;
+        updated = true;
+
+        if (tagName === 'VIDEO' || tagName === 'AUDIO') {
+          if (typeof el.load === 'function') {
+            el.load();
+          }
+        } else if (tagName === 'SOURCE') {
+          const parent = el.parentElement;
+          if (parent && (parent.tagName === 'VIDEO' || parent.tagName === 'AUDIO') && typeof parent.load === 'function') {
+            parent.load();
+          }
+        }
+      }
+
+      if (updated) {
+        el.removeAttribute('data-asset-loading');
+        markUpdated(el);
       }
     }
 
@@ -3164,7 +3237,14 @@ class AssetManager {
    * @returns {Promise<{url: string, isPlaceholder: boolean, assetId: string}>}
    */
   async resolveAssetURLWithPlaceholder(assetUrl, options = {}) {
-    const assetId = assetUrl.replace('asset://', '');
+    const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      return {
+        url: this.generatePlaceholder('Image not found', 'notfound'),
+        isPlaceholder: true,
+        assetId: '',
+      };
+    }
     const { wsHandler = null, returnPlaceholder = true } = options;
 
     // Check cache first
@@ -3178,7 +3258,7 @@ class AssetManager {
 
     // Try to load from memory
     const asset = await this.getAsset(assetId);
-    if (asset) {
+    if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
       const blobURL = await this.createBlobURL(asset.blob);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
@@ -3224,6 +3304,13 @@ class AssetManager {
    */
   async resolveAssetURLWithPriority(assetUrl, options = {}) {
     const assetId = this.extractAssetId(assetUrl);
+    if (!assetId) {
+      return {
+        url: this.generatePlaceholder('Image not found', 'notfound'),
+        isPlaceholder: true,
+        assetId: '',
+      };
+    }
     const { pageId = null, reason = 'render' } = options;
 
     // Check cache first
@@ -3237,7 +3324,7 @@ class AssetManager {
 
     // Try to load from memory
     const asset = await this.getAsset(assetId);
-    if (asset) {
+    if (asset?.blob && typeof asset.blob.arrayBuffer === 'function') {
       const blobURL = await this.createBlobURL(asset.blob);
       this.blobURLCache.set(assetId, blobURL);
       this.reverseBlobCache.set(blobURL, assetId);
@@ -3308,7 +3395,7 @@ class AssetManager {
     for (const assetId of assetIds) {
       if (!this.blobURLCache.has(assetId)) {
         const asset = await this.getAsset(assetId);
-        if (!asset) {
+        if (!asset?.blob) {
           missingAssets.push(assetId);
         }
       }

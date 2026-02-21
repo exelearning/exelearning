@@ -1709,6 +1709,108 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('asset refresh on late asset arrival', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock(() => 'page-1'),
+              },
+              menuNav: {
+                querySelector: mock(() => ({ id: 'page-element' })),
+              },
+            },
+          },
+          idevices: {
+            loadingPage: false,
+            loadApiIdevicesInPage: mock(() => Promise.resolve()),
+          },
+        },
+      };
+      bridge.assetManager = {
+        updateDomImagesForAsset: mock(() => Promise.resolve(1)),
+        cleanup: mock(() => {}),
+      };
+    });
+
+    it('detects current page asset references from component HTML', () => {
+      const marker = 'asset://asset-123';
+      const mockComponent = {
+        get: (key) => {
+          if (key === 'htmlContent') return `<img src="${marker}.jpg" />`;
+          if (key === 'htmlView') return '';
+          if (key === 'jsonProperties') return '{"text":"nope"}';
+          return null;
+        },
+      };
+      const mockBlock = {
+        get: (key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        },
+      };
+      const mockPage = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageId') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => mockBlock };
+          return null;
+        },
+      };
+      bridge.documentManager.getNavigation = () => ({ length: 1, get: () => mockPage });
+
+      expect(bridge.currentPageHasAssetReference('page-1', 'asset-123')).toBe(true);
+    });
+
+    it('reloads current page when late asset is relevant', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(
+        false,
+        { id: 'page-element' },
+      );
+      expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('does not reload when current page does not reference late asset', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(false);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge.assetManager.updateDomImagesForAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not reload when selected node is root', async () => {
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'root');
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
+    it('disconnect clears pending late-asset refresh timer', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await bridge.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+  });
+
   describe('onPageNavigation', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
