@@ -157,6 +157,7 @@ const createMockDocumentManager = (pages = []) => {
   }
 
   const mockDoc = {
+    clientID: 'test-client-id',
     transact: vi.fn((fn) => fn()),
   };
 
@@ -342,6 +343,18 @@ describe('ComponentImporter', () => {
 
       expect(result.success).toBe(true);
       expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
+    });
+
+    it('should use local clientID as transaction origin for undo tracking', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(docManager.getDoc().transact).toHaveBeenCalled();
+      expect(docManager.getDoc().transact.mock.calls[0][1]).toBe(docManager.getDoc().clientID);
     });
   });
 
