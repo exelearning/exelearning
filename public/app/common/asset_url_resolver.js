@@ -43,6 +43,51 @@
     }
 
     /**
+     * Extract asset ID from an asset:// URL.
+     * Supports simplified and legacy/corrupted formats.
+     *
+     * @param {string} assetUrl
+     * @returns {string|null}
+     */
+    function extractAssetId(assetUrl) {
+        if (!isAssetUrl(assetUrl)) return null;
+        const match = assetUrl.match(/asset:\/\/(?:asset\/+)?([a-z0-9-]+)/i);
+        return match ? match[1] : null;
+    }
+
+    /**
+     * Store tracking attributes so AssetManager can update DOM when blob arrives later.
+     *
+     * @param {Element} element
+     * @param {string} assetUrl
+     * @param {Object} [options]
+     * @param {boolean} [options.loading=true]
+     * @returns {string|null} assetId
+     */
+    function trackElementAsset(element, assetUrl, options = {}) {
+        if (!element || typeof element.setAttribute !== 'function' || !isAssetUrl(assetUrl)) {
+            return null;
+        }
+
+        const { loading = true } = options;
+        const assetId = extractAssetId(assetUrl);
+        if (!assetId) return null;
+
+        if (element.tagName === 'IFRAME') {
+            element.setAttribute('data-asset-src', assetUrl);
+            // Keep compatibility with existing consumers expecting data-asset-url.
+            element.setAttribute('data-asset-url', assetUrl);
+        } else {
+            element.setAttribute('data-asset-url', assetUrl);
+        }
+        element.setAttribute('data-asset-id', assetId);
+        if (loading) {
+            element.setAttribute('data-asset-loading', 'true');
+        }
+        return assetId;
+    }
+
+    /**
      * Resolve an asset:// URL to a blob URL
      * @param {string} url - URL with format asset://...
      * @returns {Promise<string|null>} - Blob URL or null if can't resolve
@@ -97,12 +142,22 @@
                     originalAttr.call($elements, otherAttrs);
                 }
 
+                // Add tracking attrs so late asset arrivals can patch already-rendered DOM
+                $elements.each(function() {
+                    if (MEDIA_TAGS.includes(this.tagName)) {
+                        trackElementAsset(this, assetSrc, { loading: true });
+                    }
+                });
+
                 // Resolve src asynchronously
                 resolveAssetUrl(assetSrc).then(resolved => {
                     if (resolved) {
                         $elements.each(function() {
                             if (MEDIA_TAGS.includes(this.tagName)) {
                                 originalAttr.call($(this), 'src', resolved);
+                                if (typeof this.removeAttribute === 'function') {
+                                    this.removeAttribute('data-asset-loading');
+                                }
                             }
                         });
                     }
@@ -116,6 +171,12 @@
         if (arguments.length > 1 && name === 'src' && isAssetUrl(value)) {
             const $elements = this;
 
+            $elements.each(function() {
+                if (MEDIA_TAGS.includes(this.tagName)) {
+                    trackElementAsset(this, value, { loading: true });
+                }
+            });
+
             // Resolve asynchronously and apply
             resolveAssetUrl(value).then(resolved => {
                 // Only set src if we got a valid resolved URL (not null)
@@ -123,6 +184,9 @@
                     $elements.each(function() {
                         if (MEDIA_TAGS.includes(this.tagName)) {
                             originalAttr.call($(this), 'src', resolved);
+                            if (typeof this.removeAttribute === 'function') {
+                                this.removeAttribute('data-asset-loading');
+                            }
                         }
                     });
                 }
@@ -156,12 +220,22 @@
                     originalProp.call($elements, otherProps);
                 }
 
+                // Add tracking attrs so late asset arrivals can patch already-rendered DOM
+                $elements.each(function() {
+                    if (MEDIA_TAGS.includes(this.tagName)) {
+                        trackElementAsset(this, assetSrc, { loading: true });
+                    }
+                });
+
                 // Resolve src asynchronously
                 resolveAssetUrl(assetSrc).then(resolved => {
                     if (resolved) {
                         $elements.each(function() {
                             if (MEDIA_TAGS.includes(this.tagName)) {
                                 originalProp.call($(this), 'src', resolved);
+                                if (typeof this.removeAttribute === 'function') {
+                                    this.removeAttribute('data-asset-loading');
+                                }
                             }
                         });
                     }
@@ -175,12 +249,21 @@
         if (arguments.length > 1 && name === 'src' && isAssetUrl(value)) {
             const $elements = this;
 
+            $elements.each(function() {
+                if (MEDIA_TAGS.includes(this.tagName)) {
+                    trackElementAsset(this, value, { loading: true });
+                }
+            });
+
             resolveAssetUrl(value).then(resolved => {
                 // Only set src if we got a valid resolved URL (not null)
                 if (resolved) {
                     $elements.each(function() {
                         if (MEDIA_TAGS.includes(this.tagName)) {
                             originalProp.call($(this), 'src', resolved);
+                            if (typeof this.removeAttribute === 'function') {
+                                this.removeAttribute('data-asset-loading');
+                            }
                         }
                     });
                 }
@@ -211,8 +294,7 @@
             set: function(value) {
                 if (isAssetUrl(value)) {
                     const element = this;
-                    // Store original for reference
-                    element.setAttribute('data-asset-url', value);
+                    trackElementAsset(element, value, { loading: true });
 
                     // Set appropriate placeholder based on element type to prevent browser errors
                     // Videos and audios need empty string (no placeholder), images use transparent GIF
@@ -231,6 +313,9 @@
                     resolveAssetUrl(value).then(resolved => {
                         if (resolved) {
                             originalDescriptor.set.call(element, resolved);
+                            if (typeof element.removeAttribute === 'function') {
+                                element.removeAttribute('data-asset-loading');
+                            }
                             // Trigger load on media elements after setting src
                             if (tagName === 'VIDEO' || tagName === 'AUDIO') {
                                 element.load();
@@ -273,25 +358,12 @@
             const assetUrl = el.getAttribute('src');
             if (!assetUrl) return;
 
-            // Store the original asset URL as data attribute for reference
-            if (el.tagName === 'IFRAME') {
-                el.setAttribute('data-asset-src', assetUrl);
-            } else {
-                el.setAttribute('data-asset-url', assetUrl);
-            }
+            const assetId = trackElementAsset(el, assetUrl, { loading: true });
 
             // Clear the invalid src immediately to prevent error events
             // Use a transparent 1x1 GIF as placeholder for images, about:blank for iframes
             if (el.tagName === 'IFRAME') {
                 el.src = 'about:blank';
-
-                // Track iframe resolution for later retries when the asset arrives
-                const assetIdMatch = assetUrl.match(/asset:\/\/([a-f0-9-]+)/i);
-                const assetId = assetIdMatch ? assetIdMatch[1] : null;
-                if (assetId) {
-                    el.setAttribute('data-asset-id', assetId);
-                    el.setAttribute('data-asset-loading', 'true');
-                }
 
                 // For iframes, check if it's an HTML file and resolve with relative URLs
                 const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
@@ -351,6 +423,7 @@
                 resolveAssetUrl(assetUrl).then(resolved => {
                     if (resolved) {
                         el.src = resolved;
+                        el.removeAttribute('data-asset-loading');
                         // Trigger load on the media element
                         if (el.tagName === 'VIDEO' || el.tagName === 'AUDIO') {
                             el.load();
@@ -370,6 +443,7 @@
                 resolveAssetUrl(assetUrl).then(resolved => {
                     if (resolved) {
                         el.src = resolved;
+                        el.removeAttribute('data-asset-loading');
                     }
                 });
             }
@@ -421,7 +495,7 @@
             if (!assetUrl) return;
 
             // Store the original asset URL as data attribute for reference
-            el.setAttribute('data-asset-url', assetUrl);
+            trackElementAsset(el, assetUrl, { loading: true });
 
             // Don't set a placeholder - keep the asset:// URL in href
             // SimpleLightbox and other libraries need a valid href when they initialize
@@ -431,6 +505,7 @@
             resolveAssetUrl(assetUrl).then(resolved => {
                 if (resolved) {
                     el.setAttribute('href', resolved);
+                    el.removeAttribute('data-asset-loading');
                 }
             });
         });

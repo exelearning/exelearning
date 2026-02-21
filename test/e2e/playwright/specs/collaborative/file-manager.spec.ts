@@ -130,11 +130,6 @@ async function selectFirstFile(page: Page): Promise<void> {
     await fileItem.waitFor({ state: 'visible', timeout: 10000 });
     await fileItem.click({ force: true });
 
-    // Wait for sidebar to be visible
-    await page.waitForSelector('#modalFileManager .media-library-sidebar-content:not([style*="display: none"])', {
-        timeout: 5000,
-    });
-
     // Wait for item to be selected
     await page.waitForFunction(
         () => {

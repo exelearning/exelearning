@@ -1360,6 +1360,17 @@ describe('YjsProjectBridge', () => {
       expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
     });
 
+    it('undo flushes pending metadata changes even when undoStack has items', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.undo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
+      expect(bridge.documentManager.undoManager.undo).toHaveBeenCalled();
+    });
+
     it('undo sets isUndoRedoInProgress flag', () => {
       bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
 
@@ -1376,6 +1387,16 @@ describe('YjsProjectBridge', () => {
     it('redo calls undoManager.redo', () => {
       bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
       bridge.redo();
+      expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
+    });
+
+    it('redo with pending metadata changes flushes them first', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.redo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
       expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
     });
 
@@ -1683,6 +1704,108 @@ describe('YjsProjectBridge', () => {
 
       // Wait for potential debounce
       await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('asset refresh on late asset arrival', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock(() => 'page-1'),
+              },
+              menuNav: {
+                querySelector: mock(() => ({ id: 'page-element' })),
+              },
+            },
+          },
+          idevices: {
+            loadingPage: false,
+            loadApiIdevicesInPage: mock(() => Promise.resolve()),
+          },
+        },
+      };
+      bridge.assetManager = {
+        updateDomImagesForAsset: mock(() => Promise.resolve(1)),
+        cleanup: mock(() => {}),
+      };
+    });
+
+    it('detects current page asset references from component HTML', () => {
+      const marker = 'asset://asset-123';
+      const mockComponent = {
+        get: (key) => {
+          if (key === 'htmlContent') return `<img src="${marker}.jpg" />`;
+          if (key === 'htmlView') return '';
+          if (key === 'jsonProperties') return '{"text":"nope"}';
+          return null;
+        },
+      };
+      const mockBlock = {
+        get: (key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        },
+      };
+      const mockPage = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageId') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => mockBlock };
+          return null;
+        },
+      };
+      bridge.documentManager.getNavigation = () => ({ length: 1, get: () => mockPage });
+
+      expect(bridge.currentPageHasAssetReference('page-1', 'asset-123')).toBe(true);
+    });
+
+    it('reloads current page when late asset is relevant', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(
+        false,
+        { id: 'page-element' },
+      );
+      expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('does not reload when current page does not reference late asset', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(false);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge.assetManager.updateDomImagesForAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not reload when selected node is root', async () => {
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'root');
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
+    it('disconnect clears pending late-asset refresh timer', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await bridge.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 260));
 
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
@@ -2107,10 +2230,29 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('dispatches blur to active property-value input first', () => {
+      const activeInput = {
+        classList: { contains: (cls) => cls === 'property-value' },
+        dispatchEvent: mock(() => {}),
+      };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => activeInput,
+      });
+
+      bridge.flushPendingMetadataChanges();
+
+      expect(activeInput.dispatchEvent).toHaveBeenCalled();
+    });
+
     it('dispatches blur events to property inputs', () => {
       const input = {
         dispatchEvent: mock(() => {}),
       };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => null,
+      });
       global.document.querySelectorAll = mock(() => [input]);
 
       bridge.flushPendingMetadataChanges();
@@ -3024,6 +3166,28 @@ describe('YjsProjectBridge', () => {
       bridge.forceAllFormInputsSync();
 
       expect(mockInput.value).toBe('New Title');
+    });
+
+    it('clears stale text inputs when metadata key is missing', () => {
+      const mockInput = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_subtitle';
+          if (attr === 'data-type') return 'text';
+          return null;
+        },
+        type: 'text',
+        value: 'stale subtitle',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+
+      const mockMetadata = {
+        get: () => undefined,
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.value).toBe('');
     });
 
     it('skips inputs without property attribute', () => {
