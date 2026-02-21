@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page, Download } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,6 +18,7 @@ import {
     importComponent,
     gotoWorkarea,
 } from '../helpers/workarea-helpers';
+import { pressUndo, waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
 /**
  * E2E Tests for Page Export/Import
@@ -338,7 +339,8 @@ test.describe('Page Export with Images', () => {
         console.log('Page export correctly filtered assets - only referenced assets included');
     });
 
-    test('should import exported page to new project', async ({ authenticatedPage, createProject }) => {
+    test('should import exported page to new project', async ({ authenticatedPage, createProject }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires Yjs undo manager in dynamic mode');
         /**
          * Test page import functionality:
          * 1. Export a page with images
@@ -457,6 +459,15 @@ test.describe('Page Export with Images', () => {
             // After the fix, images should be loaded from IndexedDB via blob:// URLs
             expect(hasBlobImages).toBe(true);
         }
+
+        // 13. Verify import is undoable (regression for issue #1346).
+        await waitForUndoAvailable(page, 15000);
+        await pressUndo(page);
+        await page.waitForFunction(
+            () => document.querySelectorAll('.nav-element:not([nav-id="root"])').length === 1,
+            undefined,
+            { timeout: 10000 },
+        );
 
         console.log('Page import with images verified successfully');
     });
