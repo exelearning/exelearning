@@ -158,10 +158,21 @@ async function importElpxUsingStructureImport(page: Page, fixturePath: string): 
     const importButton = page.locator('.button_nav_action.action_import_idevices').first();
     await expect(importButton).toBeVisible({ timeout: 10000 });
     await expect(importButton).toBeEnabled({ timeout: 10000 });
-    await importButton.click();
 
-    const importInput = page.locator('#local-ode-file-upload, input.local-ode-file-upload-input').first();
-    await importInput.setInputFiles(fixturePath);
+    // In Firefox, clicking first may trigger a native file chooser and race with setInputFiles.
+    // Prefer direct input upload when available; fallback to filechooser flow if needed.
+    const importInput = page.locator('#local-ode-file-upload');
+    if ((await importInput.count()) > 0) {
+        await importInput.setInputFiles(fixturePath);
+    } else {
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 12000 }).catch(() => null);
+        await importButton.click();
+        const fileChooser = await fileChooserPromise;
+        if (!fileChooser) {
+            throw new Error('Import did not expose a file input or file chooser');
+        }
+        await fileChooser.setFiles(fixturePath);
+    }
 
     const importOverlay = page.locator('#import-progress-overlay');
     await importOverlay.waitFor({ state: 'visible', timeout: 30000 });
