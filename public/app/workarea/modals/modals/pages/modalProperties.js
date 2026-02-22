@@ -18,6 +18,10 @@ export default class ModalProperties extends Modal {
         this.propertiesLockRefreshInterval = null;
     }
 
+    isCheckedValue(value) {
+        return value === true || value === 'true';
+    }
+
     /**
      *
      * @param {*} data
@@ -632,7 +636,7 @@ export default class ModalProperties extends Modal {
                 input.setAttribute('property', name);
                 input.setAttribute('data-type', 'checkbox');
                 input.classList.add('property-value', 'toggle-input');
-                input.checked = property.value == 'true' ? true : false;
+                input.checked = this.isCheckedValue(property.value);
 
                 const visual = document.createElement('span');
                 visual.classList.add('toggle-visual');

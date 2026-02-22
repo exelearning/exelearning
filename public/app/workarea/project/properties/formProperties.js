@@ -16,6 +16,10 @@ export default class FormProperties {
         this.yjsBinding = null;
     }
 
+    isCheckedValue(value) {
+        return value === true || value === 'true';
+    }
+
     show() {
         this.combineMetadataProperties();
         const formElement = this.makeBodyElement(this.metadataProperties);
@@ -569,7 +573,7 @@ export default class FormProperties {
                 break;
             case 'checkbox':
                 valueElement = document.createElement('input');
-                valueElement.checked = property.value == 'true' ? true : false;
+                valueElement.checked = this.isCheckedValue(property.value);
                 valueElement.classList.add('toggle-input');
                 break;
             case 'date':
@@ -969,7 +973,7 @@ export default class FormProperties {
             if (!element) continue;
             switch (property.type) {
                 case 'checkbox':
-                    element.checked = property.value == 'true' ? true : false;
+                    element.checked = this.isCheckedValue(property.value);
                     break;
                 case 'select': {
                     const select = element.querySelector(

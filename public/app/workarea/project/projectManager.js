@@ -347,6 +347,17 @@ export default class projectManager {
         // Select first page and load its content
         await this.initialiceProject();
 
+        // Re-sync project properties form after refresh.
+        // During static imports, metadata can be cleared/reloaded in quick succession,
+        // leaving stale checkbox/select states in the existing form.
+        if (this.properties) {
+            this.properties.loadPropertiesFromYjs();
+            this.properties.formProperties?.reloadValues?.();
+        }
+        if (this._yjsBridge?.forceAllFormInputsSync) {
+            this._yjsBridge.forceAllFormInputsSync();
+        }
+
         // Show workarea
         this.showScreen();
         // Signal that the document is fully loaded and ready for interaction

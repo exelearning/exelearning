@@ -3250,6 +3250,42 @@ describe('YjsProjectBridge', () => {
       expect(mockInput.value).toBe('New Title');
     });
 
+    it('updates addMathJax and globalFont inputs using mapped metadata keys', () => {
+      const mockCheckbox = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_addMathJax';
+          if (attr === 'data-type') return 'checkbox';
+          return null;
+        },
+        type: 'checkbox',
+        checked: false,
+      };
+      const mockSelect = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_globalFont';
+          if (attr === 'data-type') return 'select';
+          return null;
+        },
+        type: 'select-one',
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockCheckbox, mockSelect]);
+
+      const mockMetadata = {
+        get: (key) => {
+          if (key === 'addMathJax') return true;
+          if (key === 'globalFont') return 'default';
+          return undefined;
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockCheckbox.checked).toBe(true);
+      expect(mockSelect.value).toBe('default');
+    });
+
     it('clears stale text inputs when metadata key is missing', () => {
       const mockInput = {
         getAttribute: (attr) => {
