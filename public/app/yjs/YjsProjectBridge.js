@@ -1584,6 +1584,8 @@ class YjsProjectBridge {
       'pp_addPagination': 'addPagination',
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
+      'pp_addMathJax': 'addMathJax',
+      'pp_globalFont': 'globalFont',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
