@@ -224,7 +224,8 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 /**
- * Helper to duplicate selected file and wait for new file to appear
+ * Helper to duplicate selected file and wait for new file to appear.
+ * Confirms the suggested name in the custom rename dialog.
  */
 async function duplicateSelectedFile(page: Page, expectedCount: number): Promise<void> {
     const duplicateBtn = page.locator('#modalFileManager .media-library-duplicate-btn');
@@ -233,41 +234,14 @@ async function duplicateSelectedFile(page: Page, expectedCount: number): Promise
     // Get the current file count before duplicating
     const countBefore = await getFileCount(page);
 
-    // Listen for console messages to capture any errors
-    const consoleLogs: string[] = [];
-    page.on('console', msg => {
-        consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
-    });
-
-    // Set up one-time dialog handler before clicking
-    const dialogHandler = async (dialog: any) => {
-        console.log(
-            `Dialog appeared: type=${dialog.type()}, message=${dialog.message()}, default=${dialog.defaultValue()}`,
-        );
-        // Accept with the default value (prompt's pre-filled text)
-        if (dialog.type() === 'prompt') {
-            await dialog.accept(dialog.defaultValue());
-        } else {
-            await dialog.accept();
-        }
-    };
-    page.once('dialog', dialogHandler);
-
-    // Click duplicate button
+    // Click duplicate button — this opens the custom rename dialog
     await duplicateBtn.click();
 
-    // Wait for the duplicate operation to complete
-    await page.waitForTimeout(500);
-
-    // Print all console logs related to MediaLibrary
-    const mediaLogs = consoleLogs.filter(
-        log => log.includes('MediaLibrary') || log.includes('error') || log.includes('Error'),
-    );
-    if (mediaLogs.length > 0) {
-        console.log('MediaLibrary console logs:', mediaLogs.join('\n'));
-    } else {
-        console.log('No MediaLibrary console logs found');
-    }
+    // Confirm the suggested name in the custom rename dialog
+    const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+    await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+    // Accept the pre-filled suggested name as-is
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     // Wait for the file count to increase
     await page.waitForFunction(
@@ -682,13 +656,14 @@ test.describe('File Manager', () => {
             const renameBtn = page.locator('#modalFileManager .media-library-rename-btn');
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt
             const newName = `renamed-file-${Date.now()}.jpg`;
-            page.once('dialog', async dialog => {
-                await dialog.accept(newName);
-            });
-
             await renameBtn.click();
+
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for the filename to update in sidebar
             await page.waitForFunction(
@@ -739,16 +714,14 @@ test.describe('File Manager', () => {
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
             await expect(renameBtn).toBeEnabled({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt BEFORE clicking
             const newFolderName = `RenamedFolder_${Date.now()}`;
+            await renameBtn.click();
 
-            // Handle dialog and click simultaneously using Promise.all
-            await Promise.all([
-                page.waitForEvent('dialog').then(async dialog => {
-                    await dialog.accept(newFolderName);
-                }),
-                renameBtn.click(),
-            ]);
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newFolderName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder with new name to appear in the grid
             await page.waitForFunction(

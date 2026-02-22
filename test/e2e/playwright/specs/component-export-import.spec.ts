@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -27,6 +27,7 @@ import {
     waitForThemeIconsLoaded,
     gotoWorkarea,
 } from '../helpers/workarea-helpers';
+import { pressUndo, waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
 /**
  * E2E Tests for Component Export/Import
@@ -168,6 +169,83 @@ test.describe('Component Export/Import', () => {
         await expect(originalContent).toBeVisible({ timeout: 10000 });
 
         console.log('Test completed successfully - export and import working correctly');
+    });
+
+    test('should undo imported block and imported iDevice', async ({ authenticatedPage, createProject }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires Yjs undo manager in dynamic mode');
+        const page = authenticatedPage;
+        const localTempDir = fs.mkdtempSync(path.join('/tmp', 'exelearning-e2e-undo-import-'));
+
+        // Source project: create one text iDevice and export block + iDevice files.
+        const sourceProjectUuid = await createProject(page, 'Undo Import Source');
+        await gotoWorkarea(page, sourceProjectUuid);
+        await waitForAppReady(page);
+        await selectPageByIndex(page, 0);
+        await addTextIdevice(page);
+        await editTextIdevice(page, `Undo import content ${Date.now()}`);
+
+        const { blockId, ideviceId } = await getFirstBlockAndIdeviceIds(page);
+        const blockDownload = await exportBlock(page, blockId);
+        const ideviceDownload = await exportIdevice(page, ideviceId);
+
+        const blockFilePath = path.join(
+            localTempDir,
+            `undo-${Date.now()}-${Math.random().toString(36).slice(2)}.block`,
+        );
+        const ideviceFilePath = path.join(
+            localTempDir,
+            `undo-${Date.now()}-${Math.random().toString(36).slice(2)}.idevice`,
+        );
+        await blockDownload.saveAs(blockFilePath);
+        await ideviceDownload.saveAs(ideviceFilePath);
+
+        // Target project: import and then undo.
+        const targetProjectUuid = await createProject(page, 'Undo Import Target');
+        await gotoWorkarea(page, targetProjectUuid);
+        await waitForAppReady(page);
+        await selectPageByIndex(page, 0);
+
+        // Ensure undo history starts clean.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            const undoManager = bridge?.documentManager?.undoManager;
+            if (undoManager?.clear) undoManager.clear();
+            if (bridge?.updateUndoRedoButtons) bridge.updateUndoRedoButtons();
+        });
+
+        // Import .block and verify undo removes it.
+        await importComponent(page, blockFilePath);
+        await page.waitForFunction(
+            () => document.querySelectorAll('#node-content article .idevice_node').length > 0,
+            undefined,
+            { timeout: 15000 },
+        );
+        await waitForUndoAvailable(page, 15000);
+        await pressUndo(page);
+        await page.waitForFunction(
+            () => document.querySelectorAll('#node-content article .idevice_node').length === 0,
+            undefined,
+            { timeout: 10000 },
+        );
+
+        // Import .idevice and verify undo removes it.
+        await importComponent(page, ideviceFilePath);
+        await page.waitForFunction(
+            () => document.querySelectorAll('#node-content article .idevice_node').length > 0,
+            undefined,
+            { timeout: 15000 },
+        );
+        await waitForUndoAvailable(page, 15000);
+        await pressUndo(page);
+        await page.waitForFunction(
+            () => document.querySelectorAll('#node-content article .idevice_node').length === 0,
+            undefined,
+            { timeout: 10000 },
+        );
+
+        if (fs.existsSync(localTempDir)) {
+            fs.rmSync(localTempDir, { recursive: true, force: true });
+        }
     });
 
     test('should export block and verify file format', async ({ authenticatedPage, createProject }) => {

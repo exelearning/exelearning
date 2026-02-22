@@ -39,6 +39,18 @@ import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { getSystemInfo } from '../services/system-info';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
+import * as pathModule from 'path';
+import {
+    ElpxExporter,
+    FileSystemResourceProvider,
+    FileSystemAssetProvider,
+    DatabaseAssetProvider,
+    CombinedAssetProvider,
+    FflateZipProvider,
+    YjsDocumentAdapter,
+    ServerYjsDocumentWrapper,
+} from '../shared/export';
+import { reconstructDocument } from '../websocket/yjs-persistence';
 
 type AppSettingsTable = {
     key: string;
@@ -661,6 +673,57 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 await queries.hardDeleteProject(db, parsed.id);
                 return { success: true };
+            })
+
+            // GET /api/admin/projects/:id/download - Download project as .elpx (public projects only)
+            .get('/api/admin/projects/:id/download', async ({ params, set }) => {
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
+
+                const project = await queries.findProjectById(db, parsed.id);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                if (project.visibility !== 'public') {
+                    set.status = 403;
+                    return { error: 'FORBIDDEN', message: 'Only public projects can be downloaded' };
+                }
+
+                const yjsDoc = await reconstructDocument(project.id);
+                const publicDir = pathModule.resolve(__dirname, '../../public');
+                const assetsDir = fileHelper!.getProjectAssetsDir(project.uuid);
+
+                const wrapper = new ServerYjsDocumentWrapper(yjsDoc, project.uuid);
+                const document = new YjsDocumentAdapter(wrapper);
+                const resources = new FileSystemResourceProvider(publicDir);
+                const zip = new FflateZipProvider();
+                const fsAssets = new FileSystemAssetProvider(assetsDir);
+                const dbAssets = new DatabaseAssetProvider(db, project.id, assetsDir);
+                const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
+
+                const exporter = new ElpxExporter(document, resources, assets, zip);
+                const result = await exporter.export();
+
+                wrapper.destroy();
+
+                if (!result.success || !result.data) {
+                    set.status = 500;
+                    return { error: 'EXPORT_FAILED', message: result.error || 'Export failed' };
+                }
+
+                const slug = (project.title || 'untitled')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .substring(0, 50);
+                const safeFilename = `project-${project.id}-${slug}.elpx`;
+
+                set.headers['content-type'] = 'application/zip';
+                set.headers['content-disposition'] = `attachment; filename="${safeFilename}"`;
+                set.headers['content-length'] = result.data.length.toString();
+                return result.data;
             })
 
             // DELETE /api/admin/users/:id - Delete user

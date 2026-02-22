@@ -1602,6 +1602,18 @@ describe('IdevicesEngine', () => {
 
             expect(engine.cleanNodeAndLoadPage).toHaveBeenCalled();
         });
+
+        it('reconciles empty node state after loading page components', async () => {
+            engine.loadingPage = false;
+            vi.spyOn(engine, 'cleanNodeAndLoadPage').mockResolvedValue(true);
+
+            await engine.loadApiIdevicesInPage(true);
+
+            expect(
+                eXeLearning.app.menus.menuStructure.menuStructureBehaviour
+                    .checkIfEmptyNode
+            ).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('cleanNodeAndLoadPage', () => {

@@ -51,6 +51,14 @@ class YjsProjectBridge {
 
     // Current save status for UI tracking
     this.currentSaveStatus = 'saved';
+
+    // Asset refresh coordination (for late asset arrivals during first page render)
+    this._assetRefreshTimer = null;
+    this._pendingAssetRefreshIds = new Set();
+
+    // Asset metadata observer references (for hash-change invalidation)
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
   }
 
   /**
@@ -160,7 +168,12 @@ class YjsProjectBridge {
       this.assetWebSocketHandler.on('assetReceived', async ({ assetId }) => {
         Logger.log('[YjsProjectBridge] Asset received from peer:', assetId.substring(0, 8) + '...');
         // Update any DOM images waiting for this asset
-        await this.assetManager.updateDomImagesForAsset(assetId);
+        const updated = await this.assetManager.updateDomImagesForAsset(assetId);
+        // If nothing was updated, the asset likely arrived before the page finished rendering.
+        // Queue a single debounced refresh of the current page to avoid requiring a second manual click.
+        if (updated === 0) {
+          this.scheduleAssetRefreshForCurrentPage(assetId);
+        }
         // Also preload into cache for future use
         await this.assetManager.preloadAllAssets();
       });
@@ -264,6 +277,7 @@ class YjsProjectBridge {
     // Set up observers
     this.setupStructureObserver();
     this.setupMetadataObserver();
+    this.setupAssetsObserver();
     this.setupUndoRedoHandlers();
 
     // Inject save status indicator
@@ -835,6 +849,123 @@ class YjsProjectBridge {
   }
 
   /**
+   * Schedule a debounced refresh of the current page when an asset arrives
+   * but no waiting DOM elements were found yet.
+   * This fixes "first click shows no image, second click shows image" timing races.
+   *
+   * @param {string} assetId
+   */
+  scheduleAssetRefreshForCurrentPage(assetId) {
+    if (!assetId) return;
+
+    this._pendingAssetRefreshIds.add(assetId);
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+    }
+
+    this._assetRefreshTimer = setTimeout(async () => {
+      const pendingIds = Array.from(this._pendingAssetRefreshIds);
+      this._pendingAssetRefreshIds.clear();
+
+      const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
+      if (!currentPageId || currentPageId === 'root') {
+        return;
+      }
+
+      const idevicesEngine = this.app?.project?.idevices;
+      if (!idevicesEngine) return;
+
+      // If page is still being rendered, retry shortly.
+      if (idevicesEngine.loadingPage) {
+        pendingIds.forEach((id) => this._pendingAssetRefreshIds.add(id));
+        this.scheduleAssetRefreshForCurrentPage(pendingIds[0]);
+        return;
+      }
+
+      // Reload only when current page actually references one of the pending assets.
+      const hasRelevantAsset = pendingIds.some((id) => this.currentPageHasAssetReference(currentPageId, id));
+      if (!hasRelevantAsset) {
+        return;
+      }
+
+      const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
+        `.nav-element[nav-id="${currentPageId}"]`
+      );
+      if (!pageElement) return;
+
+      Logger.log('[YjsProjectBridge] Reloading current page after late asset arrival');
+      await idevicesEngine.loadApiIdevicesInPage(false, pageElement);
+
+      // One more patch pass after reload in case elements are now in DOM.
+      if (this.assetManager) {
+        for (const id of pendingIds) {
+          await this.assetManager.updateDomImagesForAsset(id);
+        }
+      }
+    }, 180);
+  }
+
+  /**
+   * Check whether the currently selected page references the given asset ID.
+   * Looks at htmlContent, htmlView, and serialized jsonProperties.
+   *
+   * @param {string} pageId
+   * @param {string} assetId
+   * @returns {boolean}
+   */
+  currentPageHasAssetReference(pageId, assetId) {
+    if (!this.documentManager || !pageId || !assetId) return false;
+
+    const navigation = this.documentManager.getNavigation?.();
+    if (!navigation) return false;
+
+    let pageMap = null;
+    for (let i = 0; i < navigation.length; i++) {
+      const page = navigation.get(i);
+      if (!page) continue;
+      const id = page.get('id') || page.get('pageId');
+      if (id === pageId) {
+        pageMap = page;
+        break;
+      }
+    }
+    if (!pageMap) return false;
+
+    const marker = `asset://${assetId}`;
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return false;
+
+    for (let i = 0; i < blocks.length; i++) {
+      const block = blocks.get(i);
+      const components = block?.get('components');
+      if (!components) continue;
+
+      for (let j = 0; j < components.length; j++) {
+        const component = components.get(j);
+        if (!component) continue;
+
+        const htmlContent = component.get('htmlContent');
+        const htmlView = component.get('htmlView');
+        const jsonProperties = component.get('jsonProperties');
+        const values = [htmlContent, htmlView, jsonProperties];
+
+        for (const value of values) {
+          const stringValue =
+            typeof value === 'string'
+              ? value
+              : (value && typeof value.toString === 'function' ? value.toString() : '');
+          if (stringValue && stringValue.includes(marker)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Called when user navigates to a page
    * Boosts priority for assets in that page for P2P synchronization
    * @param {string} pageId - ID of the page being navigated to
@@ -1061,6 +1192,66 @@ class YjsProjectBridge {
       // Update undo/redo button states after metadata changes
       this.updateUndoRedoButtons();
     });
+  }
+
+  /**
+   * Set up observer for assets metadata changes.
+   * When a remote client updates an existing asset hash (same assetId),
+   * invalidate local stale blobs and request a fresh copy.
+   */
+  setupAssetsObserver() {
+    const assetsMap = this.documentManager?.getAssets?.();
+    if (!assetsMap || typeof assetsMap.observe !== 'function') {
+      return;
+    }
+
+    this._assetsMap = assetsMap;
+
+    this._onAssetsMapChange = async (event, transaction) => {
+      const isRemote = transaction?.origin === 'remote';
+      if (!isRemote || !this.assetManager) {
+        return;
+      }
+
+      const changedHashes = [];
+
+      for (const [assetId, change] of event.changes.keys) {
+        if (change.action !== 'update') {
+          continue;
+        }
+
+        const oldHash = change.oldValue?.hash || '';
+        const newHash = assetsMap.get(assetId)?.hash || '';
+
+        if (!oldHash || !newHash || oldHash === newHash) {
+          continue;
+        }
+
+        changedHashes.push(assetId);
+      }
+
+      if (changedHashes.length === 0) {
+        return;
+      }
+
+      for (const assetId of changedHashes) {
+        Logger.log(`[YjsProjectBridge] Remote hash update detected for asset ${assetId.substring(0, 8)}...`);
+
+        await this.assetManager.invalidateLocalBlob(assetId, {
+          markAsMissing: true,
+          markDomAsLoading: true,
+          reason: 'remote-hash-update',
+        });
+
+        if (this.assetWebSocketHandler?.requestAsset) {
+          this.assetWebSocketHandler.requestAsset(assetId).catch((err) => {
+            console.warn(`[YjsProjectBridge] Failed requesting updated asset ${assetId.substring(0, 8)}...`, err);
+          });
+        }
+      }
+    };
+
+    assetsMap.observe(this._onAssetsMapChange);
   }
 
   /**
@@ -1393,6 +1584,8 @@ class YjsProjectBridge {
       'pp_addPagination': 'addPagination',
       'pp_addSearchBox': 'addSearchBox',
       'pp_addAccessibilityToolbar': 'addAccessibilityToolbar',
+      'pp_addMathJax': 'addMathJax',
+      'pp_globalFont': 'globalFont',
       'pp_extraHeadContent': 'extraHeadContent',
       'exportSource': 'exportSource',
       'footer': 'footer',
@@ -1406,9 +1599,19 @@ class YjsProjectBridge {
 
       const metadataKey = propertyKeyMap[propertyKey] || propertyKey;
       const value = metadata.get(metadataKey);
-      if (value === undefined) return;
 
       const inputType = input.getAttribute('data-type') || input.type;
+
+      // Missing metadata keys can happen after undo (e.g., subtitle returning
+      // to initial empty state). Clear stale UI values explicitly.
+      if (value === undefined) {
+        if (inputType === 'checkbox') {
+          input.checked = false;
+        } else {
+          input.value = '';
+        }
+        return;
+      }
 
       switch (inputType) {
         case 'checkbox':
@@ -1665,9 +1868,9 @@ class YjsProjectBridge {
         ? this.structureBinding?.getBlocks?.(currentPageId)?.length
         : null;
 
-    // If there are pending metadata changes but nothing in undoStack yet,
-    // flush the pending changes first so they can be undone
-    if (this.hasPendingMetadataChanges && undoManager.undoStack.length === 0) {
+    // Always flush pending metadata changes before undo so we don't leave
+    // debounced field edits (e.g. subtitle typing) committing after undo.
+    if (this.hasPendingMetadataChanges) {
       this.flushPendingMetadataChanges();
     }
 
@@ -1725,6 +1928,11 @@ class YjsProjectBridge {
         ? this.structureBinding?.getBlocks?.(currentPageId)?.length
         : null;
 
+    // Flush pending metadata edits first to avoid replaying redo over stale UI state
+    if (this.hasPendingMetadataChanges) {
+      this.flushPendingMetadataChanges();
+    }
+
     // Clear pending changes flag
     this.hasPendingMetadataChanges = false;
 
@@ -1768,10 +1976,18 @@ class YjsProjectBridge {
    * This commits any debounced changes immediately to Yjs
    */
   flushPendingMetadataChanges() {
-    // Find all property inputs and trigger their blur to flush debounced changes
+    const activeElement = document.activeElement;
+    if (activeElement?.classList?.contains('property-value')) {
+      // Blur the active field first. This flushes the pending debounce timer of
+      // the field currently being edited and closes its undo capture group.
+      activeElement.dispatchEvent(new Event('blur', { bubbles: true }));
+      Logger.log('[YjsProjectBridge] Flushed pending metadata changes from active input');
+      return;
+    }
+
+    // Fallback when focus is not in a property field
     const inputs = document.querySelectorAll('.property-value');
     inputs.forEach(input => {
-      // Dispatch blur event to trigger the blur listener which flushes pending changes
       input.dispatchEvent(new Event('blur', { bubbles: true }));
     });
     Logger.log('[YjsProjectBridge] Flushed pending metadata changes');
@@ -3224,6 +3440,20 @@ class YjsProjectBridge {
    */
   async disconnect() {
     Logger.log('[YjsProjectBridge] Disconnecting...');
+
+    if (this._assetsMap && this._onAssetsMapChange && typeof this._assetsMap.unobserve === 'function') {
+      this._assetsMap.unobserve(this._onAssetsMapChange);
+    }
+    this._assetsMap = null;
+    this._onAssetsMapChange = null;
+
+    if (this._assetRefreshTimer) {
+      clearTimeout(this._assetRefreshTimer);
+      this._assetRefreshTimer = null;
+    }
+    if (this._pendingAssetRefreshIds) {
+      this._pendingAssetRefreshIds.clear();
+    }
 
     if (this.documentManager) {
       await this.documentManager.destroy();
