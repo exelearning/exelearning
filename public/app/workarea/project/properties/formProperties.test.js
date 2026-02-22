@@ -501,9 +501,36 @@ describe('FormProperties', () => {
             expect(element.classList.contains('toggle-input')).toBe(true);
         });
 
+        it('should create checkbox input element from boolean true value', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'checkbox', value: true, id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.tagName).toBe('INPUT');
+            expect(element.checked).toBe(true);
+        });
+
         it('should create checkbox as unchecked for false value', () => {
             const formProperties = new FormProperties(mockProperties);
             const property = { type: 'checkbox', value: 'false', id: 'testId' };
+
+            const element = formProperties.makeRowValueElement(
+                'test-id',
+                'testName',
+                property
+            );
+
+            expect(element.checked).toBe(false);
+        });
+
+        it('should create checkbox as unchecked for boolean false value', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const property = { type: 'checkbox', value: false, id: 'testId' };
 
             const element = formProperties.makeRowValueElement(
                 'test-id',
@@ -979,6 +1006,31 @@ describe('FormProperties', () => {
                     testCheckbox: {
                         type: 'checkbox',
                         value: 'true',
+                        alwaysVisible: true,
+                    },
+                },
+                cataloguing: {},
+                project: mockProject,
+            };
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.setAttribute('property', 'testCheckbox');
+            mockNodeContent.querySelector = vi.fn(() => checkbox);
+
+            formProperties.reloadValues();
+
+            expect(checkbox.checked).toBe(true);
+        });
+
+        it('should reload checkbox boolean values to checked', () => {
+            const formProperties = new FormProperties(mockProperties);
+            formProperties.nodeContent = mockNodeContent;
+            formProperties.properties = {
+                properties: {
+                    testCheckbox: {
+                        type: 'checkbox',
+                        value: true,
                         alwaysVisible: true,
                     },
                 },
