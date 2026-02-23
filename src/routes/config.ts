@@ -151,13 +151,6 @@ const ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG = {
         category: null,
         heritable: true,
     },
-    identifier: {
-        title: `${TRANS_PREFIX}ID`,
-        value: '',
-        type: 'text',
-        category: null,
-        heritable: false,
-    },
     cssClass: {
         title: `${TRANS_PREFIX}CSS Class`,
         value: '',
@@ -260,13 +253,6 @@ const ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG = {
         type: 'checkbox',
         category: null,
         heritable: true,
-    },
-    identifier: {
-        title: `${TRANS_PREFIX}ID`,
-        value: '',
-        type: 'text',
-        category: null,
-        heritable: false,
     },
     cssClass: {
         title: `${TRANS_PREFIX}CSS Class`,

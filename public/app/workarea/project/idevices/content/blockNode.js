@@ -252,13 +252,6 @@ export default class IdeviceBlockNode {
      *
      */
     setPropertiesClassesToElement() {
-        // identifier
-        if (this.properties.identifier.value != '') {
-            this.blockContent.setAttribute(
-                'identifier',
-                this.properties.identifier.value
-            );
-        }
         // visibility
         if (this.properties.visibility.value == 'true') {
             this.blockContent.setAttribute(

@@ -522,20 +522,6 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('novisible');
         });
 
-        it('should add identifier attribute when block has identifier property', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Custom ID Block',
-                order: 0,
-                components: [],
-                properties: { identifier: 'my-custom-id' },
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).toContain('identifier="my-custom-id"');
-        });
-
         it('should add custom cssClass to block', () => {
             const block: ExportBlock = {
                 id: 'block-1',
@@ -560,7 +546,6 @@ describe('IdeviceRenderer', () => {
                 properties: {
                     teacherOnly: 'true',
                     minimized: 'true',
-                    identifier: 'special-block',
                     cssClass: 'featured',
                 },
             };
@@ -569,35 +554,7 @@ describe('IdeviceRenderer', () => {
 
             expect(html).toContain('teacher-only');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="special-block"');
             expect(html).toContain('featured');
-        });
-
-        it('should not add identifier attribute when not set', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Block',
-                order: 0,
-                components: [],
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).not.toContain('identifier=');
-        });
-
-        it('should not add identifier attribute when empty string', () => {
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Block',
-                order: 0,
-                components: [],
-                properties: { identifier: '' },
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).not.toContain('identifier=');
         });
 
         // Tests for boolean values (Yjs stores booleans, not strings)
@@ -653,7 +610,6 @@ describe('IdeviceRenderer', () => {
                     teacherOnly: true as unknown as string,
                     visibility: false as unknown as string,
                     minimized: true as unknown as string,
-                    identifier: 'my-id',
                     cssClass: 'custom-class',
                 },
             };
@@ -663,7 +619,6 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('teacher-only');
             expect(html).toContain('novisible');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="my-id"');
             expect(html).toContain('custom-class');
         });
     });
