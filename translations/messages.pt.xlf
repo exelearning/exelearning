@@ -13145,6 +13145,26 @@
         <source>Download Video</source>
         <target>~Descarregar vídeo</target>
       </trans-unit>
+          <trans-unit id="hty5v5r" resname="Log in as">
+        <source>Log in as</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="4zxnutq" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="svv31f9" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="txkgihb" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="v9t50fy" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
