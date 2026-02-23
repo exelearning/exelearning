@@ -2302,7 +2302,7 @@ class YjsProjectBridge {
         tempDiv.innerHTML = html;
         tempDiv.querySelectorAll('a[id], a[name]').forEach((a) => {
           const id = a.id || a.getAttribute('name');
-          if (id && !a.href && !anchors.includes(id)) anchors.push(id);
+          if (id && !a.hasAttribute('href') && !anchors.includes(id)) anchors.push(id);
         });
       }
     }
