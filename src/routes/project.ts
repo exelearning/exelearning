@@ -1346,9 +1346,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
 
                 // =====================================================
                 // Duplicate assets (physical files + database records)
-                // Build client_id mapping for Yjs document update
                 // =====================================================
-                const clientIdMapping = new Map<string, string>();
                 const sourceAssets = await findAllAssetsForProject(db, project.id);
 
                 if (sourceAssets.length > 0) {
@@ -1357,16 +1355,17 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     for (const asset of sourceAssets) {
                         if (!asset.client_id) continue;
 
-                        // Generate new client_id for the duplicated asset
-                        const newClientId = crypto.randomUUID();
-                        clientIdMapping.set(asset.client_id, newClientId);
+                        // Preserve client_id on duplication.
+                        // This avoids broken references for any asset IDs that may exist in
+                        // alternate/legacy Yjs shapes or historical content fragments.
+                        const duplicatedClientId = asset.client_id;
 
                         // Copy physical file if it exists
                         if (asset.storage_path) {
                             try {
                                 const sourceExists = await fs.pathExists(asset.storage_path);
                                 if (sourceExists) {
-                                    const targetFile = path.join(targetAssetsDir, newClientId, asset.filename);
+                                    const targetFile = path.join(targetAssetsDir, duplicatedClientId, asset.filename);
                                     await fs.ensureDir(path.dirname(targetFile));
                                     await fs.copy(asset.storage_path, targetFile);
 
@@ -1377,9 +1376,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                                         storage_path: targetFile,
                                         mime_type: asset.mime_type,
                                         file_size: asset.file_size,
-                                        client_id: newClientId,
+                                        client_id: duplicatedClientId,
                                         component_id: asset.component_id,
                                         content_hash: asset.content_hash,
+                                        folder_path: asset.folder_path,
                                     });
                                 } else {
                                     console.warn(`[Project Duplicate] Asset file not found: ${asset.storage_path}`);
@@ -1391,8 +1391,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // Copy Yjs document state if exists, updating the title in metadata
-                // and replacing old client_ids with new ones
+                // Copy Yjs document state if exists, updating title in metadata
                 const snapshot = findSnapshotByProjectId ? await findSnapshotByProjectId(db, project.id) : null;
                 if (snapshot) {
                     // Import Yjs to modify the document
@@ -1405,60 +1404,6 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     // Update title in metadata
                     const metadata = ydoc.getMap('metadata');
                     metadata.set('title', `${project.title} (copy)`);
-
-                    // Replace old client_ids with new ones in all content
-                    if (clientIdMapping.size > 0) {
-                        const replaceClientIds = (text: string): string => {
-                            let result = text;
-                            for (const [oldId, newId] of clientIdMapping) {
-                                result = result.replaceAll(oldId, newId);
-                            }
-                            return result;
-                        };
-
-                        // Update pages - iterate through the pages map and update HTML content
-                        const pages = ydoc.getMap('pages');
-                        for (const pageId of pages.keys()) {
-                            const page = pages.get(pageId) as Y.Map<unknown> | undefined;
-                            if (page && page instanceof Y.Map) {
-                                const blocks = page.get('blocks') as Y.Map<unknown> | undefined;
-                                if (blocks && blocks instanceof Y.Map) {
-                                    for (const blockId of blocks.keys()) {
-                                        const block = blocks.get(blockId) as Y.Map<unknown> | undefined;
-                                        if (block && block instanceof Y.Map) {
-                                            const idevices = block.get('idevices') as Y.Map<unknown> | undefined;
-                                            if (idevices && idevices instanceof Y.Map) {
-                                                for (const ideviceId of idevices.keys()) {
-                                                    const idevice = idevices.get(ideviceId) as
-                                                        | Y.Map<unknown>
-                                                        | undefined;
-                                                    if (idevice && idevice instanceof Y.Map) {
-                                                        // Update innerHtml if present
-                                                        const innerHtml = idevice.get('innerHtml');
-                                                        if (typeof innerHtml === 'string') {
-                                                            idevice.set('innerHtml', replaceClientIds(innerHtml));
-                                                        }
-                                                        // Update any field values that might contain asset references
-                                                        const fields = idevice.get('fields') as
-                                                            | Y.Map<unknown>
-                                                            | undefined;
-                                                        if (fields && fields instanceof Y.Map) {
-                                                            for (const fieldKey of fields.keys()) {
-                                                                const fieldValue = fields.get(fieldKey);
-                                                                if (typeof fieldValue === 'string') {
-                                                                    fields.set(fieldKey, replaceClientIds(fieldValue));
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
 
                     // Encode modified state
                     const newState = Y.encodeStateAsUpdate(ydoc);

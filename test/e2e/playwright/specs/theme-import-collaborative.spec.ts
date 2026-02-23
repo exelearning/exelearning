@@ -13,7 +13,7 @@ import { waitForLoadingScreen } from '../helpers/workarea-helpers';
 
 test.describe('Theme Import - Collaborative', () => {
     // Collaboration tests need more time for WebSocket sync between clients
-    test.setTimeout(180000); // 3 minutes per test
+    test.setTimeout(90000); // 3 minutes per test
 
     // Skip all collaboration tests in static mode
     test.beforeEach(async ({}, testInfo) => {
@@ -36,7 +36,7 @@ test.describe('Theme Import - Collaborative', () => {
 
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
-            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
+            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, undefined, {
                 timeout: 30000,
             });
             await waitForLoadingScreen(pageA);
@@ -63,7 +63,7 @@ test.describe('Theme Import - Collaborative', () => {
             await baseThemeA.click();
 
             // Wait for theme to be applied and synced
-            await pageA.waitForTimeout(2000);
+            await pageA.waitForTimeout(500);
 
             // Verify theme is set on Client A
             const themeOnA = await pageA.evaluate(() => {
@@ -72,7 +72,7 @@ test.describe('Theme Import - Collaborative', () => {
             expect(themeOnA).toBe('base');
 
             // Wait for Yjs sync to propagate
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Verify Client B received the theme change
             const themeOnB = await pageB.evaluate(() => {
@@ -96,7 +96,7 @@ test.describe('Theme Import - Collaborative', () => {
 
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
-            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
+            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, undefined, {
                 timeout: 30000,
             });
             await waitForLoadingScreen(pageA);
@@ -118,7 +118,7 @@ test.describe('Theme Import - Collaborative', () => {
             await baseThemeA.click();
 
             // Wait for sync
-            await pageA.waitForTimeout(3000);
+            await pageA.waitForTimeout(500);
 
             // Check Yjs metadata on Client B
             const metadataOnB = await pageB.evaluate(() => {
@@ -155,7 +155,7 @@ test.describe('Theme Import - Collaborative', () => {
 
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
-            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
+            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, undefined, {
                 timeout: 30000,
             });
             await waitForLoadingScreen(pageA);
@@ -245,7 +245,7 @@ test.describe('Theme Import - Collaborative', () => {
 
             // Navigate Client A to the project
             await pageA.goto(`/workarea?project=${projectUuid}`);
-            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, {
+            await pageA.waitForFunction(() => (window as any).eXeLearning?.app?.project?._yjsBridge, undefined, {
                 timeout: 30000,
             });
             await waitForLoadingScreen(pageA);

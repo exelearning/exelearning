@@ -42,6 +42,7 @@ test.describe('Link Validation', () => {
                 const editor = (window as any).tinymce?.activeEditor;
                 return editor?.initialized && !editor.readonly;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -78,10 +79,11 @@ test.describe('Link Validation', () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.text');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 15000 },
         );
 
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Open link validation modal
         await openLinkValidationModal(page);
@@ -98,6 +100,7 @@ test.describe('Link Validation', () => {
                 const spinners = modal?.querySelectorAll('.spinner-border');
                 return spinners?.length === 0;
             },
+            undefined,
             { timeout: 60000 },
         );
 
@@ -157,6 +160,7 @@ test.describe('Link Validation', () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.text');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -176,6 +180,7 @@ test.describe('Link Validation', () => {
                 const progressText = document.querySelector('#modalOdeBrokenLinks .progress-text');
                 return progressText?.textContent?.includes('Complete');
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -220,6 +225,7 @@ test.describe('Link Validation', () => {
                 const editor = (window as any).tinymce?.activeEditor;
                 return editor?.initialized && !editor.readonly;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -253,6 +259,7 @@ test.describe('Link Validation', () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.text');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -289,6 +296,7 @@ test.describe('Link Validation', () => {
                 const spinners = modal?.querySelectorAll('.spinner-border');
                 return spinners?.length === 0;
             },
+            undefined,
             { timeout: 60000 },
         );
 

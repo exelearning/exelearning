@@ -293,6 +293,7 @@ export class WorkareaPage {
                 const saveBtn = document.querySelector('#head-top-save-button');
                 return saveBtn && !saveBtn.classList.contains('saving');
             },
+            undefined,
             { timeout: 30000 },
         );
 

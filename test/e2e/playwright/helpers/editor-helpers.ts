@@ -40,6 +40,7 @@ export async function waitForTinyMCE(page: Page, timeout = 15000): Promise<void>
             const tinymce = (window as any).tinymce;
             return tinymce?.activeEditor?.initialized === true;
         },
+        undefined,
         { timeout },
     );
 }
@@ -145,7 +146,7 @@ export async function insertImageViaTinyMCE(page: Page, imagePath: string): Prom
     // Click insert button in file manager
     const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
     await insertBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Save TinyMCE dialog (closes and inserts into editor)
     const saveBtn = page.locator('.tox-dialog .tox-button:has-text("Save"), .tox-dialog .tox-button--primary');
@@ -201,7 +202,7 @@ export async function insertMediaViaTinyMCE(page: Page, mediaPath: string): Prom
     // Click insert button in file manager
     const insertBtn = page.locator('#modalFileManager .media-library-insert-btn');
     await insertBtn.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Save TinyMCE dialog
     const saveBtn = page.locator('.tox-dialog .tox-button:has-text("Save"), .tox-dialog .tox-button--primary');

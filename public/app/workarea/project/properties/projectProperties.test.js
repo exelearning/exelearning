@@ -307,6 +307,14 @@ describe('ProjectProperties', () => {
             const callArgs = window.eXeLearning.app.modals.properties.show.mock.calls[0][0];
             expect(callArgs.fullScreen).toBe(true);
         });
+
+        it('should refresh properties from Yjs before opening modal', () => {
+            const loadSpy = vi.spyOn(projectProperties, 'loadPropertiesFromYjs');
+
+            projectProperties.showModalProperties();
+
+            expect(loadSpy).toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('loadPropertiesFromYjs', () => {
@@ -443,6 +451,17 @@ describe('ProjectProperties', () => {
             projectProperties.loadPropertiesFromYjs();
 
             expect(mockDocumentManager.getMetadata).toHaveBeenCalledTimes(1);
+        });
+
+        it('should normalize checkbox metadata booleans to string values', () => {
+            projectProperties.properties = {
+                pp_addSearchBox: { title: 'Search', value: 'false', type: 'checkbox' },
+            };
+            mockMetadataMap.set('addSearchBox', true);
+
+            projectProperties.loadPropertiesFromYjs();
+
+            expect(projectProperties.properties.pp_addSearchBox.value).toBe('true');
         });
     });
 

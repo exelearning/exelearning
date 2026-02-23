@@ -58,7 +58,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -67,6 +67,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -91,7 +92,7 @@ async function addInteractiveVideoIdeviceFromPanel(page: Page): Promise<void> {
         if (isCollapsed) {
             const label = assessmentCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -106,7 +107,7 @@ async function addInteractiveVideoIdeviceFromPanel(page: Page): Promise<void> {
     await page.locator('#node-content article .idevice_node.interactive-video').first().waitFor({ timeout: 15000 });
 
     // Wait for the form to be created
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for the file input to be visible
     await page
@@ -115,6 +116,7 @@ async function addInteractiveVideoIdeviceFromPanel(page: Page): Promise<void> {
                 const fileInput = document.querySelector('#interactiveVideoFile');
                 return fileInput !== null;
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -169,10 +171,11 @@ async function uploadVideoFile(page: Page, fixturePath: string): Promise<void> {
             const modal = document.querySelector('#modalFileManager');
             return !modal || modal.getAttribute('data-open') !== 'true';
         },
+        undefined,
         { timeout: 10000 },
     );
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -206,7 +209,7 @@ async function saveInteractiveVideoIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for edition mode to end
     await page
@@ -215,6 +218,7 @@ async function saveInteractiveVideoIdevice(page: Page): Promise<void> {
                 const idevice = document.querySelector('#node-content article .idevice_node.interactive-video');
                 return idevice && idevice.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -233,7 +237,7 @@ async function openVideoEditor(page: Page): Promise<FrameLocator> {
 
     // Wait for the editor modal to become visible
     await page.waitForSelector('#modalGenericIframeContainer.show', { state: 'visible', timeout: 10000 });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Get the iframe inside the modal
     const editorIframe = page.frameLocator('#modalGenericIframeContainer iframe');
@@ -250,6 +254,7 @@ async function openVideoEditor(page: Page): Promise<FrameLocator> {
             const bodyStyle = window.getComputedStyle(iframe.contentDocument.body);
             return bodyStyle.display !== 'none';
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -257,7 +262,7 @@ async function openVideoEditor(page: Page): Promise<FrameLocator> {
     await editorIframe.locator('#controls').waitFor({ state: 'visible', timeout: 10000 });
 
     // Give time for TinyMCE and other components to initialize
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     return editorIframe;
 }
@@ -276,7 +281,7 @@ async function createCover(page: Page, editorIframe: FrameLocator, title: string
 
     // Wait for jQuery fadeIn() animation to complete (default 400ms)
     // Firefox needs this buffer as it may detect element as hidden during the animation
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(500);
 
     // Wait for frontpage block to appear
     const frontpageBlock = editorIframe.locator('#frontpage-block');
@@ -290,6 +295,7 @@ async function createCover(page: Page, editorIframe: FrameLocator, title: string
             const style = window.getComputedStyle(block);
             return style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity) > 0.5;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -331,10 +337,10 @@ async function createCover(page: Page, editorIframe: FrameLocator, title: string
     try {
         await editorIframe.locator('#frontpage-form-msg').waitFor({ state: 'visible', timeout: 5000 });
         // Wait for the message to be processed
-        await editorIframe.locator('#frontpage-form-msg').page().waitForTimeout(1500);
+        await editorIframe.locator('#frontpage-form-msg').page().waitForTimeout(500);
     } catch {
         // Even if message doesn't show, wait a bit for the save to complete
-        await editorIframe.locator('#frontpage-block').page().waitForTimeout(2000);
+        await editorIframe.locator('#frontpage-block').page().waitForTimeout(500);
     }
 }
 
@@ -435,7 +441,7 @@ async function saveAndCloseEditor(page: Page, editorIframe: FrameLocator): Promi
     await saveLink.click();
 
     // Wait for save to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // If there's an Accept button visible, click it
     const acceptBtn = editorIframe
@@ -464,6 +470,7 @@ async function saveAndCloseEditor(page: Page, editorIframe: FrameLocator): Promi
             const style = getComputedStyle(modal);
             return style.display === 'none' || !document.body.contains(modal);
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -601,7 +608,7 @@ test.describe('Interactive Video iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -613,7 +620,7 @@ test.describe('Interactive Video iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Verify the iDevice is still there with the video container
@@ -674,7 +681,7 @@ test.describe('Interactive Video iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');

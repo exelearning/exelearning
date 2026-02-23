@@ -116,7 +116,6 @@ export interface ExportBlockProperties {
     teacherOnly?: string | boolean;
     visibilityType?: string;
     cssClass?: string;
-    identifier?: string;
     allowToggle?: string | boolean;
 }
 
@@ -130,7 +129,7 @@ export interface ExportComponent {
     content: string; // HTML content
     properties: Record<string, unknown>;
 
-    // Component-level structure properties (visibility, teacherOnly, identifier, cssClass)
+    // Component-level structure properties (visibility, teacherOnly, cssClass)
     structureProperties?: ExportComponentProperties;
 }
 
@@ -140,7 +139,6 @@ export interface ExportComponent {
 export interface ExportComponentProperties {
     visibility?: string | boolean;
     teacherOnly?: string | boolean;
-    identifier?: string;
     cssClass?: string;
 }
 

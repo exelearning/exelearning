@@ -116,6 +116,23 @@ describe('ModalFilemanager', () => {
         </div>
         <button class="media-library-insert-btn">Insert</button>
       </div>
+      <div class="media-library-rename-dialog" style="display:none;">
+        <div class="rename-dialog-overlay"></div>
+        <div class="rename-dialog-content">
+          <div class="rename-dialog-header">
+            <span class="rename-dialog-title"></span>
+            <button type="button" class="rename-dialog-close">&times;</button>
+          </div>
+          <div class="rename-dialog-body">
+            <label class="rename-dialog-label form-label" for="renameDialogInput"></label>
+            <input type="text" class="form-control rename-dialog-input" id="renameDialogInput">
+          </div>
+          <div class="rename-dialog-footer">
+            <button type="button" class="btn btn-secondary rename-dialog-cancel">Cancel</button>
+            <button type="button" class="btn btn-primary rename-dialog-confirm">Rename</button>
+          </div>
+        </div>
+      </div>
     `;
     document.body.appendChild(mockElement);
 
@@ -721,9 +738,7 @@ describe('ModalFilemanager', () => {
       const blob = new Blob(['test'], { type: 'image/png' });
       modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
       modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
-
-      // Mock prompt to return the suggested name (which is 'image (copy).png')
-      window.prompt.mockReturnValueOnce('image (copy).png');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('image (copy).png');
 
       await modal.duplicateSelectedAsset();
 
@@ -742,9 +757,7 @@ describe('ModalFilemanager', () => {
         { id: '1', filename: 'image.png', folderPath: '' },
         { id: '2', filename: 'image (copy).png', folderPath: '' }
       ];
-
-      // Mock prompt to return the suggested unique name
-      window.prompt.mockReturnValueOnce('image (copy) (1).png');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('image (copy) (1).png');
 
       await modal.duplicateSelectedAsset();
 
@@ -756,9 +769,7 @@ describe('ModalFilemanager', () => {
       const blob = new Blob(['test'], { type: 'image/png' });
       modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: 'images/icons' };
       modal.assets = [{ id: '1', filename: 'image.png', folderPath: 'images/icons' }];
-
-      // Mock prompt to return the suggested name
-      window.prompt.mockReturnValueOnce('image (copy).png');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('image (copy).png');
 
       await modal.duplicateSelectedAsset();
 
@@ -774,13 +785,11 @@ describe('ModalFilemanager', () => {
       expect(window.eXeLearning.app.project._yjsBridge.assetManager.insertImage).not.toHaveBeenCalled();
     });
 
-    it('should not duplicate if user cancels prompt', async () => {
+    it('should not duplicate if user cancels dialog', async () => {
       const blob = new Blob(['test'], { type: 'image/png' });
       modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
       modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
-
-      // Mock prompt to return null (user cancelled)
-      window.prompt.mockReturnValueOnce(null);
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
 
       await modal.duplicateSelectedAsset();
 
@@ -791,9 +800,7 @@ describe('ModalFilemanager', () => {
       const blob = new Blob(['test'], { type: 'image/png' });
       modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
       modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
-
-      // Mock prompt to return empty string
-      window.prompt.mockReturnValueOnce('   ');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('   ');
 
       await modal.duplicateSelectedAsset();
 
@@ -810,9 +817,7 @@ describe('ModalFilemanager', () => {
         { id: '1', filename: 'image.png', folderPath: '' },
         { id: '2', filename: 'existing.png', folderPath: '' }
       ];
-
-      // Mock prompt to return a name that already exists
-      window.prompt.mockReturnValueOnce('existing.png');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('existing.png');
 
       await modal.duplicateSelectedAsset();
 
@@ -827,9 +832,7 @@ describe('ModalFilemanager', () => {
       modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', folderPath: '' };
       modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
       modal.assetManager.getAsset.mockResolvedValue({ blob });
-
-      // Mock prompt to return the suggested name
-      window.prompt.mockReturnValueOnce('image (copy).png');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('image (copy).png');
 
       await modal.duplicateSelectedAsset();
 
@@ -848,6 +851,23 @@ describe('ModalFilemanager', () => {
         expect.objectContaining({ body: 'Could not read file', modal: true })
       );
       expect(modal.assetManager.insertImage).not.toHaveBeenCalled();
+    });
+
+    it('should pass suggested name with selectUpTo before extension to dialog', async () => {
+      const blob = new Blob(['test'], { type: 'image/png' });
+      modal.selectedAsset = { id: '1', filename: 'image.png', mime: 'image/png', blob, folderPath: '' };
+      modal.assets = [{ id: '1', filename: 'image.png', folderPath: '' }];
+      const spy = vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
+
+      await modal.duplicateSelectedAsset();
+
+      // Suggested name is 'image (copy).png', dot at index 12
+      expect(spy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'image (copy).png',
+        12
+      );
     });
   });
 
@@ -2568,10 +2588,10 @@ describe('ModalFilemanager', () => {
       modal.createdFolders = new Set();
     });
 
-    it('should do nothing if prompt returns null for folder', async () => {
+    it('should do nothing if dialog returns null for folder', async () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
-      window.prompt.mockReturnValue(null);
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
 
       await modal.renameSelectedAsset();
 
@@ -2581,7 +2601,7 @@ describe('ModalFilemanager', () => {
     it('should do nothing if new name equals current folder name', async () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
-      window.prompt.mockReturnValue('test-folder');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('test-folder');
 
       await modal.renameSelectedAsset();
 
@@ -2591,7 +2611,7 @@ describe('ModalFilemanager', () => {
     it('should reject invalid folder names', async () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
-      window.prompt.mockReturnValue('invalid/name');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('invalid/name');
 
       await modal.renameSelectedAsset();
 
@@ -2604,7 +2624,7 @@ describe('ModalFilemanager', () => {
     it('should rename folder successfully', async () => {
       modal.selectedFolder = 'old-folder';
       modal.selectedFolderPath = 'old-folder';
-      window.prompt.mockReturnValue('new-folder');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new-folder');
       modal.loadAssets = vi.fn().mockResolvedValue();
 
       await modal.renameSelectedAsset();
@@ -2617,7 +2637,7 @@ describe('ModalFilemanager', () => {
       modal.selectedFolder = 'my-folder';
       modal.selectedFolderPath = 'my-folder';
       modal.createdFolders.add('my-folder');
-      window.prompt.mockReturnValue('renamed-folder');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('renamed-folder');
       modal.loadAssets = vi.fn().mockResolvedValue();
 
       await modal.renameSelectedAsset();
@@ -2629,7 +2649,7 @@ describe('ModalFilemanager', () => {
     it('should rename file successfully', async () => {
       modal.selectedFolder = null;
       modal.selectedAsset = { id: 'asset-1', filename: 'old-name.jpg' };
-      window.prompt.mockReturnValue('new-name.jpg');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new-name.jpg');
       modal.loadAssets = vi.fn().mockResolvedValue();
 
       await modal.renameSelectedAsset();
@@ -2641,7 +2661,7 @@ describe('ModalFilemanager', () => {
     it('should handle rename errors', async () => {
       modal.selectedFolder = 'test-folder';
       modal.selectedFolderPath = 'test-folder';
-      window.prompt.mockReturnValue('new-name');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new-name');
       modal.assetManager.renameFolder.mockRejectedValue(new Error('Rename failed'));
 
       await modal.renameSelectedAsset();
@@ -2649,6 +2669,120 @@ describe('ModalFilemanager', () => {
       expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
         expect.objectContaining({ body: 'Failed to rename folder', modal: true })
       );
+    });
+
+    it('should pass full folder name as selectUpTo for folder rename', async () => {
+      modal.selectedFolder = 'my-folder';
+      modal.selectedFolderPath = 'my-folder';
+      const spy = vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
+
+      await modal.renameSelectedAsset();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'my-folder',
+        'my-folder'.length
+      );
+    });
+
+    it('should pass only base name length as selectUpTo for file rename', async () => {
+      modal.selectedFolder = null;
+      modal.selectedAsset = { id: 'asset-1', filename: 'photo.jpg' };
+      const spy = vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
+
+      await modal.renameSelectedAsset();
+
+      // 'photo.jpg' → dot at index 5 → selectUpTo = 5
+      expect(spy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'photo.jpg',
+        5
+      );
+    });
+
+    it('should select entire name when file has no extension', async () => {
+      modal.selectedFolder = null;
+      modal.selectedAsset = { id: 'asset-1', filename: 'README' };
+      const spy = vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
+
+      await modal.renameSelectedAsset();
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'README',
+        'README'.length
+      );
+    });
+  });
+
+  describe('_showRenameDialog', () => {
+    beforeEach(() => {
+      modal.initElements();
+    });
+
+    it('should resolve with null immediately when renameDialog is missing', async () => {
+      modal.renameDialog = null;
+      const result = await modal._showRenameDialog('Title', 'Label', 'value', 3);
+      expect(result).toBeNull();
+    });
+
+    it('should populate dialog fields and show it', async () => {
+      const confirmBtn = modal.renameDialogConfirm;
+      // Trigger confirm immediately after showing
+      setTimeout(() => confirmBtn.click(), 0);
+
+      await modal._showRenameDialog('Rename file', 'Enter new filename:', 'photo.jpg', 5);
+
+      expect(modal.renameDialogTitle.textContent).toBe('Rename file');
+      expect(modal.renameDialogLabel.textContent).toBe('Enter new filename:');
+      expect(modal.renameDialogInput.value).toBe('photo.jpg');
+    });
+
+    it('should resolve with input value when confirm is clicked', async () => {
+      modal.renameDialogInput.value = '';
+      const confirmBtn = modal.renameDialogConfirm;
+      setTimeout(() => {
+        modal.renameDialogInput.value = 'new-name.jpg';
+        confirmBtn.click();
+      }, 0);
+
+      const result = await modal._showRenameDialog('Title', 'Label', 'old.jpg', 3);
+      expect(result).toBe('new-name.jpg');
+    });
+
+    it('should resolve with null when cancel is clicked', async () => {
+      const cancelBtn = modal.renameDialogCancel;
+      setTimeout(() => cancelBtn.click(), 0);
+
+      const result = await modal._showRenameDialog('Title', 'Label', 'photo.jpg', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should resolve with null when close button is clicked', async () => {
+      const closeBtn = modal.renameDialogClose;
+      setTimeout(() => closeBtn.click(), 0);
+
+      const result = await modal._showRenameDialog('Title', 'Label', 'photo.jpg', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should resolve with null when overlay is clicked', async () => {
+      const overlay = modal.renameDialogOverlay;
+      setTimeout(() => overlay.click(), 0);
+
+      const result = await modal._showRenameDialog('Title', 'Label', 'photo.jpg', 5);
+      expect(result).toBeNull();
+    });
+
+    it('should hide the dialog after resolving', async () => {
+      const confirmBtn = modal.renameDialogConfirm;
+      setTimeout(() => confirmBtn.click(), 0);
+
+      await modal._showRenameDialog('Title', 'Label', 'photo.jpg', 5);
+      expect(modal.renameDialog.style.display).toBe('none');
     });
   });
 
@@ -3733,16 +3867,12 @@ describe('ModalFilemanager', () => {
         blob: new Blob(['test'], { type: 'image/jpeg' })
       });
 
-      // Mock prompt to return a value
-      const originalPrompt = window.prompt;
-      window.prompt = vi.fn().mockReturnValue('new-name.jpg');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new-name.jpg');
 
       await modal.duplicateSelectedAsset();
 
       expect(modal.assetManager.getAsset).toHaveBeenCalledWith('a1');
       expect(modal.assetManager.insertImage).toHaveBeenCalled();
-
-      window.prompt = originalPrompt;
     });
 
     it('should show toast when blob cannot be retrieved', async () => {
@@ -3784,14 +3914,11 @@ describe('ModalFilemanager', () => {
       modal.selectedAsset = { id: 'a1', filename: 'old.jpg', mime: 'image/jpeg', folderPath: '' };
       modal.assets = [];
 
-      const originalPrompt = window.prompt;
-      window.prompt = vi.fn().mockReturnValue('new.jpg');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new.jpg');
 
       await modal.renameSelectedAsset();
 
       expect(modal.assetManager.renameAsset).toHaveBeenCalledWith('a1', 'new.jpg');
-
-      window.prompt = originalPrompt;
     });
   });
 

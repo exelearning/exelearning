@@ -35,6 +35,7 @@ test.describe('Open Project Clean State', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -58,6 +59,7 @@ test.describe('Open Project Clean State', () => {
                 const btn = document.getElementById('head-top-save-button');
                 return btn?.classList.contains('saved') && !btn?.classList.contains('saving');
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -76,6 +78,7 @@ test.describe('Open Project Clean State', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -110,6 +113,7 @@ test.describe('Open Project Clean State', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -146,6 +150,7 @@ test.describe('Open Project Clean State', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -179,6 +184,7 @@ test.describe('Open Project Clean State', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -209,6 +215,7 @@ test.describe('Open Project Clean State', () => {
                 const btn = document.getElementById('head-top-save-button');
                 return btn?.classList.contains('saved') && !btn?.classList.contains('saving');
             },
+            undefined,
             { timeout: 30000 },
         );
 

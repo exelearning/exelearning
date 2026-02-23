@@ -79,7 +79,7 @@ export async function cloneIdevice(page: Page, ideviceLocator?: Locator): Promis
     await cloneOption.first().click();
 
     // Wait for clone to appear
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -109,7 +109,7 @@ export async function cloneBlock(page: Page, blockIndex?: number): Promise<void>
     await cloneOption.first().click();
 
     // Wait for clone to appear
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -184,7 +184,7 @@ export async function dragIdeviceToBlock(page: Page, sourceIdevice: Locator, tar
     await page.waitForTimeout(100);
     await page.mouse.up();
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

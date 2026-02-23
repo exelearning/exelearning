@@ -430,6 +430,243 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('block structure reload detection', () => {
+    it('detects affected page IDs for block additions', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('ignores non-structural component content updates', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components', 0, 'htmlContent'],
+          delta: [{ insert: 'x' }],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('schedules reload for each affected page on remote transactions', () => {
+      const pageMap0 = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      const pageMap1 = { get: mock((key) => (key === 'id' ? 'page-2' : undefined)) };
+
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => {
+            if (idx === 0) return pageMap0;
+            if (idx === 1) return pageMap1;
+            return null;
+          }),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+        {
+          path: [1, 'blocks'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+      expect(scheduleSpy).toHaveBeenCalledWith('page-2');
+    });
+
+    it('does not schedule reload for regular local transactions', () => {
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('schedules reload for local undo/redo transactions', () => {
+      const undoManager = {};
+      bridge.documentManager = {
+        undoManager,
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: undoManager }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('schedules reload while undo/redo operation is in progress', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it('reloads on block-touching key changes during undo/redo even without add/delete', () => {
+      bridge.isUndoRedoInProgress = true;
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock(() => ({ get: mock((key) => (key === 'id' ? 'page-1' : undefined)) })),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      bridge.scheduleReloadForBlockStructureChanges(
+        [
+          {
+            path: [0, 'blocks', 0],
+            changes: {
+              added: { size: 0 },
+              deleted: { size: 0 },
+              keys: new Map([['someKey', { action: 'update' }]]),
+            },
+          },
+        ],
+        { local: true, origin: null }
+      );
+
+      expect(scheduleSpy).toHaveBeenCalledWith('page-1');
+    });
+  });
+
+  describe('syncCurrentPageBlocksIfNeeded', () => {
+    it('reloads current page when DOM and Yjs block counts differ', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }, { id: 'b2' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}, {} , {}]); // DOM has 3 blocks
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).toHaveBeenCalled();
+    });
+
+    it('does not reload when DOM and Yjs block counts match', async () => {
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock((name) => (name === 'nav-id' ? 'page-1' : null)),
+              },
+            },
+          },
+        },
+      };
+
+      bridge.structureBinding = {
+        getBlocks: mock(() => [{ id: 'b1' }]),
+      };
+
+      global.document.querySelectorAll = mock(() => [{}]); // DOM has 1 block
+      const reloadSpy = spyOn(bridge, 'reloadCurrentPage').mockImplementation(() => Promise.resolve());
+
+      bridge.syncCurrentPageBlocksIfNeeded();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+
+      expect(reloadSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('disconnect', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -1123,6 +1360,17 @@ describe('YjsProjectBridge', () => {
       expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
     });
 
+    it('undo flushes pending metadata changes even when undoStack has items', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.undo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
+      expect(bridge.documentManager.undoManager.undo).toHaveBeenCalled();
+    });
+
     it('undo sets isUndoRedoInProgress flag', () => {
       bridge.documentManager.undoManager.undoStack = [{ item: 1 }];
 
@@ -1139,6 +1387,16 @@ describe('YjsProjectBridge', () => {
     it('redo calls undoManager.redo', () => {
       bridge.documentManager.undoManager.redoStack = [{ item: 1 }];
       bridge.redo();
+      expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
+    });
+
+    it('redo with pending metadata changes flushes them first', () => {
+      bridge.hasPendingMetadataChanges = true;
+      bridge.flushPendingMetadataChanges = mock(() => {});
+
+      bridge.redo();
+
+      expect(bridge.flushPendingMetadataChanges).toHaveBeenCalled();
       expect(bridge.documentManager.undoManager.redo).toHaveBeenCalled();
     });
 
@@ -1446,6 +1704,108 @@ describe('YjsProjectBridge', () => {
 
       // Wait for potential debounce
       await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('asset refresh on late asset arrival', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.app = {
+        project: {
+          structure: {
+            menuStructureBehaviour: {
+              nodeSelected: {
+                getAttribute: mock(() => 'page-1'),
+              },
+              menuNav: {
+                querySelector: mock(() => ({ id: 'page-element' })),
+              },
+            },
+          },
+          idevices: {
+            loadingPage: false,
+            loadApiIdevicesInPage: mock(() => Promise.resolve()),
+          },
+        },
+      };
+      bridge.assetManager = {
+        updateDomImagesForAsset: mock(() => Promise.resolve(1)),
+        cleanup: mock(() => {}),
+      };
+    });
+
+    it('detects current page asset references from component HTML', () => {
+      const marker = 'asset://asset-123';
+      const mockComponent = {
+        get: (key) => {
+          if (key === 'htmlContent') return `<img src="${marker}.jpg" />`;
+          if (key === 'htmlView') return '';
+          if (key === 'jsonProperties') return '{"text":"nope"}';
+          return null;
+        },
+      };
+      const mockBlock = {
+        get: (key) => {
+          if (key === 'components') {
+            return { length: 1, get: () => mockComponent };
+          }
+          return null;
+        },
+      };
+      const mockPage = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageId') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => mockBlock };
+          return null;
+        },
+      };
+      bridge.documentManager.getNavigation = () => ({ length: 1, get: () => mockPage });
+
+      expect(bridge.currentPageHasAssetReference('page-1', 'asset-123')).toBe(true);
+    });
+
+    it('reloads current page when late asset is relevant', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalledWith(
+        false,
+        { id: 'page-element' },
+      );
+      expect(bridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('does not reload when current page does not reference late asset', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(false);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+      expect(bridge.assetManager.updateDomImagesForAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not reload when selected node is root', async () => {
+      bridge.app.project.structure.menuStructureBehaviour.nodeSelected.getAttribute = mock(() => 'root');
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await new Promise(resolve => setTimeout(resolve, 260));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
+    it('disconnect clears pending late-asset refresh timer', async () => {
+      spyOn(bridge, 'currentPageHasAssetReference').mockReturnValue(true);
+
+      bridge.scheduleAssetRefreshForCurrentPage('asset-1');
+      await bridge.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 260));
 
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
@@ -1785,6 +2145,88 @@ describe('YjsProjectBridge', () => {
       // Verify wsHandler is now set
       expect(newBridge.saveManager.wsHandler).toEqual({ id: 'mock-ws-handler' });
     });
+
+    it('invalidates stale local blob and requests asset on remote hash update', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'new-hash-123' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const event = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'old-hash-999' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(event, { origin: 'remote' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).toHaveBeenCalledWith(
+        'asset-1',
+        expect.objectContaining({
+          reason: 'remote-hash-update',
+          markAsMissing: true,
+          markDomAsLoading: true,
+        })
+      );
+      expect(bridge.assetWebSocketHandler.requestAsset).toHaveBeenCalledWith('asset-1');
+    });
+
+    it('ignores non-remote or same-hash asset updates', async () => {
+      let assetsObserver = null;
+      const assetsData = new Map([
+        ['asset-1', { hash: 'same-hash' }],
+      ]);
+      const assetsMap = {
+        observe: mock((cb) => { assetsObserver = cb; }),
+        unobserve: mock(() => undefined),
+        get: (id) => assetsData.get(id),
+      };
+
+      bridge.documentManager = {
+        getAssets: () => assetsMap,
+      };
+      bridge.assetManager = {
+        invalidateLocalBlob: mock(() => Promise.resolve()),
+      };
+      bridge.assetWebSocketHandler = {
+        requestAsset: mock(() => Promise.resolve(true)),
+      };
+
+      bridge.setupAssetsObserver();
+
+      const sameHashEvent = {
+        changes: {
+          keys: new Map([
+            ['asset-1', { action: 'update', oldValue: { hash: 'same-hash' } }],
+          ]),
+        },
+      };
+
+      await assetsObserver(sameHashEvent, { origin: 'remote' });
+      await assetsObserver(sameHashEvent, { origin: 'local' });
+
+      expect(bridge.assetManager.invalidateLocalBlob).not.toHaveBeenCalled();
+      expect(bridge.assetWebSocketHandler.requestAsset).not.toHaveBeenCalled();
+    });
   });
 
   describe('enableAutoSync', () => {
@@ -1870,10 +2312,29 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('dispatches blur to active property-value input first', () => {
+      const activeInput = {
+        classList: { contains: (cls) => cls === 'property-value' },
+        dispatchEvent: mock(() => {}),
+      };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => activeInput,
+      });
+
+      bridge.flushPendingMetadataChanges();
+
+      expect(activeInput.dispatchEvent).toHaveBeenCalled();
+    });
+
     it('dispatches blur events to property inputs', () => {
       const input = {
         dispatchEvent: mock(() => {}),
       };
+      Object.defineProperty(document, 'activeElement', {
+        configurable: true,
+        get: () => null,
+      });
       global.document.querySelectorAll = mock(() => [input]);
 
       bridge.flushPendingMetadataChanges();
@@ -2787,6 +3248,64 @@ describe('YjsProjectBridge', () => {
       bridge.forceAllFormInputsSync();
 
       expect(mockInput.value).toBe('New Title');
+    });
+
+    it('updates addMathJax and globalFont inputs using mapped metadata keys', () => {
+      const mockCheckbox = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_addMathJax';
+          if (attr === 'data-type') return 'checkbox';
+          return null;
+        },
+        type: 'checkbox',
+        checked: false,
+      };
+      const mockSelect = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_globalFont';
+          if (attr === 'data-type') return 'select';
+          return null;
+        },
+        type: 'select-one',
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockCheckbox, mockSelect]);
+
+      const mockMetadata = {
+        get: (key) => {
+          if (key === 'addMathJax') return true;
+          if (key === 'globalFont') return 'default';
+          return undefined;
+        },
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockCheckbox.checked).toBe(true);
+      expect(mockSelect.value).toBe('default');
+    });
+
+    it('clears stale text inputs when metadata key is missing', () => {
+      const mockInput = {
+        getAttribute: (attr) => {
+          if (attr === 'property') return 'pp_subtitle';
+          if (attr === 'data-type') return 'text';
+          return null;
+        },
+        type: 'text',
+        value: 'stale subtitle',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+
+      const mockMetadata = {
+        get: () => undefined,
+      };
+      bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.value).toBe('');
     });
 
     it('skips inputs without property attribute', () => {

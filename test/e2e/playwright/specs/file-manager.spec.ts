@@ -47,7 +47,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -56,6 +56,7 @@ async function addTextIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -147,6 +148,7 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
             const items = document.querySelectorAll('#modalFileManager .media-library-item:not(.media-library-folder)');
             return items.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -201,6 +203,7 @@ async function navigateToRoot(page: Page): Promise<void> {
             const items = breadcrumbs?.querySelectorAll('.breadcrumb-item');
             return items && items.length === 1;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -221,7 +224,8 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 /**
- * Helper to duplicate selected file and wait for new file to appear
+ * Helper to duplicate selected file and wait for new file to appear.
+ * Confirms the suggested name in the custom rename dialog.
  */
 async function duplicateSelectedFile(page: Page, expectedCount: number): Promise<void> {
     const duplicateBtn = page.locator('#modalFileManager .media-library-duplicate-btn');
@@ -230,41 +234,14 @@ async function duplicateSelectedFile(page: Page, expectedCount: number): Promise
     // Get the current file count before duplicating
     const countBefore = await getFileCount(page);
 
-    // Listen for console messages to capture any errors
-    const consoleLogs: string[] = [];
-    page.on('console', msg => {
-        consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
-    });
-
-    // Set up one-time dialog handler before clicking
-    const dialogHandler = async (dialog: any) => {
-        console.log(
-            `Dialog appeared: type=${dialog.type()}, message=${dialog.message()}, default=${dialog.defaultValue()}`,
-        );
-        // Accept with the default value (prompt's pre-filled text)
-        if (dialog.type() === 'prompt') {
-            await dialog.accept(dialog.defaultValue());
-        } else {
-            await dialog.accept();
-        }
-    };
-    page.once('dialog', dialogHandler);
-
-    // Click duplicate button
+    // Click duplicate button — this opens the custom rename dialog
     await duplicateBtn.click();
 
-    // Wait for the duplicate operation to complete
-    await page.waitForTimeout(2000);
-
-    // Print all console logs related to MediaLibrary
-    const mediaLogs = consoleLogs.filter(
-        log => log.includes('MediaLibrary') || log.includes('error') || log.includes('Error'),
-    );
-    if (mediaLogs.length > 0) {
-        console.log('MediaLibrary console logs:', mediaLogs.join('\n'));
-    } else {
-        console.log('No MediaLibrary console logs found');
-    }
+    // Confirm the suggested name in the custom rename dialog
+    const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+    await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+    // Accept the pre-filled suggested name as-is
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     // Wait for the file count to increase
     await page.waitForFunction(
@@ -362,6 +339,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
                 return false;
             }
         },
+        undefined,
         { timeout: 90000 },
     );
 
@@ -395,6 +373,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
                 return false;
             }
         },
+        undefined,
         { timeout: 90000, polling: 500 },
     );
 
@@ -408,7 +387,7 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
     // Wait for loading screen to hide
     await waitForLoadingScreen(page);
 
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 test.describe('File Manager', () => {
@@ -436,7 +415,7 @@ test.describe('File Manager', () => {
             await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are folders in the file manager (from content/resources/*)
             const folderCount = await getFolderCount(page);
@@ -485,7 +464,7 @@ test.describe('File Manager', () => {
             await openFileManagerFromUtilitiesMenu(page);
 
             // Wait for file manager to load assets
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are files at root level (no folder structure in legacy format)
             const fileCount = await getFileCount(page);
@@ -677,13 +656,14 @@ test.describe('File Manager', () => {
             const renameBtn = page.locator('#modalFileManager .media-library-rename-btn');
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt
             const newName = `renamed-file-${Date.now()}.jpg`;
-            page.once('dialog', async dialog => {
-                await dialog.accept(newName);
-            });
-
             await renameBtn.click();
+
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for the filename to update in sidebar
             await page.waitForFunction(
@@ -734,16 +714,14 @@ test.describe('File Manager', () => {
             await expect(renameBtn).toBeVisible({ timeout: 5000 });
             await expect(renameBtn).toBeEnabled({ timeout: 5000 });
 
-            // Set up dialog handler for rename prompt BEFORE clicking
             const newFolderName = `RenamedFolder_${Date.now()}`;
+            await renameBtn.click();
 
-            // Handle dialog and click simultaneously using Promise.all
-            await Promise.all([
-                page.waitForEvent('dialog').then(async dialog => {
-                    await dialog.accept(newFolderName);
-                }),
-                renameBtn.click(),
-            ]);
+            // Fill in the custom rename dialog
+            const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+            await renameInput.waitFor({ state: 'visible', timeout: 5000 });
+            await renameInput.fill(newFolderName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for folder with new name to appear in the grid
             await page.waitForFunction(
@@ -804,6 +782,7 @@ test.describe('File Manager', () => {
                     );
                     return items.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -851,6 +830,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 10000 },
             );
 
@@ -901,6 +881,7 @@ test.describe('File Manager', () => {
                     const folders = document.querySelectorAll('#modalFileManager .media-library-folder');
                     return folders.length === 0;
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -946,7 +927,7 @@ test.describe('File Manager', () => {
                     await page.keyboard.press('Escape').catch(() => {});
                 }
                 await page
-                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), {
+                    .waitForFunction(() => !document.querySelector('.tox-dialog-wrap__backdrop'), undefined, {
                         timeout: 5000,
                     })
                     .catch(() => {});
@@ -954,7 +935,7 @@ test.describe('File Manager', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload page
             await reloadPage(page);
@@ -1097,7 +1078,7 @@ test.describe('File Manager', () => {
             await uploadFile(page, 'test/fixtures/sample-2.jpg');
 
             // Wait for async operations
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify the correct log message appears (not "Asset already exists for this project")
             // The fix should show "Storing blob for current project" instead
@@ -1190,6 +1171,7 @@ test.describe('File Manager', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 

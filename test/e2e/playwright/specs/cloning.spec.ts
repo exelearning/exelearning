@@ -73,7 +73,7 @@ async function addTextIdeviceWithContent(page: Page, content: string): Promise<v
             if (isCollapsed) {
                 const label = infoCategory.locator('.label');
                 await label.click();
-                await page.waitForTimeout(800);
+                await page.waitForTimeout(500);
             }
         }
 
@@ -223,7 +223,7 @@ async function cloneIdevice(page: Page): Promise<void> {
     }
 
     // Wait for clone to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for the cloned iDevice to appear (should now have 2 text idevices)
     await page
@@ -232,6 +232,7 @@ async function cloneIdevice(page: Page): Promise<void> {
                 const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
                 return idevices.length >= 2;
             },
+            undefined,
             { timeout: 15000 },
         )
         .catch(() => {
@@ -298,7 +299,7 @@ async function cloneBlock(page: Page): Promise<void> {
     }
 
     // Wait for clone to complete
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Wait for the cloned block to appear
     await page
@@ -308,6 +309,7 @@ async function cloneBlock(page: Page): Promise<void> {
                 const blocks = document.querySelectorAll('#node-content article.box');
                 return blocks.length >= 2;
             },
+            undefined,
             { timeout: 15000 },
         )
         .catch(() => {
@@ -368,7 +370,7 @@ async function clonePage(page: Page): Promise<void> {
     }
 
     // Wait for clone to complete
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Close any rename modal that appears
     const modal = page.locator('.modal.show');
@@ -404,7 +406,7 @@ test.describe('Cloning Functionality', () => {
             await cloneIdevice(page);
 
             // Wait for cloned iDevice to appear and content to sync
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify there are now 2 iDevices with the same content
             const idevices = page.locator('#node-content article .idevice_node.text');
@@ -452,7 +454,7 @@ test.describe('Cloning Functionality', () => {
             await cloneBlock(page);
 
             // Wait for cloned block to appear
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify there are now 2 blocks (blocks have class 'box')
             const blocks = page.locator('#node-content article.box');
@@ -500,7 +502,7 @@ test.describe('Cloning Functionality', () => {
                 await clonePage(page);
 
                 // Wait for clone to complete
-                await page.waitForTimeout(1500);
+                await page.waitForTimeout(500);
 
                 // Count pages after clone
                 const pagesAfter = await page.locator('.nav-element').count();
@@ -513,7 +515,7 @@ test.describe('Cloning Functionality', () => {
                 if ((await clonedPageNode.count()) > 0) {
                     await clonedPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
                     await clonedPageNode.click({ timeout: 5000 }).catch(() => clonedPageNode.click({ force: true }));
-                    await page.waitForTimeout(1000);
+                    await page.waitForTimeout(500);
 
                     // Verify the cloned page has the content
                     await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
@@ -522,7 +524,7 @@ test.describe('Cloning Functionality', () => {
                     const lastPageNode = page.locator('.nav-element:not([nav-id="root"]) .nav-element-text').last();
                     await lastPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
                     await lastPageNode.click({ timeout: 5000 }).catch(() => lastPageNode.click({ force: true }));
-                    await page.waitForTimeout(1000);
+                    await page.waitForTimeout(500);
 
                     // The cloned page should have the same content
                     await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });

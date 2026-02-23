@@ -17,7 +17,7 @@ if (isInExe) {
     // Setup for standalone execution (browser language detection or localStorage)
     const savedLang = localStorage.getItem('userLanguage');
     const browserLang = navigator.language.split('-')[0];
-    const supportedLangs = ['en', 'es', 'ca'];
+    const supportedLangs = ['en', 'es', 'ca', 'gl', 'eu', 'de'];
     function getLangParam() {
         var result = "",
             tmp = [];
@@ -54,13 +54,19 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // After defining _, update all texts
     if (!isInExe) {
-        setupLanguageSelector();
+        if (typeof setupLanguageSelector === 'function') {
+            setupLanguageSelector();
+        }
     } else {
         const editorLink = document.getElementById('menu-editor-link');
         if (editorLink) editorLink.href = editorLink.href + '?lang=' + document.documentElement.lang;
     }
-    updateAllDynamicTexts();
-    addFooter(); // Ensure footer is translated on load
+    if (typeof updateAllDynamicTexts === 'function') {
+        updateAllDynamicTexts();
+    }
+    if (typeof addFooter === 'function') {
+        addFooter(); // Ensure footer is translated on load
+    }
 });
 
 /* MATHJAX */

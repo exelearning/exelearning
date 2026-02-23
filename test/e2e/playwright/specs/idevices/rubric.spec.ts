@@ -54,7 +54,7 @@ async function addRubricIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -64,6 +64,7 @@ async function addRubricIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -85,7 +86,7 @@ async function addRubricIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = assessmentCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -172,6 +173,7 @@ async function saveRubricIdevice(page: Page): Promise<void> {
             const normalTable = document.querySelector('#node-content .rubric .exe-table');
             return editableInputs.length === 0 && normalTable !== null;
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -267,7 +269,7 @@ test.describe('Rubric iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -279,7 +281,7 @@ test.describe('Rubric iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Verify rubric content persisted
@@ -314,7 +316,7 @@ test.describe('Rubric iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');

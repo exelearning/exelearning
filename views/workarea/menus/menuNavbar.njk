@@ -12,7 +12,7 @@
                     {{ t.file or 'File' }}
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="dropdownFile">
-                    <li><a class="dropdown-item" id="navbar-button-new" href="#" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> {{ t.new or 'New' }}</a></li>
+                    <li><a class="dropdown-item" id="navbar-button-new" href="{{ basePath }}/workarea" data-shortcut="Mod+Alt+N" aria-keyshortcuts="Control+Alt+N Meta+Alt+N"><span class="small-icon new-icon-green"></span> {{ t.new or 'New' }}</a></li>
                     <li class="d-none"><a class="dropdown-item" id="navbar-button-new-from-template" href="#"><span class="small-icon new-icon"></span> {{ t.new_from_template or 'New from Template...' }}</a></li>
                     <li class="exe-online"><a class="dropdown-item" id="navbar-button-openuserodefiles" href="#" data-shortcut="Mod+O" aria-keyshortcuts="Control+O Meta+O"><span class="small-icon open-icon"></span> {{ t.open or 'Open' }}</a></li>
                     <li class="dropdown dropend exe-online">

@@ -800,6 +800,104 @@ describe('Html5Exporter', () => {
             const cssContent = typeof baseCss === 'string' ? baseCss : new TextDecoder().decode(baseCss as Buffer);
             expect(cssContent).not.toContain('.exe-math-rendered');
         });
+
+        it('should not include MathJax automatically when addMathJax=false and pre-render leaves raw LaTeX (export)', async () => {
+            const latexPages: ExportPage[] = [
+                {
+                    id: 'page-latex',
+                    title: 'LaTeX',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-latex',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-latex',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Formula: \\(x^2\\)</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ addMathJax: false }, latexPages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let requestedLibs: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibs = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+
+            await exporter.export({
+                preRenderLatex: async html => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            const indexHtml = zip.files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Buffer);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
+
+        it('should not include MathJax automatically when addMathJax=false and pre-render leaves raw LaTeX (preview)', async () => {
+            const latexPages: ExportPage[] = [
+                {
+                    id: 'page-latex',
+                    title: 'LaTeX',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-latex',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-latex',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p>Formula: \\(x^2\\)</p>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({ addMathJax: false }, latexPages);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            let requestedLibs: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibs = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+
+            const files = await exporter.generateForPreview({
+                preRenderLatex: async html => ({
+                    html,
+                    hasLatex: true,
+                    latexRendered: false,
+                    count: 0,
+                }),
+            });
+
+            const indexHtml = files.get('index.html');
+            const indexHtmlText =
+                typeof indexHtml === 'string' ? indexHtml : new TextDecoder().decode(indexHtml as Uint8Array);
+            expect(indexHtmlText).not.toContain('libs/exe_math/tex-mml-svg.js');
+        });
     });
 
     describe('Mermaid Pre-Rendering', () => {

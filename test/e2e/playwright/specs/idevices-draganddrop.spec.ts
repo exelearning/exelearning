@@ -56,6 +56,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             const nodeContent = document.querySelector('#node-content');
             return nodeContent !== null;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -69,7 +70,7 @@ async function addTextIdevice(page: Page): Promise<void> {
         const isCollapsed = await infoCategory.evaluate(el => el.classList.contains('off'));
         if (isCollapsed) {
             await infoCategory.locator('.label').click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -84,6 +85,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             const idevices = document.querySelectorAll('#node-content article .idevice_node.text');
             return idevices.length > 0;
         },
+        undefined,
         { timeout: 15000 },
     );
 
@@ -101,6 +103,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.text:last-of-type');
             return idevice?.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -272,7 +275,7 @@ test.describe('iDevice Drag and Drop', () => {
             await handleConfirmDialog(page, true);
 
             // Wait for move to complete
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify iDevice 2 is now in Block 1
             const idevicesInBlock1 = await countIdevicesInBlock(block1);
@@ -310,7 +313,7 @@ test.describe('iDevice Drag and Drop', () => {
                 const dragHandle = getIdeviceDragHandle(idevice2);
                 await dragAndDrop(page, dragHandle, block1);
                 await handleConfirmDialog(page, true); // Delete empty Block 2
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
 
                 // Verify Block 1 now has 2 iDevices
                 const idevicesInBlock1 = await countIdevicesInBlock(getBlock(page, 0));
@@ -333,7 +336,7 @@ test.describe('iDevice Drag and Drop', () => {
                 const moveHandle = getIdeviceDragHandle(ideviceToMove);
                 await dragAndDrop(page, moveHandle, block2);
                 await handleConfirmDialog(page, false);
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // State now: Block 1 has 1, Block 2 has 2
@@ -360,7 +363,7 @@ test.describe('iDevice Drag and Drop', () => {
 
                 await dragAndDrop(page, returnHandle, block1);
                 await handleConfirmDialog(page, false);
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Final state: Block 1 should have 2 iDevices (received one back)
@@ -484,7 +487,7 @@ test.describe('iDevice Drag and Drop', () => {
             await dragAndDrop(page, dragHandle, block1);
 
             // Wait for potential dialog
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Check if confirmation dialog appeared
             const modal = page.locator('.modal.show');
@@ -545,7 +548,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             // Handle any dialog (don't delete original block)
             await handleConfirmDialog(page, false);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify: Should now have 2 blocks (original might be empty, new one has iDevice)
             const blockCount = await countBlocks(page);
@@ -592,22 +595,26 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, dragHandle, block1);
             await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
-            // Wait for drag-and-drop to complete: either block count reduces OR iDevice moved to target
+            // Wait for drag-and-drop to complete.
+            // Accept either:
+            // - Empty source block was removed (2 blocks left), or
+            // - Any block now contains at least 2 iDevices (move completed, delete may still be pending)
             await page.waitForFunction(
                 () => {
                     const blocks = document.querySelectorAll('#node-content article.box');
-                    // Success condition 1: Block count reduced (empty block was deleted)
-                    if (blocks.length === 2) return true;
-                    // Success condition 2: iDevice successfully moved to first block (even if deletion is pending)
-                    if (blocks.length >= 2) {
-                        const firstBlock = blocks[0];
-                        const ideviceCount = firstBlock?.querySelectorAll('.idevice_node').length;
-                        if (ideviceCount === 2) return true;
+                    if (blocks.length <= 2) return true;
+
+                    for (const block of blocks) {
+                        const ideviceCount = block.querySelectorAll('.idevice_node').length;
+                        if (ideviceCount >= 2) {
+                            return true;
+                        }
                     }
+
                     return false;
                 },
                 null,
-                { timeout: 15000 },
+                { timeout: 25000 },
             );
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
@@ -662,7 +669,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, dragHandle, block1);
             await handleConfirmDialog(page, false); // Keep Block 2
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Move iDevice back to Block 2
             const updatedBlock1 = getBlock(page, 0);
@@ -672,7 +679,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             await dragAndDrop(page, returnHandle, updatedBlock2);
             await handleConfirmDialog(page, false);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify both blocks have correct iDevice counts
             const finalBlock1Idevices = await countIdevicesInBlock(getBlock(page, 0));
@@ -683,7 +690,7 @@ test.describe('iDevice Drag and Drop', () => {
 
             // Now delete Block 1 and verify Block 2's iDevice survives
             await deleteBlock(page, getBlock(page, 0));
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             const remainingIdevices = await countAllIdevices(page);
             expect(remainingIdevices).toBe(1);

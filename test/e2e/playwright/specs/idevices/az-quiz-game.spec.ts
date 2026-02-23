@@ -58,7 +58,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content (not project metadata)
     await page
@@ -68,6 +68,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -89,7 +90,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
             // Click on the .label to expand
             const label = gamesCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -107,7 +108,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
     await page.locator('#node-content article .idevice_node.az-quiz-game').first().waitFor({ timeout: 15000 });
 
     // Wait for the word inputs to be dynamically created
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(500);
 
     // Wait for the Words fieldset to have content
     await page
@@ -119,6 +120,7 @@ async function addAzQuizGameIdeviceFromPanel(page: Page): Promise<void> {
                 );
                 return wordInputs.length >= 26;
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -227,7 +229,7 @@ async function saveAzQuizGameIdevice(page: Page): Promise<void> {
     }
 
     // Wait for save to complete - check for rosco container appearing
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 
     // Try to wait for edition mode to end (mode attribute changes)
     await page
@@ -240,6 +242,7 @@ async function saveAzQuizGameIdevice(page: Page): Promise<void> {
                     document.querySelector('#node-content .az-quiz-game .rosco-IDevice') !== null
                 );
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -358,7 +361,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save the project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Reload the page
             await reloadPage(page);
@@ -370,7 +373,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
                 .first();
             if ((await pageNode.count()) > 0) {
                 await pageNode.click({ force: true, timeout: 5000 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Wait for the iDevice to be rendered
@@ -380,6 +383,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
                         const idevice = document.querySelector('#node-content .az-quiz-game');
                         return idevice !== null;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .catch(() => {});
@@ -417,7 +421,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -457,7 +461,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -469,7 +473,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for the rosco to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check canvas has proper dimensions (not 0x0)
             const canvasInfo = await iframe
@@ -508,7 +512,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -520,7 +524,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check that letter indicators exist
             const letterIndicators = iframe.locator('.rosco-Letter');
@@ -551,7 +555,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -563,7 +567,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check start game button is visible
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
@@ -588,7 +592,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -600,14 +604,14 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
 
             // Wait for game to start
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify question div is visible
             const questionDiv = iframe.locator('[id^="roscoQuestionDiv-"]').first();
@@ -638,7 +642,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -650,12 +654,12 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the initial hits count
             const hitsCounter = iframe.locator('[id^="roscotPHits-"]').first();
@@ -672,7 +676,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await submitBtn.click();
 
             // Wait for answer to be processed
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify hits counter increased
             const newHits = await hitsCounter.textContent();
@@ -695,7 +699,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -707,12 +711,12 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the initial errors count
             const errorsCounter = iframe.locator('[id^="roscotPErrors-"]').first();
@@ -728,7 +732,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await submitBtn.click();
 
             // Wait for answer to be processed
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify errors counter increased
             const newErrors = await errorsCounter.textContent();
@@ -751,7 +755,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -763,12 +767,12 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Click start game button
             const startButton = iframe.locator('[id^="roscoStartGame-"]').first();
             await startButton.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get the first definition text
             const definitionText = iframe.locator('[id^="roscoPDefinition-"]').first();
@@ -779,7 +783,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await moveOnBtn.click();
 
             // Wait for next question
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Verify definition changed (moved to next question)
             const newDefinition = await definitionText.textContent();
@@ -811,7 +815,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -823,7 +827,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
 
             // Wait for initialization
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Check the time display shows 1:00 (60 seconds)
             const timeDisplay = iframe.locator('[id^="roscoPTime-"]').first();

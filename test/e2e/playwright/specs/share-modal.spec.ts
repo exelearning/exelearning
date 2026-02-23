@@ -253,7 +253,7 @@ test.describe('Share Modal', () => {
             await shareModal.inviteCollaborator('nonexistent@example.com');
 
             // Wait for API response
-            await authenticatedPage.waitForTimeout(1000);
+            await authenticatedPage.waitForTimeout(500);
 
             // Should show error
             const error = await shareModal.getInviteError();

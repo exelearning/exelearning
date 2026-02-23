@@ -100,6 +100,10 @@ export interface JwtPayload {
     email: string;
     roles: string[];
     isGuest: boolean;
+    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
+    isImpersonated?: boolean;
+    impersonatedBy?: number;
+    impersonationSessionId?: string;
     exp: number;
     iat: number;
 }

@@ -271,13 +271,7 @@ ${iconHtml}${titleHtml}${toggleHtml}</header>`;
             contentHtml += this.render(component, { basePath, includeDataAttributes, assetExportPathMap });
         }
 
-        // Build additional attributes (identifier support)
-        let extraAttrs = '';
-        if (properties.identifier) {
-            extraAttrs += ` identifier="${this.escapeAttr(properties.identifier)}"`;
-        }
-
-        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}"${extraAttrs}>
+        return `<article id="${this.escapeAttr(blockId)}" class="${classes.join(' ')}">
 ${headerHtml}
 <div class="box-content">
 ${contentHtml}

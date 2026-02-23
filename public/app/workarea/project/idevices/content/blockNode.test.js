@@ -22,7 +22,6 @@ global.eXeLearning = {
             parameters: {
                 generateNewItemKey: 'generated-key-123',
                 odePagStructureSyncPropertiesConfig: {
-                    identifier: { value: '' },
                     visibility: { value: 'false' },
                     cssClass: { value: '' },
                     allowToggle: { value: 'true' },
@@ -264,27 +263,15 @@ describe('IdeviceBlockNode', () => {
             block.setParams({});
             expect(block.mode).toBe('export');
         });
-
-        it('calls setProperties when odePagStructureSyncProperties provided', () => {
-            const spy = vi.spyOn(block, 'setProperties');
-            block.setParams({
-                odePagStructureSyncProperties: {
-                    identifier: { value: 'my-id' },
-                },
-            });
-            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
-        });
     });
 
     describe('setProperties', () => {
         it('sets property values from data', () => {
             block.setProperties({
-                identifier: { value: 'custom-id' },
                 visibility: { value: 'true' },
                 cssClass: { value: 'my-class' },
             });
 
-            expect(block.properties.identifier.value).toBe('custom-id');
             expect(block.properties.visibility.value).toBe('true');
             expect(block.properties.cssClass.value).toBe('my-class');
         });
@@ -292,13 +279,11 @@ describe('IdeviceBlockNode', () => {
         it('only sets heritable properties when onlyHeritable is true', () => {
             block.setProperties(
                 {
-                    identifier: { value: 'inherited-id', heritable: true },
                     visibility: { value: 'true', heritable: false },
                 },
                 true,
             );
 
-            expect(block.properties.identifier.value).toBe('inherited-id');
             expect(block.properties.visibility.value).toBe('false');
         });
 
@@ -336,7 +321,6 @@ describe('IdeviceBlockNode', () => {
         it('does nothing when Yjs is not enabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
             block.loadPropertiesFromYjs();
-            expect(block.properties.identifier.value).toBe('');
         });
 
         it('loads properties from Yjs when enabled', () => {
@@ -344,7 +328,6 @@ describe('IdeviceBlockNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getBlockProperties: vi.fn(() => ({
-                        identifier: 'yjs-id',
                         visibility: true,
                         cssClass: 'yjs-class',
                     })),
@@ -353,7 +336,6 @@ describe('IdeviceBlockNode', () => {
 
             block.loadPropertiesFromYjs();
 
-            expect(block.properties.identifier.value).toBe('yjs-id');
             expect(block.properties.visibility.value).toBe('true');
             expect(block.properties.cssClass.value).toBe('yjs-class');
         });
@@ -379,7 +361,6 @@ describe('IdeviceBlockNode', () => {
             eXeLearning.app.project._yjsEnabled = true;
             eXeLearning.app.project._yjsBridge = null;
             block.loadPropertiesFromYjs();
-            expect(block.properties.identifier.value).toBe('');
         });
     });
 
@@ -435,13 +416,6 @@ describe('IdeviceBlockNode', () => {
             block.toggleElement.appendChild(span);
         });
 
-        it('sets identifier attribute', () => {
-            block.properties.identifier.value = 'my-block-id';
-            block.setPropertiesClassesToElement();
-
-            expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
-        });
-
         it('sets export-view attribute when visibility is true', () => {
             block.properties.visibility.value = 'true';
             block.setPropertiesClassesToElement();
@@ -464,13 +438,6 @@ describe('IdeviceBlockNode', () => {
             block.setPropertiesClassesToElement();
 
             expect(spy).toHaveBeenCalled();
-        });
-
-        it('does not set identifier when value is empty', () => {
-            block.properties.identifier.value = '';
-            block.setPropertiesClassesToElement();
-
-            expect(block.blockContent.hasAttribute('identifier')).toBe(false);
         });
     });
 
@@ -978,27 +945,23 @@ describe('IdeviceBlockNode', () => {
     describe('setProperties', () => {
         it('updates properties.value from data object', () => {
             const props = {
-                identifier: { value: 'test-id' },
                 visibility: { value: 'true' },
                 cssClass: { value: 'custom-class' },
             };
 
             block.setProperties(props);
 
-            expect(block.properties.identifier.value).toBe('test-id');
             expect(block.properties.visibility.value).toBe('true');
             expect(block.properties.cssClass.value).toBe('custom-class');
         });
 
         it('handles onlyHeritable flag', () => {
             const props = {
-                identifier: { value: 'test-id', heritable: true },
                 visibility: { value: 'true', heritable: false },
             };
 
             block.setProperties(props, true);
 
-            expect(block.properties.identifier.value).toBe('test-id');
             // visibility should not be updated since heritable is false
         });
     });
@@ -1015,12 +978,6 @@ describe('IdeviceBlockNode', () => {
             block.blockContent = document.createElement('div');
             block.toggleElement = document.createElement('button');
             block.toggleElement.innerHTML = '<span>keyboard_arrow_down</span>';
-        });
-
-        it('sets identifier attribute when value exists', () => {
-            block.properties.identifier.value = 'my-block-id';
-            block.setPropertiesClassesToElement();
-            expect(block.blockContent.getAttribute('identifier')).toBe('my-block-id');
         });
 
         it('sets export-view attribute when visibility is true', () => {

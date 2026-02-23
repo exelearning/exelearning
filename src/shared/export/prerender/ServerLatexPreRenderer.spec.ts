@@ -103,6 +103,16 @@ describe('ServerLatexPreRenderer', () => {
             expect(result.count).toBe(1);
         });
 
+        it('should pre-render inline LaTeX inside span elements', async () => {
+            const html = '<p><span style="color:#c00">\\(x^2\\)</span></p>';
+            const result = await renderer.preRender(html);
+
+            expect(result.hasLatex).toBe(true);
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1);
+            expect(result.html).toContain('exe-math-rendered');
+        });
+
         it('should skip LaTeX inside <code> tags', async () => {
             const html = '<p>Example: <code>\\(x^2\\)</code></p>';
             const result = await renderer.preRender(html);
@@ -140,15 +150,95 @@ describe('ServerLatexPreRenderer', () => {
             expect(result.count).toBe(0);
         });
 
-        it('should not double-process content with existing exe-math-rendered', async () => {
+        it('should render raw LaTeX even if content already has exe-math-rendered', async () => {
             // HTML with both raw LaTeX and already-rendered content
             const html = '<p>\\(new\\) <span class="exe-math-rendered"><svg></svg></span></p>';
             const result = await renderer.preRender(html);
 
-            // Should detect raw LaTeX but skip if content already has rendered math
             expect(result.hasLatex).toBe(true);
-            // The pre-renderer skips content that already has exe-math-rendered
-            expect(result.latexRendered).toBe(false);
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1);
+        });
+
+        it('should render pending formulas in mixed table content with pre-rendered spans', async () => {
+            const html = `
+<div class="exe-text">
+<table border="1" cellpadding="6" style="margin-left: auto; margin-right: auto;">
+<tbody>
+<tr>
+<th style="width: 137px; text-align: center;"><span style="font-size: 12pt;"><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span></span></th>
+<th style="width: 151px; text-align: center;"><span style="font-size: 12pt;">Resultado</span></th>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathrm{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathit{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathit{ABCdef}\\)</span></td>
+</tr>
+</tbody>
+</table>
+</div>`;
+
+            const result = await renderer.preRender(html);
+
+            expect(result.hasLatex).toBe(true);
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(2);
+            expect(result.html).toContain('data-latex="\\(\\mathrm{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathit{ABCdef}\\)"');
+        });
+
+        it('should render all pending ABCdef formulas from provided mixed pre-rendered table', async () => {
+            const html = `
+<table border="1" cellpadding="6" style="margin-left: auto; margin-right: auto;">
+<tbody>
+<tr>
+<th style="width: 304px; text-align: center;" colspan="2"><span style="font-size: 12pt;">Tipografías matemáticas</span></th>
+</tr>
+<tr>
+<th style="width: 137px; text-align: center;"><span style="font-size: 12pt;"><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg><math></math></span></span></th>
+<th style="width: 151px; text-align: center;"><span style="font-size: 12pt;">Resultado</span></th>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathrm{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathit{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathit{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathbb{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathbb{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathcal{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathcal{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="color: #0000ff; font-size: 12pt;">&nbsp;\\mathfrak{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathfrak{ABCdef}\\)</span></td>
+</tr>
+<tr>
+<td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathscr{ABCdef}</span></td>
+<td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathscr{ABCdef}\\)</span></td>
+</tr>
+</tbody>
+</table>`;
+
+            const result = await renderer.preRender(html);
+
+            expect(result.hasLatex).toBe(true);
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(6);
+            expect(result.html).toContain('data-latex="\\(\\mathrm{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathit{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathbb{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathcal{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathfrak{ABCdef}\\)"');
+            expect(result.html).toContain('data-latex="\\(\\mathscr{ABCdef}\\)"');
         });
 
         it('should handle fractions', async () => {

@@ -53,7 +53,7 @@ async function addImageGalleryFromPanel(page: Page): Promise<void> {
     }
 
     // Wait for the page content area to switch from metadata to page editor
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // Wait for node-content to show page content
     await page
@@ -63,6 +63,7 @@ async function addImageGalleryFromPanel(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {
@@ -194,6 +195,7 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -208,7 +210,7 @@ test.describe('Image Gallery iDevice', () => {
             await expect(viewModeImages.first()).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             const naturalWidth = await viewModeImages.first().evaluate((el: HTMLImageElement) => el.naturalWidth);
             console.log('View mode image naturalWidth:', naturalWidth);
             expect(naturalWidth).toBeGreaterThan(0);
@@ -308,12 +310,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -371,11 +374,14 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Wait for SimpleLightbox to be loaded
-            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', { timeout: 10000 });
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', undefined, {
+                timeout: 10000,
+            });
 
             // Wait for renderBehaviour to complete and SimpleLightbox to initialize
             await page.waitForTimeout(500);
@@ -443,12 +449,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -466,11 +473,12 @@ test.describe('Image Gallery iDevice', () => {
                     if (!previewIframe?.contentWindow) return false;
                     return typeof (previewIframe.contentWindow as any).SimpleLightbox !== 'undefined';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Wait for renderBehaviour to complete
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Click on the image in the preview
             const previewGalleryLink = iframe.locator('.imageGallery-IDevice a.imageLink').first();
@@ -591,6 +599,7 @@ test.describe('Image Gallery iDevice', () => {
                         const img = document.querySelector('.imgSelectContainer img.image') as HTMLImageElement;
                         return img?.complete && img.naturalWidth > 0;
                     },
+                    undefined,
                     { timeout: 10000 },
                 )
                 .then(() => true)
@@ -615,6 +624,7 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -629,7 +639,7 @@ test.describe('Image Gallery iDevice', () => {
             await expect(viewModeImage).toBeVisible({ timeout: 5000 });
 
             // Wait for image to load and verify it loaded correctly
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             const viewModeNaturalWidth = await viewModeImage.evaluate((el: HTMLImageElement) => el.naturalWidth);
             console.log('View mode image naturalWidth:', viewModeNaturalWidth);
             expect(viewModeNaturalWidth).toBeGreaterThan(0);
@@ -682,6 +692,7 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -726,7 +737,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // Save the project to persist Yjs document
             await workarea.save();
-            await page.waitForTimeout(2000); // Wait for save to complete
+            await page.waitForTimeout(500); // Wait for save to complete
 
             // Reload the page
             await reloadPage(page);
@@ -763,7 +774,7 @@ test.describe('Image Gallery iDevice', () => {
                 throw new Error('Could not select page node after reload');
             }
 
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Verify the image gallery is rendered (view mode, not edition)
             const galleryViewAfterReload = page.locator('#node-content .idevice_node.image-gallery').first();
@@ -788,6 +799,7 @@ test.describe('Image Gallery iDevice', () => {
                         ) as HTMLImageElement;
                         return img?.complete && img.naturalWidth > 0;
                     },
+                    undefined,
                     { timeout: 15000 },
                 )
                 .then(() => true)
@@ -878,12 +890,13 @@ test.describe('Image Gallery iDevice', () => {
                         const gallery = idevice.querySelector('.imageGallery-IDevice');
                         return !!gallery;
                     },
+                    undefined,
                     { timeout: 15000 },
                 );
 
                 // Wait for AssetManager to resolve asset URLs to blob URLs
                 // Increase wait time to ensure all assets are fully resolved
-                await page.waitForTimeout(3000);
+                await page.waitForTimeout(500);
             }
 
             // Helper function to verify all images load correctly
@@ -976,12 +989,13 @@ test.describe('Image Gallery iDevice', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                         return idevice && idevice.getAttribute('mode') === 'edition';
                     },
+                    undefined,
                     { timeout: 15000 },
                 );
 
                 // Wait for MutationObserver to process images and set data-asset-url attributes
                 // This ensures all asset URLs are properly resolved before any modifications
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
 
                 // Click modify button on the specified image
                 const imageContainers = page.locator('.imgSelectContainer');
@@ -1023,12 +1037,13 @@ test.describe('Image Gallery iDevice', () => {
                         const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                         return idevice && idevice.getAttribute('mode') !== 'edition';
                     },
+                    undefined,
                     { timeout: 15000 },
                 );
 
                 // Save the project
                 await workarea.save();
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // ============ STEP 1: Create project and add two images ============
@@ -1055,12 +1070,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
             console.log('Step 1 complete: Two images added and saved');
 
             // ============ STEP 2: Reload and verify both images display ============
@@ -1236,12 +1252,13 @@ test.describe('Image Gallery iDevice', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
             // Save project
             await workarea.save();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Open preview panel using helper (handles Service Worker check)
             const previewLoaded = await waitForPreviewContent(page, 30000);
