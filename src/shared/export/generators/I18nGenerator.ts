@@ -374,6 +374,17 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
         eo: 'Malpligrandigi tekston',
         ro: 'Micșorează dimensiunea textului',
     },
+    uppercase_text: {
+        en: 'Uppercase',
+        es: 'Mayúsculas',
+        ca: 'Majúscules',
+        va: 'Majúscules',
+        gl: 'Maiúsculas',
+        eu: 'Maiuskulak',
+        pt: 'Maiúsculas',
+        eo: 'Majuskloj',
+        ro: 'Majuscule',
+    },
     read: {
         en: 'Read',
         es: 'Leer',
