@@ -384,7 +384,7 @@ window.$exeExport = {
             : 'Toggle content';
         $('article.box .box-head .box-toggle').each(function() {
             $(this).attr('title', toggleText);
-            $('.box-toggle-sr', this).text(toggleText);
+            $('span', this).text(toggleText);
         });
 
         $('article.box .box-head .box-toggle').on('click', function(){

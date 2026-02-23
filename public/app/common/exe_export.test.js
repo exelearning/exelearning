@@ -1967,22 +1967,6 @@ describe('exe_export.js', () => {
     });
   });
 
-  describe('addBoxToggleEvent', () => {
-    it('sets title attribute and sr text on .box-toggle buttons', () => {
-      document.body.innerHTML = `
-        <article class="box">
-          <div class="box-head">
-            <button class="box-toggle"><span class="box-toggle-sr"></span></button>
-          </div>
-        </article>`;
-
-      window.$exeExport.addBoxToggleEvent();
-
-      const btn = document.querySelector('article.box .box-head .box-toggle');
-      expect(btn.getAttribute('title')).toBe('Toggle content');
-    });
-  });
-
   describe('jQuery ready callback initialization', () => {
     it('searchBar.init is callable and sets up search functionality', () => {
       // The searchBar.init is called in the jQuery ready callback at line 818

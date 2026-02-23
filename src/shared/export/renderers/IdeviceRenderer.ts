@@ -252,7 +252,9 @@ ${contentHtml}
                     : 'box-toggle box-toggle-on';
             // Static text - will be translated at runtime by exe_export.js using $exe_i18n.toggleContent
             const toggleText = 'Toggle content';
-            toggleHtml = `<button class="${toggleClass}" title="${this.escapeAttr(toggleText)}"><span class="box-toggle-sr">${this.escapeHtml(toggleText)}</span></button>`;
+            toggleHtml = `<button class="${toggleClass}" title="${this.escapeAttr(toggleText)}">
+<span>${this.escapeHtml(toggleText)}</span>
+</button>`;
         }
         // Build title only if blockName has text
         const titleHtml = hasHeader

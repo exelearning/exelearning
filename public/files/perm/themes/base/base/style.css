@@ -304,7 +304,7 @@ button.toggler:focus {
 }
 
 .nav-buttons .nav-button span,
-.box-toggle .box-toggle-sr,
+.box-toggle span,
 #exe-client-search-reset span,
 #packageLicense .license-label {
     position: absolute;
@@ -333,24 +333,14 @@ button.toggler:focus {
 .exe-export .box-toggle {
     width: 40px;
     height: 40px;
+    background: url(img/icons.png) no-repeat -200px 0;
+    background-size: auto 40px;
     border-radius: 50%;
     border: 0;
     position: absolute;
     top: 0;
     right: 0;
     opacity: 0.6;
-}
-
-.exe-export .box-toggle::before {
-    content: '';
-    display: block;
-    width: 23px;
-    height: 25px;
-    background: url(img/chevron-contract.svg) center/contain no-repeat;
-}
-
-.exe-export .minimized .box-toggle::before {
-    background-image: url(img/chevron-expand.svg);
 }
 
 .exe-export .box-head:hover .box-toggle,
@@ -360,6 +350,10 @@ button.toggler:focus {
 
 .exe-export .no-header .box-toggle {
     top: -10px;
+}
+
+.exe-export .minimized .box-toggle {
+    background-position: -160px 0;
 }
 
 #node-content-container.exe-content .box-head .exe-icon {

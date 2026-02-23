@@ -1208,7 +1208,7 @@ describe('IdeviceRenderer', () => {
 
             // Toggle text is always English in HTML - translated at runtime by exe_export.js
             expect(html).toContain('title="Toggle content"');
-            expect(html).toContain('<span class="box-toggle-sr">Toggle content</span>');
+            expect(html).toContain('<span>Toggle content</span>');
         });
 
         it('should resolve icon baseName to filename with extension using setThemeIconFiles', () => {
