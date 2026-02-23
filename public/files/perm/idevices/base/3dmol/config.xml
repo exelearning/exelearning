@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <idevice>
     <title>3DMol</title>
-    <css-class>3dmol</css-class>
+    <css-class>dmole</css-class>
     <category>Science</category>
     <icon>
         <name>3dmol-icon</name>

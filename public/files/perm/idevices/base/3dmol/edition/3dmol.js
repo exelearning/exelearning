@@ -16,7 +16,7 @@ var $exeDevice = {
     },
     idevicePath: '',
     msgs: {},
-    classIdevice: '3dmol',
+    classIdevice: 'dmole',
     active: 0,
     selectsGame: [],
     typeEdit: -1,
@@ -1124,7 +1124,7 @@ var $exeDevice = {
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
                 <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the 3D model and answer the questions.'))}
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the 3D model and answer the questions.') + ' ' + c_('You can rotate the 3D model by clicking on it and dragging.'))}
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">${_('Options')}</a></legend>
                         <div id="dmoleOptions">
@@ -1190,14 +1190,8 @@ var $exeDevice = {
                             <div id="dmoleFeedbackP" class="DMOLE-EFeedbackP mb-3">
                                 <textarea id="dmoleFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
-                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <div class="toggle-item toggle-related m-0" data-target="dmolePercentajeQuestions">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="dmolePercentajeQuestions" checked>
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dmolePercentajeQuestions">%${_('Questions')}:</label>
-                                </div>
+                            <div class="d-flex align-items-center flex-wrap mb-3 gap-2" id="dmoleInputPercentajeQuestions">
+                                <label for="dmolePercentajeQuestionsValue">%${_('Questions')}:</label>
                                 <input type="number" name="dmolePercentajeQuestionsValue" id="dmolePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
                                 <span id="dmoleNumeroPercentaje" class="ms-2">1/1</span>
                             </div>
@@ -1711,8 +1705,10 @@ var $exeDevice = {
 
         const textFeedBack = $exeDevice.getEditorContent('dmoleFeedBackEditor');
    
+        const ideviceID = $exeDevice.getIdeviceID();
+
         let html = '<div class="dmole-IDevice">';
-        html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        html += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceID}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += divContent;
         html += `<div class="dmole-version js-hidden">${$exeDevice.version}</div>`;
         html += `<div class="dmole-feedback-game">${textFeedBack}</div>`;
@@ -1816,12 +1812,9 @@ var $exeDevice = {
 
 
     getIdeviceID: function () {
-        const ideviceid =
-            $('#dMoleIdeviceForm')
-                .closest(`div.idevice_node.${$exeDevice.classIdevice}`)
-                .attr('id') || '';
-
-        return ideviceid;
+        // Note: the outer .idevice_node has class '3dmol' (folder name), which is an
+        // invalid CSS selector (starts with digit). Use generic .idevice_node selector.
+        return $('#dMoleIdeviceForm').closest('div.idevice_node').attr('id') || '';
     },
 
     validateData: function () {
@@ -2154,6 +2147,17 @@ var $exeDevice = {
                 `input.DMOLE-Times[name='slctime'][value='${selectedTime}']`
             ).prop('checked', true);
         });
+
+        // Only allow 3D viewer interaction when mouse is over the viewer
+        $('#dmoleModelPreview')
+            .on('mouseenter', function () {
+                const canvas = this.querySelector('canvas');
+                if (canvas) canvas.style.pointerEvents = 'auto';
+            })
+            .on('mouseleave', function () {
+                const canvas = this.querySelector('canvas');
+                if (canvas) canvas.style.pointerEvents = 'none';
+            });
 
         // 3D model preview button
         $('#dmolePreviewModel').on('click', (e) => {

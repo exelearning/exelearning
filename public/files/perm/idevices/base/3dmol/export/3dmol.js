@@ -550,6 +550,17 @@ var $eXe3Dmol = {
 
         mOptions.respuesta = '';
 
+        // Only allow 3D viewer interaction when mouse is over the viewer
+        $(`#dmolpModelPreview-${instance}`)
+            .on('mouseenter', function () {
+                const canvas = this.querySelector('canvas');
+                if (canvas) canvas.style.pointerEvents = 'auto';
+            })
+            .on('mouseleave', function () {
+                const canvas = this.querySelector('canvas');
+                if (canvas) canvas.style.pointerEvents = 'none';
+            });
+
         $eXe3Dmol.removeEvents(instance);
         $(window).on('unload.exeEC beforeunload.exeEC', () => {
             $exeDevices.iDevice.gamification.scorm.endScorm(
@@ -846,8 +857,8 @@ var $eXe3Dmol = {
         $(`#dmolpWordDiv-${instance}`).hide();
         $(`#dmolpDivFeedBack-${instance}`).hide();
         $(`#dmolpDivModeBoard-${instance}`).hide();
-        $(`#dmolpShowClue-${instance}`).hide();
         $(`#dmolpGamerOver-${instance}`).hide();
+        $(`#dmolpShowClue-${instance}`).hide();
         $(`#dmolpAuthorLicence-${instance}`).hide();
         $(`#dmolpAnswerDiv-${instance}`).hide();
 
@@ -858,6 +869,7 @@ var $eXe3Dmol = {
         $(`#dmolpShowFullScreenRow-${instance}`)
             .insertBefore(`#dmolpShowNavigation-${instance}`)
             .css('display', 'flex');
+        $(`#dmolpShowClue-${instance}`).insertAfter(`#dmolpShowFullScreenRow-${instance}`);
 
         // Apply Show mode layout
         $(`#dmolpMultimedia-${instance}`).addClass('DMOLP-ShowMultimedia');
@@ -895,6 +907,16 @@ var $eXe3Dmol = {
             if (mOptions.showCurrentIndex < mOptions.selectsGame.length - 1) {
                 mOptions.showCurrentIndex++;
                 mOptions.visiteds++;
+                if (
+                    mOptions.itinerary.showClue &&
+                    !mOptions.obtainedClue &&
+                    (mOptions.visiteds / mOptions.selectsGame.length) * 100 >= mOptions.itinerary.percentageClue
+                ) {
+                    $(`#dmolpShowClue-${instance}`)
+                        .text(`${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`)
+                        .show();
+                    mOptions.obtainedClue = true;
+                }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {
                     $eXe3Dmol.sendScore(true, instance);
