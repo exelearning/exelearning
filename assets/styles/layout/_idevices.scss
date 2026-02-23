@@ -914,4 +914,22 @@ article.box {
     .idevice-content-block.out {
         opacity: 0.3;
     }
+
+    /* Teacher mode visual indicator in workarea */
+    article.box.exe-teacher-highlight {
+        background-color: lightyellow;
+        outline: 1px dashed #c8a800;
+        border-radius: var(--radius);
+
+        .box-head,
+        .idevice_node {
+            background-color: lightyellow !important;
+        }
+    }
+
+    .idevice_node.exe-teacher-highlight {
+        background-color: lightyellow;
+        outline: 1px dashed #c8a800;
+        border-radius: var(--radius);
+    }
 }

@@ -267,6 +267,10 @@ export default class IdeviceNode {
                 this.ideviceContent.classList.add(cls);
             });
         }
+        // teacher only - workarea visual indicator (separate class to avoid export hide rule)
+        if (this.properties.teacherOnly?.value == 'true') {
+            this.ideviceContent.classList.add('exe-teacher-highlight');
+        }
     }
 
     /**

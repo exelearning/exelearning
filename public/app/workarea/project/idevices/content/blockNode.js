@@ -268,6 +268,10 @@ export default class IdeviceBlockNode {
                 this.blockContent.classList.add(cls);
             });
         }
+        // teacher only - workarea visual indicator (separate class to avoid export hide rule)
+        if (this.properties.teacherOnly?.value == 'true') {
+            this.blockContent.classList.add('exe-teacher-highlight');
+        }
         // allow toggle
         if (this.properties.allowToggle.value != 'true') {
             // This should always be available while editing:
