@@ -3014,8 +3014,6 @@ export default class IdeviceNode {
             // Note: generateContentExportView is called by loadInitScriptIdevice('export')
             // through ideviceInitExportLoadSuccess after ensuring export scripts are loaded
 
-            this.resetWindowHash();
-            this.goWindowToIdevice(100);
             if (loadPage) {
                 // Reload all components in page
                 await this.engine.resetCurrentIdevicesExportView([this.id]);
@@ -3026,6 +3024,8 @@ export default class IdeviceNode {
             }
             this.loadLegacyExeFunctionalitiesExport();
             this.engine.unsetIdeviceActive();
+            // Scroll back to the saved iDevice after all DOM changes are complete
+            this.goWindowToIdevice(0);
         } else {
             this.toogleIdeviceButtonsState(false);
             setTimeout(() => {
@@ -3691,9 +3691,19 @@ export default class IdeviceNode {
         } else {
             hashId = this.odeIdeviceId;
         }
-        let element = document.getElementById(hashId);
         setTimeout(() => {
-            this.nodeContainer.scrollTop = element.offsetTop;
+            const element = document.getElementById(hashId);
+            if (!element) return;
+            const scrollContainer =
+                document.querySelector('.template-page') ?? this.nodeContainer;
+            if (typeof scrollContainer.getBoundingClientRect === 'function') {
+                const offset =
+                    element.getBoundingClientRect().top -
+                    scrollContainer.getBoundingClientRect().top;
+                scrollContainer.scrollTop += offset;
+            } else {
+                scrollContainer.scrollTop = element.offsetTop;
+            }
         }, time);
     }
 

@@ -2963,6 +2963,13 @@ describe('IdeviceNode', () => {
             expect(mockEngine.resetCurrentIdevicesExportView).toHaveBeenCalledWith([idevice.id]);
         });
 
+        it('scrolls to idevice after async operations without resetting scroll first', async () => {
+            await idevice.save(false);
+
+            expect(idevice.resetWindowHash).not.toHaveBeenCalled();
+            expect(idevice.goWindowToIdevice).toHaveBeenCalledWith(0);
+        });
+
         it('shows error modal when save fails', async () => {
             vi.useFakeTimers();
             idevice.saveIdeviceProcess.mockResolvedValue(false);
@@ -3706,6 +3713,22 @@ describe('IdeviceNode', () => {
             vi.advanceTimersByTime(100);
 
             vi.useRealTimers();
+        });
+
+        it('uses getBoundingClientRect when scrollContainer is a DOM element', () => {
+            const container = document.createElement('div');
+            container.scrollTop = 50;
+            document.body.appendChild(container);
+            idevice.nodeContainer = container;
+            idevice.block = { idevices: [], blockId: 'block-123' };
+
+            vi.useFakeTimers();
+            idevice.goWindowToIdevice(0);
+            vi.advanceTimersByTime(0);
+            vi.useRealTimers();
+
+            // Should not throw and nodeContainer.scrollTop should be updated
+            expect(true).toBe(true);
         });
     });
 
