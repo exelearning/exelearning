@@ -37,6 +37,8 @@ const dynamicServerEnv = {
     PORT: '3001',
     APP_PORT: '3001',
     APP_AUTH_METHODS: 'password,guest',
+    ADMIN_EMAIL: 'admin@exelearning.test',
+    ADMIN_PASSWORD: 'AdminPass123!',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
 };
 

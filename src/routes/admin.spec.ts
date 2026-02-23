@@ -118,6 +118,7 @@ const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries 
     updateProject: async () => undefined,
     hardDeleteProject: async () => undefined,
     findProjectsByOwnerId: async () => [],
+    createImpersonationAuditSession: async () => undefined,
     ...overrides,
 });
 
@@ -1260,6 +1261,97 @@ describe('Admin Routes', () => {
     // ============================================================================
     // EDGE CASES
     // ============================================================================
+
+    describe('POST /api/admin/impersonation/start', () => {
+        it('should start impersonation for non-admin user', async () => {
+            let auditCalled = false;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findUserById: async (_db, id) => {
+                            if (id === 2) {
+                                return mockUser({ id: 2, email: 'target@example.com', roles: '["ROLE_USER"]' });
+                            }
+                            return mockAdminUser;
+                        },
+                        createImpersonationAuditSession: async () => {
+                            auditCalled = true;
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/impersonation/start', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: 2 }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const body = await response.json();
+            expect(body.success).toBe(true);
+            expect(body.impersonation.email).toBe('target@example.com');
+            expect(auditCalled).toBe(true);
+
+            const setCookie = response.headers.get('set-cookie') || '';
+            expect(setCookie).toContain('auth=');
+        });
+
+        it('should prevent self impersonation', async () => {
+            const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/impersonation/start', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: 1 }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const body = await response.json();
+            expect(body.error).toBe('CANNOT_IMPERSONATE_SELF');
+        });
+
+        it('should reject impersonating admin users', async () => {
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createMockDeps({
+                        findUserById: async (_db, id) => {
+                            if (id === 2) return mockAdminUser;
+                            return mockAdminUser;
+                        },
+                    }),
+                ),
+            );
+            const adminToken = await generateAdminToken();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/impersonation/start', {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ user_id: 2 }),
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const body = await response.json();
+            expect(body.error).toBe('CANNOT_IMPERSONATE_ADMIN');
+        });
+    });
 
     describe('Edge Cases', () => {
         it('should handle JWT without sub', async () => {

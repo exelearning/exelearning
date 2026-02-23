@@ -11,6 +11,9 @@
     <!-- Available translations (they will be used instead of en or eXe's if possible) -->
     <script src="lang/es.js"></script>
     <script src="lang/ca.js"></script>
+    <script src="lang/gl.js"></script>
+    <script src="lang/eu.js"></script>
+    <script src="lang/de.js"></script>
     <!-- EdiCuaTeX CSS file -->
     <link rel="stylesheet" href="css/edicuatex.css">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -19,12 +22,24 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1 data-i18n-key="EdiCuaTeX - LaTeX Equation Editor">EdiCuaTeX - LaTeX Equation Editor</h1>
-            <p data-i18n-key="Create mathematical formulas visually, copy them or download them as images.">Create mathematical formulas visually, copy them or download them as images.</p>
-            <div class="language-selector" id="language-selector">
-                <button class="lang-btn" data-lang="en" id="lang-en">EN</button>
-                <button class="lang-btn" data-lang="es" id="lang-es">ES</button>
-                <button class="lang-btn" data-lang="ca" id="lang-ca">CA</button>
+            <div class="header-main">
+                <div class="header-copy">
+                    <h1 data-i18n-key="EdiCuaTeX - LaTeX Equation Editor">EdiCuaTeX - LaTeX Equation Editor</h1>
+                    <p data-i18n-key="Create mathematical formulas visually, copy them or download them as images.">Create mathematical formulas visually, copy them or download them as images.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="language-selector" id="language-selector">
+                        <button id="language-toggle" type="button" aria-label="Language" title="Language">🌐</button>
+                        <div class="language-dropdown" id="language-dropdown">
+                            <button class="language-option" type="button" data-lang="en">English</button>
+                            <button class="language-option" type="button" data-lang="es">Castellano</button>
+                            <button class="language-option" type="button" data-lang="ca">Català</button>
+                            <button class="language-option" type="button" data-lang="gl">Galego</button>
+                            <button class="language-option" type="button" data-lang="eu">Euskara</button>
+                            <button class="language-option" type="button" data-lang="de">Deutsch</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
         <div class="tabs-section" id="tabs-section">
@@ -34,8 +49,12 @@
                     <input autocomplete="off" id="search-input" placeholder="Search by description or code (e.g.: fraction, \int)..." type="search" data-i18n-placeholder="Search by description or code (e.g.: fraction, \int)...">
                     <button id="clear-search-btn" title="Clear search" data-i18n-title="Clear search">×</button>
                 </div>
-                <button id="settings-btn" title="Customize menu" data-i18n-title="Customize menu">⚙️</button>
-                <button id="maximize-btn" title="Fullscreen" data-i18n-title="Fullscreen">🗖</button>
+                <button id="settings-btn" title="Customize menu" data-i18n-title="Customize menu">
+                    <img src="icons/settings_24dp_0B439EFF_FILL0_wght400_GRAD0_opsz24.svg" alt="Customize menu">
+                </button>
+                <button id="maximize-btn" title="Fullscreen" data-i18n-title="Fullscreen">
+                    <img src="icons/zoom_out_map_24dp_0B439EFF_FILL0_wght400_GRAD0_opsz24.svg" alt="Fullscreen">
+                </button>
             </div>
             <div class="tabs-container" id="tabs-container"></div>
             <div id="toolbar-wrapper">

@@ -20,6 +20,7 @@ export interface Database {
     app_settings: AppSettingsTable;
     themes: ThemesTable;
     templates: TemplatesTable;
+    impersonation_audit_logs: ImpersonationAuditLogsTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -175,6 +176,19 @@ interface TemplatesTable {
     updated_at: number | null; // Unix timestamp in milliseconds
 }
 
+interface ImpersonationAuditLogsTable {
+    id: Generated<number>;
+    session_id: string;
+    impersonator_user_id: number;
+    impersonated_user_id: number;
+    started_at: number;
+    ended_at: number | null;
+    started_by_ip: string | null;
+    started_user_agent: string | null;
+    ended_by_ip: string | null;
+    ended_user_agent: string | null;
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -236,6 +250,11 @@ export type ThemeUpdate = Updateable<ThemesTable>;
 export type Template = Selectable<TemplatesTable>;
 export type NewTemplate = Insertable<TemplatesTable>;
 export type TemplateUpdate = Updateable<TemplatesTable>;
+
+// Impersonation audit logs
+export type ImpersonationAuditLog = Selectable<ImpersonationAuditLogsTable>;
+export type NewImpersonationAuditLog = Insertable<ImpersonationAuditLogsTable>;
+export type ImpersonationAuditLogUpdate = Updateable<ImpersonationAuditLogsTable>;
 
 // ============================================================================
 // HELPER TYPES

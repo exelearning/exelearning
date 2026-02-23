@@ -1341,6 +1341,69 @@ describe('Pages Routes', () => {
             expect(templateData.t).toBeDefined();
         });
 
+        it('should include impersonation context in workarea view model', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(99, {
+                id: 99,
+                email: 'admin-impersonator@test.com',
+                roles: '["ROLE_USER","ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const userToken = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+            const adminToken = await tempApp.decorator.jwt.sign({
+                sub: 99,
+                email: 'admin-impersonator@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            mockSessions.set('impersonation-view-test', {
+                sessionId: 'impersonation-view-test',
+                fileName: 'Test.elp',
+                userId: 1,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=impersonation-view-test', {
+                    headers: {
+                        Cookie: `auth=${userToken}; impersonator_auth=${adminToken}; impersonation_session=session-123`,
+                    },
+                }),
+            );
+
+            expect(templateData.impersonation).toBeDefined();
+            expect(templateData.impersonation.isActive).toBe(true);
+            expect(templateData.impersonation.sessionId).toBe('session-123');
+            expect(templateData.impersonation.impersonatorEmail).toBe('admin-impersonator@test.com');
+            expect(templateData.impersonation.impersonatedEmail).toBe('test@test.com');
+        });
+
         it('should call setRenderLocale with correct locale before rendering template', async () => {
             let setLocaleCalledWith: string | null = null;
             let renderTemplateCalledAfterSetLocale = false;

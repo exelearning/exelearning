@@ -1185,7 +1185,7 @@
                                     <th>{{ t.roles or 'Roles' }}</th>
                                     <th>{{ t.quota_mb or 'Quota (MB)' }}</th>
                                     <th>{{ t.status or 'Status' }}</th>
-                                    <th style="width: 100px;">{{ t.actions or 'Actions' }}</th>
+                                    <th style="width: 150px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody">
@@ -1751,6 +1751,7 @@
         // Configuration
         const API_BASE = '{{ basePath }}/api/admin';
         const BASE_PATH = '{{ basePath }}';
+        const CURRENT_ADMIN_USER_ID = Number('{{ user.id }}');
         const T = {
             confirm_delete: '{{ t.confirm_delete or "Are you sure you want to delete this user?" }}',
             confirm_delete_bulk: '{{ t.confirm_delete_bulk or "Are you sure you want to delete {count} users?" }}',
@@ -1774,7 +1775,12 @@
             archive: '{{ t.archive or "Archive" }}',
             unlimited: '{{ t.unlimited or "Unlimited" }}',
             base: '{{ t.base or "Base" }}',
-            site: '{{ t.site or "Site" }}'
+            site: '{{ t.site or "Site" }}',
+            log_in_as: '{{ t.log_in_as or "Log in as" }}',
+            cannot_impersonate_admin: '{{ t.cannot_impersonate_admin or "Cannot impersonate administrator users" }}',
+            cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
+            confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
+            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}'
         };
 
         // State
@@ -2094,6 +2100,20 @@
                     const statusCls = user.is_active ? 'badge-active' : 'badge-inactive';
                     const statusText = user.is_active ? T.active : T.inactive;
                     const isChecked = selectedUserIds.has(user.id) ? 'checked' : '';
+                    const isAdminTarget = user.roles.includes('ROLE_ADMIN');
+                    const isSelfUser = Number(user.id) === CURRENT_ADMIN_USER_ID;
+                    const canImpersonate = !isAdminTarget && !isSelfUser;
+                    const impersonateButtonTitle = isAdminTarget
+                        ? T.cannot_impersonate_admin
+                        : (isSelfUser ? T.cannot_impersonate_self : T.log_in_as);
+                    const safeImpersonateTitle = String(impersonateButtonTitle || '').replace(/"/g, '&quot;');
+                    const impersonateButton = canImpersonate
+                        ? `<button class="btn-admin-outline" data-action="impersonate" onclick='impersonateUser(${user.id}, ${JSON.stringify(user.email || '')})' title="${safeImpersonateTitle}">
+                                <span class="mi mi-sm">login</span>
+                           </button>`
+                        : `<button class="btn-admin-outline" data-action="impersonate" disabled title="${safeImpersonateTitle}">
+                                <span class="mi mi-sm">login</span>
+                           </button>`;
 
                     // Build quota display with progress bar
                     let quotaHTML = '';
@@ -2142,9 +2162,12 @@
                         <td>${quotaHTML}</td>
                         <td><span class="badge-role ${statusCls}">${statusText}</span></td>
                         <td>
-                            <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
-                                <span class="mi mi-sm">edit</span>
-                            </button>
+                            <div class="d-flex gap-1">
+                                <button class="btn-admin-outline" onclick="editUser(${user.id})" title="{{ t.edit or 'Edit' }}">
+                                    <span class="mi mi-sm">edit</span>
+                                </button>
+                                ${impersonateButton}
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -2159,7 +2182,7 @@
                 updatePagination();
             } catch (err) {
                 console.error('Failed to load users:', err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem; color: var(--system-red);">${T.error_loading}</td></tr>`;
             } finally {
                 loading.classList.remove('active');
             }
@@ -2726,6 +2749,31 @@
             } catch (err) {
                 console.error('Failed to delete project:', err);
                 alert(err.message || 'Failed to delete project');
+            }
+        }
+
+        async function impersonateUser(userId, userEmail) {
+            const confirmText = T.confirm_impersonate.replace('{email}', userEmail || `#${userId}`);
+            if (!confirm(confirmText)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/impersonation/start`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(data.message || T.impersonation_failed);
+                }
+
+                const redirectPath = data.redirect_to || '/workarea';
+                window.location.href = `${BASE_PATH}${redirectPath}`;
+            } catch (err) {
+                console.error('Failed to start impersonation:', err);
+                alert(err.message || T.impersonation_failed);
             }
         }
 

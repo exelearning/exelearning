@@ -29,6 +29,7 @@ import {
     setSetting as setSettingDefault,
     findProjectsPaginated as findProjectsPaginatedDefault,
 } from '../db/queries/admin';
+import { createImpersonationAuditSession as createImpersonationAuditSessionDefault } from '../db/queries/impersonation';
 import {
     findProjectById as findProjectByIdDefault,
     updateProject as updateProjectDefault,
@@ -88,6 +89,7 @@ export interface AdminQueries {
     updateProject: typeof updateProjectDefault;
     hardDeleteProject: typeof hardDeleteProjectDefault;
     findProjectsByOwnerId: typeof findProjectsByOwnerIdDefault;
+    createImpersonationAuditSession: typeof createImpersonationAuditSessionDefault;
 }
 
 /**
@@ -124,6 +126,7 @@ const defaultDependencies: AdminDependencies = {
         updateProject: updateProjectDefault,
         hardDeleteProject: hardDeleteProjectDefault,
         findProjectsByOwnerId: findProjectsByOwnerIdDefault,
+        createImpersonationAuditSession: createImpersonationAuditSessionDefault,
     },
     fileHelper: createFileHelper(),
 };
@@ -152,6 +155,15 @@ function parseAndValidateId(
         return { error: 'BAD_REQUEST', message: 'Invalid ID' };
     }
     return { id };
+}
+
+function getRequestClientIp(request: Request): string | null {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (forwardedFor) {
+        const firstIp = forwardedFor.split(',')[0]?.trim();
+        if (firstIp) return firstIp;
+    }
+    return null;
 }
 
 /**
@@ -186,6 +198,10 @@ const updateStatusSchema = t.Object({
 
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
+});
+
+const startImpersonationSchema = t.Object({
+    user_id: t.Number(),
 });
 
 const updateProjectStatusSchema = t.Object({
@@ -418,6 +434,121 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // =====================================================
             // USER MANAGEMENT
             // =====================================================
+
+            // POST /api/admin/impersonation/start - Start impersonating a user
+            .post(
+                '/api/admin/impersonation/start',
+                async ({ body, set, jwtPayload, cookie, request, jwt: jwtPlugin }) => {
+                    const adminUserId = Number(jwtPayload!.sub);
+                    const targetUserId = Number(body.user_id);
+
+                    if (!Number.isInteger(adminUserId) || !Number.isInteger(targetUserId)) {
+                        set.status = 400;
+                        return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
+                    }
+
+                    if (adminUserId === targetUserId) {
+                        set.status = 400;
+                        return { error: 'CANNOT_IMPERSONATE_SELF', message: 'Cannot impersonate your own account' };
+                    }
+
+                    const targetUser = await queries.findUserById(db, targetUserId);
+                    if (!targetUser) {
+                        set.status = 404;
+                        return { error: 'NOT_FOUND', message: 'User not found' };
+                    }
+
+                    if (targetUser.is_active !== 1) {
+                        set.status = 400;
+                        return { error: 'USER_INACTIVE', message: 'Cannot impersonate an inactive user' };
+                    }
+
+                    const targetRoles = parseRoles(targetUser.roles);
+                    if (hasRole(targetRoles, ROLES.ADMIN)) {
+                        set.status = 403;
+                        return {
+                            error: 'CANNOT_IMPERSONATE_ADMIN',
+                            message: 'Impersonating administrator accounts is not allowed',
+                        };
+                    }
+
+                    const authHeader = request.headers.get('authorization');
+                    const sourceToken = authHeader?.startsWith('Bearer ')
+                        ? authHeader.slice(7)
+                        : cookie.auth?.value || null;
+
+                    if (!sourceToken) {
+                        set.status = 401;
+                        return { error: 'UNAUTHORIZED', message: 'No active session to preserve' };
+                    }
+
+                    const sessionId = crypto.randomUUID();
+                    const userAgent = request.headers.get('user-agent');
+                    const clientIp = getRequestClientIp(request);
+
+                    await queries.createImpersonationAuditSession(db, {
+                        sessionId,
+                        impersonatorUserId: adminUserId,
+                        impersonatedUserId: targetUserId,
+                        startedByIp: clientIp,
+                        startedUserAgent: userAgent,
+                    });
+
+                    const impersonatedPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
+                        sub: targetUser.id,
+                        email: targetUser.email,
+                        roles: targetRoles,
+                        isGuest: false,
+                        authMethod: jwtPayload?.authMethod || 'local',
+                        isImpersonated: true,
+                        impersonatedBy: adminUserId,
+                        impersonationSessionId: sessionId,
+                    };
+
+                    const impersonatedToken = await jwtPlugin.sign(impersonatedPayload);
+                    const secure = process.env.NODE_ENV === 'production';
+                    const sevenDays = 7 * 24 * 60 * 60;
+
+                    cookie.impersonator_auth.set({
+                        value: sourceToken,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    cookie.impersonation_session.set({
+                        value: sessionId,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    cookie.auth.set({
+                        value: impersonatedToken,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    return {
+                        success: true,
+                        message: 'Impersonation started',
+                        impersonation: {
+                            session_id: sessionId,
+                            user_id: targetUser.id,
+                            email: targetUser.email,
+                        },
+                        redirect_to: '/workarea',
+                    };
+                },
+                { body: startImpersonationSchema },
+            )
 
             // GET /api/admin/users - List all users (paginated)
             .get('/api/admin/users', async ({ query }) => {

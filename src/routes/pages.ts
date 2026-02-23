@@ -61,6 +61,15 @@ interface LoginQueryParams {
     error?: string;
 }
 
+interface ImpersonationContext {
+    isActive: boolean;
+    sessionId: string | null;
+    impersonatorId: number;
+    impersonatorEmail: string;
+    impersonatedId: number;
+    impersonatedEmail: string;
+}
+
 // ============================================================================
 // Types and Interfaces for Dependency Injection
 // ============================================================================
@@ -256,11 +265,42 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // Derive user from JWT token
             .derive(async ({ jwt, cookie }) => {
                 const token = cookie.auth?.value;
-                if (!token) return { currentUser: null, isGuest: false };
+                if (!token) {
+                    if (cookie.impersonator_auth?.value) {
+                        cookie.impersonator_auth.remove();
+                        cookie.impersonation_session.remove();
+                    }
+                    return { currentUser: null, isGuest: false, impersonation: null as ImpersonationContext | null };
+                }
+
+                let impersonationBase: {
+                    sessionId: string | null;
+                    impersonatorId: number;
+                    impersonatorEmail: string;
+                } | null = null;
+
+                const impersonatorToken = cookie.impersonator_auth?.value;
+                if (impersonatorToken) {
+                    try {
+                        const originalPayload = (await jwt.verify(impersonatorToken)) as JwtPayload | false;
+                        if (originalPayload?.sub) {
+                            const impersonatorUser = await findUserById(db, Number(originalPayload.sub));
+                            impersonationBase = {
+                                sessionId: cookie.impersonation_session?.value || null,
+                                impersonatorId: Number(originalPayload.sub),
+                                impersonatorEmail:
+                                    impersonatorUser?.email || originalPayload.email || `user-${originalPayload.sub}`,
+                            };
+                        }
+                    } catch {
+                        cookie.impersonator_auth.remove();
+                        cookie.impersonation_session.remove();
+                    }
+                }
 
                 try {
                     const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) return { currentUser: null, isGuest: false };
+                    if (!payload) return { currentUser: null, isGuest: false, impersonation: null };
 
                     const isGuest = payload.isGuest || false;
                     if (isGuest) {
@@ -271,13 +311,26 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
+                            impersonation: null,
                         };
                     }
 
                     const user = await findUserById(db, payload.sub);
-                    return { currentUser: user || null, isGuest: false };
+                    const impersonation: ImpersonationContext | null =
+                        impersonationBase && user
+                            ? {
+                                  isActive: true,
+                                  sessionId: impersonationBase.sessionId,
+                                  impersonatorId: impersonationBase.impersonatorId,
+                                  impersonatorEmail: impersonationBase.impersonatorEmail,
+                                  impersonatedId: Number(user.id),
+                                  impersonatedEmail: user.email || payload.email || `user-${user.id}`,
+                              }
+                            : null;
+
+                    return { currentUser: user || null, isGuest: false, impersonation };
                 } catch {
-                    return { currentUser: null, isGuest: false };
+                    return { currentUser: null, isGuest: false, impersonation: null };
                 }
             })
 
@@ -291,7 +344,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Login Page
             // =====================================================
-            .get('/login', async ({ currentUser, cookie, jwt, query, request }) => {
+            .get('/login', async ({ currentUser, cookie, jwt, query, request, impersonation }) => {
                 const offline = isOfflineMode();
                 const defaultEmail =
                     process.env.DEFAULT_USER_EMAIL || process.env.TEST_USER_EMAIL || 'user@exelearning.net';
@@ -392,6 +445,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     t,
                     basePath: getBasePath(),
                     returnUrl,
+                    impersonation,
                 };
 
                 const html = renderTemplate('security/login', viewModel);
@@ -403,7 +457,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Workarea Page
             // =====================================================
-            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request }) => {
+            .get('/workarea', async ({ currentUser, isGuest, query, set, jwt, request, impersonation }) => {
                 // Check if user is authenticated
                 if (!currentUser) {
                     // Preserve the original URL for post-login redirect
@@ -511,6 +565,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     projectId: projectUuid,
                                     reason: accessCheck.reason,
                                     locale: 'en',
+                                    impersonation,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -527,6 +582,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 projectId: projectUuid,
                                 reason: 'ACCESS_DENIED',
                                 locale: 'en',
+                                impersonation,
                             });
                             set.status = 403;
                             return new Response(html, {
@@ -548,6 +604,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     projectId: projectUuid,
                                     reason: accessCheck.reason,
                                     locale: 'en',
+                                    impersonation,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -561,6 +618,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 basePath,
                                 error: 'Project Not Found',
                                 message: 'The requested project does not exist.',
+                                impersonation,
                             });
                             set.status = 404;
                             return new Response(html, {
@@ -816,6 +874,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     projectId: projectUuid || null,
                     t,
                     basePath,
+                    impersonation,
                 };
 
                 // Set locale for Nunjucks template rendering (fixes | trans filter)
@@ -849,7 +908,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Admin Panel
             // =====================================================
-            .get('/admin', async ({ currentUser, request, set }) => {
+            .get('/admin', async ({ currentUser, request, set, impersonation }) => {
                 // Require authentication
                 if (!currentUser) {
                     return Response.redirect(prefixPath('/login?returnUrl=/admin') || '/login?returnUrl=/admin', 302);
@@ -867,6 +926,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         error: 'You do not have permission to access the admin panel.',
                         is_authenticated: true,
                         basePath: getBasePath(),
+                        impersonation,
                     });
                     return new Response(html, {
                         status: 403,
@@ -915,6 +975,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     search: trans('Search', {}, locale),
                     loading: trans('Loading...', {}, locale),
                     confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
+                    log_in_as: trans('Log in as', {}, locale),
+                    cannot_impersonate_admin: trans('Cannot impersonate administrator users', {}, locale),
+                    cannot_impersonate_self: trans('Cannot impersonate your own account', {}, locale),
+                    confirm_impersonate: trans('Start impersonation as {email}?', {}, locale),
+                    impersonation_failed: trans('Failed to start impersonation', {}, locale),
                     styles: trans('Styles', {}, locale),
                     idevices: trans('iDevices', {}, locale),
                     templates: trans('Templates', {}, locale),
@@ -1089,6 +1154,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     basePath: getBasePath(),
                     defaultQuota,
                     adminSettings,
+                    impersonation,
                 };
 
                 try {
@@ -1118,11 +1184,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Access Denied Page (standalone route for redirects)
             // =====================================================
-            .get('/access-denied', () => {
+            .get('/access-denied', ({ impersonation }) => {
                 const basePath = getBasePath();
                 const html = renderTemplate('workarea/access-denied', {
                     basePath,
                     locale: 'en',
+                    impersonation,
                 });
                 return new Response(html, {
                     status: 403,
