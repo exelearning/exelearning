@@ -1595,7 +1595,7 @@ var $eXeTrivial = {
             };
         }
 
-        return mOptions
+        return mOptions;
     },
 
     isJsonString: function (str) {
@@ -1643,7 +1643,7 @@ var $eXeTrivial = {
     showStartedButton: function () {
         $eXeTrivial.options.forEach((option, i) => {
             if (!option.gameStarted && !option.gameOver) {
-                $(`#trivialStartGame-${ì}`).show();
+                $(`#trivialStartGame-${i}`).show();
                 $eXeTrivial.showMessage(1, '', i);
             }
         });
@@ -2025,7 +2025,7 @@ var $eXeTrivial = {
 
     getSize: function (size, instance) {
         let facTamano =
-                $('#trivialTabllero-' + instance).width() >= 550
+                $('#trivialTablero-' + instance).width() >= 550
                     ? 1
                     : $('#trivialTablero-' + instance).width() / 550,
             fs = parseFloat(size * facTamano, 10).toFixed(2);
