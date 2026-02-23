@@ -38,7 +38,7 @@ services:
       
       # Admin user (created/updated when ADMIN_PASSWORD is set)
       ADMIN_EMAIL: "${ADMIN_EMAIL}"
-      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
 
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForPostgresDeployment}"
     depends_on:
