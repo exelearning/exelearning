@@ -1083,7 +1083,6 @@ export function buildApiParameters(): ApiParameters {
                 heritable: true,
             },
             teacherOnly: { title: 'Teacher only', value: 'false', type: 'checkbox', category: null, heritable: true },
-            identifier: { title: 'ID', value: '', type: 'text', category: null, heritable: false },
             cssClass: { title: 'CSS Class', value: '', type: 'text', category: null, heritable: true },
         },
         // Navigation structure properties
@@ -1129,7 +1128,6 @@ export function buildApiParameters(): ApiParameters {
         },
         // Block/page structure properties
         odePagStructureSyncPropertiesConfig: {
-            identifier: { title: 'ID', value: '', type: 'text', category: null, heritable: false },
             visibility: {
                 title: 'Visible in export',
                 value: 'true',

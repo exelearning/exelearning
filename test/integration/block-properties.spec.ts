@@ -1,7 +1,7 @@
 /**
  * Integration tests for Block Properties functionality
  *
- * Verifies that block properties (teacherOnly, visibility, minimized, identifier, cssClass)
+ * Verifies that block properties (teacherOnly, visibility, minimized, cssClass)
  * flow correctly from Yjs document through export pipeline to final HTML output.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
@@ -119,7 +119,6 @@ const createMockDocumentWithMultipleBlocks = (): ExportDocument => ({
                     name: 'Custom Block',
                     order: 2,
                     properties: {
-                        identifier: 'my-custom-block',
                         cssClass: 'highlight featured',
                         minimized: 'true',
                     },
@@ -285,54 +284,6 @@ describe('Block Properties Integration', () => {
         });
     });
 
-    describe('identifier property', () => {
-        it('should render block with identifier attribute', () => {
-            const renderer = new IdeviceRenderer();
-
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Custom ID Block',
-                order: 0,
-                properties: { identifier: 'my-custom-id' },
-                components: [],
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).toContain('identifier="my-custom-id"');
-        });
-
-        it('should render block with identifier attribute in preview', async () => {
-            const document = createMockDocumentWithBlockProperties({ identifier: 'preview-block-id' });
-            const resources = createMockResourceProvider();
-            const assets = createMockAssetProvider();
-            const zip = new FflateZipProvider();
-
-            const exporter = new Html5Exporter(document, resources, assets, zip);
-            const files = await exporter.generateForPreview();
-            const html = getHtmlFromPreviewFiles(files, 'index.html');
-
-            expect(html.length).toBeGreaterThan(0);
-            expect(html).toContain('identifier="preview-block-id"');
-        });
-
-        it('should not add identifier attribute when empty', () => {
-            const renderer = new IdeviceRenderer();
-
-            const block: ExportBlock = {
-                id: 'block-1',
-                name: 'Block',
-                order: 0,
-                properties: { identifier: '' },
-                components: [],
-            };
-
-            const html = renderer.renderBlock(block, { basePath: '', includeDataAttributes: true });
-
-            expect(html).not.toContain('identifier=');
-        });
-    });
-
     describe('cssClass property', () => {
         it('should render block with custom CSS classes', () => {
             const renderer = new IdeviceRenderer();
@@ -378,7 +329,6 @@ describe('Block Properties Integration', () => {
                 properties: {
                     teacherOnly: 'true',
                     minimized: 'true',
-                    identifier: 'special-block',
                     cssClass: 'featured',
                 },
                 components: [],
@@ -388,7 +338,6 @@ describe('Block Properties Integration', () => {
 
             expect(html).toContain('teacher-only');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="special-block"');
             expect(html).toContain('featured');
         });
 
@@ -411,7 +360,6 @@ describe('Block Properties Integration', () => {
             expect(html).toContain('novisible');
 
             // Custom block
-            expect(html).toContain('identifier="my-custom-block"');
             expect(html).toContain('highlight');
             expect(html).toContain('featured');
             expect(html).toContain('minimized');
@@ -422,7 +370,6 @@ describe('Block Properties Integration', () => {
                 visibility: 'false',
                 teacherOnly: 'true',
                 minimized: 'true',
-                identifier: 'test-id',
                 cssClass: 'test-class',
             });
             const resources = createMockResourceProvider();
@@ -439,7 +386,6 @@ describe('Block Properties Integration', () => {
             expect(html).toContain('novisible');
             expect(html).toContain('teacher-only');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="test-id"');
             expect(html).toContain('test-class');
         });
     });
@@ -743,7 +689,6 @@ describe('Block Properties Integration', () => {
                                 properties: {
                                     teacherOnly: true as unknown as string,
                                     minimized: true as unknown as string,
-                                    identifier: 'my-block',
                                     cssClass: 'custom-style',
                                 },
                                 components: [
@@ -771,7 +716,6 @@ describe('Block Properties Integration', () => {
             expect(html.length).toBeGreaterThan(0);
             expect(html).toContain('teacher-only');
             expect(html).toContain('minimized');
-            expect(html).toContain('identifier="my-block"');
             expect(html).toContain('custom-style');
         });
     });

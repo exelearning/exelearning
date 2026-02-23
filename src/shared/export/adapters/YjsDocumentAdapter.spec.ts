@@ -859,18 +859,6 @@ describe('YjsDocumentAdapter', () => {
             expect(pages[0].blocks[0].properties?.minimized).toBe('true');
         });
 
-        it('should extract identifier property from block', () => {
-            const block = createMockBlock('b1', 'Block 1', [], { identifier: 'custom-block-id' });
-            const page = createMockPage('p1', 'Page', [block]);
-
-            manager = new MockYjsDocumentManager({}, [page]);
-            adapter = new YjsDocumentAdapter(manager as any);
-
-            const pages = adapter.getNavigation();
-
-            expect(pages[0].blocks[0].properties?.identifier).toBe('custom-block-id');
-        });
-
         it('should extract cssClass property from block', () => {
             const block = createMockBlock('b1', 'Block 1', [], { cssClass: 'my-custom-class' });
             const page = createMockPage('p1', 'Page', [block]);
@@ -901,7 +889,6 @@ describe('YjsDocumentAdapter', () => {
                 teacherOnly: 'true',
                 allowToggle: 'true',
                 minimized: 'false',
-                identifier: 'my-id',
                 cssClass: 'my-class',
             });
             const page = createMockPage('p1', 'Page', [block]);
@@ -916,7 +903,6 @@ describe('YjsDocumentAdapter', () => {
                 teacherOnly: 'true',
                 allowToggle: 'true',
                 minimized: 'false',
-                identifier: 'my-id',
                 cssClass: 'my-class',
             });
         });

@@ -735,7 +735,6 @@ describe('ElpxExporter', () => {
                                 teacherOnly: true,
                                 allowToggle: true,
                                 minimized: false,
-                                identifier: 'custom-id',
                                 cssClass: 'custom-class',
                             },
                             components: [],
@@ -754,8 +753,6 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<key>teacherOnly</key>');
             expect(contentXml).toContain('<key>allowToggle</key>');
             expect(contentXml).toContain('<key>minimized</key>');
-            expect(contentXml).toContain('<key>identifier</key>');
-            expect(contentXml).toContain('<value>custom-id</value>');
             expect(contentXml).toContain('<key>cssClass</key>');
             expect(contentXml).toContain('<value>custom-class</value>');
         });
@@ -783,7 +780,6 @@ describe('ElpxExporter', () => {
                                     structureProperties: {
                                         visibility: true,
                                         teacherOnly: false,
-                                        identifier: 'comp-custom-id',
                                         cssClass: 'comp-custom-class',
                                     },
                                 },
@@ -802,8 +798,6 @@ describe('ElpxExporter', () => {
             expect(contentXml).toContain('<odeComponentsProperties>');
             expect(contentXml).toContain('<key>visibility</key>');
             expect(contentXml).toContain('<key>teacherOnly</key>');
-            expect(contentXml).toContain('<key>identifier</key>');
-            expect(contentXml).toContain('<value>comp-custom-id</value>');
             expect(contentXml).toContain('<key>cssClass</key>');
             expect(contentXml).toContain('<value>comp-custom-class</value>');
         });

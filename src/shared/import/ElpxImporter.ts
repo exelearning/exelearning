@@ -1100,7 +1100,7 @@ export class ElpxImporter {
 
         // Merge properties from jsonProperties that override structure props
         if (compData.properties && typeof compData.properties === 'object') {
-            const propsToMerge = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+            const propsToMerge = ['visibility', 'teacherOnly', 'cssClass'];
             for (const key of propsToMerge) {
                 if ((compData.properties as Record<string, unknown>)[key] !== undefined) {
                     const value = (compData.properties as Record<string, unknown>)[key];

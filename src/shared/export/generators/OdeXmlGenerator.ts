@@ -210,14 +210,7 @@ function generateOdePagStructureXml(block: ExportBlock, pageId: string, order: n
     // Block-level properties
     xml += '      <odePagStructureProperties>\n';
     if (block.properties) {
-        const blockPropKeys = [
-            'visibility',
-            'teacherOnly',
-            'allowToggle',
-            'minimized',
-            'identifier',
-            'cssClass',
-        ] as const;
+        const blockPropKeys = ['visibility', 'teacherOnly', 'allowToggle', 'minimized', 'cssClass'] as const;
         for (const key of blockPropKeys) {
             if (block.properties[key] !== undefined) {
                 xml += generatePagStructurePropertyEntry(key, String(block.properties[key]));
@@ -289,7 +282,7 @@ function generateOdeComponentXml(component: ExportComponent, pageId: string, blo
     // Component-level structure properties
     xml += '          <odeComponentsProperties>\n';
     if (component.structureProperties) {
-        const componentPropKeys = ['visibility', 'teacherOnly', 'identifier', 'cssClass'] as const;
+        const componentPropKeys = ['visibility', 'teacherOnly', 'cssClass'] as const;
         for (const key of componentPropKeys) {
             if (component.structureProperties[key] !== undefined) {
                 xml += generateComponentPropertyEntry(key, String(component.structureProperties[key]));

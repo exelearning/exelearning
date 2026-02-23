@@ -18,7 +18,6 @@ global.eXeLearning = {
             parameters: {
                 generateNewItemKey: 'generated-key-123',
                 odeComponentsSyncPropertiesConfig: {
-                    identifier: { value: '' },
                     visibility: { value: 'false' },
                     cssClass: { value: '' },
                 },
@@ -256,27 +255,15 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
         });
-
-        it('calls setProperties when odeComponentsSyncProperties provided', () => {
-            const spy = vi.spyOn(idevice, 'setProperties');
-            idevice.setParams({
-                odeComponentsSyncProperties: {
-                    identifier: { value: 'my-id' },
-                },
-            });
-            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
-        });
     });
 
     describe('setProperties', () => {
         it('sets property values from data', () => {
             idevice.setProperties({
-                identifier: { value: 'custom-id' },
                 visibility: { value: 'true' },
                 cssClass: { value: 'my-class' },
             });
 
-            expect(idevice.properties.identifier.value).toBe('custom-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('my-class');
         });
@@ -284,13 +271,11 @@ describe('IdeviceNode', () => {
         it('only sets heritable properties when onlyHeritable is true', () => {
             idevice.setProperties(
                 {
-                    identifier: { value: 'inherited-id', heritable: true },
                     visibility: { value: 'true', heritable: false },
                 },
                 true,
             );
 
-            expect(idevice.properties.identifier.value).toBe('inherited-id');
             expect(idevice.properties.visibility.value).toBe('false');
         });
 
@@ -308,7 +293,7 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
             const spy = vi.spyOn(idevice, 'setPropertiesClassesToElement');
             idevice.setProperties({
-                identifier: { value: 'test-id' },
+                visibility: { value: 'true' },
             });
             expect(spy).toHaveBeenCalled();
         });
@@ -337,7 +322,6 @@ describe('IdeviceNode', () => {
         it('does nothing when Yjs is not enabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('loads properties from Yjs when enabled', () => {
@@ -345,7 +329,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn(() => ({
-                        identifier: 'yjs-id',
                         visibility: true,
                         cssClass: 'yjs-class',
                     })),
@@ -354,7 +337,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('yjs-class');
         });
@@ -377,7 +359,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsEnabled = true;
             eXeLearning.app.project._yjsBridge = null;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
     });
 
@@ -423,15 +404,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe(
-                'my-idevice-id',
-            );
-        });
-
         it('sets export-view attribute when visibility is set', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -446,13 +418,6 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class1')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class2')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
-        });
-
-        it('does not set identifier when value is empty', () => {
-            idevice.properties.identifier.value = '';
-            idevice.setPropertiesClassesToElement();
-
-            expect(idevice.ideviceContent.hasAttribute('identifier')).toBe(false);
         });
     });
 
@@ -1958,12 +1923,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute when value exists', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe('my-idevice-id');
-        });
-
         it('sets export-view attribute when visibility is true', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -1998,7 +1957,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn().mockReturnValue({
-                        identifier: 'yjs-id',
                         visibility: true,
                     }),
                 },
@@ -2009,17 +1967,16 @@ describe('IdeviceNode', () => {
         it('loads properties from Yjs when enabled', () => {
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
         });
 
         it('does nothing when Yjs is disabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
-            const originalValue = idevice.properties.identifier.value;
+            const originalValue = idevice.properties.visibility.value;
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe(originalValue);
+            expect(idevice.properties.visibility.value).toBe(originalValue);
         });
     });
 
@@ -4050,7 +4007,6 @@ describe('IdeviceNode', () => {
         beforeEach(() => {
             idevice.id = 'comp-id';
             idevice.properties = {
-                identifier: { value: 'old-id' },
                 visibility: { value: 'true' },
             };
             idevice.makeIdeviceContentNode = vi.fn();
@@ -4062,9 +4018,9 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
-            expect(idevice.properties.identifier.value).toBe('new-id');
+            expect(idevice.properties.visibility.value).toBe('false');
             expect(eXeLearning.app.api.putSavePropertiesIdevice).toHaveBeenCalled();
         });
 
@@ -4073,7 +4029,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(idevice.makeIdeviceContentNode).toHaveBeenCalledWith(false);
         });
@@ -4083,7 +4039,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'ERROR',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
         });
@@ -5082,7 +5038,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('does nothing when getComponentProperties returns null', () => {
@@ -5095,7 +5050,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('ignores unknown property keys from Yjs', () => {
@@ -5104,14 +5058,12 @@ describe('IdeviceNode', () => {
                 structureBinding: {
                     getComponentProperties: vi.fn(() => ({
                         unknownProp: 'value',
-                        identifier: 'yjs-id',
                     })),
                 },
             };
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.unknownProp).toBeUndefined();
         });
     });

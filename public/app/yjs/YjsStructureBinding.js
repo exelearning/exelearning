@@ -1508,7 +1508,6 @@ class YjsStructureBinding {
       propsMap.set('teacherOnly', 'false');
       propsMap.set('allowToggle', 'true');
       propsMap.set('minimized', 'false');
-      propsMap.set('identifier', '');
       propsMap.set('cssClass', '');
       blockMap.set('properties', propsMap);
 

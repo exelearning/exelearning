@@ -251,13 +251,6 @@ export default class IdeviceNode {
      *
      */
     setPropertiesClassesToElement() {
-        // identifier
-        if (this.properties.identifier.value != '') {
-            this.ideviceContent.setAttribute(
-                'identifier',
-                this.properties.identifier.value
-            );
-        }
         // visibility
         if (this.properties.visibility.value != '') {
             this.ideviceContent.setAttribute(
