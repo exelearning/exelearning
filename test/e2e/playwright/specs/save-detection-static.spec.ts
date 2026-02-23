@@ -15,6 +15,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -51,11 +52,12 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
         await page.dispatchEvent('body', 'pointerdown');
-        await page.waitForFunction(() => typeof window.onbeforeunload === 'function', { timeout: 5000 });
+        await page.waitForFunction(() => typeof window.onbeforeunload === 'function', undefined, { timeout: 5000 });
 
         const cleanResult = await page.evaluate(() => {
             const evt = { preventDefault: () => {}, returnValue: undefined };
@@ -91,6 +93,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -101,6 +104,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -140,6 +144,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -163,6 +168,7 @@ test.describe('Save Detection - Static', () => {
                 const btn = document.getElementById('head-top-save-button');
                 return btn?.classList.contains('saved');
             },
+            undefined,
             { timeout: 10000 },
         );
     });
@@ -177,6 +183,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -218,6 +225,7 @@ test.describe('Save Detection - Static', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 

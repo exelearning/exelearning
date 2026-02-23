@@ -24,7 +24,7 @@ test.describe('Search in preview - subpage navigation', () => {
         authenticatedPage,
         createProject,
     }) => {
-        test.setTimeout(180000);
+        test.setTimeout(90000);
         const page = authenticatedPage;
 
         // Create a new project
@@ -63,6 +63,7 @@ test.describe('Search in preview - subpage navigation', () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.text');
                 return idevice?.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -83,6 +84,7 @@ test.describe('Search in preview - subpage navigation', () => {
                 const idevice = document.querySelector('#node-content article .idevice_node.text');
                 return idevice?.getAttribute('mode') !== 'edition';
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -109,10 +111,11 @@ test.describe('Search in preview - subpage navigation', () => {
                     return false;
                 }
             },
+            undefined,
             { timeout: 30000 },
         );
 
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const iframe = page.frameLocator('#preview-iframe');
 
@@ -123,7 +126,7 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // Click on second page link to navigate to subpage
         await navLinks.nth(1).click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 8. Click on search button
         const searchToggler = iframe.locator('#searchBarTogger');
@@ -136,7 +139,7 @@ test.describe('Search in preview - subpage navigation', () => {
         await searchInput.waitFor({ state: 'visible', timeout: 5000 });
         await searchInput.fill('SEARCHTERM');
         await searchInput.press('Enter');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 10. Verify search results appear
         const searchResults = iframe.locator('#exe-client-search-results-list a');
@@ -145,7 +148,7 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // 11. Click on a search result (first one)
         await searchResults.first().click();
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 12. Verify navigation worked - should NOT show "File not found" or 404
         const bodyAfterClick = await iframe.locator('body').innerText();
@@ -165,13 +168,13 @@ test.describe('Search in preview - subpage navigation', () => {
             const searchInput2 = iframe.locator('#exe-client-search-text');
             await searchInput2.fill('SEARCHTERM');
             await searchInput2.press('Enter');
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             const searchResults2 = iframe.locator('#exe-client-search-results-list a');
 
             // Click on second result
             await searchResults2.nth(1).click();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify navigation worked again - no error page
             const bodyAfterClick2 = await iframe.locator('body').innerText();

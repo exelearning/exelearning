@@ -215,6 +215,99 @@ describe('ImageOptimizerManager', () => {
         });
     });
 
+    describe('resetEstimates', () => {
+        it('should reset READY items to PENDING and clear estimate data', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+            const item = manager.queue.get('asset-1');
+            item.status = STATUS.READY;
+            item.estimatedSize = 750;
+            item.hasAlpha = true;
+            item.outputFormat = 'image/png';
+
+            manager.resetEstimates();
+
+            expect(item.status).toBe(STATUS.PENDING);
+            expect(item.estimatedSize).toBeNull();
+            expect(item.hasAlpha).toBeNull();
+            expect(item.outputFormat).toBeNull();
+            expect(item.error).toBeNull();
+        });
+
+        it('should reset FAILED items to PENDING', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+            const item = manager.queue.get('asset-1');
+            item.status = STATUS.FAILED;
+            item.error = 'decode error';
+
+            manager.resetEstimates();
+
+            expect(item.status).toBe(STATUS.PENDING);
+            expect(item.error).toBeNull();
+        });
+
+        it('should reset ESTIMATING items to PENDING', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+            manager.queue.get('asset-1').status = STATUS.ESTIMATING;
+
+            manager.resetEstimates();
+
+            expect(manager.queue.get('asset-1').status).toBe(STATUS.PENDING);
+        });
+
+        it('should not reset DONE items', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+            const item = manager.queue.get('asset-1');
+            item.status = STATUS.DONE;
+            item.optimizedSize = 600;
+
+            manager.resetEstimates();
+
+            expect(item.status).toBe(STATUS.DONE);
+            expect(item.optimizedSize).toBe(600);
+        });
+
+        it('should not reset OPTIMIZING items', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+            manager.queue.get('asset-1').status = STATUS.OPTIMIZING;
+
+            manager.resetEstimates();
+
+            expect(manager.queue.get('asset-1').status).toBe(STATUS.OPTIMIZING);
+        });
+
+        it('should not modify PENDING items', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test.png', mime: 'image/png', size: 1000 });
+
+            manager.resetEstimates();
+
+            expect(manager.queue.get('asset-1').status).toBe(STATUS.PENDING);
+        });
+
+        it('should reset only non-final items in a mixed queue', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            manager.addAsset('asset-1', blob, { filename: 'test1.png', mime: 'image/png', size: 1000 });
+            manager.addAsset('asset-2', blob, { filename: 'test2.png', mime: 'image/png', size: 2000 });
+
+            manager.queue.get('asset-1').status = STATUS.READY;
+            manager.queue.get('asset-1').estimatedSize = 750;
+            manager.queue.get('asset-2').status = STATUS.DONE;
+            manager.queue.get('asset-2').optimizedSize = 1500;
+
+            manager.resetEstimates();
+
+            expect(manager.queue.get('asset-1').status).toBe(STATUS.PENDING);
+            expect(manager.queue.get('asset-1').estimatedSize).toBeNull();
+            expect(manager.queue.get('asset-2').status).toBe(STATUS.DONE);
+            expect(manager.queue.get('asset-2').optimizedSize).toBe(1500);
+        });
+    });
+
     describe('getSettings', () => {
         it('should return a copy of current settings', () => {
             manager.setPreset('strong');

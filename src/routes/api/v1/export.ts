@@ -25,6 +25,7 @@ import {
     DatabaseAssetProvider,
     FileSystemResourceProvider,
     FflateZipProvider,
+    ServerLatexPreRenderer,
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
 import {
@@ -255,8 +256,13 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                             return errorResponse('INVALID_FORMAT', `Unsupported format: ${format}`);
                     }
 
-                    // Run the export
-                    const result = await exporter.export();
+                    // Run the export with server-side LaTeX pre-render hooks.
+                    // This keeps behavior consistent with the main export routes.
+                    const latexRenderer = new ServerLatexPreRenderer();
+                    const result = await exporter.export({
+                        preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                        preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                    });
 
                     if (!result.success || !result.data) {
                         set.status = 500;

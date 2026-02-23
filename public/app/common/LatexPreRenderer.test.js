@@ -497,24 +497,40 @@ describe('LatexPreRenderer', () => {
             expect(result.html).toContain('<em>variable</em>');
         });
 
-        test('does NOT render LaTeX inside colored span (example code)', async () => {
-            // LaTeX in colored span is example code, should not be rendered
+        test('renders LaTeX inside colored span', async () => {
             const html = `<p><span style="color: #0000ff;">\\(x^2\\)</span> produce: \\(x^2\\)</p>`;
             const result = await LatexPreRenderer.preRender(html);
 
-            expect(result.count).toBe(1); // Only second one rendered
-            // First LaTeX in colored span should remain as text
-            expect(result.html).toContain('<span style="color: #0000ff;">\\(x^2\\)</span>');
-            // Second LaTeX should be rendered
+            expect(result.count).toBe(2);
             expect(result.html).toContain('exe-math-rendered');
         });
 
-        test('does NOT render LaTeX inside nested colored spans', async () => {
+        test('renders LaTeX inside nested colored spans', async () => {
             const html = `<p><span style="color: blue;"><span>\\(y\\)</span></span> vs \\(z\\)</p>`;
             const result = await LatexPreRenderer.preRender(html);
 
-            expect(result.count).toBe(1); // Only z rendered
-            expect(result.html).toContain('\\(y\\)'); // y stays as text
+            expect(result.count).toBe(2);
+            expect(result.html).toContain('exe-math-rendered');
+        });
+
+        test('renders inline LaTeX in span when sibling already has exe-math-rendered', async () => {
+            const html = `
+                <table><tbody>
+                    <tr>
+                        <th><span><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg><math></math></span></span></th>
+                        <th>Resultado</th>
+                    </tr>
+                    <tr>
+                        <td><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+                    </tr>
+                </tbody></table>
+            `;
+            const result = await LatexPreRenderer.preRender(html);
+
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBeGreaterThanOrEqual(1);
+            expect(result.html).toContain('data-latex="\\mathrm{ABCdef}"');
+            expect(result.html).not.toMatch(/>\s*\\\(\\mathrm\{ABCdef\}\\\)\s*</);
         });
     });
 
@@ -1618,6 +1634,19 @@ describe('LatexPreRenderer', () => {
 
             // The data-latex should NOT be corrupted
             expect(result.html).not.toContain('data-latex="<span');
+        });
+
+        test('preRender renders pending raw LaTeX when container already has exe-math-rendered', async () => {
+            const html =
+                '<p><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg></span> and \\(\\mathrm{ABCdef}\\)</p>';
+
+            const result = await LatexPreRenderer.preRender(html);
+
+            const wrappers = result.html.match(/class="exe-math-rendered"/g) || [];
+            expect(wrappers.length).toBe(2);
+            expect(result.html).toContain('data-latex="\\(\\mathrm{ABCdef}\\)"');
+            expect(result.html).not.toContain('data-latex="<span');
+            expect(result.html).not.toContain('data-latex="&lt;span');
         });
 
         test('preRender skips iDevice DOM with already-rendered LaTeX', async () => {

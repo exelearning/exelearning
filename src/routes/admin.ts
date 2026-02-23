@@ -29,6 +29,7 @@ import {
     setSetting as setSettingDefault,
     findProjectsPaginated as findProjectsPaginatedDefault,
 } from '../db/queries/admin';
+import { createImpersonationAuditSession as createImpersonationAuditSessionDefault } from '../db/queries/impersonation';
 import {
     findProjectById as findProjectByIdDefault,
     updateProject as updateProjectDefault,
@@ -39,6 +40,18 @@ import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
 import { getSystemInfo } from '../services/system-info';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
+import * as pathModule from 'path';
+import {
+    ElpxExporter,
+    FileSystemResourceProvider,
+    FileSystemAssetProvider,
+    DatabaseAssetProvider,
+    CombinedAssetProvider,
+    FflateZipProvider,
+    YjsDocumentAdapter,
+    ServerYjsDocumentWrapper,
+} from '../shared/export';
+import { reconstructDocument } from '../websocket/yjs-persistence';
 
 type AppSettingsTable = {
     key: string;
@@ -76,6 +89,7 @@ export interface AdminQueries {
     updateProject: typeof updateProjectDefault;
     hardDeleteProject: typeof hardDeleteProjectDefault;
     findProjectsByOwnerId: typeof findProjectsByOwnerIdDefault;
+    createImpersonationAuditSession: typeof createImpersonationAuditSessionDefault;
 }
 
 /**
@@ -112,6 +126,7 @@ const defaultDependencies: AdminDependencies = {
         updateProject: updateProjectDefault,
         hardDeleteProject: hardDeleteProjectDefault,
         findProjectsByOwnerId: findProjectsByOwnerIdDefault,
+        createImpersonationAuditSession: createImpersonationAuditSessionDefault,
     },
     fileHelper: createFileHelper(),
 };
@@ -140,6 +155,15 @@ function parseAndValidateId(
         return { error: 'BAD_REQUEST', message: 'Invalid ID' };
     }
     return { id };
+}
+
+function getRequestClientIp(request: Request): string | null {
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    if (forwardedFor) {
+        const firstIp = forwardedFor.split(',')[0]?.trim();
+        if (firstIp) return firstIp;
+    }
+    return null;
 }
 
 /**
@@ -174,6 +198,10 @@ const updateStatusSchema = t.Object({
 
 const updateQuotaSchema = t.Object({
     quota_mb: t.Union([t.Number(), t.Null()]),
+});
+
+const startImpersonationSchema = t.Object({
+    user_id: t.Number(),
 });
 
 const updateProjectStatusSchema = t.Object({
@@ -406,6 +434,121 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // =====================================================
             // USER MANAGEMENT
             // =====================================================
+
+            // POST /api/admin/impersonation/start - Start impersonating a user
+            .post(
+                '/api/admin/impersonation/start',
+                async ({ body, set, jwtPayload, cookie, request, jwt: jwtPlugin }) => {
+                    const adminUserId = Number(jwtPayload!.sub);
+                    const targetUserId = Number(body.user_id);
+
+                    if (!Number.isInteger(adminUserId) || !Number.isInteger(targetUserId)) {
+                        set.status = 400;
+                        return { error: 'BAD_REQUEST', message: 'Invalid user ID' };
+                    }
+
+                    if (adminUserId === targetUserId) {
+                        set.status = 400;
+                        return { error: 'CANNOT_IMPERSONATE_SELF', message: 'Cannot impersonate your own account' };
+                    }
+
+                    const targetUser = await queries.findUserById(db, targetUserId);
+                    if (!targetUser) {
+                        set.status = 404;
+                        return { error: 'NOT_FOUND', message: 'User not found' };
+                    }
+
+                    if (targetUser.is_active !== 1) {
+                        set.status = 400;
+                        return { error: 'USER_INACTIVE', message: 'Cannot impersonate an inactive user' };
+                    }
+
+                    const targetRoles = parseRoles(targetUser.roles);
+                    if (hasRole(targetRoles, ROLES.ADMIN)) {
+                        set.status = 403;
+                        return {
+                            error: 'CANNOT_IMPERSONATE_ADMIN',
+                            message: 'Impersonating administrator accounts is not allowed',
+                        };
+                    }
+
+                    const authHeader = request.headers.get('authorization');
+                    const sourceToken = authHeader?.startsWith('Bearer ')
+                        ? authHeader.slice(7)
+                        : cookie.auth?.value || null;
+
+                    if (!sourceToken) {
+                        set.status = 401;
+                        return { error: 'UNAUTHORIZED', message: 'No active session to preserve' };
+                    }
+
+                    const sessionId = crypto.randomUUID();
+                    const userAgent = request.headers.get('user-agent');
+                    const clientIp = getRequestClientIp(request);
+
+                    await queries.createImpersonationAuditSession(db, {
+                        sessionId,
+                        impersonatorUserId: adminUserId,
+                        impersonatedUserId: targetUserId,
+                        startedByIp: clientIp,
+                        startedUserAgent: userAgent,
+                    });
+
+                    const impersonatedPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
+                        sub: targetUser.id,
+                        email: targetUser.email,
+                        roles: targetRoles,
+                        isGuest: false,
+                        authMethod: jwtPayload?.authMethod || 'local',
+                        isImpersonated: true,
+                        impersonatedBy: adminUserId,
+                        impersonationSessionId: sessionId,
+                    };
+
+                    const impersonatedToken = await jwtPlugin.sign(impersonatedPayload);
+                    const secure = process.env.NODE_ENV === 'production';
+                    const sevenDays = 7 * 24 * 60 * 60;
+
+                    cookie.impersonator_auth.set({
+                        value: sourceToken,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    cookie.impersonation_session.set({
+                        value: sessionId,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    cookie.auth.set({
+                        value: impersonatedToken,
+                        httpOnly: true,
+                        secure,
+                        sameSite: 'lax',
+                        maxAge: sevenDays,
+                        path: '/',
+                    });
+
+                    return {
+                        success: true,
+                        message: 'Impersonation started',
+                        impersonation: {
+                            session_id: sessionId,
+                            user_id: targetUser.id,
+                            email: targetUser.email,
+                        },
+                        redirect_to: '/workarea',
+                    };
+                },
+                { body: startImpersonationSchema },
+            )
 
             // GET /api/admin/users - List all users (paginated)
             .get('/api/admin/users', async ({ query }) => {
@@ -661,6 +804,57 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 await queries.hardDeleteProject(db, parsed.id);
                 return { success: true };
+            })
+
+            // GET /api/admin/projects/:id/download - Download project as .elpx (public projects only)
+            .get('/api/admin/projects/:id/download', async ({ params, set }) => {
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
+
+                const project = await queries.findProjectById(db, parsed.id);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                if (project.visibility !== 'public') {
+                    set.status = 403;
+                    return { error: 'FORBIDDEN', message: 'Only public projects can be downloaded' };
+                }
+
+                const yjsDoc = await reconstructDocument(project.id);
+                const publicDir = pathModule.resolve(__dirname, '../../public');
+                const assetsDir = fileHelper!.getProjectAssetsDir(project.uuid);
+
+                const wrapper = new ServerYjsDocumentWrapper(yjsDoc, project.uuid);
+                const document = new YjsDocumentAdapter(wrapper);
+                const resources = new FileSystemResourceProvider(publicDir);
+                const zip = new FflateZipProvider();
+                const fsAssets = new FileSystemAssetProvider(assetsDir);
+                const dbAssets = new DatabaseAssetProvider(db, project.id, assetsDir);
+                const assets = new CombinedAssetProvider([dbAssets, fsAssets]);
+
+                const exporter = new ElpxExporter(document, resources, assets, zip);
+                const result = await exporter.export();
+
+                wrapper.destroy();
+
+                if (!result.success || !result.data) {
+                    set.status = 500;
+                    return { error: 'EXPORT_FAILED', message: result.error || 'Export failed' };
+                }
+
+                const slug = (project.title || 'untitled')
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '')
+                    .substring(0, 50);
+                const safeFilename = `project-${project.id}-${slug}.elpx`;
+
+                set.headers['content-type'] = 'application/zip';
+                set.headers['content-disposition'] = `attachment; filename="${safeFilename}"`;
+                set.headers['content-length'] = result.data.length.toString();
+                return result.data;
             })
 
             // DELETE /api/admin/users/:id - Delete user

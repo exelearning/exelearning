@@ -287,7 +287,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             components.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         }
 
-        // Extract block properties (teacherOnly, visibility, minimized, cssClass, identifier, allowToggle)
+        // Extract block properties (teacherOnly, visibility, minimized, cssClass, allowToggle)
         const propsMap = blockMap.get('properties') as YMap | undefined;
         const rawProps: Record<string, unknown> = propsMap ? propsMap.toJSON() : {};
 
@@ -297,7 +297,6 @@ export class YjsDocumentAdapter implements ExportDocument {
             teacherOnly: rawProps.teacherOnly as string | undefined,
             allowToggle: rawProps.allowToggle as string | undefined,
             minimized: rawProps.minimized as string | undefined,
-            identifier: rawProps.identifier as string | undefined,
             cssClass: rawProps.cssClass as string | undefined,
         };
 
@@ -358,7 +357,7 @@ export class YjsDocumentAdapter implements ExportDocument {
             }
         }
 
-        // Get structure properties (visibility, teacherOnly, identifier, cssClass)
+        // Get structure properties (visibility, teacherOnly, cssClass)
         // These are stored in the component's 'properties' Y.Map
         const structPropsMap = compMap.get('properties') as YMap | undefined;
         const rawStructProps: Record<string, unknown> = structPropsMap ? structPropsMap.toJSON() : {};
@@ -366,7 +365,6 @@ export class YjsDocumentAdapter implements ExportDocument {
         const structureProperties: ExportComponentProperties = {
             visibility: rawStructProps.visibility as string | undefined,
             teacherOnly: rawStructProps.teacherOnly as string | undefined,
-            identifier: rawStructProps.identifier as string | undefined,
             cssClass: rawStructProps.cssClass as string | undefined,
         };
 

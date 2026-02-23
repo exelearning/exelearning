@@ -28,6 +28,27 @@ import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class Html5Exporter extends BaseExporter {
+    private getBrowserLatexPreRenderer(): {
+        preRender: (
+            html: string,
+        ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+        preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
+    } | null {
+        // Browser-only fallback when hooks are not provided.
+        const browserGlobal = globalThis as unknown as {
+            window?: {
+                LatexPreRenderer?: {
+                    preRender: (
+                        html: string,
+                    ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+                    preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
+                };
+            };
+        };
+
+        return browserGlobal.window?.LatexPreRenderer || null;
+    }
+
     /**
      * Get file extension for HTML5 format
      */
@@ -114,9 +135,11 @@ export class Html5Exporter extends BaseExporter {
                 if (!meta.addMathJax) {
                     // Pre-render LaTeX in encrypted DataGame divs FIRST
                     // (game iDevices store questions in encrypted JSON)
-                    if (options?.preRenderDataGameLatex) {
+                    const preRenderDataGameLatex =
+                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
+                    if (preRenderDataGameLatex) {
                         try {
-                            const result = await options.preRenderDataGameLatex(html);
+                            const result = await preRenderDataGameLatex(html);
                             if (result.count > 0) {
                                 html = result.html;
                                 latexWasRendered = true;
@@ -134,9 +157,10 @@ export class Html5Exporter extends BaseExporter {
                     }
 
                     // Pre-render visible LaTeX to SVG+MathML if hook is provided
-                    if (options?.preRenderLatex) {
+                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
+                    if (preRenderLatex) {
                         try {
-                            const result = await options.preRenderLatex(html);
+                            const result = await preRenderLatex(html);
                             if (result.latexRendered) {
                                 html = result.html;
                                 latexWasRendered = true;
@@ -252,7 +276,7 @@ export class Html5Exporter extends BaseExporter {
                 {
                     includeAccessibilityToolbar: meta.addAccessibilityToolbar === true,
                     includeMathJax: meta.addMathJax === true,
-                    skipMathJax: latexWasRendered && !meta.addMathJax, // Don't skip if explicitly requested
+                    skipMathJax: latexWasRendered && !meta.addMathJax,
                 },
             );
 
@@ -594,9 +618,11 @@ export class Html5Exporter extends BaseExporter {
 
                 // Pre-render LaTeX ONLY if addMathJax is false
                 if (!meta.addMathJax) {
-                    if (options?.preRenderDataGameLatex) {
+                    const preRenderDataGameLatex =
+                        options?.preRenderDataGameLatex || this.getBrowserLatexPreRenderer()?.preRenderDataGameLatex;
+                    if (preRenderDataGameLatex) {
                         try {
-                            const result = await options.preRenderDataGameLatex(html);
+                            const result = await preRenderDataGameLatex(html);
                             if (result.count > 0) {
                                 html = result.html;
                                 latexWasRendered = true;
@@ -606,9 +632,10 @@ export class Html5Exporter extends BaseExporter {
                         }
                     }
 
-                    if (options?.preRenderLatex) {
+                    const preRenderLatex = options?.preRenderLatex || this.getBrowserLatexPreRenderer()?.preRender;
+                    if (preRenderLatex) {
                         try {
-                            const result = await options.preRenderLatex(html);
+                            const result = await preRenderLatex(html);
                             if (result.latexRendered) {
                                 html = result.html;
                                 latexWasRendered = true;

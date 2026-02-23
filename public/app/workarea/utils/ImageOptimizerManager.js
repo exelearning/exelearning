@@ -328,6 +328,23 @@ export default class ImageOptimizerManager {
     }
 
     /**
+     * Reset estimation results for items that have been estimated (READY/FAILED/ESTIMATING)
+     * back to PENDING state, so they can be re-estimated with new settings.
+     * Items in DONE or OPTIMIZING state are left unchanged.
+     */
+    resetEstimates() {
+        for (const item of this.queue.values()) {
+            if (item.status === STATUS.READY || item.status === STATUS.FAILED || item.status === STATUS.ESTIMATING) {
+                item.status = STATUS.PENDING;
+                item.estimatedSize = null;
+                item.hasAlpha = null;
+                item.outputFormat = null;
+                item.error = null;
+            }
+        }
+    }
+
+    /**
      * Get current settings
      * @returns {Object}
      */

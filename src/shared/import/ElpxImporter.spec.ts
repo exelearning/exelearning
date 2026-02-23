@@ -177,6 +177,91 @@ describe('ElpxImporter', () => {
             ydoc.destroy();
         });
 
+        it('should make incremental imports undoable when UndoManager tracks clientID origin', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const navigation = ydoc.getArray('navigation');
+            const metadata = ydoc.getMap('metadata');
+
+            // Seed one base page so clearExisting=false appends imported pages.
+            ydoc.transact(() => {
+                const basePage = new Y.Map();
+                basePage.set('id', 'base-page');
+                basePage.set('pageId', 'base-page');
+                basePage.set('pageName', 'Base');
+                basePage.set('title', 'Base');
+                basePage.set('parentId', null);
+                basePage.set('order', 0);
+                basePage.set('blocks', new Y.Array());
+                navigation.push([basePage]);
+            }, ydoc.clientID);
+
+            const undoManager = new Y.UndoManager([navigation, metadata], {
+                trackedOrigins: new Set([ydoc.clientID]),
+                captureTimeout: 0,
+            });
+            undoManager.clear();
+
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer), { clearExisting: false });
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(navigation.length).toBe(1 + result.pages);
+            expect(undoManager.undoStack.length).toBeGreaterThan(0);
+
+            undoManager.undo();
+            expect(navigation.length).toBe(1);
+
+            undoManager.destroy();
+            ydoc.destroy();
+        });
+
+        it('should make full project replacement import undoable when UndoManager tracks clientID origin', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const navigation = ydoc.getArray('navigation');
+            const metadata = ydoc.getMap('metadata');
+
+            // Seed previous project state to verify clearExisting import can be reverted.
+            ydoc.transact(() => {
+                const basePage = new Y.Map();
+                basePage.set('id', 'base-page');
+                basePage.set('pageId', 'base-page');
+                basePage.set('pageName', 'Base');
+                basePage.set('title', 'Base');
+                basePage.set('parentId', null);
+                basePage.set('order', 0);
+                basePage.set('blocks', new Y.Array());
+                navigation.push([basePage]);
+                metadata.set('title', 'Base Project');
+            }, ydoc.clientID);
+
+            const undoManager = new Y.UndoManager([navigation, metadata], {
+                trackedOrigins: new Set([ydoc.clientID]),
+                captureTimeout: 0,
+            });
+            undoManager.clear();
+
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer), { clearExisting: true });
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(navigation.length).toBe(result.pages);
+            expect(metadata.get('title')).not.toBe('Base Project');
+            expect(undoManager.undoStack.length).toBeGreaterThan(0);
+
+            undoManager.undo();
+            expect(navigation.length).toBe(1);
+            expect(metadata.get('title')).toBe('Base Project');
+
+            undoManager.destroy();
+            ydoc.destroy();
+        });
+
         it('should report progress during import', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
             const elpBuffer = await fs.readFile(elpPath);
@@ -597,6 +682,46 @@ describe('ElpxImporter - Legacy Format', () => {
             // Should have pages from both imports
             expect(navigation.length).toBe(result1.pages + result2.pages);
 
+            ydoc.destroy();
+        });
+
+        it('should make legacy incremental imports undoable when UndoManager tracks clientID origin', async () => {
+            const elpPath = path.join(process.cwd(), 'test/fixtures/old_tema-10-ejemplo.elp');
+            const elpBuffer = await fs.readFile(elpPath);
+
+            const ydoc = new Y.Doc();
+            const navigation = ydoc.getArray('navigation');
+            const metadata = ydoc.getMap('metadata');
+
+            ydoc.transact(() => {
+                const basePage = new Y.Map();
+                basePage.set('id', 'base-page');
+                basePage.set('pageId', 'base-page');
+                basePage.set('pageName', 'Base');
+                basePage.set('title', 'Base');
+                basePage.set('parentId', null);
+                basePage.set('order', 0);
+                basePage.set('blocks', new Y.Array());
+                navigation.push([basePage]);
+            }, ydoc.clientID);
+
+            const undoManager = new Y.UndoManager([navigation, metadata], {
+                trackedOrigins: new Set([ydoc.clientID]),
+                captureTimeout: 0,
+            });
+            undoManager.clear();
+
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+            const result = await importer.importFromBuffer(new Uint8Array(elpBuffer), { clearExisting: false });
+
+            expect(result.pages).toBeGreaterThan(0);
+            expect(navigation.length).toBe(1 + result.pages);
+            expect(undoManager.undoStack.length).toBeGreaterThan(0);
+
+            undoManager.undo();
+            expect(navigation.length).toBe(1);
+
+            undoManager.destroy();
             ydoc.destroy();
         });
     });

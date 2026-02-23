@@ -57,6 +57,7 @@ test.describe('Theme Selection on ELP Import', () => {
                         const nav = document.querySelector('#structure-menu-nav');
                         return nav && nav.querySelectorAll('.page-node').length > 0;
                     },
+                    undefined,
                     { timeout: 30000 },
                 );
             }
@@ -103,6 +104,7 @@ test.describe('Theme Selection on ELP Import', () => {
             () => {
                 return (window as any).eXeLearning?.app?.themes?.selected;
             },
+            undefined,
             { timeout: 30000 },
         );
 

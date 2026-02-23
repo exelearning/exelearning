@@ -149,6 +149,18 @@ describe('ModalProperties', () => {
       expect(el.querySelector('input').checked).toBe(true);
     });
 
+    it('should create checkbox (toggle) from boolean true value', () => {
+      const prop = { type: 'checkbox', value: true };
+      const el = modal.makeRowValueElement('id', 'name', prop);
+      expect(el.querySelector('input').checked).toBe(true);
+    });
+
+    it('should create checkbox (toggle) from boolean false value', () => {
+      const prop = { type: 'checkbox', value: false };
+      const el = modal.makeRowValueElement('id', 'name', prop);
+      expect(el.querySelector('input').checked).toBe(false);
+    });
+
     it('should create select with options', () => {
         const prop = { 
             type: 'select', 

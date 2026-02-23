@@ -135,7 +135,7 @@ function shouldSkipPosition(html: string, position: number): boolean {
     let inAttrValue = false;
     let attrQuoteChar: string | null = null;
     const skipElementStack: string[] = [];
-    let coloredSpanDepth = 0;
+    let renderedSpanDepth = 0;
 
     for (let i = 0; i < position; i++) {
         const char = html[i];
@@ -168,17 +168,18 @@ function shouldSkipPosition(html: string, position: number): boolean {
                 }
             }
 
+            // Skip content inside already pre-rendered wrappers so we don't double-process
             if (tagName === 'span') {
                 if (isClosing) {
-                    if (coloredSpanDepth > 0) {
-                        coloredSpanDepth--;
+                    if (renderedSpanDepth > 0) {
+                        renderedSpanDepth--;
                     }
                 } else {
                     const tagEnd = html.indexOf('>', i);
                     if (tagEnd !== -1) {
                         const tagContent = html.substring(i, tagEnd + 1);
-                        if (/style\s*=\s*["'][^"']*color\s*:/i.test(tagContent)) {
-                            coloredSpanDepth++;
+                        if (/class\s*=\s*["'][^"']*\bexe-math-rendered\b[^"']*["']/i.test(tagContent)) {
+                            renderedSpanDepth++;
                         }
                     }
                 }
@@ -198,7 +199,7 @@ function shouldSkipPosition(html: string, position: number): boolean {
         }
     }
 
-    return inAttrValue || skipElementStack.length > 0 || coloredSpanDepth > 0;
+    return inAttrValue || skipElementStack.length > 0 || renderedSpanDepth > 0;
 }
 
 /**
@@ -346,16 +347,6 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
             };
         }
 
-        // Skip if already has pre-rendered LaTeX
-        if (html.includes('exe-math-rendered')) {
-            return {
-                html,
-                hasLatex: true,
-                latexRendered: false,
-                count: 0,
-            };
-        }
-
         // Collect all matches
         const allMatches: LatexMatch[] = [];
         const formattingTagPattern = /<(strong|em|b|i|u|mark|s|del|ins|sub|sup)\b[^>]*>/i;
@@ -492,9 +483,6 @@ export class ServerLatexPreRenderer implements ServerLatexPreRendererInterface {
      */
     private async preRenderString(text: string): Promise<string> {
         if (!text || typeof text !== 'string' || !this.hasLatex(text)) {
-            return text;
-        }
-        if (text.includes('exe-math-rendered')) {
             return text;
         }
 

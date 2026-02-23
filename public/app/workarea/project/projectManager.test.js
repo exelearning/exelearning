@@ -2907,7 +2907,11 @@ describe('ProjectManager', () => {
             };
             projectManager.properties = {
                 loadPropertiesFromYjs: vi.fn(),
+                formProperties: {
+                    reloadValues: vi.fn(),
+                },
             };
+            projectManager._yjsBridge = null;
             projectManager.initialiceProject = vi.fn().mockResolvedValue();
             projectManager.showScreen = vi.fn();
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
@@ -2937,6 +2941,23 @@ describe('ProjectManager', () => {
 
             expect(projectManager.initialiceProject).toHaveBeenCalled();
             expect(projectManager.showScreen).toHaveBeenCalled();
+        });
+
+        it('reloads properties form values after refresh', async () => {
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager.properties.loadPropertiesFromYjs).toHaveBeenCalledTimes(2);
+            expect(projectManager.properties.formProperties.reloadValues).toHaveBeenCalled();
+        });
+
+        it('forces Yjs form input sync when bridge is available', async () => {
+            projectManager._yjsBridge = {
+                forceAllFormInputsSync: vi.fn(),
+            };
+
+            await projectManager.refreshAfterDirectImport();
+
+            expect(projectManager._yjsBridge.forceAllFormInputsSync).toHaveBeenCalled();
         });
 
         it('reinitializes theme binding when themes manager exists', async () => {

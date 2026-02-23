@@ -37,6 +37,8 @@ const dynamicServerEnv = {
     PORT: '3001',
     APP_PORT: '3001',
     APP_AUTH_METHODS: 'password,guest',
+    ADMIN_EMAIL: 'admin@exelearning.test',
+    ADMIN_PASSWORD: 'AdminPass123!',
     ONLINE_THEMES_INSTALL: '1', // Enable theme import for E2E tests
 };
 
@@ -121,10 +123,10 @@ export default defineConfig({
         video: 'on-first-retry',
 
         /* Maximum time each action can take */
-        actionTimeout: 60000,
+        actionTimeout: 20000,
 
         /* Navigation timeout */
-        navigationTimeout: 30000,
+        navigationTimeout: 15000,
     },
 
     /* Configure projects for major browsers */
@@ -163,10 +165,10 @@ export default defineConfig({
     webServer: getWebServerConfig(),
 
     /* Global timeout for each test */
-    timeout: 60000,
+    timeout: 45000,
 
     /* Expect timeout */
     expect: {
-        timeout: 10000,
+        timeout: 7000,
     },
 });

@@ -1665,6 +1665,8 @@ export default class IdevicesEngine {
             loadScreen,
             pageElement
         );
+        // Reconcile empty-page cover after reloads (including imports on current page).
+        eXeLearning?.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode?.();
         return loadedComponents;
     }
 

@@ -7,6 +7,7 @@
  */
 const esbuild = require('esbuild');
 const path = require('path');
+const fs = require('fs');
 
 const projectRoot = path.resolve(__dirname, '..');
 
@@ -40,10 +41,16 @@ const browserAliasPlugin = {
     },
 };
 
+const outputPath = path.join(projectRoot, 'public/app/yjs/exporters.bundle.js');
+const mirrorOutputs = [
+    path.join(projectRoot, 'dist/static/app/yjs/exporters.bundle.js'),
+    path.join(projectRoot, 'app/dist/static/app/yjs/exporters.bundle.js'),
+];
+
 esbuild.build({
     entryPoints: [path.join(projectRoot, 'src/shared/export/browser/index.ts')],
     bundle: true,
-    outfile: path.join(projectRoot, 'public/app/yjs/exporters.bundle.js'),
+    outfile: outputPath,
     format: 'iife',
     platform: 'browser',
     plugins: [browserAliasPlugin],
@@ -54,6 +61,11 @@ esbuild.build({
         'process.env.APP_DEBUG': '"0"',
     },
 }).then(() => {
+    for (const mirrorPath of mirrorOutputs) {
+        const mirrorDir = path.dirname(mirrorPath);
+        fs.mkdirSync(mirrorDir, { recursive: true });
+        fs.copyFileSync(outputPath, mirrorPath);
+    }
     console.log('exporters.bundle.js built successfully');
 }).catch((err) => {
     console.error('Build failed:', err);

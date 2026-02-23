@@ -326,6 +326,21 @@ export default class NavbarFile {
     }
 
     /**
+     * Static web mode (PWA/browser) where no backend session APIs are available.
+     * Electron desktop is excluded.
+     *
+     * @returns {boolean}
+     */
+    isStaticModeWithoutElectron() {
+        const capabilities = eXeLearning?.app?.capabilities;
+        return (
+            !window.electronAPI &&
+            (window.__EXE_STATIC_MODE__ === true ||
+                capabilities?.storage?.remote === false)
+        );
+    }
+
+    /**
      * New project from template
      * File -> New from Template...
      *
@@ -1237,6 +1252,15 @@ export default class NavbarFile {
      * Creates a new project/session. In Yjs mode, this is done without page reload.
      */
     async createSession(params) {
+        if (
+            this.isStaticModeWithoutElectron() &&
+            typeof window.newProject === 'function'
+        ) {
+            window.onbeforeunload = null;
+            window.newProject();
+            return;
+        }
+
         // In Yjs mode: create project without page reload
         if (eXeLearning.app.project?._yjsEnabled &&
             eXeLearning.app.project?.reinitializeWithProject) {

@@ -18,7 +18,6 @@ global.eXeLearning = {
             parameters: {
                 generateNewItemKey: 'generated-key-123',
                 odeComponentsSyncPropertiesConfig: {
-                    identifier: { value: '' },
                     visibility: { value: 'false' },
                     cssClass: { value: '' },
                 },
@@ -86,6 +85,9 @@ global.eXeLearning = {
                         checkIfEmptyNode: vi.fn(),
                         createAddTextBtn: vi.fn(),
                     },
+                },
+                menuStructureBehaviour: {
+                    checkIfEmptyNode: vi.fn(),
                 },
             },
         },
@@ -253,27 +255,15 @@ describe('IdeviceNode', () => {
             expect(typeof idevice.jsonProperties).toBe('object');
             expect(Object.keys(idevice.jsonProperties).length).toBe(0);
         });
-
-        it('calls setProperties when odeComponentsSyncProperties provided', () => {
-            const spy = vi.spyOn(idevice, 'setProperties');
-            idevice.setParams({
-                odeComponentsSyncProperties: {
-                    identifier: { value: 'my-id' },
-                },
-            });
-            expect(spy).toHaveBeenCalledWith({ identifier: { value: 'my-id' } });
-        });
     });
 
     describe('setProperties', () => {
         it('sets property values from data', () => {
             idevice.setProperties({
-                identifier: { value: 'custom-id' },
                 visibility: { value: 'true' },
                 cssClass: { value: 'my-class' },
             });
 
-            expect(idevice.properties.identifier.value).toBe('custom-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('my-class');
         });
@@ -281,13 +271,11 @@ describe('IdeviceNode', () => {
         it('only sets heritable properties when onlyHeritable is true', () => {
             idevice.setProperties(
                 {
-                    identifier: { value: 'inherited-id', heritable: true },
                     visibility: { value: 'true', heritable: false },
                 },
                 true,
             );
 
-            expect(idevice.properties.identifier.value).toBe('inherited-id');
             expect(idevice.properties.visibility.value).toBe('false');
         });
 
@@ -305,7 +293,7 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
             const spy = vi.spyOn(idevice, 'setPropertiesClassesToElement');
             idevice.setProperties({
-                identifier: { value: 'test-id' },
+                visibility: { value: 'true' },
             });
             expect(spy).toHaveBeenCalled();
         });
@@ -334,7 +322,6 @@ describe('IdeviceNode', () => {
         it('does nothing when Yjs is not enabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('loads properties from Yjs when enabled', () => {
@@ -342,7 +329,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn(() => ({
-                        identifier: 'yjs-id',
                         visibility: true,
                         cssClass: 'yjs-class',
                     })),
@@ -351,7 +337,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
             expect(idevice.properties.cssClass.value).toBe('yjs-class');
         });
@@ -374,7 +359,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsEnabled = true;
             eXeLearning.app.project._yjsBridge = null;
             idevice.loadPropertiesFromYjs();
-            expect(idevice.properties.identifier.value).toBe('');
         });
     });
 
@@ -420,15 +404,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe(
-                'my-idevice-id',
-            );
-        });
-
         it('sets export-view attribute when visibility is set', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -443,13 +418,6 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class1')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class2')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
-        });
-
-        it('does not set identifier when value is empty', () => {
-            idevice.properties.identifier.value = '';
-            idevice.setPropertiesClassesToElement();
-
-            expect(idevice.ideviceContent.hasAttribute('identifier')).toBe(false);
         });
     });
 
@@ -1642,6 +1610,16 @@ describe('IdeviceNode', () => {
             expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
             vi.useRealTimers();
         });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block.askForRemoveIfEmpty = true;
+            idevice._skipBlockRemoveDialog = true;
+
+            idevice.removeBlockParentProcess(true);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+        });
     });
 
     describe('lockScreen / unlockScreen', () => {
@@ -1945,12 +1923,6 @@ describe('IdeviceNode', () => {
             idevice.ideviceContent = document.createElement('div');
         });
 
-        it('sets identifier attribute when value exists', () => {
-            idevice.properties.identifier.value = 'my-idevice-id';
-            idevice.setPropertiesClassesToElement();
-            expect(idevice.ideviceContent.getAttribute('identifier')).toBe('my-idevice-id');
-        });
-
         it('sets export-view attribute when visibility is true', () => {
             idevice.properties.visibility.value = 'true';
             idevice.setPropertiesClassesToElement();
@@ -1985,7 +1957,6 @@ describe('IdeviceNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     getComponentProperties: vi.fn().mockReturnValue({
-                        identifier: 'yjs-id',
                         visibility: true,
                     }),
                 },
@@ -1996,17 +1967,16 @@ describe('IdeviceNode', () => {
         it('loads properties from Yjs when enabled', () => {
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.visibility.value).toBe('true');
         });
 
         it('does nothing when Yjs is disabled', () => {
             eXeLearning.app.project._yjsEnabled = false;
-            const originalValue = idevice.properties.identifier.value;
+            const originalValue = idevice.properties.visibility.value;
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe(originalValue);
+            expect(idevice.properties.visibility.value).toBe(originalValue);
         });
     });
 
@@ -2707,6 +2677,25 @@ describe('IdeviceNode', () => {
             idevice.removeBlockParentProcess(true);
 
             expect(idevice.block.remove).not.toHaveBeenCalled();
+        });
+
+        it('skips dialog when _skipBlockRemoveDialog is true', () => {
+            idevice.block = {
+                idevices: [],
+                removeIfEmpty: false,
+                askForRemoveIfEmpty: true,
+                remove: vi.fn(),
+            };
+            idevice._skipBlockRemoveDialog = true;
+            vi.useFakeTimers();
+
+            idevice.removeBlockParentProcess(true);
+            vi.advanceTimersByTime(300);
+
+            expect(eXeLearning.app.modals.confirm.show).not.toHaveBeenCalled();
+            expect(idevice.block.remove).not.toHaveBeenCalled();
+            expect(idevice._skipBlockRemoveDialog).toBe(false);
+            vi.useRealTimers();
         });
     });
 
@@ -4018,7 +4007,6 @@ describe('IdeviceNode', () => {
         beforeEach(() => {
             idevice.id = 'comp-id';
             idevice.properties = {
-                identifier: { value: 'old-id' },
                 visibility: { value: 'true' },
             };
             idevice.makeIdeviceContentNode = vi.fn();
@@ -4030,9 +4018,9 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
-            expect(idevice.properties.identifier.value).toBe('new-id');
+            expect(idevice.properties.visibility.value).toBe('false');
             expect(eXeLearning.app.api.putSavePropertiesIdevice).toHaveBeenCalled();
         });
 
@@ -4041,7 +4029,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'OK',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(idevice.makeIdeviceContentNode).toHaveBeenCalledWith(false);
         });
@@ -4051,7 +4039,7 @@ describe('IdeviceNode', () => {
                 responseMessage: 'ERROR',
             });
 
-            await idevice.apiSaveProperties({ identifier: 'new-id' });
+            await idevice.apiSaveProperties({ visibility: 'false' });
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
         });
@@ -4418,6 +4406,111 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('shows checkbox when iDevice is last in block', () => {
+            idevice.block = {
+                idevices: [idevice],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).toContain('delete-associated-box-');
+                expect(capturedBody).toContain('checkbox');
+            });
+        });
+
+        it('does not show checkbox when block has multiple iDevices', () => {
+            idevice.block = {
+                idevices: [idevice, { id: 'other' }],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedBody;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ body }) => {
+                capturedBody = body;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedBody).not.toContain('delete-associated-box-');
+            });
+        });
+
+        it('deletes both iDevice and block when checkbox is checked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                // Inject the checkbox HTML into the DOM so getElementById works
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).toHaveBeenCalledWith(true);
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
+        });
+
+        it('deletes only iDevice when checkbox is unchecked', () => {
+            const blockRemove = vi.fn();
+            idevice.block = {
+                idevices: [idevice],
+                remove: blockRemove,
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedConfirmExec;
+            eXeLearning.app.modals.confirm.show = vi.fn(({ confirmExec, body }) => {
+                const container = document.createElement('div');
+                container.innerHTML = body;
+                document.body.appendChild(container);
+                // Uncheck the checkbox
+                const checkbox = container.querySelector('input[type="checkbox"]');
+                checkbox.checked = false;
+                capturedConfirmExec = confirmExec;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                capturedConfirmExec();
+                expect(idevice.remove).toHaveBeenCalledWith(true);
+                expect(blockRemove).not.toHaveBeenCalled();
+                expect(idevice._skipBlockRemoveDialog).toBe(true);
+                document.body.innerHTML = '';
+            });
         });
     });
 
@@ -4945,7 +5038,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('does nothing when getComponentProperties returns null', () => {
@@ -4958,7 +5050,6 @@ describe('IdeviceNode', () => {
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('');
         });
 
         it('ignores unknown property keys from Yjs', () => {
@@ -4967,14 +5058,12 @@ describe('IdeviceNode', () => {
                 structureBinding: {
                     getComponentProperties: vi.fn(() => ({
                         unknownProp: 'value',
-                        identifier: 'yjs-id',
                     })),
                 },
             };
 
             idevice.loadPropertiesFromYjs();
 
-            expect(idevice.properties.identifier.value).toBe('yjs-id');
             expect(idevice.properties.unknownProp).toBeUndefined();
         });
     });

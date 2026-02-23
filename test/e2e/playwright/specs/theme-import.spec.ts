@@ -67,6 +67,7 @@ async function importElpxFixture(page: Page, fixtureName: string): Promise<void>
                 return false;
             }
         },
+        undefined,
         { timeout: 30000 },
     );
 }
@@ -109,25 +110,31 @@ test.describe('Theme Import from ELPX', () => {
                     return false;
                 }
             },
+            undefined,
             { timeout: 60000 },
         );
 
-        // Verify import completed (check that content was imported)
-        const navigationCount = await page.evaluate(() => {
-            try {
-                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
-                if (!bridge) return 0;
-                const yDoc = bridge.getDocumentManager()?.getDoc();
-                if (!yDoc) return 0;
-                const navigation = yDoc.getArray('navigation');
-                return navigation?.length || 0;
-            } catch {
-                return 0;
-            }
-        });
-
-        // Should have at least 1 page imported
-        expect(navigationCount).toBeGreaterThan(0);
+        // Verify import completed (check that content was imported).
+        // Use poll to avoid transient 0-length reads while Firefox finishes Yjs hydration.
+        await expect
+            .poll(
+                async () => {
+                    return await page.evaluate(() => {
+                        try {
+                            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                            if (!bridge) return 0;
+                            const yDoc = bridge.getDocumentManager()?.getDoc();
+                            if (!yDoc) return 0;
+                            const navigation = yDoc.getArray('navigation');
+                            return navigation?.length || 0;
+                        } catch {
+                            return 0;
+                        }
+                    });
+                },
+                { timeout: 60000, intervals: [250, 500, 1000] },
+            )
+            .toBeGreaterThan(0);
 
         // Check theme in Yjs metadata (even if not fully installed, it should be recorded)
         const themeMetadata = await page.evaluate(() => {

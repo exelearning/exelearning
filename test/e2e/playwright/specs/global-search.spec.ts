@@ -65,7 +65,7 @@ async function openGlobalSearchModal(page: import('@playwright/test').Page): Pro
 test.describe('Global Search Modal', () => {
     test.describe('Modal Opening', () => {
         test('should open global search modal with keyboard shortcut', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             // Create a new project
@@ -86,7 +86,7 @@ test.describe('Global Search Modal', () => {
         });
 
         test('should open global search modal via menu item', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Global Search Menu Test');
@@ -110,7 +110,7 @@ test.describe('Global Search Modal', () => {
         });
 
         test('should close modal with Escape key', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Global Search Escape Test');
@@ -132,7 +132,7 @@ test.describe('Global Search Modal', () => {
 
     test.describe('Search Functionality', () => {
         test('should find pages by title', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Page Search Test');
@@ -164,7 +164,7 @@ test.describe('Global Search Modal', () => {
         });
 
         test('should find iDevice content', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'iDevice Search Test');
@@ -197,7 +197,7 @@ test.describe('Global Search Modal', () => {
         });
 
         test('should show empty state when no results found', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'No Results Test');
@@ -223,7 +223,7 @@ test.describe('Global Search Modal', () => {
 
     test.describe('Keyboard Navigation', () => {
         test('should navigate results with arrow keys', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Keyboard Nav Test');
@@ -270,7 +270,7 @@ test.describe('Global Search Modal', () => {
         });
 
         test('should navigate to result with Enter key', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Enter Key Nav Test');
@@ -313,7 +313,7 @@ test.describe('Global Search Modal', () => {
 
     test.describe('Result Click Navigation', () => {
         test('should navigate to page when clicking result', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Click Nav Test');
@@ -351,7 +351,7 @@ test.describe('Global Search Modal', () => {
 
     test.describe('Browser Find Not Blocked', () => {
         test('should not intercept Ctrl+F (browser find)', async ({ authenticatedPage, createProject }) => {
-            test.setTimeout(120000);
+            test.setTimeout(90000);
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Browser Find Test');

@@ -221,6 +221,24 @@
                     </div>
                 </div>
             </div>
+            <!-- Rename Dialog (inside modal-content for proper positioning) -->
+            <div class="media-library-rename-dialog" style="display:none;">
+                <div class="rename-dialog-overlay"></div>
+                <div class="rename-dialog-content">
+                    <div class="rename-dialog-header">
+                        <span class="rename-dialog-title"></span>
+                        <button type="button" class="rename-dialog-close">&times;</button>
+                    </div>
+                    <div class="rename-dialog-body">
+                        <label class="rename-dialog-label form-label" for="renameDialogInput"></label>
+                        <input type="text" class="form-control rename-dialog-input" id="renameDialogInput" autocomplete="off">
+                    </div>
+                    <div class="rename-dialog-footer">
+                        <button type="button" class="btn btn-secondary rename-dialog-cancel">{{ 'Cancel' | trans }}</button>
+                        <button type="button" class="btn btn-primary rename-dialog-confirm">{{ 'Rename' | trans }}</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

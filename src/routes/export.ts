@@ -35,6 +35,7 @@ import {
     PageElpxExporter as PageElpxExporterDefault,
     YjsDocumentAdapter as YjsDocumentAdapterDefault,
     ServerYjsDocumentWrapper as ServerYjsDocumentWrapperDefault,
+    ServerLatexPreRenderer as ServerLatexPreRendererDefault,
     type ExportResult,
     type ExportDocument,
     type ResourceProvider,
@@ -566,8 +567,17 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
+            // Attach server-side LaTeX pre-render hooks so exports/previews render formulas
+            // even when addMathJax is disabled.
+            const latexRenderer = new ServerLatexPreRendererDefault();
+            const exportOptionsWithHooks = {
+                ...options,
+                preRenderLatex: async (html: string) => latexRenderer.preRender(html),
+                preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+            };
+
             // Run export
-            const result = await exporter.export(options);
+            const result = await exporter.export(exportOptionsWithHooks);
 
             if (!result.success) {
                 return result;

@@ -29,7 +29,6 @@ export default class ModalOdeUsedFiles extends Modal {
             _('Page name'),
             _('Block name'),
             _('iDevice'),
-            _('Position'),
         ];
         for (let thCount = 0; thCount < thTitles.length; thCount++) {
             let th = document.createElement('th');
@@ -141,7 +140,6 @@ export default class ModalOdeUsedFiles extends Modal {
                 files[odeComponentLinkKey]['pageNamesUsedFiles'],
                 files[odeComponentLinkKey]['blockNamesUsedFiles'],
                 files[odeComponentLinkKey]['typeComponentSyncUsedFiles'],
-                files[odeComponentLinkKey]['orderComponentSyncUsedFiles'],
             ];
             let tr = document.createElement('tr');
             for (let tdCount = 0; tdCount < tdContent.length; tdCount++) {

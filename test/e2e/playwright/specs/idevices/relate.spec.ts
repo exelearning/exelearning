@@ -50,7 +50,7 @@ async function selectPageNode(page: Page): Promise<void> {
         }
     }
 
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     await page
         .waitForFunction(
@@ -59,6 +59,7 @@ async function selectPageNode(page: Page): Promise<void> {
                 const metadata = document.querySelector('#properties-node-content-form');
                 return nodeContent && (!metadata || !metadata.closest('.show'));
             },
+            undefined,
             { timeout: 10000 },
         )
         .catch(() => {});
@@ -83,7 +84,7 @@ async function addRelateIdeviceFromPanel(page: Page): Promise<void> {
         if (isCollapsed) {
             const label = interactiveCategory.locator('.label');
             await label.click();
-            await page.waitForTimeout(800);
+            await page.waitForTimeout(500);
         }
     }
 
@@ -137,6 +138,7 @@ async function uploadImageViaFilePicker(page: Page, inputSelector: string, fixtu
             const modal = document.querySelector('#modalFileManager');
             return !modal || !modal.classList.contains('show');
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -198,6 +200,7 @@ async function saveRelateIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.relate');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -337,7 +340,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview panel
             await page.click('#head-bottom-preview');
@@ -349,7 +352,7 @@ test.describe('Relate iDevice', () => {
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
             // Wait for game to initialize
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // CRITICAL TEST: Verify canvas has correct dimensions
             // This catches the bug where canvas was 0x0 on first load
@@ -372,7 +375,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -382,7 +385,7 @@ test.describe('Relate iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify words container is visible
             const wordsContainer = iframe.locator('[id^="rlcContainerWords-"]').first();
@@ -416,7 +419,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -426,7 +429,7 @@ test.describe('Relate iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Verify images are loaded (have valid src)
             const images = iframe.locator('.RLCP-Image');
@@ -458,7 +461,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Open preview
             await page.click('#head-bottom-preview');
@@ -468,7 +471,7 @@ test.describe('Relate iDevice', () => {
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 15000 });
 
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify game is ready (canvas has dimensions)
             await verifyCanvasInitialized(iframe);
@@ -503,7 +506,7 @@ test.describe('Relate iDevice', () => {
 
             await saveRelateIdevice(page);
             await workarea.save();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Reload
             await reloadPage(page);
