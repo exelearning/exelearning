@@ -14,6 +14,7 @@ import {
     configure as configure005,
     resetDependencies as reset005,
 } from '../db/migrations/005_user_id_nullable';
+import { up as migration006Up } from '../db/migrations/006_impersonation_audit_log';
 import { now } from '../db/types';
 import { createAuthRoutes, verifyToken, getJwtSecret, type AuthDependencies } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
@@ -68,6 +69,7 @@ describe('Auth Routes', () => {
         configure005({ getDialect: () => 'sqlite', columnExists: async () => true });
         await migration005Up(testDb);
         reset005();
+        await migration006Up(testDb);
         app = createTestApp(testDb);
     });
 
@@ -330,6 +332,128 @@ describe('Auth Routes', () => {
             const data = (await response.json()) as { user: { email: string }; isGuest: boolean };
             expect(data.user.email).toBe('info@example.com');
             expect(data.isGuest).toBe(false);
+        });
+    });
+
+    describe('POST /api/auth/impersonation/stop', () => {
+        it('should restore original session and close audit session', async () => {
+            const adminPassword = await hashPassword('admin-pass');
+            const userPassword = await hashPassword('user-pass');
+
+            await testDb
+                .insertInto('users')
+                .values([
+                    {
+                        email: 'admin-stop@example.com',
+                        user_id: 'admin-stop',
+                        password: adminPassword,
+                        roles: '["ROLE_USER","ROLE_ADMIN"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: now(),
+                        updated_at: now(),
+                    },
+                    {
+                        email: 'target-stop@example.com',
+                        user_id: 'target-stop',
+                        password: userPassword,
+                        roles: '["ROLE_USER"]',
+                        is_lopd_accepted: 1,
+                        is_active: 1,
+                        created_at: now(),
+                        updated_at: now(),
+                    },
+                ])
+                .execute();
+
+            const adminUser = await testDb
+                .selectFrom('users')
+                .select(['id', 'email'])
+                .where('email', '=', 'admin-stop@example.com')
+                .executeTakeFirstOrThrow();
+            const targetUser = await testDb
+                .selectFrom('users')
+                .select(['id', 'email'])
+                .where('email', '=', 'target-stop@example.com')
+                .executeTakeFirstOrThrow();
+
+            const adminLogin = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin-stop@example.com',
+                        password: 'admin-pass',
+                    }),
+                }),
+            );
+            const userLogin = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'target-stop@example.com',
+                        password: 'user-pass',
+                    }),
+                }),
+            );
+
+            const adminToken = ((await adminLogin.json()) as { access_token: string }).access_token;
+            const impersonatedToken = ((await userLogin.json()) as { access_token: string }).access_token;
+            const sessionId = 'impersonation-session-stop-1';
+
+            await testDb
+                .insertInto('impersonation_audit_logs')
+                .values({
+                    session_id: sessionId,
+                    impersonator_user_id: adminUser.id,
+                    impersonated_user_id: targetUser.id,
+                    started_at: now(),
+                    ended_at: null,
+                    started_by_ip: '127.0.0.1',
+                    started_user_agent: 'bun-test',
+                    ended_by_ip: null,
+                    ended_user_agent: null,
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/impersonation/stop', {
+                    method: 'POST',
+                    headers: {
+                        Cookie: `auth=${impersonatedToken}; impersonator_auth=${adminToken}; impersonation_session=${sessionId}`,
+                    },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = (await response.json()) as { success: boolean; user: { email: string } };
+            expect(data.success).toBe(true);
+            expect(data.user.email).toBe('admin-stop@example.com');
+
+            const setCookie = response.headers.get('set-cookie') || '';
+            expect(setCookie).toContain('auth=');
+
+            const auditRow = await testDb
+                .selectFrom('impersonation_audit_logs')
+                .select(['session_id', 'ended_at'])
+                .where('session_id', '=', sessionId)
+                .executeTakeFirst();
+
+            expect(auditRow?.session_id).toBe(sessionId);
+            expect(auditRow?.ended_at).not.toBeNull();
+        });
+
+        it('should return 400 when not impersonating', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/impersonation/stop', {
+                    method: 'POST',
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = (await response.json()) as { error: string };
+            expect(data.error).toBe('BAD_REQUEST');
         });
     });
 

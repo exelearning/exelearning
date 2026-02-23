@@ -12,6 +12,7 @@ const ui = {
     pasteBtn: document.getElementById('paste-btn'),
     exportBtn: document.getElementById('export-btn'),
     categoryNavigator: document.getElementById('category-navigator'),
+    addCategoryBtn: document.getElementById('add-category-btn'),
     toggleAllBtn: document.getElementById('toggle-all-btn'),
     aiCreatorBtn: document.getElementById('ai-creator-btn'),
     tabsContainer: document.getElementById('tabs-container'),
@@ -49,6 +50,9 @@ const ui = {
     customUrlInput: document.getElementById('custom-url-input'),
     customUrlLoadBtn: document.getElementById('custom-url-load-btn'),
     customFileInput: document.getElementById('custom-file-input'),
+    quickEmptyBtn: document.getElementById('quick-empty-btn'),
+    quickMinimalBtn: document.getElementById('quick-minimal-btn'),
+    quickStartHelp: document.getElementById('quick-start-help'),
 };
 
 // --- Core Functions ---
@@ -57,11 +61,41 @@ function getActiveTabData() {
     return tabs.find(t => t.id === activeTabId);
 }
 
+function serializeTabData(data) {
+    return JSON.stringify(data || { categorias: [] });
+}
+
+function isTabDirty(tab) {
+    if (!tab) return false;
+    return serializeTabData(tab.data) !== (tab.savedSnapshot || serializeTabData({ categorias: [] }));
+}
+
+function markTabAsSaved(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    tab.savedSnapshot = serializeTabData(tab.data);
+}
+
 function setActiveTabData(newData) {
     const tabIndex = tabs.findIndex(t => t.id === activeTabId);
     if (tabIndex !== -1) {
         tabs[tabIndex].data = newData;
     }
+}
+
+function slugifyCategoryId(name) {
+    const base = (name || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'category';
+    const data = getActiveTabData()?.data;
+    const existing = new Set((data?.categorias || []).map(c => c.id));
+    if (!existing.has(base)) return base;
+    let i = 2;
+    while (existing.has(`${base}-${i}`)) i++;
+    return `${base}-${i}`;
 }
 
 function render() {
@@ -79,10 +113,14 @@ function render() {
 function translateUIDynamic() {
     // Static text that might be re-rendered
     document.title = _('LaTeX Formula Visual Editor');
+    ui.addTabBtn.title = _('Create new formula toolbar');
+    ui.addTabBtn.setAttribute('aria-label', _('Create new formula toolbar'));
+    ui.addCategoryBtn.textContent = `+ ${_('Add Category')}`;
     ui.toggleAllBtn.textContent = _('Collapse/Expand');
     ui.categoryNavigator.querySelector('option[value=""]').textContent = _('Go to category...');
     document.querySelector('h1.text-2xl').textContent = _('LaTeX Formula Editor');
-    ui.aiCreatorBtn.innerHTML = `✨ ${_('Create with AI')}`;
+    const aiLabel = _('Create with AI').replace(/✨/g, '').trim();
+    ui.aiCreatorBtn.textContent = `✨ ${aiLabel}`;
     ui.pasteBtn.textContent = _('Paste');
     ui.copyBtn.textContent = _('Copy JSON');
     ui.exportBtn.textContent = _('Export JSON');
@@ -121,6 +159,10 @@ function translateUIDynamic() {
     ui.customUrlInput.placeholder = _('Paste a JSON URL...');
     ui.customUrlLoadBtn.textContent = _('Load');
     ui.addTabModal.querySelector('label[for="custom-file-input"]').textContent = _('Open local file...');
+    ui.addTabModal.querySelectorAll('h3')[2].textContent = _('Quick start');
+    ui.quickEmptyBtn.textContent = _('Start from empty set');
+    ui.quickMinimalBtn.textContent = _('Start with minimal example');
+    ui.quickStartHelp.textContent = _('Create a new set without loading external files.');
     ui.addTabCloseBtn.textContent = _('Close');
 }
 
@@ -128,7 +170,12 @@ function translateUIDynamic() {
 function renderEditor(currentData) {
     ui.editorContainer.innerHTML = '';
     if (!currentData || !currentData.categorias || currentData.categorias.length === 0) {
-        ui.editorContainer.innerHTML = `<p class="text-gray-500 text-center">${_('Add or load a formula set.')}</p>`;
+        ui.editorContainer.innerHTML = `
+            <div class="text-center space-y-4 py-8">
+                <p class="text-gray-500">${_('Add or load a formula set.')}</p>
+                <p class="text-sm text-gray-500">${_('Your set is empty. Use the "+ Add Category" button above to create the first category.')}</p>
+            </div>
+        `;
         return;
     }
     currentData.categorias.forEach((cat, catIndex) => {
@@ -239,21 +286,43 @@ function renderTabs() {
     ui.tabsContainer.innerHTML = '';
     tabs.forEach(tab => {
         const tabEl = document.createElement('button');
-        tabEl.className = `tab px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 ${tab.id === activeTabId ? 'active border-indigo-500' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
+        tabEl.className = `tab px-3 py-2 text-sm font-medium rounded-t-lg border-b-2 flex items-center gap-2 ${tab.id === activeTabId ? 'active border-indigo-500' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`;
         const totalElements = (tab.data && tab.data.categorias) ? tab.data.categorias.reduce((sum, cat) => sum + (cat.elementos ? cat.elementos.length : 0), 0) : 0;
-        tabEl.textContent = `${tab.name} (${totalElements})`;
+        const nameEl = document.createElement('span');
+        nameEl.className = 'truncate';
+        nameEl.textContent = `${tab.name}${isTabDirty(tab) ? ' *' : ''} (${totalElements})`;
+        tabEl.appendChild(nameEl);
         tabEl.dataset.tabId = tab.id;
+        tabEl.title = _('Double-click to rename');
         tabEl.addEventListener('click', () => switchTab(tab.id));
-        if (tab.id !== 'base') {
-            const closeBtn = document.createElement('span');
-            closeBtn.className = 'tab-close-btn ml-2 text-xs font-bold';
-            closeBtn.innerHTML = '&times;';
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                closeTab(tab.id);
-            });
-            tabEl.appendChild(closeBtn);
-        }
+
+        const actionsEl = document.createElement('span');
+        actionsEl.className = 'inline-flex items-center gap-1 ml-1';
+
+        const renameBtn = document.createElement('span');
+        renameBtn.className = 'tab-rename-btn text-xs font-bold';
+        renameBtn.innerHTML = '&#9998;';
+        renameBtn.title = _('Rename');
+        renameBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showRenameTabModal(tab.id);
+        });
+        actionsEl.appendChild(renameBtn);
+
+        const closeBtn = document.createElement('span');
+        closeBtn.className = 'tab-close-btn ml-2 text-xs font-bold';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeTab(tab.id);
+        });
+        actionsEl.appendChild(closeBtn);
+
+        tabEl.appendChild(actionsEl);
+        tabEl.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            showRenameTabModal(tab.id);
+        });
         ui.tabsContainer.appendChild(tabEl);
     });
 }
@@ -271,12 +340,13 @@ async function addTab(name, url, directData = null) {
     }
 
     const tabId = name;
-    const newTab = { id: tabId, name: name, url: url, data: { categorias: [] } };
+    const newTab = { id: tabId, name: name, url: url, data: { categorias: [] }, savedSnapshot: serializeTabData({ categorias: [] }) };
     tabs.push(newTab);
     switchTab(tabId);
     
     if(directData){
         newTab.data = directData;
+        newTab.savedSnapshot = serializeTabData(directData);
         render();
         return;
     }
@@ -285,12 +355,14 @@ async function addTab(name, url, directData = null) {
         const cachedData = localStorage.getItem(`formula-cache-${name}`);
         if (cachedData) {
             newTab.data = JSON.parse(cachedData);
+            newTab.savedSnapshot = serializeTabData(newTab.data);
         } else {
             const response = await fetch(url);
             if (!response.ok) throw new Error('Network response was not ok');
             const jsonData = await response.json();
             if (!jsonData.categorias) throw new Error('Invalid JSON format');
             newTab.data = jsonData;
+            newTab.savedSnapshot = serializeTabData(newTab.data);
             localStorage.setItem(`formula-cache-${name}`, JSON.stringify(jsonData));
         }
     } catch (error) {
@@ -301,12 +373,90 @@ async function addTab(name, url, directData = null) {
     render();
 }
 
-function closeTab(tabId) {
+function createUniqueTabName(baseName) {
+    if (!tabs.some(t => t.id === baseName)) return baseName;
+    let i = 2;
+    while (tabs.some(t => t.id === `${baseName} ${i}`)) i++;
+    return `${baseName} ${i}`;
+}
+
+function createEmptySetData() {
+    return { categorias: [] };
+}
+
+function createMinimalSetData() {
+    return {
+        categorias: [
+            {
+                nombre: _('Basic'),
+                id: 'basic',
+                grid_template_columns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                isCollapsed: false,
+                elementos: [
+                    { type: 'button', latex: '\\frac{}{}', display: '\\frac{a}{b}', title: _('Fraction') },
+                    { type: 'button', latex: '\\sqrt{}', display: '\\sqrt{x}', title: _('Square root') },
+                    { type: 'button', latex: 'x^{}', display: 'x^2', title: _('Superscript') }
+                ]
+            }
+        ]
+    };
+}
+
+function closeTab(tabId, force = false) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!force && tab && isTabDirty(tab)) {
+        showConfirmModal(
+            _('Close without saving?'),
+            _('This set has unsaved changes. Close anyway?'),
+            () => closeTab(tabId, true),
+            _('Close')
+        );
+        return;
+    }
     tabs = tabs.filter(t => t.id !== tabId);
+
+    if (tabs.length === 0) {
+        const fallbackName = createUniqueTabName(_('Empty set'));
+        const fallbackTab = {
+            id: fallbackName,
+            name: fallbackName,
+            url: null,
+            data: createEmptySetData(),
+            savedSnapshot: serializeTabData(createEmptySetData())
+        };
+        tabs.push(fallbackTab);
+        activeTabId = fallbackTab.id;
+        render();
+        return;
+    }
+
     if (activeTabId === tabId) {
-        switchTab('base');
+        activeTabId = tabs[0].id;
     }
     render();
+}
+
+function showRenameTabModal(tabId) {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!tab) return;
+    ui.modalTitle.textContent = _('Rename set');
+    ui.modalForm.innerHTML = `<div class="space-y-4"><div><label for="tab-name" class="block text-sm font-medium text-gray-700">${_('Set name')}</label><input type="text" id="tab-name" value="${tab.name || ''}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div></div>`;
+    onSaveCallback = () => {
+        const newName = document.getElementById('tab-name').value.trim();
+        if (!newName) {
+            alert(_('The name is required.'));
+            return;
+        }
+        tab.name = newName;
+        hideModal();
+        render();
+    };
+    ui.modal.classList.remove('hidden');
+    const input = document.getElementById('tab-name');
+    if (input) {
+        input.focus();
+        input.select();
+    }
 }
 
 // --- Drag and Drop (FIXED) ---
@@ -423,7 +573,7 @@ function handlePreviewDblClick(e) {
 }
 
 // CRUD Handlers (FIXED with immutable pattern)
-function handleEditCategory(e) { const { catIndex } = e.currentTarget.dataset; showCategoryModal(_('Edit Category'), getActiveTabData().data.categorias[catIndex], (formData) => { const newData = JSON.parse(JSON.stringify(getActiveTabData().data)); newData.categorias[catIndex] = {...newData.categorias[catIndex], ...formData}; setActiveTabData(newData); render(); }); }
+function handleEditCategory(e) { const { catIndex } = e.currentTarget.dataset; showCategoryModal(_('Edit Category'), getActiveTabData().data.categorias[catIndex], (formData) => { const newData = JSON.parse(JSON.stringify(getActiveTabData().data)); newData.categorias[catIndex] = {...newData.categorias[catIndex], ...formData}; setActiveTabData(newData); render(); }, true); }
 function handleDeleteCategory(e) { const { catIndex } = e.currentTarget.dataset; showConfirmModal(`${_('Delete')} "${getActiveTabData().data.categorias[catIndex].nombre}"`, `${_('Are you sure?')}`, () => { const newData = JSON.parse(JSON.stringify(getActiveTabData().data)); newData.categorias.splice(catIndex, 1); setActiveTabData(newData); render(); }); }
 function handleAddElement(e) { const { catIndex } = e.currentTarget.dataset; showElementModal(_('Add Element'), {}, (formData) => { const newData = JSON.parse(JSON.stringify(getActiveTabData().data)); if (!newData.categorias[catIndex].elementos) { newData.categorias[catIndex].elementos = []; } newData.categorias[catIndex].elementos.push({ type: "button", ...formData }); setActiveTabData(newData); render(); }); }
 function handleEditElement(e) { 
@@ -526,6 +676,18 @@ ui.customFileInput.addEventListener('change', (e) => {
     e.target.value = ''; // Reset for same-file uploads
 });
 
+ui.quickEmptyBtn.addEventListener('click', () => {
+    const tabName = createUniqueTabName(_('Empty set'));
+    addTab(tabName, null, createEmptySetData());
+    ui.addTabModal.classList.add('hidden');
+});
+
+ui.quickMinimalBtn.addEventListener('click', () => {
+    const tabName = createUniqueTabName(_('Starter example'));
+    addTab(tabName, null, createMinimalSetData());
+    ui.addTabModal.classList.add('hidden');
+});
+
 
 ui.categoryNavigator.addEventListener('change', (e) => {
     const catIndex = e.target.value;
@@ -558,6 +720,22 @@ ui.toggleAllBtn.addEventListener('click', () => {
     render();
 });
 
+ui.addCategoryBtn.addEventListener('click', () => {
+    showCategoryModal(_('Add Category'), {}, (formData) => {
+        const newData = JSON.parse(JSON.stringify(getActiveTabData().data));
+        if (!newData.categorias) newData.categorias = [];
+        newData.categorias.push({
+            nombre: formData.nombre,
+            id: slugifyCategoryId(formData.nombre),
+            grid_template_columns: formData.grid_template_columns || 'repeat(auto-fit, minmax(80px, 1fr))',
+            isCollapsed: false,
+            elementos: []
+        });
+        setActiveTabData(newData);
+        render();
+    });
+});
+
 ui.copyBtn.addEventListener('click', () => {
     const currentData = getActiveTabData().data;
     if (currentData.categorias.length === 0) { alert(_("There is nothing to copy.")); return; }
@@ -578,6 +756,8 @@ ui.exportBtn.addEventListener('click', () => {
     a.download = `${activeTabId.replace('.json', '') || 'formulas'}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+    markTabAsSaved(activeTabId);
+    renderTabs();
 });
 
 // --- Paste Logic ---
@@ -645,7 +825,7 @@ ui.pasteAdd.addEventListener('click', () => {
         }
         ui.pasteModal.classList.add('hidden');
     } catch (error) {
-        alert(`${_("Error processing JSON: ")}${error.message}`);
+        alert(`${_('Error processing JSON:')} ${error.message}`);
     }
 });
 
@@ -709,7 +889,25 @@ ui.aiLaunchChatGptBtn.addEventListener('click', () => { const promptText = ui.ai
 
 // --- Modals Generic Handlers ---
 let onSaveCallback = null;
-function showCategoryModal(title, categoryData = {}, onSave) { ui.modalTitle.textContent = title; ui.modalForm.innerHTML = `<div class="space-y-4"><div><label for="cat-nombre" class="block text-sm font-medium text-gray-700">${_('Name')}</label><input type="text" id="cat-nombre" value="${categoryData.nombre || ''}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div><div><label for="cat-grid" class="block text-sm font-medium text-gray-700">${_('CSS Grid Template')}</label><input type="text" id="cat-grid" value="${categoryData.grid_template_columns || 'repeat(auto-fit, minmax(80px, 1fr))'}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div></div>`; onSaveCallback = () => { const formData = { nombre: document.getElementById('cat-nombre').value, grid_template_columns: document.getElementById('cat-grid').value }; if (!formData.nombre) { alert(_('The name is required.')); return; } onSave(formData); hideModal(); }; ui.modal.classList.remove('hidden'); }
+function showCategoryModal(title, categoryData = {}, onSave, includeGridTemplate = false) {
+    ui.modalTitle.textContent = title;
+    const gridField = includeGridTemplate
+        ? `<div><label for="cat-grid" class="block text-sm font-medium text-gray-700">${_('CSS Grid Template')}</label><input type="text" id="cat-grid" value="${categoryData.grid_template_columns || 'repeat(auto-fit, minmax(80px, 1fr))'}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></div>`
+        : '';
+    ui.modalForm.innerHTML = `<div class="space-y-4"><div><label for="cat-nombre" class="block text-sm font-medium text-gray-700">${_('Name')}</label><input type="text" id="cat-nombre" value="${categoryData.nombre || ''}" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" required></div>${gridField}</div>`;
+    onSaveCallback = () => {
+        const formData = {
+            nombre: document.getElementById('cat-nombre').value,
+            grid_template_columns: includeGridTemplate
+                ? (document.getElementById('cat-grid')?.value || 'repeat(auto-fit, minmax(80px, 1fr))')
+                : (categoryData.grid_template_columns || 'repeat(auto-fit, minmax(80px, 1fr))')
+        };
+        if (!formData.nombre) { alert(_('The name is required.')); return; }
+        onSave(formData);
+        hideModal();
+    };
+    ui.modal.classList.remove('hidden');
+}
 
 function showElementModal(title, elementData = {}, onSave, catIndex, elIndex) {
     ui.modalTitle.textContent = title;
@@ -776,7 +974,7 @@ ui.modalSave.addEventListener('click', () => { if (onSaveCallback) onSaveCallbac
 ui.modalCancel.addEventListener('click', hideModal);
 
 let onDeleteCallback = null;
-function showConfirmModal(title, message, onDelete) { ui.confirmTitle.textContent = title; ui.confirmMessage.textContent = message; onDeleteCallback = onDelete; ui.confirmModal.classList.remove('hidden'); }
+function showConfirmModal(title, message, onDelete, confirmLabel = _('Delete')) { ui.confirmTitle.textContent = title; ui.confirmMessage.textContent = message; ui.confirmDelete.textContent = confirmLabel; onDeleteCallback = onDelete; ui.confirmModal.classList.remove('hidden'); }
 function hideConfirmModal() { ui.confirmModal.classList.add('hidden'); onDeleteCallback = null; }
 ui.confirmDelete.addEventListener('click', () => { if(onDeleteCallback) onDeleteCallback(); hideConfirmModal(); });
 ui.confirmCancel.addEventListener('click', hideConfirmModal);
@@ -800,6 +998,7 @@ async function init() {
         console.error("Could not load base formulas:", error);
         alert(_("Could not load the default base formulas."));
     }
+    baseTab.savedSnapshot = serializeTabData(baseTab.data);
     render();
     renderAiCreatorInputs('full_json'); // Render initial inputs for AI creator
 }
