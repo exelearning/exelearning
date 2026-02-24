@@ -370,7 +370,7 @@ class AssetWebSocketHandler {
           // Asset exists locally - update metadata if missing (e.g., folderPath)
           let needsUpdate = false;
 
-          if (!localAsset.filename && serverAsset.filename) {
+          if ((!localAsset.filename || localAsset.filename === 'unknown') && serverAsset.filename && serverAsset.filename !== 'unknown') {
             localAsset.filename = serverAsset.filename;
             needsUpdate = true;
           }
@@ -394,10 +394,11 @@ class AssetWebSocketHandler {
         } else {
           // Asset doesn't exist locally - create metadata entry (without blob)
           // The blob will be fetched on-demand when needed
+          // Don't store 'unknown' as filename - use undefined so callers derive a proper name
           const metadataEntry = {
             id: assetId,
             projectId: this.assetManager.projectId,
-            filename: serverAsset.filename,
+            filename: (serverAsset.filename && serverAsset.filename !== 'unknown') ? serverAsset.filename : undefined,
             mime: serverAsset.mimeType,
             size: serverAsset.size,
             folderPath: serverAsset.folderPath || '',

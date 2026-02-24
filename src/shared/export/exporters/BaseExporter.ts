@@ -469,7 +469,11 @@ export abstract class BaseExporter {
 
             for (const asset of assets) {
                 let folderPath = asset.folderPath || '';
-                const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+                // Treat 'unknown' same as missing: derive a proper name with extension from MIME
+                const filename =
+                    asset.filename && asset.filename !== 'unknown'
+                        ? asset.filename
+                        : this._deriveFilenameFromMime(asset.id, asset.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -504,6 +508,35 @@ export abstract class BaseExporter {
         }
 
         return this.assetExportPathMap;
+    }
+
+    /**
+     * Derive a fallback export filename from MIME type and asset ID.
+     * Used when an asset has no filename or has the placeholder value 'unknown'.
+     */
+    private _deriveFilenameFromMime(assetId: string, mime: string): string {
+        const mimeExtMap: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/webp': 'webp',
+            'image/svg+xml': 'svg',
+            'image/bmp': 'bmp',
+            'image/tiff': 'tif',
+            'image/x-icon': 'ico',
+            'video/mp4': 'mp4',
+            'video/webm': 'webm',
+            'video/ogg': 'ogv',
+            'audio/mpeg': 'mp3',
+            'audio/ogg': 'ogg',
+            'audio/wav': 'wav',
+            'audio/mp4': 'm4a',
+            'application/pdf': 'pdf',
+            'application/zip': 'zip',
+        };
+        const ext = mimeExtMap[(mime || '').toLowerCase()] || 'bin';
+        return `asset-${assetId.substring(0, 8)}.${ext}`;
     }
 
     /**
