@@ -111,28 +111,15 @@ var $exeDevice = {
     },
 
     /**
+     * Updates the property placeholders with live data from eXe
      *
-     * @param {*} element
-     * @param {*} previousData
-     * @param {*} path
      */
-    init: function (element, previousData, path) {
-        //** eXeLearning idevice engine data ***************************
-        this.ideviceBody = element;
-        this.idevicePreviousData = previousData;
-        this.idevicePath = path;
-        //**************************************************************
-        this.createForm();
-    },
-
-    // Create the form to insert HTML in the TEXTAREA
-    createForm: function () {
+    updateProperties: function () {
+        var properties = eXe.app.getProjectProperties();
         var data1 = '-';
         var data2 = '-';
         var data3 = '-';
         var data4 = '-';
-
-        var properties = eXe.app.getProjectProperties();
 
         var _data1 = properties.pp_title;
         if (_data1 && _data1.value && _data1.value != '') {
@@ -151,7 +138,54 @@ var $exeDevice = {
             data4 = this.completeLicense(_data4.value);
         }
 
-        if (data1 == '-' && data2 == '-' && data3 == '-' && data4 == '-') {
+        if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
+            var doc = tinymce.editors[0].getDoc();
+            if (doc) {
+                $('.exe-prop-title', doc).html(data1);
+                $('.exe-prop-description', doc).html(data2);
+                $('.exe-prop-author', doc).html(data3);
+                $('.exe-prop-license', doc).html(data4);
+            }
+        }
+        var desc = $('#dpiDescription');
+        if (desc.length > 0) {
+            var content = desc.val();
+            if (content) {
+                var wrapper = $('<div></div>').html(content);
+                $('.exe-prop-title', wrapper).html(data1);
+                $('.exe-prop-description', wrapper).html(data2);
+                $('.exe-prop-author', wrapper).html(data3);
+                $('.exe-prop-license', wrapper).html(data4);
+                desc.val(wrapper.html());
+            }
+        }
+    },
+
+    /**
+     *
+     * @param {*} element
+     * @param {*} previousData
+     * @param {*} path
+     */
+    init: function (element, previousData, path) {
+        //** eXeLearning idevice engine data ***************************
+        this.ideviceBody = element;
+        this.idevicePreviousData = previousData;
+        this.idevicePath = path;
+        //**************************************************************
+        this.createForm();
+    },
+
+    // Create the form to insert HTML in the TEXTAREA
+    createForm: function () {
+        var properties = eXe.app.getProjectProperties();
+        var emptyP = true;
+        if (properties.pp_title && properties.pp_title.value && properties.pp_title.value != '') emptyP = false;
+        if (properties.pp_description && properties.pp_description.value && properties.pp_description.value != '') emptyP = false;
+        if (properties.pp_author && properties.pp_author.value && properties.pp_author.value != '') emptyP = false;
+        if (properties.pp_license && properties.pp_license.value && properties.pp_license.value != '') emptyP = false;
+
+        if (emptyP) {
             let text = _(
                 "Please don't forget to check the Properties tab: Title, language, license, author, description..."
             );
@@ -169,6 +203,11 @@ var $exeDevice = {
         );
         var str7 = c_('Download .elp file');
 
+        var pData1 = '<span class="exe-prop-title mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
+        var pData2 = '<span class="exe-prop-description mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
+        var pData3 = '<span class="exe-prop-author mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
+        var pData4 = '<span class="exe-prop-license mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
+
         var defaultContent =
             '\
 			<table class="exe-table exe-package-info">\
@@ -181,7 +220,7 @@ var $exeDevice = {
             str2 +
             ' </th>\
 						<td>' +
-            data1 +
+            pData1 +
             ' </td>\
 					</tr>\
 					<tr>\
@@ -189,7 +228,7 @@ var $exeDevice = {
             str3 +
             ' </th>\
 						<td>' +
-            data2 +
+            pData2 +
             ' </td>\
 					</tr>\
 					<tr>\
@@ -197,7 +236,7 @@ var $exeDevice = {
             str4 +
             ' </th>\
 						<td>' +
-            data3 +
+            pData3 +
             ' </td>\
 					</tr>\
 					<tr>\
@@ -205,7 +244,7 @@ var $exeDevice = {
             str5 +
             ' </th>\
 						<td>' +
-            data4 +
+            pData4 +
             ' </td>\
 					</tr>\
 				</tbody>\
@@ -265,6 +304,29 @@ var $exeDevice = {
 		';
         this.ideviceBody.innerHTML = html;
         this.loadPreviousValues();
+
+        // Populate values initially
+        this.updateProperties();
+
+        // Listen to focus changes
+        $(window).off('focus.dlSourceFile').on('focus.dlSourceFile', function () {
+            if ($('#eXeDownloadPackageForm').length > 0) {
+                $exeDevice.updateProperties();
+            } else {
+                $(window).off('focus.dlSourceFile');
+            }
+        });
+
+        // Update when TinyMCE is ready
+        var updateInterval = setInterval(function() {
+            if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
+                $exeDevice.updateProperties();
+                clearInterval(updateInterval);
+            }
+        }, 500);
+        setTimeout(function() {
+            clearInterval(updateInterval);
+        }, 5000);
     },
 
     /**
@@ -296,6 +358,17 @@ var $exeDevice = {
                 wrapper
             );
             if (dpiDescription.length == 1 && dpiDescription.html() != '') {
+                // Find table and convert plain text cells to placeholders
+                var table = $('table.exe-package-info', dpiDescription);
+                if (table.length == 1) {
+                    var tds = $('td', table);
+                    if (tds.length == 4) {
+                        if ($(tds[0]).find('.exe-prop-title').length == 0) $(tds[0]).html('<span class="exe-prop-title mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
+                        if ($(tds[1]).find('.exe-prop-description').length == 0) $(tds[1]).html('<span class="exe-prop-description mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
+                        if ($(tds[2]).find('.exe-prop-author').length == 0) $(tds[2]).html('<span class="exe-prop-author mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
+                        if ($(tds[3]).find('.exe-prop-license').length == 0) $(tds[3]).html('<span class="exe-prop-license mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
+                    }
+                }
                 $('#dpiDescription').val(dpiDescription.html());
             }
             // Button
@@ -351,6 +424,21 @@ var $exeDevice = {
             );
             return false;
         }
+
+        // Bake live properties into saved HTML
+        var properties = eXe.app.getProjectProperties();
+        var data1 = '-'; var data2 = '-'; var data3 = '-'; var data4 = '-';
+        if (properties.pp_title && properties.pp_title.value) data1 = properties.pp_title.value;
+        if (properties.pp_description && properties.pp_description.value) data2 = properties.pp_description.value;
+        if (properties.pp_author && properties.pp_author.value) data3 = properties.pp_author.value;
+        if (properties.pp_license && properties.pp_license.value) data4 = this.completeLicense(properties.pp_license.value);
+
+        var descWrapper = $('<div></div>').html(dpiDescription);
+        $('.exe-prop-title', descWrapper).html(data1);
+        $('.exe-prop-description', descWrapper).html(data2);
+        $('.exe-prop-author', descWrapper).html(data3);
+        $('.exe-prop-license', descWrapper).html(data4);
+        dpiDescription = descWrapper.html();
         // Button text
         var dpiButtonText = $('#dpiButtonText').val();
         // Remove HTML tags (just in case)
