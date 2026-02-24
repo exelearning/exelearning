@@ -157,6 +157,7 @@
     max-width: 600px;
     position: relative;
     padding-bottom: 1em;
+    min-height: 200px;
 }
 
 .ELCP-MainContainer * {
@@ -326,6 +327,15 @@ a.ELCP-ModeBoardShow {
     color: #5877c6;
     text-align: center;
     width: 100%;
+}
+.ELCP-ShowClue {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #5877c6;
+    font-weight: 500;
+
 }
 
 /* Multimedia */
@@ -1142,80 +1152,253 @@ div:-moz-full-screen .exeQuextIcons-FullScreen {
     background-size: 100% 100%;
 }
 
-div:-webkit-full-screen .ELCP-Options {
-    min-height: 3.2em;
-}
-
-div:-moz-full-screen .ELCP-Options {
-    min-height: 3.2em;
-    ;
-}
-
+div:-webkit-full-screen .ELCP-Options,
+div:-moz-full-screen .ELCP-Options,
 div:fullscreen .ELCP-Options {
     min-height: 3.2em;
 }
 
-div:fullscreen .ELCP-Question {
-    min-height: 3.2em;
-}
-
-div:-webkit-full-screen .ELCP-Question {
-    min-height: 3.2em;
-}
-
+div:fullscreen .ELCP-Question,
+div:-webkit-full-screen .ELCP-Question,
 div:-moz-full-screen .ELCP-Question {
+    justify-content: center;
+    max-width: none;
     min-height: 3.2em;
-}
-
-div:fullscreen .ELCP-Multimedia,
-div:-webkit-full-screen .ELCP-Multimedia,
-div:-moz-full-screen .ELCP-Multimedia {
-    background-color: #fff;
-    margin: 3em;
-    margin-left: auto;
-    margin-right: auto;
-    top: 3em;
+    width: 100%;
 }
 
 div:fullscreen .ELCP-LinkMinimize {
     display: none;
 }
 
-.ELCP-GameContainer:-webkit-full-screen {
-    background-color: white;
-    height: 100vh;
-    width: 100%;
-    padding-top: 3px;
-    overflow-y: auto;
-}
-
-.ELCP-GameContainer:-moz-full-screen {
-    background-color: white;
-    height: 100vh;
-    width: 100%;
-    padding-top: 3px;
-    overflow-y: auto;
-}
-
-.ELCP-GameContainer:-ms-full-screen {
-    background-color: white;
-    height: 100vh;
-    width: 100%;
-    padding-top: 3px;
-    overflow-y: auto;
-}
-
-.ELCP-GameContainer:fullscreen {
-    background-color: white;
-    height: 100vh;
-    width: 100%;
-    padding-top: 3px;
-    overflow-y: auto;
-}
-
+.ELCP-GameContainer:-webkit-full-screen,
+.ELCP-GameContainer:-moz-full-screen,
+.ELCP-GameContainer:-ms-full-screen,
+.ELCP-GameContainer:fullscreen,
 .ELCP-GameContainer:-o-full-screen {
     background-color: white;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.5em;
+    gap: 0.35em;
     height: 100vh;
+    max-width: none;
+    overflow: hidden;
+    padding: 0.25em 0.4em 0.4em;
+    width: 100%;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-GameScoreBoard,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-GameScoreBoard,
+.ELCP-GameContainer:-moz-full-screen .ELCP-GameScoreBoard,
+.ELCP-GameContainer:-ms-full-screen .ELCP-GameScoreBoard,
+.ELCP-GameContainer:-o-full-screen .ELCP-GameScoreBoard {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 0;
+    order: 10;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-LifesGame,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-LifesGame,
+.ELCP-GameContainer:-moz-full-screen .ELCP-LifesGame,
+.ELCP-GameContainer:-ms-full-screen .ELCP-LifesGame,
+.ELCP-GameContainer:-o-full-screen .ELCP-LifesGame,
+.ELCP-GameContainer:fullscreen .ELCP-NumberLifesGame,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-NumberLifesGame,
+.ELCP-GameContainer:-moz-full-screen .ELCP-NumberLifesGame,
+.ELCP-GameContainer:-ms-full-screen .ELCP-NumberLifesGame,
+.ELCP-GameContainer:-o-full-screen .ELCP-NumberLifesGame {
+    display: none;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-ShowClue,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-ShowClue,
+.ELCP-GameContainer:-moz-full-screen .ELCP-ShowClue,
+.ELCP-GameContainer:-ms-full-screen .ELCP-ShowClue,
+.ELCP-GameContainer:-o-full-screen .ELCP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0;
+    min-height: 0;
+    order: 12;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-Multimedia,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-Multimedia,
+.ELCP-GameContainer:-moz-full-screen .ELCP-Multimedia,
+.ELCP-GameContainer:-ms-full-screen .ELCP-Multimedia,
+.ELCP-GameContainer:-o-full-screen .ELCP-Multimedia {
+    background-color: #fff;
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    order: 20;
+    width: 100%;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-Multimedia:before,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-Multimedia:before,
+.ELCP-GameContainer:-moz-full-screen .ELCP-Multimedia:before,
+.ELCP-GameContainer:-ms-full-screen .ELCP-Multimedia:before,
+.ELCP-GameContainer:-o-full-screen .ELCP-Multimedia:before {
+    display: none;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-QuestionDiv,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-QuestionDiv,
+.ELCP-GameContainer:-moz-full-screen .ELCP-QuestionDiv,
+.ELCP-GameContainer:-ms-full-screen .ELCP-QuestionDiv,
+.ELCP-GameContainer:-o-full-screen .ELCP-QuestionDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 30;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-WordsDiv,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-WordsDiv,
+.ELCP-GameContainer:-moz-full-screen .ELCP-WordsDiv,
+.ELCP-GameContainer:-ms-full-screen .ELCP-WordsDiv,
+.ELCP-GameContainer:-o-full-screen .ELCP-WordsDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 30;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-BottonContainerDiv,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-BottonContainerDiv,
+.ELCP-GameContainer:-moz-full-screen .ELCP-BottonContainerDiv,
+.ELCP-GameContainer:-ms-full-screen .ELCP-BottonContainerDiv,
+.ELCP-GameContainer:-o-full-screen .ELCP-BottonContainerDiv {
+    flex: 0 0 auto;
+    order: 31;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-DivModeBoard,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-DivModeBoard,
+.ELCP-GameContainer:-moz-full-screen .ELCP-DivModeBoard,
+.ELCP-GameContainer:-ms-full-screen .ELCP-DivModeBoard,
+.ELCP-GameContainer:-o-full-screen .ELCP-DivModeBoard {
+    flex: 0 0 auto;
+    order: 31;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-StartGame,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-StartGame,
+.ELCP-GameContainer:-moz-full-screen .ELCP-StartGame,
+.ELCP-GameContainer:-ms-full-screen .ELCP-StartGame,
+.ELCP-GameContainer:-o-full-screen .ELCP-StartGame {
+    flex: 0 0 auto;
+    margin: auto;
+    order: 35;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-AuthorLicence,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-AuthorLicence,
+.ELCP-GameContainer:-moz-full-screen .ELCP-AuthorLicence,
+.ELCP-GameContainer:-ms-full-screen .ELCP-AuthorLicence,
+.ELCP-GameContainer:-o-full-screen .ELCP-AuthorLicence {
+    flex: 0 0 auto;
+    order: 26;
+}
+
+.ELCP-GameContainer:fullscreen .ELCP-GameOver,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-GameOver,
+.ELCP-GameContainer:-moz-full-screen .ELCP-GameOver,
+.ELCP-GameContainer:-ms-full-screen .ELCP-GameOver,
+.ELCP-GameContainer:-o-full-screen .ELCP-GameOver {
+    left: 0;
+    margin: auto;
+    max-width: 1000px;
+    right: 0;
+    width: 100%;
+}
+
+/* JS fallback class (mirrors :fullscreen rules for browsers where the pseudo-selector fires late) */
+.ELCP-GameContainer.ELCP-IsFullscreen {
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    font-size: 1.5em;
+    gap: 0.35em;
+    height: 100vh;
+    max-width: none;
+    overflow: hidden;
+    padding: 0.25em 0.4em 0.4em;
+    width: 100%;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-GameScoreBoard {
+    flex: 0 0 auto;
+    justify-content: space-between;
+    margin-bottom: 0;
+    order: 10;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-LifesGame,
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-NumberLifesGame {
+    display: none;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-ShowClue {
+    flex: 0 0 auto;
+    margin: 0;
+    min-height: 0;
+    order: 12;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-Multimedia {
+    background-color: #fff;
+    flex: 1 1 0%;
+    margin: 0;
+    max-width: none;
+    min-height: 0;
+    order: 20;
+    width: 100%;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-Multimedia:before {
+    display: none;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-QuestionDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 30;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-WordsDiv {
+    flex: 0 0 auto;
+    margin: 0;
+    order: 30;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-BottonContainerDiv {
+    flex: 0 0 auto;
+    order: 31;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-DivModeBoard {
+    flex: 0 0 auto;
+    order: 31;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-StartGame {
+    flex: 0 0 auto;
+    margin: auto;
+    order: 35;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-AuthorLicence {
+    flex: 0 0 auto;
+    order: 26;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-GameOver {
+    left: 0;
+    margin: auto;
+    max-width: 1000px;
+    right: 0;
     width: 100%;
 }
 
@@ -1458,19 +1641,111 @@ div:fullscreen .ELCP-LinkMinimize {
     }
 }
 
-@media screen and (min-width: 1400px) {
-    div:fullscreen .ELCP-Multimedia {
-        background-color: #fff;
-        margin: 2em auto;
-        top: 1.4em;
-    }
+
+/* Show mode fullscreen row */
+.ELCP-ShowFullScreenRow {
+    display: none;
+    justify-content: flex-end;
+    margin: 0 auto 0.3em auto;
+    width: 100%;
 }
 
-@media screen and (min-width: 700px) and (max-height: 800px) {
-    div:fullscreen .ELCP-Multimedia {
-        background-color: #fff;
-        margin-bottom: 0.6em;
-    }
+.ELCP-ShowFullScreenBtn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 2.2em;
+}
+
+.ELCP-ShowFullScreenBtn .exeQuextIcons {
+    height: 2em;
+    margin-right: 0;
+    width: 2em;
+}
+
+
+/* ShowFullScreenRow in fullscreen show mode: pinned just below score board */
+.ELCP-GameContainer.ELCP-ShowMode:fullscreen .ELCP-ShowFullScreenRow,
+.ELCP-GameContainer.ELCP-ShowMode:-webkit-full-screen .ELCP-ShowFullScreenRow,
+.ELCP-GameContainer.ELCP-ShowMode:-moz-full-screen .ELCP-ShowFullScreenRow,
+.ELCP-GameContainer.ELCP-ShowMode:-ms-full-screen .ELCP-ShowFullScreenRow,
+.ELCP-GameContainer.ELCP-ShowMode:-o-full-screen .ELCP-ShowFullScreenRow {
+    display: flex !important;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    order: 10;
+    width: 100%;
+}
+
+/* JS fallback: must be a standalone rule — vendor-prefix comma groups are dropped entirely if any selector is invalid */
+.ELCP-GameContainer.ELCP-IsFullscreen.ELCP-ShowMode .ELCP-ShowFullScreenRow {
+    display: flex !important;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin: 0 0 0.2em;
+    order: 10;
+    width: 100%;
+}
+
+
+/* Show mode: navigation arrows and description ordering in fullscreen */
+.ELCP-GameContainer.ELCP-ShowMode:fullscreen .ELCP-ShowNavigation,
+.ELCP-GameContainer.ELCP-ShowMode:-webkit-full-screen .ELCP-ShowNavigation,
+.ELCP-GameContainer.ELCP-ShowMode:-moz-full-screen .ELCP-ShowNavigation,
+.ELCP-GameContainer.ELCP-ShowMode:-ms-full-screen .ELCP-ShowNavigation,
+.ELCP-GameContainer.ELCP-ShowMode:-o-full-screen .ELCP-ShowNavigation {
+    flex: 0 0 auto;
+    order: 11;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen.ELCP-ShowMode .ELCP-ShowNavigation {
+    flex: 0 0 auto;
+    order: 11;
+}
+
+.ELCP-GameContainer.ELCP-ShowMode:fullscreen .ELCP-ShowDescription,
+.ELCP-GameContainer.ELCP-ShowMode:-webkit-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer.ELCP-ShowMode:-moz-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer.ELCP-ShowMode:-ms-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer.ELCP-ShowMode:-o-full-screen .ELCP-ShowDescription {
+    flex: 0 0 auto;
+    order: 21 !important;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen.ELCP-ShowMode .ELCP-ShowDescription {
+    flex: 0 0 auto;
+    order: 21 !important;
+}
+
+/* Feedback below description in show mode fullscreen */
+.ELCP-GameContainer.ELCP-ShowMode:fullscreen .ELCP-DivFeedBack,
+.ELCP-GameContainer.ELCP-ShowMode:-webkit-full-screen .ELCP-DivFeedBack,
+.ELCP-GameContainer.ELCP-ShowMode:-moz-full-screen .ELCP-DivFeedBack,
+.ELCP-GameContainer.ELCP-ShowMode:-ms-full-screen .ELCP-DivFeedBack,
+.ELCP-GameContainer.ELCP-ShowMode:-o-full-screen .ELCP-DivFeedBack {
+    flex: 0 0 auto;
+    order: 22;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen.ELCP-ShowMode .ELCP-DivFeedBack {
+    flex: 0 0 auto;
+    order: 22;
+}
+
+/* Keep description below multimedia in fullscreen even during mode/class transitions */
+.ELCP-GameContainer:fullscreen .ELCP-ShowDescription,
+.ELCP-GameContainer:-webkit-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer:-moz-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer:-ms-full-screen .ELCP-ShowDescription,
+.ELCP-GameContainer:-o-full-screen .ELCP-ShowDescription {
+    flex: 0 0 auto;
+    order: 21 !important;
+}
+
+.ELCP-GameContainer.ELCP-IsFullscreen .ELCP-ShowDescription {
+    flex: 0 0 auto;
+    order: 21 !important;
 }
 
 /* Show mode navigation bar */

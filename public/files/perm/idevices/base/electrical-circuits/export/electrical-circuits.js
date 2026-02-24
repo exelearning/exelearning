@@ -178,10 +178,17 @@ var $eXeEC = {
                         </a>
                     </div>
                 </div>
+                <div class="ELCP-ShowFullScreenRow" id="elcpShowFullScreenRow-${instance}">
+                    <a href="#" class="ELCP-ShowFullScreenBtn" id="elcpShowFullScreen-${instance}" title="${msgs.msgFullScreen}">
+                        <div class="exeQuextIcons exeQuextIcons-FullScreen" aria-hidden="true"></div>
+                        <span class="sr-av">${msgs.msgFullScreen}</span>
+                    </a>
+                </div>
                 <div class="ELCP-ShowClue" id="elcpShowClue-${instance}">
                     <div class="sr-av">${msgs.msgClue}:</div>
                     <p class="ELCP-PShowClue ELCP-parpadea" id="elcpPShowClue-${instance}"></p>
                 </div>
+                <div class="ELCP-ShowDescription" id="elcpDescription-${instance}"></div>
                 <div class="ELCP-Multimedia" id="elcpMultimedia-${instance}">
                     <div class="ELCP-TikzPreview" id="elcpTikzPreview-${instance}"></div>
                     <img src="${path}elcHome.png" class="ELCP-Cover" id="elcpCover-${instance}" alt="${msgs.msgNoImage}" />
@@ -205,8 +212,7 @@ var $eXeEC = {
                     <a href="#" class="ELCP-ShowNavBtn" id="elcpShowNext-${instance}" title="${msgs.msgNext || ''}">
                         <img src="${path}bfafnext.png" class="ELCP-ShowNavImg" alt="${msgs.msgNext || ''}" />
                     </a>
-                </div>
-                <div class="ELCP-ShowDescription" id="elcpDescription-${instance}"></div>
+                </div>                
                 <div class="ELCP-AuthorLicence" id="elcpAuthorLicence-${instance}">
                     <div class="sr-av">${msgs.msgAuthor}:</div>
                     <p id="elcpPAuthor-${instance}"></p>
@@ -407,6 +413,13 @@ var $eXeEC = {
         $(`#elcpOptionsDiv-${instance}`)
             .find('.ELCP-Options')
             .off('click');
+        $(document).off(`fullscreenchange.exeEC${instance}`);
+        $(document).off(`webkitfullscreenchange.exeEC${instance}`);
+        $(document).off(`mozfullscreenchange.exeEC${instance}`);
+        $(document).off(`MSFullscreenChange.exeEC${instance}`);
+        $(`#elcpGameContainer-${instance}`).removeClass('ELCP-IsFullscreen');
+        $(`#elcpShowFullScreen-${instance}`).off('click');
+        $(`#elcpShowFullScreenRow-${instance}`).hide();
         $(`#elcpLinkFullScreen-${instance}`).off('click touchstart');
         $(`#elcpButtonAnswer-${instance}`).off('click touchstart');
         $(`#elcpStartGame-${instance}`).off('click');
@@ -504,6 +517,14 @@ var $eXeEC = {
                 $eXeEC.changeQuextion(instance, this);
             });
 
+        const fullscreenHandler = () => {
+            $eXeEC.updateFullscreenLayout(instance);
+        };
+        $(document).on(`fullscreenchange.exeEC${instance}`, fullscreenHandler);
+        $(document).on(`webkitfullscreenchange.exeEC${instance}`, fullscreenHandler);
+        $(document).on(`mozfullscreenchange.exeEC${instance}`, fullscreenHandler);
+        $(document).on(`MSFullscreenChange.exeEC${instance}`, fullscreenHandler);
+
         $(`#elcpLinkFullScreen-${instance}`).on(
             'click touchstart',
             (e) => {
@@ -517,6 +538,7 @@ var $eXeEC = {
             }
         );
 
+        $eXeEC.updateFullscreenLayout(instance);
         $eXeEC.updateLives(instance);
         $(`#elcpInstructions-${instance}`).text(mOptions.instructions);
         $(`#elcpPNumber-${instance}`).text(mOptions.numberQuestions);
@@ -619,10 +641,25 @@ var $eXeEC = {
         $(`#elcpGamerOver-${instance}`).hide();
         $(`#elcpAuthorLicence-${instance}`).hide();
 
-        // Move navigation bar before multimedia, show it
-        $(`#elcpShowNavigation-${instance}`).insertBefore(`#elcpMultimedia-${instance}`).css('display', 'flex');
+        // Show fullscreen row and wire its button
+        $(`#elcpShowFullScreenRow-${instance}`).css('display', 'flex');
+        $(`#elcpShowFullScreen-${instance}`).on('click', (e) => {
+            e.preventDefault();
+            const element = document.getElementById(`elcpGameContainer-${instance}`);
+            $exeDevices.iDevice.gamification.helpers.toggleFullscreen(element);
+        });
+
+        // Keep show-mode top bars ordered: fullscreen button row, then navigation
+        $(`#elcpShowNavigation-${instance}`)
+            .insertBefore(`#elcpMultimedia-${instance}`)
+            .css('display', 'flex');
+        $(`#elcpShowFullScreenRow-${instance}`)
+            .insertBefore(`#elcpShowNavigation-${instance}`)
+            .css('display', 'flex');
+        $(`#elcpDescription-${instance}`).insertAfter(`#elcpMultimedia-${instance}`);
 
         // Apply Show mode layout
+        $(`#elcpGameContainer-${instance}`).addClass('ELCP-ShowMode');
         $(`#elcpMultimedia-${instance}`).addClass('ELCP-ShowMultimedia');
         $(`#elcpDescription-${instance}`).addClass('ELCP-ShowDescriptionActive');
 
@@ -630,6 +667,8 @@ var $eXeEC = {
         mOptions.showCurrentIndex = 0;
         mOptions.visiteds = 0;
         mOptions.gameStarted = true;
+        mOptions.feedbackShown = false;
+        mOptions.obtainedClue = false;
 
         // Show first circuit
         $eXeEC.showCircuitAtIndex(0, instance);
@@ -699,6 +738,36 @@ var $eXeEC = {
             $desc.addClass('ELCP-ShowDescriptionActive');
         } else {
             $desc.removeClass('ELCP-ShowDescriptionActive');
+        }
+
+        $eXeEC.checkShowModeFeedback(instance);
+        $eXeEC.checkShowModeClue(instance);
+    },
+
+    checkShowModeFeedback: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (!mOptions.feedBack || mOptions.feedbackShown) return;
+        const total = mOptions.selectsGame.length;
+        const visitedPct = ((mOptions.visiteds + 1) * 100) / total;
+        if (visitedPct >= mOptions.percentajeFB) {
+            mOptions.feedbackShown = true;
+            $(`#elcpDivFeedBack-${instance}`)
+                .find('.electrical-circuits-feedback-game')
+                .show();
+            $(`#elcpDivFeedBack-${instance}`).show();
+        }
+    },
+
+    checkShowModeClue: function (instance) {
+        const mOptions = $eXeEC.options[instance];
+        if (!mOptions.itinerary.showClue || mOptions.obtainedClue) return;
+        const total = mOptions.selectsGame.length;
+        const visitedPct = ((mOptions.visiteds + 1) * 100) / total;
+        if (visitedPct >= mOptions.itinerary.percentageClue) {
+            mOptions.obtainedClue = true;
+            $(`#elcpShowClue-${instance}`)
+                .text(`${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`)
+                .show();
         }
     },
 
@@ -1718,6 +1787,26 @@ var $eXeEC = {
 
                 $(this).css(css);
             });
+    },
+
+    isContainerFullscreen: function (container) {
+        if (!container) return false;
+        const fsElement =
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+        if (!fsElement) return false;
+        return fsElement === container || container.contains(fsElement);
+    },
+
+    updateFullscreenLayout: function (instance) {
+        const container = document.getElementById(
+            `elcpGameContainer-${instance}`
+        );
+        if (!container) return;
+        const isFullscreen = $eXeEC.isContainerFullscreen(container);
+        $(container).toggleClass('ELCP-IsFullscreen', isFullscreen);
     },
 
     clearQuestions: function (instance) {

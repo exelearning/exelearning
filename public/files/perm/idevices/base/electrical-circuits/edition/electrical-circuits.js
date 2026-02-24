@@ -524,8 +524,7 @@ var $exeDevice = {
                                     <span class="toggle-visual"></span>
                                 </span>
                                 <label class="toggle-label" for="elceShowMinimize">${_('Show minimized.')} </label>
-                            </div>  
-   
+                            </div> 
                             <div class="toggle-item mb-3" data-target="elceAnswersRamdon" id="elceAnswersRamdonDiv">
                                 <span class="toggle-control">
                                     <input type="checkbox" class="toggle-input" id="elceAnswersRamdon" />
@@ -570,13 +569,7 @@ var $exeDevice = {
                                 <textarea id="elceFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
                             </div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <div class="toggle-item toggle-related m-0" data-target="elcePercentajeQuestions">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="elcePercentajeQuestions" checked>
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="elcePercentajeQuestions">%${_('Questions')}:</label>
-                                </div>
+                                <label for="elcePercentajeQuestionsValue">${_('% Questions')}:</label>
                                 <input type="number" name="elcePercentajeQuestionsValue" id="elcePercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
                                 <span id="elceNumeroPercentaje" class="ms-2">1/1</span>
                             </div>
