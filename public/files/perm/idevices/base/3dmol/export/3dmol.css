@@ -2025,3 +2025,16 @@ div:fullscreen .DMOLP-LinkMinimize {
     line-height: 1;
     width: 2.2em;
 }
+
+/* Fullscreen font size */
+.DMOLP-GameContainer:fullscreen,
+.DMOLP-GameContainer:-webkit-full-screen,
+.DMOLP-GameContainer:-moz-full-screen,
+.DMOLP-GameContainer:-ms-full-screen,
+.DMOLP-GameContainer:-o-full-screen {
+    font-size: 1.5em;
+}
+
+.DMOLP-GameContainer.DMOLP-IsFullscreen {
+    font-size: 1.5em;
+}

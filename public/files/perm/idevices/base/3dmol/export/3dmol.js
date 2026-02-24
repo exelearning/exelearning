@@ -878,6 +878,8 @@ var $eXe3Dmol = {
         mOptions.showCurrentIndex = 0;
         mOptions.visiteds = 0;
         mOptions.gameStarted = true;
+        mOptions.feedbackShown = false;
+        mOptions.obtainedClue = false;
 
         // Show first model and question
         $eXe3Dmol.showModelAtIndex(0, instance);
@@ -916,6 +918,16 @@ var $eXe3Dmol = {
                         .text(`${mOptions.msgs.msgInformation}: ${mOptions.itinerary.clueGame}`)
                         .show();
                     mOptions.obtainedClue = true;
+                }
+                if (mOptions.feedBack && !mOptions.feedbackShown) {
+                    const visitedPct = (mOptions.visiteds / mOptions.selectsGame.length) * 100;
+                    if (visitedPct >= mOptions.percentajeFB) {
+                        mOptions.feedbackShown = true;
+                        $(`#dmolpDivFeedBack-${instance}`)
+                            .find('.dmole-feedback-game')
+                            .show();
+                        $(`#dmolpDivFeedBack-${instance}`).show();
+                    }
                 }
                 $eXe3Dmol.showModelAtIndex(mOptions.showCurrentIndex, instance);
                 if (mOptions.isScorm > 0) {
