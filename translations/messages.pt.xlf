@@ -12015,7 +12015,7 @@
       </trans-unit>
       <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target>~Você deve revisar %s&percnt; do conteúdo da atividade antes de completar o questionário.  </target>
+        <target><![CDATA[~Você deve revisar %s&percnt; do conteúdo da atividade antes de completar o questionário.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -13144,6 +13144,26 @@
       <trans-unit id="yiopv0y" resname="Download Video">
         <source>Download Video</source>
         <target>~Descarregar vídeo</target>
+      </trans-unit>
+      <trans-unit id="hty5v5r" resname="Log in as">
+        <source>Log in as</source>
+        <target>~Iniciar sessão como</target>
+      </trans-unit>
+      <trans-unit id="4zxnutq" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target>~Não é possível se passar por usuários administradores</target>
+      </trans-unit>
+      <trans-unit id="svv31f9" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target>~Não é possível se passar pela sua própria conta</target>
+      </trans-unit>
+      <trans-unit id="txkgihb" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target>~Iniciar suplantação como {email}?</target>
+      </trans-unit>
+      <trans-unit id="v9t50fy" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target>~Falha ao iniciar a suplantação</target>
       </trans-unit>
     </body>
   </file>

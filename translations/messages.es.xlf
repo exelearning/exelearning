@@ -13240,6 +13240,26 @@
         <source>in</source>
         <target>en</target>
       </trans-unit>
+      <trans-unit id="r89xidq" resname="Log in as">
+        <source>Log in as</source>
+        <target>Iniciar sesión como</target>
+      </trans-unit>
+      <trans-unit id="ax7k7f9" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target>No se puede suplantar a los usuarios administradores</target>
+      </trans-unit>
+      <trans-unit id="eofmf7t" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target>No puedes suplantar tu propia cuenta</target>
+      </trans-unit>
+      <trans-unit id="a2mpqt3" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target>¿Iniciar suplantación como {email}?</target>
+      </trans-unit>
+      <trans-unit id="tctcuou" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target>Error al iniciar la suplantación</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

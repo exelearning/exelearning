@@ -13149,6 +13149,26 @@
         <source>Download Video</source>
         <target>~Deskargatu bideoa</target>
       </trans-unit>
+      <trans-unit id="kao7xt6" resname="Log in as">
+        <source>Log in as</source>
+        <target>~Saioa hasi honakoarekin</target>
+      </trans-unit>
+      <trans-unit id="s002brv" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target>~Ez da administratzaileen kontuak suplantatu ahal izango</target>
+      </trans-unit>
+      <trans-unit id="r8r8cds" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target>~Ez duzu zure kontua suplantatu ahal izango</target>
+      </trans-unit>
+      <trans-unit id="n128zg9" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target>~Hasi suplantazioa {email} bezala?</target>
+      </trans-unit>
+      <trans-unit id="ipen5j4" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target>~Errorea suplantazioa hasterakoan</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
