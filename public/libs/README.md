@@ -152,6 +152,9 @@
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
+*   Package: tikzjax
+    *   Copyright: Jim Fowler (kisonecat)
+    *   License: LPPL-1.3c
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
