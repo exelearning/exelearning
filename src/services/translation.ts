@@ -16,10 +16,12 @@ const DEBUG = process.env.APP_DEBUG === '1';
 export const LOCALES: Record<string, string> = {
     ca: 'Català',
     en: 'English',
+    de: 'Deutsch',
     eo: 'Esperanto',
     es: 'Español',
     eu: 'Euskara',
     gl: 'Galego',
+    it: 'Italiano',
     pt: 'Português',
     ro: 'Română',
     va: 'Valencià',
