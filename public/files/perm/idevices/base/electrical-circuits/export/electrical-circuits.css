@@ -154,7 +154,7 @@
     margin: 0 auto;
     padding: 0;
     width: 100%;
-    max-width: 600px;
+    max-width: 1000px;
     position: relative;
     padding-bottom: 1em;
     min-height: 200px;
@@ -260,7 +260,7 @@ a.ELCP-ModeBoardShow {
 /* Juego */
 .ELCP-GameContainer {
     margin: 0 auto;
-    max-width: 750px;
+    max-width: 1000px;
     padding: 1em 0.3em 0 0.3em;
     position: relative;
     width: 100%;
@@ -1711,11 +1711,13 @@ div:fullscreen .ELCP-LinkMinimize {
 .ELCP-GameContainer.ELCP-ShowMode:-o-full-screen .ELCP-ShowDescription {
     flex: 0 0 auto;
     order: 21 !important;
+    max-width: 90%;
 }
 
 .ELCP-GameContainer.ELCP-IsFullscreen.ELCP-ShowMode .ELCP-ShowDescription {
     flex: 0 0 auto;
     order: 21 !important;
+    max-width: 90%;
 }
 
 /* Feedback below description in show mode fullscreen */
@@ -1790,7 +1792,7 @@ div:fullscreen .ELCP-LinkMinimize {
     padding: 0.3em;
     text-align: center;
     max-width: 1024px;
-    width: 85%;
+    width: 100%;
     font-size: 1em;
 }
 
