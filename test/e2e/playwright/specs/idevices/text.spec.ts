@@ -2568,7 +2568,9 @@ test.describe('Text iDevice', () => {
             await extractBtn.click();
 
             // Handle the modal dialog for target folder name (pre-filled with "aaa_web")
-            await page.locator('#modalFileManager .media-library-rename-dialog').waitFor({ state: 'visible', timeout: 5000 });
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
             await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
             // Wait for extraction to complete - the folder "aaa_web" should appear

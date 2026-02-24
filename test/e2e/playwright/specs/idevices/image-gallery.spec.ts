@@ -1142,7 +1142,9 @@ test.describe('Image Gallery iDevice', () => {
             await page.click('.media-library-newfolder-btn');
 
             // Handle the modal dialog for folder name input
-            await page.locator('#modalFileManager .media-library-rename-dialog').waitFor({ state: 'visible', timeout: 5000 });
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
             await page.locator('#modalFileManager .rename-dialog-input').fill(folderName);
             await page.locator('#modalFileManager .rename-dialog-confirm').click();
 

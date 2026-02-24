@@ -402,7 +402,9 @@ test.describe('Collaborative File Manager', () => {
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
 
-            await pageA.locator('#modalFileManager .media-library-rename-dialog').waitFor({ state: 'visible', timeout: 5000 });
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
             await pageA.locator('#modalFileManager .rename-dialog-input').fill(originalFolderName);
             await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
@@ -603,7 +605,9 @@ test.describe('Collaborative File Manager', () => {
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
 
-            await pageA.locator('#modalFileManager .media-library-rename-dialog').waitFor({ state: 'visible', timeout: 5000 });
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
             await pageA.locator('#modalFileManager .rename-dialog-input').fill(folderName);
             await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
