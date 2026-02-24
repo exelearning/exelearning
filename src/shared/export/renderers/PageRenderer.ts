@@ -616,7 +616,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             html = this.replaceElpxProtocol(html, projectTitle);
         }
 
-        // Project properties sync for download-source-file and other iDevices using these classes
+        // Sync project properties for download-source-file and similar iDevices
         if (html.includes('exe-prop-')) {
             const safeTitle = this.escapeHtml(projectTitle || '-');
             const safeAuthor = this.escapeHtml(metadata?.author || '-');

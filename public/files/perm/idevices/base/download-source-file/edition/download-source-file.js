@@ -414,7 +414,7 @@ var $exeDevice = {
     save: function () {
         // Get the content
         if (tinymce.editors.length == 0) return $exeDevice.warningMessage; // The .exe-block-info is displayed
-        // Intructions
+        // Instructions
         var dpiDescription = tinymce.editors[0].getContent();
         if (dpiDescription == '') {
             eXe.app.alert(
@@ -425,7 +425,7 @@ var $exeDevice = {
             return false;
         }
 
-        // Bake live properties into saved HTML
+        // Inject properties into HTML
         var properties = eXe.app.getProjectProperties();
         var data1 = '-'; var data2 = '-'; var data3 = '-'; var data4 = '-';
         if (properties.pp_title && properties.pp_title.value) data1 = properties.pp_title.value;
