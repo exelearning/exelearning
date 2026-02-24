@@ -849,7 +849,7 @@ var $eXeEC = {
         // Create <script type="text/tikz"> via DOM so MutationObserver detects it
         const tikzScript = document.createElement('script');
         tikzScript.type = 'text/tikz';
-        tikzScript.dataset.texPackages = JSON.stringify({ 'circuitikz': '' });
+        tikzScript.dataset.texPackages = JSON.stringify({ 'circuitikz': '', 'amsmath': '', 'amssymb': '' });
         tikzScript.dataset.showConsole = 'true';
         tikzScript.textContent = '\\begin{document}' + tikzCode + '\\end{document}';
 
