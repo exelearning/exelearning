@@ -13149,6 +13149,26 @@
         <source>Download Video</source>
         <target>~Descarcă videoclip</target>
       </trans-unit>
+      <trans-unit id="0dczndn" resname="Log in as">
+        <source>Log in as</source>
+        <target>~Conectează-te ca</target>
+      </trans-unit>
+      <trans-unit id="3pg4oxl" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target>~Nu poți să te deghizezi în utilizatori administratori</target>
+      </trans-unit>
+      <trans-unit id="i3tc6b9" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target>~Nu poți să te deghizezi în propria ta cont</target>
+      </trans-unit>
+      <trans-unit id="jp15kyv" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target>~Începi să te deghizezi ca {email}?</target>
+      </trans-unit>
+      <trans-unit id="yj3v1v0" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target>~Eșec la începutul deghizării</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
