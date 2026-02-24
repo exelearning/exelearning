@@ -116,6 +116,19 @@ export default class ModalFilemanager extends Modal {
         this.previewAudio = this.modalElement.querySelector('.media-library-preview-audio');
         this.previewFile = this.modalElement.querySelector('.media-library-preview-file');
         this.previewPdf = this.modalElement.querySelector('.media-library-preview-pdf');
+        if (!this.previewPdf) {
+            const previewContainer = this.modalElement.querySelector('.media-library-preview');
+            if (previewContainer) {
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.className = 'media-library-preview-pdf';
+                pdfIframe.style.display = 'none';
+                pdfIframe.style.width = '100%';
+                pdfIframe.style.height = '250px';
+                pdfIframe.style.border = '1px solid #ccc';
+                previewContainer.insertBefore(pdfIframe, this.previewFile || null);
+                this.previewPdf = pdfIframe;
+            }
+        }
 
         // Folder navigation elements
         this.breadcrumbs = this.modalElement.querySelector('.media-library-breadcrumbs');
