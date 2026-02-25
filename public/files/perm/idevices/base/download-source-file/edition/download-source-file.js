@@ -141,10 +141,10 @@ var $exeDevice = {
         if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
             var doc = tinymce.editors[0].getDoc();
             if (doc) {
-                $('.exe-prop-title', doc).html(data1);
-                $('.exe-prop-description', doc).html(data2);
-                $('.exe-prop-author', doc).html(data3);
-                $('.exe-prop-license', doc).html(data4);
+                $('.exe-prop-locked .exe-prop-title', doc).html(data1);
+                $('.exe-prop-locked .exe-prop-description', doc).html(data2);
+                $('.exe-prop-locked .exe-prop-author', doc).html(data3);
+                $('.exe-prop-locked .exe-prop-license', doc).html(data4);
             }
         }
         var desc = $('#dpiDescription');
@@ -152,10 +152,10 @@ var $exeDevice = {
             var content = desc.val();
             if (content) {
                 var wrapper = $('<div></div>').html(content);
-                $('.exe-prop-title', wrapper).html(data1);
-                $('.exe-prop-description', wrapper).html(data2);
-                $('.exe-prop-author', wrapper).html(data3);
-                $('.exe-prop-license', wrapper).html(data4);
+                $('.exe-prop-locked .exe-prop-title', wrapper).html(data1);
+                $('.exe-prop-locked .exe-prop-description', wrapper).html(data2);
+                $('.exe-prop-locked .exe-prop-author', wrapper).html(data3);
+                $('.exe-prop-locked .exe-prop-license', wrapper).html(data4);
                 desc.val(wrapper.html());
             }
         }
@@ -203,10 +203,12 @@ var $exeDevice = {
         );
         var str7 = c_('Download .elp file');
 
-        var pData1 = '<span class="exe-prop-title mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
-        var pData2 = '<span class="exe-prop-description mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
-        var pData3 = '<span class="exe-prop-author mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
-        var pData4 = '<span class="exe-prop-license mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>';
+        // Note: The td wraps the span with mceNonEditable so the entire cell is immutable to the user
+        var tdClass = 'class="mceNonEditable exe-prop-locked " style="background-color: #f7f7f7; color: #666; cursor: not-allowed;"';
+        var pData1 = '<span class="exe-prop-title"></span>';
+        var pData2 = '<span class="exe-prop-description"></span>';
+        var pData3 = '<span class="exe-prop-author"></span>';
+        var pData4 = '<span class="exe-prop-license"></span>';
 
         var defaultContent =
             '\
@@ -219,7 +221,7 @@ var $exeDevice = {
 						<th>' +
             str2 +
             ' </th>\
-						<td>' +
+						<td ' + tdClass + '>' +
             pData1 +
             ' </td>\
 					</tr>\
@@ -227,7 +229,7 @@ var $exeDevice = {
 						<th>' +
             str3 +
             ' </th>\
-						<td>' +
+						<td ' + tdClass + '>' +
             pData2 +
             ' </td>\
 					</tr>\
@@ -235,7 +237,7 @@ var $exeDevice = {
 						<th>' +
             str4 +
             ' </th>\
-						<td>' +
+						<td ' + tdClass + '>' +
             pData3 +
             ' </td>\
 					</tr>\
@@ -243,7 +245,7 @@ var $exeDevice = {
 						<th>' +
             str5 +
             ' </th>\
-						<td>' +
+						<td ' + tdClass + '>' +
             pData4 +
             ' </td>\
 					</tr>\
@@ -363,10 +365,24 @@ var $exeDevice = {
                 if (table.length == 1) {
                     var tds = $('td', table);
                     if (tds.length == 4) {
-                        if ($(tds[0]).find('.exe-prop-title').length == 0) $(tds[0]).html('<span class="exe-prop-title mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
-                        if ($(tds[1]).find('.exe-prop-description').length == 0) $(tds[1]).html('<span class="exe-prop-description mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
-                        if ($(tds[2]).find('.exe-prop-author').length == 0) $(tds[2]).html('<span class="exe-prop-author mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
-                        if ($(tds[3]).find('.exe-prop-license').length == 0) $(tds[3]).html('<span class="exe-prop-license mceNonEditable" style="opacity: 0.8; cursor: not-allowed;"></span>');
+                        var tdClass = 'mceNonEditable exe-prop-locked';
+                        var tdStyle = 'background-color: #f7f7f7; color: #666; cursor: not-allowed;';
+                        
+                        var ensureTdLocked = function($td, propClass) {
+                            $td.attr('class', tdClass);
+                            $td.attr('style', tdStyle);
+                            if ($td.find('.' + propClass).length == 0) {
+                                $td.html('<span class="' + propClass + '"></span>');
+                            } else {
+                                // If span already exists, ensure it doesn't have legacy mceNonEditable classes
+                                $td.find('.' + propClass).removeClass('mceNonEditable').css({'opacity': '', 'cursor': ''});
+                            }
+                        };
+
+                        ensureTdLocked($(tds[0]), 'exe-prop-title');
+                        ensureTdLocked($(tds[1]), 'exe-prop-description');
+                        ensureTdLocked($(tds[2]), 'exe-prop-author');
+                        ensureTdLocked($(tds[3]), 'exe-prop-license');
                     }
                 }
                 $('#dpiDescription').val(dpiDescription.html());
@@ -434,10 +450,56 @@ var $exeDevice = {
         if (properties.pp_license && properties.pp_license.value) data4 = this.completeLicense(properties.pp_license.value);
 
         var descWrapper = $('<div></div>').html(dpiDescription);
+
+        // Remove cloned property spans from newly added rows
+        // to prevent overwriting user input in cloned rows
+        var fixClonedRows = function(className) {
+            var wrappers = descWrapper[0] ? [descWrapper[0]] : descWrapper.toArray();
+            for (var w = 0; w < wrappers.length; w++) {
+                var elements = wrappers[w].querySelectorAll('.' + className);
+                for (var i = 0; i < elements.length; i++) {
+                    var el = elements[i];
+                    var td = el.closest ? el.closest('td') : null;
+                    // Fallback for older browsers if closest isn't available
+                    if (!td) {
+                        var curr = el.parentNode;
+                        while(curr && curr.tagName !== 'TD' && curr.tagName !== 'BODY') curr = curr.parentNode;
+                        if (curr && curr.tagName === 'TD') td = curr;
+                    }
+                    
+                    // Legitimate cells retain the exe-prop-locked class. 
+                    // Rows cloned by TinyMCE drop classes but keep contents/inline styles.
+                    if (td && !td.classList.contains('exe-prop-locked')) {
+                        td.style.backgroundColor = '';
+                        td.style.color = '';
+                        td.style.cursor = '';
+                        if (!td.getAttribute('style')) td.removeAttribute('style');
+                        
+                        // Strip the class so it cannot be targeted
+                        el.classList.remove(className);
+                        
+                        // Unwrap the span
+                        var parent = el.parentNode;
+                        while (el.firstChild) {
+                            parent.insertBefore(el.firstChild, el);
+                        }
+                        parent.removeChild(el);
+                    }
+                }
+            }
+        };
+
+        fixClonedRows('exe-prop-title');
+        fixClonedRows('exe-prop-description');
+        fixClonedRows('exe-prop-author');
+        fixClonedRows('exe-prop-license');
+
         $('.exe-prop-title', descWrapper).html(data1);
         $('.exe-prop-description', descWrapper).html(data2);
         $('.exe-prop-author', descWrapper).html(data3);
         $('.exe-prop-license', descWrapper).html(data4);
+        
+
         dpiDescription = descWrapper.html();
         // Button text
         var dpiButtonText = $('#dpiButtonText').val();

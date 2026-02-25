@@ -590,7 +590,10 @@ test.describe('Download Source File iDevice', () => {
         test('should sync project properties to iDevice read-only cells', async ({
             authenticatedPage,
             createProject,
-        }) => {
+        }, testInfo) => {
+            if (testInfo.project.name === 'static') {
+                test.skip(); // Dynamic sync relies on Yjs which is not available in static mode
+            }
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Sync Test Init');

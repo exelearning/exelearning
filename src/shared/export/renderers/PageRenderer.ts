@@ -623,21 +623,24 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             const safeDesc = this.escapeHtml(metadata?.description || '-');
             const safeLicense = this.escapeHtml(metadata?.license ? formatLicenseText(metadata.license) : '-');
 
+            // Strip out the read-only classes from the <td> wrappers just in case they slipped through
+            html = html.replace(/<td class="mceNonEditable exe-prop-locked "[^>]*>/g, '<td>');
+
             html = html.replace(
                 /<span class="exe-prop-title[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-title mceNonEditable" style="opacity: 0.8; cursor: not-allowed;">${safeTitle}</span>`,
+                `<span class="exe-prop-title">${safeTitle}</span>`,
             );
             html = html.replace(
                 /<span class="exe-prop-author[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-author mceNonEditable" style="opacity: 0.8; cursor: not-allowed;">${safeAuthor}</span>`,
+                `<span class="exe-prop-author">${safeAuthor}</span>`,
             );
             html = html.replace(
                 /<span class="exe-prop-description[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-description mceNonEditable" style="opacity: 0.8; cursor: not-allowed;">${safeDesc}</span>`,
+                `<span class="exe-prop-description">${safeDesc}</span>`,
             );
             html = html.replace(
                 /<span class="exe-prop-license[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-license mceNonEditable" style="opacity: 0.8; cursor: not-allowed;">${safeLicense}</span>`,
+                `<span class="exe-prop-license">${safeLicense}</span>`,
             );
         }
 
