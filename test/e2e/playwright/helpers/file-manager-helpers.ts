@@ -416,20 +416,26 @@ export async function fileExistsInManager(page: Page, fileName: string): Promise
 
 /**
  * Create a new folder with the given name.
- * Handles the native dialog for folder name input.
+ * Handles the modal dialog for folder name input.
  *
  * @param page - Playwright page
  * @param folderName - Name for the new folder
  * @returns true if folder was created successfully
  */
 export async function createFolderWithName(page: Page, folderName: string): Promise<boolean> {
-    // Set up dialog handler BEFORE clicking (using page.once pattern)
-    page.once('dialog', async dialog => {
-        await dialog.accept(folderName);
-    });
-
     const newFolderBtn = page.locator('#modalFileManager .media-library-newfolder-btn');
     await newFolderBtn.click();
+
+    // Wait for the rename/new-folder modal dialog to appear
+    const renameDialog = page.locator('#modalFileManager .media-library-rename-dialog');
+    await renameDialog.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Fill in the folder name
+    const renameInput = page.locator('#modalFileManager .rename-dialog-input');
+    await renameInput.fill(folderName);
+
+    // Confirm
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     // Wait for folder to appear or for error
     try {

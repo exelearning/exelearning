@@ -399,13 +399,14 @@ test.describe('Collaborative File Manager', () => {
 
             const originalFolderName = `SharedFolder_${Date.now()}`;
 
-            // Create folder with dialog handler
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(originalFolderName);
-            });
-
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
+
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await pageA.locator('#modalFileManager .rename-dialog-input').fill(originalFolderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             await pageA.waitForSelector(
                 `#modalFileManager .media-library-folder[data-folder-name="${originalFolderName}"]`,
@@ -601,12 +602,14 @@ test.describe('Collaborative File Manager', () => {
             const folderName = `SharedAssets_${Date.now()}`;
 
             // Create folder
-            pageA.once('dialog', async dialog => {
-                await dialog.accept(folderName);
-            });
-
             const newFolderBtn = pageA.locator('#modalFileManager .media-library-newfolder-btn');
             await newFolderBtn.click();
+
+            await pageA
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await pageA.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+            await pageA.locator('#modalFileManager .rename-dialog-confirm').click();
 
             await pageA.waitForSelector(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`, {
                 timeout: 10000,
