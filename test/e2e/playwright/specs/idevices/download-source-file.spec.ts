@@ -67,7 +67,7 @@ async function selectPageNode(page: Page): Promise<void> {
             undefined,
             { timeout: 10000 },
         )
-        .catch(() => { });
+        .catch(() => {});
 }
 
 /**
@@ -116,7 +116,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
             undefined,
             { timeout: 15000 },
         )
-        .catch(() => { });
+        .catch(() => {});
 }
 
 /**
@@ -235,7 +235,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
             undefined,
             { timeout: 10000 },
         )
-        .catch(() => { });
+        .catch(() => {});
 
     await page.waitForTimeout(500);
 }
@@ -352,7 +352,7 @@ test.describe('Download Source File iDevice', () => {
                     undefined,
                     { timeout: 15000 },
                 )
-                .catch(() => { });
+                .catch(() => {});
 
             // Verify the download link has the custom text
             const downloadLink = page.locator('#node-content .download-source-file .exe-download-package-link a');
