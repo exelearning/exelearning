@@ -39,8 +39,8 @@ describe('translation service', () => {
             expect(PACKAGE_LOCALES.zh_CN).toBeDefined();
         });
 
-        it('should have DEFAULT_LOCALE as en', () => {
-            expect(DEFAULT_LOCALE).toBe('en');
+        it('should have DEFAULT_LOCALE as es (APP_LOCALE or es)', () => {
+            expect(DEFAULT_LOCALE).toBe(process.env.APP_LOCALE || 'es');
         });
 
         it('should have TRANS_PREFIX defined', () => {
