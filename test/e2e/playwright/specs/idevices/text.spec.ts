@@ -2562,26 +2562,19 @@ test.describe('Text iDevice', () => {
             // Wait for dropdown menu to be visible
             await page.waitForSelector('#modalFileManager .dropdown-menu.show', { timeout: 5000 });
 
-            // Handle dialogs: prompt for folder name and alert for success
-            // Note: dialog.accept() with explicit value ensures consistent behavior across browsers
-            page.on('dialog', async dialog => {
-                if (dialog.type() === 'prompt') {
-                    // Accept prompt with the suggested folder name (ZIP filename without extension)
-                    await dialog.accept('aaa_web');
-                } else {
-                    // Accept alert dialogs (extraction success message)
-                    await dialog.accept();
-                }
-            });
-
             // Click extract button (it should be visible now since a ZIP is selected)
             const extractBtn = page.locator('#modalFileManager .dropdown-item.media-library-extract-btn');
             await expect(extractBtn).toBeVisible({ timeout: 5000 });
             await extractBtn.click();
 
+            // Handle the modal dialog for target folder name (pre-filled with "aaa_web")
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
+
             // Wait for extraction to complete - the folder "aaa_web" should appear
-            // (the prompt dialog for folder name is auto-accepted by the dialog handler)
-            // After extraction, an alert "Extracted X files successfully" appears (also auto-accepted)
+            // (success is shown via toast, no dialog to dismiss)
             await page.waitForFunction(
                 () => {
                     const items = document.querySelectorAll('#modalFileManager .media-library-item');
