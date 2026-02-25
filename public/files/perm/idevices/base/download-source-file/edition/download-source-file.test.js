@@ -246,7 +246,7 @@ describe('download-source-file iDevice (edition)', () => {
       $exeDevice.createForm();
 
       const content = container.innerHTML;
-      expect(content).toContain('<td class="mceNonEditable exe-prop-locked "');
+      expect(content).toContain('<td class="mceNonEditable exe-prop-locked"');
       expect(content).toContain('<span class="exe-prop-title">');
       expect(content).toContain('<span class="exe-prop-description">');
       expect(content).toContain('<span class="exe-prop-author">');

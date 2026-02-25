@@ -204,7 +204,8 @@ var $exeDevice = {
         var str7 = c_('Download .elp file');
 
         // Note: The td wraps the span with mceNonEditable so the entire cell is immutable to the user
-        var tdClass = 'class="mceNonEditable exe-prop-locked " style="background-color: #f7f7f7; color: #666; cursor: not-allowed;"';
+        // Styling is handled by global tinymce_5_extra.css to prevent inline styles from cloning to new rows
+        var tdClass = 'class="mceNonEditable exe-prop-locked"';
         var pData1 = '<span class="exe-prop-title"></span>';
         var pData2 = '<span class="exe-prop-description"></span>';
         var pData3 = '<span class="exe-prop-author"></span>';
@@ -366,11 +367,10 @@ var $exeDevice = {
                     var tds = $('td', table);
                     if (tds.length == 4) {
                         var tdClass = 'mceNonEditable exe-prop-locked';
-                        var tdStyle = 'background-color: #f7f7f7; color: #666; cursor: not-allowed;';
                         
                         var ensureTdLocked = function($td, propClass) {
                             $td.attr('class', tdClass);
-                            $td.attr('style', tdStyle);
+                            $td.removeAttr('style'); // Strip legacy inline styles dynamically so they are no longer cloned
                             if ($td.find('.' + propClass).length == 0) {
                                 $td.html('<span class="' + propClass + '"></span>');
                             } else {

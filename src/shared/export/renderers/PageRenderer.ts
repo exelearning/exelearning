@@ -624,7 +624,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             const safeLicense = this.escapeHtml(metadata?.license ? formatLicenseText(metadata.license) : '-');
 
             // Strip out the read-only classes from the <td> wrappers just in case they slipped through
-            html = html.replace(/<td class="mceNonEditable exe-prop-locked "[^>]*>/g, '<td>');
+            html = html.replace(/<td class="mceNonEditable exe-prop-locked\s*"[^>]*>/g, '<td>');
 
             html = html.replace(
                 /<span class="exe-prop-title[^>]*>.*?<\/span>/g,
@@ -975,10 +975,10 @@ ${userFooterHtml}</div></footer>`;
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-})}
+                author: options.author,
+                description: options.description,
+                license: options.license,
+            })}
 </div>
 </section>\n`;
         }

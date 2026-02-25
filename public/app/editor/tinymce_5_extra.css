@@ -18,3 +18,10 @@ body#tinymce{padding:1em}
     padding: 4px 8px;
     text-align: left;
 }
+
+/* download-source-file iDevice read-only cells */
+td.exe-prop-locked {
+    background-color: #f7f7f7 !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+}
