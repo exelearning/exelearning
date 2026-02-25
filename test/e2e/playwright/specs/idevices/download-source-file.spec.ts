@@ -67,7 +67,7 @@ async function selectPageNode(page: Page): Promise<void> {
             undefined,
             { timeout: 10000 },
         )
-        .catch(() => {});
+        .catch(() => { });
 }
 
 /**
@@ -116,7 +116,7 @@ async function addDownloadSourceFileIdeviceFromPanel(page: Page): Promise<void> 
             undefined,
             { timeout: 15000 },
         )
-        .catch(() => {});
+        .catch(() => { });
 }
 
 /**
@@ -235,7 +235,7 @@ async function saveDownloadSourceFileIdevice(page: Page): Promise<void> {
             undefined,
             { timeout: 10000 },
         )
-        .catch(() => {});
+        .catch(() => { });
 
     await page.waitForTimeout(500);
 }
@@ -352,7 +352,7 @@ test.describe('Download Source File iDevice', () => {
                     undefined,
                     { timeout: 15000 },
                 )
-                .catch(() => {});
+                .catch(() => { });
 
             // Verify the download link has the custom text
             const downloadLink = page.locator('#node-content .download-source-file .exe-download-package-link a');
@@ -592,7 +592,7 @@ test.describe('Download Source File iDevice', () => {
             createProject,
         }, testInfo) => {
             if (testInfo.project.name === 'static') {
-                test.skip(); // Dynamic sync relies on Yjs which is not available in static mode
+                test.skip(); // Skip in static mode
             }
             const page = authenticatedPage;
 
@@ -626,6 +626,9 @@ test.describe('Download Source File iDevice', () => {
 
             // Wait for the Yjs observer debounce/timeout to process the property change
             await page.waitForTimeout(1500);
+
+            // Navigate back to the Authoring tab (closes the properties modal)
+            await selectPageNode(page);
 
             // Important: we do not click "Edit" and save. The DOM should dynamically update
             // because of our frontend syncProperties logic in the export js file.

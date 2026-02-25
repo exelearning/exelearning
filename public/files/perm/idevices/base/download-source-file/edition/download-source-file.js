@@ -453,10 +453,10 @@ var $exeDevice = {
 
         // Remove cloned property spans from newly added rows
         // to prevent overwriting user input in cloned rows
-        var fixClonedRows = function(className) {
+        var fixClonedRows = function() {
             var wrappers = descWrapper[0] ? [descWrapper[0]] : descWrapper.toArray();
             for (var w = 0; w < wrappers.length; w++) {
-                var elements = wrappers[w].querySelectorAll('.' + className);
+                var elements = wrappers[w].querySelectorAll('.exe-prop-title, .exe-prop-description, .exe-prop-author, .exe-prop-license');
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i];
                     var td = el.closest ? el.closest('td') : null;
@@ -476,7 +476,7 @@ var $exeDevice = {
                         if (!td.getAttribute('style')) td.removeAttribute('style');
                         
                         // Strip the class so it cannot be targeted
-                        el.classList.remove(className);
+                        el.className = el.className.replace(/exe-prop-[a-z]+/g, '').trim();
                         
                         // Unwrap the span
                         var parent = el.parentNode;
@@ -489,10 +489,7 @@ var $exeDevice = {
             }
         };
 
-        fixClonedRows('exe-prop-title');
-        fixClonedRows('exe-prop-description');
-        fixClonedRows('exe-prop-author');
-        fixClonedRows('exe-prop-license');
+        fixClonedRows();
 
         $('.exe-prop-title', descWrapper).html(data1);
         $('.exe-prop-description', descWrapper).html(data2);
