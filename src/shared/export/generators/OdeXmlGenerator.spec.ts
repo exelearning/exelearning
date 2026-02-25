@@ -351,7 +351,6 @@ describe('OdeXmlGenerator', () => {
                                 teacherOnly: 'false',
                                 allowToggle: 'true',
                                 minimized: 'false',
-                                identifier: 'my-block',
                                 cssClass: 'custom-class',
                             },
                         },
@@ -391,7 +390,6 @@ describe('OdeXmlGenerator', () => {
                                     structureProperties: {
                                         visibility: 'true',
                                         teacherOnly: 'false',
-                                        identifier: 'my-comp',
                                         cssClass: 'custom',
                                     },
                                 },
@@ -405,8 +403,6 @@ describe('OdeXmlGenerator', () => {
 
             expect(xml).toContain('<odeComponentsProperties>');
             expect(xml).toContain('<key>visibility</key>');
-            expect(xml).toContain('<key>identifier</key>');
-            expect(xml).toContain('<value>my-comp</value>');
         });
     });
 

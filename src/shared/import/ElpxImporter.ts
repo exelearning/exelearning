@@ -450,7 +450,7 @@ export class ElpxImporter {
                     }
                 }
                 this.logger.log('[ElpxImporter] All pages created');
-            });
+            }, this.ydoc.clientID);
             this.logger.log('[ElpxImporter] Transaction completed successfully');
 
             // Structure imported (80%)
@@ -557,7 +557,7 @@ export class ElpxImporter {
                     }
                 }
                 this.logger.log('[ElpxImporter] All legacy pages created');
-            });
+            }, this.ydoc.clientID);
             this.logger.log('[ElpxImporter] Legacy transaction completed successfully');
 
             // Structure imported (80%)
@@ -1100,7 +1100,7 @@ export class ElpxImporter {
 
         // Merge properties from jsonProperties that override structure props
         if (compData.properties && typeof compData.properties === 'object') {
-            const propsToMerge = ['visibility', 'teacherOnly', 'identifier', 'cssClass'];
+            const propsToMerge = ['visibility', 'teacherOnly', 'cssClass'];
             for (const key of propsToMerge) {
                 if ((compData.properties as Record<string, unknown>)[key] !== undefined) {
                     const value = (compData.properties as Record<string, unknown>)[key];

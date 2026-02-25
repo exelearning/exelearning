@@ -38,14 +38,14 @@ services:
       
       # Admin user (created/updated when ADMIN_PASSWORD is set)
       ADMIN_EMAIL: "${ADMIN_EMAIL}"
-      # ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
 
       API_JWT_SECRET: "${API_JWT_SECRET:-ChangeThisToASecretForMariaDBDeployment}"
     depends_on:
       - mariadb
 
   mariadb:
-    image: mariadb:12.1
+    image: mariadb:12.2
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD:-root}"

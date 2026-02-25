@@ -17,6 +17,8 @@
  *   bridge.init();
  */
 
+import { applyHideUI } from './ui-visibility.js';
+
 // Use global AppLogger for debug-controlled logging
 const getLogger = () => window.AppLogger || console;
 
@@ -33,8 +35,7 @@ export default class EmbeddingBridge {
         this.version = window.eXeLearning?.version || 'unknown';
         this.messageHandler = null;
 
-        // Pending requests awaiting response
-        this.pendingRequests = new Map();
+        this._documentReadyHandler = null;
     }
 
     /**
@@ -59,7 +60,46 @@ export default class EmbeddingBridge {
             capabilities: this.getCapabilities(),
         }, '*');
 
+        // Listen for document ready and announce DOCUMENT_LOADED to parent
+        this._listenForDocumentReady();
+
         getLogger().log('[EmbeddingBridge] Initialized, announced ready to parent');
+    }
+
+    /**
+     * Listen for window.eXeLearning.documentReady and send DOCUMENT_LOADED to parent
+     * @private
+     */
+    _listenForDocumentReady() {
+        this._documentReadyHandler = this._announceDocumentLoaded.bind(this);
+
+        const documentReady = window.eXeLearning?.documentReady;
+        if (!documentReady || typeof documentReady.then !== 'function') {
+            window.addEventListener('EXE_DOCUMENT_READY', this._documentReadyHandler);
+            return;
+        }
+
+        documentReady.then(() => this._announceDocumentLoaded());
+        window.addEventListener('EXE_DOCUMENT_READY', this._documentReadyHandler);
+    }
+
+    /**
+     * Announce document readiness to the parent window
+     * @private
+     */
+    _announceDocumentLoaded() {
+        const bridge = this.app.project?._yjsBridge;
+        const documentManager = bridge?.documentManager;
+        const navigation = documentManager?.getNavigation?.();
+
+        window.parent.postMessage({
+            type: 'DOCUMENT_LOADED',
+            projectId: bridge?.projectId || null,
+            isDirty: documentManager?.isDirty || false,
+            pageCount: navigation?.length || 0,
+        }, this.parentOrigin || '*');
+
+        getLogger().log('[EmbeddingBridge] Announced DOCUMENT_LOADED to parent');
     }
 
     /**
@@ -70,7 +110,10 @@ export default class EmbeddingBridge {
             window.removeEventListener('message', this.messageHandler);
             this.messageHandler = null;
         }
-        this.pendingRequests.clear();
+        if (this._documentReadyHandler) {
+            window.removeEventListener('EXE_DOCUMENT_READY', this._documentReadyHandler);
+            this._documentReadyHandler = null;
+        }
     }
 
     /**
@@ -82,6 +125,9 @@ export default class EmbeddingBridge {
             'OPEN_FILE',         // Open .elpx file from bytes
             'REQUEST_SAVE',      // Get current project as bytes
             'GET_PROJECT_INFO',  // Get project metadata
+            'REQUEST_EXPORT',    // Export project in any format
+            'GET_STATE',         // Get editor state (dirty, page count)
+            'CONFIGURE',         // Runtime UI configuration
         ];
     }
 
@@ -125,6 +171,18 @@ export default class EmbeddingBridge {
 
                 case 'GET_PROJECT_INFO':
                     await this.handleGetProjectInfo(requestId);
+                    break;
+
+                case 'REQUEST_EXPORT':
+                    await this.handleExportRequest(data, requestId);
+                    break;
+
+                case 'GET_STATE':
+                    this.handleGetState(requestId);
+                    break;
+
+                case 'CONFIGURE':
+                    this.handleConfigure(data, requestId);
                     break;
 
                 default:
@@ -176,14 +234,23 @@ export default class EmbeddingBridge {
         const uuid = crypto.randomUUID();
         window.eXeLearning.projectId = uuid;
 
-        // Import the file
+        // Import the file using the current ProjectManager API, with legacy fallbacks.
         const project = this.app.project;
-        if (project && typeof project.importElpxFile === 'function') {
+        if (project && typeof project.importElpDirectly === 'function') {
+            await project.importElpDirectly(file, { clearExisting: true });
+        } else if (project && typeof project.importFromElpxViaYjs === 'function') {
+            await project.importFromElpxViaYjs(file, { clearExisting: true });
+        } else if (project && typeof project.importElpxFile === 'function') {
             await project.importElpxFile(file);
         } else if (project?._yjsBridge?.importer) {
-            await project._yjsBridge.importer.importFromFile(file);
+            await project._yjsBridge.importer.importFromFile(file, { clearExisting: true });
         } else {
             throw new Error('Project import not available');
+        }
+
+        // OPEN_FILE runs outside the standard "open file" modal flow, so refresh UI explicitly.
+        if (project && typeof project.refreshAfterDirectImport === 'function') {
+            await project.refreshAfterDirectImport();
         }
 
         this.postToParent({
@@ -255,6 +322,130 @@ export default class EmbeddingBridge {
             pageCount: navigation?.length || 0,
             modifiedAt: metadata?.get('modifiedAt'),
         });
+    }
+
+    /**
+     * Handle REQUEST_EXPORT message
+     * Exports the project in any supported format via SharedExporters.quickExport()
+     * @param {Object} data - { format: string, filename: string }
+     * @param {string} requestId
+     */
+    async handleExportRequest(data, requestId) {
+        const format = data?.format || 'elpx';
+        const project = this.app.project;
+        if (!project?._yjsBridge) {
+            throw new Error('No project loaded');
+        }
+
+        const SharedExporters = window.SharedExporters;
+        if (!SharedExporters?.quickExport) {
+            throw new Error('Export system not available');
+        }
+
+        const bridge = project._yjsBridge;
+        const exportOptions = { ...(data?.options || {}) };
+        if (data?.filename && !exportOptions.filename) {
+            exportOptions.filename = data.filename;
+        }
+
+        const result = await SharedExporters.quickExport(
+            format,
+            bridge.documentManager,
+            null,  // assetCache (legacy)
+            bridge.resourceFetcher,
+            exportOptions,
+            bridge.assetManager,
+        );
+
+        if (!result.success || !result.data) {
+            throw new Error(result.error || 'Export failed');
+        }
+
+        const { bytes, mimeType } = await this.normalizeExportData(result.data);
+        const filename = data?.filename || result.filename || this.getDefaultExportFilename(format);
+
+        this.postToParent({
+            type: 'EXPORT_FILE',
+            requestId,
+            bytes,
+            filename,
+            format,
+            mimeType,
+            size: bytes.byteLength,
+        });
+    }
+
+    /**
+     * Normalize export payload to ArrayBuffer
+     * @param {ArrayBuffer|Blob|TypedArray} data
+     * @returns {Promise<{bytes: ArrayBuffer, mimeType: string}>}
+     */
+    async normalizeExportData(data) {
+        if (data instanceof Blob) {
+            return {
+                bytes: await data.arrayBuffer(),
+                mimeType: data.type || 'application/octet-stream',
+            };
+        }
+        if (data instanceof ArrayBuffer) {
+            return { bytes: data, mimeType: 'application/octet-stream' };
+        }
+        if (ArrayBuffer.isView(data)) {
+            return {
+                bytes: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+                mimeType: 'application/octet-stream',
+            };
+        }
+        throw new Error('Unsupported export data format');
+    }
+
+    /**
+     * Get default export filename by format
+     * @param {string} format
+     * @returns {string}
+     */
+    getDefaultExportFilename(format) {
+        const normalized = String(format || '').toLowerCase().replace('-', '');
+        const extensionByFormat = {
+            elp: 'elpx',
+            elpx: 'elpx',
+            epub: 'epub',
+            epub3: 'epub',
+            component: 'elp',
+            block: 'elp',
+            idevice: 'elp',
+        };
+        const ext = extensionByFormat[normalized] || 'zip';
+        return `project.${ext}`;
+    }
+
+    /**
+     * Handle GET_STATE message
+     * Returns current editor state (dirty flag, project loaded, page count)
+     * @param {string} requestId
+     */
+    handleGetState(requestId) {
+        const bridge = this.app.project?._yjsBridge;
+        this.postToParent({
+            type: 'STATE',
+            requestId,
+            isDirty: bridge?.documentManager?.isDirty || false,
+            hasProject: !!bridge,
+            pageCount: bridge?.documentManager?.getNavigation()?.length || 0,
+        });
+    }
+
+    /**
+     * Handle CONFIGURE message
+     * Allows runtime UI configuration (show/hide elements)
+     * @param {Object} data - { hideUI: { fileMenu: bool, saveButton: bool, ... } }
+     * @param {string} requestId
+     */
+    handleConfigure(data, requestId) {
+        if (data?.hideUI) {
+            applyHideUI(data.hideUI);
+        }
+        this.postToParent({ type: 'CONFIGURE_SUCCESS', requestId });
     }
 
     /**

@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures/auth.fixture';
+import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import type { Page, Download } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -18,6 +18,7 @@ import {
     importComponent,
     gotoWorkarea,
 } from '../helpers/workarea-helpers';
+import { pressUndo, waitForUndoAvailable } from '../helpers/undo-redo-helpers';
 
 /**
  * E2E Tests for Page Export/Import
@@ -137,7 +138,7 @@ test.describe('Page Export with Images', () => {
 
         // 2. Navigate to "Inicio" page (has images)
         await navigateToPageByTitle(page, 'Inicio');
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // Get the node ID from navigation
         const nodeId = await page.evaluate(() => {
@@ -201,7 +202,7 @@ test.describe('Page Export with Images', () => {
 
         // 2. Select the first non-root page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(500);
 
         // Get the node ID from navigation
         const nodeId = await page.evaluate(() => {
@@ -212,7 +213,7 @@ test.describe('Page Export with Images', () => {
         if (!nodeId) {
             // Try to select a different page
             await selectPageByIndex(page, 1);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
         }
 
         const finalNodeId = await page.evaluate(() => {
@@ -288,7 +289,7 @@ test.describe('Page Export with Images', () => {
 
         // 2. Navigate to "Inicio" page (has 00.jpg image)
         await navigateToPageByTitle(page, 'Inicio');
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(500);
 
         const inicioNodeId = await page.evaluate(() => {
             const selected = document.querySelector('.nav-element.selected');
@@ -338,7 +339,8 @@ test.describe('Page Export with Images', () => {
         console.log('Page export correctly filtered assets - only referenced assets included');
     });
 
-    test('should import exported page to new project', async ({ authenticatedPage, createProject }) => {
+    test('should import exported page to new project', async ({ authenticatedPage, createProject }, testInfo) => {
+        skipInStaticMode(test, testInfo, 'Requires Yjs undo manager in dynamic mode');
         /**
          * Test page import functionality:
          * 1. Export a page with images
@@ -365,7 +367,7 @@ test.describe('Page Export with Images', () => {
 
         // 2. Navigate to "Inicio" page (which has images)
         await navigateToPageByTitle(page, 'Inicio');
-        await page.waitForTimeout(1500);
+        await page.waitForTimeout(500);
 
         const nodeId = await page.evaluate(() => {
             const selected = document.querySelector('.nav-element.selected');
@@ -396,7 +398,7 @@ test.describe('Page Export with Images', () => {
 
         // 6. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 7. Import the exported page using the file input
         const fileInput = page.locator('#local-ode-file-upload');
@@ -404,7 +406,7 @@ test.describe('Page Export with Images', () => {
         await fileInput.setInputFiles(exportedFilePath);
 
         // Wait for import to complete
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(500);
 
         // 8. Wait for imported page to appear in navigation (will be 2nd page since project already has one)
         await page.waitForFunction(
@@ -412,6 +414,7 @@ test.describe('Page Export with Images', () => {
                 const navElements = document.querySelectorAll('.nav-element:not([nav-id="root"])');
                 return navElements.length >= 2;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -425,7 +428,7 @@ test.describe('Page Export with Images', () => {
 
         // 10. Select the IMPORTED page (second page, index 1)
         await selectPageByIndex(page, 1);
-        await page.waitForTimeout(2000); // Extra time for assets to load
+        await page.waitForTimeout(500); // Extra time for assets to load
 
         // 11. Verify the imported page has content
         const hasContent = await page.evaluate(() => {
@@ -456,6 +459,15 @@ test.describe('Page Export with Images', () => {
             // After the fix, images should be loaded from IndexedDB via blob:// URLs
             expect(hasBlobImages).toBe(true);
         }
+
+        // 13. Verify import is undoable (regression for issue #1346).
+        await waitForUndoAvailable(page, 15000);
+        await pressUndo(page);
+        await page.waitForFunction(
+            () => document.querySelectorAll('.nav-element:not([nav-id="root"])').length === 1,
+            undefined,
+            { timeout: 10000 },
+        );
 
         console.log('Page import with images verified successfully');
     });
@@ -502,7 +514,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
 
         // 2. Select the first page
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // 3. Add a text iDevice
         await addTextIdevice(page);
@@ -596,7 +608,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
         await waitForLoadingScreen(page);
 
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Add text iDevice
         await addTextIdevice(page);
@@ -643,7 +655,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
 
         // 3. Select page and import
         await selectPageByIndex(page, 0);
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
 
         // Import the exported page
         await importComponent(page, exportedFilePath);
@@ -654,12 +666,13 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
                 const navElements = document.querySelectorAll('.nav-element:not([nav-id="root"])');
                 return navElements.length >= 2;
             },
+            undefined,
             { timeout: 15000 },
         );
 
         // 5. Select the IMPORTED page (second page)
         await selectPageByIndex(page, 1);
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         // 6. Verify icon is preserved
         const hasEmptyIconAfterImport = await blockHasEmptyIcon(page, 0);

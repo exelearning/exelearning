@@ -2322,6 +2322,37 @@ describe('registerPreviewServiceWorker secure context checks', () => {
   });
 });
 
+describe('_resolvePreviewServiceWorkerBasePath', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = '<div id="main"><div id="workarea"><div id="node-content-container"></div></div></div><div id="node-content"></div>';
+    appInstance = new App(window.eXeLearning);
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete global._;
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+  });
+
+  it('uses embeddingConfig basePath when available', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: '/embed/path/' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+
+  it('normalizes embeddingConfig basePath without leading slash', () => {
+    appInstance.runtimeConfig = { embeddingConfig: { basePath: 'embed/path//' } };
+    expect(appInstance._resolvePreviewServiceWorkerBasePath()).toBe('/embed/path/');
+  });
+});
+
 describe('sendContentToPreviewSW READY_VERIFIED path', () => {
   let appInstance;
   let mockController;
@@ -2561,5 +2592,168 @@ describe('Module-level event handlers', () => {
 
     // Should not throw and onbeforeunload should be set
     expect(typeof window.onbeforeunload).toBe('function');
+  });
+});
+
+describe('Embedding bridge wiring', () => {
+  let appInstance;
+
+  beforeEach(() => {
+    window.eXeLearning = {
+      user: '{"id":1}',
+      config: '{"isOfflineInstallation":true,"basePath":""}',
+    };
+    global._ = (str) => str;
+    document.body.innerHTML = `
+      <div id="main"><div id="workarea"><div id="node-content-container"></div></div></div>
+      <div id="node-content"></div>
+    `;
+  });
+
+  afterEach(() => {
+    delete window.eXeLearning;
+    delete window.__EXE_EMBEDDING_CONFIG__;
+    delete window.__EXE_STATIC_MODE__;
+    delete global._;
+    document.body.innerHTML = '';
+    document.body.removeAttribute('data-embedded');
+    document.body.removeAttribute('data-exe-hide-file-menu');
+    document.body.removeAttribute('data-exe-hide-save');
+    document.body.removeAttribute('data-exe-hide-share');
+    document.body.removeAttribute('data-exe-hide-user-menu');
+    document.body.removeAttribute('data-exe-hide-download');
+    document.body.removeAttribute('data-exe-hide-help');
+    vi.clearAllMocks();
+  });
+
+  it('should not create embeddingBridge when not embedded', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(appInstance.embeddingBridge).toBeNull();
+  });
+
+  it('should create embeddingBridge when embedded is enabled', () => {
+    // Set up embedding config to make isEmbedded true
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+      trustedOrigins: ['https://example.com'],
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(appInstance.embeddingBridge).not.toBeNull();
+    expect(appInstance.embeddingBridge.trustedOrigins).toEqual(['https://example.com']);
+  });
+
+  it('should create ready promise on window.eXeLearning', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(window.eXeLearning.ready).toBeInstanceOf(Promise);
+  });
+
+  it('should create documentReady promise on window.eXeLearning', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(window.eXeLearning.documentReady).toBeInstanceOf(Promise);
+  });
+
+  it('should store _documentReadyResolve function', () => {
+    appInstance = new App(window.eXeLearning);
+    expect(typeof appInstance._documentReadyResolve).toBe('function');
+  });
+
+  it('documentReady should resolve when _documentReadyResolve is called', async () => {
+    appInstance = new App(window.eXeLearning);
+    const documentReadyPromise = window.eXeLearning.documentReady;
+
+    // Resolve it
+    appInstance._documentReadyResolve();
+
+    // Should resolve without error
+    await expect(documentReadyPromise).resolves.toBeUndefined();
+    expect(appInstance._documentReadyResolve).not.toBeNull();
+  });
+
+  it('should resolve ready promise after init', async () => {
+    window.eXeLearning.version = '4.0.0';
+    appInstance = new App(window.eXeLearning);
+
+    // Mock all init dependencies
+    appInstance.api = { init: vi.fn(), loadApiParameters: vi.fn() };
+    appInstance.locale = { init: vi.fn() };
+    appInstance.toasts = { init: vi.fn() };
+    appInstance.modals = { init: vi.fn(), behaviour: vi.fn() };
+    appInstance.idevices = { loadIdevicesFromAPI: vi.fn() };
+    appInstance.themes = { loadThemesFromAPI: vi.fn() };
+    appInstance.user = { loadUserPreferences: vi.fn() };
+    appInstance.project = { load: vi.fn() };
+    appInstance.shortcuts = { init: vi.fn() };
+    appInstance.showModalLopd = vi.fn();
+    appInstance.showProvisionalDemoWarning = vi.fn();
+    appInstance.tmpStringList = vi.fn();
+    appInstance.addNoTranslateForGoogle = vi.fn();
+    appInstance.runCustomJavaScriptCode = vi.fn();
+    appInstance.registerPreviewServiceWorker = vi.fn();
+    appInstance.bindElectronDownloadToasts = vi.fn();
+    appInstance.bindElectronFileOpenHandler = vi.fn();
+    appInstance.initExePackageProtocolHandler = vi.fn();
+
+    const readyPromise = window.eXeLearning.ready;
+    await appInstance.init();
+
+    const result = await readyPromise;
+    expect(result.version).toBe('4.0.0');
+    expect(result.capabilities).toEqual([]);
+  });
+
+  it('should apply embedded UI visibility with data attributes', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+      hideUI: { fileMenu: true, saveButton: true },
+    };
+
+    appInstance = new App(window.eXeLearning);
+    appInstance._applyEmbeddedUIVisibility();
+
+    expect(document.body.getAttribute('data-embedded')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-file-menu')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-save')).toBe('true');
+    expect(document.body.getAttribute('data-exe-hide-share')).toBeNull();
+  });
+
+  it('should not set data attributes for visible UI elements', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/test',
+    };
+
+    appInstance = new App(window.eXeLearning);
+    appInstance._applyEmbeddedUIVisibility();
+
+    expect(document.body.getAttribute('data-embedded')).toBe('true');
+    // All UI should be visible (no hideUI config)
+    expect(document.body.getAttribute('data-exe-hide-file-menu')).toBeNull();
+    expect(document.body.getAttribute('data-exe-hide-save')).toBeNull();
+  });
+
+  it('should override basePath from embedding config', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/wp-content/plugins/exelearning/static',
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(appInstance.eXeLearning.config.basePath).toBe('/wp-content/plugins/exelearning/static');
+  });
+
+  it('should update symfony shim when basePath overridden', () => {
+    window.__EXE_STATIC_MODE__ = true;
+    window.__EXE_EMBEDDING_CONFIG__ = {
+      basePath: '/custom/path',
+    };
+
+    appInstance = new App(window.eXeLearning);
+
+    expect(window.eXeLearning.symfony.basePath).toBe('/custom/path');
   });
 });

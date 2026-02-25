@@ -1,6 +1,8 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import * as path from 'path';
-import type { Page } from '@playwright/test';
+import type { Download, Page } from '@playwright/test';
+import * as fs from 'fs';
+import { unzipSync } from '../../../../src/shared/export';
 import {
     waitForAppReady,
     openElpFile,
@@ -39,11 +41,11 @@ async function openLatexFixture(page: Page): Promise<void> {
     const latexPageLink = page.getByText('Primeras fórmulas').first();
     if (await latexPageLink.isVisible({ timeout: 3000 }).catch(() => false)) {
         await latexPageLink.click();
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(500);
     }
 
     // Give time for MathJax to initialize and process
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(500);
 }
 
 /**
@@ -59,7 +61,7 @@ async function enableMathJaxViaUI(page: Page): Promise<void> {
     await propertiesButton.click();
 
     // Wait for properties to appear in the content area
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
 
     // The properties form is in #node-content
     const nodeContent = page.locator('#node-content');
@@ -123,6 +125,30 @@ async function enableMathJaxViaUI(page: Page): Promise<void> {
     expect(metadataCheck).toBe(true);
 }
 
+/**
+ * Export project as HTML5 website and return Playwright download handle.
+ */
+async function exportHtml5Website(page: Page): Promise<Download> {
+    await page.locator('#dropdownFile').click();
+    await page.waitForTimeout(300);
+
+    // Open the "Download as..." / "Export as..." sub-menu first (desktop/offline variants).
+    const exportSubmenuToggle = page.locator('#dropdownExportAs:visible, #dropdownExportAsOffline:visible').first();
+    if ((await exportSubmenuToggle.count()) > 0) {
+        await exportSubmenuToggle.click();
+        await page.waitForTimeout(300);
+    }
+
+    const exportOption = page
+        .locator('#navbar-button-export-html5:visible, #navbar-button-exportas-html5:visible')
+        .first();
+    await exportOption.waitFor({ state: 'visible', timeout: 10000 });
+
+    const downloadPromise = page.waitForEvent('download', { timeout: 90000 });
+    await exportOption.click();
+    return downloadPromise;
+}
+
 test.describe('LaTeX Rendering', () => {
     test.describe('Editor View', () => {
         test('should render LaTeX content from fixture in editor', async ({ authenticatedPage, createProject }) => {
@@ -145,7 +171,7 @@ test.describe('LaTeX Rendering', () => {
             await expect(nodeContent).toBeVisible({ timeout: 10000 });
 
             // Wait for MathJax to process content
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Comprehensive check for LaTeX rendering in the editor
             const latexCheck = await page.evaluate(() => {
@@ -249,7 +275,9 @@ test.describe('LaTeX Rendering', () => {
             const projectUuid = await createProject(page, 'MathJax Check');
             await gotoWorkarea(page, projectUuid);
 
-            await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', { timeout: 30000 });
+            await page.waitForFunction(() => typeof (window as any).MathJax !== 'undefined', undefined, {
+                timeout: 30000,
+            });
 
             // Verify MathJax has the required methods
             const mathJaxInfo = await page.evaluate(() => {
@@ -372,7 +400,7 @@ test.describe('LaTeX Rendering', () => {
             await delimitadoresPage.click();
 
             // Wait for the page content to load
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify LaTeX formulas are rendered in the workarea
             const workareaContent = page.locator('#node-content');
@@ -463,7 +491,7 @@ test.describe('LaTeX Rendering', () => {
             const escrituraExists = (await escrituraMenuItem.count()) > 0;
             if (escrituraExists) {
                 await escrituraMenuItem.click();
-                await page.waitForTimeout(1000);
+                await page.waitForTimeout(500);
             }
 
             // Now click on Delimitadores
@@ -472,7 +500,7 @@ test.describe('LaTeX Rendering', () => {
             if (navLinkExists) {
                 // Use force:true in case it's in a submenu that needs expanding
                 await previewNavLink.click({ force: true });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             } else {
                 // Alternative: navigate directly using JavaScript
                 await iframe.locator('body').evaluate(() => {
@@ -480,7 +508,7 @@ test.describe('LaTeX Rendering', () => {
                     const link = document.querySelector('a[href*="delimitadores"]') as HTMLAnchorElement;
                     if (link) link.click();
                 });
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
             }
 
             // Verify LaTeX formulas are rendered in preview
@@ -572,6 +600,228 @@ test.describe('LaTeX Rendering', () => {
 
             // Assert: Should have no or minimal MathJax errors
             expect(errorCheck.totalErrors).toBeLessThanOrEqual(2); // Allow up to 2 errors for legacy content
+        });
+
+        test('should render pending span formulas in preview for mixed pre-rendered table content', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Span Mixed Preview');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Keep default addMathJax=false to validate pre-render preview path.
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            // Mixed content: one pre-rendered formula + several raw formulas inside styled spans.
+            const mixedTableContent = `
+                <table border="1" cellpadding="6" style="margin-left: auto; margin-right: auto;">
+                <tbody>
+                <tr>
+                    <th style="width: 304px; text-align: center;" colspan="2"><span style="font-size: 12pt;">Tipografías matemáticas</span></th>
+                </tr>
+                <tr>
+                    <th style="width: 137px; text-align: center;"><span style="font-size: 12pt;"><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg><math></math></span></span></th>
+                    <th style="width: 151px; text-align: center;"><span style="font-size: 12pt;">Resultado</span></th>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathrm{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathit{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathit{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathbb{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathbb{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathcal{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathcal{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="color: #0000ff; font-size: 12pt;">&nbsp;\\mathfrak{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathfrak{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathscr{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathscr{ABCdef}\\)</span></td>
+                </tr>
+                </tbody>
+                </table>
+            `;
+
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(content);
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            }, mixedTableContent);
+
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            await waitForPreviewContent(page);
+            const iframe = getPreviewFrame(page);
+
+            const previewCheck = await iframe.locator('body').evaluate(body => {
+                const visibleText = body.textContent || '';
+                const rawInlineMatches = visibleText.match(/\\\([^)]*\\\)/g) || [];
+
+                const renderedWrappers = body.querySelectorAll('.exe-math-rendered').length;
+                const mjxContainers = body.querySelectorAll('mjx-container').length;
+                const totalMathElements = renderedWrappers + mjxContainers;
+
+                const expectedLatexSnippets = [
+                    '\\mathrm{ABCdef}',
+                    '\\mathit{ABCdef}',
+                    '\\mathbb{ABCdef}',
+                    '\\mathcal{ABCdef}',
+                    '\\mathfrak{ABCdef}',
+                    '\\mathscr{ABCdef}',
+                ];
+
+                const dataLatexValues = Array.from(body.querySelectorAll('.exe-math-rendered[data-latex]'))
+                    .map(el => el.getAttribute('data-latex') || '')
+                    .join(' ');
+
+                const matchedExpected = expectedLatexSnippets.filter(snippet =>
+                    dataLatexValues.includes(snippet),
+                ).length;
+
+                return {
+                    rawInlineCount: rawInlineMatches.length,
+                    renderedWrappers,
+                    mjxContainers,
+                    totalMathElements,
+                    matchedExpected,
+                };
+            });
+
+            // No raw LaTeX delimiters should remain visible in preview text.
+            expect(previewCheck.rawInlineCount).toBe(0);
+            // Ensure math got rendered (pre-rendered wrappers and/or MathJax runtime).
+            expect(previewCheck.totalMathElements).toBeGreaterThanOrEqual(6);
+            // Ensure expected formulas are represented in pre-rendered data-latex.
+            if (previewCheck.renderedWrappers > 0) {
+                expect(previewCheck.matchedExpected).toBeGreaterThanOrEqual(6);
+            }
+        });
+
+        test('should export website with mixed span formulas rendered (no raw inline delimiters)', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'LaTeX Span Mixed Export');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await selectFirstPage(page);
+            await addTextIdevice(page);
+
+            const block = page.locator('#node-content article .idevice_node.text').first();
+            await block.waitFor({ timeout: 15000 });
+            await waitForTinyMCEReady(page);
+
+            const mixedTableContent = `
+                <table border="1" cellpadding="6" style="margin-left: auto; margin-right: auto;">
+                <tbody>
+                <tr>
+                    <th style="width: 304px; text-align: center;" colspan="2"><span style="font-size: 12pt;">Tipografías matemáticas</span></th>
+                </tr>
+                <tr>
+                    <th style="width: 137px; text-align: center;"><span style="font-size: 12pt;"><span class="exe-math-rendered" data-latex="\\(\\LaTeX\\)"><svg></svg><math></math></span></span></th>
+                    <th style="width: 151px; text-align: center;"><span style="font-size: 12pt;">Resultado</span></th>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathrm{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathrm{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathit{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathit{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathbb{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathbb{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathcal{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathcal{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="color: #0000ff; font-size: 12pt;">&nbsp;\\mathfrak{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathfrak{ABCdef}\\)</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 137px; text-align: center;"><span style="font-size: 12pt; color: #0000ff;">&nbsp;\\mathscr{ABCdef}</span></td>
+                    <td style="width: 151px; text-align: center;"><span style="font-size: 12pt; color: #000000;">\\(\\mathscr{ABCdef}\\)</span></td>
+                </tr>
+                </tbody>
+                </table>
+            `;
+
+            await page.evaluate(content => {
+                const editor = (window as any).tinymce?.activeEditor;
+                if (editor) {
+                    editor.setContent(content);
+                    editor.fire('change');
+                    editor.fire('input');
+                    editor.setDirty(true);
+                }
+            }, mixedTableContent);
+
+            const saveBtn = block.locator('.btn-save-idevice');
+            await saveBtn.click();
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.text');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                { timeout: 15000 },
+            );
+
+            await saveProject(page);
+
+            const download = await exportHtml5Website(page);
+            const tmpDir = path.join('/tmp', `latex-export-${Date.now()}`);
+            fs.mkdirSync(tmpDir, { recursive: true });
+            const exportPath = path.join(tmpDir, download.suggestedFilename());
+            await download.saveAs(exportPath);
+            expect(fs.existsSync(exportPath)).toBe(true);
+
+            const zipMap = unzipSync(fs.readFileSync(exportPath));
+            const htmlFiles = Object.keys(zipMap).filter(f => f.endsWith('.html') || f.endsWith('.xhtml'));
+            expect(htmlFiles.length).toBeGreaterThan(0);
+
+            const decodedHtml = htmlFiles.map(f => Buffer.from(zipMap[f]).toString('utf8')).join('\n');
+
+            const rawVisibleInline = (decodedHtml.match(/>\s*\\\([^<]*\\\)\s*</g) || []).length;
+            const renderedWrappers = (decodedHtml.match(/class="exe-math-rendered"/g) || []).length;
+
+            expect(rawVisibleInline).toBe(0);
+            expect(renderedWrappers).toBeGreaterThanOrEqual(6);
         });
     });
 
@@ -752,6 +1002,7 @@ test.describe('LaTeX Rendering', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -761,7 +1012,7 @@ test.describe('LaTeX Rendering', () => {
             const iframe = getPreviewFrame(page);
 
             // Additional wait for MathJax to process at runtime
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // When addMathJax is enabled, MathJax should render the content at runtime
             const mathRendered = await iframe.locator('body').evaluate(body => {
@@ -953,6 +1204,7 @@ test.describe('LaTeX Rendering', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -962,7 +1214,7 @@ test.describe('LaTeX Rendering', () => {
             const iframe = getPreviewFrame(page);
 
             // Additional wait for preview to render
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify all three LaTeX expressions rendered without corruption
             const renderCheck = await iframe.locator('body').evaluate(body => {
@@ -1092,7 +1344,7 @@ test.describe('LaTeX Rendering', () => {
                 }, latexTitle);
 
                 // Wait for MathJax to render in the title
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
 
                 // Verify LaTeX renders in the page title (h2.exe-title or #change_title)
                 const pageTitleElement = page.locator('h2.exe-title, #change_title').first();
@@ -1166,7 +1418,7 @@ test.describe('LaTeX Rendering', () => {
                 await expect(openModal).toBeVisible({ timeout: 10000 });
 
                 // Wait for the file list to load
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(500);
 
                 // Find the project in the list by looking for the LaTeX rendered title
                 // The title should be in .ode-title or .ode-file-title element
@@ -1395,7 +1647,7 @@ test.describe('LaTeX Rendering', () => {
             }, latexTitle);
 
             // Wait for changes to propagate
-            await page.waitForTimeout(1500);
+            await page.waitForTimeout(500);
 
             // Save the project
             await saveProject(page);
@@ -1404,7 +1656,7 @@ test.describe('LaTeX Rendering', () => {
             await reloadPage(page);
 
             // Wait for MathJax to render
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             // Verify the title was persisted and renders correctly
             const persistenceCheck = await page.evaluate(() => {

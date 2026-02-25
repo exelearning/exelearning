@@ -60,6 +60,7 @@ test.describe('Markdown and Code Block Rendering', () => {
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -70,7 +71,7 @@ test.describe('Markdown and Code Block Rendering', () => {
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
@@ -147,6 +148,7 @@ print(greeting)</code></pre>
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -157,7 +159,7 @@ print(greeting)</code></pre>
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
@@ -274,6 +276,7 @@ print(greeting)</code></pre>
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -284,7 +287,7 @@ print(greeting)</code></pre>
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });
@@ -338,6 +341,7 @@ print(greeting)</code></pre>
                     const idevice = document.querySelector('#node-content article .idevice_node.text');
                     return idevice && idevice.getAttribute('mode') !== 'edition';
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -348,7 +352,7 @@ print(greeting)</code></pre>
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             const iframe = page.frameLocator('#preview-iframe');
             await iframe.locator('article').waitFor({ state: 'attached', timeout: 10000 });

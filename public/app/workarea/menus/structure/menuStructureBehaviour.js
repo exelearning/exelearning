@@ -35,6 +35,8 @@ export default class MenuStructureBehaviour {
         this.menuNav = document.querySelector('#main #menu_nav');
         this.menuNavList = this.menuNav.querySelector('#main #nav_list');
         this.nodeSelected = null;
+        this.selectedNodeIds = new Set();
+        this.lastRangeAnchorId = null;
         this.nodeDrag = null;
         this.enterDragMenuStructureCount = 0;
         this.dbclickNode = false;
@@ -129,6 +131,14 @@ export default class MenuStructureBehaviour {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
 
                 const navElement = element.parentElement;
+                const isRangeSelection = event.shiftKey;
+                const isToggleSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+
+                if (isRangeSelection || isToggleSelection) {
+                    this.handleMultiSelectionClick(navElement, event);
+                    return;
+                }
+
                 const wasAlreadySelected = this.nodeSelected &&
                     navElement.getAttribute('nav-id') === this.nodeSelected.getAttribute('nav-id');
 
@@ -143,6 +153,71 @@ export default class MenuStructureBehaviour {
                 });
             });
         });
+    }
+
+    /**
+     * Handle Shift/Ctrl/Cmd/CapsLock click selection for multi-select.
+     *
+     * @param {Element} navElement
+     * @param {MouseEvent} event
+     */
+    handleMultiSelectionClick(navElement, event) {
+        if (!navElement) return;
+
+        const clickedId = navElement.getAttribute('nav-id');
+        if (!clickedId) return;
+
+        const isRangeSelection = event.shiftKey;
+        const isAdditiveSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+        const currentSelection = new Set(this.getSelectedNodeIds({ excludeRoot: false }));
+        let nextSelection = new Set(currentSelection);
+
+        if (isRangeSelection) {
+            const anchorId =
+                this.lastRangeAnchorId ||
+                this.nodeSelected?.getAttribute('nav-id') ||
+                clickedId;
+            const rangeIds = this.getNavIdsInRange(anchorId, clickedId);
+            nextSelection = isAdditiveSelection ? new Set([...currentSelection, ...rangeIds]) : new Set(rangeIds);
+        } else if (isAdditiveSelection) {
+            if (nextSelection.has(clickedId)) {
+                // Keep at least one selected element to avoid an unusable empty state.
+                if (nextSelection.size > 1) {
+                    nextSelection.delete(clickedId);
+                }
+            } else {
+                nextSelection.add(clickedId);
+            }
+        }
+
+        if (nextSelection.size === 0) {
+            nextSelection.add(clickedId);
+        }
+
+        this.lastRangeAnchorId = clickedId;
+        this.setNodeSelected(navElement, nextSelection);
+    }
+
+    /**
+     * Get nav IDs between two nodes following current visible DOM order.
+     *
+     * @param {string} anchorId
+     * @param {string} targetId
+     * @returns {Array<string>}
+     */
+    getNavIdsInRange(anchorId, targetId) {
+        const navElements = Array.from(this.menuNav.querySelectorAll('.nav-element[nav-id]'));
+        const navIds = navElements.map((el) => el.getAttribute('nav-id')).filter(Boolean);
+        const anchorIndex = navIds.indexOf(anchorId);
+        const targetIndex = navIds.indexOf(targetId);
+
+        if (anchorIndex === -1 || targetIndex === -1) {
+            return [targetId];
+        }
+
+        const start = Math.min(anchorIndex, targetIndex);
+        const end = Math.max(anchorIndex, targetIndex);
+        return navIds.slice(start, end + 1);
     }
 
     /**
@@ -448,7 +523,7 @@ export default class MenuStructureBehaviour {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
+                if (this.getSelectedNodeIds({ excludeRoot: true }).length > 0) {
                     this.showModalRemoveNode();
                 }
             });
@@ -656,10 +731,9 @@ export default class MenuStructureBehaviour {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodePrev(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('prev', selectedIds);
                 }
             });
         }
@@ -675,10 +749,9 @@ export default class MenuStructureBehaviour {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeNext(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('next', selectedIds);
                 }
             });
         }
@@ -694,10 +767,9 @@ export default class MenuStructureBehaviour {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeUp(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('left', selectedIds);
                 }
             });
         }
@@ -713,13 +785,102 @@ export default class MenuStructureBehaviour {
         if (btn) {
             btn.addEventListener('click', (e) => {
                 if (eXeLearning.app.project.checkOpenIdevice()) return;
-                if (this.nodeSelected) {
-                    this.structureEngine.moveNodeDown(
-                        this.nodeSelected.getAttribute('nav-id')
-                    );
+                const selectedIds = this.getSelectedNodeIds({ excludeRoot: true });
+                if (selectedIds.length > 0) {
+                    this.moveSelectedNodes('right', selectedIds);
                 }
             });
         }
+    }
+
+    /**
+     * Move all selected nodes in a direction with one final structure refresh.
+     *
+     * @param {'prev'|'next'|'left'|'right'} direction
+     * @param {Array<string>} selectedIds
+     */
+    moveSelectedNodes(direction, selectedIds) {
+        const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
+        const topMostIds = this.filterTopMostNodeIds(selectedIds);
+        const orderedIds = this.orderSelectedIdsForMove(topMostIds);
+        const primarySelectionId =
+            this.nodeSelected?.getAttribute('nav-id') ||
+            orderedIds[0] ||
+            false;
+        let moved = false;
+
+        const bindingMoves = {
+            prev: 'movePagePrev',
+            next: 'movePageNext',
+            left: 'movePageLeft',
+            right: 'movePageRight',
+        };
+        const bindingGroupMoves = {
+            prev: 'movePageGroupPrev',
+            next: 'movePageGroupNext',
+            left: 'movePageGroupLeft',
+            right: 'movePageGroupRight',
+        };
+        const engineMoves = {
+            prev: 'moveNodePrev',
+            next: 'moveNodeNext',
+            left: 'moveNodeUp',
+            right: 'moveNodeDown',
+        };
+        const legacyOrderedIds =
+            direction === 'next' || direction === 'right'
+                ? [...orderedIds].reverse()
+                : [...orderedIds];
+
+        if (binding && typeof binding[bindingGroupMoves[direction]] === 'function') {
+            moved = binding[bindingGroupMoves[direction]](orderedIds) === true;
+            if (moved && typeof this.structureEngine.resetStructureData === 'function') {
+                this.structureEngine.resetStructureData(primarySelectionId);
+            }
+            return;
+        }
+
+        if (binding && typeof binding[bindingMoves[direction]] === 'function') {
+            orderedIds.forEach((id) => {
+                if (binding[bindingMoves[direction]](id)) {
+                    moved = true;
+                }
+            });
+            if (moved && typeof this.structureEngine.resetStructureData === 'function') {
+                this.structureEngine.resetStructureData(primarySelectionId);
+            }
+            return;
+        }
+
+        // Legacy fallback (non-Yjs): execute existing single-node engine methods
+        legacyOrderedIds.forEach((id) => {
+            if (typeof this.structureEngine[engineMoves[direction]] === 'function') {
+                this.structureEngine[engineMoves[direction]](id);
+                moved = true;
+            }
+        });
+    }
+
+    /**
+     * Stable ordering for multi-move operations.
+     * For moving down/right we reverse to keep relative ordering.
+     *
+     * @param {Array<string>} selectedIds
+     * @returns {Array<string>}
+     */
+    orderSelectedIdsForMove(selectedIds) {
+        const domOrder = Array.from(
+            this.menuNav.querySelectorAll('.nav-element[nav-id]')
+        ).map((el) => el.getAttribute('nav-id'));
+
+        const orderMap = new Map(domOrder.map((id, index) => [id, index]));
+        const sorted = [...selectedIds].sort((a, b) => {
+            const orderA = orderMap.get(a) ?? Number.MAX_SAFE_INTEGER;
+            const orderB = orderMap.get(b) ?? Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
+
+        return sorted;
     }
 
     /*******************************************************************************
@@ -960,53 +1121,81 @@ export default class MenuStructureBehaviour {
      * Checks for other users via Yjs Awareness and shows appropriate warning
      */
     showModalRemoveNode(explicitNodeId = null) {
-        let nodeId = explicitNodeId;
-        let targetElement = this.nodeSelected;
+        const selectedIds = explicitNodeId
+            ? [explicitNodeId]
+            : this.getSelectedNodeIds({ excludeRoot: true });
+        const nodeIds = this.filterTopMostNodeIds(selectedIds);
+        if (nodeIds.length === 0) return;
 
-        if (nodeId) {
-             targetElement = this.menuNav.querySelector(`.nav-element[nav-id="${nodeId}"]`);
-        } else if (targetElement) {
-             nodeId = targetElement.getAttribute('nav-id');
-        }
+        const isBatchDelete = !explicitNodeId && nodeIds.length > 1;
+        const firstNodeElement = this.menuNav.querySelector(
+            `.nav-element[nav-id="${nodeIds[0]}"]`
+        );
+        const firstNodeName =
+            firstNodeElement?.querySelector('.node-text-span')?.textContent ||
+            _('this page');
+        const hasDescendants = nodeIds.some((id) => this._nodeHasDescendants(id));
 
-        if (!nodeId || !targetElement) return;
+        const affectedUsersByEmail = new Map();
+        nodeIds.forEach((id) => {
+            const element = this.menuNav.querySelector(`.nav-element[nav-id="${id}"]`);
+            if (!element) return;
+            const pageId = element.getAttribute('page-id') || id;
+            this._getAffectedUsersForDeletion(pageId).forEach((user) => {
+                const userKey = user.email || user.name || JSON.stringify(user);
+                affectedUsersByEmail.set(userKey, user);
+            });
+        });
 
-        const pageId = targetElement.getAttribute('page-id') || nodeId;
-        const nodeName = targetElement.querySelector('.node-text-span')?.textContent || _('this page');
-
-        // Check for other users on this page or descendants using Yjs
-        const affectedUsers = this._getAffectedUsersForDeletion(pageId);
-        const hasDescendants = this._nodeHasDescendants(nodeId);
+        const affectedUsers = Array.from(affectedUsersByEmail.values());
+        const userNames = affectedUsers.map((u) => u.name || _('Unknown user')).join(', ');
 
         let modalBody = '';
-        let modalTitle = _('Delete page');
-
-        if (affectedUsers.length > 0) {
-            // Build warning message with user names
-            const userNames = affectedUsers.map(u => u.name || _('Unknown user')).join(', ');
-            modalBody = `<p><strong>${_('Warning')}:</strong> ${affectedUsers.length === 1
-                ? _('Another user is viewing this page or its children')
-                : _('Other users are viewing this page or its children')}:</p>
-                <p class="text-primary fw-bold">${userNames}</p>
-                <p>${_('They will be automatically redirected to the parent page.')}</p>
-                <p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"${hasDescendants ? ' ' + _('and all its children') : ''}?</p>`;
+        if (isBatchDelete) {
+            modalBody = `<p>${_('Do you want to delete')} <strong>${nodeIds.length}</strong> ${_(
+                'selected pages'
+            )}${hasDescendants ? ' ' + _('and their children') : ''}?</p>
+                <p class="text-muted small">${_('You can undo this action.')}</p>`;
         } else if (hasDescendants) {
-            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>" ${_('and all its children')}?</p>
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${firstNodeName}</strong>" ${_('and all its children')}?</p>
                 <p class="text-muted small">${_('You can undo this action.')}</p>`;
         } else {
-            modalBody = `<p>${_('Do you want to delete')} "<strong>${nodeName}</strong>"?</p>
+            modalBody = `<p>${_('Do you want to delete')} "<strong>${firstNodeName}</strong>"?</p>
                 <p class="text-muted small">${_('You can undo this action.')}</p>`;
+        }
+
+        if (affectedUsers.length > 0) {
+            modalBody =
+                `<p><strong>${_('Warning')}:</strong> ${
+                    affectedUsers.length === 1
+                        ? _('Another user is viewing this page or its children')
+                        : _('Other users are viewing this page or its children')
+                }:</p>
+                <p class="text-primary fw-bold">${userNames}</p>
+                <p>${_('They will be automatically redirected to the parent page.')}</p>` +
+                modalBody;
         }
 
         eXeLearning.app.modals.confirm.show({
-            title: modalTitle,
+            title: _('Delete page'),
             contentId: 'delete-node-modal',
             body: modalBody,
             confirmButtonText: _('Delete'),
             cancelButtonText: _('Cancel'),
-            focusCancelButton: affectedUsers.length > 0, // Focus cancel if users affected
+            focusCancelButton: affectedUsers.length > 0,
             confirmExec: () => {
-                this.structureEngine.removeNodeCompleteAndReload(nodeId);
+                if (
+                    nodeIds.length > 1 &&
+                    typeof this.structureEngine.removeNode === 'function' &&
+                    typeof this.structureEngine.resetStructureData === 'function'
+                ) {
+                    nodeIds.forEach((id) => this.structureEngine.removeNode(id));
+                    this.structureEngine.resetStructureData(false);
+                    return;
+                }
+                nodeIds.forEach((id) =>
+                    this.structureEngine.removeNodeCompleteAndReload(id)
+                );
             },
         });
     }
@@ -1211,7 +1400,10 @@ export default class MenuStructureBehaviour {
         let navElements = this.menuNav.querySelectorAll('.nav-element');
         navElements.forEach((e) => {
             e.classList.remove('selected');
+            e.setAttribute('data-selected', 'false');
+            e.setAttribute('aria-selected', 'false');
         });
+        this.selectedNodeIds.clear();
     }
 
     /**
@@ -1460,12 +1652,25 @@ export default class MenuStructureBehaviour {
      *
      * @param {Node} element
      */
-    setNodeSelected(element) {
+    setNodeSelected(element, selectedIds = null) {
         Logger.log('[MenuStructureBehaviour] setNodeSelected START, element:', element?.getAttribute('nav-id'));
+        if (!element) return;
+
+        const selectedIdSet = new Set(
+            selectedIds ? Array.from(selectedIds) : [element.getAttribute('nav-id')]
+        );
+        const selectedNavId = element.getAttribute('nav-id');
+        selectedIdSet.add(selectedNavId);
+        this.selectedNodeIds = new Set(
+            Array.from(selectedIdSet).filter((id) =>
+                this.menuNav.querySelector(`.nav-element[nav-id="${id}"]`)
+            )
+        );
         this.nodeSelected = element;
         this.nodeSelected?.classList.add('selected'); // Collaborative
         Logger.log('[MenuStructureBehaviour] Added selected class, classList:', this.nodeSelected?.classList.toString());
         this.structureEngine.nodeSelected = this.nodeSelected;
+        this.lastRangeAnchorId = selectedNavId;
         this.setNodeIdToNodeContentElement();
         this.createAddTextBtn();
         this.enabledActionButtons();
@@ -1476,7 +1681,7 @@ export default class MenuStructureBehaviour {
         const selNavId = this.nodeSelected?.getAttribute('nav-id');
         Logger.log('[MenuStructureBehaviour] Found', allNodes.length, 'nodes to update data-selected, selNavId:', selNavId);
         allNodes.forEach((n) => {
-            const isSel = n.getAttribute('nav-id') === selNavId;
+            const isSel = this.selectedNodeIds.has(n.getAttribute('nav-id'));
             n.setAttribute('data-selected', isSel ? 'true' : 'false');
             n.setAttribute('aria-selected', isSel ? 'true' : 'false');
             // Also update CSS class (elements may be recreated by compose())
@@ -1583,44 +1788,84 @@ export default class MenuStructureBehaviour {
      */
     enabledActionButtons() {
         this.disableActionButtons();
-        if (!this.nodeSelected) return;
-
-        const nodeId = this.nodeSelected.getAttribute('nav-id');
-        const node = this.structureEngine.getNode(nodeId);
-        if (!node) return;
+        const selectedIds = this.getSelectedNodeIds({ excludeRoot: false });
+        const nonRootSelectedIds = selectedIds.filter((id) => id !== 'root');
+        const topMostNonRootSelectedIds = this.filterTopMostNodeIds(nonRootSelectedIds);
 
         // "Add" button is always enabled
         this.menuNav.querySelector('.button_nav_action.action_add').disabled = false;
 
-        if (node.id === 'root') {
-            // Root node: only "Add" is enabled
+        if (selectedIds.length === 0 || nonRootSelectedIds.length === 0) {
             return;
         }
 
-        // Non-root nodes: enable standard buttons
-        this.menuNav.querySelector('.button_nav_action.action_properties').disabled = false;
+        const isSingleNonRootSelection = nonRootSelectedIds.length === 1 && selectedIds.length === 1;
+        this.menuNav.querySelector('.button_nav_action.action_properties').disabled = !isSingleNonRootSelection;
         this.menuNav.querySelector('.button_nav_action.action_delete').disabled = false;
-        this.menuNav.querySelector('.button_nav_action.action_clone').disabled = false;
-        this.menuNav.querySelector('.button_nav_action.action_import_idevices').disabled = false;
+        this.menuNav.querySelector('.button_nav_action.action_clone').disabled = !isSingleNonRootSelection;
+        this.menuNav.querySelector('.button_nav_action.action_import_idevices').disabled = !isSingleNonRootSelection;
 
         // Movement buttons: enable based on actual possibilities via Yjs
         const binding = eXeLearning.app.project?._yjsBridge?.structureBinding;
         if (binding) {
-            // ↑ Move up: enabled if has previous sibling
-            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = !binding.canMoveUp(nodeId);
-            // ↓ Move down: enabled if has next sibling
-            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = !binding.canMoveDown(nodeId);
-            // ← Move left: enabled if has parent (not at root level)
-            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = !binding.canMoveLeft(nodeId);
-            // → Move right: enabled if has previous sibling to become child of
-            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = !binding.canMoveRight(nodeId);
+            const canMoveGroup = (groupMethodName, fallbackMethodName) => {
+                if (typeof binding[groupMethodName] === 'function') {
+                    return binding[groupMethodName](topMostNonRootSelectedIds);
+                }
+                return topMostNonRootSelectedIds.every(
+                    (id) => typeof binding[fallbackMethodName] === 'function' && binding[fallbackMethodName](id)
+                );
+            };
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = !canMoveGroup('canMoveGroupPrev', 'canMoveUp');
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = !canMoveGroup('canMoveGroupNext', 'canMoveDown');
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = !canMoveGroup('canMoveGroupLeft', 'canMoveLeft');
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = !canMoveGroup('canMoveGroupRight', 'canMoveRight');
         } else {
-            // Fallback: enable all movement buttons
-            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = false;
-            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = false;
+            const noMovableSelection = topMostNonRootSelectedIds.length === 0;
+            this.menuNav.querySelector('.button_nav_action.action_move_prev').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_next').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_up').disabled = noMovableSelection;
+            this.menuNav.querySelector('.button_nav_action.action_move_down').disabled = noMovableSelection;
         }
+    }
+
+    /**
+     * Get currently selected node IDs, falling back to primary selection.
+     *
+     * @param {{excludeRoot?: boolean}} options
+     * @returns {Array<string>}
+     */
+    getSelectedNodeIds({ excludeRoot = true } = {}) {
+        let ids = Array.from(this.selectedNodeIds);
+        if (ids.length === 0 && this.nodeSelected) {
+            const selectedId = this.nodeSelected.getAttribute('nav-id');
+            if (selectedId) ids = [selectedId];
+        }
+        if (excludeRoot) {
+            ids = ids.filter((id) => id !== 'root');
+        }
+        return ids;
+    }
+
+    /**
+     * Remove selected descendants when an ancestor is already selected.
+     *
+     * @param {Array<string>} ids
+     * @returns {Array<string>}
+     */
+    filterTopMostNodeIds(ids) {
+        const selectedSet = new Set(ids);
+        const structureData = this.structureEngine.data || {};
+        return ids.filter((id) => {
+            let currentParent = structureData[id]?.parent;
+            while (currentParent) {
+                if (selectedSet.has(currentParent)) {
+                    return false;
+                }
+                currentParent = structureData[currentParent]?.parent;
+            }
+            return true;
+        });
     }
 
     /**

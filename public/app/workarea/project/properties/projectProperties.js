@@ -62,6 +62,9 @@ export default class ProjectProperties {
      * Show modal properties
      */
     showModalProperties() {
+        // Ensure modal opens with the latest values from Yjs metadata
+        this.loadPropertiesFromYjs();
+
         eXeLearning.app.modals.properties.show({
             node: this,
             title: _('Project properties'),
@@ -93,7 +96,11 @@ export default class ProjectProperties {
                 const metadataKey = this.mapPropertyToMetadataKey(key);
                 const value = metadata.get(metadataKey);
                 if (value !== undefined) {
-                    this.properties[key].value = value;
+                    if (property.type === 'checkbox' && typeof value === 'boolean') {
+                        this.properties[key].value = value ? 'true' : 'false';
+                    } else {
+                        this.properties[key].value = value;
+                    }
                 }
             }
 

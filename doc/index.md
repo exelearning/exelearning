@@ -31,11 +31,17 @@ Use the sections below to jump to what you need.
 - Version Control: [Branching and PRs](development/version-control.md)
 - Installers: [Installers](development/installers.md)
 
+- Embedding: [Embedding the editor in LMS plugins](development/embedding.md)
+
 - [REST API](development/rest-api.md)
 - [Authentication](development/authentication.md)
 
 ## Technical Reference
 - [Architecture Overview](architecture.md)
+
+## File Formats
+- [ELPX Format (content.xml)](elpx-format.md) — Modern project file format (eXeLearning v3+)
+- [Legacy ELP Format (contentv3.xml)](contentv3-format.md) — Legacy format (eXeLearning 2.x)
 
 ## Project Overview
 - [Project Summary](overview.md)

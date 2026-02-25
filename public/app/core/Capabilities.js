@@ -106,6 +106,19 @@ export class Capabilities {
         });
 
         /**
+         * UI visibility (for embedded mode — controls which UI elements are shown)
+         */
+        const hideUI = config.embeddingConfig?.hideUI || {};
+        this.ui = Object.freeze({
+            showFileMenu: !hideUI.fileMenu,
+            showSaveButton: !hideUI.saveButton,
+            showShareButton: !hideUI.shareButton,
+            showUserMenu: !hideUI.userMenu,
+            showDownloadButton: !hideUI.downloadButton,
+            showHelpMenu: !hideUI.helpMenu,
+        });
+
+        /**
          * Embedded mode capabilities (for iframe hosting in LMS, etc.)
          */
         this.embedded = Object.freeze({

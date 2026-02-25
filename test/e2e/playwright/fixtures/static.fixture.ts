@@ -26,6 +26,7 @@ export const test = base.extend<StaticFixtures>({
             () => {
                 return (window as any).eXeLearning?.app !== undefined;
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -35,6 +36,7 @@ export const test = base.extend<StaticFixtures>({
                 const loadScreen = document.querySelector('#load-screen-main');
                 return loadScreen?.getAttribute('data-visible') === 'false';
             },
+            undefined,
             { timeout: 30000 },
         );
 

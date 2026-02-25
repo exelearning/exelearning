@@ -242,7 +242,7 @@ test.describe('Page Properties', () => {
         await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
         // Wait for SW to serve content
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const iframe = page.frameLocator('#preview-iframe');
 
@@ -255,6 +255,7 @@ test.describe('Page Properties', () => {
                 const article = previewIframe.contentDocument.querySelector('article, .exe-content, body');
                 return !!article;
             },
+            undefined,
             { timeout: 15000 },
         );
 
@@ -324,7 +325,7 @@ test.describe('Page Properties', () => {
 
             const previewPanel = page.locator('#previewsidenav');
             await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(500);
 
             const iframe = page.frameLocator('#preview-iframe');
 
@@ -334,6 +335,7 @@ test.describe('Page Properties', () => {
                     const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
                     return previewIframe?.contentDocument?.querySelector('.exe-content, article, body');
                 },
+                undefined,
                 { timeout: 15000 },
             );
 
@@ -409,7 +411,7 @@ test.describe('Page Properties', () => {
         await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
         // Wait for SW to serve content
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(500);
 
         const iframe = page.frameLocator('#preview-iframe');
 
@@ -422,6 +424,7 @@ test.describe('Page Properties', () => {
                 const article = previewIframe.contentDocument.querySelector('article, .exe-content, body');
                 return !!article;
             },
+            undefined,
             { timeout: 15000 },
         );
 

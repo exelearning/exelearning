@@ -137,7 +137,7 @@ class ComponentImporter {
             break;
           }
         }
-      });
+      }, ydoc.clientID);
 
       Logger.log(`[ComponentImporter] Import complete: ${newBlockId}`);
       return { success: true, blockId: newBlockId };

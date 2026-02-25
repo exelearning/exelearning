@@ -18,6 +18,7 @@ vi.mock('../../../utils/ImageOptimizerManager.js', () => ({
         getAllItems: vi.fn(() => []),
         setPreset: vi.fn(),
         setJpegQuality: vi.fn(),
+        resetEstimates: vi.fn(),
         getSettings: vi.fn(() => ({ preset: 'medium', jpegQuality: 0.85 })),
         getStats: vi.fn(() => ({
             total: 0, estimated: 0, optimized: 0, failed: 0,
@@ -77,12 +78,14 @@ describe('ModalImageOptimizer', () => {
                     odeId: 'proj-123',
                     getProjectUuid: vi.fn(() => 'proj-uuid-123'),
                     _yjsBridge: {
+                        announceAssets: vi.fn().mockResolvedValue(),
                         assetManager: {
                             getProjectAssets: vi.fn().mockResolvedValue([]),
                             getBlob: vi.fn().mockResolvedValue(null),
                             putBlob: vi.fn().mockResolvedValue(),
                             getAssetMetadata: vi.fn().mockReturnValue({ filename: 'test.png', mime: 'image/png' }),
                             setAssetMetadata: vi.fn(),
+                            updateDomImagesForAsset: vi.fn().mockResolvedValue(1),
                             getAssetUrl: vi.fn((id, filename) => `asset://${id}/${filename}`),
                             resolveAssetURL: vi.fn().mockResolvedValue('blob:resolved-url'),
                             blobURLCache: new Map(),
@@ -391,6 +394,34 @@ describe('ModalImageOptimizer', () => {
             const badge = modal.getStatusBadge('unknown');
             expect(badge).toBe('');
         });
+
+        it('should return badge for already optimized status', () => {
+            const badge = modal.getStatusBadge('already_optimized');
+            expect(badge).toContain('Already optimized');
+        });
+    });
+
+    describe('isAlreadyOptimized', () => {
+        it('should be true when estimated size is larger than original', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 1200,
+            })).toBe(true);
+        });
+
+        it('should be true when savings percent is below minimum threshold', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 995, // 0.5%
+            })).toBe(true);
+        });
+
+        it('should be false when savings percent is at or above minimum threshold', () => {
+            expect(modal.isAlreadyOptimized({
+                originalSize: 1000,
+                estimatedSize: 990, // 1.0%
+            })).toBe(false);
+        });
     });
 
     describe('buildImageRow', () => {
@@ -545,7 +576,7 @@ describe('ModalImageOptimizer', () => {
             expect(savingsCell.innerHTML).toContain('25.0%');
         });
 
-        it('should update savings with negative value (size increased)', () => {
+        it('should show N/A savings when size would increase (already optimized)', () => {
             modal.updateImageRow('asset-1', {
                 originalSize: 1000,
                 estimatedSize: 1200,
@@ -553,7 +584,7 @@ describe('ModalImageOptimizer', () => {
             });
 
             const savingsCell = row.querySelector('.image-optimizer-savings');
-            expect(savingsCell.innerHTML).toContain('text-warning');
+            expect(savingsCell.textContent).toBe('N/A');
         });
 
         it('should update status badge', () => {
@@ -561,6 +592,27 @@ describe('ModalImageOptimizer', () => {
 
             const statusCell = row.querySelector('.image-optimizer-status');
             expect(statusCell.innerHTML).toContain('Ready');
+        });
+
+        it('should mark row as already optimized and disable selection', () => {
+            modal.selectedAssets.add('asset-1');
+
+            modal.updateImageRow('asset-1', {
+                status: STATUS.READY,
+                originalSize: 1000,
+                estimatedSize: 1002,
+            });
+
+            const statusCell = row.querySelector('.image-optimizer-status');
+            const estimatedCell = row.querySelector('.image-optimizer-estimated-size');
+            const savingsCell = row.querySelector('.image-optimizer-savings');
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(statusCell.innerHTML).toContain('Already optimized');
+            expect(estimatedCell.textContent).toBe('N/A');
+            expect(savingsCell.textContent).toBe('N/A');
+            expect(checkbox.disabled).toBe(true);
+            expect(checkbox.checked).toBe(false);
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
         });
 
         it('should not throw for unknown asset', () => {
@@ -605,6 +657,19 @@ describe('ModalImageOptimizer', () => {
             modal.onRowCheckboxChange('asset-1', false);
 
             expect(modal.selectedAssets.has('asset-1')).toBe(false);
+        });
+
+        it('should keep asset unselected when row is not selectable', () => {
+            const blob = new Blob(['test'], { type: 'image/png' });
+            const row = modal.buildImageRow({ id: 'asset-1', filename: 'test.png', mime: 'image/png' }, blob, false);
+            row.dataset.selectable = 'false';
+            modal.rowElements.set('asset-1', row);
+
+            modal.onRowCheckboxChange('asset-1', true);
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(checkbox.checked).toBe(false);
         });
     });
 
@@ -662,6 +727,18 @@ describe('ModalImageOptimizer', () => {
                 const checkbox = row.querySelector('.image-optimizer-row-checkbox');
                 expect(checkbox.checked).toBe(false);
             }
+        });
+
+        it('should skip non-selectable assets when selecting all', () => {
+            const row1 = modal.rowElements.get('asset-1');
+            row1.dataset.selectable = 'false';
+            const checkbox1 = row1.querySelector('.image-optimizer-row-checkbox');
+
+            modal.selectAll();
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(false);
+            expect(checkbox1.checked).toBe(false);
+            expect(modal.selectedAssets.has('asset-2')).toBe(true);
         });
     });
 
@@ -849,6 +926,13 @@ describe('ModalImageOptimizer', () => {
         beforeEach(() => {
             modal.optimizerManager = {
                 setPreset: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn(() => null),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map(),
+                getStatsForSelection: vi.fn(() => ({ selected: 0, totalOriginal: 0, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
             };
         });
 
@@ -866,13 +950,33 @@ describe('ModalImageOptimizer', () => {
             expect(modal.qualitySlider.value).toBe('75');
             expect(modal.qualityValue.textContent).toBe('75');
         });
+
+        it('should trigger re-estimation', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.presetSelect.value = 'strong';
+            modal.onPresetChange();
+
+            expect(reEstimateSpy).toHaveBeenCalled();
+        });
     });
 
     describe('onQualityChange', () => {
         beforeEach(() => {
+            vi.useFakeTimers();
             modal.optimizerManager = {
                 setJpegQuality: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn(() => null),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map(),
+                getStatsForSelection: vi.fn(() => ({ selected: 0, totalOriginal: 0, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
             };
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
         });
 
         it('should update manager quality', () => {
@@ -887,6 +991,110 @@ describe('ModalImageOptimizer', () => {
             modal.onQualityChange();
 
             expect(modal.qualityValue.textContent).toBe('75');
+        });
+
+        it('should trigger re-estimation after debounce delay', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.qualitySlider.value = '75';
+            modal.onQualityChange();
+
+            expect(reEstimateSpy).not.toHaveBeenCalled();
+            vi.runAllTimers();
+            expect(reEstimateSpy).toHaveBeenCalled();
+        });
+
+        it('should debounce re-estimation on rapid slider changes', () => {
+            const reEstimateSpy = vi.spyOn(modal, 'reEstimate');
+            modal.qualitySlider.value = '75';
+            modal.onQualityChange();
+            modal.onQualityChange();
+            modal.onQualityChange();
+
+            vi.runAllTimers();
+            expect(reEstimateSpy).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('reEstimate', () => {
+        beforeEach(() => {
+            modal.optimizerManager = {
+                setPreset: vi.fn(),
+                resetEstimates: vi.fn(),
+                isInProgress: vi.fn(() => false),
+                cancel: vi.fn(),
+                getQueueItem: vi.fn((id) => modal.optimizerManager.queue.get(id)),
+                estimateSelected: vi.fn().mockResolvedValue({}),
+                queue: new Map([
+                    ['asset-1', { assetId: 'asset-1', status: 'pending', estimatedSize: null, originalSize: 1000 }],
+                ]),
+                getStatsForSelection: vi.fn(() => ({ selected: 1, totalOriginal: 1000, totalEstimated: 0, savings: 0, savingsPercent: 0 })),
+                cancel: vi.fn(),
+            };
+
+            const blob = new Blob(['test'], { type: 'image/png' });
+            const row = modal.buildImageRow({ id: 'asset-1', filename: 'test.png', mime: 'image/png', size: 1000 }, blob, true);
+            modal.rowElements.set('asset-1', row);
+            modal.selectedAssets.add('asset-1');
+        });
+
+        it('should do nothing when viewState is not normal', async () => {
+            modal.viewState = 'progress';
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.resetEstimates).not.toHaveBeenCalled();
+        });
+
+        it('should do nothing when optimizerManager is null', async () => {
+            modal.optimizerManager = null;
+
+            // Should not throw
+            await expect(modal.reEstimate()).resolves.toBeUndefined();
+        });
+
+        it('should reset estimates on the manager', async () => {
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.resetEstimates).toHaveBeenCalled();
+        });
+
+        it('should restart estimation for currently selected assets', async () => {
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.estimateSelected).toHaveBeenCalledWith(['asset-1']);
+        });
+
+        it('should cancel ongoing estimation before re-estimating', async () => {
+            modal.optimizerManager.isInProgress = vi.fn(() => true);
+            modal._estimatePromise = Promise.resolve();
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.cancel).toHaveBeenCalled();
+        });
+
+        it('should re-enable and re-select previously disabled "already optimized" items', async () => {
+            const row = modal.rowElements.get('asset-1');
+            row.dataset.selectable = 'false';
+            modal.selectedAssets.delete('asset-1');
+
+            await modal.reEstimate();
+
+            expect(modal.selectedAssets.has('asset-1')).toBe(true);
+            const checkbox = row.querySelector('.image-optimizer-row-checkbox');
+            expect(checkbox.disabled).toBe(false);
+        });
+
+        it('should not start estimation when no assets are selected', async () => {
+            modal.selectedAssets.clear();
+            // All rows remain selectable but none are selected
+            for (const row of modal.rowElements.values()) {
+                row.dataset.selectable = 'true';
+            }
+
+            await modal.reEstimate();
+
+            expect(modal.optimizerManager.estimateSelected).not.toHaveBeenCalled();
         });
     });
 
@@ -1269,6 +1477,8 @@ describe('ModalImageOptimizer', () => {
             await modal.replaceOptimizedAssets(['asset-1']);
 
             expect(window.eXeLearning.app.project._yjsBridge.assetManager.putBlob).toHaveBeenCalledWith('asset-1', optimizedBlob);
+            expect(window.eXeLearning.app.project._yjsBridge.assetManager.updateDomImagesForAsset).toHaveBeenCalledWith('asset-1');
+            expect(window.eXeLearning.app.project._yjsBridge.announceAssets).toHaveBeenCalledTimes(1);
         });
     });
 

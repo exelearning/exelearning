@@ -493,6 +493,70 @@ describe('YjsStructureBinding', () => {
     });
   });
 
+  describe('grouped page movement', () => {
+    beforeEach(() => {
+      const pages = [
+        createYMap({ id: 'a', pageId: 'a', pageName: 'A', parentId: null, order: 0 }),
+        createYMap({ id: 'b', pageId: 'b', pageName: 'B', parentId: null, order: 1 }),
+        createYMap({ id: 'c', pageId: 'c', pageName: 'C', parentId: null, order: 2 }),
+        createYMap({ id: 'd', pageId: 'd', pageName: 'D', parentId: null, order: 3 }),
+      ];
+      pages.forEach((p) => {
+        p.set('blocks', createYArray());
+        mockDocManager.getNavigation().push([p]);
+      });
+    });
+
+    it('canMoveGroupRight returns false when first selected has no previous sibling', () => {
+      expect(binding.canMoveGroupRight(['a', 'b'])).toBe(false);
+    });
+
+    it('movePageGroupRight nests selection under previous sibling of first selected', () => {
+      const moved = binding.movePageGroupRight(['b', 'c']);
+      expect(moved).toBe(true);
+
+      const pageB = binding.getPageMap('b');
+      const pageC = binding.getPageMap('c');
+      expect(pageB.get('parentId')).toBe('a');
+      expect(pageC.get('parentId')).toBe('a');
+      expect(pageB.get('order')).toBe(0);
+      expect(pageC.get('order')).toBe(1);
+    });
+
+    it('movePageGroupLeft keeps order and inserts after current parent', () => {
+      binding.movePageGroupRight(['b', 'c']); // b,c become children of a
+      const movedLeft = binding.movePageGroupLeft(['b', 'c']);
+      expect(movedLeft).toBe(true);
+
+      const topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'b', 'c', 'd']);
+    });
+
+    it('movePageGroupPrev/movePageGroupNext move as block without re-nesting', () => {
+      const movedUp = binding.movePageGroupPrev(['c', 'd']);
+      expect(movedUp).toBe(true);
+      let topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'c', 'd', 'b']);
+
+      const movedDown = binding.movePageGroupNext(['c', 'd']);
+      expect(movedDown).toBe(true);
+      topLevel = binding
+        .getPages()
+        .filter((p) => p.parentId === null)
+        .sort((x, y) => x.order - y.order)
+        .map((p) => p.id);
+      expect(topLevel).toEqual(['a', 'b', 'c', 'd']);
+    });
+  });
+
   describe('generateId', () => {
     it('generates unique IDs with prefix', () => {
       const id1 = binding.generateId('page');

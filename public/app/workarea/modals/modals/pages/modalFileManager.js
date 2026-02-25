@@ -116,6 +116,19 @@ export default class ModalFilemanager extends Modal {
         this.previewAudio = this.modalElement.querySelector('.media-library-preview-audio');
         this.previewFile = this.modalElement.querySelector('.media-library-preview-file');
         this.previewPdf = this.modalElement.querySelector('.media-library-preview-pdf');
+        if (!this.previewPdf) {
+            const previewContainer = this.modalElement.querySelector('.media-library-preview');
+            if (previewContainer) {
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.className = 'media-library-preview-pdf';
+                pdfIframe.style.display = 'none';
+                pdfIframe.style.width = '100%';
+                pdfIframe.style.height = '250px';
+                pdfIframe.style.border = '1px solid #ccc';
+                previewContainer.insertBefore(pdfIframe, this.previewFile || null);
+                this.previewPdf = pdfIframe;
+            }
+        }
 
         // Folder navigation elements
         this.breadcrumbs = this.modalElement.querySelector('.media-library-breadcrumbs');
@@ -129,6 +142,17 @@ export default class ModalFilemanager extends Modal {
         this.folderPickerCancel = this.modalElement.querySelector('.folder-picker-cancel');
         this.folderPickerClose = this.modalElement.querySelector('.folder-picker-close');
         this.folderPickerOverlay = this.modalElement.querySelector('.folder-picker-overlay');
+
+        // Rename dialog
+        this.renameDialog = this.modalElement.querySelector('.media-library-rename-dialog');
+        this.renameDialogTitle = this.modalElement.querySelector('.rename-dialog-title');
+        this.renameDialogLabel = this.modalElement.querySelector('.rename-dialog-label');
+        this.renameDialogInput = this.modalElement.querySelector('.rename-dialog-input');
+        this.renameDialogConfirm = this.modalElement.querySelector('.rename-dialog-confirm');
+        this.renameDialogCancel = this.modalElement.querySelector('.rename-dialog-cancel');
+        this.renameDialogClose = this.modalElement.querySelector('.rename-dialog-close');
+        this.renameDialogOverlay = this.modalElement.querySelector('.rename-dialog-overlay');
+        this._renameDialogResolve = null;
 
         // Metadata elements
         this.filenameSpan = this.modalElement.querySelector('.media-library-filename');
@@ -361,6 +385,39 @@ export default class ModalFilemanager extends Modal {
         if (this.folderPickerConfirm) {
             this.folderPickerConfirm.addEventListener('click', () => {
                 this.confirmMove();
+            });
+        }
+
+        // Rename dialog events
+        if (this.renameDialogCancel) {
+            this.renameDialogCancel.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogClose) {
+            this.renameDialogClose.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogOverlay) {
+            this.renameDialogOverlay.addEventListener('click', () => {
+                this._resolveRenameDialog(null);
+            });
+        }
+        if (this.renameDialogConfirm) {
+            this.renameDialogConfirm.addEventListener('click', () => {
+                this._resolveRenameDialog(this.renameDialogInput?.value ?? null);
+            });
+        }
+        if (this.renameDialogInput) {
+            this.renameDialogInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this._resolveRenameDialog(this.renameDialogInput.value);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this._resolveRenameDialog(null);
+                }
             });
         }
     }
@@ -2071,6 +2128,50 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Show a rename dialog and return a Promise that resolves with the entered
+     * value, or null if cancelled. For files, the selection covers only the
+     * base name (before the last dot) so the extension is not highlighted.
+     *
+     * @param {string} title - Dialog heading text
+     * @param {string} label - Label text above the input
+     * @param {string} currentValue - Pre-filled value for the input
+     * @param {number} selectUpTo - End index of the initial text selection (0..length)
+     * @returns {Promise<string|null>}
+     */
+    _showRenameDialog(title, label, currentValue, selectUpTo) {
+        return new Promise((resolve) => {
+            if (!this.renameDialog) {
+                resolve(null);
+                return;
+            }
+            this._renameDialogResolve = resolve;
+            if (this.renameDialogTitle) this.renameDialogTitle.textContent = title;
+            if (this.renameDialogLabel) this.renameDialogLabel.textContent = label;
+            if (this.renameDialogInput) this.renameDialogInput.value = currentValue;
+            this.renameDialog.style.display = 'flex';
+            if (this.renameDialogInput) {
+                this.renameDialogInput.focus();
+                this.renameDialogInput.setSelectionRange(0, selectUpTo);
+            }
+        });
+    }
+
+    /**
+     * Resolve and close the rename dialog.
+     *
+     * @param {string|null} value - The value to resolve with (null = cancelled)
+     */
+    _resolveRenameDialog(value) {
+        if (!this.renameDialog) return;
+        this.renameDialog.style.display = 'none';
+        if (this._renameDialogResolve) {
+            const resolve = this._renameDialogResolve;
+            this._renameDialogResolve = null;
+            resolve(value);
+        }
+    }
+
+    /**
      * Rename the selected asset or folder
      */
     async renameSelectedAsset() {
@@ -2079,7 +2180,12 @@ export default class ModalFilemanager extends Modal {
         // Check if folder is selected
         if (this.selectedFolder && this.selectedFolderPath) {
             const currentName = this.selectedFolder;
-            const newName = prompt(_('Enter new folder name:'), currentName);
+            const newName = await this._showRenameDialog(
+                _('Rename folder'),
+                _('Enter new folder name:'),
+                currentName,
+                currentName.length
+            );
 
             if (!newName || newName === currentName) return;
 
@@ -2160,7 +2266,14 @@ export default class ModalFilemanager extends Modal {
         if (!this.selectedAsset) return;
 
         const currentName = this.selectedAsset.filename || '';
-        const newName = prompt(_('Enter new filename:'), currentName);
+        const dotIndex = currentName.lastIndexOf('.');
+        const selectUpTo = dotIndex > 0 ? dotIndex : currentName.length;
+        const newName = await this._showRenameDialog(
+            _('Rename file'),
+            _('Enter new filename:'),
+            currentName,
+            selectUpTo
+        );
 
         if (!newName || newName === currentName) return;
 
@@ -2399,8 +2512,15 @@ export default class ModalFilemanager extends Modal {
             const originalName = asset.filename || 'file';
             const suggestedName = this.generateUniqueCopyName(originalName, existingNames);
 
-            // Prompt user for the new filename
-            const newName = prompt(_('Enter name for the duplicate:'), suggestedName);
+            // Show rename dialog for the new filename, selecting only the base name
+            const dotIndex = suggestedName.lastIndexOf('.');
+            const selectUpTo = dotIndex > 0 ? dotIndex : suggestedName.length;
+            const newName = await this._showRenameDialog(
+                _('Duplicate file'),
+                _('Enter name for the duplicate:'),
+                suggestedName,
+                selectUpTo
+            );
 
             // User cancelled
             if (newName === null) return;
@@ -3127,6 +3247,9 @@ export default class ModalFilemanager extends Modal {
             'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'ppt': 'application/vnd.ms-powerpoint',
             'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'odt':  'application/vnd.oasis.opendocument.text',
+            'ods':  'application/vnd.oasis.opendocument.spreadsheet',
+            'odp':  'application/vnd.oasis.opendocument.presentation',
             // Other
             'zip': 'application/zip',
             'json': 'application/json',

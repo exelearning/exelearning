@@ -64,6 +64,96 @@ describe('Capabilities', () => {
         });
     });
 
+    describe('ui capabilities', () => {
+        it('should default all ui flags to true when no embedding config', () => {
+            const config = new RuntimeConfig({
+                mode: 'server',
+                baseUrl: 'http://localhost:8080',
+                wsUrl: 'ws://localhost:8080',
+                staticDataPath: null,
+            });
+            const capabilities = new Capabilities(config);
+
+            expect(capabilities.ui.showFileMenu).toBe(true);
+            expect(capabilities.ui.showSaveButton).toBe(true);
+            expect(capabilities.ui.showShareButton).toBe(true);
+            expect(capabilities.ui.showUserMenu).toBe(true);
+            expect(capabilities.ui.showDownloadButton).toBe(true);
+            expect(capabilities.ui.showHelpMenu).toBe(true);
+        });
+
+        it('should hide file menu when hideUI.fileMenu is true', () => {
+            const config = new RuntimeConfig({
+                mode: 'static',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: null,
+                embeddingConfig: { hideUI: { fileMenu: true } },
+            });
+            const capabilities = new Capabilities(config);
+
+            expect(capabilities.ui.showFileMenu).toBe(false);
+            expect(capabilities.ui.showSaveButton).toBe(true);
+        });
+
+        it('should map each hideUI flag correctly', () => {
+            const config = new RuntimeConfig({
+                mode: 'static',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: null,
+                embeddingConfig: {
+                    hideUI: {
+                        fileMenu: true,
+                        saveButton: true,
+                        shareButton: true,
+                        userMenu: true,
+                        downloadButton: true,
+                        helpMenu: true,
+                    },
+                },
+            });
+            const capabilities = new Capabilities(config);
+
+            expect(capabilities.ui.showFileMenu).toBe(false);
+            expect(capabilities.ui.showSaveButton).toBe(false);
+            expect(capabilities.ui.showShareButton).toBe(false);
+            expect(capabilities.ui.showUserMenu).toBe(false);
+            expect(capabilities.ui.showDownloadButton).toBe(false);
+            expect(capabilities.ui.showHelpMenu).toBe(false);
+        });
+
+        it('should only affect specified keys with partial hideUI', () => {
+            const config = new RuntimeConfig({
+                mode: 'static',
+                baseUrl: '.',
+                wsUrl: null,
+                staticDataPath: null,
+                embeddingConfig: { hideUI: { saveButton: true, helpMenu: true } },
+            });
+            const capabilities = new Capabilities(config);
+
+            expect(capabilities.ui.showFileMenu).toBe(true);
+            expect(capabilities.ui.showSaveButton).toBe(false);
+            expect(capabilities.ui.showShareButton).toBe(true);
+            expect(capabilities.ui.showUserMenu).toBe(true);
+            expect(capabilities.ui.showDownloadButton).toBe(true);
+            expect(capabilities.ui.showHelpMenu).toBe(false);
+        });
+
+        it('should be frozen', () => {
+            const config = new RuntimeConfig({
+                mode: 'server',
+                baseUrl: 'http://localhost',
+                wsUrl: 'ws://localhost',
+                staticDataPath: null,
+            });
+            const capabilities = new Capabilities(config);
+
+            expect(Object.isFrozen(capabilities.ui)).toBe(true);
+        });
+    });
+
     describe('static mode (includes Electron)', () => {
         const config = new RuntimeConfig({
             mode: 'static',

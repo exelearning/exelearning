@@ -30,6 +30,7 @@ test.describe('Save Detection', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -65,6 +66,7 @@ test.describe('Save Detection', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -112,6 +114,7 @@ test.describe('Save Detection', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -139,6 +142,7 @@ test.describe('Save Detection', () => {
                 const saveBtn = document.getElementById('head-top-save-button');
                 return saveBtn?.classList.contains('saved') && !saveBtn?.classList.contains('saving');
             },
+            undefined,
             { timeout: 30000 },
         );
 
@@ -173,6 +177,7 @@ test.describe('Save Detection', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -212,6 +217,7 @@ test.describe('Save Detection', () => {
                 const docManager = (window as any).eXeLearning?.app?.project?._yjsBridge?.documentManager;
                 return docManager?._initialized === true;
             },
+            undefined,
             { timeout: 10000 },
         );
 

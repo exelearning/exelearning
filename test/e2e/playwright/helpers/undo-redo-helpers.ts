@@ -6,15 +6,20 @@
 
 import type { Page } from '@playwright/test';
 
+const UNDO_BUTTON_SELECTOR = '#yjs-undo-redo .btn-undo';
+const REDO_BUTTON_SELECTOR = '#yjs-undo-redo .btn-redo';
+const BLOCK_SELECTOR = '#node-content article.box:not(#empty_articles)';
+
 /**
  * Wait for undo button to be enabled (undo available)
  */
 export async function waitForUndoAvailable(page: Page, timeout = 10000): Promise<void> {
     await page.waitForFunction(
-        () => {
-            const undoBtn = document.querySelector('button[title*="Undo"]');
+        selector => {
+            const undoBtn = document.querySelector(selector);
             return undoBtn && !undoBtn.hasAttribute('disabled');
         },
+        UNDO_BUTTON_SELECTOR,
         { timeout },
     );
 }
@@ -24,10 +29,11 @@ export async function waitForUndoAvailable(page: Page, timeout = 10000): Promise
  */
 export async function waitForRedoAvailable(page: Page, timeout = 10000): Promise<void> {
     await page.waitForFunction(
-        () => {
-            const redoBtn = document.querySelector('button[title*="Redo"]');
+        selector => {
+            const redoBtn = document.querySelector(selector);
             return redoBtn && !redoBtn.hasAttribute('disabled');
         },
+        REDO_BUTTON_SELECTOR,
         { timeout },
     );
 }
@@ -85,14 +91,14 @@ export async function waitForBlockTitle(
     timeout = 10000,
 ): Promise<void> {
     await page.waitForFunction(
-        ({ idx, title }) => {
-            const blocks = document.querySelectorAll('#node-content article.box');
+        ({ selector, idx, title }) => {
+            const blocks = document.querySelectorAll(selector);
             const block = blocks[idx];
             if (!block) return false;
             const titleEl = block.querySelector('.box-title');
             return titleEl?.textContent?.trim() === title.trim();
         },
-        { idx: blockIndex, title: expectedTitle },
+        { selector: BLOCK_SELECTOR, idx: blockIndex, title: expectedTitle },
         { timeout },
     );
 }

@@ -79,7 +79,7 @@ test.describe('Theme Selection - Basic', () => {
             await navigateToProject(page, projectUuid);
 
             // Wait for ThemesManager to be initialized
-            await page.waitForFunction(() => (window as any).eXeLearning?.app?.themes?.selected, {
+            await page.waitForFunction(() => (window as any).eXeLearning?.app?.themes?.selected, undefined, {
                 timeout: 30000,
             });
 

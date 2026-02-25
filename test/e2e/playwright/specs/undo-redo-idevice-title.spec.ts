@@ -47,6 +47,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             const nodeContent = document.querySelector('#node-content');
             return nodeContent !== null;
         },
+        undefined,
         { timeout: 10000 },
     );
 
@@ -67,6 +68,7 @@ async function addTextIdevice(page: Page): Promise<void> {
             const idevice = document.querySelector('#node-content article .idevice_node.text:last-of-type');
             return idevice?.getAttribute('mode') !== 'edition';
         },
+        undefined,
         { timeout: 15000 },
     );
 }
@@ -149,7 +151,9 @@ async function editPageName(page: Page, pageIndex: number, newName: string): Pro
     await saveBtn.click();
 
     // 5. Wait for modal to close
-    await page.waitForFunction(() => !document.querySelector('.modal.show input[type="text"]'), { timeout: 5000 });
+    await page.waitForFunction(() => !document.querySelector('.modal.show input[type="text"]'), undefined, {
+        timeout: 5000,
+    });
     await page.waitForTimeout(500);
 }
 
@@ -470,7 +474,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
         // to ensure the icon change is in a separate undo transaction from block creation
-        await page.waitForTimeout(600);
+        await page.waitForTimeout(500);
 
         // Change icon to first theme icon (index 1, since 0 is empty)
         await changeBlockIcon(page, 0, 1);
@@ -498,6 +502,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 const hasSvg = iconBtn.querySelector('svg') !== null;
                 return !hasImg && (hasEmptyClass || hasSvg);
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -530,7 +535,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
         // to ensure the icon change is in a separate undo transaction from block creation
-        await page.waitForTimeout(600);
+        await page.waitForTimeout(500);
 
         // Change icon to first theme icon
         await changeBlockIcon(page, 0, 1);
@@ -554,6 +559,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 const hasSvg = iconBtn.querySelector('svg') !== null;
                 return !hasImg && (hasEmptyClass || hasSvg);
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -573,6 +579,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 const hasImg = iconBtn.querySelector('img') !== null;
                 return hasImg;
             },
+            undefined,
             { timeout: 10000 },
         );
 
@@ -608,7 +615,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
 
         // IMPORTANT: Wait longer than Yjs UndoManager's captureTimeout (500ms default)
         // to ensure the icon change is in a separate undo transaction from block creation
-        await page.waitForTimeout(600);
+        await page.waitForTimeout(500);
 
         // Helper to normalize icon paths (remove leading ./)
         const normalizePath = (path: string | null) => path?.replace(/^\.\//, '/') || '';
@@ -619,7 +626,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         const iconSrc1 = normalizePath(await getBlockIconSrc(page, 0));
 
         // Wait for UndoManager captureTimeout to separate transactions
-        await page.waitForTimeout(600);
+        await page.waitForTimeout(500);
 
         // Change to icon 2
         await changeBlockIcon(page, 0, 2);
@@ -650,6 +657,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 const hasImg = iconBtn.querySelector('img') !== null;
                 return !hasImg;
             },
+            undefined,
             { timeout: 10000 },
         );
         expect(await blockHasEmptyIcon(page, 0)).toBe(true);

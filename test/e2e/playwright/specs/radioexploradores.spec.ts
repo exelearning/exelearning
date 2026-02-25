@@ -205,7 +205,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             }, pageWithRelate!);
 
             // Wait for the page to render
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(500);
 
             // Get relate data and check Edit button
             const relateData = await getIdeviceDataFromYjs(page, 'relate');
@@ -248,7 +248,7 @@ test.describe('radioexploradores.elp Import Tests', () => {
             await openElpFile(page, FIXTURE_PATH);
 
             // Wait for processing
-            await page.waitForTimeout(3000);
+            await page.waitForTimeout(500);
 
             // Verify no critical errors
             expect(errors.length).toBeLessThan(5);

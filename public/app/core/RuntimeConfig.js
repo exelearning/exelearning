@@ -17,6 +17,7 @@ export class RuntimeConfig {
      * @param {string|null} options.staticDataPath - Path to bundle.json (null in server mode)
      * @param {boolean} options.isEmbedded - Whether running in an iframe
      * @param {string|null} options.parentOrigin - Parent window origin (for embedded mode)
+     * @param {Object|null} options.embeddingConfig - External embedding configuration from __EXE_EMBEDDING_CONFIG__
      */
     constructor(options) {
         this.mode = options.mode;
@@ -25,6 +26,7 @@ export class RuntimeConfig {
         this.staticDataPath = options.staticDataPath;
         this.isEmbedded = options.isEmbedded || false;
         this.parentOrigin = options.parentOrigin || null;
+        this.embeddingConfig = options.embeddingConfig || null;
         Object.freeze(this);
     }
 
@@ -34,18 +36,46 @@ export class RuntimeConfig {
      * @returns {RuntimeConfig}
      */
     static fromEnvironment() {
+        const normalizeBasePath = (value) => {
+            if (!value || value === '.') return '.';
+            let normalized = String(value).trim();
+            try {
+                normalized = new URL(normalized, window.location.origin).pathname;
+            } catch {
+                // Keep non-URL values as-is.
+            }
+            normalized = normalized.replace(/\/{2,}/g, '/').replace(/\/+$/, '');
+            if (!normalized) return '.';
+            if (!normalized.startsWith('/')) {
+                normalized = '/' + normalized;
+            }
+            return normalized;
+        };
+        const joinBasePath = (basePath, suffix) => {
+            const base = normalizeBasePath(basePath);
+            if (base === '.') {
+                return `.${suffix.startsWith('/') ? suffix : `/${suffix}`}`;
+            }
+            return `${base}${suffix.startsWith('/') ? suffix : `/${suffix}`}`;
+        };
+
         // Detect if running in an iframe (embedded mode)
         const isInIframe = window.parent !== window;
 
+        // Read external embedding configuration (set by LMS plugins before loading the editor)
+        const embeddingConfig = window.__EXE_EMBEDDING_CONFIG__ || null;
+
         // Check for static mode flag (set by build-static-bundle.ts)
         if (window.__EXE_STATIC_MODE__) {
+            const staticBasePath = normalizeBasePath(embeddingConfig?.basePath || '.');
             return new RuntimeConfig({
                 mode: 'static',
-                baseUrl: '.',
+                baseUrl: staticBasePath,
                 wsUrl: null,
-                staticDataPath: './data/bundle.json',
-                isEmbedded: isInIframe,
-                parentOrigin: null, // Will be set when parent sends first message
+                staticDataPath: joinBasePath(staticBasePath, '/data/bundle.json'),
+                isEmbedded: isInIframe || !!embeddingConfig,
+                parentOrigin: embeddingConfig?.parentOrigin || null,
+                embeddingConfig,
             });
         }
 
@@ -59,6 +89,7 @@ export class RuntimeConfig {
                 staticDataPath: null,
                 isEmbedded: false, // Electron is never embedded
                 parentOrigin: null,
+                embeddingConfig: null,
             });
         }
 
@@ -74,8 +105,9 @@ export class RuntimeConfig {
             baseUrl: window.location.origin,
             wsUrl: `${protocol}//${window.location.host}`,
             staticDataPath: null,
-            isEmbedded: isInIframe || isExplicitlyEmbedded,
-            parentOrigin: null, // Will be set when parent sends first message
+            isEmbedded: isInIframe || isExplicitlyEmbedded || !!embeddingConfig,
+            parentOrigin: embeddingConfig?.parentOrigin || null,
+            embeddingConfig,
         });
     }
 

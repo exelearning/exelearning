@@ -610,6 +610,20 @@ describe('YjsPropertiesBinding', () => {
       expect(input.value).toBe('Changed Title');
     });
 
+    it('clears corresponding input on delete action', () => {
+      const input = document.createElement('input');
+      input.className = 'property-value';
+      input.setAttribute('property', 'pp_subtitle');
+      input.type = 'text';
+      input.value = 'stale subtitle';
+      mockFormElement.appendChild(input);
+
+      binding.bindForm(mockFormElement);
+      binding.onMetadataKeyChanged('subtitle', 'delete');
+
+      expect(input.value).toBe('');
+    });
+
     it('updates title element if title changed', () => {
       const titleEl = document.createElement('h2');
       binding.titleElement = titleEl;

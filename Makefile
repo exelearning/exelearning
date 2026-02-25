@@ -177,12 +177,12 @@ run-app: check-bun check-env deps css bundle
 	@bun run electron
 
 # Build static distribution (PWA mode, no server required)
-# Usage: make build-static [VERSION=v1.0.0]
+# Usage: make build-static [VERSION=v1.0.0] [OUTPUT_DIR=/path/to/output]
 .PHONY: build-static
 build-static: check-bun deps css bundle
 	@echo "Building static distribution..."
-	@$(if $(VERSION),VERSION=$(VERSION) ,)bun run build:static
-	@echo "Static distribution built at dist/static/"
+	@$(if $(VERSION),VERSION=$(VERSION) ,)$(if $(OUTPUT_DIR),OUTPUT_DIR=$(OUTPUT_DIR) ,)bun run build:static
+	@echo "Static distribution built at $${OUTPUT_DIR:-dist/static/}"
 
 # Build static distribution and serve it
 # Usage: make up-static [PORT=8080]

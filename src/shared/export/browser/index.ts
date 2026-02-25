@@ -49,6 +49,7 @@ import { LomMetadataGenerator } from '../generators/LomMetadata';
 
 // Import utilities
 import { LibraryDetector } from '../utils/LibraryDetector';
+import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
 import type { ExportOptions } from '../interfaces';
@@ -255,13 +256,197 @@ interface MermaidPreRendererHooks {
     ) => Promise<{ html: string; hasMermaid: boolean; mermaidRendered: boolean; count: number }>;
 }
 
+interface LatexDebugEntry {
+    step: string;
+    timestamp: number;
+    details?: Record<string, unknown>;
+}
+
+function pushLatexDebug(step: string, details?: Record<string, unknown>): void {
+    if (typeof window === 'undefined') return;
+    const w = window as unknown as {
+        __latexExportDebug?: LatexDebugEntry[];
+    };
+    if (!w.__latexExportDebug) {
+        w.__latexExportDebug = [];
+    }
+    w.__latexExportDebug.push({
+        step,
+        timestamp: Date.now(),
+        details,
+    });
+}
+
+let latexPreRendererLoadPromise: Promise<boolean> | null = null;
+
+async function ensureLatexPreRendererLoaded(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const windowWithLatex = window as unknown as {
+        LatexPreRenderer?: {
+            preRender: (
+                html: string,
+            ) => Promise<{ html: string; hasLatex: boolean; latexRendered: boolean; count: number }>;
+            preRenderDataGameLatex: (html: string) => Promise<{ html: string; count: number }>;
+        };
+    };
+
+    if (windowWithLatex.LatexPreRenderer) {
+        pushLatexDebug('ensureLatexPreRendererLoaded.alreadyLoaded');
+        return true;
+    }
+
+    if (latexPreRendererLoadPromise) {
+        pushLatexDebug('ensureLatexPreRendererLoaded.awaitExistingPromise');
+        return latexPreRendererLoadPromise;
+    }
+
+    latexPreRendererLoadPromise = new Promise<boolean>(resolve => {
+        const existing = Array.from(document.querySelectorAll('script[src]')).find(script =>
+            script.getAttribute('src')?.includes('/app/common/LatexPreRenderer.js'),
+        ) as HTMLScriptElement | undefined;
+
+        if (existing) {
+            pushLatexDebug('ensureLatexPreRendererLoaded.foundExistingScript', {
+                src: existing.getAttribute('src') || '',
+            });
+            existing.addEventListener('load', () => resolve(!!windowWithLatex.LatexPreRenderer), { once: true });
+            existing.addEventListener('error', () => resolve(false), { once: true });
+            // If already loaded, resolve immediately.
+            if (windowWithLatex.LatexPreRenderer) {
+                resolve(true);
+            }
+            return;
+        }
+
+        const exportersScript = Array.from(document.querySelectorAll('script[src]')).find(script => {
+            const src = script.getAttribute('src') || '';
+            return src.includes('/app/yjs/exporters.bundle.js') || src.endsWith('exporters.bundle.js');
+        }) as HTMLScriptElement | undefined;
+
+        const exportersSrc = exportersScript?.getAttribute('src') || '';
+        const latexSrc = exportersSrc
+            ? exportersSrc.replace(/\/yjs\/exporters\.bundle\.js(\?.*)?$/, '/common/LatexPreRenderer.js')
+            : '/app/common/LatexPreRenderer.js';
+
+        const script = document.createElement('script');
+        script.src = latexSrc;
+        script.async = true;
+        script.onload = () => {
+            pushLatexDebug('ensureLatexPreRendererLoaded.injectedScriptLoaded', { src: latexSrc });
+            resolve(!!windowWithLatex.LatexPreRenderer);
+        };
+        script.onerror = () => {
+            pushLatexDebug('ensureLatexPreRendererLoaded.injectedScriptError', { src: latexSrc });
+            resolve(false);
+        };
+        pushLatexDebug('ensureLatexPreRendererLoaded.injectedScript', { src: latexSrc });
+        document.head.appendChild(script);
+    });
+
+    const loaded = await latexPreRendererLoadPromise;
+    pushLatexDebug('ensureLatexPreRendererLoaded.resolved', { loaded });
+    if (!loaded) {
+        latexPreRendererLoadPromise = null;
+    }
+    return loaded;
+}
+
 /**
  * Get LaTeX pre-renderer hooks if available in browser context
  * @returns Object with preRenderLatex and preRenderDataGameLatex, or undefined
  */
-function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
+async function ensureMathJaxForLatexPreRender(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    const windowWithMath = window as unknown as {
+        MathJax?: { tex2svg?: unknown };
+        $exe?: {
+            math?: {
+                loadMathJax?: (cb?: () => void) => void;
+            };
+        };
+    };
+
+    if (typeof windowWithMath.MathJax?.tex2svg === 'function') {
+        pushLatexDebug('ensureMathJaxForLatexPreRender.alreadyReady');
+        return true;
+    }
+
+    const loadMathJax = windowWithMath.$exe?.math?.loadMathJax;
+    if (typeof loadMathJax !== 'function') {
+        const exportersScript = Array.from(document.querySelectorAll('script[src]')).find(script => {
+            const src = script.getAttribute('src') || '';
+            return src.includes('/app/yjs/exporters.bundle.js') || src.endsWith('exporters.bundle.js');
+        }) as HTMLScriptElement | undefined;
+
+        const exportersSrc = exportersScript?.getAttribute('src') || '';
+        const mathJaxSrc = exportersSrc
+            ? exportersSrc.replace(/\/yjs\/exporters\.bundle\.js(\?.*)?$/, '/common/exe_math/tex-mml-svg.js')
+            : '/app/common/exe_math/tex-mml-svg.js';
+
+        if (!document.querySelector(`script[src="${mathJaxSrc}"]`)) {
+            // Minimal config for pre-rendering context (export/preview generation).
+            windowWithMath.MathJax = windowWithMath.MathJax || {
+                tex: {
+                    inlineMath: [['\\(', '\\)']],
+                    displayMath: [
+                        ['$$', '$$'],
+                        ['\\[', '\\]'],
+                    ],
+                    processEscapes: true,
+                    tags: 'ams',
+                },
+            };
+
+            await new Promise<void>(resolve => {
+                const script = document.createElement('script');
+                script.src = mathJaxSrc;
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => resolve();
+                pushLatexDebug('ensureMathJaxForLatexPreRender.injectScript', { src: mathJaxSrc });
+                document.head.appendChild(script);
+            });
+        }
+    } else {
+        pushLatexDebug('ensureMathJaxForLatexPreRender.useLoadMathJax');
+        await new Promise<void>(resolve => {
+            try {
+                loadMathJax(() => resolve());
+            } catch {
+                resolve();
+            }
+        });
+    }
+
+    // Wait briefly for tex2svg to become available after script load.
+    const maxWaitMs = 5000;
+    const intervalMs = 50;
+    let elapsed = 0;
+    while (elapsed < maxWaitMs) {
+        if (typeof windowWithMath.MathJax?.tex2svg === 'function') {
+            pushLatexDebug('ensureMathJaxForLatexPreRender.readyAfterWait', { elapsed });
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+        elapsed += intervalMs;
+    }
+
+    pushLatexDebug('ensureMathJaxForLatexPreRender.failed');
+    return false;
+}
+
+async function getLatexPreRendererHooks(): Promise<LatexPreRendererHooks | undefined> {
     if (typeof window === 'undefined') return undefined;
 
+    const latexRendererReady = await ensureLatexPreRendererLoaded();
+    if (!latexRendererReady) {
+        pushLatexDebug('getLatexPreRendererHooks.rendererNotReady');
+        return undefined;
+    }
+
+    pushLatexDebug('getLatexPreRendererHooks.rendererReady');
     const windowLatexPreRenderer = (
         window as unknown as {
             LatexPreRenderer?: {
@@ -272,16 +457,32 @@ function getLatexPreRendererHooks(): LatexPreRendererHooks | undefined {
             };
         }
     ).LatexPreRenderer;
-    const windowMathJax = (window as unknown as { MathJax?: unknown }).MathJax;
-
-    if (windowLatexPreRenderer && windowMathJax) {
-        return {
-            preRenderLatex: windowLatexPreRenderer.preRender.bind(windowLatexPreRenderer),
-            preRenderDataGameLatex: windowLatexPreRenderer.preRenderDataGameLatex.bind(windowLatexPreRenderer),
-        };
+    if (!windowLatexPreRenderer) {
+        return undefined;
     }
 
-    return undefined;
+    return {
+        preRenderLatex: async (html: string) => {
+            const mathReady = await ensureMathJaxForLatexPreRender();
+            const result = await windowLatexPreRenderer.preRender(html);
+            pushLatexDebug('preRenderLatex.called', {
+                mathReady,
+                hasLatex: result.hasLatex,
+                latexRendered: result.latexRendered,
+                count: result.count,
+            });
+            return result;
+        },
+        preRenderDataGameLatex: async (html: string) => {
+            const mathReady = await ensureMathJaxForLatexPreRender();
+            const result = await windowLatexPreRenderer.preRenderDataGameLatex(html);
+            pushLatexDebug('preRenderDataGameLatex.called', {
+                mathReady,
+                count: result.count,
+            });
+            return result;
+        },
+    };
 }
 
 /**
@@ -338,7 +539,7 @@ export async function quickExport(
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
     const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
@@ -369,7 +570,7 @@ export async function exportAndDownload(
     const exporter = createExporter(format, documentManager, assetCache, resourceFetcher, assetManager);
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
     const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };
@@ -448,7 +649,7 @@ export async function generatePrintPreview(
     );
 
     // Wire up LaTeX pre-renderer hooks if available in browser context
-    const latexHooks = getLatexPreRendererHooks();
+    const latexHooks = await getLatexPreRendererHooks();
     // Wire up Mermaid pre-renderer hooks if available in browser context
     const mermaidHooks = getMermaidPreRendererHooks();
 
@@ -576,7 +777,7 @@ export async function generatePreviewForSW(
         const exporter = new Html5Exporter(document, resources, assets, zip);
 
         // Wire up LaTeX pre-renderer hooks if available in browser context
-        const latexHooks = getLatexPreRendererHooks();
+        const latexHooks = await getLatexPreRendererHooks();
         // Wire up Mermaid pre-renderer hooks if available in browser context
         const mermaidHooks = getMermaidPreRendererHooks();
         const exportOptions = { ...options, ...latexHooks, ...mermaidHooks };

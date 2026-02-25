@@ -13149,6 +13149,26 @@
         <source>Download Video</source>
         <target>~Descarregar vídeo</target>
       </trans-unit>
+      <trans-unit id="mtjehjt" resname="Log in as">
+        <source>Log in as</source>
+        <target>~Iniciar sessió com a</target>
+      </trans-unit>
+      <trans-unit id="jf82g6l" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target>~No es pot suplantar els usuaris administradors</target>
+      </trans-unit>
+      <trans-unit id="xgvdods" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target>~No pots suplantar la teua pròpia compte</target>
+      </trans-unit>
+      <trans-unit id="0nivv3b" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target>~Iniciar suplantació com a {email}?</target>
+      </trans-unit>
+      <trans-unit id="5nbvdcq" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target>~Error en iniciar la suplantació</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
