@@ -28,9 +28,9 @@ export const LOCALES: Record<string, string> = {
 };
 
 /**
- * Default locale: uses APP_LOCALE env var if set, otherwise defaults to 'es' (Spanish)
+ * Default locale: uses APP_LOCALE env var if set, otherwise defaults to 'en' (English)
  */
-export const DEFAULT_LOCALE = process.env.APP_LOCALE || 'es';
+export const DEFAULT_LOCALE = process.env.APP_LOCALE || 'en';
 
 /**
  * Package export locales - extended list for content packages
