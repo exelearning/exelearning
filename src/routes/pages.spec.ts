@@ -46,7 +46,16 @@ function createMockQueries(): PagesQueriesDeps {
         },
         setPreference: async (_db: any, userId: number, key: string, value: string) => {
             mockPreferences.set(`${userId}:${key}`, { value });
-            return { id: 1, owner_id: userId, preference_key: key, value, description: null, is_active: 1, created_at: Date.now(), updated_at: Date.now() };
+            return {
+                id: 1,
+                owner_id: userId,
+                preference_key: key,
+                value,
+                description: null,
+                is_active: 1,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+            };
         },
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
         findProjectByPlatformId: async (_db: any, platformId: string) => {
