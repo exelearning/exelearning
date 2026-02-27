@@ -194,7 +194,7 @@ up-static: build-static
 	@echo "  Press Ctrl+C to stop"
 	@echo "============================================================"
 	@echo ""
-	@bunx serve dist/static -p $${PORT:-8080}
+	@bun x serve dist/static -p $${PORT:-8080}
 
 
 # =============================================================================
@@ -559,18 +559,18 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
-	bunx playwright test --project=chromium
+	bun x playwright test --project=chromium
 
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
 
 .PHONY: test-e2e-ui
 test-e2e-ui: check-env ## Run Playwright E2E tests with UI
-	bunx playwright test --ui
+	bun x playwright test --ui
 
 .PHONY: test-e2e-firefox
 test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
-	bunx playwright test --project=firefox
+	bun x playwright test --project=firefox
 
 .PHONY: test-e2e-static
 test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
@@ -581,7 +581,7 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 	@echo ""
 	@echo "Running Playwright tests (server managed by Playwright)..."
 	@echo ""
-	@bunx playwright test --project=static; \
+	@bun x playwright test --project=static; \
 	test_exit=$$?; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
@@ -649,7 +649,7 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -681,7 +681,7 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -713,7 +713,7 @@ test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite ba
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bunx playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
