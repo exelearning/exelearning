@@ -1,10 +1,23 @@
 /* Custom CSS here */
 @import url("../common/exe_wikipedia/exe_wikipedia.css");
+
 /* Form iDevice (selected words) */
-body#tinymce{padding:1em}
-#tinymce u{font-style:italic;text-decoration:none;opacity:.5}
+body#tinymce {
+    padding: 1em
+}
+
+#tinymce u {
+    font-style: italic;
+    text-decoration: none;
+    opacity: .5
+}
+
 /* Download package iDevice */
-.exe-table.exe-package-info {caption-side:top;margin:0 auto}
+.exe-table.exe-package-info {
+    caption-side: top;
+    margin: 0 auto
+}
+
 /* Boostrap changes the tables presentation (issue #1002) */
 /* Restore default TinyMCE table styles */
 .mce-content-body table {
@@ -12,9 +25,17 @@ body#tinymce{padding:1em}
     width: auto;
     border: 1px dashed #bbb;
 }
+
 .mce-content-body th,
 .mce-content-body td {
     border: 1px dashed #bbb;
     padding: 4px 8px;
     text-align: left;
+}
+
+/* download-source-file iDevice read-only cells */
+.mce-content-body td.exe-prop-locked {
+    background-color: #f7f7f7;
+    color: #666;
+    cursor: not-allowed;
 }
