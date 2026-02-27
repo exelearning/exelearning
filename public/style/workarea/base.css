@@ -719,18 +719,6 @@ html:not(.mode-teacher) .js .teacher-only {
     display: none !important;
 }
 
-/* Teacher mode visual indicator */
-.teacher-only {
-    background-color: lightyellow;
-    outline: 1px dashed #c8a800;
-    border-radius: 4px;
-}
-
-article.box.teacher-only .box-head,
-article.box.teacher-only .idevice_node {
-    background-color: lightyellow !important;
-}
-
 /* ========================================
    Architecture v3.1 - Common Theme Overrides
    ========================================
