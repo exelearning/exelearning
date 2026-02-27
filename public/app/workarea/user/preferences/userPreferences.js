@@ -36,7 +36,7 @@ export default class UserPreferences {
         // Note: advancedMode defaults to 'true' in static mode so all features are visible
         // locale defaults to the app's configured locale (from server config)
         if (!preferencesConfig) {
-            const appLocale = app.eXeLearning?.config?.locale || 'es';
+            const appLocale = app.eXeLearning?.config?.locale || 'en';
             preferencesConfig = {
                 locale: { title: 'Language', value: appLocale, type: 'select' },
                 advancedMode: { title: 'Advanced Mode', value: isStaticMode ? 'true' : 'false', type: 'checkbox' },
@@ -61,7 +61,7 @@ export default class UserPreferences {
      * @param {Array} preferences
      */
     setPreferences(preferences) {
-        for (let [key, value] of Object.entries(preferences)) {
+        for (let [key] of Object.entries(preferences)) {
             if (preferences[key]) {
                 if (this.preferences[key]) {
                     this.preferences[key].value = preferences[key].value;

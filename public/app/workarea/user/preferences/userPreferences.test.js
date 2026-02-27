@@ -104,7 +104,7 @@ describe('UserPreferences', () => {
       await userPreferences.load();
 
       expect(userPreferences.preferences).toBeDefined();
-      expect(userPreferences.preferences.locale).toEqual({ title: 'Language', value: 'es', type: 'select' });
+      expect(userPreferences.preferences.locale).toEqual({ title: 'Language', value: 'en', type: 'select' });
     });
 
     it('should load from localStorage if available', async () => {

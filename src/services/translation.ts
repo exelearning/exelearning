@@ -114,7 +114,7 @@ interface XlfParseResult {
 const catalogues: Map<string, Map<string, string>> = new Map();
 
 /**
- * Current locale for the session (default: from APP_LOCALE env or 'es')
+ * Current locale for the session (default: from APP_LOCALE env or 'en')
  */
 let currentLocale: string = process.env.APP_LOCALE || DEFAULT_LOCALE;
 
