@@ -2427,22 +2427,16 @@ describe('YjsDocumentManager', () => {
       );
     });
 
-    it('invokes the external callback when one is set', () => {
+    it('does NOT invoke the external callback (deferred to initialize)', () => {
       const cb = mock(() => {});
       manager._onLastTabClosedCallback = cb;
       manager._cleanupOnLastTabClose();
-      expect(cb).toHaveBeenCalledTimes(1);
+      expect(cb).not.toHaveBeenCalled();
     });
 
     it('does not throw when no external callback is set', () => {
       manager._onLastTabClosedCallback = null;
       expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
-    });
-
-    it('does not propagate errors thrown by the external callback', () => {
-      manager._onLastTabClosedCallback = () => { throw new Error('cb error'); };
-      expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
-      expect(console.error).toHaveBeenCalled();
     });
   });
 
@@ -2551,6 +2545,36 @@ describe('YjsDocumentManager', () => {
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
       // Flag must still be consumed
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('invokes the external callback when nav type is "navigate"', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT invoke the external callback when nav type is "reload"', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.performance = {
+        getEntriesByType: mock(() => [{ type: 'reload' }]),
+      };
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('does not propagate errors thrown by the external callback during cleanup', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      manager._onLastTabClosedCallback = () => { throw new Error('cb error'); };
+
+      await expect(manager.initialize()).resolves.not.toThrow();
     });
 
     it('skips the cleanup branch entirely when the needs-cleanup flag is absent', async () => {

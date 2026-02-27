@@ -189,6 +189,10 @@ class YjsDocumentManager {
           req.onblocked = () => resolve();
         });
         try { localStorage.removeItem(`exelearning_dirty_state_${this.projectId}`); } catch (_) {}
+        // Invoke external callback (e.g., Cache API cleanup via YjsProjectBridge)
+        if (this._onLastTabClosedCallback) {
+          try { this._onLastTabClosedCallback(); } catch (_) {}
+        }
         Logger.log(`[YjsDocumentManager] Deferred cleanup completed for project ${this.projectId}`);
       } else {
         // F5/back-forward/unknown — preserve IndexedDB and dirty state
@@ -1764,20 +1768,13 @@ class YjsDocumentManager {
     Logger.log(`[YjsDocumentManager] Last tab closed for project ${this.projectId}, scheduling deferred cleanup`);
 
     // Set a flag so initialize() handles cleanup on next open.
-    // The actual IDB deletion and dirty-state removal are deferred to initialize() where we can
-    // inspect the navigation type to distinguish F5 (reload) from real close (navigate).
+    // The actual IDB deletion, dirty-state removal, AND external callback (Cache API cleanup)
+    // are ALL deferred to initialize() where we can inspect the navigation type to distinguish
+    // F5 (reload) from real close (navigate). This prevents Cache API deletion on F5 in Firefox
+    // where _isRefresh() may return false during beforeunload.
     try {
       localStorage.setItem(`exe-needs-cleanup-${this.projectId}`, 'true');
     } catch (_) {}
-
-    // Invoke external callback immediately (e.g., Cache API cleanup via YjsProjectBridge)
-    if (this._onLastTabClosedCallback) {
-      try {
-        this._onLastTabClosedCallback();
-      } catch (error) {
-        console.error('[YjsDocumentManager] Error in external cleanup callback:', error);
-      }
-    }
   }
 
   /**

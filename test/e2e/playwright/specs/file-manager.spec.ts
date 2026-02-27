@@ -123,6 +123,10 @@ async function openFileManagerFromUtilitiesMenu(page: Page): Promise<void> {
     await page.waitForTimeout(200);
     await page.locator('#navbar-button-filemanager').click();
     await page.waitForSelector('#modalFileManager[data-open="true"], #modalFileManager.show', { timeout: 10000 });
+    // Wait for assets to finish loading (prevents empty file list on Firefox after reload)
+    await page.waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
+        timeout: 10000,
+    });
 }
 
 /**
