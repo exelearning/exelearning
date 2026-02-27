@@ -23,6 +23,7 @@
  */
 
 import type { AssetProvider, ExportAsset } from '../interfaces';
+import { deriveFilenameFromMime } from '../../../config';
 
 /**
  * Interface for AssetCacheManager (legacy browser class)
@@ -77,35 +78,6 @@ interface AssetManagerInterface {
     >;
     getAsset?(assetId: string): Promise<{ id: string; blob: Blob; mime: string } | null>;
     resolveAssetURL?(assetUrl: string): Promise<string | null>;
-}
-
-/**
- * Derive a fallback export filename from MIME type and asset ID.
- * Used when an asset has no filename or has the placeholder value 'unknown'.
- */
-function deriveFilenameFromMime(assetId: string, mime: string): string {
-    const mimeExtMap: Record<string, string> = {
-        'image/jpeg': 'jpg',
-        'image/jpg': 'jpg',
-        'image/png': 'png',
-        'image/gif': 'gif',
-        'image/webp': 'webp',
-        'image/svg+xml': 'svg',
-        'image/bmp': 'bmp',
-        'image/tiff': 'tif',
-        'image/x-icon': 'ico',
-        'video/mp4': 'mp4',
-        'video/webm': 'webm',
-        'video/ogg': 'ogv',
-        'audio/mpeg': 'mp3',
-        'audio/ogg': 'ogg',
-        'audio/wav': 'wav',
-        'audio/mp4': 'm4a',
-        'application/pdf': 'pdf',
-        'application/zip': 'zip',
-    };
-    const ext = mimeExtMap[(mime || '').toLowerCase()] || 'bin';
-    return `asset-${assetId.substring(0, 8)}.${ext}`;
 }
 
 /**
