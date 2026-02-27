@@ -432,6 +432,20 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockContent.classList.contains('class3')).toBe(true);
         });
 
+        it('adds exe-teacher-highlight class when teacherOnly is true', () => {
+            block.properties.teacherOnly = { value: 'true' };
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.classList.contains('exe-teacher-highlight')).toBe(true);
+        });
+
+        it('does not add exe-teacher-highlight class when teacherOnly is false', () => {
+            block.properties.teacherOnly = { value: 'false' };
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.classList.contains('exe-teacher-highlight')).toBe(false);
+        });
+
         it('calls toggleOff when minimized is true', () => {
             const spy = vi.spyOn(block, 'toggleOff');
             block.properties.minimized.value = 'true';
