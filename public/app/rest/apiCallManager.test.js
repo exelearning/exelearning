@@ -449,6 +449,45 @@ describe('ApiCallManager', () => {
       expect(result.odePagStructureSyncs[0].odeComponentsSyncs[0].jsonProperties).toBe('{"a":1}');
     });
 
+    it('should include component properties in odeComponentsSyncProperties with boolean-to-string conversion', () => {
+      const structureBinding = {
+        getPageMap: vi.fn(
+          () => new Map([['id', 'page-1'], ['pageName', 'Page One'], ['order', 1]])
+        ),
+        getBlocks: vi.fn(() => [
+          {
+            id: 'block-1',
+            blockId: 'block-1',
+            blockName: 'Block',
+            iconName: '',
+            order: 1,
+            properties: { toJSON: () => ({}) },
+          },
+        ]),
+        getComponents: vi.fn(() => [
+          {
+            id: 'comp-1',
+            ideviceType: 'FreeTextIdevice',
+            order: 1,
+            htmlContent: '',
+            jsonProperties: '{}',
+            properties: { teacherOnly: true, visibility: false, cssClass: 'my-class' },
+          },
+        ]),
+      };
+      mockApp.project = {
+        _yjsEnabled: true,
+        _yjsBridge: { structureBinding },
+      };
+
+      const result = apiManager._getComponentsByPageFromYjs('page-1');
+      const compProps = result.odePagStructureSyncs[0].odeComponentsSyncs[0].odeComponentsSyncProperties;
+
+      expect(compProps.teacherOnly).toEqual({ value: 'true' });
+      expect(compProps.visibility).toEqual({ value: 'false' });
+      expect(compProps.cssClass).toEqual({ value: 'my-class' });
+    });
+
     it('should resolve root to first page when available', () => {
       const structureBinding = {
         getPages: vi.fn(() => [{ id: 'page-1' }]),
