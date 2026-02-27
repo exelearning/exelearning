@@ -35,7 +35,7 @@ RUN npm install @elysiajs/node better-sqlite3 tsx
 # Copy source code
 COPY . .
 
-# Build CSS (using npx instead of bunx)
+# Build CSS (using npx instead of bun x)
 RUN npx sass assets/styles/main.scss public/style/workarea/main.css --style=compressed --no-source-map
 
 # Build frontend bundles (using esbuild instead of bun build)
