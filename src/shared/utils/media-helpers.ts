@@ -80,18 +80,37 @@ export function addMediaTypes(html: string, domParser?: DOMParser): string {
 
     let modified = 0;
 
-    // Process all source, video[src], audio[src] elements
-    doc.querySelectorAll('source, video[src], audio[src]').forEach(el => {
-        const currentType = el.getAttribute('type');
-        if (!needsTypeAttribute(currentType)) return;
+    // Process source elements
+    for (const source of Array.from(doc.getElementsByTagName('source'))) {
+        const currentType = source.getAttribute('type');
+        if (!needsTypeAttribute(currentType)) continue;
 
-        const src = el.getAttribute('src') || '';
+        const src = source.getAttribute('src') || '';
         const ext = getExtensionFromUrl(src);
         if (ext && MEDIA_MIME_TYPES[ext]) {
-            el.setAttribute('type', MEDIA_MIME_TYPES[ext]);
+            source.setAttribute('type', MEDIA_MIME_TYPES[ext]);
             modified++;
         }
-    });
+    }
+
+    // Process video/audio elements with src attribute
+    const mediaElements = [
+        ...Array.from(doc.getElementsByTagName('video')),
+        ...Array.from(doc.getElementsByTagName('audio')),
+    ];
+    for (const media of mediaElements) {
+        if (!media.getAttribute('src')) continue;
+
+        const currentType = media.getAttribute('type');
+        if (!needsTypeAttribute(currentType)) continue;
+
+        const src = media.getAttribute('src') || '';
+        const ext = getExtensionFromUrl(src);
+        if (ext && MEDIA_MIME_TYPES[ext]) {
+            media.setAttribute('type', MEDIA_MIME_TYPES[ext]);
+            modified++;
+        }
+    }
 
     return modified > 0 ? '<!DOCTYPE html>\n' + doc.documentElement.outerHTML : html;
 }
@@ -114,16 +133,20 @@ export function simplifyMediaElements(html: string, domParser?: DOMParser): stri
     let modified = 0;
 
     // Find all video elements with class "mediaelement" or with source children
-    doc.querySelectorAll('video.mediaelement, video:has(source)').forEach(video => {
+    for (const video of Array.from(doc.getElementsByTagName('video'))) {
+        const sourceEl = video.getElementsByTagName('source')[0] || null;
+        if (!video.classList.contains('mediaelement') && !sourceEl) {
+            continue;
+        }
+
         // Get the source URL - either from <source> child or from video.src
         let src = video.getAttribute('src') || '';
-        const sourceEl = video.querySelector('source');
         if (sourceEl) {
             src = sourceEl.getAttribute('src') || src;
         }
 
         // Skip if no source found
-        if (!src) return;
+        if (!src) continue;
 
         // Get type from source if available
         const type = sourceEl?.getAttribute('type') || '';
@@ -152,17 +175,21 @@ export function simplifyMediaElements(html: string, domParser?: DOMParser): stri
         // Replace the old video with the new simple one
         video.parentNode?.replaceChild(newVideo, video);
         modified++;
-    });
+    }
 
     // Also simplify audio elements with source children
-    doc.querySelectorAll('audio:has(source)').forEach(audio => {
+    for (const audio of Array.from(doc.getElementsByTagName('audio'))) {
+        const sourceEl = audio.getElementsByTagName('source')[0] || null;
+        if (!sourceEl) {
+            continue;
+        }
+
         let src = audio.getAttribute('src') || '';
-        const sourceEl = audio.querySelector('source');
         if (sourceEl) {
             src = sourceEl.getAttribute('src') || src;
         }
 
-        if (!src) return;
+        if (!src) continue;
 
         const type = sourceEl?.getAttribute('type') || '';
         const className = audio.className || '';
@@ -176,7 +203,7 @@ export function simplifyMediaElements(html: string, domParser?: DOMParser): stri
 
         audio.parentNode?.replaceChild(newAudio, audio);
         modified++;
-    });
+    }
 
     return modified > 0 ? '<!DOCTYPE html>\n' + doc.documentElement.outerHTML : html;
 }
