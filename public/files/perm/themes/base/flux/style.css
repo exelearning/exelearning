@@ -276,6 +276,26 @@ body.exe-web-site {
     font-weight: 400;
 }
 
+/* Teacher mode visual indicator */
+.exe-content article.box.teacher-only {
+    border: 3px solid #FC0;
+}
+
+.exe-content .box.teacher-only header {
+  border-bottom-color: #282573;
+}
+
+.exe-content article.box .idevice_node.teacher-only {
+    border: 3px solid #FC0;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+#node-content article.box.exe-teacher-highlight,
+#node-content .idevice_node.exe-teacher-highlight {
+    border: 3px solid #FC0 !important;
+}
+
 .exe-content .box-head .exe-icon {
     float: left;
 }

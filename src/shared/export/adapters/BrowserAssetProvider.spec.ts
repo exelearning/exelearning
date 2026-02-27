@@ -523,9 +523,9 @@ describe('BrowserAssetProvider', () => {
             expect(result[0].originalPath).toBe('jkl012/file.txt');
         });
 
-        it('should generate filename from id when filename is missing', async () => {
+        it('should generate filename with extension from MIME when filename is missing', async () => {
             mockManager.addAsset('mno345', 'data', {
-                // No filename, no originalPath - test fallback
+                // No filename, no originalPath - test fallback (uses MIME to derive extension)
                 mime: 'application/octet-stream',
                 skipOriginalPath: true,
             });
@@ -534,8 +534,25 @@ describe('BrowserAssetProvider', () => {
             const result = await providerWithManager.getAllAssets();
 
             expect(result.length).toBe(1);
-            expect(result[0].filename).toBe('asset-mno345');
-            expect(result[0].originalPath).toBe('mno345/asset-mno345');
+            // Fallback filename now includes extension derived from MIME type
+            expect(result[0].filename).toBe('asset-mno345.bin');
+            expect(result[0].originalPath).toBe('mno345/asset-mno345.bin');
+        });
+
+        it('should generate filename with proper extension when filename is "unknown"', async () => {
+            mockManager.addAsset('pqr678', 'image data', {
+                filename: 'unknown',
+                mime: 'image/jpeg',
+                skipOriginalPath: true,
+            });
+
+            const providerWithManager = new BrowserAssetProvider(null, mockManager);
+            const result = await providerWithManager.getAllAssets();
+
+            expect(result.length).toBe(1);
+            // 'unknown' filename should be replaced with MIME-derived name
+            expect(result[0].filename).toBe('asset-pqr678.jpg');
+            expect(result[0].originalPath).toBe('pqr678/asset-pqr678.jpg');
         });
 
         it('should handle multiple assets with mixed originalPath formats', async () => {

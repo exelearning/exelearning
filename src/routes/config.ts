@@ -31,6 +31,7 @@ import { getDefaultTheme, getDefaultThemeRecord } from '../db/queries/themes';
 import { SUPPORTED_LOCALES } from '../services/admin-upload-validator';
 import { getBasePath } from '../utils/basepath.util';
 import { LICENSE_REGISTRY } from '../shared/export/constants';
+import { ALLOWED_EXTENSIONS } from '../config';
 
 /**
  * Available licenses for content dropdown
@@ -663,34 +664,7 @@ async function getDefaultParameters(uploadLimits: { maxFileSize: number }) {
 
         // File settings
         maxFileSize: uploadLimits.maxFileSize,
-        allowedExtensions: [
-            'jpg',
-            'jpeg',
-            'png',
-            'gif',
-            'svg',
-            'webp',
-            'mp3',
-            'ogg',
-            'wav',
-            'm4a',
-            'mp4',
-            'webm',
-            'ogv',
-            'pdf',
-            'zip',
-            'txt',
-            'html',
-            'htm',
-            'css',
-            'js',
-            'json',
-            'xml',
-            'ttf',
-            'woff',
-            'woff2',
-            'eot',
-        ],
+        allowedExtensions: ALLOWED_EXTENSIONS,
     };
 }
 

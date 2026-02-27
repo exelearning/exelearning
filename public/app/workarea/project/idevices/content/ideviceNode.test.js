@@ -419,6 +419,20 @@ describe('IdeviceNode', () => {
             expect(idevice.ideviceContent.classList.contains('class2')).toBe(true);
             expect(idevice.ideviceContent.classList.contains('class3')).toBe(true);
         });
+
+        it('adds exe-teacher-highlight class when teacherOnly is true', () => {
+            idevice.properties.teacherOnly = { value: 'true' };
+            idevice.setPropertiesClassesToElement();
+
+            expect(idevice.ideviceContent.classList.contains('exe-teacher-highlight')).toBe(true);
+        });
+
+        it('does not add exe-teacher-highlight class when teacherOnly is false', () => {
+            idevice.properties.teacherOnly = { value: 'false' };
+            idevice.setPropertiesClassesToElement();
+
+            expect(idevice.ideviceContent.classList.contains('exe-teacher-highlight')).toBe(false);
+        });
     });
 
     describe('makeIdeviceBodyElement', () => {
