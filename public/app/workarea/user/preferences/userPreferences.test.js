@@ -405,6 +405,70 @@ describe('UserPreferences', () => {
     });
   });
 
+  describe('loadStaticPreferences auto-save on first launch', () => {
+    beforeEach(() => {
+      globalThis.eXeLearning.app.capabilities = { storage: { remote: false } };
+    });
+
+    it('should auto-save preferences to localStorage on first launch', async () => {
+      // No stored preferences (first launch)
+      // In static mode, initStaticMode detects browser language and sets config.locale
+      // The API parameters also reflect this locale
+      globalThis.eXeLearning.app.api.getApiParameters.mockResolvedValue({
+        userPreferencesConfig: {
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' },
+          locale: { value: 'eu' }
+        }
+      });
+
+      await userPreferences.load();
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'exe_user_preferences',
+        expect.any(String)
+      );
+
+      // Verify the saved structure contains the detected locale
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      const saved = JSON.parse(savedCall[1]);
+      expect(saved.userPreferences.locale.value).toBe('eu');
+    });
+
+    it('should not auto-save if preferences already exist in localStorage', async () => {
+      // Pre-populate localStorage (returning user)
+      localStorage.setItem('exe_user_preferences', JSON.stringify({
+        userPreferences: {
+          locale: { value: 'gl' },
+          advancedMode: { value: 'true' },
+          versionControl: { value: 'false' }
+        }
+      }));
+
+      // Reset mock to track only new calls
+      localStorage.setItem.mockClear();
+
+      await userPreferences.load();
+
+      // setItem should NOT have been called again (no auto-save)
+      expect(localStorage.setItem).not.toHaveBeenCalled();
+    });
+
+    it('should save all preferences with value property on first launch', async () => {
+      window.eXeLearning.config = { locale: 'en' };
+
+      await userPreferences.load();
+
+      const savedCall = localStorage.setItem.mock.calls.find(c => c[0] === 'exe_user_preferences');
+      const saved = JSON.parse(savedCall[1]);
+
+      // All preferences with a value should be saved
+      expect(saved.userPreferences.advancedMode).toBeDefined();
+      expect(saved.userPreferences.versionControl).toBeDefined();
+      expect(saved.userPreferences.locale).toBeDefined();
+    });
+  });
+
   describe('loadStaticPreferences error handling', () => {
     beforeEach(() => {
       // Set up static mode

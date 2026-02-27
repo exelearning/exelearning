@@ -532,8 +532,9 @@ class AssetManager {
         id,
         projectId: this.projectId,
         blob: blob,
-        // Minimal metadata from blob alone
-        filename: 'unknown',
+        // Minimal metadata from blob alone - filename is undefined (not 'unknown')
+        // so callers can derive a proper name from MIME type or asset ID
+        filename: undefined,
         folderPath: '',
         mime: blob.type || 'application/octet-stream',
         size: blob.size,

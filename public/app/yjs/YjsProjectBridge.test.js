@@ -1927,7 +1927,7 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
-    it('updates project language to match user preference for new projects', () => {
+    it('updates project language and default titles to match user preference for new projects', () => {
       // Setup user preferences with Spanish
       global.window.eXeLearning = {
         config: { basePath: '' },
@@ -1943,16 +1943,30 @@ describe('YjsProjectBridge', () => {
       };
 
       // Create a mock metadata object with proper get/set methods
-      const metadataStore = { language: 'en' };
+      const metadataStore = { language: 'en', title: 'Untitled document' };
       const mockMetadata = {
         get: (key) => metadataStore[key],
         set: (key, value) => { metadataStore[key] = value; },
       };
+
+      // Create a mock root page
+      const rootPageStore = { title: 'New page', pageName: 'New page' };
+      const mockRootPage = {
+        get: (key) => rootPageStore[key],
+        set: (key, value) => { rootPageStore[key] = value; },
+      };
+      const mockNavigation = { get: (index) => index === 0 ? mockRootPage : null };
+
       bridge.documentManager.getMetadata = () => mockMetadata;
+      bridge.documentManager.getNavigation = () => mockNavigation;
 
       bridge._ensureNewProjectLanguage();
 
       expect(mockMetadata.get('language')).toBe('es');
+      // Titles should be re-translated with _() (which returns the key in tests)
+      expect(mockMetadata.get('title')).toBe('Untitled document');
+      expect(mockRootPage.get('title')).toBe('New page');
+      expect(mockRootPage.get('pageName')).toBe('New page');
     });
 
     it('does not update language when user preference matches current language', () => {

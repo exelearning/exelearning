@@ -34,7 +34,7 @@ const getJwtSecret = () => {
  * Each preference has a `value` property that the frontend accesses
  */
 const DEFAULT_PREFERENCES = {
-    locale: { value: 'en' },
+    locale: { value: process.env.APP_LOCALE || 'en' },
     theme: { value: 'base' },
     advancedMode: { value: 'true' },
     versionControl: { value: 'true' },

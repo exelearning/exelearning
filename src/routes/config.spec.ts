@@ -376,7 +376,7 @@ describe('Config Routes', () => {
             const response = await app.handle(new Request('http://localhost/api/translations/lists'));
 
             const data = await response.json();
-            expect(data.defaultLocale).toBe('en');
+            expect(data.defaultLocale).toBe('en'); // default (APP_LOCALE or 'en')
         });
 
         it('should return locale labels', async () => {

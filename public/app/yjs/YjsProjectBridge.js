@@ -390,11 +390,23 @@ class YjsProjectBridge {
       }
 
       const currentLanguage = metadata.get('language');
-      
+
       // Only update if different from user preference
       if (currentLanguage !== userLocale) {
         Logger.log(`[YjsProjectBridge] Updating new project language: ${currentLanguage} → ${userLocale}`);
         metadata.set('language', userLocale);
+
+        // Re-translate default titles to match the corrected language.
+        // At this point _() already uses the user's preferred locale translations.
+        // Since this only runs for brand-new projects, titles are always the defaults.
+        metadata.set('title', _('Untitled document'));
+
+        const navigation = this.documentManager?.getNavigation();
+        const rootPage = navigation?.get(0);
+        if (rootPage) {
+          rootPage.set('title', _('New page'));
+          rootPage.set('pageName', _('New page'));
+        }
       }
     } catch (err) {
       // Non-critical - log and continue

@@ -90,6 +90,7 @@ class MockAssetProvider implements AssetProvider {
         path: string;
         folderPath: string;
         mimeType: string;
+        mime: string;
         data: Buffer;
     }> = [];
 
@@ -100,6 +101,7 @@ class MockAssetProvider implements AssetProvider {
             path: `${id}/${filename}`,
             folderPath,
             mimeType,
+            mime: mimeType,
             data,
         });
     }
@@ -116,6 +118,7 @@ class MockAssetProvider implements AssetProvider {
             path: string;
             folderPath: string;
             mimeType: string;
+            mime: string;
             data: Buffer;
         }>
     > {
@@ -724,6 +727,44 @@ describe('BaseExporter', () => {
             const result = await exporter.addFilenamesToAssetUrls(content);
 
             expect(result).toBe('<img src="{{context_path}}/content/resources/images/photo.jpg">');
+        });
+
+        describe('unknown filename handling', () => {
+            it('should replace "unknown" filename with MIME-derived name', async () => {
+                assets.addAsset('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'unknown', 'image/jpeg', Buffer.from(''));
+
+                const content = '<img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                // Should use MIME-derived name instead of "unknown"
+                expect(result).toContain('asset-a1b2c3d4.jpg');
+                expect(result).not.toContain('unknown');
+            });
+
+            it('should replace "unknown" filename with "bin" extension for unknown MIME', async () => {
+                assets.addAsset(
+                    'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+                    'unknown',
+                    'application/octet-stream',
+                    Buffer.from(''),
+                );
+
+                const content = '<img src="asset://b2c3d4e5-f6a7-8901-bcde-f12345678901">';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('asset-b2c3d4e5.bin');
+                expect(result).not.toContain('unknown');
+            });
+
+            it('should use pdf extension for application/pdf with unknown filename', async () => {
+                assets.addAsset('c3d4e5f6-a7b8-9012-cdef-123456789012', 'unknown', 'application/pdf', Buffer.from(''));
+
+                const content = '<a href="asset://c3d4e5f6-a7b8-9012-cdef-123456789012">Download</a>';
+                const result = await exporter.addFilenamesToAssetUrls(content);
+
+                expect(result).toContain('asset-c3d4e5f6.pdf');
+                expect(result).not.toContain('unknown');
+            });
         });
 
         describe('asset path duplication fix', () => {

@@ -914,4 +914,14 @@ article.box {
     .idevice-content-block.out {
         opacity: 0.3;
     }
+
+    /* Teacher mode visual indicator in workarea */
+    article.box.exe-teacher-highlight {
+        border-color: var(--brand-primary-500) !important;
+        border-style: dashed !important;
+    }
+
+    .idevice_node.exe-teacher-highlight {
+        border: 1px dashed var(--brand-primary-500);
+    }
 }

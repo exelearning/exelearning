@@ -23,6 +23,7 @@
  */
 
 import type { AssetProvider, ExportAsset } from '../interfaces';
+import { deriveFilenameFromMime } from '../../../config';
 
 /**
  * Interface for AssetCacheManager (legacy browser class)
@@ -80,6 +81,13 @@ interface AssetManagerInterface {
 }
 
 /**
+ * Return true when a filename should be treated as missing/unknown.
+ */
+function isUnknownFilename(filename: string | undefined): boolean {
+    return !filename || filename === 'unknown';
+}
+
+/**
  * BrowserAssetProvider class
  * Implements AssetProvider interface for browser-based exports
  */
@@ -112,9 +120,13 @@ export class BrowserAssetProvider implements AssetProvider {
                 const asset = await this.assetManager.getAsset(assetId);
                 if (asset?.blob) {
                     const arrayBuffer = await asset.blob.arrayBuffer();
+                    const assetFilename = (asset as unknown as { filename?: string }).filename;
+                    const filename = !isUnknownFilename(assetFilename)
+                        ? assetFilename!
+                        : assetId.split('/').pop() || deriveFilenameFromMime(asset.id, asset.mime);
                     return {
                         id: asset.id,
-                        filename: assetId.split('/').pop() || 'unknown',
+                        filename,
                         originalPath: assetId,
                         mime: asset.mime || 'application/octet-stream',
                         data: new Uint8Array(arrayBuffer),
@@ -242,7 +254,9 @@ export class BrowserAssetProvider implements AssetProvider {
 
                 for (const { asset, arrayBuffer } of conversions) {
                     const assetId = String(asset.id);
-                    const filename = asset.filename || `asset-${assetId}`;
+                    const filename = !isUnknownFilename(asset.filename)
+                        ? asset.filename!
+                        : deriveFilenameFromMime(assetId, asset.mime);
 
                     // Determine originalPath based on folderPath (folder support)
                     // Priority:
@@ -307,7 +321,9 @@ export class BrowserAssetProvider implements AssetProvider {
                                 if (asset.blob) {
                                     const arrayBuffer = await asset.blob.arrayBuffer();
                                     const assetId = String(asset.id);
-                                    const filename = asset.filename || `asset-${assetId}`;
+                                    const filename = !isUnknownFilename(asset.filename)
+                                        ? asset.filename!
+                                        : deriveFilenameFromMime(assetId, asset.mime);
 
                                     // Same folderPath logic as above
                                     let originalPath: string;
