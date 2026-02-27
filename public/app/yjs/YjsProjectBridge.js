@@ -113,6 +113,11 @@ class YjsProjectBridge {
       // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
       Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
+
+      // Wire Cache API cleanup: when the last tab for this project closes, clear the asset cache
+      this.documentManager.setOnLastTabClosedCallback(() => {
+        this.assetManager?.clearCache().catch(() => {});
+      });
     }
 
     // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
@@ -2555,7 +2560,12 @@ class YjsProjectBridge {
     if (!this.documentManager) {
       throw new Error('[YjsProjectBridge] Not initialized');
     }
-    return this.documentManager.getAssets();
+    const assetsMap = this.documentManager.getAssets();
+    console.log('[YjsProjectBridge DEBUG] getAssetsMap:', {
+      initialized: !!this.documentManager,
+      mapSize: assetsMap?.size || 0
+    });
+    return assetsMap;
   }
 
   /**

@@ -2380,6 +2380,155 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('setOnLastTabClosedCallback', () => {
+    it('stores the callback', () => {
+      const cb = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb);
+      expect(manager._onLastTabClosedCallback).toBe(cb);
+    });
+
+    it('replaces a previously set callback', () => {
+      const cb1 = mock(() => {});
+      const cb2 = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb1);
+      manager.setOnLastTabClosedCallback(cb2);
+      expect(manager._onLastTabClosedCallback).toBe(cb2);
+    });
+  });
+
+  describe('_cleanupOnLastTabClose', () => {
+    beforeEach(() => {
+      global.indexedDB = {
+        deleteDatabase: mock(() => ({ onsuccess: null, onerror: null, onblocked: null })),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('sets the needs-cleanup flag in localStorage', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.setItem).toHaveBeenCalledWith(
+        'exe-needs-cleanup-test-project-123',
+        'true',
+      );
+    });
+
+    it('does NOT call indexedDB.deleteDatabase (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.indexedDB.deleteDatabase).not.toHaveBeenCalled();
+    });
+
+    it('does NOT remove the dirty state flag (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.removeItem).not.toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+    });
+
+    it('invokes the external callback when one is set', () => {
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+      manager._cleanupOnLastTabClose();
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not throw when no external callback is set', () => {
+      manager._onLastTabClosedCallback = null;
+      expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
+    });
+
+    it('does not propagate errors thrown by the external callback', () => {
+      manager._onLastTabClosedCallback = () => { throw new Error('cb error'); };
+      expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
+      expect(console.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('initialize — needs-cleanup flag', () => {
+    let deleteRequest;
+    let openRequest;
+    let mockDB;
+    let originalPerformance;
+
+    beforeEach(() => {
+      originalPerformance = global.performance;
+
+      deleteRequest = { onsuccess: null, onerror: null, onblocked: null };
+      mockDB = {
+        objectStoreNames: { contains: mock((name) => name === 'updates') },
+        close: mock(() => {}),
+      };
+      openRequest = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+
+      // Provide a full indexedDB mock so _validateIndexedDb (open) and cleanup (deleteDatabase) both work
+      global.indexedDB = {
+        deleteDatabase: mock(() => {
+          setTimeout(() => { if (deleteRequest.onsuccess) deleteRequest.onsuccess(); }, 0);
+          return deleteRequest;
+        }),
+        open: mock(() => {
+          setTimeout(() => { if (openRequest.onsuccess) openRequest.onsuccess(); }, 0);
+          return openRequest;
+        }),
+      };
+
+      // Default: simulate a real navigation (user opened a new tab after closing)
+      global.performance = {
+        getEntriesByType: mock(() => [{ type: 'navigate' }]),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+      global.performance = originalPerformance;
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+      global.localStorage.removeItem('exelearning_dirty_state_test-project-123');
+    });
+
+    it('performs full cleanup (deleteDatabase + dirty state) when nav type is "navigate"', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.removeItem).toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+      // Flag must be consumed
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('skips IDB delete and dirty state removal when nav type is "reload" (F5 scenario)', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      // Override performance to simulate F5
+      global.performance = {
+        getEntriesByType: mock(() => [{ type: 'reload' }]),
+      };
+
+      await manager.initialize();
+
+      // Dirty state must NOT be removed (user is just refreshing)
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      // Flag must still be consumed so we don't retry on subsequent navigations
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('skips the cleanup branch entirely when the needs-cleanup flag is absent', async () => {
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+
+      await manager.initialize();
+
+      // Flag was never set, so it remains absent
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+  });
+
   describe('awareness rebroadcast', () => {
     it('rebroadcastAwareness returns false when disconnected', async () => {
       await manager.initialize();

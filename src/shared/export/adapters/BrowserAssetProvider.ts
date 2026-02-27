@@ -1,24 +1,18 @@
 /**
  * BrowserAssetProvider
  *
- * Adapts AssetCacheManager or AssetManager (browser IndexedDB) to the unified AssetProvider interface.
- * Provides access to project assets stored in browser's IndexedDB.
- *
- * Supports two asset manager interfaces:
- * 1. AssetCacheManager (legacy) - uses `assetId` and nested `metadata` object
- * 2. AssetManager (new) - uses `id`, `mime`, `filename` as top-level properties
+ * Adapts AssetManager (browser) to the unified AssetProvider interface.
+ * Provides access to project assets stored in browser's memory and Cache API.
  *
  * Usage:
  * ```typescript
  * import { BrowserAssetProvider } from './adapters/BrowserAssetProvider';
  *
- * // With AssetManager (preferred)
  * const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
- * const provider = new BrowserAssetProvider(null, assetManager);
+ * const provider = new BrowserAssetProvider(assetManager);
  *
- * // With legacy AssetCacheManager
- * const assetCache = new AssetCacheManager(projectId);
- * const provider = new BrowserAssetProvider(assetCache);
+ * // Or with null when no AssetManager is available
+ * const nullProvider = new BrowserAssetProvider(null);
  * ```
  */
 
@@ -26,28 +20,8 @@ import type { AssetProvider, ExportAsset } from '../interfaces';
 import { deriveFilenameFromMime } from '../../../config';
 
 /**
- * Interface for AssetCacheManager (legacy browser class)
- * Uses nested metadata object and assetId property
- */
-interface AssetCacheManagerInterface {
-    getAllAssets(): Promise<
-        Array<{
-            assetId: number | string;
-            blob: Blob;
-            metadata: {
-                originalPath?: string;
-                filename?: string;
-                mimeType?: string;
-            };
-        }>
-    >;
-    getAssetByPath(path: string): Promise<{ blob: Blob; metadata: Record<string, unknown> } | null>;
-    resolveAssetUrl(path: string): Promise<string | null>;
-}
-
-/**
- * Interface for AssetManager (new browser class)
- * Uses top-level properties and id (not assetId)
+ * Interface for AssetManager (browser class)
+ * Uses top-level properties and id
  */
 interface AssetManagerInterface {
     getProjectAssets(): Promise<
@@ -92,20 +66,20 @@ function isUnknownFilename(filename: string | undefined): boolean {
  * Implements AssetProvider interface for browser-based exports
  */
 export class BrowserAssetProvider implements AssetProvider {
-    private assetCache: AssetCacheManagerInterface | null;
     private assetManager: AssetManagerInterface | null;
 
     /**
-     * Create provider with AssetCacheManager and/or AssetManager instance
-     * @param assetCache - AssetCacheManager instance (legacy, optional)
-     * @param assetManager - AssetManager instance (preferred, optional)
+     * Create provider with AssetManager instance.
      *
-     * Note: At least one of assetCache or assetManager should be provided.
-     * AssetManager is preferred for getAllAssets() as it contains the actual imported assets.
+     * Accepts one or two arguments for backward compatibility with call sites that
+     * pass `(assetCache, assetManager)`. When two arguments are provided the second
+     * one (the new AssetManager) is used; the first (legacy cache) is ignored.
+     *
+     * @param assetCacheOrManager - AssetManager, or legacy AssetCacheManager (ignored when assetManager is supplied)
+     * @param assetManager - Preferred new AssetManager (optional)
      */
-    constructor(assetCache: AssetCacheManagerInterface | null, assetManager: AssetManagerInterface | null = null) {
-        this.assetCache = assetCache;
-        this.assetManager = assetManager;
+    constructor(assetCacheOrManager: AssetManagerInterface | null, assetManager?: AssetManagerInterface | null) {
+        this.assetManager = assetManager !== undefined ? assetManager : assetCacheOrManager;
     }
 
     /**
@@ -115,7 +89,6 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async getAsset(assetId: string): Promise<ExportAsset | null> {
         try {
-            // Try AssetManager first (preferred)
             if (this.assetManager?.getAsset) {
                 const asset = await this.assetManager.getAsset(assetId);
                 if (asset?.blob) {
@@ -129,22 +102,6 @@ export class BrowserAssetProvider implements AssetProvider {
                         filename,
                         originalPath: assetId,
                         mime: asset.mime || 'application/octet-stream',
-                        data: new Uint8Array(arrayBuffer),
-                    };
-                }
-            }
-
-            // Fall back to legacy AssetCacheManager
-            if (this.assetCache) {
-                const cached = await this.assetCache.getAssetByPath(assetId);
-                if (cached?.blob) {
-                    const arrayBuffer = await cached.blob.arrayBuffer();
-                    const filename = (cached.metadata?.filename as string) || assetId.split('/').pop() || 'unknown';
-                    return {
-                        id: assetId,
-                        filename,
-                        originalPath: assetId,
-                        mime: (cached.metadata?.mimeType as string) || 'application/octet-stream',
                         data: new Uint8Array(arrayBuffer),
                     };
                 }
@@ -164,18 +121,11 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async hasAsset(assetPath: string): Promise<boolean> {
         try {
-            // Try AssetManager first
             if (this.assetManager?.getAsset) {
                 const asset = await this.assetManager.getAsset(assetPath);
                 if (asset?.blob) {
                     return true;
                 }
-            }
-
-            // Fall back to legacy AssetCacheManager
-            if (this.assetCache) {
-                const cached = await this.assetCache.getAssetByPath(assetPath);
-                return cached !== null && cached.blob !== undefined;
             }
 
             return false;
@@ -190,18 +140,11 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async listAssets(): Promise<string[]> {
         try {
-            // Try AssetManager first (preferred, contains actual imported assets)
             if (this.assetManager) {
                 const assets = await this.assetManager.getProjectAssets();
                 return assets
                     .filter(a => a.originalPath || a.filename)
                     .map(a => a.originalPath || `${a.id}/${a.filename}`);
-            }
-
-            // Fall back to legacy AssetCacheManager
-            if (this.assetCache) {
-                const assets = await this.assetCache.getAllAssets();
-                return assets.filter(a => a.metadata?.originalPath).map(a => a.metadata.originalPath as string);
             }
 
             return [];
@@ -222,8 +165,6 @@ export class BrowserAssetProvider implements AssetProvider {
         const result: ExportAsset[] = [];
 
         try {
-            // Try AssetManager first (preferred, contains actual imported assets)
-            // AssetManager uses IndexedDB 'exelearning-assets-v2' database
             if (this.assetManager) {
                 // Log projectId if available
                 const projectId = (this.assetManager as unknown as { projectId?: string }).projectId;
@@ -356,40 +297,6 @@ export class BrowserAssetProvider implements AssetProvider {
                 }
             } else {
                 console.log(`[BrowserAssetProvider] AssetManager not available`);
-
-                // Fall back to legacy AssetCacheManager ONLY when AssetManager is not available
-                // AssetCacheManager uses IndexedDB 'exelearning-assets' database
-                // NOTE: If AssetManager is available, we trust it completely (even if it returns 0 assets)
-                // This prevents unnecessary database open attempts that can fail in multi-tab scenarios
-                if (this.assetCache) {
-                    console.log(`[BrowserAssetProvider] Trying legacy AssetCacheManager...`);
-                    try {
-                        const assets = await this.assetCache.getAllAssets();
-                        console.log(
-                            `[BrowserAssetProvider] Found ${assets.length} assets from AssetCacheManager (legacy)`,
-                        );
-
-                        for (const asset of assets) {
-                            if (asset.blob) {
-                                const arrayBuffer = await asset.blob.arrayBuffer();
-                                const assetId = String(asset.assetId);
-                                const filename = asset.metadata?.filename || `asset-${assetId}`;
-                                const originalPath = asset.metadata?.originalPath || `${assetId}/${filename}`;
-
-                                result.push({
-                                    id: assetId,
-                                    filename,
-                                    originalPath,
-                                    mime: asset.metadata?.mimeType || 'application/octet-stream',
-                                    data: new Uint8Array(arrayBuffer),
-                                });
-                            }
-                        }
-                    } catch (legacyError) {
-                        // Log warning but continue - legacy database may not be accessible
-                        console.warn('[BrowserAssetProvider] Legacy AssetCacheManager failed:', legacyError);
-                    }
-                }
             }
         } catch (error) {
             console.warn('[BrowserAssetProvider] Failed to get all assets:', error);
@@ -413,15 +320,9 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async resolveAssetUrl(assetPath: string): Promise<string | null> {
         try {
-            // Try AssetManager first
             if (this.assetManager?.resolveAssetURL) {
                 const url = await this.assetManager.resolveAssetURL(assetPath);
                 if (url) return url;
-            }
-
-            // Fall back to legacy AssetCacheManager
-            if (this.assetCache) {
-                return await this.assetCache.resolveAssetUrl(assetPath);
             }
 
             return null;

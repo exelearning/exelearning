@@ -352,6 +352,57 @@ describe('AssetManager', () => {
       const result = await assetManager.getAsset('nonexistent');
       expect(result).toBeNull();
     });
+
+    it('falls back to Cache API when blob is not in memory', async () => {
+      // Setup metadata in Yjs
+      mockYjsBridge._assetsMap.set('asset-cached', {
+        filename: 'cached.jpg',
+        folderPath: 'images',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+
+      // Put blob in Cache API but NOT in memory (simulates page reload)
+      const testBlob = new Blob(['cached data'], { type: 'image/jpeg' });
+      await assetManager._putToCache('asset-cached', testBlob);
+
+      // Ensure not in memory
+      assetManager.blobCache.delete('asset-cached');
+      expect(assetManager.blobCache.has('asset-cached')).toBe(false);
+
+      const result = await assetManager.getAsset('asset-cached');
+
+      // Should get metadata from Yjs and blob from Cache API
+      expect(result.id).toBe('asset-cached');
+      expect(result.filename).toBe('cached.jpg');
+      expect(result.blob).toBeInstanceOf(Blob);
+      // Blob should also be restored to memory cache
+      expect(assetManager.blobCache.has('asset-cached')).toBe(true);
+    });
+
+    it('returns metadata with null blob when not in memory or Cache API', async () => {
+      // Setup metadata in Yjs only
+      mockYjsBridge._assetsMap.set('asset-no-blob', {
+        filename: 'noblob.jpg',
+        folderPath: 'images',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+
+      // No blob anywhere (not in memory, not in Cache API)
+      const result = await assetManager.getAsset('asset-no-blob');
+
+      // Should return metadata from Yjs with null blob
+      expect(result.id).toBe('asset-no-blob');
+      expect(result.filename).toBe('noblob.jpg');
+      expect(result.blob).toBeNull();
+    });
   });
 
   describe('getProjectAssets', () => {
@@ -394,6 +445,125 @@ describe('AssetManager', () => {
 
       expect(result.length).toBe(1);
       expect(result[0].blob).toBeNull();
+    });
+
+    it('falls back to Cache API when blobs are not in memory', async () => {
+      // Setup assets in Yjs
+      mockYjsBridge._assetsMap.set('asset-cached-1', {
+        filename: 'cached1.jpg',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+      mockYjsBridge._assetsMap.set('asset-cached-2', {
+        filename: 'cached2.png',
+        folderPath: 'images',
+        mime: 'image/png',
+        size: 2000,
+        hash: 'def456',
+        uploaded: true,
+        createdAt: '2024-01-02'
+      });
+
+      // Put blobs in Cache API but NOT in memory (simulates page reload)
+      const testBlob1 = new Blob(['cached data 1'], { type: 'image/jpeg' });
+      const testBlob2 = new Blob(['cached data 2'], { type: 'image/png' });
+      await assetManager._putToCache('asset-cached-1', testBlob1);
+      await assetManager._putToCache('asset-cached-2', testBlob2);
+
+      // Ensure not in memory
+      assetManager.blobCache.clear();
+      expect(assetManager.blobCache.size).toBe(0);
+
+      const result = await assetManager.getProjectAssets();
+
+      // Should get metadata from Yjs and blobs from Cache API
+      expect(result.length).toBe(2);
+      expect(result[0].filename).toBe('cached1.jpg');
+      expect(result[0].blob).toBeInstanceOf(Blob);
+      expect(result[1].filename).toBe('cached2.png');
+      expect(result[1].blob).toBeInstanceOf(Blob);
+
+      // Blobs should also be restored to memory cache
+      expect(assetManager.blobCache.has('asset-cached-1')).toBe(true);
+      expect(assetManager.blobCache.has('asset-cached-2')).toBe(true);
+    });
+
+    it('returns null blobs for assets not in memory or Cache API', async () => {
+      // Setup assets in Yjs only (no blobs anywhere)
+      mockYjsBridge._assetsMap.set('asset-no-blob-1', {
+        filename: 'noblob1.jpg',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+
+      // No blobs in memory or Cache API
+      assetManager.blobCache.clear();
+
+      const result = await assetManager.getProjectAssets();
+
+      // Should return metadata from Yjs with null blobs
+      expect(result.length).toBe(1);
+      expect(result[0].filename).toBe('noblob1.jpg');
+      expect(result[0].blob).toBeNull();
+    });
+
+    it('returns mixed results with some blobs from memory and some from Cache API', async () => {
+      // Setup assets in Yjs
+      mockYjsBridge._assetsMap.set('asset-memory', {
+        filename: 'memory.jpg',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+        hash: 'abc123',
+        uploaded: true,
+        createdAt: '2024-01-01'
+      });
+      mockYjsBridge._assetsMap.set('asset-cache', {
+        filename: 'cache.png',
+        folderPath: 'images',
+        mime: 'image/png',
+        size: 2000,
+        hash: 'def456',
+        uploaded: true,
+        createdAt: '2024-01-02'
+      });
+      mockYjsBridge._assetsMap.set('asset-nowhere', {
+        filename: 'nowhere.gif',
+        folderPath: '',
+        mime: 'image/gif',
+        size: 500,
+        hash: 'ghi789',
+        uploaded: false,
+        createdAt: '2024-01-03'
+      });
+
+      // Put one blob in memory, one in Cache API, one nowhere
+      const memoryBlob = new Blob(['memory data'], { type: 'image/jpeg' });
+      const cacheBlob = new Blob(['cache data'], { type: 'image/png' });
+
+      assetManager.blobCache.set('asset-memory', memoryBlob);
+      await assetManager._putToCache('asset-cache', cacheBlob);
+      // asset-nowhere has no blob
+
+      const result = await assetManager.getProjectAssets();
+
+      expect(result.length).toBe(3);
+
+      const memoryAsset = result.find(a => a.id === 'asset-memory');
+      const cacheAsset = result.find(a => a.id === 'asset-cache');
+      const nowhereAsset = result.find(a => a.id === 'asset-nowhere');
+
+      expect(memoryAsset.blob).toBe(memoryBlob);
+      expect(cacheAsset.blob).toBeInstanceOf(Blob);
+      expect(nowhereAsset.blob).toBeNull();
     });
   });
 
@@ -4700,6 +4870,72 @@ describe('window.resolveAssetUrlsAsync global function', () => {
     // The blob URL should remain unchanged (happy-dom can't fetch blob: URLs)
     // But the conversion code path was exercised
     expect(result).toBeDefined();
+    expect(mockResolve).toHaveBeenCalled();
+  });
+
+  it('successfully converts iframe blob URLs to data URLs when convertBlobUrls: false', async () => {
+    // Skip test if function wasn't registered (module load issues)
+    if (!resolveAssetUrlsAsyncFunc) {
+      return;
+    }
+
+    const testBlobUrl = 'blob:http://localhost/iframe-blob-url';
+
+    // Mock resolveHTMLAssets to return content with blob URL in iframe (not video/img)
+    const mockResolve = mock(() => undefined).mockResolvedValue(
+      `<p>Text</p><iframe src="${testBlobUrl}"></iframe><video src="blob:http://localhost/video-blob"></video>`
+    );
+
+    // Mock fetch to successfully return a blob
+    const testBlob = new Blob(['test content'], { type: 'application/pdf' });
+    const originalFetch = global.fetch;
+    global.fetch = mock(() => undefined).mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(testBlob)
+    });
+
+    // Mock FileReader to work correctly in test environment (happy-dom)
+    const OriginalFileReader = global.FileReader;
+    global.FileReader = class MockFileReader {
+      constructor() {
+        this.onload = null;
+        this.onerror = null;
+        this.result = null;
+      }
+      readAsDataURL() {
+        // Simulate async reading - fire onload in next tick
+        setTimeout(() => {
+          this.result = 'data:application/pdf;base64,dGVzdCBjb250ZW50';
+          if (this.onload) this.onload();
+        }, 0);
+      }
+    };
+
+    global.window.eXeLearning = {
+      app: {
+        project: {
+          _yjsBridge: {
+            assetManager: {
+              resolveHTMLAssets: mockResolve,
+            },
+          },
+        },
+      },
+    };
+
+    const result = await resolveAssetUrlsAsyncFunc('<p>Test</p>', {
+      convertBlobUrls: false,
+      convertIframeBlobUrls: true
+    });
+
+    // Restore mocks
+    global.fetch = originalFetch;
+    global.FileReader = OriginalFileReader;
+
+    // The iframe blob URL should be converted to data URL
+    expect(result).toContain('data:application/pdf;base64,');
+    // The video blob URL should NOT be converted (convertBlobUrls: false)
+    expect(result).toContain('blob:http://localhost/video-blob');
     expect(mockResolve).toHaveBeenCalled();
   });
 

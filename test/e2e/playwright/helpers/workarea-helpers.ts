@@ -2118,8 +2118,9 @@ export async function reloadPage(page: Page): Promise<void> {
         await waitForAppReady(page);
     } else {
         // Online mode: Full page reload (data is fetched from server)
-        await page.reload();
-        await page.waitForLoadState('networkidle');
+        // Use 'load' instead of 'networkidle': persistent WebSocket (Yjs) connections
+        // prevent networkidle from ever being reached.
+        await page.reload({ waitUntil: 'load' });
         await waitForAppReady(page);
     }
 }
