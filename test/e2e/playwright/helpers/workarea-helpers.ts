@@ -2122,6 +2122,9 @@ export async function reloadPage(page: Page): Promise<void> {
         // prevent networkidle from ever being reached.
         await page.reload({ waitUntil: 'load' });
         await waitForAppReady(page);
+        // Wait for Yjs WebSocket sync to ensure assets/documents are fully loaded.
+        // This replaces the implicit sync wait that 'networkidle' previously provided.
+        await waitForProjectSynced(page);
     }
 }
 

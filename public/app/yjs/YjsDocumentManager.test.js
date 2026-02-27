@@ -2519,6 +2519,40 @@ describe('YjsDocumentManager', () => {
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
     });
 
+    it('skips IDB delete when nav type is unknown/null (safe default — browser API unavailable)', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      // Simulate browser with no Navigation Timing support
+      global.performance = {
+        getEntriesByType: mock(() => []),
+        navigation: undefined,
+      };
+
+      await manager.initialize();
+
+      // Dirty state must NOT be removed (safe default when nav type is unknown)
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      // Flag must still be consumed
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('uses legacy performance.navigation fallback when modern API returns empty array', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      // Modern API returns empty; legacy API says type=1 (reload)
+      global.performance = {
+        getEntriesByType: mock(() => []),
+        navigation: { type: 1 },
+      };
+
+      await manager.initialize();
+
+      // Dirty state must NOT be removed (legacy API detected reload)
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      // Flag must still be consumed
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
     it('skips the cleanup branch entirely when the needs-cleanup flag is absent', async () => {
       global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
 

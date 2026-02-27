@@ -162,9 +162,21 @@ class YjsDocumentManager {
     })();
     if (needsCleanup) {
       const navType = (() => {
-        try { return performance?.getEntriesByType?.('navigation')?.[0]?.type; } catch (_) { return null; }
+        try {
+          // Modern Navigation Timing API (PerformanceNavigationTiming)
+          const entries = performance?.getEntriesByType?.('navigation');
+          if (entries && entries.length > 0) return entries[0].type;
+          // Legacy Navigation Timing API (deprecated; fallback for browsers/envs with partial support)
+          const legacyType = performance?.navigation?.type;
+          if (legacyType === 1) return 'reload';
+          if (legacyType === 2) return 'back_forward';
+          if (legacyType === 0) return 'navigate';
+        } catch (_) {}
+        return null; // Unknown — treated as safe (skip cleanup)
       })();
-      const isReload = navType === 'reload' || navType === 'back_forward';
+      // Treat unknown (null) as safe to avoid accidentally destroying unsaved user data.
+      // Only perform cleanup when we are CERTAIN this is a fresh navigation (navType === 'navigate').
+      const isReload = navType !== 'navigate';
       Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, navType=${navType}, isReload=${isReload}`);
 
       if (!isReload) {
@@ -179,8 +191,8 @@ class YjsDocumentManager {
         try { localStorage.removeItem(`exelearning_dirty_state_${this.projectId}`); } catch (_) {}
         Logger.log(`[YjsDocumentManager] Deferred cleanup completed for project ${this.projectId}`);
       } else {
-        // F5/back-forward — user is just refreshing; preserve IndexedDB and dirty state
-        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (page reload/back-forward)`);
+        // F5/back-forward/unknown — preserve IndexedDB and dirty state
+        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (reload/back-forward/unknown navType)`);
       }
       // Always consume the flag so we don't retry on subsequent loads
       try { localStorage.removeItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) {}
