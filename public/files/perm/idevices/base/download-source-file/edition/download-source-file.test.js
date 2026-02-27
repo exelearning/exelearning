@@ -246,9 +246,10 @@ describe('download-source-file iDevice (edition)', () => {
       $exeDevice.createForm();
 
       const content = container.innerHTML;
-      expect(content).toContain('Test Project');
-      expect(content).toContain('A test description');
-      expect(content).toContain('Test Author');
+      expect(content).toContain('<td class="mceNonEditable exe-prop-locked"');
+      expect(content).toContain('<span class="exe-prop-title">');
+      expect(content).toContain('<span class="exe-prop-description">');
+      expect(content).toContain('<span class="exe-prop-author">');
     });
 
     it('shows alert when all properties are empty', () => {
@@ -270,11 +271,11 @@ describe('download-source-file iDevice (edition)', () => {
       expect($exeDevice.loadPreviousValues).toHaveBeenCalled();
     });
 
-    it('includes license link for CC license', () => {
+    it('includes license placeholder span', () => {
       $exeDevice.createForm();
 
       const content = container.innerHTML;
-      expect(content).toContain('creativecommons.org/licenses/by/4.0');
+      expect(content).toContain('<span class="exe-prop-license">');
     });
   });
 

@@ -13240,6 +13240,26 @@
         <source>in</source>
         <target></target>
       </trans-unit>
+          <trans-unit id="bl6ybi0" resname="Log in as">
+        <source>Log in as</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="vwsttbq" resname="Cannot impersonate administrator users">
+        <source>Cannot impersonate administrator users</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="1x769qg" resname="Cannot impersonate your own account">
+        <source>Cannot impersonate your own account</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="ym29846" resname="Start impersonation as {email}?">
+        <source>Start impersonation as {email}?</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="jw7c5tk" resname="Failed to start impersonation">
+        <source>Failed to start impersonation</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -95,6 +95,7 @@ const USER_PREFERENCES_CONFIG = {
             'https://www.perplexity.ai/search?q=': 'Perplexity',
             'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
             'https://grok.com/?q=': 'Grok',
+            'https://chat.qwen.ai/?text=': 'Qwen',
         },
         category: `${TRANS_PREFIX}General settings`,
     },

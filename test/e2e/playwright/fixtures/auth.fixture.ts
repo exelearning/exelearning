@@ -6,7 +6,7 @@ import { gotoWorkarea } from '../helpers/workarea-helpers';
 
 /**
  * Detect static mode from project name
- * Works automatically when running: bunx playwright test --project=static-chromium
+ * Works automatically when running: bun x playwright test --project=static-chromium
  */
 export function isStaticProject(testInfo: TestInfo): boolean {
     return testInfo.project.name.includes('static');

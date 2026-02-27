@@ -585,4 +585,68 @@ test.describe('Download Source File iDevice', () => {
             expect(selectedOption).toBe('1.2');
         });
     });
+
+    test.describe('Properties Sync', () => {
+        test('should sync project properties to iDevice read-only cells', async ({
+            authenticatedPage,
+            createProject,
+        }, testInfo) => {
+            if (testInfo.project.name === 'static') {
+                test.skip(); // Skip in static mode
+            }
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Sync Test Init');
+            await gotoWorkarea(page, projectUuid);
+
+            // Open properties and change title
+            const propertiesButton = page.locator('#head-top-settings-button');
+            await propertiesButton.click();
+            await page.waitForTimeout(500);
+
+            const titleInput = page.locator('input[property="pp_title"]');
+            await titleInput.waitFor({ state: 'visible', timeout: 5000 });
+            await titleInput.fill('Dynamic Sync Title');
+
+            const authorInput = page.locator('input[property="pp_author"]');
+            await authorInput.fill('Dynamic Sync Author');
+
+            await selectPageNode(page);
+            await addDownloadSourceFileIdeviceFromPanel(page);
+            await saveDownloadSourceFileIdevice(page);
+
+            const titleCell = page.locator('.exe-prop-title');
+            await expect(titleCell).toHaveText('Dynamic Sync Title', { timeout: 10000 });
+            const authorCell = page.locator('.exe-prop-author');
+            await expect(authorCell).toHaveText('Dynamic Sync Author', { timeout: 10000 });
+
+            await propertiesButton.click();
+            await page.waitForTimeout(500);
+            await titleInput.fill('Updated Title Again');
+
+            // Wait for the Yjs observer debounce/timeout to process the property change
+            await page.waitForTimeout(1500);
+
+            // Navigate back to the Authoring tab (closes the properties modal)
+            await selectPageNode(page);
+
+            // Important: we do not click "Edit" and save. The DOM should dynamically update
+            // because of our frontend syncProperties logic in the export js file.
+            await expect(titleCell).toHaveText('Updated Title Again', { timeout: 10000 });
+
+            // Now enter edit mode to verify it also loads the fresh data correctly into the editor
+            const editBtn = page.locator('#node-content .download-source-file button:has-text("Edit")').first();
+            await editBtn.click();
+            await page.waitForTimeout(1000);
+
+            // Inside the TinyMCE editor it should also use the updated title
+            // First we need to wait for tinymce to load and run its update loop
+            await page.waitForTimeout(1500);
+
+            await saveDownloadSourceFileIdevice(page);
+
+            // And it should STILL have the updated text after saving
+            await expect(titleCell).toHaveText('Updated Title Again', { timeout: 10000 });
+        });
+    });
 });

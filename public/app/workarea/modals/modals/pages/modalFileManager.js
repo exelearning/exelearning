@@ -116,6 +116,19 @@ export default class ModalFilemanager extends Modal {
         this.previewAudio = this.modalElement.querySelector('.media-library-preview-audio');
         this.previewFile = this.modalElement.querySelector('.media-library-preview-file');
         this.previewPdf = this.modalElement.querySelector('.media-library-preview-pdf');
+        if (!this.previewPdf) {
+            const previewContainer = this.modalElement.querySelector('.media-library-preview');
+            if (previewContainer) {
+                const pdfIframe = document.createElement('iframe');
+                pdfIframe.className = 'media-library-preview-pdf';
+                pdfIframe.style.display = 'none';
+                pdfIframe.style.width = '100%';
+                pdfIframe.style.height = '250px';
+                pdfIframe.style.border = '1px solid #ccc';
+                previewContainer.insertBefore(pdfIframe, this.previewFile || null);
+                this.previewPdf = pdfIframe;
+            }
+        }
 
         // Folder navigation elements
         this.breadcrumbs = this.modalElement.querySelector('.media-library-breadcrumbs');
@@ -774,7 +787,13 @@ export default class ModalFilemanager extends Modal {
      * Create a new folder
      */
     async createNewFolder() {
-        const name = prompt(_('Enter folder name:'));
+        const name = await this._showRenameDialog(
+            _('New folder'),
+            _('Enter folder name:'),
+            '',
+            0,
+            _('Create')
+        );
         if (!name) return;
 
         // Validate folder name
@@ -2123,9 +2142,10 @@ export default class ModalFilemanager extends Modal {
      * @param {string} label - Label text above the input
      * @param {string} currentValue - Pre-filled value for the input
      * @param {number} selectUpTo - End index of the initial text selection (0..length)
+     * @param {string} [confirmLabel] - Text for the confirm button (defaults to 'Rename')
      * @returns {Promise<string|null>}
      */
-    _showRenameDialog(title, label, currentValue, selectUpTo) {
+    _showRenameDialog(title, label, currentValue, selectUpTo, confirmLabel) {
         return new Promise((resolve) => {
             if (!this.renameDialog) {
                 resolve(null);
@@ -2135,6 +2155,7 @@ export default class ModalFilemanager extends Modal {
             if (this.renameDialogTitle) this.renameDialogTitle.textContent = title;
             if (this.renameDialogLabel) this.renameDialogLabel.textContent = label;
             if (this.renameDialogInput) this.renameDialogInput.value = currentValue;
+            if (this.renameDialogConfirm) this.renameDialogConfirm.textContent = confirmLabel ?? _('Rename');
             this.renameDialog.style.display = 'flex';
             if (this.renameDialogInput) {
                 this.renameDialogInput.focus();
@@ -3023,10 +3044,12 @@ export default class ModalFilemanager extends Modal {
         const suggestedName = zipFilename.replace(/\.zip$/i, '');
 
         // Ask for target folder
-        const targetFolder = prompt(
-            _('Extract to folder:') + '\n\n' +
-            _('The internal folder structure of the ZIP will be preserved.'),
-            suggestedName
+        const targetFolder = await this._showRenameDialog(
+            _('Extract ZIP'),
+            _('Extract to folder (the internal folder structure of the ZIP will be preserved):'),
+            suggestedName,
+            suggestedName.length,
+            _('Extract')
         );
 
         if (targetFolder === null) return; // User cancelled
