@@ -230,6 +230,10 @@ body.exe-export,
     background-color: #f4f4f4;
 }
 
+body#tinymce {
+    font-family: "Open Sans";
+}
+
 .js .exe-export .exe-content {
     min-height: calc(100vh - 30px);
 }

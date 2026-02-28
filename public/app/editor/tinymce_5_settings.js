@@ -654,12 +654,12 @@ var $exeTinyMCE = {
         // Fallback theme path if theme not yet selected (timing issue during iDevice loading)
         var themePath = eXeLearning.app.themes.selected?.path || '/files/perm/themes/base/INTEF/';
         return (
-            themePath +
-            'style.css,' +
             eXeLearning.app.api.apiUrlBase +
             '/app/editor/tinymce_5_extra.css,' +
             eXeLearning.app.api.apiUrlBase +
-            '/libs/bootstrap/bootstrap.min.css'
+            '/libs/bootstrap/bootstrap.min.css,' +
+            themePath +
+            'style.css'
         );
     },
 
