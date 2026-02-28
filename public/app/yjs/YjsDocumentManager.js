@@ -89,6 +89,11 @@ class YjsDocumentManager {
     this._unloadHandler = () => this._clearAwarenessOnUnload();
     // Bind visibility change handler for tab switch recovery
     this._visibilityChangeHandler = this._handleVisibilityChange.bind(this);
+
+    // Tab tracker for cleanup when all tabs close (initialized in initialize())
+    this._tabTracker = null;
+    // External callback for additional cleanup (e.g., Cache API via YjsProjectBridge)
+    this._onLastTabClosedCallback = null;
   }
 
   /**
@@ -145,6 +150,49 @@ class YjsDocumentManager {
 
     // Setup IndexedDB persistence (offline-first)
     const dbName = `exelearning-project-${this.projectId}`;
+
+    // sessionStorage survives reloads within the same tab, but disappears when that tab closes.
+    // That makes it a reliable same-tab marker for deciding whether deferred cleanup should run.
+    const tabSessionKey = `exe-tab-session-${this.projectId}`;
+    const hasTabSession = (() => {
+      try { return sessionStorage.getItem(tabSessionKey) === 'true'; } catch (_) { return false; }
+    })();
+
+    // If a previous session set the needs-cleanup flag (last tab was closed), only clean up when
+    // this is a brand new tab session. Reloads/back-forward in the same tab keep sessionStorage,
+    // so they must preserve IndexedDB, dirty state, and Cache API data.
+    const needsCleanup = (() => {
+      try { return localStorage.getItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) { return null; }
+    })();
+    if (needsCleanup) {
+      Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
+
+      if (!hasTabSession) {
+        // New tab session after the previous last-tab close — perform full cleanup now.
+        Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
+        await new Promise((resolve) => {
+          const req = indexedDB.deleteDatabase(dbName);
+          req.onsuccess = () => resolve();
+          req.onerror = () => resolve();
+          req.onblocked = () => resolve();
+        });
+        try { localStorage.removeItem(`exelearning_dirty_state_${this.projectId}`); } catch (_) {}
+        // Invoke external callback (e.g., Cache API cleanup via YjsProjectBridge).
+        // If the bridge has not wired it yet, preserve a pending flag to flush later.
+        const externalCleanupHandled = await this._runLastTabClosedCallback();
+        if (!externalCleanupHandled) {
+          try { localStorage.setItem(`exe-needs-external-cleanup-${this.projectId}`, 'true'); } catch (_) {}
+        }
+        Logger.log(`[YjsDocumentManager] Deferred cleanup completed for project ${this.projectId}`);
+      } else {
+        // Reload/back-forward within the same tab — preserve current session state.
+        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (same tab session)`);
+      }
+      // Always consume the flag so we don't retry on subsequent loads
+      try { localStorage.removeItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) {}
+    }
+
+    try { sessionStorage.setItem(tabSessionKey, 'true'); } catch (_) {}
 
     // Pre-validate IndexedDB schema to avoid runtime errors
     // y-indexeddb expects specific object stores, and corrupted/old databases can cause errors
@@ -264,6 +312,16 @@ class YjsDocumentManager {
         // Proceed without IndexedDB persistence - data will only be in memory
         this.indexedDBProvider = null;
       }
+    }
+
+    // Setup tab tracker for cleanup when all browser tabs close
+    // This cleans up IndexedDB when user closes all tabs for this project
+    if (window.ProjectTabTracker) {
+      this._tabTracker = new window.ProjectTabTracker(this.projectId, () => {
+        this._cleanupOnLastTabClose();
+      });
+      this._tabTracker.start();
+      Logger.log(`[YjsDocumentManager] Tab tracker started for project ${this.projectId}`);
     }
 
     // Setup WebSocket provider (but don't connect yet)
@@ -1636,6 +1694,12 @@ class YjsDocumentManager {
     window.removeEventListener('unload', this._unloadHandler);
     document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
 
+    // Stop tab tracker
+    if (this._tabTracker) {
+      this._tabTracker.stop();
+      this._tabTracker = null;
+    }
+
     // Save if requested and dirty
     if (saveBeforeDestroy && this.isDirty && !this.config.offline) {
       try {
@@ -1676,6 +1740,63 @@ class YjsDocumentManager {
     this._suppressDirtyTracking = false;
 
     Logger.log(`[YjsDocumentManager] Destroyed for project ${this.projectId}`);
+  }
+
+  /**
+   * Set callback for when the last browser tab closes
+   * Used by YjsProjectBridge to add Cache API cleanup alongside IndexedDB cleanup
+   * @param {Function} callback - Callback to invoke when last tab closes
+   */
+  setOnLastTabClosedCallback(callback) {
+    this._onLastTabClosedCallback = callback;
+  }
+
+  /**
+   * Run the external last-tab cleanup callback if available.
+   * @returns {Promise<boolean>} true when a callback was invoked
+   * @private
+   */
+  async _runLastTabClosedCallback() {
+    if (!this._onLastTabClosedCallback) return false;
+    try {
+      await Promise.resolve(this._onLastTabClosedCallback());
+    } catch (_) {}
+    return true;
+  }
+
+  /**
+   * Flush deferred external cleanup once the callback dependency is available.
+   * @returns {Promise<void>}
+   */
+  async flushPendingExternalCleanup() {
+    const pendingKey = `exe-needs-external-cleanup-${this.projectId}`;
+    const pending = (() => {
+      try { return localStorage.getItem(pendingKey); } catch (_) { return null; }
+    })();
+    if (!pending) return;
+
+    const invoked = await this._runLastTabClosedCallback();
+    if (invoked) {
+      try { localStorage.removeItem(pendingKey); } catch (_) {}
+    }
+  }
+
+  /**
+   * Cleanup when the last browser tab for this project closes
+   * Schedules deferred cleanup for the next fresh tab session
+   * @private
+   */
+  _cleanupOnLastTabClose() {
+    Logger.log(`[YjsDocumentManager] Last tab closed for project ${this.projectId}, scheduling deferred cleanup`);
+
+    // Set a flag so initialize() handles cleanup on next open.
+    // The actual IDB deletion, dirty-state removal, AND external callback (Cache API cleanup)
+    // are ALL deferred to initialize() where we can inspect the navigation type to distinguish
+    // F5 (reload) from real close (navigate). This prevents Cache API deletion on F5 in Firefox
+    // where _isRefresh() may return false during beforeunload.
+    try {
+      localStorage.setItem(`exe-needs-cleanup-${this.projectId}`, 'true');
+    } catch (_) {}
   }
 
   /**
