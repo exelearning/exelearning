@@ -1511,7 +1511,7 @@
       </trans-unit>
       <trans-unit id=".dFeNVT" resname="Satisfies (models)">
         <source>Satisfies (models)</source>
-        <target>Satisface (models)</target>
+        <target>Satisface (modelos)</target>
       </trans-unit>
       <trans-unit id="gfuNm1T" resname="Is deduced (vdash)">
         <source>Is deduced (vdash)</source>
@@ -1731,7 +1731,7 @@
       </trans-unit>
       <trans-unit id="SKPq7WJ" resname="Product">
         <source>Product</source>
-        <target>Productorio</target>
+        <target>Producto</target>
       </trans-unit>
       <trans-unit id="yTyeCqe" resname="Large direct sum">
         <source>Large direct sum</source>
@@ -1955,7 +1955,7 @@
       </trans-unit>
       <trans-unit id="JA0wraK" resname="System of 3 equations with array">
         <source>System of 3 equations with array</source>
-        <target>Sistema 3 ecuaciones con array</target>
+        <target>Sistema de 3 ecuaciones con array</target>
       </trans-unit>
       <trans-unit id="xfdx9Ua" resname="System with array">
         <source>System with array</source>
@@ -2035,7 +2035,7 @@
       </trans-unit>
       <trans-unit id="u4Mz8gs" resname="Script size text">
         <source>Script size text</source>
-        <target>Texto script size</target>
+        <target>Texto con tamaño de script</target>
       </trans-unit>
       <trans-unit id="KPMHiIf" resname="Small text">
         <source>Small text</source>
@@ -2063,11 +2063,11 @@
       </trans-unit>
       <trans-unit id="TRj6FQx" resname="Huger text">
         <source>Huger text</source>
-        <target>Texto más enorme</target>
+        <target>Texto gigante</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
         <source>Blackboard bold</source>
-        <target>Blackboard bold</target>
+        <target>Negrita de pizarra</target>
       </trans-unit>
       <trans-unit id="_jCqQRd" resname="Math bold">
         <source>Math bold</source>
@@ -2087,7 +2087,7 @@
       </trans-unit>
       <trans-unit id="fXrbOjv" resname="Upright (math roman)">
         <source>Upright (math roman)</source>
-        <target>Recto (math roman)</target>
+        <target>Estándar (no cursiva)</target>
       </trans-unit>
       <trans-unit id="O_wl2LD" resname="Typographic bold">
         <source>Typographic bold</source>
@@ -2459,7 +2459,7 @@
       </trans-unit>
       <trans-unit id="Zg1Jdth" resname="Moments and generating functions">
         <source>Moments and generating functions</source>
-        <target>Momentos y generadoras</target>
+        <target>Momentos y funciones generadoras</target>
       </trans-unit>
       <trans-unit id="68ac37M" resname="Discrete expectation">
         <source>Discrete expectation</source>
@@ -3915,7 +3915,7 @@
       </trans-unit>
       <trans-unit id="UzOi88i" resname="Quizzes and other tools to check knowledge or progress, with the option to provide feedback.">
         <source>Quizzes and other tools to check knowledge or progress, with the option to provide feedback.</source>
-        <target>Cuestionarios y otras herramientas para comprobar conocimientos o avances, con opción de dar retroalimentación.</target>
+        <target>Cuestionarios y otras herramientas para comprobar conocimientos o avances, con opción de proporcionar retroalimentación.</target>
       </trans-unit>
       <trans-unit id="u3Cobad" resname="Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.">
         <source>Resources that use game mechanics to motivate and reinforce learning without evaluation pressure.</source>
@@ -4911,7 +4911,7 @@
       </trans-unit>
       <trans-unit id="RBTDKM2" resname="Please start the game before saving your score.">
         <source>Please start the game before saving your score.</source>
-        <target>Antes de guardar la puntuación comience la partida.</target>
+        <target>Comience la partida antes de guardar la puntuación.</target>
       </trans-unit>
       <trans-unit id="m5535su" resname="Show word wheel">
         <source>Show word wheel</source>
@@ -5055,7 +5055,7 @@
       </trans-unit>
       <trans-unit id="5fRhuNj" resname="Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.">
         <source>Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.</source>
-        <target>Cree actividades o en las que dada la definición de una palabra, se solicite al alumnado la propia palabra que comienza o contiene la letra que se señala.</target>
+        <target>Cree actividades en las que se les dé al alumnado una definición y tengan que adivinar la palabra que comienza con una letra o contiene una letra determinada.</target>
       </trans-unit>
       <trans-unit id="iLq5bso" resname="Usage Instructions">
         <source>Usage Instructions</source>
@@ -5291,11 +5291,11 @@
       </trans-unit>
       <trans-unit id="uTUxEew" resname="Flip down the card">
         <source>Flip down the card</source>
-        <target>Invertir tarjeta</target>
+        <target>Voltear la tarjeta</target>
       </trans-unit>
       <trans-unit id="Qxgzf28" resname="Flip down all the cards">
         <source>Flip down all the cards</source>
-        <target>Invertir todas las tarjetas</target>
+        <target>Voltear todas las tarjetas</target>
       </trans-unit>
       <trans-unit id="X97nRU9" resname="Cards">
         <source>Cards</source>
@@ -6979,7 +6979,7 @@
       </trans-unit>
       <trans-unit id="5THj8oK" resname="Columns">
         <source>Columns</source>
-        <target>Cols</target>
+        <target>Columnas</target>
       </trans-unit>
       <trans-unit id="4CZwzfq" resname="Options Number">
         <source>Options Number</source>
@@ -7087,7 +7087,7 @@
       </trans-unit>
       <trans-unit id="_96CGbV" resname="Choose files or drag them here.">
         <source>Choose files or drag them here.</source>
-        <target>Elige archivos o arrástrelos aquí.</target>
+        <target>Elige archivos o arrástralos aquí.</target>
       </trans-unit>
       <trans-unit id="n0tPVNi" resname="The gallery has no images.">
         <source>The gallery has no images.</source>
@@ -7343,7 +7343,7 @@
       </trans-unit>
       <trans-unit id="H_46OJx" resname="All the slides have been deleted.">
         <source>All the slides have been deleted.</source>
-        <target>Se han eliminado todas las diapositivas.</target>
+        <target>Se han eliminado todos los fotogramas.</target>
       </trans-unit>
       <trans-unit id="A74HYAB" resname="Num.">
         <source>Num.</source>
@@ -7363,7 +7363,7 @@
       </trans-unit>
       <trans-unit id="W6H0mU2" resname="Saved changes!">
         <source>Saved changes!</source>
-        <target>¡Guardado!</target>
+        <target>¡Cambios guardados!</target>
       </trans-unit>
       <trans-unit id="I3UAekb" resname="The YouTube API might have changed.">
         <source>The YouTube API might have changed.</source>
@@ -7695,7 +7695,7 @@
       </trans-unit>
       <trans-unit id="P7JsUcD" resname="Please define the highest value of the operand">
         <source>Please define the highest value of the operand</source>
-        <target>Indique el valor máximo del operando</target>
+        <target>Indica el valor máximo del operando</target>
       </trans-unit>
       <trans-unit id="C0X.A1G" resname="The highest number should be bigger than the smallest one">
         <source>The highest number should be bigger than the smallest one</source>
@@ -7715,7 +7715,7 @@
       </trans-unit>
       <trans-unit id="Lxu4tki" resname="Sorry, that’s incorrect... The right answer is:">
         <source>Sorry, that’s incorrect... The right answer is:</source>
-        <target>No es correcto... Respuesta correcta:</target>
+        <target>No es correcto... La respuesta correcta es:</target>
       </trans-unit>
       <trans-unit id="QsDm_Ws" resname="Create random basic math problems.">
         <source>Create random basic math problems.</source>
@@ -8511,7 +8511,7 @@
       </trans-unit>
       <trans-unit id="F3.ljpR" resname="No. of activities: %s">
         <source>No. of activities: %s</source>
-        <target>Nº Actividades: %s</target>
+        <target>Nº de actividades: %s</target>
       </trans-unit>
       <trans-unit id="IJ14Q1v" resname="Completed: %s">
         <source>Completed: %s</source>
@@ -8691,7 +8691,7 @@
       </trans-unit>
       <trans-unit id="SFRf.in" resname="Slide">
         <source>Slide</source>
-        <target>Deslizamiento</target>
+        <target>Diapositiva</target>
       </trans-unit>
       <trans-unit id="Q8bU.kF" resname="Swap">
         <source>Swap</source>
@@ -10559,11 +10559,11 @@
       </trans-unit>
       <trans-unit id="xEDK6Dk" resname="Background color">
         <source>Background color</source>
-        <target>Color fondo</target>
+        <target>Color de fondo</target>
       </trans-unit>
       <trans-unit id="njfY6Iw" resname="Custom...">
         <source>Custom...</source>
-        <target>Personalizar...</target>
+        <target>Personalizado...</target>
       </trans-unit>
       <trans-unit id="ozN3tVg" resname="Custom color">
         <source>Custom color</source>
@@ -12711,7 +12711,7 @@
       </trans-unit>
       <trans-unit id="v5ZRdyM" resname="Show the content of the first Free Text iDevice in the specified page.">
         <source>Show the content of the first Free Text iDevice in the specified page.</source>
-        <target>~Mostrar el contenido del primer iDispositivo de texto libre en la página especificada</target>
+        <target>~Mostrar el contenido del primer iDevice de Texto en la página especificada</target>
       </trans-unit>
       <trans-unit id="k_kZsMw" resname="Term">
         <source>Term</source>
@@ -12727,7 +12727,7 @@
       </trans-unit>
       <trans-unit id="c49xFvy" resname="The tooltip data could not be retreived. Please create a new one choosing any of the available types.">
         <source>The tooltip data could not be retreived. Please create a new one choosing any of the available types.</source>
-        <target>~No se pudieron recuperar los datos del tooltip. Crea uno nuevo eligiendo cualquiera de los tipos disponibles</target>
+        <target>~No se pudieron recuperar los datos del bocadillo. Crea uno nuevo eligiendo cualquiera de los tipos disponibles</target>
       </trans-unit>
       <trans-unit id="X6QzAK9" resname="Link URL">
         <source>Link URL</source>
