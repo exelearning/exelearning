@@ -134,6 +134,7 @@ describe('YjsDocumentManager', () => {
   let originalAddEventListener;
   let originalRemoveEventListener;
   let originalLocalStorage;
+  let originalSessionStorage;
 
   beforeEach(() => {
     originalWindowY = global.window.Y;
@@ -145,6 +146,7 @@ describe('YjsDocumentManager', () => {
     originalAddEventListener = global.window.addEventListener;
     originalRemoveEventListener = global.window.removeEventListener;
     originalLocalStorage = global.localStorage;
+    originalSessionStorage = global.sessionStorage;
 
     // Setup global mocks
     global.window.Y = global.window.Y || global.Y;
@@ -168,6 +170,16 @@ describe('YjsDocumentManager', () => {
       getItem: mock((key) => localStorageData[key] || null),
       setItem: mock((key, value) => { localStorageData[key] = value; }),
       removeItem: mock((key) => { delete localStorageData[key]; }),
+    };
+
+    const sessionStorageData = {};
+    global.sessionStorage = {
+      getItem: mock((key) => sessionStorageData[key] || null),
+      setItem: mock((key, value) => { sessionStorageData[key] = value; }),
+      removeItem: mock((key) => { delete sessionStorageData[key]; }),
+      clear: mock(() => {
+        Object.keys(sessionStorageData).forEach((key) => delete sessionStorageData[key]);
+      }),
     };
 
     global._ = mock((key) => key);
@@ -215,6 +227,7 @@ describe('YjsDocumentManager', () => {
     global.window.addEventListener = originalAddEventListener;
     global.window.removeEventListener = originalRemoveEventListener;
     global.localStorage = originalLocalStorage;
+    global.sessionStorage = originalSessionStorage;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
@@ -2377,6 +2390,217 @@ describe('YjsDocumentManager', () => {
       // Should not throw
       await newManager.initialize();
       await newManager.destroy();
+    });
+  });
+
+  describe('setOnLastTabClosedCallback', () => {
+    it('stores the callback', () => {
+      const cb = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb);
+      expect(manager._onLastTabClosedCallback).toBe(cb);
+    });
+
+    it('replaces a previously set callback', () => {
+      const cb1 = mock(() => {});
+      const cb2 = mock(() => {});
+      manager.setOnLastTabClosedCallback(cb1);
+      manager.setOnLastTabClosedCallback(cb2);
+      expect(manager._onLastTabClosedCallback).toBe(cb2);
+    });
+  });
+
+  describe('_cleanupOnLastTabClose', () => {
+    beforeEach(() => {
+      global.indexedDB = {
+        deleteDatabase: mock(() => ({ onsuccess: null, onerror: null, onblocked: null })),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('sets the needs-cleanup flag in localStorage', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.setItem).toHaveBeenCalledWith(
+        'exe-needs-cleanup-test-project-123',
+        'true',
+      );
+    });
+
+    it('does NOT call indexedDB.deleteDatabase (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.indexedDB.deleteDatabase).not.toHaveBeenCalled();
+    });
+
+    it('does NOT remove the dirty state flag (deferred to initialize)', () => {
+      manager._cleanupOnLastTabClose();
+      expect(global.localStorage.removeItem).not.toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+    });
+
+    it('does NOT invoke the external callback (deferred to initialize)', () => {
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+      manager._cleanupOnLastTabClose();
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when no external callback is set', () => {
+      manager._onLastTabClosedCallback = null;
+      expect(() => manager._cleanupOnLastTabClose()).not.toThrow();
+    });
+  });
+
+  describe('initialize — needs-cleanup flag', () => {
+    let deleteRequest;
+    let openRequest;
+    let mockDB;
+
+    beforeEach(() => {
+      deleteRequest = { onsuccess: null, onerror: null, onblocked: null };
+      mockDB = {
+        objectStoreNames: { contains: mock((name) => name === 'updates') },
+        close: mock(() => {}),
+      };
+      openRequest = { onerror: null, onsuccess: null, onupgradeneeded: null, result: mockDB };
+
+      // Provide a full indexedDB mock so _validateIndexedDb (open) and cleanup (deleteDatabase) both work
+      global.indexedDB = {
+        deleteDatabase: mock(() => {
+          setTimeout(() => { if (deleteRequest.onsuccess) deleteRequest.onsuccess(); }, 0);
+          return deleteRequest;
+        }),
+        open: mock(() => {
+          setTimeout(() => { if (openRequest.onsuccess) openRequest.onsuccess(); }, 0);
+          return openRequest;
+        }),
+      };
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+      global.localStorage.removeItem('exe-needs-external-cleanup-test-project-123');
+      global.localStorage.removeItem('exelearning_dirty_state_test-project-123');
+      global.sessionStorage.removeItem('exe-tab-session-test-project-123');
+    });
+
+    it('performs full cleanup (deleteDatabase + dirty state) when the tab-session marker is absent', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.removeItem).toHaveBeenCalledWith(
+        'exelearning_dirty_state_test-project-123',
+      );
+      // Flag must be consumed
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
+    });
+
+    it('skips IDB delete and dirty state removal when the tab-session marker is present', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+
+      await manager.initialize();
+
+      // Dirty state must NOT be removed (user is just refreshing)
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      // Flag must still be consumed so we don't retry on subsequent navigations
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('treats missing tab-session marker as a new tab even when navigation APIs are unavailable', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('invokes the external callback when the tab-session marker is absent', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it('stores a pending external-cleanup flag when cleanup runs before the callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+
+      await manager.initialize();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
+    });
+
+    it('does NOT invoke the external callback when the tab-session marker is present', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+      const cb = mock(() => {});
+      manager._onLastTabClosedCallback = cb;
+
+      await manager.initialize();
+
+      expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('does not propagate errors thrown by the external callback during cleanup', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      manager._onLastTabClosedCallback = () => { throw new Error('cb error'); };
+
+      await expect(manager.initialize()).resolves.not.toThrow();
+    });
+
+    it('skips the cleanup branch entirely when the needs-cleanup flag is absent', async () => {
+      global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+
+      await manager.initialize();
+
+      // Flag was never set, so it remains absent
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('always sets the tab-session marker during initialization', async () => {
+      await manager.initialize();
+
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
+      expect(global.sessionStorage.getItem('exe-tab-session-test-project-123')).toBe('true');
+    });
+  });
+
+  describe('flushPendingExternalCleanup', () => {
+    it('runs and clears pending external cleanup when callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+      const cb = mock(() => Promise.resolve());
+      manager.setOnLastTabClosedCallback(cb);
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('keeps the pending flag when no callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
     });
   });
 

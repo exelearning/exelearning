@@ -73,6 +73,10 @@ class MockYjsDocumentManager {
   ensureBlankStructureIfEmpty() {
     this._ensureBlankStructureIfEmptyCalled = true;
   }
+  setOnLastTabClosedCallback(callback) {
+    this._onLastTabClosedCallback = callback;
+  }
+  async flushPendingExternalCleanup() {}
 }
 
 // Mock YjsStructureBinding
@@ -85,15 +89,6 @@ class MockYjsStructureBinding {
   getPage(id) { return null; }
   onStructureChange() {}
   onBlocksComponentsChange() {}
-}
-
-// Mock AssetCacheManager
-class MockAssetCacheManager {
-  constructor(projectId) {
-    this.projectId = projectId;
-  }
-  async close() {}
-  destroy() {}
 }
 
 // Mock AssetManager
@@ -165,7 +160,6 @@ describe('YjsProjectBridge', () => {
       ...(originalWindow || {}),
       YjsDocumentManager: MockYjsDocumentManager,
       YjsStructureBinding: MockYjsStructureBinding,
-      AssetCacheManager: MockAssetCacheManager,
       AssetManager: MockAssetManager,
       SaveManager: MockSaveManager,
       ResourceFetcher: MockResourceFetcher,
@@ -327,13 +321,6 @@ describe('YjsProjectBridge', () => {
       expect(bridge.structureBinding).toBeInstanceOf(MockYjsStructureBinding);
     });
 
-    it('sets assetCache to null (deprecated)', async () => {
-      await bridge.initialize(123, 'test-token');
-      // AssetCacheManager is deprecated - assetCache is now null
-      // Assets are stored in memory via AssetManager.blobCache instead
-      expect(bridge.assetCache).toBeNull();
-    });
-
     it('creates assetManager if available', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.assetManager).toBeDefined();
@@ -351,6 +338,29 @@ describe('YjsProjectBridge', () => {
     it('creates saveManager if available', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.saveManager).toBeDefined();
+    });
+
+    it('wires Cache API cleanup via setOnLastTabClosedCallback', async () => {
+      await bridge.initialize(123, 'test-token');
+
+      // The callback must be registered on the documentManager
+      expect(bridge.documentManager._onLastTabClosedCallback).toBeInstanceOf(Function);
+
+      // Add a clearCache mock to the assetManager so we can verify it is called
+      bridge.assetManager.clearCache = mock(() => Promise.resolve());
+
+      // Invoke the registered callback (simulates last-tab-close)
+      await bridge.documentManager._onLastTabClosedCallback();
+
+      expect(bridge.assetManager.clearCache).toHaveBeenCalledTimes(1);
+    });
+
+    it('flushes pending external cleanup after wiring the asset cache callback', async () => {
+      const flushSpy = spyOn(MockYjsDocumentManager.prototype, 'flushPendingExternalCleanup');
+
+      await bridge.initialize(123, 'test-token');
+
+      expect(flushSpy).toHaveBeenCalledTimes(1);
     });
 
     it('sets initialized to true', async () => {
@@ -4341,24 +4351,22 @@ describe('YjsProjectBridge', () => {
       });
 
       bridge.assetManager = { id: 'asset-manager' };
-      bridge.assetCache = { id: 'asset-cache' };
 
       const file = new Blob(['test']);
       await bridge.importFromElpx(file);
     });
 
-    it('uses null assetHandler when assetManager unavailable (assetCache is deprecated)', async () => {
+    it('uses null assetHandler when assetManager unavailable', async () => {
       const mockImporter = {
         importFromFile: mock(() => Promise.resolve({ assets: 0 })),
       };
       global.window.ElpxImporter = mock(function(docManager, assetHandler) {
-        // With assetCache deprecated and set to null, assetHandler is null when no assetManager
+        // assetHandler is null when no assetManager
         expect(assetHandler).toBeNull();
         return mockImporter;
       });
 
       bridge.assetManager = null;
-      bridge.assetCache = null; // Deprecated - always null now
 
       const file = new Blob(['test']);
       await bridge.importFromElpx(file);
@@ -4407,7 +4415,7 @@ describe('YjsProjectBridge', () => {
       expect(global.window.SharedExporters.createExporter).toHaveBeenCalledWith(
         'elpx',
         bridge.documentManager,
-        bridge.assetCache,
+        null, // Legacy assetCache removed
         bridge.resourceFetcher,
         bridge.assetManager
       );
@@ -5426,13 +5434,11 @@ describe('YjsProjectBridge', () => {
       const mockDocumentManagerDestroy = mock(() => Promise.resolve());
       const mockAssetWSHandlerDestroy = mock(() => {});
       const mockAssetManagerCleanup = mock(() => {});
-      const mockAssetCacheDestroy = mock(() => {});
       const mockConnectionMonitorDestroy = mock(() => {});
 
       bridge.documentManager = { destroy: mockDocumentManagerDestroy };
       bridge.assetWebSocketHandler = { destroy: mockAssetWSHandlerDestroy };
       bridge.assetManager = { cleanup: mockAssetManagerCleanup };
-      bridge.assetCache = { destroy: mockAssetCacheDestroy };
       bridge.saveManager = { save: () => {} };
       bridge.connectionMonitor = { destroy: mockConnectionMonitorDestroy };
 
@@ -5441,28 +5447,16 @@ describe('YjsProjectBridge', () => {
       expect(mockDocumentManagerDestroy).toHaveBeenCalled();
       expect(mockAssetWSHandlerDestroy).toHaveBeenCalled();
       expect(mockAssetManagerCleanup).toHaveBeenCalled();
-      expect(mockAssetCacheDestroy).toHaveBeenCalled();
       expect(mockConnectionMonitorDestroy).toHaveBeenCalled();
       expect(bridge.initialized).toBe(false);
       expect(bridge.saveManager).toBeNull();
       expect(bridge.connectionMonitor).toBeNull();
     });
 
-    it('handles disconnect with null assetCache (deprecated)', async () => {
-      bridge.documentManager = { destroy: mock(() => Promise.resolve()) };
-      bridge.assetCache = null; // Always null now (deprecated)
-      bridge.assetWebSocketHandler = null;
-      bridge.assetManager = null;
-      bridge.connectionMonitor = null;
-
-      await expect(bridge.disconnect()).resolves.not.toThrow();
-    });
-
     it('handles disconnect with null resources', async () => {
       bridge.documentManager = null;
       bridge.assetWebSocketHandler = null;
       bridge.assetManager = null;
-      bridge.assetCache = null;
       bridge.connectionMonitor = null;
 
       await expect(bridge.disconnect()).resolves.not.toThrow();
