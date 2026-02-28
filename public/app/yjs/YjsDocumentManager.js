@@ -151,36 +151,24 @@ class YjsDocumentManager {
     // Setup IndexedDB persistence (offline-first)
     const dbName = `exelearning-project-${this.projectId}`;
 
-    // If a previous session set the needs-cleanup flag (last tab was closed), decide whether to clean up.
-    // We defer the decision to initialize() so we can inspect the navigation type of THIS page load:
-    //   - 'reload' (F5/page refresh): cancel cleanup — the user is just refreshing, not reopening
-    //   - 'navigate' (new navigation): perform full cleanup — the user reopened after closing
-    // This prevents _cleanupOnLastTabClose() misfiring on F5 (where _isRefresh() may return false
-    // because the CURRENT page's navigation type is still 'navigate', not 'reload').
+    // sessionStorage survives reloads within the same tab, but disappears when that tab closes.
+    // That makes it a reliable same-tab marker for deciding whether deferred cleanup should run.
+    const tabSessionKey = `exe-tab-session-${this.projectId}`;
+    const hasTabSession = (() => {
+      try { return sessionStorage.getItem(tabSessionKey) === 'true'; } catch (_) { return false; }
+    })();
+
+    // If a previous session set the needs-cleanup flag (last tab was closed), only clean up when
+    // this is a brand new tab session. Reloads/back-forward in the same tab keep sessionStorage,
+    // so they must preserve IndexedDB, dirty state, and Cache API data.
     const needsCleanup = (() => {
       try { return localStorage.getItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) { return null; }
     })();
     if (needsCleanup) {
-      const navType = (() => {
-        try {
-          // Modern Navigation Timing API (PerformanceNavigationTiming)
-          const entries = performance?.getEntriesByType?.('navigation');
-          if (entries && entries.length > 0) return entries[0].type;
-          // Legacy Navigation Timing API (deprecated; fallback for browsers/envs with partial support)
-          const legacyType = performance?.navigation?.type;
-          if (legacyType === 1) return 'reload';
-          if (legacyType === 2) return 'back_forward';
-          if (legacyType === 0) return 'navigate';
-        } catch (_) {}
-        return null; // Unknown — treated as safe (skip cleanup)
-      })();
-      // Treat unknown (null) as safe to avoid accidentally destroying unsaved user data.
-      // Only perform cleanup when we are CERTAIN this is a fresh navigation (navType === 'navigate').
-      const isReload = navType !== 'navigate';
-      Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, navType=${navType}, isReload=${isReload}`);
+      Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
 
-      if (!isReload) {
-        // Real navigation after last tab closed — perform full cleanup
+      if (!hasTabSession) {
+        // New tab session after the previous last-tab close — perform full cleanup now.
         Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
         await new Promise((resolve) => {
           const req = indexedDB.deleteDatabase(dbName);
@@ -189,18 +177,22 @@ class YjsDocumentManager {
           req.onblocked = () => resolve();
         });
         try { localStorage.removeItem(`exelearning_dirty_state_${this.projectId}`); } catch (_) {}
-        // Invoke external callback (e.g., Cache API cleanup via YjsProjectBridge)
-        if (this._onLastTabClosedCallback) {
-          try { this._onLastTabClosedCallback(); } catch (_) {}
+        // Invoke external callback (e.g., Cache API cleanup via YjsProjectBridge).
+        // If the bridge has not wired it yet, preserve a pending flag to flush later.
+        const externalCleanupHandled = await this._runLastTabClosedCallback();
+        if (!externalCleanupHandled) {
+          try { localStorage.setItem(`exe-needs-external-cleanup-${this.projectId}`, 'true'); } catch (_) {}
         }
         Logger.log(`[YjsDocumentManager] Deferred cleanup completed for project ${this.projectId}`);
       } else {
-        // F5/back-forward/unknown — preserve IndexedDB and dirty state
-        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (reload/back-forward/unknown navType)`);
+        // Reload/back-forward within the same tab — preserve current session state.
+        Logger.log(`[YjsDocumentManager] Skipping cleanup for project ${this.projectId} (same tab session)`);
       }
       // Always consume the flag so we don't retry on subsequent loads
       try { localStorage.removeItem(`exe-needs-cleanup-${this.projectId}`); } catch (_) {}
     }
+
+    try { sessionStorage.setItem(tabSessionKey, 'true'); } catch (_) {}
 
     // Pre-validate IndexedDB schema to avoid runtime errors
     // y-indexeddb expects specific object stores, and corrupted/old databases can cause errors
@@ -1760,8 +1752,38 @@ class YjsDocumentManager {
   }
 
   /**
+   * Run the external last-tab cleanup callback if available.
+   * @returns {Promise<boolean>} true when a callback was invoked
+   * @private
+   */
+  async _runLastTabClosedCallback() {
+    if (!this._onLastTabClosedCallback) return false;
+    try {
+      await Promise.resolve(this._onLastTabClosedCallback());
+    } catch (_) {}
+    return true;
+  }
+
+  /**
+   * Flush deferred external cleanup once the callback dependency is available.
+   * @returns {Promise<void>}
+   */
+  async flushPendingExternalCleanup() {
+    const pendingKey = `exe-needs-external-cleanup-${this.projectId}`;
+    const pending = (() => {
+      try { return localStorage.getItem(pendingKey); } catch (_) { return null; }
+    })();
+    if (!pending) return;
+
+    const invoked = await this._runLastTabClosedCallback();
+    if (invoked) {
+      try { localStorage.removeItem(pendingKey); } catch (_) {}
+    }
+  }
+
+  /**
    * Cleanup when the last browser tab for this project closes
-   * Clears IndexedDB persistence and invokes external callback
+   * Schedules deferred cleanup for the next fresh tab session
    * @private
    */
   _cleanupOnLastTabClose() {

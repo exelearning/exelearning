@@ -118,6 +118,7 @@ class YjsProjectBridge {
       this.documentManager.setOnLastTabClosedCallback(() => {
         this.assetManager?.clearCache().catch(() => {});
       });
+      await this.documentManager.flushPendingExternalCleanup?.();
     }
 
     // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated

@@ -97,7 +97,7 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
 
     // ---------------------------------------------------------------------------
     // Test 1: Cleanup sets the needs-cleanup flag; deferred IDB deletion + dirty state
-    // clear happen on next initialize() with nav type 'navigate'
+    // clear happen on the next initialize() in a fresh tab session
     // ---------------------------------------------------------------------------
     test('cleanup sets flag; next navigation deletes IndexedDB and clears dirty state', async ({
         authenticatedPage,
@@ -129,8 +129,8 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
         expect(dirtyFlagBefore).toBe('true');
 
         // Trigger cleanup (simulates closing the last tab).
-        // With the deferred architecture, _cleanupOnLastTabClose() only sets the flag
-        // and calls the Cache API callback — IDB deletion is deferred to initialize().
+        // With the deferred architecture, _cleanupOnLastTabClose() only sets the flag.
+        // All actual cleanup is deferred to initialize() in the next fresh tab session.
         await triggerTabCloseCleanup(page);
 
         // The needs-cleanup flag should be set immediately after forceCleanup()
@@ -139,8 +139,10 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
         }, projectUuid);
         expect(needsCleanupFlag).toBe('true');
 
-        // Reopen the project (simulates user navigating back to the workarea)
-        // initialize() sees nav type 'navigate' → performs full cleanup
+        // Simulate opening the project in a fresh tab session.
+        await page.evaluate(() => sessionStorage.clear());
+
+        // Reopen the project so initialize() performs deferred cleanup
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
@@ -230,7 +232,12 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
         // Trigger cleanup
         await triggerTabCloseCleanup(page);
 
-        // Cache must be gone (Bug 1 fix: setOnLastTabClosedCallback is now wired)
+        // Simulate a brand new tab session so initialize() executes deferred cleanup.
+        await page.evaluate(() => sessionStorage.clear());
+        await page.reload();
+        await waitForAppReady(page);
+
+        // Cache must be gone after deferred cleanup runs during initialize()
         const cacheExistsAfter = await checkCacheExists(page, projectUuid);
         expect(cacheExistsAfter).toBe(false);
     });
@@ -280,6 +287,9 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
             return localStorage.getItem(`exe-needs-cleanup-${id}`);
         }, projectUuid);
         expect(flagAfterCleanup).toBe('true');
+
+        // Simulate a brand new tab session before reopening the project.
+        await page2.evaluate(() => sessionStorage.clear());
 
         // Navigate to the workarea again — initialize() will perform deferred cleanup
         await gotoWorkarea(page2, projectUuid);

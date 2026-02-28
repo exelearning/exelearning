@@ -243,14 +243,8 @@ class AssetManager {
   setAssetMetadata(assetId, metadata) {
     const assetsMap = this.getAssetsYMap();
     if (!assetsMap) {
-      console.warn('[AssetManager DEBUG] setAssetMetadata: No Yjs map available');
       return;
     }
-    console.log('[AssetManager DEBUG] setAssetMetadata:', {
-      assetId: assetId.substring(0, 8),
-      filename: metadata.filename,
-      mapSize: assetsMap.size
-    });
     // Store as plain object (Yjs will serialize it)
     assetsMap.set(assetId, {
       filename: metadata.filename,
@@ -281,17 +275,10 @@ class AssetManager {
    */
   getAllAssetsMetadata() {
     const assetsMap = this.getAssetsYMap();
-    if (!assetsMap) {
-      console.warn('[AssetManager DEBUG] getAllAssetsMetadata: No Yjs map');
-      return [];
-    }
+    if (!assetsMap) return [];
     const assets = [];
     assetsMap.forEach((meta, id) => {
       assets.push({ ...meta, id });
-    });
-    console.log('[AssetManager DEBUG] getAllAssetsMetadata:', {
-      count: assets.length,
-      ids: assets.map(a => a.id?.substring(0, 8))
     });
     return assets;
   }

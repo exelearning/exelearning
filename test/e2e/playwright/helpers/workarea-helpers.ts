@@ -2118,13 +2118,9 @@ export async function reloadPage(page: Page): Promise<void> {
         await waitForAppReady(page);
     } else {
         // Online mode: Full page reload (data is fetched from server)
-        // Use 'load' instead of 'networkidle': persistent WebSocket (Yjs) connections
-        // prevent networkidle from ever being reached.
-        await page.reload({ waitUntil: 'load' });
+        await page.reload();
+        await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
-        // Wait for Yjs WebSocket sync to ensure assets/documents are fully loaded.
-        // This replaces the implicit sync wait that 'networkidle' previously provided.
-        await waitForProjectSynced(page);
     }
 }
 

@@ -616,12 +616,7 @@ export default class ModalFilemanager extends Modal {
         this.grid.innerHTML = `<div class="media-library-loading">${_('Loading assets...')}</div>`;
 
         try {
-            console.log('[MediaLibrary DEBUG] loadAssets: calling getProjectAssets');
             this.assets = await this.assetManager.getProjectAssets();
-            console.log('[MediaLibrary DEBUG] loadAssets:', {
-                assetCount: this.assets.length,
-                assetIds: this.assets.map(a => a.id?.substring(0, 8))
-            });
             Logger.log(`[MediaLibrary] Loaded ${this.assets.length} assets`);
             this.currentPage = 1;
             this.updateFilterOptions();

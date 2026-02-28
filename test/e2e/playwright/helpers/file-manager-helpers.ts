@@ -38,19 +38,6 @@ import { createTestFileWithName } from './special-chars-helpers';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Wait for the file manager loading spinner to disappear.
- * Call this after opening the file manager modal to ensure assets have loaded.
- *
- * @param page - Playwright page
- * @param timeout - Maximum wait time in milliseconds
- */
-export async function waitForFileManagerLoaded(page: Page, timeout = 10000): Promise<void> {
-    await page.waitForFunction(() => !document.querySelector('#modalFileManager .media-library-loading'), undefined, {
-        timeout,
-    });
-}
-
-/**
  * Open file manager modal
  *
  * @param page - Playwright page
@@ -67,9 +54,6 @@ export async function openFileManager(page: Page): Promise<void> {
         state: 'visible',
         timeout: 10000,
     });
-
-    // Wait for assets to finish loading
-    await waitForFileManagerLoaded(page);
 }
 
 /**

@@ -299,7 +299,6 @@ class AssetWebSocketHandler {
   async _handleStatus({ status }) {
     if (status === 'connected') {
       this.connected = true;
-      console.log('[AssetWebSocketHandler DEBUG] Connected - starting metadata sync');
       Logger.log('[AssetWebSocketHandler] Connected, announcing assets...');
 
       // Re-setup message handler (WebSocket may be new)
@@ -350,12 +349,6 @@ class AssetWebSocketHandler {
 
       const result = await response.json();
       const serverAssets = result.data || [];
-
-      console.log('[AssetWebSocketHandler DEBUG] syncAssetsMetadataFromServer:', {
-        responseOk: response.ok,
-        serverAssetCount: serverAssets.length,
-        serverAssetIds: serverAssets.map(a => a.clientId?.substring(0, 8))
-      });
 
       if (serverAssets.length === 0) {
         Logger.log('[AssetWebSocketHandler] No assets on server');

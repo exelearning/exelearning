@@ -134,6 +134,7 @@ describe('YjsDocumentManager', () => {
   let originalAddEventListener;
   let originalRemoveEventListener;
   let originalLocalStorage;
+  let originalSessionStorage;
 
   beforeEach(() => {
     originalWindowY = global.window.Y;
@@ -145,6 +146,7 @@ describe('YjsDocumentManager', () => {
     originalAddEventListener = global.window.addEventListener;
     originalRemoveEventListener = global.window.removeEventListener;
     originalLocalStorage = global.localStorage;
+    originalSessionStorage = global.sessionStorage;
 
     // Setup global mocks
     global.window.Y = global.window.Y || global.Y;
@@ -168,6 +170,16 @@ describe('YjsDocumentManager', () => {
       getItem: mock((key) => localStorageData[key] || null),
       setItem: mock((key, value) => { localStorageData[key] = value; }),
       removeItem: mock((key) => { delete localStorageData[key]; }),
+    };
+
+    const sessionStorageData = {};
+    global.sessionStorage = {
+      getItem: mock((key) => sessionStorageData[key] || null),
+      setItem: mock((key, value) => { sessionStorageData[key] = value; }),
+      removeItem: mock((key) => { delete sessionStorageData[key]; }),
+      clear: mock(() => {
+        Object.keys(sessionStorageData).forEach((key) => delete sessionStorageData[key]);
+      }),
     };
 
     global._ = mock((key) => key);
@@ -215,6 +227,7 @@ describe('YjsDocumentManager', () => {
     global.window.addEventListener = originalAddEventListener;
     global.window.removeEventListener = originalRemoveEventListener;
     global.localStorage = originalLocalStorage;
+    global.sessionStorage = originalSessionStorage;
     global._ = originalTranslate;
     if (originalNavigatorDescriptor) {
       Object.defineProperty(global, 'navigator', originalNavigatorDescriptor);
@@ -2444,11 +2457,8 @@ describe('YjsDocumentManager', () => {
     let deleteRequest;
     let openRequest;
     let mockDB;
-    let originalPerformance;
 
     beforeEach(() => {
-      originalPerformance = global.performance;
-
       deleteRequest = { onsuccess: null, onerror: null, onblocked: null };
       mockDB = {
         objectStoreNames: { contains: mock((name) => name === 'updates') },
@@ -2467,21 +2477,17 @@ describe('YjsDocumentManager', () => {
           return openRequest;
         }),
       };
-
-      // Default: simulate a real navigation (user opened a new tab after closing)
-      global.performance = {
-        getEntriesByType: mock(() => [{ type: 'navigate' }]),
-      };
     });
 
     afterEach(() => {
       delete global.indexedDB;
-      global.performance = originalPerformance;
       global.localStorage.removeItem('exe-needs-cleanup-test-project-123');
+      global.localStorage.removeItem('exe-needs-external-cleanup-test-project-123');
       global.localStorage.removeItem('exelearning_dirty_state_test-project-123');
+      global.sessionStorage.removeItem('exe-tab-session-test-project-123');
     });
 
-    it('performs full cleanup (deleteDatabase + dirty state) when nav type is "navigate"', async () => {
+    it('performs full cleanup (deleteDatabase + dirty state) when the tab-session marker is absent', async () => {
       global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
       global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
 
@@ -2495,15 +2501,13 @@ describe('YjsDocumentManager', () => {
       );
       // Flag must be consumed
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
     });
 
-    it('skips IDB delete and dirty state removal when nav type is "reload" (F5 scenario)', async () => {
+    it('skips IDB delete and dirty state removal when the tab-session marker is present', async () => {
       global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
       global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
-      // Override performance to simulate F5
-      global.performance = {
-        getEntriesByType: mock(() => [{ type: 'reload' }]),
-      };
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
 
       await manager.initialize();
 
@@ -2513,41 +2517,20 @@ describe('YjsDocumentManager', () => {
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
     });
 
-    it('skips IDB delete when nav type is unknown/null (safe default — browser API unavailable)', async () => {
+    it('treats missing tab-session marker as a new tab even when navigation APIs are unavailable', async () => {
       global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
       global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
-      // Simulate browser with no Navigation Timing support
-      global.performance = {
-        getEntriesByType: mock(() => []),
-        navigation: undefined,
-      };
 
       await manager.initialize();
 
-      // Dirty state must NOT be removed (safe default when nav type is unknown)
-      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
-      // Flag must still be consumed
+      expect(global.indexedDB.deleteDatabase).toHaveBeenCalledWith(
+        'exelearning-project-test-project-123',
+      );
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
     });
 
-    it('uses legacy performance.navigation fallback when modern API returns empty array', async () => {
-      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
-      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
-      // Modern API returns empty; legacy API says type=1 (reload)
-      global.performance = {
-        getEntriesByType: mock(() => []),
-        navigation: { type: 1 },
-      };
-
-      await manager.initialize();
-
-      // Dirty state must NOT be removed (legacy API detected reload)
-      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
-      // Flag must still be consumed
-      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
-    });
-
-    it('invokes the external callback when nav type is "navigate"', async () => {
+    it('invokes the external callback when the tab-session marker is absent', async () => {
       global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
       const cb = mock(() => {});
       manager._onLastTabClosedCallback = cb;
@@ -2557,11 +2540,17 @@ describe('YjsDocumentManager', () => {
       expect(cb).toHaveBeenCalledTimes(1);
     });
 
-    it('does NOT invoke the external callback when nav type is "reload"', async () => {
+    it('stores a pending external-cleanup flag when cleanup runs before the callback is registered', async () => {
       global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
-      global.performance = {
-        getEntriesByType: mock(() => [{ type: 'reload' }]),
-      };
+
+      await manager.initialize();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
+    });
+
+    it('does NOT invoke the external callback when the tab-session marker is present', async () => {
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
       const cb = mock(() => {});
       manager._onLastTabClosedCallback = cb;
 
@@ -2584,6 +2573,34 @@ describe('YjsDocumentManager', () => {
 
       // Flag was never set, so it remains absent
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('always sets the tab-session marker during initialization', async () => {
+      await manager.initialize();
+
+      expect(global.sessionStorage.setItem).toHaveBeenCalledWith('exe-tab-session-test-project-123', 'true');
+      expect(global.sessionStorage.getItem('exe-tab-session-test-project-123')).toBe('true');
+    });
+  });
+
+  describe('flushPendingExternalCleanup', () => {
+    it('runs and clears pending external cleanup when callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+      const cb = mock(() => Promise.resolve());
+      manager.setOnLastTabClosedCallback(cb);
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(cb).toHaveBeenCalledTimes(1);
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('keeps the pending flag when no callback is registered', async () => {
+      global.localStorage.setItem('exe-needs-external-cleanup-test-project-123', 'true');
+
+      await manager.flushPendingExternalCleanup();
+
+      expect(global.localStorage.getItem('exe-needs-external-cleanup-test-project-123')).toBe('true');
     });
   });
 

@@ -76,6 +76,7 @@ class MockYjsDocumentManager {
   setOnLastTabClosedCallback(callback) {
     this._onLastTabClosedCallback = callback;
   }
+  async flushPendingExternalCleanup() {}
 }
 
 // Mock YjsStructureBinding
@@ -352,6 +353,14 @@ describe('YjsProjectBridge', () => {
       await bridge.documentManager._onLastTabClosedCallback();
 
       expect(bridge.assetManager.clearCache).toHaveBeenCalledTimes(1);
+    });
+
+    it('flushes pending external cleanup after wiring the asset cache callback', async () => {
+      const flushSpy = spyOn(MockYjsDocumentManager.prototype, 'flushPendingExternalCleanup');
+
+      await bridge.initialize(123, 'test-token');
+
+      expect(flushSpy).toHaveBeenCalledTimes(1);
     });
 
     it('sets initialized to true', async () => {
