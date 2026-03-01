@@ -1186,7 +1186,7 @@ export default class IdeviceNode {
                                     this.apiUpdateOrder().then((response) => {
                                         if (response.responseMessage == 'OK') {
                                             // Move element
-                                            this.block.blockContent.insertBefore(
+                                            this.block.boxContent.insertBefore(
                                                 this.ideviceContent,
                                                 previousIdevice
                                             );
@@ -1239,7 +1239,7 @@ export default class IdeviceNode {
                                     this.apiUpdateOrder().then((response) => {
                                         if (response.responseMessage == 'OK') {
                                             // Move element
-                                            this.block.blockContent.insertBefore(
+                                            this.block.boxContent.insertBefore(
                                                 this.ideviceContent,
                                                 nextIdevice.nextSibling
                                             );

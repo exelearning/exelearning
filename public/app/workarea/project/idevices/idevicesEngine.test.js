@@ -2475,6 +2475,7 @@ describe('IdevicesEngine', () => {
             const mockBlock = {
                 blockId: 'block-1',
                 blockContent: document.createElement('div'),
+                boxContent: document.createElement('div'),
             };
             engine.components.blocks = [mockBlock];
             vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({
@@ -3613,6 +3614,7 @@ describe('IdevicesEngine', () => {
             const mockNewBlockNode = vi.fn().mockReturnValue({
                 blockId: 'yjs-block-id-123',
                 blockContent: document.createElement('article'),
+                boxContent: document.createElement('div'),
             });
             vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
@@ -3666,6 +3668,7 @@ describe('IdevicesEngine', () => {
             const mockNewBlockNode = vi.fn().mockReturnValue({
                 blockId: 'local-block-id',
                 blockContent: document.createElement('article'),
+                boxContent: document.createElement('div'),
             });
             vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});

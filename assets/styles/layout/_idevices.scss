@@ -907,7 +907,7 @@ article.box {
         display: none;
     }
 
-    .box .box-head ~ .idevice-content-block.dragging {
+    .box .box-content .idevice-content-block.dragging {
         display: block;
     }
 
