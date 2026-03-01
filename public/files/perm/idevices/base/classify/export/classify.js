@@ -144,6 +144,28 @@ var $eXeClasifica = {
             }
         });
 
+        // Retrocompatibilidad: datos guardados con versión anterior podían tener
+        // numberGroups: null (parseInt(undefined) → NaN → JSON.stringify → null).
+        // Si el valor es inválido, se infiere del grupo máximo de las tarjetas.
+        const ng = parseInt(mOptions.numberGroups);
+        if (Number.isFinite(ng) && ng >= 2 && ng <= 9) {
+            mOptions.numberGroups = ng;
+        } else {
+            const maxGroup = Array.isArray(mOptions.wordsGame)
+                ? mOptions.wordsGame.reduce((max, w) => {
+                      const g = parseInt(w.group);
+                      return Number.isFinite(g) ? Math.max(max, g) : max;
+                  }, 1)
+                : 1;
+            mOptions.numberGroups = Math.min(Math.max(maxGroup + 1, 2), 9);
+        }
+
+        // Retrocompatibilidad: groups podría tener menos de 9 elementos
+        if (!Array.isArray(mOptions.groups)) mOptions.groups = [];
+        while (mOptions.groups.length < mOptions.numberGroups) {
+            mOptions.groups.push('Group ' + (mOptions.groups.length + 1));
+        }
+
         mOptions.playerAudio = '';
         mOptions.gameOver = false;
         mOptions.refreshCard = false;
@@ -220,27 +242,13 @@ var $eXeClasifica = {
                         <a href="#" id="clasificaValidateAnswers-${instance}">${msgs.msgShowAnswers}</a>
                     </div>
                     <div id="clasificaSlide-${instance}" class="CQP-Slide"></div>
-                    <div class="CQP-Container">
+                    <div class="CQP-Container" data-groups="${mOptions.numberGroups}">
+                        ${groups.map((title, i) => `
                         <div class="CQP-CC CQP-CP-${instance}">
-                            <span id="clasificaTitle0-${instance}" class="CQP-Title noselect">${groups[0]}</span>
-                            <div class="CQP-Container0 CQP-Line"></div>
-                            <div class="CQP-CC-Fill CQP-CC-${instance}" data-group="0"></div>
-                        </div>
-                        <div class="CQP-CC CQP-CP-${instance}">
-                            <span id="clasificaTitle1-${instance}" class="CQP-Title noselect">${groups[1]}</span>
-                            <div class="CQP-Container1 CQP-Line"></div>
-                            <div class="CQP-CC-Fill CQP-CC-${instance}" data-group="1"></div>
-                        </div>
-                        <div class="CQP-CC CQP-CP-${instance}">
-                            <span id="clasificaTitle2-${instance}" class="CQP-Title noselect">${groups[2]}</span>
-                            <div class="CQP-Container2 CQP-Line"></div>
-                            <div class="CQP-CC-Fill CQP-CC-${instance}" data-group="2"></div>
-                        </div>
-                        <div class="CQP-CC CQP-CP-${instance}">
-                            <span id="clasificaTitle3-${instance}" class="CQP-Title noselect">${groups[3]}</span>
-                            <div class="CQP-Container3 CQP-Line"></div>
-                            <div class="CQP-CC-Fill CQP-CC-${instance}" data-group="3"></div>
-                        </div>
+                            <span id="clasificaTitle${i}-${instance}" class="CQP-Title noselect">${title}</span>
+                            <div class="CQP-Container${i} CQP-Line"></div>
+                            <div class="CQP-CC-Fill CQP-CC-${instance}" data-group="${i}"></div>
+                        </div>`).join('')}
                     </div>
                 </div>                
                 <div class="CQP-DivFeedBack" id="clasificaDivFeedBack-${instance}">
@@ -437,6 +445,8 @@ var $eXeClasifica = {
             if ($item.data('ui-draggable')) {
                 $item.draggable('destroy').css('cursor', 'default');
             }
+            // Prevent touch drag after placement in hard mode
+            $item.attr('data-touch-locked', 'true');
 
             if (group === groupp) {
                 $item.find('.CQP-Card').addClass('CQP-CardOK');
@@ -470,7 +480,7 @@ var $eXeClasifica = {
         }
 
         if (mOptions.gameLevel !== 1)
-            messge = $eXeClasifica.getMessageAnswer(
+            message = $eXeClasifica.getMessageAnswer(
                 correctAnswer,
                 number,
                 instance
@@ -502,7 +512,12 @@ var $eXeClasifica = {
             cursor: 'move',
             containment: 'document',
             helper: 'clone',
-            appendTo: '.CQP-GameContainer-' + instance,
+            // appendTo gameContainer (not body) so the helper stays inside the
+            // fullscreen top-layer when in fullscreen mode. CQP-Multimedia now
+            // owns the overflow:hidden needed to clip CQP-Slide, while
+            // CQP-MainContainer and CQP-GameContainer stay overflow:visible,
+            // allowing the helper to extend freely without being clipped.
+            appendTo: '#clasificaGameContainer-' + instance,
             cancel: '.CQP-FullLinkImage',
             start: function (event, ui) {
                 $(this).addClass('CQP-Dragging');
@@ -538,6 +553,185 @@ var $eXeClasifica = {
                 $eXeClasifica.moveCard(ui.draggable, $this, instance);
             },
         });
+
+        $eXeClasifica.setupTouchDragAndDrop(instance);
+    },
+
+    /**
+     * Set up native touch drag-and-drop for mobile devices.
+     * jQuery UI draggable/droppable only handles mouse events,
+     * so this adds touchstart/touchmove/touchend equivalents.
+     * Handlers are stored in mOptions so each instance is independent.
+     */
+    setupTouchDragAndDrop: function (instance) {
+        $eXeClasifica.removeTouchDragAndDrop(instance);
+
+        const mOptions = $eXeClasifica.options[instance];
+        const gameContainer = document.querySelector(
+            `#clasificaGameContainer-${instance}`
+        );
+        if (!gameContainer) return;
+
+        let touchedCard = null;
+        let touchHelper = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        mOptions._touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+            const cardContainer = $(element).closest(
+                '.CQP-CardContainer.CQP-Drag-' + instance
+            )[0];
+
+            if (!cardContainer) return;
+            if ($(cardContainer).attr('data-touch-locked')) return;
+
+            e.preventDefault();
+
+            touchedCard = cardContainer;
+
+            const rect = cardContainer.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+
+            // Create a floating clone that follows the finger
+            touchHelper = $(cardContainer)
+                .clone()
+                .addClass('CQP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 1000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+
+            $(touchedCard).addClass('CQP-Dragging');
+        };
+
+        mOptions._touchMoveHandler = function (e) {
+            if (!touchedCard || !touchHelper) return;
+            e.preventDefault();
+
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: touch.clientX - offsetX + 'px',
+                top: touch.clientY - offsetY + 'px',
+            });
+
+            // Highlight the drop zone currently under the finger
+            $(`#clasificaGameContainer-${instance}`)
+                .find('.CQP-CC')
+                .removeClass('CQP-CC-Over');
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+            touchHelper.show();
+            const $containerBelow = $(elementBelow).closest(
+                '.CQP-CC-' + instance
+            );
+            if ($containerBelow.length) {
+                $containerBelow.closest('.CQP-CC').addClass('CQP-CC-Over');
+            }
+        };
+
+        mOptions._touchEndHandler = function (e) {
+            if (!touchedCard) return;
+            e.preventDefault();
+
+            const touch = e.changedTouches[0];
+
+            if (touchHelper) {
+                touchHelper.remove();
+                touchHelper = null;
+            }
+            $(`#clasificaGameContainer-${instance}`)
+                .find('.CQP-CC')
+                .removeClass('CQP-CC-Over');
+            $(touchedCard).removeClass('CQP-Dragging');
+
+            // Find the drop container under the release point
+            const elementBelow = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+            const $containerBelow = $(elementBelow).closest(
+                '.CQP-CC-' + instance
+            );
+            if ($containerBelow.length) {
+                $eXeClasifica.moveCard(
+                    $(touchedCard),
+                    $containerBelow,
+                    instance
+                );
+            }
+
+            touchedCard = null;
+        };
+
+        gameContainer.addEventListener(
+            'touchstart',
+            mOptions._touchStartHandler,
+            { passive: false }
+        );
+        gameContainer.addEventListener(
+            'touchmove',
+            mOptions._touchMoveHandler,
+            { passive: false }
+        );
+        gameContainer.addEventListener(
+            'touchend',
+            mOptions._touchEndHandler,
+            { passive: false }
+        );
+    },
+
+    removeTouchDragAndDrop: function (instance) {
+        const mOptions = $eXeClasifica.options[instance];
+        if (!mOptions) return;
+
+        const gameContainer = document.querySelector(
+            `#clasificaGameContainer-${instance}`
+        );
+        if (gameContainer) {
+            if (mOptions._touchStartHandler) {
+                gameContainer.removeEventListener(
+                    'touchstart',
+                    mOptions._touchStartHandler,
+                    { passive: false }
+                );
+            }
+            if (mOptions._touchMoveHandler) {
+                gameContainer.removeEventListener(
+                    'touchmove',
+                    mOptions._touchMoveHandler,
+                    { passive: false }
+                );
+            }
+            if (mOptions._touchEndHandler) {
+                gameContainer.removeEventListener(
+                    'touchend',
+                    mOptions._touchEndHandler,
+                    { passive: false }
+                );
+            }
+        }
+
+        mOptions._touchStartHandler = null;
+        mOptions._touchMoveHandler = null;
+        mOptions._touchEndHandler = null;
     },
 
     clear: function (phrase) {
@@ -791,6 +985,7 @@ var $eXeClasifica = {
     },
 
     removeEvents: function (instance) {
+        $eXeClasifica.removeTouchDragAndDrop(instance);
         $('#clasificaLinkMaximize-' + instance).off('click touchstart');
         $('#clasificaLinkMinimize-' + instance).off('click touchstart');
         $('#clasificaLinkFullScreen-' + instance).off('click touchstart');
@@ -1049,13 +1244,15 @@ var $eXeClasifica = {
                 break;
             }
         }
+        if (window.innerWidth <= 550) fontSize = Math.min(fontSize, 12);
         $text.css({ 'font-size': `${fontSize}px` });
     },
 
     adjustFontSize: function ($container) {
-        const $text = $container.find('.CQP-ETextDinamyc').eq(0),
+        const isMobile = window.innerWidth <= 550,
+            $text = $container.find('.CQP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
+            maxFontSize = isMobile ? 12 : 26,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 
@@ -1063,6 +1260,7 @@ var $eXeClasifica = {
 
         $text.css('font-size', fontSize + 'px');
 
+        // Shrink until text fits within the card dimensions
         while (
             ($text.outerWidth() > widthc || $text.outerHeight() > heightc) &&
             fontSize > minFontSize
@@ -1071,18 +1269,22 @@ var $eXeClasifica = {
             $text.css('font-size', fontSize + 'px');
         }
 
-        while (
-            $text.outerWidth() < widthc &&
-            $text.outerHeight() < heightc &&
-            fontSize < maxFontSize
-        ) {
-            fontSize++;
-            $text.css('font-size', fontSize + 'px');
-
-            if ($text.outerWidth() > widthc || $text.outerHeight() > heightc) {
-                fontSize--;
+        // On mobile we only shrink to fit; growing would cause inconsistent
+        // sizes as cards move between slide and drop containers
+        if (!isMobile) {
+            while (
+                $text.outerWidth() < widthc &&
+                $text.outerHeight() < heightc &&
+                fontSize < maxFontSize
+            ) {
+                fontSize++;
                 $text.css('font-size', fontSize + 'px');
-                break;
+
+                if ($text.outerWidth() > widthc || $text.outerHeight() > heightc) {
+                    fontSize--;
+                    $text.css('font-size', fontSize + 'px');
+                    break;
+                }
             }
         }
     },

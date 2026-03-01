@@ -141,8 +141,73 @@ describe('classify iDevice', () => {
       expect(result).toBe(4);
     });
 
-    it('returns false for group number > 3', () => {
-      const result = $exeDevice.validateGroups(['0#item1', '4#item2']);
+    it('returns 5 for valid 5 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+      ]);
+      expect(result).toBe(5);
+    });
+
+    it('returns 6 for valid 6 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+      ]);
+      expect(result).toBe(6);
+    });
+
+    it('returns 7 for valid 7 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+      ]);
+      expect(result).toBe(7);
+    });
+
+    it('returns 8 for valid 8 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+        '7#item8',
+      ]);
+      expect(result).toBe(8);
+    });
+
+    it('returns 9 for valid 9 groups', () => {
+      const result = $exeDevice.validateGroups([
+        '0#item1',
+        '1#item2',
+        '2#item3',
+        '3#item4',
+        '4#item5',
+        '5#item6',
+        '6#item7',
+        '7#item8',
+        '8#item9',
+      ]);
+      expect(result).toBe(9);
+    });
+
+    it('returns false for group number > 8', () => {
+      const result = $exeDevice.validateGroups(['0#item1', '9#item2']);
       expect(result).toBe(false);
     });
 

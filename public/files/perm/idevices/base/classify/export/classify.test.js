@@ -140,6 +140,216 @@ describe('classify iDevice export', () => {
     });
   });
 
+  describe('setupTouchDragAndDrop', () => {
+    it('exists as a function', () => {
+      expect(typeof $eXeClasifica.setupTouchDragAndDrop).toBe('function');
+    });
+
+    it('registers three touch listeners on the game container', () => {
+      const instance = 0;
+      $eXeClasifica.options[instance] = { gameStarted: false, gameOver: false };
+
+      const container = document.createElement('div');
+      container.id = `clasificaGameContainer-${instance}`;
+      document.body.appendChild(container);
+      const spy = vi.spyOn(container, 'addEventListener');
+
+      $eXeClasifica.setupTouchDragAndDrop(instance);
+
+      expect(spy).toHaveBeenCalledWith('touchstart', expect.any(Function), { passive: false });
+      expect(spy).toHaveBeenCalledWith('touchmove', expect.any(Function), { passive: false });
+      expect(spy).toHaveBeenCalledWith('touchend', expect.any(Function), { passive: false });
+
+      container.remove();
+      delete $eXeClasifica.options[instance];
+    });
+
+    it('stores handler references in mOptions', () => {
+      const instance = 0;
+      $eXeClasifica.options[instance] = { gameStarted: false, gameOver: false };
+
+      const container = document.createElement('div');
+      container.id = `clasificaGameContainer-${instance}`;
+      document.body.appendChild(container);
+
+      $eXeClasifica.setupTouchDragAndDrop(instance);
+      const mOptions = $eXeClasifica.options[instance];
+
+      expect(typeof mOptions._touchStartHandler).toBe('function');
+      expect(typeof mOptions._touchMoveHandler).toBe('function');
+      expect(typeof mOptions._touchEndHandler).toBe('function');
+
+      container.remove();
+      delete $eXeClasifica.options[instance];
+    });
+
+    it('does nothing when game container does not exist', () => {
+      const instance = 99;
+      $eXeClasifica.options[instance] = { gameStarted: false, gameOver: false };
+
+      expect(() => $eXeClasifica.setupTouchDragAndDrop(instance)).not.toThrow();
+
+      delete $eXeClasifica.options[instance];
+    });
+  });
+
+  describe('removeTouchDragAndDrop', () => {
+    it('exists as a function', () => {
+      expect(typeof $eXeClasifica.removeTouchDragAndDrop).toBe('function');
+    });
+
+    it('removes touch listeners and nulls handler references', () => {
+      const instance = 0;
+      $eXeClasifica.options[instance] = { gameStarted: false, gameOver: false };
+
+      const container = document.createElement('div');
+      container.id = `clasificaGameContainer-${instance}`;
+      document.body.appendChild(container);
+
+      $eXeClasifica.setupTouchDragAndDrop(instance);
+      const removeSpy = vi.spyOn(container, 'removeEventListener');
+
+      $eXeClasifica.removeTouchDragAndDrop(instance);
+      const mOptions = $eXeClasifica.options[instance];
+
+      expect(removeSpy).toHaveBeenCalledWith('touchstart', expect.any(Function), { passive: false });
+      expect(removeSpy).toHaveBeenCalledWith('touchmove', expect.any(Function), { passive: false });
+      expect(removeSpy).toHaveBeenCalledWith('touchend', expect.any(Function), { passive: false });
+      expect(mOptions._touchStartHandler).toBeNull();
+      expect(mOptions._touchMoveHandler).toBeNull();
+      expect(mOptions._touchEndHandler).toBeNull();
+
+      container.remove();
+      delete $eXeClasifica.options[instance];
+    });
+
+    it('does not throw when instance has no options', () => {
+      expect(() => $eXeClasifica.removeTouchDragAndDrop(99)).not.toThrow();
+    });
+  });
+
+  describe('touch drag handler behaviors', () => {
+    let instance;
+    let gameContainer;
+    let cardEl;
+
+    const makeTouch = (target, x = 50, y = 50) => ({
+      touches: [{ clientX: x, clientY: y, target }],
+      changedTouches: [{ clientX: x, clientY: y }],
+      preventDefault: vi.fn(),
+    });
+
+    beforeEach(() => {
+      instance = 0;
+      $eXeClasifica.options[instance] = { gameStarted: true, gameOver: false };
+      $eXeClasifica.moveCard = vi.fn();
+
+      gameContainer = document.createElement('div');
+      gameContainer.id = `clasificaGameContainer-${instance}`;
+
+      cardEl = document.createElement('div');
+      cardEl.className = `CQP-CardContainer CQP-Drag-${instance}`;
+      gameContainer.appendChild(cardEl);
+
+      document.body.appendChild(gameContainer);
+      $eXeClasifica.setupTouchDragAndDrop(instance);
+    });
+
+    afterEach(() => {
+      $eXeClasifica.removeTouchDragAndDrop(instance);
+      gameContainer.remove();
+      delete $eXeClasifica.options[instance];
+    });
+
+    it('touchstart ignores events when game is not started', () => {
+      $eXeClasifica.options[instance].gameStarted = false;
+      const handler = $eXeClasifica.options[instance]._touchStartHandler;
+      const e = makeTouch(cardEl);
+
+      // Mock elementFromPoint to return the card
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(cardEl);
+
+      handler(e);
+
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+
+    it('touchstart ignores events when game is over', () => {
+      $eXeClasifica.options[instance].gameOver = true;
+      const handler = $eXeClasifica.options[instance]._touchStartHandler;
+      const e = makeTouch(cardEl);
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(cardEl);
+
+      handler(e);
+
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+
+    it('touchstart ignores locked cards (data-touch-locked)', () => {
+      cardEl.setAttribute('data-touch-locked', 'true');
+      const handler = $eXeClasifica.options[instance]._touchStartHandler;
+      const e = makeTouch(cardEl);
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(cardEl);
+
+      handler(e);
+
+      expect(e.preventDefault).not.toHaveBeenCalled();
+      vi.restoreAllMocks();
+    });
+
+    it('touchend calls moveCard when released over a valid container', () => {
+      const startHandler = $eXeClasifica.options[instance]._touchStartHandler;
+      const endHandler = $eXeClasifica.options[instance]._touchEndHandler;
+
+      // Start drag
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(cardEl);
+      const startEvent = makeTouch(cardEl);
+      cardEl.getBoundingClientRect = () => ({ left: 0, top: 0, width: 80, height: 80 });
+      startHandler(startEvent);
+
+      // Build a drop container and release over it
+      const dropEl = document.createElement('div');
+      dropEl.className = `CQP-CC-${instance}`;
+      gameContainer.appendChild(dropEl);
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(dropEl);
+      const endEvent = makeTouch(cardEl);
+      endHandler(endEvent);
+
+      expect($eXeClasifica.moveCard).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        instance
+      );
+
+      vi.restoreAllMocks();
+    });
+
+    it('touchend does not call moveCard when released outside any container', () => {
+      const startHandler = $eXeClasifica.options[instance]._touchStartHandler;
+      const endHandler = $eXeClasifica.options[instance]._touchEndHandler;
+
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(cardEl);
+      const startEvent = makeTouch(cardEl);
+      cardEl.getBoundingClientRect = () => ({ left: 0, top: 0, width: 80, height: 80 });
+      startHandler(startEvent);
+
+      // Release over an element that is not a drop container
+      const outsideEl = document.createElement('div');
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(outsideEl);
+      const endEvent = makeTouch(cardEl);
+      endHandler(endEvent);
+
+      expect($eXeClasifica.moveCard).not.toHaveBeenCalled();
+
+      vi.restoreAllMocks();
+    });
+  });
+
   describe('loadGame DataGame skip behavior', () => {
     /**
      * Test that loadGame skips activities without DataGame element.
