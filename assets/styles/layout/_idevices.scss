@@ -925,3 +925,12 @@ article.box {
         border: 1px dashed var(--brand-primary-500);
     }
 }
+.tox-fullscreen article.box {
+    &.idevice-element-in-content {
+        .idevice_node {
+            .idevice_actions {
+                width: auto;
+            }
+        }
+    }
+}
