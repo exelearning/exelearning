@@ -42,6 +42,7 @@ export default class IdeviceBlockNode {
         this.canHaveHeirs = true;
         // Content parameters
         this.blockContent = null;
+        this.boxContent = null;
         this.headElement = null;
         this.idevicesContainerElement = null;
         this.iconElement = null;
@@ -239,6 +240,10 @@ export default class IdeviceBlockNode {
         if (newNode) {
             this.blockContent.appendChild(this.makeBlockHeadElement());
             this.addBehaviourChangeIcon();
+            // Box content wrapper (mirrors the export HTML structure)
+            this.boxContent = document.createElement('div');
+            this.boxContent.classList.add('box-content');
+            this.blockContent.appendChild(this.boxContent);
         }
         // Properties attributes/classes
         this.setPropertiesClassesToElement();

@@ -954,6 +954,22 @@ describe('IdeviceBlockNode', () => {
             const content = block.generateBlockContentNode(true);
             expect(content.classList.contains('draggable')).toBe(true);
         });
+
+        it('creates box-content div and sets boxContent property', () => {
+            block.generateBlockContentNode(true);
+            expect(block.boxContent).toBeDefined();
+            expect(block.boxContent.tagName).toBe('DIV');
+            expect(block.boxContent.classList.contains('box-content')).toBe(true);
+        });
+
+        it('appends box-content after box-head inside blockContent', () => {
+            block.generateBlockContentNode(true);
+            const children = Array.from(block.blockContent.children);
+            const headIndex = children.indexOf(block.headElement);
+            const boxContentIndex = children.indexOf(block.boxContent);
+            expect(headIndex).toBeGreaterThanOrEqual(0);
+            expect(boxContentIndex).toBeGreaterThan(headIndex);
+        });
     });
 
     describe('setProperties', () => {
