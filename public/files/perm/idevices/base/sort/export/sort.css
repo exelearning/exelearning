@@ -1072,7 +1072,8 @@ div:fullscreen .ODNP-LinkMinimize {
 }
 
 @media screen and (max-width:500px) {
-    .ODNP-Word {
+    .ODNP-Word,
+    .ODNP-EText {
         font-size: 1em;
     }
 }

@@ -810,13 +810,15 @@ var $eXeOrdena = {
             }
         }
 
+        if (window.innerWidth <= 500 && fontSize > 16) fontSize = 16;
+
         $text.css({ 'font-size': `${fontSize}px` });
     },
     adjustFontSize: function ($card) {
         const $container = $card.find('.ODNP-EText'),
             $text = $container.find('.ODNP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
+            maxFontSize = window.innerWidth <= 500 ? 16 : 26,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 
