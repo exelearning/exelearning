@@ -5,9 +5,13 @@
  * - editDistance: Levenshtein distance calculation
  * - similarity: String similarity (0-1)
  * - checkWord: Word validation with options
+ * - setupTouchDragAndDrop / removeTouchDragAndDrop: Native touch drag support
  */
 
 /* eslint-disable no-undef */
+// Import setup for DOM mocks (happy-dom), jQuery, and global mocks
+import '../../../../../../../public/vitest.setup.js';
+
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -256,6 +260,200 @@ describe('complete iDevice export', () => {
   describe('enable', () => {
     it('exists as a function', () => {
       expect(typeof $eXeCompleta.enable).toBe('function');
+    });
+  });
+
+  describe('setupTouchDragAndDrop', () => {
+    it('exists as a function', () => {
+      expect(typeof $eXeCompleta.setupTouchDragAndDrop).toBe('function');
+    });
+
+    it('registers three touch listeners on the game container', () => {
+      const instance = 0;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      const container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+      const spy = vi.spyOn(container, 'addEventListener');
+
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+
+      expect(spy).toHaveBeenCalledWith('touchstart', expect.any(Function), { passive: false });
+      expect(spy).toHaveBeenCalledWith('touchmove', expect.any(Function), { passive: false });
+      expect(spy).toHaveBeenCalledWith('touchend', expect.any(Function), { passive: false });
+
+      document.body.removeChild(container);
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+    });
+
+    it('stores handlers in mOptions', () => {
+      const instance = 1;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      const container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+      const mOptions = $eXeCompleta.options[instance];
+
+      expect(typeof mOptions._touchDragStart).toBe('function');
+      expect(typeof mOptions._touchDragMove).toBe('function');
+      expect(typeof mOptions._touchDragEnd).toBe('function');
+      expect(mOptions._touchDragContainer).toBe(container);
+
+      document.body.removeChild(container);
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+    });
+
+    it('does nothing when game container does not exist', () => {
+      const instance = 999;
+      $eXeCompleta.options[instance] = { gameStarted: true, gameOver: false };
+      expect(() => $eXeCompleta.setupTouchDragAndDrop(instance)).not.toThrow();
+      expect($eXeCompleta.options[instance]._touchDragContainer).toBeUndefined();
+    });
+
+    it('removes previous listeners before registering new ones (idempotent)', () => {
+      const instance = 2;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      const container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+      const removeSpy = vi.spyOn(container, 'removeEventListener');
+
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+      $eXeCompleta.setupTouchDragAndDrop(instance); // second call removes first
+
+      expect(removeSpy).toHaveBeenCalledWith('touchstart', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith('touchmove', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith('touchend', expect.any(Function));
+
+      document.body.removeChild(container);
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+    });
+  });
+
+  describe('removeTouchDragAndDrop', () => {
+    it('exists as a function', () => {
+      expect(typeof $eXeCompleta.removeTouchDragAndDrop).toBe('function');
+    });
+
+    it('removes the three touch listeners', () => {
+      const instance = 3;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      const container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+      const removeSpy = vi.spyOn(container, 'removeEventListener');
+
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+
+      expect(removeSpy).toHaveBeenCalledWith('touchstart', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith('touchmove', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith('touchend', expect.any(Function));
+
+      document.body.removeChild(container);
+    });
+
+    it('nulls out all handler references in mOptions', () => {
+      const instance = 4;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      const container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+
+      const mOptions = $eXeCompleta.options[instance];
+      expect(mOptions._touchDragStart).toBeNull();
+      expect(mOptions._touchDragMove).toBeNull();
+      expect(mOptions._touchDragEnd).toBeNull();
+      expect(mOptions._touchDragContainer).toBeNull();
+
+      document.body.removeChild(container);
+    });
+
+    it('does not throw when called without a prior setup', () => {
+      expect(() => $eXeCompleta.removeTouchDragAndDrop(888)).not.toThrow();
+    });
+
+    it('does not throw when instance has no _touchDragContainer', () => {
+      const instance = 5;
+      $eXeCompleta.options[instance] = { gameStarted: true, gameOver: false };
+      expect(() => $eXeCompleta.removeTouchDragAndDrop(instance)).not.toThrow();
+    });
+  });
+
+  describe('touch drag handler behaviors', () => {
+    let instance, container;
+
+    beforeEach(() => {
+      instance = 6;
+      $eXeCompleta.options[instance] = {
+        gameStarted: true, gameOver: false,
+        _touchDragStart: null, _touchDragMove: null, _touchDragEnd: null, _touchDragContainer: null,
+      };
+      container = document.createElement('div');
+      container.id = `cmptGameContainer-${instance}`;
+      document.body.appendChild(container);
+      $eXeCompleta.setupTouchDragAndDrop(instance);
+    });
+
+    afterEach(() => {
+      $eXeCompleta.removeTouchDragAndDrop(instance);
+      if (container.parentNode) document.body.removeChild(container);
+    });
+
+    it('touchstart does nothing when game has not started', () => {
+      $eXeCompleta.options[instance].gameStarted = false;
+      const handler = $eXeCompleta.options[instance]._touchDragStart;
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(document.body);
+      expect(() => handler({ touches: [{ clientX: 0, clientY: 0 }], preventDefault: vi.fn() })).not.toThrow();
+    });
+
+    it('touchstart does nothing when game is over', () => {
+      $eXeCompleta.options[instance].gameOver = true;
+      const handler = $eXeCompleta.options[instance]._touchDragStart;
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(document.body);
+      expect(() => handler({ touches: [{ clientX: 0, clientY: 0 }], preventDefault: vi.fn() })).not.toThrow();
+    });
+
+    it('touchstart does nothing when touching a non-draggable element', () => {
+      const handler = $eXeCompleta.options[instance]._touchDragStart;
+      vi.spyOn(document, 'elementFromPoint').mockReturnValue(document.body);
+      const preventDefault = vi.fn();
+      handler({ touches: [{ clientX: 0, clientY: 0 }], preventDefault });
+      // No draggable found → preventDefault should NOT be called
+      expect(preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('touchmove does nothing when no item is being dragged', () => {
+      const handler = $eXeCompleta.options[instance]._touchDragMove;
+      const preventDefault = vi.fn();
+      expect(() => handler({ touches: [{ clientX: 10, clientY: 10 }], preventDefault })).not.toThrow();
+      expect(preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('touchend does nothing when no item is being dragged', () => {
+      const handler = $eXeCompleta.options[instance]._touchDragEnd;
+      expect(() => handler({ changedTouches: [{ clientX: 10, clientY: 10 }] })).not.toThrow();
     });
   });
 });

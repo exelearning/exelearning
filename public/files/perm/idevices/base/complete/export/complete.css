@@ -79,6 +79,16 @@
     border-color: #444;
 }
 
+.CMPT-TouchHelper {
+    opacity: .85;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.CMPT-Input.hovering {
+    outline: 2px solid #5877c6;
+    background-color: #d5dcec;
+}
+
 .CMPT-Hide {
     display: none;
 }
