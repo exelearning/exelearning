@@ -55,6 +55,17 @@
     text-decoration: underline
 }
 
+/* Underlined links */
+.box-content a {
+    text-decoration: underline;
+}
+.box-content a:hover {
+    text-decoration: none;
+}
+.box-content a:focus {
+    text-decoration: underline;
+}
+
 @media print {
     .external-iframe-src {
         display: block !important;
