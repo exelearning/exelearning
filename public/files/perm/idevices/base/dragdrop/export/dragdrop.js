@@ -1160,6 +1160,14 @@ var $eXeDragDrop = {
             offsetX = touch.clientX - rect.left;
             offsetY = touch.clientY - rect.top;
 
+            const $audio = $draggable.find('.DADP-TAudio');
+            if ($audio.length === 1) {
+                const audioData = $audio.data('audio');
+                if (audioData && audioData.length > 3) {
+                    $exeDevices.iDevice.gamification.media.playSound(audioData);
+                }
+            }
+
             touchHelper = $draggable.clone()
                 .addClass('DADP-TouchHelper')
                 .css({
