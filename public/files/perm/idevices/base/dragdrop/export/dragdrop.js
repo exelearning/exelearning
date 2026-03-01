@@ -688,23 +688,23 @@ var $eXeDragDrop = {
             );
         }
 
+        // Play target audio when text is dropped on the correct target (typeDrag=1)
+        if (mOptions.typeDrag == 1 && correctAnswer) {
+            const $targetAudio = $container
+                .closest('.DADP-DragTargetContainer')
+                .find('.DADP-TAudio');
+            if ($targetAudio.length == 1) {
+                const audioData = $targetAudio.data('audio');
+                if (audioData && audioData.length > 3) {
+                    $exeDevices.iDevice.gamification.media.playSound(audioData);
+                }
+            }
+        }
+
         if (mOptions.type == 0) {
             mOptions.hits++;
             if (mOptions.hits >= mOptions.realNumberCards) {
                 $eXeDragDrop.checkState(instance);
-            }
-            if (mOptions.typeDrag == 1 && correctAnswer) {
-                const $existingAudio = $container
-                    .closest('.DADP-DragTargetContainer')
-                    .find('.DADP-TAudio');
-                if ($existingAudio.length == 1) {
-                    let data = $existingAudio.data('audio');
-                    if (data && data.length > 3) {
-                        $exeDevices.iDevice.gamification.media.playSound(
-                            data
-                        );
-                    }
-                }
             }
         }
     },
@@ -873,6 +873,7 @@ var $eXeDragDrop = {
         $('#dadPCheckButton-' + instance).off('click');
 
         $dadPGameContainer.off('click', '.DADP-TAudio');
+        $dadPGameContainer.off('touchstart', '.DADP-TAudio');
         $dadPGameContainer.off('click', '.DADP-FullLinkImage');
 
         $eXeDragDrop.removeTouchDragAndDrop(instance);
@@ -994,7 +995,16 @@ var $eXeDragDrop = {
         });
 
         $dadPGameContainer.on('click', '.DADP-TAudio', function () {
-            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const audio = $(this).data('audio');
+            if (audio && audio.length > 3)
+                $exeDevices.iDevice.gamification.media.playSound(audio);
+        });
+
+        // Mobile: tap on audio icon in non-draggable areas (e.g. image targets in typeDrag=1)
+        $dadPGameContainer.on('touchstart', '.DADP-TAudio', function (e) {
+            if ($(this).closest('.DADP-DS').length) return; // handled by touchStartHandler
+            e.preventDefault();
+            e.stopImmediatePropagation();
             const audio = $(this).data('audio');
             if (audio && audio.length > 3)
                 $exeDevices.iDevice.gamification.media.playSound(audio);
