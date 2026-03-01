@@ -11,6 +11,8 @@
  */
 
 var $scrambledlist = {
+    _touchHandlers: {},
+
     borderColors: {
         black: '#1c1b1b',
         blue: '#5877c6',
@@ -424,6 +426,7 @@ var $scrambledlist = {
             });
 
         $scrambledlist.getListLinks(listOrder);
+        $scrambledlist.setupTouchDrag(listOrder);
 
         $(`#exe-sortableListButton-${listOrder}`).on('click', function () {
             $scrambledlist.check(this, listOrder);
@@ -435,6 +438,7 @@ var $scrambledlist = {
         $('#exe-sortableListButton-' + listOrder).hide();
         var list = $('#exe-sortableList-' + listOrder);
         $('a', list).hide();
+        $scrambledlist.removeTouchDrag(listOrder);
         list.sortable('destroy');
         // Check the answers
         var activity = $(e).parents('.exe-sortableList');
@@ -563,6 +567,128 @@ var $scrambledlist = {
         data.gameStarted = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
     },
+    /**
+     * Set up native touch drag-and-drop for a sortable list instance.
+     * Needed because the HTML5 Sortable plugin only handles mouse events.
+     *
+     * @param {number} listOrder - Instance identifier for the sortable list
+     */
+    setupTouchDrag: function (listOrder) {
+        $scrambledlist.removeTouchDrag(listOrder);
+
+        const ul = document.getElementById('exe-sortableList-' + listOrder);
+        if (!ul) return;
+
+        let touchedItem = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const li = $(element).closest('#exe-sortableList-' + listOrder + ' li')[0];
+            if (!li) return;
+
+            e.preventDefault();
+            touchedItem = li;
+            const rect = li.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+
+            touchHelper = $(li).clone()
+                .addClass('SLP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    'z-index': 1000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+
+            $(touchedItem).addClass('sortable-dragging');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedItem) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+
+            // Detect the li beneath the finger (hide helper so elementFromPoint works)
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+
+            const targetLi = $(elementBelow).closest('#exe-sortableList-' + listOrder + ' li')[0];
+            $('#exe-sortableList-' + listOrder + ' li').removeClass('sortable-over');
+            if (targetLi && targetLi !== touchedItem) {
+                $(targetLi).addClass('sortable-over');
+            }
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedItem) return;
+
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(touchedItem).removeClass('sortable-dragging');
+            $('#exe-sortableList-' + listOrder + ' li').removeClass('sortable-over');
+
+            // Find the target li under the finger
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const targetLi = $(elementBelow).closest('#exe-sortableList-' + listOrder + ' li')[0];
+
+            if (targetLi && targetLi !== touchedItem) {
+                const targetRect = targetLi.getBoundingClientRect();
+                const midY = targetRect.top + targetRect.height / 2;
+
+                // Insert before or after the target based on finger position relative to its midpoint
+                if (touch.clientY < midY) {
+                    $(targetLi).before($(touchedItem));
+                } else {
+                    $(targetLi).after($(touchedItem));
+                }
+
+                $scrambledlist.getListLinks(listOrder);
+            }
+
+            touchedItem = null;
+        };
+
+        ul.addEventListener('touchstart', touchStartHandler, { passive: false });
+        ul.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        ul.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        $scrambledlist._touchHandlers[listOrder] = {
+            touchstart: touchStartHandler,
+            touchmove: touchMoveHandler,
+            touchend: touchEndHandler,
+            ul: ul,
+        };
+    },
+
+    /**
+     * Remove native touch event listeners for a sortable list instance.
+     *
+     * @param {number} listOrder - Instance identifier for the sortable list
+     */
+    removeTouchDrag: function (listOrder) {
+        const handlers = $scrambledlist._touchHandlers && $scrambledlist._touchHandlers[listOrder];
+        if (!handlers) return;
+
+        handlers.ul.removeEventListener('touchstart', handlers.touchstart);
+        handlers.ul.removeEventListener('touchmove', handlers.touchmove);
+        handlers.ul.removeEventListener('touchend', handlers.touchend);
+
+        delete $scrambledlist._touchHandlers[listOrder];
+    },
+
     getMessages: function () {
         let msgs = {
             msgScoreScorm:
