@@ -495,6 +495,167 @@ describe('PageExporter', () => {
             expect(result1).toBe('<a href="#section-page-1">Link</a>');
             expect(result2).toBe('<a href="#section-page-1">Link</a>');
         });
+
+        it('should use just the anchor fragment when exe-node link has an anchor', () => {
+            const pageUrlMap = new Map([['page-2', { url: '#section-page-2', urlFromSubpage: '#section-page-2' }]]);
+
+            // exe-node:pageId#anchor → #anchor (not #section-pageId#anchor which is invalid)
+            const content = '<a href="exe-node:page-2#section1">Jump to section</a>';
+            const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+            expect(result).toBe('<a href="#section1">Jump to section</a>');
+        });
+
+        it('should use anchor directly regardless of isFromIndex when anchor is present', () => {
+            const pageUrlMap = new Map([['page-1', { url: '#section-page-1', urlFromSubpage: '#section-page-1' }]]);
+
+            const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
+            const resultFromIndex = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+            const resultFromSubpage = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
+
+            expect(resultFromIndex).toBe('<a href="#intro">Go to Intro</a>');
+            expect(resultFromSubpage).toBe('<a href="#intro">Go to Intro</a>');
+        });
+
+        it('should not mangle content without exe-node links', () => {
+            const pageUrlMap = new Map([['page-1', { url: '#section-page-1', urlFromSubpage: '#section-page-1' }]]);
+            const content = '<a href="https://example.com">External</a>';
+            const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+            expect(result).toBe('<a href="https://example.com">External</a>');
+        });
+
+        it('should leave unknown exe-node links unchanged', () => {
+            const pageUrlMap = new Map<string, { url: string; urlFromSubpage: string }>();
+            const content = '<a href="exe-node:unknown-page">Link</a>';
+            const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+            expect(result).toBe('<a href="exe-node:unknown-page">Link</a>');
+        });
+
+        it('should generate sections with section-{id} IDs in single-page HTML', () => {
+            const html = exporter.generateSinglePageHtml(samplePages, document.getMetadata(), []);
+
+            expect(html).toContain('id="section-page-1"');
+            expect(html).toContain('id="section-page-2"');
+            expect(html).toContain('id="section-page-3"');
+        });
+
+        it('should resolve exe-node links in exported single-page HTML content', async () => {
+            const pagesWithLink: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a href="exe-node:page-2">Go to page 2</a></p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-2',
+                    title: 'About',
+                    parentId: null,
+                    order: 1,
+                    blocks: [
+                        {
+                            id: 'block-2',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-2',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a id="myanchor">Anchor</a> content here</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithLink);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // exe-node:page-2 should become #section-page-2
+            expect(indexHtml).toContain('href="#section-page-2"');
+            // Should NOT contain the raw exe-node: reference
+            expect(indexHtml).not.toContain('href="exe-node:page-2"');
+        });
+
+        it('should resolve exe-node:pageId#anchor links in exported single-page HTML', async () => {
+            const pagesWithAnchorLink: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a href="exe-node:page-2#myanchor">Jump to anchor</a></p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-2',
+                    title: 'About',
+                    parentId: null,
+                    order: 1,
+                    blocks: [
+                        {
+                            id: 'block-2',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-2',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a id="myanchor">Anchor</a> content here</p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithAnchorLink);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // exe-node:page-2#myanchor should become #myanchor (not #section-page-2#myanchor)
+            expect(indexHtml).toContain('href="#myanchor"');
+            expect(indexHtml).not.toContain('href="exe-node:page-2#myanchor"');
+            expect(indexHtml).not.toContain('#section-page-2#myanchor');
+        });
     });
 
     describe('Library Detection', () => {

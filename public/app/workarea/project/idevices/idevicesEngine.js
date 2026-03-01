@@ -2589,39 +2589,41 @@ export default class IdevicesEngine {
      *
      */
     enableInternalLinks() {
-        let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
-        if (eXeNodeLinks.length > 0) {
-            let pages = eXeLearning.app.project.structure.data;
-            let buttonsPages = document.querySelectorAll('.nav-element-text');
+        const eXeNodeLinks = document.querySelectorAll("a[href^='exe-node:']");
+        if (eXeNodeLinks.length === 0) return;
 
-            eXeNodeLinks.forEach((link) => {
-                let pageElement = null;
-                let pageName = 'nopage';
-                let pageId = link.href.replace('exe-node:', '');
+        eXeNodeLinks.forEach((link) => {
+            // Use getAttribute for reliable custom-protocol handling
+            const href = link.getAttribute('href') || '';
+            const withoutProtocol = href.replace(/^exe-node:/, '');
+            const hashIdx = withoutProtocol.indexOf('#');
+            const pageId = hashIdx !== -1 ? withoutProtocol.substring(0, hashIdx) : withoutProtocol;
+            const anchorId = hashIdx !== -1 ? withoutProtocol.substring(hashIdx + 1) : null;
 
-                pages.forEach((page) => {
-                    if (page.pageId === pageId) {
-                        pageName = page.pageName;
+            // Navigate directly by nav-id (reliable, no pageName matching needed)
+            const navButton = document.querySelector(`.nav-element[nav-id="${pageId}"] > .nav-element-text`);
+            if (navButton) {
+                link.onclick = function (event) {
+                    event.preventDefault();
+                    navButton.click();
+                    if (anchorId) {
+                        // Poll until the anchor element appears in the newly loaded page
+                        let attempts = 0;
+                        const maxAttempts = 20;
+                        const scrollToAnchor = () => {
+                            const target = document.getElementById(anchorId)
+                                || document.querySelector(`[name="${anchorId}"]`);
+                            if (target) {
+                                target.scrollIntoView({ behavior: 'smooth' });
+                            } else if (++attempts < maxAttempts) {
+                                setTimeout(scrollToAnchor, 100);
+                            }
+                        };
+                        setTimeout(scrollToAnchor, 100);
                     }
-                });
-
-                buttonsPages.forEach((button) => {
-                    if (
-                        button.className == 'nav-element-text' &&
-                        button.innerText == pageName
-                    ) {
-                        pageElement = button;
-                    }
-                });
-
-                if (pageElement) {
-                    link.onclick = function (event) {
-                        event.preventDefault();
-                        pageElement.click();
-                    };
-                }
-            });
-        }
+                };
+            }
+        });
     }
 
     /**

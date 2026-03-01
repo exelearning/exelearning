@@ -264,6 +264,41 @@ export class PageExporter extends Html5Exporter {
     }
 
     /**
+     * Override internal link replacement for single-page export.
+     * When a link carries its own anchor (exe-node:pageId#anchor), use just #anchor
+     * since all content is in the same document. Without an anchor, use #section-pageId.
+     */
+    protected replaceInternalLinks(
+        content: string,
+        pageUrlMap: Map<string, { url: string; urlFromSubpage: string }>,
+        isFromIndex: boolean,
+    ): string {
+        if (!content || !content.includes('exe-node:')) {
+            return content;
+        }
+
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
+            if (!pageUrlMap.has(pageId)) {
+                console.warn(`[PageExporter] Internal link target not found: ${pageId}`);
+                return match;
+            }
+
+            // If the link has its own anchor, use it directly (all content is on the same page)
+            if (anchorFragment) {
+                return `href="${anchorFragment}"`;
+            }
+
+            // No anchor: navigate to the page section
+            const pageUrl = pageUrlMap.get(pageId)!;
+            return `href="${isFromIndex ? pageUrl.url : pageUrl.urlFromSubpage}"`;
+        });
+    }
+
+    /**
      * Get CSS specific to single-page layout
      */
     getSinglePageCss(): string {
