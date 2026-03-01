@@ -487,16 +487,6 @@ var $eXeDragDrop = {
             },
         });
 
-        $dadPGameContainer.on('click', '.DADP-TAudio', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            const data = $(this).data('audio');
-            if (data && data.length > 3) {
-                $exeDevices.iDevice.gamification.media.playSound(
-                    data
-                );
-            }
-        });
         $dadPGameContainer
             .find('.DADP-Card1')
             .on('mousedown touchstart', function (event) {
@@ -1000,9 +990,8 @@ var $eXeDragDrop = {
                 $exeDevices.iDevice.gamification.media.playSound(audio);
         });
 
-        // Mobile: tap on audio icon in non-draggable areas (e.g. image targets in typeDrag=1)
+        // Mobile: tap on audio icon plays audio and never starts a drag
         $dadPGameContainer.on('touchstart', '.DADP-TAudio', function (e) {
-            if ($(this).closest('.DADP-DS').length) return; // handled by touchStartHandler
             e.preventDefault();
             e.stopImmediatePropagation();
             const audio = $(this).data('audio');
