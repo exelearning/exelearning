@@ -714,6 +714,65 @@ describe('IdevicesEngine', () => {
             expect(engine.draggedElement.classList.contains('idevice-content-block')).toBe(true);
             expect(engine.draggedElement.classList.contains('idevice-element-in-content')).toBe(true);
         });
+
+        it('inserts into box-content when container is a block article', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header')); // box-head
+            blockArticle.appendChild(boxContent);
+            document.body.appendChild(blockArticle);
+
+            engine.moveIdeviceMenuToContent(blockArticle, 100);
+
+            expect(boxContent.contains(engine.draggedElement)).toBe(true);
+            document.body.removeChild(blockArticle);
+        });
+
+        it('inserts before afterElement inside box-content', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header'));
+            blockArticle.appendChild(boxContent);
+
+            // Existing iDevice inside box-content acting as the afterElement
+            const existingIdevice = document.createElement('div');
+            existingIdevice.classList.add('idevice-element-in-content', 'draggable');
+            existingIdevice.getBoundingClientRect = vi.fn(() => ({ top: 200, height: 50 }));
+            boxContent.appendChild(existingIdevice);
+            document.body.appendChild(blockArticle);
+
+            // y=0 is above the existing idevice (top=200), so afterElement = existingIdevice
+            engine.moveIdeviceMenuToContent(blockArticle, 0);
+
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(engine.draggedElement)).toBeLessThan(children.indexOf(existingIdevice));
+            document.body.removeChild(blockArticle);
+        });
+
+        it('appends to box-content when dropped below all existing iDevices', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header'));
+            blockArticle.appendChild(boxContent);
+
+            const existingIdevice = document.createElement('div');
+            existingIdevice.classList.add('idevice-element-in-content', 'draggable');
+            existingIdevice.getBoundingClientRect = vi.fn(() => ({ top: 50, height: 50 }));
+            boxContent.appendChild(existingIdevice);
+            document.body.appendChild(blockArticle);
+
+            // y=9999 is below all iDevices → appended at end of box-content
+            engine.moveIdeviceMenuToContent(blockArticle, 9999);
+
+            expect(boxContent.lastChild).toBe(engine.draggedElement);
+            document.body.removeChild(blockArticle);
+        });
     });
 
     describe('moveIdeviceContentToContent', () => {
@@ -726,6 +785,62 @@ describe('IdevicesEngine', () => {
             engine.moveIdeviceContentToContent(engine.nodeContentElement, 100);
 
             expect(engine.nodeContentElement.contains(engine.draggedElement)).toBe(true);
+        });
+
+        it('inserts into box-content when container is a block article', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header'));
+            blockArticle.appendChild(boxContent);
+            document.body.appendChild(blockArticle);
+
+            engine.moveIdeviceContentToContent(blockArticle, 100);
+
+            expect(boxContent.contains(engine.draggedElement)).toBe(true);
+            document.body.removeChild(blockArticle);
+        });
+
+        it('inserts before afterElement inside box-content', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header'));
+            blockArticle.appendChild(boxContent);
+
+            const existingIdevice = document.createElement('div');
+            existingIdevice.classList.add('idevice-element-in-content', 'draggable');
+            existingIdevice.getBoundingClientRect = vi.fn(() => ({ top: 200, height: 50 }));
+            boxContent.appendChild(existingIdevice);
+            document.body.appendChild(blockArticle);
+
+            engine.moveIdeviceContentToContent(blockArticle, 0);
+
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(engine.draggedElement)).toBeLessThan(children.indexOf(existingIdevice));
+            document.body.removeChild(blockArticle);
+        });
+
+        it('appends to box-content when dropped below all existing iDevices', () => {
+            const blockArticle = document.createElement('article');
+            blockArticle.classList.add('box');
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            blockArticle.appendChild(document.createElement('header'));
+            blockArticle.appendChild(boxContent);
+
+            const existingIdevice = document.createElement('div');
+            existingIdevice.classList.add('idevice-element-in-content', 'draggable');
+            existingIdevice.getBoundingClientRect = vi.fn(() => ({ top: 50, height: 50 }));
+            boxContent.appendChild(existingIdevice);
+            document.body.appendChild(blockArticle);
+
+            engine.moveIdeviceContentToContent(blockArticle, 9999);
+
+            expect(boxContent.lastChild).toBe(engine.draggedElement);
+            document.body.removeChild(blockArticle);
         });
     });
 
@@ -2475,6 +2590,7 @@ describe('IdevicesEngine', () => {
             const mockBlock = {
                 blockId: 'block-1',
                 blockContent: document.createElement('div'),
+                boxContent: document.createElement('div'),
             };
             engine.components.blocks = [mockBlock];
             vi.spyOn(engine, 'createIdeviceInContent').mockResolvedValue({
@@ -3613,6 +3729,7 @@ describe('IdevicesEngine', () => {
             const mockNewBlockNode = vi.fn().mockReturnValue({
                 blockId: 'yjs-block-id-123',
                 blockContent: document.createElement('article'),
+                boxContent: document.createElement('div'),
             });
             vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});
@@ -3666,6 +3783,7 @@ describe('IdevicesEngine', () => {
             const mockNewBlockNode = vi.fn().mockReturnValue({
                 blockId: 'local-block-id',
                 blockContent: document.createElement('article'),
+                boxContent: document.createElement('div'),
             });
             vi.spyOn(engine, 'newBlockNode').mockImplementation(mockNewBlockNode);
             vi.spyOn(engine, 'setBlockDataToIdeviceNode').mockImplementation(() => {});

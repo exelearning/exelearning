@@ -110,8 +110,7 @@ var $text = {
         const activityContent =
             infoContentHTML +
             contentHtml +
-            feedbackContentHTML +
-            `<p class="clearfix"></p>`;
+            feedbackContentHTML;
 
         let htmlContent = `<div class="${this.ideviceClass}">`;
         htmlContent += this.createMainContent(activityContent);
@@ -182,14 +181,6 @@ var $text = {
             }
         }
 
-        if ($node.find('.clearfix').length === 0) {
-            const $activity = $node.find('.exe-text');
-            if ($activity.length) {
-                $activity.append('<p class="clearfix"></p>');
-            } else {
-                $node.append('<p class="clearfix"></p>');
-            }
-        }
     },
 
     /**

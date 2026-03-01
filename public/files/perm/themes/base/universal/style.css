@@ -65,6 +65,11 @@ body.exe-export .highlighted-code {
     font-size: 0.9em;
     border-radius: 0;
 }
+body#tinymce {
+    font-family: "Atkinson Hyperlegible", Arial, Verdana, Helvetica, sans-serif;
+    line-height: 1.5em;
+    font-size: 1.05em;
+}
 .exe-content p {
     margin: 1em 0;
 }

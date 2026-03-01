@@ -233,6 +233,11 @@ body.exe-web-site {
     background-attachment: fixed;
 }
 
+body#tinymce {
+    font-family: "Nunito", Arial, Verdana, Helvetica, sans-serif;
+    font-size: 120%;
+}
+
 .js .exe-export .exe-content {
     min-height: calc(100vh - 30px);
 }

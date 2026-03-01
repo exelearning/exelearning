@@ -4389,6 +4389,32 @@ describe('IdeviceNode', () => {
             const btn = idevice.ideviceButtons.querySelector('#moveUpIdeviceidevice-123');
             expect(btn).not.toBeNull();
         });
+
+        it('moves ideviceContent before previousIdevice in boxContent on success', async () => {
+            // Setup DOM: boxContent with previousIdevice then ideviceContent
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            const previousIdevice = document.createElement('div');
+            previousIdevice.classList.add('idevice_node');
+            idevice.ideviceContent = document.createElement('div');
+            idevice.ideviceContent.classList.add('idevice_node');
+            boxContent.appendChild(previousIdevice);
+            boxContent.appendChild(idevice.ideviceContent);
+
+            idevice.block = { boxContent };
+            idevice.order = 1;
+            idevice.apiUpdateOrder = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            idevice.addBehaviourMoveUpIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#moveUpIdeviceidevice-123');
+            btn.click();
+
+            await new Promise((r) => setTimeout(r, 10));
+
+            // After move up, ideviceContent should be before previousIdevice
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(idevice.ideviceContent)).toBeLessThan(children.indexOf(previousIdevice));
+        });
     });
 
     describe('addBehaviourMoveDownIdeviceButton', () => {
@@ -4404,6 +4430,32 @@ describe('IdeviceNode', () => {
 
             const btn = idevice.ideviceButtons.querySelector('#moveDownIdeviceidevice-123');
             expect(btn).not.toBeNull();
+        });
+
+        it('moves ideviceContent after nextIdevice in boxContent on success', async () => {
+            // Setup DOM: boxContent with ideviceContent then nextIdevice
+            const boxContent = document.createElement('div');
+            boxContent.classList.add('box-content');
+            idevice.ideviceContent = document.createElement('div');
+            idevice.ideviceContent.classList.add('idevice_node');
+            const nextIdevice = document.createElement('div');
+            nextIdevice.classList.add('idevice_node');
+            boxContent.appendChild(idevice.ideviceContent);
+            boxContent.appendChild(nextIdevice);
+
+            idevice.block = { boxContent };
+            idevice.order = 0;
+            idevice.apiUpdateOrder = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            idevice.addBehaviourMoveDownIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#moveDownIdeviceidevice-123');
+            btn.click();
+
+            await new Promise((r) => setTimeout(r, 10));
+
+            // After move down, ideviceContent should be after nextIdevice
+            const children = Array.from(boxContent.children);
+            expect(children.indexOf(idevice.ideviceContent)).toBeGreaterThan(children.indexOf(nextIdevice));
         });
     });
 

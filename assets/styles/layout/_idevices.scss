@@ -907,7 +907,7 @@ article.box {
         display: none;
     }
 
-    .box .box-head ~ .idevice-content-block.dragging {
+    .box .box-content .idevice-content-block.dragging {
         display: block;
     }
 
@@ -923,5 +923,14 @@ article.box {
 
     .idevice_node.exe-teacher-highlight {
         border: 1px dashed var(--brand-primary-500);
+    }
+}
+.tox-fullscreen article.box {
+    &.idevice-element-in-content {
+        .idevice_node {
+            .idevice_actions {
+                width: auto;
+            }
+        }
     }
 }
