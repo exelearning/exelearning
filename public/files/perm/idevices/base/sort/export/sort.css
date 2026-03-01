@@ -728,7 +728,60 @@
     -webkit-transform: scale(1.1);
     transform: scale(1.1);
 }
+.ODNP-Target {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 10px;
+    row-gap: 0.5em;
+}
 
+.ODNP-Word {
+    cursor: move;
+    font-size: 1.5em;
+    color: #333;
+    border: 1px solid transparent;
+    background-color: rgb(255, 255, 255, .01);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 6px;
+
+}
+
+.ODPN-WordDragging {
+    opacity: 0.2;
+    padding: 2px 6px;
+}
+
+.ODNP-WordOver {
+    background-color: rgb(255, 197, 147);
+}
+
+.ODNP-WordBorder {
+     border: 1px solid #aaaaaa;
+    padding: 2px 6px;
+    display: inline-block;
+    margin-left: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;  
+   
+}
+
+.ODNP-WordCorrect {
+    color: #006641
+}
+
+.hovering {
+    border: 1px solid orange;
+}
+
+.ODNP-TouchHelper {
+    opacity: 0.85;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
 
 
 /* Puntuacion */
@@ -1015,6 +1068,13 @@ div:fullscreen .ODNP-LinkMinimize {
         margin-top: 0.6em;
         justify-content: space-around;
     }
+
+}
+
+@media screen and (max-width:500px) {
+    .ODNP-Word {
+        font-size: 1em;
+    }
 }
 
 @media screen and (max-width:470px) {
@@ -1186,49 +1246,3 @@ div:fullscreen .ODNP-LinkMinimize {
     }
 }
 
-.ODNP-Target {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin: 10px;
-    min-height: 50px;
-}
-
-.ODNP-Word {
-    cursor: move;
-    font-size: 1.5em;
-    color: #333;
-    border: 1px solid transparent;
-    max-height: 1.8em;
-    background-color: rgb(255, 255, 255, .01);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px;
-
-}
-
-.ODPN-WordDragging {
-    opacity: 0.2;
-    padding: 2px 6px;
-}
-
-.ODNP-WordOver {
-    background-color: rgb(255, 197, 147);
-}
-
-.ODNP-WordBorder {
-    border: 1px solid #aaaaaa;
-    padding: 2px 6px;
-    display: inline-block;
-    margin-left: 2px;
-   
-}
-
-.ODNP-WordCorrect {
-    color: #006641
-}
-
-.hovering {
-    border: 1px solid orange;
-}
