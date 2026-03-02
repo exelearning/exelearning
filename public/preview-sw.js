@@ -48,12 +48,27 @@ const MIME_TYPES = {
 };
 
 /**
- * Script to inject into HTML files to handle external links
- * Opens external links in a new tab to avoid navigation issues in iframes
+ * Regex for document/media file extensions that should open in a new window
+ * instead of navigating within the preview iframe.
+ */
+const DOCUMENT_EXTENSIONS_RE = /\.(pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf|zip|rar|7z|mp3|mp4|webm|ogg|wav|m4a|mov|avi|flv|wmv)(\?[^#]*)?(#.*)?$/i;
+
+/**
+ * Script to inject into HTML files to handle links in the preview.
+ * - Anchor/special-protocol links: allow default
+ * - External links (different origin): show confirmation, open in new window
+ * - Same-origin document/media files: open in new window
+ * - Same-origin HTML pages: allow default (page-to-page navigation)
+ *
+ * The {{CONFIRM_MESSAGE}} placeholder is replaced at injection time with the
+ * i18n string from contentOptions.
  */
 const EXTERNAL_LINK_HANDLER_SCRIPT = `
 <script data-injected-by="eXeLearning-Preview">
 (function() {
+    var DOCUMENT_RE = ${DOCUMENT_EXTENSIONS_RE.toString()};
+    var CONFIRM_MSG = '{{CONFIRM_MESSAGE}}';
+
     document.addEventListener('click', function(e) {
         var link = e.target.closest('a[href]');
         if (!link) return;
@@ -61,17 +76,33 @@ const EXTERNAL_LINK_HANDLER_SCRIPT = `
         var href = link.getAttribute('href');
         if (!href) return;
 
-        // Check if it's an external link (starts with http:// or https:// and different origin)
+        // Allow anchors, mailto, javascript, blob, data
+        if (/^(#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
+
         try {
             var url = new URL(href, window.location.href);
             var isExternal = (url.protocol === 'http:' || url.protocol === 'https:') &&
                              url.origin !== window.location.origin;
 
             if (isExternal) {
+                // External link: confirm then open in new window
                 e.preventDefault();
                 e.stopPropagation();
-                window.open(href, '_blank', 'noopener,noreferrer');
+                if (confirm(CONFIRM_MSG)) {
+                    window.open(href, '_blank', 'noopener,noreferrer');
+                }
+                return;
             }
+
+            // Same-origin document/media file: open in new window
+            if (DOCUMENT_RE.test(url.pathname)) {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(href, '_blank');
+                return;
+            }
+
+            // Same-origin HTML page: allow default navigation
         } catch (err) {
             // Invalid URL, let browser handle it
         }
@@ -202,7 +233,12 @@ function injectScripts(body, options = { openExternalLinksInNewWindow: true }) {
         // Prepare scripts to inject
         let scriptsToInject = '';
         if (options.openExternalLinksInNewWindow) {
-            scriptsToInject += EXTERNAL_LINK_HANDLER_SCRIPT;
+            let linkScript = EXTERNAL_LINK_HANDLER_SCRIPT;
+            // Template i18n strings
+            const confirmMsg = options.i18n?.externalLinkConfirm
+                || 'You are about to open an external link. Do you want to continue?';
+            linkScript = linkScript.replace('{{CONFIRM_MESSAGE}}', confirmMsg.replace(/'/g, "\\'"));
+            scriptsToInject += linkScript;
         }
         scriptsToInject += PREVIEW_REFRESH_SCRIPT;
 
@@ -294,6 +330,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         SW_VERSION,
         MIME_TYPES,
+        DOCUMENT_EXTENSIONS_RE,
         EXTERNAL_LINK_HANDLER_SCRIPT,
         PREVIEW_REFRESH_SCRIPT,
         getMimeType,

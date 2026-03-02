@@ -222,6 +222,49 @@ export default class PreviewPanelManager {
                 return;
             }
 
+            // Handle blob URL document open requests from preview iframe
+            if (event.data?.type === 'exe-blob-open-document' && fromPreviewIframe && this._blobUrlFiles) {
+                const href = event.data.href;
+                const currentDir = event.data.currentPage?.includes('/')
+                    ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
+                    : '';
+                let targetPath = currentDir ? this._resolveRelativePath(currentDir + href) : href;
+                Logger.log(`[PreviewPanel] Blob URL document open: ${href} → ${targetPath}`);
+
+                const fileContent = this._findFileContent(this._blobUrlFiles, targetPath);
+                if (fileContent) {
+                    const bytes = fileContent instanceof ArrayBuffer
+                        ? new Uint8Array(fileContent)
+                        : fileContent instanceof Uint8Array
+                            ? fileContent
+                            : new TextEncoder().encode(fileContent);
+                    const ext = targetPath.split('.').pop()?.toLowerCase() || '';
+                    const mimeMap = {
+                        pdf: 'application/pdf', doc: 'application/msword',
+                        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        xls: 'application/vnd.ms-excel',
+                        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        ppt: 'application/vnd.ms-powerpoint',
+                        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                        odt: 'application/vnd.oasis.opendocument.text',
+                        ods: 'application/vnd.oasis.opendocument.spreadsheet',
+                        odp: 'application/vnd.oasis.opendocument.presentation',
+                        mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'video/webm',
+                        ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
+                        zip: 'application/zip', rar: 'application/x-rar-compressed',
+                    };
+                    const mime = mimeMap[ext] || 'application/octet-stream';
+                    const blob = new Blob([bytes], { type: mime });
+                    const blobUrl = URL.createObjectURL(blob);
+                    window.open(blobUrl, '_blank');
+                    // Clean up after a delay to allow the browser to open the URL
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                } else {
+                    Logger.warn(`[PreviewPanel] Document not found in files: ${targetPath}`);
+                }
+                return;
+            }
+
             // Handle blob URL navigation requests from preview iframe
             if (event.data?.type === 'exe-blob-navigate' && fromPreviewIframe && this._blobUrlFiles) {
                 const href = event.data.href;
@@ -473,6 +516,9 @@ export default class PreviewPanelManager {
         const app = eXeLearning.app;
         await app.sendContentToPreviewSW(result.files, {
             openExternalLinksInNewWindow: true,
+            i18n: {
+                externalLinkConfirm: _('You are about to open an external link. Do you want to continue?'),
+            },
         });
 
         // Load preview from Service Worker
@@ -568,23 +614,54 @@ export default class PreviewPanelManager {
      * @returns {string} HTML with navigation handler injected
      */
     _injectBlobNavigationHandler(html, currentPage) {
+        const confirmMsg = (typeof _ === 'function'
+            ? _('You are about to open an external link. Do you want to continue?')
+            : 'You are about to open an external link. Do you want to continue?'
+        ).replace(/'/g, "\\'");
+
         const script = `<script>
-document.addEventListener('click', function(e) {
-    var link = e.target.closest('a[href]');
-    if (!link) return;
-    var href = link.getAttribute('href');
-    if (!href) return;
-    // Skip external links, anchors, mailto, javascript, blob, data
-    if (/^(https?:\\/\\/|#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
-    e.preventDefault();
-    // targetOrigin '*' is safe here: this message travels from the blob iframe
-    // to the previewPanel (same window), not to an external parent.
-    window.parent.postMessage({
-        type: 'exe-blob-navigate',
-        href: href,
-        currentPage: ${JSON.stringify(currentPage)}
-    }, '*');
-}, true);
+(function() {
+    var DOCUMENT_RE = /\\.(pdf|doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp|rtf|zip|rar|7z|mp3|mp4|webm|ogg|wav|m4a|mov|avi|flv|wmv)(\\?[^#]*)?(#.*)?$/i;
+    var CONFIRM_MSG = '${confirmMsg}';
+
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href) return;
+
+        // Allow anchors, mailto, javascript, blob, data
+        if (/^(#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
+
+        // External links: confirm then open in new window
+        if (/^https?:\\/\\//i.test(href)) {
+            e.preventDefault();
+            if (confirm(CONFIRM_MSG)) {
+                window.open(href, '_blank', 'noopener,noreferrer');
+            }
+            return;
+        }
+
+        // Document/media files: ask parent to open them
+        if (DOCUMENT_RE.test(href)) {
+            e.preventDefault();
+            window.parent.postMessage({
+                type: 'exe-blob-open-document',
+                href: href,
+                currentPage: ${JSON.stringify(currentPage)}
+            }, '*');
+            return;
+        }
+
+        // Internal HTML page: navigate via parent
+        e.preventDefault();
+        window.parent.postMessage({
+            type: 'exe-blob-navigate',
+            href: href,
+            currentPage: ${JSON.stringify(currentPage)}
+        }, '*');
+    }, true);
+})();
 </script>`;
         // Replace the LAST </body> to avoid matching inside inlined JS string literals
         const lastIndex = html.lastIndexOf('</body>');

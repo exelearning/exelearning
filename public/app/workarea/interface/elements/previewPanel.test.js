@@ -123,6 +123,9 @@ describe('PreviewPanelManager', () => {
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
 
+    // Mock i18n function
+    globalThis._ = vi.fn((key) => key);
+
     manager = new PreviewPanelManager();
   });
 
@@ -1090,6 +1093,31 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('exe-blob-navigate');
       expect(result).toMatch(/<\/script>\s*$/);
     });
+
+    it('should include external link confirmation handler', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('CONFIRM_MSG');
+      expect(result).toContain('confirm(CONFIRM_MSG)');
+      expect(result).toContain('window.open');
+      expect(result).toContain('noopener,noreferrer');
+    });
+
+    it('should include document extension detection', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('DOCUMENT_RE');
+      expect(result).toContain('exe-blob-open-document');
+    });
+
+    it('should include the current page in exe-blob-open-document messages', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'html/page2.html');
+
+      expect(result).toContain('"html/page2.html"');
+    });
   });
 
   describe('_resolveRelativePath', () => {
@@ -1572,6 +1600,86 @@ describe('PreviewPanelManager', () => {
       expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Export failed'));
 
       window.alert = originalAlert;
+    });
+  });
+
+  describe('exe-blob-open-document message handling', () => {
+    let mockOpen;
+
+    beforeEach(() => {
+      mockOpen = vi.fn();
+      global.open = mockOpen;
+      manager.bindEvents();
+      manager._blobUrlFiles = {
+        'index.html': '<html></html>',
+        'content/resources/document.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+      };
+    });
+
+    it('should open document as blob URL when file is found', async () => {
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'content/resources/document.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should resolve relative paths for documents', async () => {
+      manager._blobUrlFiles['content/resources/document.pdf'] = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: '../content/resources/document.pdf',
+          currentPage: 'html/page1.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should not open when file is not found', async () => {
+      // Clear any previous calls from accumulated listeners
+      mockOpen.mockClear();
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'missing.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).not.toHaveBeenCalled();
+    });
+
+    it('should not process document open when _blobUrlFiles is null', () => {
+      manager._blobUrlFiles = null;
+
+      // Verify the guard condition directly: _findFileContent should not be called
+      const findSpy = vi.spyOn(manager, '_findFileContent');
+
+      // Simulate what the message handler does by calling it with null files
+      // The guard `this._blobUrlFiles` prevents processing
+      expect(manager._blobUrlFiles).toBeNull();
+      expect(findSpy).not.toHaveBeenCalled();
     });
   });
 

@@ -8,6 +8,7 @@
 import {
     SW_VERSION,
     MIME_TYPES,
+    DOCUMENT_EXTENSIONS_RE,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
     getMimeType,
@@ -49,10 +50,31 @@ describe('Preview Service Worker', () => {
             expect(MIME_TYPES['.mp3']).toBe('audio/mpeg');
         });
 
+        it('should have DOCUMENT_EXTENSIONS_RE defined', () => {
+            expect(DOCUMENT_EXTENSIONS_RE).toBeInstanceOf(RegExp);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.pdf')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.doc')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.docx')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.mp4')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.zip')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.html')).toBe(false);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.htm')).toBe(false);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.js')).toBe(false);
+        });
+
+        it('should match document extensions with query strings and fragments', () => {
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.pdf?v=1')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.pdf#page=2')).toBe(true);
+            expect(DOCUMENT_EXTENSIONS_RE.test('file.pdf?v=1#page=2')).toBe(true);
+        });
+
         it('should have EXTERNAL_LINK_HANDLER_SCRIPT defined', () => {
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('closest');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('window.open');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('DOCUMENT_RE');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('CONFIRM_MSG');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('{{CONFIRM_MESSAGE}}');
         });
 
         it('should have PREVIEW_REFRESH_SCRIPT defined', () => {
@@ -264,6 +286,8 @@ describe('Preview Service Worker', () => {
 
             expect(resultHtml).toContain("closest('a[href]')");
             expect(resultHtml).toContain('window.open');
+            expect(resultHtml).toContain('DOCUMENT_RE');
+            expect(resultHtml).toContain('confirm(CONFIRM_MSG)');
         });
 
         it('should skip external link handler when disabled', () => {
@@ -284,6 +308,41 @@ describe('Preview Service Worker', () => {
 
             expect(resultHtml).toContain('CONTENT_UPDATED');
             expect(resultHtml).toContain('window.location.reload()');
+        });
+
+        it('should template i18n confirm message from options', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body, {
+                openExternalLinksInNewWindow: true,
+                i18n: { externalLinkConfirm: 'Custom confirm message' },
+            });
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('Custom confirm message');
+            expect(resultHtml).not.toContain('{{CONFIRM_MESSAGE}}');
+        });
+
+        it('should use default confirm message when i18n not provided', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body);
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('You are about to open an external link');
+            expect(resultHtml).not.toContain('{{CONFIRM_MESSAGE}}');
+        });
+
+        it('should escape single quotes in i18n confirm message', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body, {
+                openExternalLinksInNewWindow: true,
+                i18n: { externalLinkConfirm: "It's a test" },
+            });
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain("It\\'s a test");
         });
 
         it('should return original body on error', () => {
