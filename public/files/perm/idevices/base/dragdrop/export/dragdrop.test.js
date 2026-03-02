@@ -21,6 +21,11 @@ const __dirname = dirname(__filename);
  * Replaces var declaration with global assignment and strips the auto-init call.
  */
 function loadExportIdevice(code) {
+  // $exeDevices.iDevice.gamification.colors is accessed at load time
+  global.$exeDevices.iDevice.gamification.colors = {
+    borderColors: { black: '#000', white: '#fff' },
+    backColor: { black: '#000', white: '#fff' },
+  };
   const modifiedCode = code
     .replace(/var\s+\$eXeDragDrop\s*=/, 'global.$eXeDragDrop =')
     .replace(/\$\(function\s*\(\)\s*\{[\s\S]*?\}\);?\s*$/, '');
