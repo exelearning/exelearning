@@ -135,8 +135,13 @@ async function getPageNameText(page: Page, pageIndex: number = 0): Promise<strin
  * Opens the dropdown menu on the nav element and clicks "Page properties"
  */
 async function editPageName(page: Page, pageIndex: number, newName: string): Promise<void> {
-    // 1. Open Page Properties via dropdown menu
+    // 1. Select the nav element first (trigger is only visible when selected + hovered)
     const navElement = page.locator('.nav-element:not([nav-id="root"])').nth(pageIndex);
+    const navText = navElement.locator('> .nav-element-text');
+    await navText.click();
+    await page.waitForTimeout(300);
+
+    // 2. Hover to reveal the dropdown trigger (visible only on .selected:hover)
     await navElement.hover();
     await page.waitForTimeout(300);
 
@@ -145,6 +150,7 @@ async function editPageName(page: Page, pageIndex: number, newName: string): Pro
     await dropdownTrigger.click();
     await page.waitForTimeout(300);
 
+    // 3. Click "Page properties" in the dropdown menu
     const dropdownMenu = navElement.locator('.dropdown-menu.show');
     await dropdownMenu.waitFor({ state: 'visible', timeout: 5000 });
 
