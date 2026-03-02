@@ -631,7 +631,6 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
             let safeLicenseHtml = safeLicense;
             if (metadata?.license) {
-                // Determine if this is a standard Creative Commons format built by formatShortLicenseText
                 const shortText = formatShortLicenseText(metadata.license);
                 const isStandardCC = shortText.startsWith('Creative Commons');
 
@@ -997,10 +996,10 @@ ${userFooterHtml}</div></footer>`;
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-})}
+                author: options.author,
+                description: options.description,
+                license: options.license,
+            })}
 </div>
 </section>\n`;
         }

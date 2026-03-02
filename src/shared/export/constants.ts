@@ -668,7 +668,6 @@ export function formatShortLicenseText(licenseName: string): string {
     const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
     const entry = LICENSE_REGISTRY[key];
 
-    // Check if it's a Creative Commons license with a standard URL format
     if (entry?.url?.includes('creativecommons.org/licenses/')) {
         const match = entry.url.match(/licenses\/([^/]+\/[^/]+)\/?/);
         if (match?.[1]) {
@@ -677,7 +676,6 @@ export function formatShortLicenseText(licenseName: string): string {
         }
     }
 
-    // Fall back to raw license name to match editor behavior exactly!
     return licenseName;
 }
 

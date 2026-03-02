@@ -1094,12 +1094,10 @@ describe('PageRenderer', () => {
                 license: 'creative commons: attribution - share alike 4.0',
             });
 
-            // Td classes should be completely stripped
             expect(html).toContain('<td><span class="exe-prop-title">My Testing Project</span></td>');
             expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
             expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
 
-            // The license should be an HTML link because it is a standard CC license format
             expect(html).toContain(
                 '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
             );
@@ -1124,7 +1122,6 @@ describe('PageRenderer', () => {
                 license: 'creative commons: cc0 1.0',
             });
 
-            // It should NOT render with an <a> tag and match editor string exactly
             expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
         });
 
