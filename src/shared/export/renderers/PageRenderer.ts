@@ -631,11 +631,17 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
 
             let safeLicenseHtml = safeLicense;
             if (metadata?.license) {
-                const licenseUrl = getLicenseUrl(metadata.license);
-                if (licenseUrl) {
-                    const cssClass = getLicenseClass(metadata.license);
-                    const classAttr = cssClass ? ` class="${cssClass}"` : '';
-                    safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                // Determine if this is a standard Creative Commons format built by formatShortLicenseText
+                const shortText = formatShortLicenseText(metadata.license);
+                const isStandardCC = shortText.startsWith('Creative Commons');
+
+                if (isStandardCC) {
+                    const licenseUrl = getLicenseUrl(metadata.license);
+                    if (licenseUrl) {
+                        const cssClass = getLicenseClass(metadata.license);
+                        const classAttr = cssClass ? ` class="${cssClass}"` : '';
+                        safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                    }
                 }
             }
 

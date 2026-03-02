@@ -677,8 +677,8 @@ export function formatShortLicenseText(licenseName: string): string {
         }
     }
 
-    // Fall back to original displayName
-    return entry?.displayName || licenseName;
+    // Fall back to raw license name to match editor behavior exactly!
+    return licenseName;
 }
 
 /**

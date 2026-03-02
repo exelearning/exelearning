@@ -1099,10 +1099,33 @@ describe('PageRenderer', () => {
             expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
             expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
 
-            // The license should be an HTML link
+            // The license should be an HTML link because it is a standard CC license format
             expect(html).toContain(
                 '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
             );
+        });
+
+        it('should output raw string when license is a non-standard CC like CC0', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'Title', undefined, {
+                license: 'creative commons: cc0 1.0',
+            });
+
+            // It should NOT render with an <a> tag and match editor string exactly
+            expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
         });
 
         it('should output safe simple text when license is not configured without crashing', () => {

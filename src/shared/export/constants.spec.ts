@@ -814,11 +814,9 @@ describe('Constants', () => {
                 );
             });
 
-            it('should return fallback displayName for CC0 public domain', () => {
+            it('should return fallback raw string for CC0 public domain', () => {
                 // Fichero fuente does not currently match CC0 1.0 specifically using by/... format
-                expect(formatShortLicenseText('creative commons: cc0 1.0')).toBe(
-                    'creative commons: public domain 1.0 (CC0)',
-                );
+                expect(formatShortLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
             });
 
             it('should return fallback displayName for other licenses', () => {
