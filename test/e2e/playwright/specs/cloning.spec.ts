@@ -477,59 +477,58 @@ test.describe('Cloning Functionality', () => {
 
     test.describe('Clone Page', () => {
         // Increase timeout for this test as it involves multiple operations
-        test(
-            'should clone page with all blocks and iDevices preserved',
-            { timeout: 90000 },
-            async ({ authenticatedPage, createProject }) => {
-                const page = authenticatedPage;
+        test('should clone page with all blocks and iDevices preserved', { timeout: 90000 }, async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
 
-                const projectUuid = await createProject(page, 'Clone Page Test');
-                await gotoWorkarea(page, projectUuid);
+            const projectUuid = await createProject(page, 'Clone Page Test');
+            await gotoWorkarea(page, projectUuid);
 
-                await waitForAppReady(page);
+            await waitForAppReady(page);
 
-                // Add text iDevice with content
-                const uniqueContent = `Page content to clone ${Date.now()}`;
-                await addTextIdeviceWithContent(page, uniqueContent);
+            // Add text iDevice with content
+            const uniqueContent = `Page content to clone ${Date.now()}`;
+            await addTextIdeviceWithContent(page, uniqueContent);
 
-                // Verify content exists
-                await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 10000 });
+            // Verify content exists
+            await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 10000 });
 
-                // Count pages before clone (nav-elements are NOT inside #menu_structure)
-                const pagesBefore = await page.locator('.nav-element').count();
+            // Count pages before clone (nav-elements are NOT inside #menu_structure)
+            const pagesBefore = await page.locator('.nav-element').count();
 
-                // Clone the page
-                await clonePage(page);
+            // Clone the page
+            await clonePage(page);
 
-                // Wait for clone to complete
+            // Wait for clone to complete
+            await page.waitForTimeout(500);
+
+            // Count pages after clone
+            const pagesAfter = await page.locator('.nav-element').count();
+            expect(pagesAfter).toBe(pagesBefore + 1);
+
+            // Navigate to the cloned page (should be the last one with "(copy)" suffix)
+            const clonedPageNode = page
+                .locator('.nav-element:not([nav-id="root"]) .nav-element-text:has-text("(copy)")')
+                .first();
+            if ((await clonedPageNode.count()) > 0) {
+                await clonedPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+                await clonedPageNode.click({ timeout: 5000 }).catch(() => clonedPageNode.click({ force: true }));
                 await page.waitForTimeout(500);
 
-                // Count pages after clone
-                const pagesAfter = await page.locator('.nav-element').count();
-                expect(pagesAfter).toBe(pagesBefore + 1);
+                // Verify the cloned page has the content
+                await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
+            } else {
+                // If no "(copy)" suffix, click the last non-root page node
+                const lastPageNode = page.locator('.nav-element:not([nav-id="root"]) .nav-element-text').last();
+                await lastPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+                await lastPageNode.click({ timeout: 5000 }).catch(() => lastPageNode.click({ force: true }));
+                await page.waitForTimeout(500);
 
-                // Navigate to the cloned page (should be the last one with "(copy)" suffix)
-                const clonedPageNode = page
-                    .locator('.nav-element:not([nav-id="root"]) .nav-element-text:has-text("(copy)")')
-                    .first();
-                if ((await clonedPageNode.count()) > 0) {
-                    await clonedPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-                    await clonedPageNode.click({ timeout: 5000 }).catch(() => clonedPageNode.click({ force: true }));
-                    await page.waitForTimeout(500);
-
-                    // Verify the cloned page has the content
-                    await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
-                } else {
-                    // If no "(copy)" suffix, click the last non-root page node
-                    const lastPageNode = page.locator('.nav-element:not([nav-id="root"]) .nav-element-text').last();
-                    await lastPageNode.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-                    await lastPageNode.click({ timeout: 5000 }).catch(() => lastPageNode.click({ force: true }));
-                    await page.waitForTimeout(500);
-
-                    // The cloned page should have the same content
-                    await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
-                }
-            },
-        );
+                // The cloned page should have the same content
+                await expect(page.locator('#node-content')).toContainText(uniqueContent, { timeout: 15000 });
+            }
+        });
     });
 });
