@@ -2592,6 +2592,7 @@ export default class IdevicesEngine {
         const eXeNodeLinks = document.querySelectorAll("a[href^='exe-node:']");
         if (eXeNodeLinks.length === 0) return;
 
+        const self = this;
         eXeNodeLinks.forEach((link) => {
             // Use getAttribute for reliable custom-protocol handling
             const href = link.getAttribute('href') || '';
@@ -2601,25 +2602,26 @@ export default class IdevicesEngine {
             const anchorId = hashIdx !== -1 ? withoutProtocol.substring(hashIdx + 1) : null;
 
             // Navigate directly by nav-id (reliable, no pageName matching needed)
-            const navButton = document.querySelector(`.nav-element[nav-id="${pageId}"] > .nav-element-text`);
-            if (navButton) {
-                link.onclick = function (event) {
+            const navElement = document.querySelector(`.nav-element[nav-id="${pageId}"]`);
+            if (navElement) {
+                link.onclick = async function (event) {
                     event.preventDefault();
-                    navButton.click();
+                    // Navigate to target page via selectNode and wait for content to load
+                    const behaviour = self.project.app.project.structure.menuStructureBehaviour;
+                    if (behaviour) {
+                        await behaviour.selectNode(navElement);
+                    }
                     if (anchorId) {
-                        // Poll until the anchor element appears in the newly loaded page
-                        let attempts = 0;
-                        const maxAttempts = 20;
-                        const scrollToAnchor = () => {
+                        // Content is fully loaded after selectNode resolves.
+                        // Use requestAnimationFrame to ensure the DOM is painted
+                        // before scrolling to the anchor.
+                        requestAnimationFrame(() => {
                             const target = document.getElementById(anchorId)
                                 || document.querySelector(`[name="${anchorId}"]`);
                             if (target) {
                                 target.scrollIntoView({ behavior: 'smooth' });
-                            } else if (++attempts < maxAttempts) {
-                                setTimeout(scrollToAnchor, 100);
                             }
-                        };
-                        setTimeout(scrollToAnchor, 100);
+                        });
                     }
                 };
             }

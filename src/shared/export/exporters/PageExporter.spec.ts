@@ -496,25 +496,25 @@ describe('PageExporter', () => {
             expect(result2).toBe('<a href="#section-page-1">Link</a>');
         });
 
-        it('should use just the anchor fragment when exe-node link has an anchor', () => {
+        it('should namespace anchor fragment with page id when exe-node link has an anchor', () => {
             const pageUrlMap = new Map([['page-2', { url: '#section-page-2', urlFromSubpage: '#section-page-2' }]]);
 
-            // exe-node:pageId#anchor → #anchor (not #section-pageId#anchor which is invalid)
+            // exe-node:pageId#anchor → #pageId--anchor (namespaced to avoid collisions)
             const content = '<a href="exe-node:page-2#section1">Jump to section</a>';
             const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
 
-            expect(result).toBe('<a href="#section1">Jump to section</a>');
+            expect(result).toBe('<a href="#page-2--section1">Jump to section</a>');
         });
 
-        it('should use anchor directly regardless of isFromIndex when anchor is present', () => {
+        it('should namespace anchor regardless of isFromIndex when anchor is present', () => {
             const pageUrlMap = new Map([['page-1', { url: '#section-page-1', urlFromSubpage: '#section-page-1' }]]);
 
             const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
             const resultFromIndex = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
             const resultFromSubpage = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
 
-            expect(resultFromIndex).toBe('<a href="#intro">Go to Intro</a>');
-            expect(resultFromSubpage).toBe('<a href="#intro">Go to Intro</a>');
+            expect(resultFromIndex).toBe('<a href="#page-1--intro">Go to Intro</a>');
+            expect(resultFromSubpage).toBe('<a href="#page-1--intro">Go to Intro</a>');
         });
 
         it('should not mangle content without exe-node links', () => {
@@ -598,7 +598,7 @@ describe('PageExporter', () => {
             expect(indexHtml).not.toContain('href="exe-node:page-2"');
         });
 
-        it('should resolve exe-node:pageId#anchor links in exported single-page HTML', async () => {
+        it('should resolve exe-node:pageId#anchor links with namespaced anchors in exported HTML', async () => {
             const pagesWithAnchorLink: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -651,10 +651,116 @@ describe('PageExporter', () => {
             await exporter.export();
 
             const indexHtml = zip.files.get('index.html') as string;
-            // exe-node:page-2#myanchor should become #myanchor (not #section-page-2#myanchor)
-            expect(indexHtml).toContain('href="#myanchor"');
+            // Link: exe-node:page-2#myanchor → #page-2--myanchor (namespaced)
+            expect(indexHtml).toContain('href="#page-2--myanchor"');
+            // Named anchor: id="myanchor" on page-2 → id="page-2--myanchor"
+            expect(indexHtml).toContain('id="page-2--myanchor"');
+            // Should NOT contain raw exe-node: or un-namespaced anchor
             expect(indexHtml).not.toContain('href="exe-node:page-2#myanchor"');
-            expect(indexHtml).not.toContain('#section-page-2#myanchor');
+        });
+    });
+
+    describe('namespaceSinglePageAnchors', () => {
+        it('should prefix id on named anchors (a without href)', () => {
+            const content = '<p><a id="intro">Introduction</a></p>';
+            const result = (exporter as any).namespaceSinglePageAnchors(content, 'page-2');
+            expect(result).toBe('<p><a id="page-2--intro">Introduction</a></p>');
+        });
+
+        it('should prefix name on named anchors', () => {
+            const content = '<p><a name="section1">Section 1</a></p>';
+            const result = (exporter as any).namespaceSinglePageAnchors(content, 'page-2');
+            expect(result).toBe('<p><a name="page-2--section1">Section 1</a></p>');
+        });
+
+        it('should NOT modify anchors that have href (regular links)', () => {
+            const content = '<a href="https://example.com" id="link1">External</a>';
+            const result = (exporter as any).namespaceSinglePageAnchors(content, 'page-2');
+            expect(result).toBe('<a href="https://example.com" id="link1">External</a>');
+        });
+
+        it('should NOT modify non-anchor elements with id', () => {
+            const content = '<div id="mydiv">Content</div>';
+            const result = (exporter as any).namespaceSinglePageAnchors(content, 'page-2');
+            expect(result).toBe('<div id="mydiv">Content</div>');
+        });
+
+        it('should handle empty/null content', () => {
+            expect((exporter as any).namespaceSinglePageAnchors('', 'page-1')).toBe('');
+            expect((exporter as any).namespaceSinglePageAnchors(null, 'page-1')).toBe(null);
+        });
+
+        it('should handle content without any anchors', () => {
+            const content = '<p>Just text</p>';
+            const result = (exporter as any).namespaceSinglePageAnchors(content, 'page-1');
+            expect(result).toBe('<p>Just text</p>');
+        });
+    });
+
+    describe('Duplicate anchors across pages', () => {
+        it('should namespace duplicate anchor ids so links resolve to the correct page', async () => {
+            const pagesWithDuplicateAnchors: ExportPage[] = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-1',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content:
+                                        '<p><a id="intro">Page 1 intro</a></p>' +
+                                        '<p><a href="exe-node:page-2#intro">Go to Page 2 intro</a></p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-2',
+                    title: 'About',
+                    parentId: null,
+                    order: 1,
+                    blocks: [
+                        {
+                            id: 'block-2',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-2',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: '<p><a id="intro">Page 2 intro</a></p>',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+
+            document = new MockDocument({}, pagesWithDuplicateAnchors);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            // Page 1's anchor should be namespaced
+            expect(indexHtml).toContain('id="page-1--intro"');
+            // Page 2's anchor should be namespaced
+            expect(indexHtml).toContain('id="page-2--intro"');
+            // Link should point to the correct namespaced anchor
+            expect(indexHtml).toContain('href="#page-2--intro"');
+            // No un-namespaced "intro" anchors should remain
+            expect(indexHtml).not.toContain('id="intro"');
         });
     });
 

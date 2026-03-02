@@ -2944,6 +2944,7 @@ describe('IdeviceNode', () => {
             idevice.loadInitScriptIdevice = vi.fn().mockResolvedValue();
             idevice.loadLegacyExeFunctionalitiesExport = vi.fn();
             mockEngine.resetCurrentIdevicesExportView = vi.fn();
+            mockEngine.enableInternalLinks = vi.fn();
             mockEngine.unsetIdeviceActive = vi.fn();
             eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue();
         });

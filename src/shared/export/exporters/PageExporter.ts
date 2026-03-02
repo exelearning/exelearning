@@ -16,6 +16,10 @@
 import type { ExportPage, ExportMetadata, ExportOptions, ExportResult, FaviconInfo } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 
+// Regex to match <a> elements that have id or name but NO href (named anchors only)
+const NAMED_ANCHOR_RE = /<a\s+(?=[^>]*(?:\bid\b|\bname\b)=)(?![^>]*\bhref\b=)[^>]*>/gi;
+const ID_NAME_ATTR_RE = /\b(id|name)="([^"]+)"/gi;
+
 /**
  * PageExporter - Single-page HTML export
  *
@@ -244,6 +248,51 @@ export class PageExporter extends Html5Exporter {
     }
 
     /**
+     * Override pre-processing to namespace named anchors before resolving internal links.
+     * In single-page export all pages share one HTML document, so anchor ids like "intro"
+     * on different pages would collide. We prefix them with the page id (e.g. "page-2--intro")
+     * so that exe-node:page-2#intro resolves unambiguously.
+     */
+    async preprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
+        const clonedPages: ExportPage[] = JSON.parse(JSON.stringify(pages));
+        const pageUrlMap = this.buildPageUrlMap(clonedPages);
+
+        for (let pageIndex = 0; pageIndex < clonedPages.length; pageIndex++) {
+            const page = clonedPages[pageIndex];
+            const isIndex = pageIndex === 0;
+
+            for (const block of page.blocks || []) {
+                for (const component of block.components || []) {
+                    if (component.content) {
+                        component.content = await this.addFilenamesToAssetUrls(component.content);
+                        // Namespace anchors BEFORE resolving links so links know the prefix
+                        component.content = this.namespaceSinglePageAnchors(component.content, page.id);
+                        component.content = this.replaceInternalLinks(component.content, pageUrlMap, isIndex);
+                    }
+                    if (component.properties && Object.keys(component.properties).length > 0) {
+                        const propsStr = JSON.stringify(component.properties);
+                        const processedStr = await this.addFilenamesToAssetUrls(propsStr);
+                        component.properties = JSON.parse(processedStr);
+                    }
+                }
+            }
+        }
+        return clonedPages;
+    }
+
+    /**
+     * Prefix id/name attributes on named anchors (<a> without href) with the page id.
+     * This avoids collisions when all pages are merged into a single HTML document.
+     * E.g. <a id="intro"> on page "page-2" becomes <a id="page-2--intro">
+     */
+    namespaceSinglePageAnchors(content: string, pageId: string): string {
+        if (!content) return content;
+        return content.replace(NAMED_ANCHOR_RE, match =>
+            match.replace(ID_NAME_ATTR_RE, (_, attr, value) => `${attr}="${pageId}--${value}"`),
+        );
+    }
+
+    /**
      * Override page URL map for single-page export
      * Uses anchor fragments instead of file paths
      */
@@ -287,9 +336,10 @@ export class PageExporter extends Html5Exporter {
                 return match;
             }
 
-            // If the link has its own anchor, use it directly (all content is on the same page)
+            // If the link has its own anchor, prefix it with the target page id
+            // so it matches the namespaced id/name (e.g. #intro → #page-2--intro)
             if (anchorFragment) {
-                return `href="${anchorFragment}"`;
+                return `href="#${pageId}--${anchorFragment.substring(1)}"`;
             }
 
             // No anchor: navigate to the page section

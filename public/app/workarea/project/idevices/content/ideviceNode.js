@@ -3023,6 +3023,8 @@ export default class IdeviceNode {
                 await this.loadInitScriptIdevice('export');
             }
             this.loadLegacyExeFunctionalitiesExport();
+            // Wire up exe-node: links in the freshly rendered export HTML
+            this.engine.enableInternalLinks();
             this.engine.unsetIdeviceActive();
             // Scroll back to the saved iDevice after all DOM changes are complete
             this.goWindowToIdevice(0);
