@@ -996,10 +996,10 @@ ${userFooterHtml}</div></footer>`;
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '', projectTitle, undefined, {
-                author: options.author,
-                description: options.description,
-                license: options.license,
-            })}
+    author: options.author,
+    description: options.description,
+    license: options.license,
+})}
 </div>
 </section>\n`;
         }
