@@ -1254,6 +1254,12 @@ div:fullscreen .RLCP-LinkMinimize {
         font-size: 0.9rem;
     }
 
+    .RLCP-Text,
+    .RLCP-Word,
+    .RLCP-Definition {
+        font-size: 1em;
+    }
+
     .RLCP-Word,
     .RLCP-Definition {
         height: 80px;

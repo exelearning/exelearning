@@ -22,7 +22,10 @@
     height: auto;
     background-color: transparent;
     position: relative;
-    overflow: hidden;
+    /* overflow:hidden was here but has been moved to .CQP-Multimedia so that
+       the drag helper (appended to .CQP-GameContainer) can extend freely
+       beyond this element without being clipped, both in normal and fullscreen
+       mode. .CQP-Multimedia clips .CQP-Slide (width:500%) instead. */
 }
 
 .CQP-MainContainer * {
@@ -313,6 +316,10 @@
     width: 100%;
     position: relative;
     height: auto;
+    /* Clips the off-screen portions of .CQP-Slide (width:500%; left:-200%)
+       without affecting the drag helper, which lives in .CQP-GameContainer
+       (a parent of this element) and is therefore not subject to this clip. */
+    overflow: hidden;
 }
 
 .CQP-Slide {
@@ -331,6 +338,53 @@
     display: flex;
     justify-content: center;
     min-height: auto;
+}
+
+/* 5-6 grupos: 2 columnas con wrap.
+   align-items no se sobreescribe → queda "stretch" (valor por defecto),
+   imprescindible para que .CQP-CC-Fill (height:100%) tenga área de drop. */
+.CQP-Container[data-groups="5"],
+.CQP-Container[data-groups="6"] {
+    flex-wrap: wrap;
+}
+
+.CQP-Container[data-groups="5"] .CQP-CC,
+.CQP-Container[data-groups="6"] .CQP-CC {
+    width: calc(50% - 0.8em);
+}
+
+/* 7-9 grupos: 3 columnas con wrap. Misma razón para no sobreescribir align-items. */
+.CQP-Container[data-groups="7"],
+.CQP-Container[data-groups="8"],
+.CQP-Container[data-groups="9"] {
+    flex-wrap: wrap;
+}
+
+.CQP-Container[data-groups="7"] .CQP-CC,
+.CQP-Container[data-groups="8"] .CQP-CC,
+.CQP-Container[data-groups="9"] .CQP-CC {
+    width: calc(33.333% - 0.8em);
+}
+
+/* En móvil, > 3 categorías → 2 columnas */
+@media (max-width: 600px) {
+    .CQP-Container[data-groups="4"],
+    .CQP-Container[data-groups="5"],
+    .CQP-Container[data-groups="6"],
+    .CQP-Container[data-groups="7"],
+    .CQP-Container[data-groups="8"],
+    .CQP-Container[data-groups="9"] {
+        flex-wrap: wrap;
+    }
+
+    .CQP-Container[data-groups="4"] .CQP-CC,
+    .CQP-Container[data-groups="5"] .CQP-CC,
+    .CQP-Container[data-groups="6"] .CQP-CC,
+    .CQP-Container[data-groups="7"] .CQP-CC,
+    .CQP-Container[data-groups="8"] .CQP-CC,
+    .CQP-Container[data-groups="9"] .CQP-CC {
+        width: calc(50% - 0.8em);
+    }
 }
 
 .CQP-CC {
@@ -373,6 +427,13 @@
     opacity: .1;
 }
 
+.CQP-TouchHelper {
+    opacity: .8;
+    cursor: move;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
 
 .CQP-Container .CQP-Card {
     box-shadow: 0 0 0 rgba(0, 0, 0, 0.20);
@@ -396,6 +457,31 @@
 
 .CQP-Container3 {
     border: 2px solid tan;
+    width: 100%;
+}
+
+.CQP-Container4 {
+    border: 2px solid mediumpurple;
+    width: 100%;
+}
+
+.CQP-Container5 {
+    border: 2px solid darkorange;
+    width: 100%;
+}
+
+.CQP-Container6 {
+    border: 2px solid cadetblue;
+    width: 100%;
+}
+
+.CQP-Container7 {
+    border: 2px solid indianred;
+    width: 100%;
+}
+
+.CQP-Container8 {
+    border: 2px solid darkolivegreen;
     width: 100%;
 }
 
@@ -1008,6 +1094,15 @@ div:fullscreen .CQP-Multimedia {
         margin: 0.1em;
         box-shadow: none;
         border: 1px solid #ccc;
+        min-height: 120px;
+    }
+
+    .CQP-GameScoreBoard p {
+        font-size: 1.1em !important;
+    }
+
+    .CQP-CC .CQP-Title {
+        font-size: 0.85em;
     }
 }
 
