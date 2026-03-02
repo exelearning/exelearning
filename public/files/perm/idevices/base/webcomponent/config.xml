@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<idevice>
+    <title>Web Component</title>
+    <css-class>webcomponent</css-class>
+    <category>Interactive activities</category>
+    <icon>
+        <name>webcomponent-icon</name>
+        <url>webcomponent-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <downloadable>0</downloadable>
+</idevice>

@@ -1,0 +1,565 @@
+#wcQIdeviceForm {
+	width: 100%;
+}
+
+#wcQIdeviceForm .wc-api-doc {
+	background: #f5f5f5;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	padding: .8em 1em;
+	font-family: 'Courier New', Courier, monospace;
+	font-size: 12px;
+	line-height: 1.6;
+	white-space: pre-wrap;
+	word-break: break-all;
+	color: #333;
+	margin: 0;
+}
+
+
+#wcQIdeviceForm input[type=radio],
+#wcQIdeviceForm input[type=checkbox],
+#wcQIdeviceForm input[type=button] {
+	cursor: pointer;
+}
+
+#wcQIdeviceForm input[type="button"] {
+	margin-right: 0 !important;
+}
+
+#wcQIdeviceForm #bfafEPosition {
+	width: 9.5ch !important;
+	max-width: 9.5ch !important;
+}
+
+.WCE-EOptionsMedia {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 1em;
+	width: 100%;
+}
+
+.WCE-EMultiMediaOption {
+	position: relative;
+	width: 50%;
+	min-width: 400px;
+	min-height: 300px;
+	height: 100%;
+}
+
+.WCE-EMedia {
+	position: absolute;
+	inset: 0;
+	border: 1px solid #ccc;
+	border-radius: .5em;
+}
+
+
+.WCE-EOptionsGame {
+	width: 50%;
+	min-height: 300px;
+}
+
+.WCE-EOptionsGame div {
+	margin-bottom: .7em;
+}
+
+.WCE-EOptionsGame input[type=text] {
+	width: 5em;
+	margin-right: .2em;
+}
+
+.WCE-EInputImage {
+	display: flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	justify-content: flex-start;
+	width: 100%;
+	min-width: 100px;
+}
+
+#wcQIdeviceForm .WCE-EInputImage input[type=text] {
+	flex: 1;
+	margin-right: .2em;
+	min-width: 100px;
+	width: 100%;
+}
+
+.WCE-EInputImage input[type=button] {
+	flex-shrink: 0;
+}
+
+
+.WCE-EAuthorAlt {
+	display: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: nowrap;
+	margin-bottom: 1em;
+}
+
+.WCE-EAuthorAlt div {
+	width: 49%;
+}
+
+.WCE-EAuthorAlt label {
+	display: block;
+}
+
+.WCE-EAuthorAlt input[type=text] {
+	width: 97%;
+}
+
+.WCE-EInputAudio,
+.WCE-EInputImage {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.WCE-EInputAudio input[type=text],
+.WCE-EInputImage input[type=text] {
+	flex: 1;
+	margin-right: .2em;
+	min-width: 100px;
+	width: 100%;
+}
+
+.WCE-EInputAudio input[type=button],
+.WCE-EInputImage input[type=button] {
+	flex-shrink: 0;
+}
+
+.WCE-EButtonImage {
+	width: 100%;
+	height: 100%;
+	transition: all .3s ease-in-out;
+}
+
+.WCE-EButtonImage:hover {
+	transform: scale(1.05);
+}
+
+#wcQIdeviceForm .WCE-EReport {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+}
+
+.WCE-EPanel {
+	position: relative;
+	width: 100%;
+	max-width: 1200px;
+	padding: 1em 0 0;
+}
+
+.WCE-ETitleImage {
+	display: flex;
+	justify-content: center;
+	font-weight: 600;
+}
+
+.WCE-ETitleImage strong {
+	display: block;
+}
+
+.WCE-EPhrase {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	flex-wrap: nowrap;
+	width: 100%;
+}
+
+.WCE-EBack {
+	background: #CCFBF7;
+	border-radius: .3em;
+}
+
+.WCE-EFront {
+	background: #eee;
+	border-radius: .3em;
+}
+
+.WCE-EMultimedia {
+	position: relative;
+	width: 240px;
+	height: 240px;
+	min-width: 240px;
+	min-height: 240px;
+	margin: 0 auto 1em;
+	overflow: hidden;
+	border: 1px solid rgb(3, 112, 116);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, .20), 0 3px 6px rgba(0, 0, 0, .19);
+	border-radius: .3em;
+}
+
+.WCE-ECard {
+	position: absolute;
+	top: 4px;
+	left: 4px;
+	width: 232px;
+	height: 232px;
+	min-width: 232px;
+	background: #fff;
+}
+
+.WCE-EMultimedia textarea {
+	position: absolute;
+	left: 0;
+	top: 0;
+}
+
+.WCE-EDatosCarta {
+	width: 50%;
+	min-width: 400px;
+	border-radius: .3em;
+	padding: .7em .7em 1.3em;
+	margin: 1em .6em 0 0;
+	cursor: pointer;
+}
+
+.WCE-EDatosCarta input[type=text] {
+	width: 100%;
+	margin-right: .2em;
+}
+
+.WCE-EImageFit {
+	position: absolute;
+	width: 240px;
+	height: 240px;
+	min-width: 240px;
+	min-height: 240px;
+	object-fit: contain;
+	object-position: center;
+	margin: auto;
+	background: #fff;
+}
+
+.WCE-EImage,
+.WCE-NoImage {
+	position: absolute;
+}
+
+.WCE-ECursor {
+	position: absolute;
+	left: 0;
+	top: 0;
+	display: none;
+}
+
+.WCE-EInputAudio,
+.WCE-EInputImage,
+.WCE-EInputText {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	flex-wrap: nowrap;
+	width: 100%;
+	min-width: 100px;
+}
+
+.WCE-EInputAudio input[type=text],
+.WCE-EInputImage input[type=text] {
+	flex: 1;
+	margin-right: .2em;
+	min-width: 100px;
+	width: 100%;
+}
+
+.WCE-EInputAudio input[type=button],
+.WCE-EInputImage input[type=button] {
+	flex-shrink: 0;
+}
+
+.WCE-ETextDiv {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(255, 255, 255, .7);
+	color: #000;
+	font-weight: bold;
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+	text-align: center;
+	user-select: none;
+	border: 1px solid #ccc;
+	border-radius: .6em;
+	font-size: 1.3em;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	-webkit-hyphens: auto;
+	-moz-hyphens: auto;
+	-ms-hyphens: auto;
+	hyphens: auto;
+}
+
+.WCE-ETextDiv * {
+	box-sizing: border-box;
+	margin: 0 auto;
+	word-wrap: break-word;
+	overflow-wrap: break-word;
+	-webkit-hyphens: auto;
+	-moz-hyphens: auto;
+	-ms-hyphens: auto;
+	hyphens: auto;
+}
+
+
+.WCE-EHit {
+	background: url(quextIEHit.png) 0 0/100% 100% no-repeat;
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
+}
+
+.WCE-Hide {
+	display: none;
+}
+
+.WCE-ECustomMessageDiv,
+.WCE-ECustomMessageDef {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	flex-wrap: nowrap;
+	margin-top: .6em;
+}
+
+.WCE-ECustomMessageDiv label,
+.WCE-ECustomMessageDef label {
+	white-space: nowrap;
+	margin-right: .1em;
+}
+
+.WCE-ECustomMessageDiv input[type=text],
+.WCE-ECustomMessageDef input[type=text] {
+	width: 100%;
+	max-width: 1000px;
+	margin-right: .2em;
+}
+
+.WCE-ENumCardDiv {
+	position: absolute;
+	top: -1em;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 3em;
+	height: 3em;
+	z-index: 100;
+}
+
+.WCE-ENumCardsIcon {
+	background: url(quextIENumber.png) 0 0/100% 100% no-repeat;
+	display: inline-block;
+	width: 1.5em;
+	height: 1.5em;
+}
+
+.WCE-ENumCards {
+	font-weight: bold;
+	width: 2em;
+	height: 1.5em;
+	text-align: center;
+}
+
+.WCE-ECustomMessage {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	width: 100%;
+	margin-top: 1em;
+}
+
+.WCE-ECustomMessage input[type=text] {
+	width: 100%;
+	margin-right: .1em;
+}
+
+.WCE-ECustomMessage label {
+	margin: 0 .1em;
+}
+
+.Games-Reportdiv {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 2px;
+}
+
+#wcQIdeviceForm .WCE-TypeGameHelp {
+	display: none;
+	margin-bottom: 2em;
+	font-size: .95em;
+}
+
+.WCE-ENavigationButtons {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	margin-top: 1em;
+}
+
+.WCE-ENavigationButton {
+	width: 1.7em;
+	height: 1.7em;
+	min-width: 1.7em;
+}
+
+.WCE-NumberCard {
+	width: 3em;
+	text-align: center;
+}
+
+.WCE-EReverseFacces {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+}
+
+.WCE-EReverseFacces a {
+	display: inline-block;
+	text-align: center;
+	margin-right: 1em;
+}
+
+.WCE-ECoord {
+	display: none;
+}
+
+#wcQIdeviceForm .exe-block-info img {
+	margin-left: .2em;
+	vertical-align: middle;
+}
+
+
+#wcQIdeviceFormTab3 p:first-child {
+	margin-top: 0;
+}
+
+#wcQIdeviceFormTab3 {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2%;
+}
+
+#wcQIdeviceFormTab3>* {
+	flex: 0 0 48%;
+}
+
+#wcQIdeviceFormTab3>:first-child {
+	flex: 0 0 100%;
+}
+
+@media screen and (max-width:720px) {
+	#wcQIdeviceFormTab3>* {
+		flex: 0 0 100%;
+	}
+}
+
+#wcQIdeviceForm #wcQIdeviceFormTab3 label {
+	display: block;
+	margin-bottom: .2em;
+	color: #0BA1A1;
+	font-weight: 500;
+}
+
+#wcQIdeviceForm #wcQIdeviceFormTab3 input {
+	width: 100%;
+}
+
+
+#wcQIdeviceForm .exe-form-tabs {
+	list-style: none;
+	margin: 0 0 1.5em;
+	padding: 0;
+}
+
+#wcQIdeviceForm .exe-form-tabs li {
+	display: inline;
+	margin: 0;
+	padding: 0;
+}
+
+#wcQIdeviceForm .exe-form-tabs li:first-child a {
+	border-top-left-radius: 4px;
+	border-bottom-left-radius: 4px;
+}
+
+#wcQIdeviceForm .exe-form-tabs li:last-child a {
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
+}
+
+#wcQIdeviceForm .exe-form-tabs a {
+	background: #F9F9F9;
+	border: 1px solid #CCC;
+	color: #666;
+	display: inline-block;
+	padding: .5em 1em;
+	text-decoration: none;
+}
+
+#wcQIdeviceForm .exe-form-tabs li:not(:last-child) a {
+	border-right: none;
+}
+
+#wcQIdeviceForm .exe-form-tabs .exe-form-active-tab {
+	background: #FFF;
+	color: #000;
+	font-weight: 500;
+}
+
+#gameQESCORMoptions {
+	margin-left: 1.5em;
+	visibility: hidden;
+}
+
+label[for=gameQEActivitySCORM] {
+	font-weight: bold;
+}
+
+#gameQESCORMinstructionsButton,
+#gameQESCORMinstructionsAuto {
+	display: none;
+	color: #777;
+	margin: 10px 0 0 25px;
+}
+
+#gameQESCORMinstructionsButton ul,
+#gameQESCORMinstructionsAuto ul {
+	list-style: none;
+	margin: 1.5em 0 .7em;
+	padding: 0;
+}
+
+#gameQESCORMinstructionsButton ul li,
+#gameQESCORMinstructionsAuto ul li {
+	margin: 0 0 .5em;
+	padding: 0;
+}
+
+.GameModeHelpLink {
+	margin: 0 2px;
+	vertical-align: middle;
+}
+
+.GameModeLabel {
+	font-weight: normal;
+}
+
+.WCE-TypeGameHelp {
+	padding-top: .8em;
+	display: none;
+	margin-bottom: 2em;
+	font-size: .95em;
+}
