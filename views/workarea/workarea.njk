@@ -27,7 +27,8 @@
     <script class="exe" src="{{ '/app/common/asset_url_resolver.js' | asset }}" defer></script>
     {# eXeLearning common legacy objects #}
     <script class="exe" type="module" src="{{ '/app/common/app_common.js' | asset }}" defer></script>
-    <script class="exe" src="{{ '/app/common/common_i18n.js' | asset }}" defer></script>
+    {# common_i18n.js is NOT loaded statically — it is generated dynamically by Locale.refreshI18nGlobals()
+       after the content language is known (project metadata loaded from Yjs). #}
     <script class="exe" src="{{ '/app/common/common_edition.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/common.js' | asset }}" defer></script>
     <script class="exe" src="{{ '/app/common/exe_effects/exe_effects.js' | asset }}" defer></script>
