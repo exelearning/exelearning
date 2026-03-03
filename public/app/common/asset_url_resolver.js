@@ -695,6 +695,12 @@
         const link = e.target.closest('a[href]');
         if (!link) return;
 
+        // Skip links inside TinyMCE editors — the editor handles its own clicks
+        if (link.closest('.tox-tinymce, .mce-content-body')) return;
+
+        const href = link.getAttribute('href');
+        if (!href) return;
+
         const dataAssetUrl = link.getAttribute('data-asset-url');
 
         // Check if it's an HTML asset link by data-asset-url attribute
@@ -705,6 +711,15 @@
             e.preventDefault();
             e.stopPropagation();
             alert(getHtmlLinkWarningMessage());
+            return;
+        }
+
+        // External links (http/https) and blob URLs (asset files like PDFs):
+        // open in new tab to prevent overwriting the editor
+        if (/^(https?:\/\/|blob:)/i.test(href)) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+            return;
         }
     }, true); // Use capture phase to intercept before navigation
 

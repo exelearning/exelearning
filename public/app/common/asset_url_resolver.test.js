@@ -2053,6 +2053,114 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(link);
     });
 
+    it('sets target="_blank" on external http links to open in new tab', () => {
+      const link = document.createElement('a');
+      link.href = 'https://example.com/some-page';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on http:// links', () => {
+      const link = document.createElement('a');
+      link.href = 'http://example.com/page';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      document.body.removeChild(link);
+    });
+
+    it('does not set target="_blank" on non-http links', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'mailto:test@example.com');
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('target')).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on blob: URL links (asset files like PDFs)', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'blob:http://localhost:8080/71cf3174-a4ae-4c3b-9f2b-0972b94b8f03');
+      link.title = 'sample.pdf';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(link);
+    });
+
+    it('sets target="_blank" on blob: URL links for images', () => {
+      const link = document.createElement('a');
+      link.setAttribute('href', 'blob:http://localhost:8080/768371ae-2d7d-4d94-9648-02b596d2755e');
+      link.title = 'screenshot.png';
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      document.body.removeChild(link);
+    });
+
+    it('skips links inside TinyMCE editors', () => {
+      const tinymceContainer = document.createElement('div');
+      tinymceContainer.classList.add('tox-tinymce');
+      const link = document.createElement('a');
+      link.href = 'https://example.com';
+      tinymceContainer.appendChild(link);
+      document.body.appendChild(tinymceContainer);
+
+      const event = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('target')).toBe(false);
+      expect(event.defaultPrevented).toBe(false);
+
+      document.body.removeChild(tinymceContainer);
+    });
+
     it('uses translation function when available', async () => {
       // Need to reload module with translation function
       vi.resetModules();
