@@ -29,7 +29,10 @@
 - Teacher Mode related issues
 - Duplicated results in the search tool
 - Zen Style: gap on first Text iDevice and unnecessary empty paragraphs
+- Duplicated Accessibility Toolbar files
+- Accessibility Toolbar presentation issues
 - Accessibility improvement: underlined links
+- Presentation issue in preview: left column should fit the page height
 - Embedded PDF and document links in preview mode
 - Pinned preview: style presentation issues
 - Game iDevices: mobile drag-and-drop issues and small screen visibility
@@ -49,6 +52,7 @@
 ### Removed
 
 - Double-click handler for page properties to prevent unintended modal opening
+- Remove "Static Editor" from the title of the static version
 
 ---
 
