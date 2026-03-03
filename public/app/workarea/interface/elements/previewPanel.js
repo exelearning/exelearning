@@ -737,9 +737,10 @@ export default class PreviewPanelManager {
             return;
         }
 
-        // Non-HTML resources (PDF, images, media, etc.): ask parent to open as blob
+        // Non-HTML resources (PDF, documents, media, etc.): ask parent to open as blob
+        // Skip images — they may be handled by lightbox/gallery scripts
         var extMatch = href.match(/\\.([a-z0-9]+)(?:\\?[^#]*)?(#.*)?$/i);
-        if (extMatch && !/^html?$/i.test(extMatch[1])) {
+        if (extMatch && !/^html?$/i.test(extMatch[1]) && !/^(jpe?g|png|gif|svg|webp|avif|ico|bmp|tiff?)$/i.test(extMatch[1])) {
             e.preventDefault();
             window.parent.postMessage({
                 type: 'exe-blob-open-document',

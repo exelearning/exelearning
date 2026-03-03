@@ -89,8 +89,9 @@ const EXTERNAL_LINK_HANDLER_SCRIPT = `
 
             // Non-HTML resource: open in new tab via blob URL
             // (fetch through SW which has the files in memory)
+            // Skip images — they may be handled by lightbox/gallery scripts
             var extMatch = url.pathname.match(/\\.([a-z0-9]+)$/i);
-            if (extMatch && !/^html?$/i.test(extMatch[1])) {
+            if (extMatch && !/^html?$/i.test(extMatch[1]) && !/^(jpe?g|png|gif|svg|webp|avif|ico|bmp|tiff?)$/i.test(extMatch[1])) {
                 e.preventDefault();
                 e.stopPropagation();
                 // Open blank tab immediately to preserve user gesture (avoids popup blocker)
