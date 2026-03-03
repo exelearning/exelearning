@@ -344,7 +344,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons', () => {
+        it('should render prev/next nav buttons with English fallback labels', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -358,8 +358,23 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
-            // No data-i18n attributes (matches legacy PHP)
             expect(html).not.toContain('data-i18n');
+        });
+
+        it('should use translated labels when navLabels is provided', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
+
+            const html = renderer.renderNavButtons(pages[1], pages, '', navLabels);
+
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -373,9 +388,8 @@ describe('PageRenderer', () => {
             // First page: disabled prev (span with aria-hidden), enabled next (anchor)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -390,9 +404,8 @@ describe('PageRenderer', () => {
             // Last page: enabled prev (anchor), disabled next (span with aria-hidden)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -403,28 +416,21 @@ describe('PageRenderer', () => {
 
             // Single page: both buttons disabled (spans with aria-hidden)
             expect(html).toContain('nav-buttons');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).not.toContain('<a href=');
-            // No data-i18n attributes
-            expect(html).not.toContain('data-i18n');
         });
 
-        it('should always output English text regardless of language param (deprecated)', () => {
-            const pages: ExportPage[] = [
-                createTestPage({ id: 'page-1', title: 'First' }),
-                createTestPage({ id: 'page-2', title: 'Second' }),
-            ];
+        it('should use translated labels for disabled buttons too', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
 
-            // Language param is deprecated; runtime translation via $exe_i18n
-            const htmlEs = renderer.renderNavButtons(pages[0], pages, '', 'es');
-            const htmlEn = renderer.renderNavButtons(pages[0], pages, '', 'en');
+            const html = renderer.renderNavButtons(pages[0], pages, '', navLabels);
 
-            // Both should output the same English text (runtime translation handles localization)
-            expect(htmlEs).toContain('Previous');
-            expect(htmlEs).toContain('Next');
-            expect(htmlEn).toContain('Previous');
-            expect(htmlEn).toContain('Next');
+            expect(html).toContain('<span>Anterior</span>');
+            expect(html).toContain('<span>Siguiente</span>');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
     });
 

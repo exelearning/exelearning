@@ -88,6 +88,9 @@ export class ElpxExporter extends Html5Exporter {
             // 1.0 Pre-fetch theme to get the list of CSS/JS files for HTML includes
             const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
 
+            // Fetch translated nav button labels for the content language
+            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+
             // 1.1 Generate HTML pages with optional Mermaid pre-rendering, store for later — manifest script tag injection happens after manifest is created)
             const pageHtmlMap = new Map<string, string>();
             let mermaidWasRendered = false;
@@ -103,6 +106,8 @@ export class ElpxExporter extends Html5Exporter {
                     themeRootFiles,
                     faviconInfo,
                     pageFilenameMap,
+                    undefined,
+                    navLabels,
                 );
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided

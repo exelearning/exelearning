@@ -607,6 +607,9 @@ export interface PageRenderOptions {
     /** EPUB export indicator - loads guard script for duplicate execution protection */
     isEpub?: boolean;
 
+    /** Translated labels for previous/next navigation buttons (resolved at export time from XLF) */
+    navLabels?: { previous: string; next: string };
+
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;
 

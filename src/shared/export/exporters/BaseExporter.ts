@@ -97,6 +97,19 @@ export abstract class BaseExporter {
         return generateI18nScript(templateContent, translations);
     }
 
+    /**
+     * Fetch translated labels for the navigation buttons (Previous / Next).
+     * Labels are resolved from XLF translations so the exported HTML already
+     * contains the correct text for the content language — no runtime JS needed.
+     */
+    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string }> {
+        const translations = await this.resources.fetchI18nTranslations(language);
+        return {
+            previous: translations.get('Previous') || 'Previous',
+            next: translations.get('Next') || 'Next',
+        };
+    }
+
     // =========================================================================
     // Structure Access Methods
     // =========================================================================
