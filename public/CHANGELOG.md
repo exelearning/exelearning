@@ -10,6 +10,7 @@
 - Magnifier iDevice: add image authorship and alt text field
 - Visual distinction (temporary border) for Teacher Mode within the application
 - Zen and Nova styles: visual distinction for Teacher Mode
+- Accessibility improvement: underlined links
 - File Manager: use modal dialog instead of native `window.prompt()`
 - CPU compatibility check for the Bun runtime with warning for incompatible CPUs
 - Clean Yjs IndexedDB on tab close
@@ -22,6 +23,8 @@
 - Pixelated application icons
 - Desktop no longer closes silently with unsaved changes
 - Boxes missing `.box-content` within eXe
+- `common_i18n.js` not generated based on the package language
+- Untranslated Previous/Next navigation buttons
 - TinyMCE media type selection issue
 - TinyMCE deleting part of link titles
 - TinyMCE not displaying the default font-family name
@@ -32,7 +35,6 @@
 - Zen style: gap on first Text iDevice and unnecessary empty paragraphs
 - Duplicated Accessibility Toolbar files
 - Accessibility Toolbar presentation issues
-- Accessibility improvement: underlined links
 - Embedded PDF and document links in preview mode
 - Pinned preview: style presentation issues
 - Game iDevices: mobile drag-and-drop issues and small screen visibility
@@ -46,13 +48,13 @@
 
 ### Upgraded
 
-- Upgraded Bun to 1.3.10
+- Bun upgraded to 1.3.10
 - Updated multiple dependencies and devDependencies to their latest versions, including `dotenv`, `elysia`, `fast-xml-parser`, `ioredis`, `jsdom`, `kysely`, `lib0`, `mermaid`, `mysql2`, and development tools such as `@babel/core`, `electron`, and `esbuild`
 
 ### Removed
 
 - Double-click handler for page properties to prevent unintended modal opening
-- Remove "Static Editor" from the title of the static version
+- Removed "Static Editor" from the title of the static version
 
 ---
 
