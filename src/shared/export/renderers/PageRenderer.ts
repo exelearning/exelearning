@@ -723,9 +723,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 `<a href="${link}" title="${prevLabel}" class="nav-button nav-button-left"><span>${prevLabel}</span></a>`,
             );
         } else {
-            parts.push(
-                `<span class="nav-button nav-button-left" aria-hidden="true"><span>${prevLabel}</span></span>`,
-            );
+            parts.push(`<span class="nav-button nav-button-left" aria-hidden="true"><span>${prevLabel}</span></span>`);
         }
 
         if (nextPage) {
@@ -734,9 +732,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 `<a href="${link}" title="${nextLabel}" class="nav-button nav-button-right"><span>${nextLabel}</span></a>`,
             );
         } else {
-            parts.push(
-                `<span class="nav-button nav-button-right" aria-hidden="true"><span>${nextLabel}</span></span>`,
-            );
+            parts.push(`<span class="nav-button nav-button-right" aria-hidden="true"><span>${nextLabel}</span></span>`);
         }
 
         parts.push('</div>');
