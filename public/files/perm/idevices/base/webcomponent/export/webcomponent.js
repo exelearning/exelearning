@@ -11,6 +11,7 @@ var $WebComponent = {
     userName: '',
     previousScore: '',
     options: [],
+    loadedInlineScripts: new Set(),
 
     init: function () {
         $exeDevices.iDevice.gamification.initGame(
@@ -22,15 +23,21 @@ var $WebComponent = {
     },
 
     enable: function () {
-        $WebComponent.loadComponents();
+        $WebComponent.loadGme();
     },
 
-    loadComponents: function () {
+    loadGme: function () {
+        $WebComponent.options = [];
         $WebComponent.activities.each(function (i) {
-            const json = $('.webcomponent-DataGame', this).text();
+            const id = $(this).closest('.idevice_node').attr('id');
+            const dl = $('.webcomponent-DataGame', this);
+            if (dl.length === 0) return; // Skip already initialized activities
+
+            const json = dl.text();
             const data = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
             if (!data) return;
 
+            data.id = id;
             data.main = 'wcContainer-' + i;
             data.idevice = 'webcomponent-IDevice';
             data.idevicePath = $WebComponent.idevicePath;
@@ -40,68 +47,31 @@ var $WebComponent = {
             data.gameStarted = false;
             data.obtainedClue = false;
 
+            const instructionsNode = $('.webcomponent-instructions', this).eq(0);
+            const textAfterNode = $('.webcomponent-extra-content', this).eq(0);
+            const instructionsStored = $WebComponent.decodeStoredHtml(data.instructions || '');
+            const textAfterStored = $WebComponent.decodeStoredHtml(data.textAfter || '');
+            const instructionsHtml =
+                instructionsNode.length === 1
+                    ? instructionsNode.html()
+                    : instructionsStored;
+            const textAfterHtml =
+                textAfterNode.length === 1 ? textAfterNode.html() : textAfterStored;
+
+            const extracted = $WebComponent.extractScriptsFromHtml(instructionsHtml || '');
+            data.instructionsContent = extracted.html;
+            data.textAfterContent = textAfterHtml || '';
+            data.scriptDefs = extracted.scriptDefs;
+
             $WebComponent.options.push(data);
 
-            const msgs = data.msgs || {};
-
-            // Leer instrucciones desde JSON (seguro, sin acceso al DOM con src malformados)
-            // Fallback al div HTML para datos guardados antes de esta versión
-            const rawInstructions = data.instructions
-                ? decodeURIComponent(data.instructions)
-                : ($('.webcomponent-instructions', this).html() || '');
-
-            // Parsear con <template> (inerte) para extraer <script> sin ejecutarlos ni cargar recursos
-            const tpl = document.createElement('template');
-            tpl.innerHTML = rawInstructions;
-
-            // Extraer <script> para ejecutarlos por separado y evitar errores de re-declaración
-            const scriptDefs = [];
-            tpl.content.querySelectorAll('script').forEach(s => {
-                scriptDefs.push({ src: s.src || '', text: s.textContent });
-                s.remove();
-            });
-
-            // HTML de instrucciones sin scripts
-            const tmpDiv = document.createElement('div');
-            tmpDiv.appendChild(tpl.content.cloneNode(true));
-            const instructions = tmpDiv.innerHTML;
-
-            // textAfter: también desde JSON si está disponible
-            const textAfter = data.textAfter
-                ? decodeURIComponent(data.textAfter)
-                : ($('.webcomponent-extra-content', this).html() || '');
-
-            let content = `<div class="WCP-MainContainer" id="wcContainer-${i}">`;
-
-            // Bloque de pista (visible cuando se alcanza la condición del itinerario)
-            content += `<div class="WCP-ShowClue" id="wcShowClue-${i}" style="display:none;">`;
-            content += `<p class="sr-av">${msgs.msgClue || ''}</p>`;
-            content += `<p id="wcPShowClue-${i}" class="WCP-PShowClue"></p>`;
-            content += `</div>`;
-
-            if (instructions) content += `<div class="WCP-Content">${instructions}</div>`;
-            if (textAfter) content += `<div class="webcomponent-extra-content">${textAfter}</div>`;
-
-            // Cubierta de código de acceso (overlay sobre la actividad)
-            content += `<div class="WCP-Cover" id="wcCubierta-${i}" style="display:none;">`;
-            content += `<div class="WCP-CodeAccessDiv" id="wcCodeAccessDiv-${i}">`;
-            content += `<div class="WCP-MessageCodeAccessE" id="wcMsgCodeAccess-${i}"></div>`;
-            content += `<div class="WCP-DataCodeAccessE">`;
-            content += `<label class="sr-av">${msgs.msgCodeAccess || ''}:</label>`;
-            content += `<input type="text" class="WCP-CodeAccessE form-control" id="wcCodeAccessE-${i}" placeholder="${msgs.msgCodeAccess || ''}">`;
-            content += `<a href="#" id="wcCodeAccessButton-${i}" title="${msgs.msgSubmit || ''}">`;
-            content += `<strong><span class="sr-av">${msgs.msgSubmit || ''}</span></strong>`;
-            content += `<div class="exeQuextIcons-Submit WCP-Activo"></div>`;
-            content += `</a></div></div></div>`;
-
-            content += '</div>';
-            content += $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(data, $WebComponent.isInExe);
-
-            // innerHTML nativo: no ejecuta scripts (a diferencia de jQuery .html())
-            this.innerHTML = content;
+            const component = $WebComponent.CreateInterface(i);
+            dl.before(component).remove();
+            instructionsNode.remove();
+            textAfterNode.remove();
 
             // Ejecutar los scripts del web component una vez, con protección ante re-declaraciones
-            $WebComponent.executeScripts(scriptDefs);
+            $WebComponent.executeScripts(data.scriptDefs || []);
 
             // Exponer la API en el nodo DOM para que el componente la consuma
             const container = document.getElementById('wcContainer-' + i);
@@ -122,6 +92,95 @@ var $WebComponent = {
                 );
             }, 500);
         });
+
+        let node = document.querySelector('.page-content');
+        if (this.isInExe) {
+            node = document.getElementById('node-content');
+        }
+        if (node)
+            $exeDevices.iDevice.gamification.observers.observeResize(
+                $WebComponent,
+                node
+            );
+
+        $exeDevices.iDevice.gamification.math.updateLatex('.webcomponent-IDevice');
+    },
+
+    CreateInterface: function (instance) {
+        const data = $WebComponent.options[instance];
+        const msgs = data.msgs || {};
+        const instructions = data.instructionsContent || '';
+        const textAfter = data.textAfterContent || '';
+
+        let content = `<div class="WCP-MainContainer" id="wcContainer-${instance}">`;
+
+        content += `<div class="WCP-ShowClue" id="wcShowClue-${instance}" style="display:none;">`;
+        content += `<p class="sr-av">${msgs.msgClue || ''}</p>`;
+        content += `<p id="wcPShowClue-${instance}" class="WCP-PShowClue"></p>`;
+        content += `</div>`;
+
+        if (instructions) content += `<div class="WCP-Content">${instructions}</div>`;
+        if (textAfter)
+            content += `<div class="webcomponent-extra-content">${textAfter}</div>`;
+
+        content += `<div class="WCP-Cover" id="wcCubierta-${instance}" style="display:none;">`;
+        content += `<div class="WCP-CodeAccessDiv" id="wcCodeAccessDiv-${instance}">`;
+        content += `<div class="WCP-MessageCodeAccessE" id="wcMsgCodeAccess-${instance}"></div>`;
+        content += `<div class="WCP-DataCodeAccessE">`;
+        content += `<label class="sr-av">${msgs.msgCodeAccess || ''}:</label>`;
+        content += `<input type="text" class="WCP-CodeAccessE form-control" id="wcCodeAccessE-${instance}" placeholder="${msgs.msgCodeAccess || ''}">`;
+        content += `<a href="#" id="wcCodeAccessButton-${instance}" title="${msgs.msgSubmit || ''}">`;
+        content += `<strong><span class="sr-av">${msgs.msgSubmit || ''}</span></strong>`;
+        content += `<div class="exeQuextIcons-Submit WCP-Activo"></div>`;
+        content += `</a></div></div></div>`;
+
+        content += '</div>';
+        content += $exeDevices.iDevice.gamification.scorm.addButtonScoreNew(
+            data,
+            $WebComponent.isInExe
+        );
+
+        return content;
+    },
+
+    decodeStoredHtml: function (text) {
+        if (!text || typeof text !== 'string') return '';
+        try {
+            return decodeURIComponent(text);
+        } catch (error) {
+            return text;
+        }
+    },
+
+    extractScriptsFromHtml: function (html) {
+        if (!html) {
+            return {
+                html: '',
+                scriptDefs: [],
+            };
+        }
+
+        const tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        const scriptDefs = [];
+        tpl.content.querySelectorAll('script').forEach((script) => {
+            const src = script.getAttribute('src') || '';
+            const text = (script.textContent || '').trim();
+            if (src || text) {
+                scriptDefs.push({
+                    src,
+                    text: src ? '' : text,
+                });
+            }
+            script.remove();
+        });
+
+        const div = document.createElement('div');
+        div.appendChild(tpl.content.cloneNode(true));
+        return {
+            html: div.innerHTML,
+            scriptDefs,
+        };
     },
 
     /**
@@ -140,8 +199,37 @@ var $WebComponent = {
                     document.head.appendChild(s);
                 }
             } else if (text) {
+                const inlineCode = text.trim();
+                if (!inlineCode) return;
+
+                const customElementNames =
+                    $WebComponent.extractDefinedCustomElementNames(inlineCode);
+                if (
+                    customElementNames.length > 0 &&
+                    window.customElements &&
+                    typeof window.customElements.get === 'function' &&
+                    customElementNames.some((name) =>
+                        window.customElements.get(name)
+                    )
+                ) {
+                    return;
+                }
+
+                const fingerprint =
+                    $WebComponent.getInlineScriptFingerprint(inlineCode);
+                if (
+                    $WebComponent.loadedInlineScripts.has(fingerprint) ||
+                    document.querySelector(
+                        `script[data-exe-wc-inline="${fingerprint}"]`
+                    )
+                ) {
+                    return;
+                }
+
                 const s = document.createElement('script');
-                s.textContent = text;
+                s.textContent = inlineCode;
+                s.setAttribute('data-exe-wc-inline', fingerprint);
+                $WebComponent.loadedInlineScripts.add(fingerprint);
                 try {
                     document.head.appendChild(s);
                 } catch (e) {
@@ -149,6 +237,30 @@ var $WebComponent = {
                 }
             }
         });
+    },
+
+    extractDefinedCustomElementNames: function (code) {
+        if (!code || typeof code !== 'string') return [];
+        const regex =
+            /(?:window\.)?customElements\.define\(\s*['\"]([^'\"]+)['\"]/gi;
+        const names = [];
+        let match = regex.exec(code);
+        while (match) {
+            if (match[1] && !names.includes(match[1])) {
+                names.push(match[1]);
+            }
+            match = regex.exec(code);
+        }
+        return names;
+    },
+
+    getInlineScriptFingerprint: function (code) {
+        let hash = 0;
+        for (let i = 0; i < code.length; i++) {
+            hash = (hash << 5) - hash + code.charCodeAt(i);
+            hash |= 0;
+        }
+        return `wc_${code.length}_${Math.abs(hash)}`;
     },
 
     setupItinerary: function (instance) {

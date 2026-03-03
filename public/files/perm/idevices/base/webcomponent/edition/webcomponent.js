@@ -144,27 +144,18 @@ ${_('Sends the final score and ends the activity.')}
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
         if (!originalHTML || !Object.keys(originalHTML).length) return;
+           const wrapper = $('<div></div>').html(originalHTML);
+            let json = $('.webcomponent-DataGame', wrapper).text()
+            const dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
+            const instructions = $('.webcomponent-instructions', wrapper);
+            if (instructions.length === 1)
+                $('#eXeGameInstructions').val(instructions.html());
+            const textAfter = $('.webcomponent-extra-content', wrapper);
+            if (textAfter.length === 1)
+                $('#eXeIdeviceTextAfter').val(textAfter.html());  
 
-        const tpl = document.createElement('template');
-        tpl.innerHTML = originalHTML;
-        const wrapper = tpl.content;
-
-        const jsonEl = wrapper.querySelector('.webcomponent-DataGame');
-        const json = jsonEl ? jsonEl.textContent : '';
-        const dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
-
-        if (dataGame) {
-            // Leer desde JSON si está disponible (datos nuevos), fallback al div HTML (datos antiguos)
-            const instructionsVal = dataGame.instructions !== undefined
-                ? decodeURIComponent(dataGame.instructions)
-                : (wrapper.querySelector('.webcomponent-instructions')?.innerHTML || '');
-            $('#eXeGameInstructions').val(instructionsVal);
-
-            const textAfterVal = dataGame.textAfter !== undefined
-                ? decodeURIComponent(dataGame.textAfter)
-                : (wrapper.querySelector('.webcomponent-extra-content')?.innerHTML || '');
-            $('#eXeIdeviceTextAfter').val(textAfterVal);
-
+        if (dataGame) {              
+ 
             $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                 dataGame.isScorm,
                 dataGame.textButtonScorm,
