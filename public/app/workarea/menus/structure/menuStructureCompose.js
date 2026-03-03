@@ -445,6 +445,36 @@ export default class MenuStructureCompose {
 
         addButton.append(addIcon);
         addButton.append(addTitleElement);
+
+        // Issue 1233: Add "visibility off" icon if node is not visible in export
+        const visibilityValue = node.properties.visibility?.value;
+        if (visibilityValue === 'false' || visibilityValue === false) {
+            let visibilityOffContainer = document.createElement('div');
+            // Use same visual classes as the add/menu buttons so it looks aligned and sized identically
+            visibilityOffContainer.classList.add(
+                'btn',
+                'button-tertiary',
+                'button-narrow',
+                'd-flex',
+                'justify-content-center',
+                'align-items-center',
+                'visibility-off-indicator'
+            );
+            visibilityOffContainer.setAttribute('title', _('Page hidden from export'));
+            visibilityOffContainer.style.cursor = 'default'; // It's an indicator, not a clickable action by default
+            
+            let visibilityOffIcon = document.createElement('i');
+            visibilityOffIcon.classList.add('small-icon', 'exe-visibility-off-green-icon');
+            visibilityOffContainer.append(visibilityOffIcon);
+
+            let visibilityOffTitle = document.createElement('span');
+            visibilityOffTitle.classList.add('visually-hidden');
+            visibilityOffTitle.textContent = _('Page hidden from export');
+            visibilityOffContainer.append(visibilityOffTitle);
+            
+            textElement.append(visibilityOffContainer);
+        }
+
         textElement.append(addButton);
 
         // Add context menu button (three-dots) for non-root nodes

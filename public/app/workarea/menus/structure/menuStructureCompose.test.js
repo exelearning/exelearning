@@ -435,6 +435,22 @@ describe('MenuStructureCompose', () => {
             expect(presence).not.toBeNull();
             expect(presence.dataset.pageId).toBe('page-test');
         });
+
+        it('should contain visibility off indicator when node is not visible', () => {
+            mockNode.properties = { visibility: { value: 'false' } };
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const visibilityOff = result.querySelector('.visibility-off-indicator');
+            expect(visibilityOff).not.toBeNull();
+            const icon = visibilityOff.querySelector('.exe-visibility-off-green-icon');
+            expect(icon).not.toBeNull();
+        });
+
+        it('should not contain visibility off indicator when node is visible', () => {
+            mockNode.properties = { visibility: { value: 'true' } };
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const visibilityOff = result.querySelector('.visibility-off-indicator');
+            expect(visibilityOff).toBeNull();
+        });
     });
 
     describe('setPropertiesClassesToElement', () => {
