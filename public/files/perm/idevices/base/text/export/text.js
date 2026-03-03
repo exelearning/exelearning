@@ -73,7 +73,8 @@ var $text = {
         const btnDiv = temp.querySelector('.feedback-button');
         let buttonFeedBackText = data[this.feedbackTitleId];
         if (btnDiv) {
-            const inputEl = btnDiv.querySelector('input.feedbackbutton');
+            // Support both legacy eXe 2.9 (feedbackbutton) and modern (feedbacktooglebutton) formats
+            const inputEl = btnDiv.querySelector('input.feedbackbutton, input.feedbacktooglebutton');
             if (inputEl)
                 buttonFeedBackText = isInExe
                     ? c_(inputEl.value)
