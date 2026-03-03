@@ -331,7 +331,7 @@ $i18n['eXe'] = {
     '\\LARGE{Text}': _('\\LARGE{Text}'),
     'Huge text': _('Huge text'),
     '\\huge{Text}': _('\\huge{Text}'),
-    'Huger text': _('Huger text'),
+    'Extra large text': _('Extra large text'),
     '\\Huge{Text}': _('\\Huge{Text}'),
     'Blackboard bold': _('Blackboard bold'),
     'Math bold': _('Math bold'),

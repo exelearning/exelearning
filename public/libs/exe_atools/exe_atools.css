@@ -130,8 +130,7 @@ body.exe-atools-mo .exe-content{font-family:'Montserrat', sans-serif}
 #eXeAtools #eXeAtoolsModeToggler{background-position:-315px 0}
 #eXeAtools #eXeAtoolsUppercaseBtn{background:none;background-color:#111;position:relative;display:inline-flex;align-items:center;justify-content:center;vertical-align:top}
 #eXeAtools #eXeAtoolsUppercaseBtn:after{content:"Aa";display:block;color:#fff;font:700 15px/1 Arial,sans-serif;line-height:1}
-#eXeAtools #eXeAtoolsUppercaseBtn.eXeAtoolsActive{background-color:#fff}
-#eXeAtools #eXeAtoolsUppercaseBtn.eXeAtoolsActive:after{color:#000}
+#eXeAtools #eXeAtoolsUppercaseBtn.eXeAtoolsActive:after{color:yellow;text-decoration:underline}
 #eXeAtools #eXeAtoolsResetBtn.reset-disabled{opacity:.5;cursor:not-allowed}
 #eXeAtools #eXeAtoolsSetDragHandler:hover{opacity:1}
 body.exe-atools-uc .exe-content{text-transform:uppercase}
