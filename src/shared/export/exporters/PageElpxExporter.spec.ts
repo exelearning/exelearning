@@ -176,6 +176,14 @@ class MockResourceProvider implements ResourceProvider {
     normalizeIdeviceType(type: string): string {
         return type;
     }
+
+    async fetchI18nTemplate(): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Asset provider that returns test assets for filtering tests

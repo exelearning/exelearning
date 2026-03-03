@@ -94,6 +94,14 @@ class MockResourceProvider implements ResourceProvider {
     async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
         return null;
     }
+
+    async fetchI18nTemplate(): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider

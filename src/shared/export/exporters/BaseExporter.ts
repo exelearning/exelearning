@@ -20,6 +20,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { generateI18nScript } from '../generators/I18nGenerator';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
@@ -76,6 +77,25 @@ export abstract class BaseExporter {
      * Get file suffix for this export format (e.g., '_web', '_scorm')
      */
     abstract getFileSuffix(): string;
+
+    // =========================================================================
+    // i18n Content Generation
+    // =========================================================================
+
+    /**
+     * Generate the `common_i18n.js` content for the given export language.
+     *
+     * Reads the template (`common_i18n.js` with `c_("…")` calls) and XLF
+     * translations from the resource provider, then replaces each call with
+     * the translated string (or the English source if no translation exists).
+     */
+    protected async generateI18nContent(language: string): Promise<string> {
+        const [templateContent, translations] = await Promise.all([
+            this.resources.fetchI18nTemplate(),
+            this.resources.fetchI18nTranslations(language),
+        ]);
+        return generateI18nScript(templateContent, translations);
+    }
 
     // =========================================================================
     // Structure Access Methods

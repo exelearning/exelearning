@@ -32,7 +32,6 @@ import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class ElpxExporter extends Html5Exporter {
     /**
@@ -183,7 +182,7 @@ export class ElpxExporter extends Html5Exporter {
             }
 
             // 1.6.5 Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', i18nContent);
 
             // 1.7 Detect and fetch additional required libraries based on content

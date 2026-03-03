@@ -211,6 +211,20 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchGlobalFontFiles(fontName: string): Promise<Map<string, Uint8Array> | null>;
+
+    /**
+     * Fetch the raw content of `common_i18n.js` (the i18n template with c_("…") calls).
+     * @returns Template file content, or empty string if not available
+     */
+    fetchI18nTemplate(): Promise<string>;
+
+    /**
+     * Fetch i18n translations for a specific language as a source→target Map.
+     * Falls back to an empty Map (which causes English source strings to be used).
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Map<englishSource, translatedTarget>
+     */
+    fetchI18nTranslations(language: string): Promise<Map<string, string>>;
 }
 
 /**

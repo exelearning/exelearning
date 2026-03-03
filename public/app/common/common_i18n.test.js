@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+// c_() is the content-translation function defined by locale.js at runtime.
+// In tests we use an identity mock so c_("X") → "X".
+globalThis.c_ = (s) => s;
+
 // Load the module using require() for coverage tracking
 const $exe_i18n = require('./common_i18n.js');
 globalThis.$exe_i18n = $exe_i18n;
@@ -48,6 +52,8 @@ describe('common_i18n.js', () => {
   });
 
   it('should have the correct alphabet for hangman', () => {
-    expect(globalThis.$exe_i18n.exeGames.az).toBe('abcdefghijklmnñopqrstuvwxyz');
+    // With the identity mock for c_(), the value is the English default.
+    // In production the content translation for the project language is applied.
+    expect(globalThis.$exe_i18n.exeGames.az).toBe('abcdefghijklmnopqrstuvwxyz');
   });
 });

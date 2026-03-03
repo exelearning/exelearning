@@ -43,6 +43,8 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchExeLogo: async () => null,
     fetchContentCss: async () => new Map(),
     fetchGlobalFontFiles: async () => null,
+    fetchI18nTemplate: async () => '',
+    fetchI18nTranslations: async (_language: string) => new Map<string, string>(),
 });
 
 describe('PrintPreviewExporter', () => {

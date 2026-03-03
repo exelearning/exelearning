@@ -16,6 +16,8 @@ interface MockResourceFetcherInterface {
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
+    fetchI18nTemplate(): Promise<string | null>;
+    fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
 // Create a mock Blob
@@ -110,6 +112,25 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
 
     async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>> {
         return this.globalFonts.get(fontId) || new Map();
+    }
+
+    private i18nTemplate: string | null = null;
+    private i18nTranslations: Record<string, string> = {};
+
+    setI18nTemplate(template: string | null): void {
+        this.i18nTemplate = template;
+    }
+
+    setI18nTranslations(translations: Record<string, string>): void {
+        this.i18nTranslations = translations;
+    }
+
+    async fetchI18nTemplate(): Promise<string | null> {
+        return this.i18nTemplate;
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Record<string, string>> {
+        return this.i18nTranslations;
     }
 }
 
@@ -620,6 +641,37 @@ describe('BrowserResourceProvider', () => {
             expect(result.has('fonts/global/andika/Andika-Bold.woff2')).toBe(true);
             expect(result.has('fonts/global/andika/Andika-Italic.woff2')).toBe(true);
             expect(result.has('fonts/global/andika/Andika-BoldItalic.woff2')).toBe(true);
+        });
+    });
+
+    describe('fetchI18nTemplate', () => {
+        it('should return empty string when fetcher returns null', async () => {
+            mockFetcher.setI18nTemplate(null);
+            const result = await provider.fetchI18nTemplate();
+            expect(result).toBe('');
+        });
+
+        it('should return template content from fetcher', async () => {
+            const template = '$exe_i18n = { "previous": c_("Previous") };';
+            mockFetcher.setI18nTemplate(template);
+            const result = await provider.fetchI18nTemplate();
+            expect(result).toBe(template);
+        });
+    });
+
+    describe('fetchI18nTranslations', () => {
+        it('should return empty Map when fetcher returns empty object', async () => {
+            mockFetcher.setI18nTranslations({});
+            const result = await provider.fetchI18nTranslations('es');
+            expect(result).toBeInstanceOf(Map);
+            expect(result.size).toBe(0);
+        });
+
+        it('should convert Record to Map correctly', async () => {
+            mockFetcher.setI18nTranslations({ Previous: 'Anterior', Next: 'Siguiente' });
+            const result = await provider.fetchI18nTranslations('es');
+            expect(result.get('Previous')).toBe('Anterior');
+            expect(result.get('Next')).toBe('Siguiente');
         });
     });
 });

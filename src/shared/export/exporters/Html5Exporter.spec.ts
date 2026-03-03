@@ -111,6 +111,14 @@ class MockResourceProvider implements ResourceProvider {
         }
         return files;
     }
+
+    async fetchI18nTemplate(): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider

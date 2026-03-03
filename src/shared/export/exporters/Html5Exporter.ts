@@ -25,7 +25,6 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class Html5Exporter extends BaseExporter {
     private getBrowserLatexPreRenderer(): {
@@ -263,7 +262,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
@@ -725,7 +724,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content

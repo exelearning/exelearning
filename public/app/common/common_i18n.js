@@ -1,8 +1,73 @@
-// See #266
-// The content of this file should be generated dynamically in the ELP's language.
-$exe_i18n={previous:"Anterior",next:"Siguiente",show:"Mostrar",hide:"Ocultar",showFeedback:"Mostrar retroalimentación",hideFeedback:"Ocultar retroalimentación",correct:"Correcto",incorrect:"Incorrecto",menu:"Menú",download:"Descargar",yourScoreIs:"Su puntuación es ",dataError:"Error al recuperar los datos",epubJSerror:"Esto podría no funcionar en este lector de ePubs.",epubDisabled:"Esta actividad no funciona en formato ePub.",solution:"Solución",print:"Imprimir",fullSearch:"Buscar en todas las páginas",noSearchResults:"No se han hallado resultados para %",searchResults:"Buscar resultados para %",hideResults:"Ocultar los resultados",more:"Más",newWindow:"Ventana nueva",fullSize:"A tamaño completo",search:"Buscar",accessibility_tools:"Herramientas de accesibilidad",close_toolbar:"Cerrar",default_font:"Tipografía por defecto",increase_text_size:"Aumentar el tamaño del texto",decrease_text_size:"Disminuir el tamaño de texto",read:"Lee",stop_reading:"Detener la lectura",translate:"Traducir",drag_and_drop:"Arrastra",reset:"Reiniciar",mode_toggler:"Modo claro/oscuro",teacher_mode:"Modo profesor"};
-// The following line should only be present if the ELP contains a hangman game:
-$exe_i18n.exeGames={hangManGame:"Juego del ahorcado",accept:"Aceptar",yes:"Sí",no:"No",right:"Correcto",wrong:"Incorrecto",rightAnswer:"Respuesta correcta",stat:"Estatus",selectedLetters:"Letras seleccionadas",word:"Palabra",words:"Palabras",play:"Jugar",playAgain:"Reiniciar",results:"Resultados",total:"Total",otherWord:"Otra palabra",gameOver:"Juego terminado.",confirmReload:"¿Recargar el juego?",clickOnPlay:'Pulse en "Jugar" para iniciar una nueva partida o juego.',clickOnOtherWord:'Pulse en "Otra palabra" para continuar.',az:"abcdefghijklmnñopqrstuvwxyz"};
+// The content of this file should be generated dynamically in the .elpx's language.
+$exe_i18n = {
+    "previous": c_("Previous"),
+    "next": c_("Next"),
+    "menu": c_("Menu"),
+    "show": c_("Show"),
+    "hide": c_("Hide"),
+    "toggleContent": c_("Toggle content"),
+    "showFeedback": c_("Show feedback"),
+    "hideFeedback": c_("Hide feedback"),
+    "correct": c_("Correct"),
+    "incorrect": c_("Incorrect"),
+    "yourScoreIs": c_("Your score"),
+    "solution": c_("Solution"),
+    "download": c_("Download"),
+    "print": c_("Print"),
+    "search": c_("Search"),
+    "dataError": c_("Data error"),
+    "epubJSerror": c_("This might not work in this ePub reader"),
+    "epubDisabled": c_("This activity does not work in ePub format"),
+    "fullSearch": c_("Full search"),
+    "noSearchResults": c_("No search results"),
+    "searchResults": c_("Search results for"),
+    "hideResults": c_("Hide results"),
+    "block": c_("block"),
+    "more": c_("More"),
+    "newWindow": c_("New window"),
+    "fullSize": c_("Full size"),
+    "accessibility_tools": c_("Accessibility tools"),
+    "close_toolbar": c_("Close"),
+    "default_font": c_("Default font"),
+    "increase_text_size": c_("Increase text size"),
+    "decrease_text_size": c_("Decrease text size"),
+    "uppercase_text": c_("Uppercase"),
+    "read": c_("Read"),
+    "stop_reading": c_("Stop reading"),
+    "translate": c_("Translate"),
+    "drag_and_drop": c_("Drag and drop"),
+    "reset": c_("Reset"),
+    "mode_toggler": c_("Light/Dark mode"),
+    "teacher_mode": c_("Teacher mode"),
+    "elpxGenerating": c_("Generating..."),
+    "elpxFolderPickerTimeout": c_("The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead."),
+    "elpxFolderPickerEmpty": c_("No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server."),
+    "elpxFileProtocolWarning": c_("Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.")
+};
+// The following line should only be used if the ELP contains a hangman game:
+$exe_i18n.exeGames = {
+    "hangManGame": c_("Hangman game"),
+    "accept": c_("Accept"),
+    "yes": c_("Yes"),
+    "no": c_("No"),
+    "right": c_("Right"),
+    "wrong": c_("Wrong"),
+    "rightAnswer": c_("Right answer"),
+    "stat": c_("Status"),
+    "selectedLetters": c_("Selected letters"),
+    "word": c_("Word"),
+    "words": c_("Words"),
+    "play": c_("Play"),
+    "playAgain": c_("Restart"),
+    "results": c_("Results"),
+    "total": c_("Total"),
+    "otherWord": c_("Other word"),
+    "gameOver": c_("Game over"),
+    "confirmReload": c_("Reload game?"),
+    "clickOnPlay": c_("Click Play to start"),
+    "clickOnOtherWord": c_("Click Other word to continue"),
+    "az": c_("abcdefghijklmnopqrstuvwxyz")
+};
 
 // Export for Node.js/CommonJS (tests)
 if (typeof module !== 'undefined' && module.exports) {
