@@ -10,6 +10,7 @@ import {
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
+    PDF_EMBED_HANDLER_SCRIPT,
     getMimeType,
     extractFilePath,
     findFileInContent,
@@ -18,6 +19,7 @@ import {
     createNotReadyResponse,
     createNotFoundResponse,
     createSuccessResponse,
+    createPdfViewerResponse,
 } from './preview-sw.js';
 
 describe('Preview Service Worker', () => {
@@ -52,13 +54,47 @@ describe('Preview Service Worker', () => {
         it('should have EXTERNAL_LINK_HANDLER_SCRIPT defined', () => {
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
             expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('closest');
-            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('window.open');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('setAttribute');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('noopener noreferrer external');
+            // PDF files: open URL directly (SW serves HTML wrapper for navigation)
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('.pdf');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("window.open(url.href, '_blank')");
+            // Non-HTML resources: fetch from SW, open as blob URL
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain("window.open('about:blank'");
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('fetch(url.href)');
+            expect(EXTERNAL_LINK_HANDLER_SCRIPT).toContain('URL.createObjectURL');
         });
 
         it('should have PREVIEW_REFRESH_SCRIPT defined', () => {
             expect(PREVIEW_REFRESH_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
             expect(PREVIEW_REFRESH_SCRIPT).toContain('CONTENT_UPDATED');
             expect(PREVIEW_REFRESH_SCRIPT).toContain('window.location.reload()');
+        });
+
+        it('should have PDF_EMBED_HANDLER_SCRIPT defined', () => {
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
+            // Should detect PDF embed elements
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('object[data$=".pdf"]');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('embed[src$=".pdf"]');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('iframe[src$=".pdf"]');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('[data-exe-pdf-src]');
+            // Should load PDF.js
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.min.mjs');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('libs/pdfjs/pdf.worker.min.mjs');
+            // Should render to canvas
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain("createElement('canvas')");
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain("getContext('2d')");
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('getDocument(src)');
+            // Should have toolbar with navigation, zoom, and download
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('exe-pdf-tb');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="ep"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="en"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="ezi"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="ezo"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="efw"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="edl"');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('renderAll(sc');
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('pdf.getData()');
         });
     });
 
@@ -263,7 +299,15 @@ describe('Preview Service Worker', () => {
             const resultHtml = new TextDecoder().decode(result);
 
             expect(resultHtml).toContain("closest('a[href]')");
-            expect(resultHtml).toContain('window.open');
+            expect(resultHtml).toContain('setAttribute');
+            expect(resultHtml).toContain('noopener noreferrer external');
+            // PDF files: open URL directly (SW serves wrapper)
+            expect(resultHtml).toContain('.pdf');
+            expect(resultHtml).toContain("window.open(url.href, '_blank')");
+            // Non-HTML resources: fetch from SW, open as blob URL
+            expect(resultHtml).toContain("window.open('about:blank'");
+            expect(resultHtml).toContain('fetch(url.href)');
+            expect(resultHtml).toContain('URL.createObjectURL');
         });
 
         it('should skip external link handler when disabled', () => {
@@ -284,6 +328,26 @@ describe('Preview Service Worker', () => {
 
             expect(resultHtml).toContain('CONTENT_UPDATED');
             expect(resultHtml).toContain('window.location.reload()');
+        });
+
+        it('should always include PDF embed handler script', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body);
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('initPdfEmbeds');
+            expect(resultHtml).toContain('renderPdfEmbed');
+            expect(resultHtml).toContain('data-exe-pdf-src');
+        });
+
+        it('should include PDF embed handler even when external links disabled', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body, { openExternalLinksInNewWindow: false });
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('initPdfEmbeds');
         });
 
         it('should return original body on error', () => {
@@ -363,6 +427,117 @@ describe('Preview Service Worker', () => {
             const response = createSuccessResponse(body, 'text/plain');
             const text = await response.text();
             expect(text).toBe('Hello World');
+        });
+    });
+
+    describe('createPdfViewerResponse', () => {
+        it('should return 200 status with text/html content type', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            expect(response.status).toBe(200);
+            expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+        });
+
+        it('should contain PDF.js import with basePath', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
+            expect(text).toContain('workerSrc="/libs/pdfjs/pdf.worker.min.mjs"');
+        });
+
+        it('should use window.location.href as PDF source', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('getDocument(window.location.href)');
+        });
+
+        it('should contain canvas-based rendering elements', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('id="pages"');
+            expect(text).toContain('id="loading"');
+            expect(text).toContain('id="error"');
+            expect(text).toContain('createElement("canvas")');
+            expect(text).toContain('getContext("2d")');
+        });
+
+        it('should contain toolbar with navigation, zoom, and download controls', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            const text = await response.text();
+            // Toolbar container
+            expect(text).toContain('id="tb"');
+            // Page navigation
+            expect(text).toContain('id="prev"');
+            expect(text).toContain('id="next"');
+            expect(text).toContain('id="pn"');
+            expect(text).toContain('id="pc"');
+            // Zoom controls
+            expect(text).toContain('id="zi"');
+            expect(text).toContain('id="zo"');
+            expect(text).toContain('id="zl"');
+            expect(text).toContain('id="fw"');
+            // Download button
+            expect(text).toContain('id="dl"');
+            // Render function
+            expect(text).toContain('async function render(s)');
+            // Download handler
+            expect(text).toContain('pdf.getData()');
+            expect(text).toContain('a.download=');
+        });
+
+        it('should include download filename from filePath', async () => {
+            const response = createPdfViewerResponse('content/resources/report.pdf', '/viewer/content/resources/report.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('a.download="report.pdf"');
+        });
+
+        it('should not contain iframe', async () => {
+            const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
+            const text = await response.text();
+            expect(text).not.toContain('<iframe');
+        });
+
+        it('should derive title from filename', async () => {
+            const response = createPdfViewerResponse('content/resources/my-report.pdf', '/viewer/content/resources/my-report.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('<title>my-report.pdf</title>');
+        });
+
+        it('should decode URL-encoded filenames in title', async () => {
+            const response = createPdfViewerResponse('content/resources/my%20doc.pdf', '/viewer/content/resources/my%20doc.pdf', '/');
+            const text = await response.text();
+            expect(text).toContain('<title>my doc.pdf</title>');
+        });
+
+        it('should escape HTML special characters in filename', async () => {
+            const response = createPdfViewerResponse('content/<script>.pdf', '/viewer/content/<script>.pdf', '/');
+            const text = await response.text();
+            expect(text).not.toContain('<script>.pdf</title>');
+            expect(text).toContain('&lt;script&gt;.pdf</title>');
+        });
+
+        it('should use basePath for PDF.js library paths', async () => {
+            const response = createPdfViewerResponse('doc.pdf', '/app/viewer/doc.pdf', '/app/');
+            const text = await response.text();
+            expect(text).toContain('import("/app/libs/pdfjs/pdf.min.mjs")');
+            expect(text).toContain('workerSrc="/app/libs/pdfjs/pdf.worker.min.mjs"');
+        });
+
+        it('should set Cache-Control and X-Served-By headers', async () => {
+            const response = createPdfViewerResponse('doc.pdf', '/viewer/doc.pdf', '/');
+            expect(response.headers.get('Cache-Control')).toBe('no-cache, no-store, must-revalidate');
+            expect(response.headers.get('X-Served-By')).toBe('eXeLearning-Preview-SW');
+        });
+
+        it('should use "Document" as fallback title when filename is empty', async () => {
+            const response = createPdfViewerResponse('', '/viewer/', '/');
+            const text = await response.text();
+            expect(text).toContain('<title>Document</title>');
+        });
+
+        it('should default basePath to "/" when not provided', async () => {
+            const response = createPdfViewerResponse('doc.pdf', '/viewer/doc.pdf');
+            const text = await response.text();
+            expect(text).toContain('import("/libs/pdfjs/pdf.min.mjs")');
         });
     });
 

@@ -132,12 +132,31 @@ async function getPageNameText(page: Page, pageIndex: number = 0): Promise<strin
 
 /**
  * Helper to edit page name via Page Properties dialog
- * Double-clicking a page opens the Page Properties modal with Title field
+ * Opens the dropdown menu on the nav element and clicks "Page properties"
  */
 async function editPageName(page: Page, pageIndex: number, newName: string): Promise<void> {
-    // 1. Double-click page name to open Page Properties dialog
-    const pageNameEl = page.locator('.nav-element:not([nav-id="root"]) > .nav-element-text').nth(pageIndex);
-    await pageNameEl.dblclick();
+    // 1. Select the nav element first (trigger is only visible when selected + hovered)
+    const navElement = page.locator('.nav-element:not([nav-id="root"])').nth(pageIndex);
+    const navText = navElement.locator('> .nav-element-text');
+    await navText.click();
+    await page.waitForTimeout(300);
+
+    // 2. Hover to reveal the dropdown trigger (visible only on .selected:hover)
+    await navElement.hover();
+    await page.waitForTimeout(300);
+
+    const dropdownTrigger = navElement.locator('.page-settings-trigger');
+    await dropdownTrigger.waitFor({ state: 'visible', timeout: 5000 });
+    await dropdownTrigger.click();
+    await page.waitForTimeout(300);
+
+    // 3. Click "Page properties" in the dropdown menu
+    const dropdownMenu = navElement.locator('.dropdown-menu.show');
+    await dropdownMenu.waitFor({ state: 'visible', timeout: 5000 });
+
+    const propertiesOption = dropdownMenu.locator('.page-settings');
+    await propertiesOption.waitFor({ state: 'visible', timeout: 5000 });
+    await propertiesOption.click();
 
     // 2. Wait for Page Properties dialog to appear (it has a Title textbox)
     const titleInput = page.locator('.modal.show input[type="text"]').first();
