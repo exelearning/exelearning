@@ -1238,7 +1238,7 @@
           "type": "button",
           "latex": "\\Huge",
           "display": "\\Huge{Text}",
-          "title": "Huger text"
+          "title": "Extra large text"
         },
         {
           "type": "button",
