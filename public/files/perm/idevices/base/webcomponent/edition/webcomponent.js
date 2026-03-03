@@ -20,6 +20,7 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.id = '';
         this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
@@ -144,17 +145,26 @@ ${_('Sends the final score and ends the activity.')}
     loadPreviousValues: function () {
         const originalHTML = this.idevicePreviousData;
         if (!originalHTML || !Object.keys(originalHTML).length) return;
-           const wrapper = $('<div></div>').html(originalHTML);
-            let json = $('.webcomponent-DataGame', wrapper).text()
-            const dataGame = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
-            const instructions = $('.webcomponent-instructions', wrapper);
-            if (instructions.length === 1)
-                $('#eXeGameInstructions').val(instructions.html());
-            const textAfter = $('.webcomponent-extra-content', wrapper);
-            if (textAfter.length === 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());  
+        const wrapper = $('<div></div>').html(originalHTML);
+        const json = $('.webcomponent-DataGame', wrapper).text();
+        const dataGame =
+            $exeDevices.iDevice.gamification.helpers.isJsonString(json);
+        const evaluationNode = $('.game-evaluation-ids', wrapper).eq(0);
+        const previousId = evaluationNode.attr('data-id') || '';
+        if (previousId) {
+            $exeDevice.id = previousId;
+        }
+        const instructions = $('.webcomponent-instructions', wrapper);
+        if (instructions.length === 1)
+            $('#eXeGameInstructions').val(instructions.html());
+        const textAfter = $('.webcomponent-extra-content', wrapper);
+        if (textAfter.length === 1)
+            $('#eXeIdeviceTextAfter').val(textAfter.html());
 
-        if (dataGame) {              
+        if (dataGame) {
+            if (dataGame.id) {
+                $exeDevice.id = dataGame.id;
+            }
  
             $exeDevicesEdition.iDevice.gamification.scorm.setValues(
                 dataGame.isScorm,
@@ -173,6 +183,10 @@ ${_('Sends the final score and ends the activity.')}
     save: function () {
         const dataGame = $exeDevice.validateData();
         if (!dataGame) return false;
+        const ideviceId =
+            $exeDevice.getIdeviceID() || $exeDevice.id || dataGame.id || '';
+        dataGame.id = ideviceId;
+        $exeDevice.id = ideviceId;
 
         const i18n = { ...this.ci18n };
         Object.keys(this.ci18n).forEach((key) => {
@@ -196,7 +210,7 @@ ${_('Sends the final score and ends the activity.')}
             : '';
 
         divContent += `<div class="webcomponent-DataGame js-hidden">${json}</div>`;
-        divContent += `<div class="game-evaluation-ids js-hidden" data-id="${dataGame.id}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
+        divContent += `<div class="game-evaluation-ids js-hidden" data-id="${ideviceId}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
 
         if (textAfter) {
             divContent += `<div class="webcomponent-extra-content">${textAfter}</div>`;
@@ -205,13 +219,18 @@ ${_('Sends the final score and ends the activity.')}
     },
 
     getIdeviceID: function () {
-        return $('#wcQIdeviceForm')
-            .closest(`div.idevice_node.${$exeDevice.classIdevice}`)
-            .attr('id') || '';
+        const $form = $('#wcQIdeviceForm');
+        const byClass =
+            $form.closest(`div.idevice_node.${$exeDevice.classIdevice}`).attr('id') ||
+            '';
+        if (byClass) return byClass;
+        const byNode = $form.closest('div.idevice_node').attr('id') || '';
+        if (byNode) return byNode;
+        return $exeDevice.id || '';
     },
 
     validateData: function () {
-        const id = $exeDevice.getIdeviceID(),
+        const id = $exeDevice.getIdeviceID() || $exeDevice.id || '',
             itinerary = $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
             evaluation = $('#wcEEvaluation').is(':checked'),

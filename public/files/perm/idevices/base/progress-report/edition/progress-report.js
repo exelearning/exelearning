@@ -86,9 +86,7 @@ var $exeDevice = {
         if (yjsBridge && yjsBridge.documentManager) {
             try {
                 data = $exeDevice.extractIdevicesFromYjs(yjsBridge, odeSessionId);
-                console.log('[Progress Report] Loaded', data.length, 'items from local Yjs');
             } catch (err) {
-                console.warn('[Progress Report] Failed to load from local Yjs:', err);
             }
         }
 
@@ -98,10 +96,8 @@ var $exeDevice = {
                 const response = await eXeLearning.app.api.getIdevicesBySessionId(odeSessionId);
                 if (response && response.data) {
                     data = response.data;
-                    console.log('[Progress Report] Loaded', data.length, 'items from server API');
                 }
             } catch (err) {
-                console.warn('[Progress Report] Failed to load from server API:', err);
             }
         }
 
@@ -125,18 +121,14 @@ var $exeDevice = {
         const items = [];
         const ydoc = yjsBridge.documentManager?.ydoc;
         if (!ydoc) {
-            console.warn('[Progress Report] No ydoc available');
             return items;
         }
 
         // Get navigation array (contains all pages as Y.Map)
         const navigation = ydoc.getArray('navigation');
         if (!navigation || navigation.length === 0) {
-            console.warn('[Progress Report] No navigation array in ydoc');
             return items;
         }
-
-        console.log('[Progress Report] Found', navigation.length, 'pages in navigation');
 
         for (let pageIdx = 0; pageIdx < navigation.length; pageIdx++) {
             const page = navigation.get(pageIdx);
@@ -286,9 +278,6 @@ var $exeDevice = {
 
         data.forEach((row) => {
             if (!row) {
-                console.warn(
-                    "Se encontró una fila nula o indefinida en 'data'."
-                );
                 return;
             }
             const rawPageId =
@@ -315,18 +304,19 @@ var $exeDevice = {
                     url:
                         !rawParentId && order === 1
                             ? 'index'
-                            : $eXeInforme.normalizeFileName(row.pageName),
+                            : $exeDevice.normalizeFileName(row.pageName),
                 };
             }
 
             if (row.componentId) {
-                const dataIDs = $eXeInforme.getEvaluatioID(
+                const dataIDs = $exeDevice.getEvaluatioID(
                     row.htmlViewer,
                     row.jsonProperties
                 );
                 const ideviceID = dataIDs.ideviceID || row.ode_idevice_id || '';
                 const evaluationID = dataIDs.evaluationID || '';
                 const evaluation = dataIDs.evaluation || null;
+
                 pageIndex[rawPageId].components.push({
                     ideviceID: ideviceID,
                     evaluationID: evaluationID,
@@ -394,6 +384,7 @@ var $exeDevice = {
             leval.ideviceID = dataJson.dataId;
             leval.evaluation = dataJson.evaluation;
         }
+
         return leval;
     },
 
@@ -469,6 +460,7 @@ var $exeDevice = {
                         component.evaluationID &&
                         idEvaluation &&
                         idEvaluation == component.evaluationID;
+
                     const iconClass = isEvaluable
                         ? 'IFPE-IdiviceIcon'
                         : 'IFPE-IdiviceIconNo';

@@ -29,7 +29,13 @@ var $WebComponent = {
     loadGme: function () {
         $WebComponent.options = [];
         $WebComponent.activities.each(function (i) {
-            const id = $(this).closest('.idevice_node').attr('id');
+            const $activity = $(this);
+            const idNode =
+                $activity
+                    .closest('.idevice_node.webcomponent, .idevice_node')
+                    .attr('id') || '';
+            const savedId =
+                $('.game-evaluation-ids', $activity).eq(0).attr('data-id') || '';
             const dl = $('.webcomponent-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
 
@@ -37,7 +43,7 @@ var $WebComponent = {
             const data = $exeDevices.iDevice.gamification.helpers.isJsonString(json);
             if (!data) return;
 
-            data.id = id;
+            data.id = idNode || savedId || data.id || '';
             data.main = 'wcContainer-' + i;
             data.idevice = 'webcomponent-IDevice';
             data.idevicePath = $WebComponent.idevicePath;
@@ -70,16 +76,15 @@ var $WebComponent = {
             instructionsNode.remove();
             textAfterNode.remove();
 
-            // Ejecutar los scripts del web component una vez, con protección ante re-declaraciones
             $WebComponent.executeScripts(data.scriptDefs || []);
 
-            // Exponer la API en el nodo DOM para que el componente la consuma
             const container = document.getElementById('wcContainer-' + i);
             if (container) {
                 container.exeAPI = $WebComponent.createAPI(i);
             }
 
             $WebComponent.setupItinerary(i);
+            $WebComponent.bindScormHandlers(i);
 
             if (data.isScorm > 0) {
                 $exeDevices.iDevice.gamification.scorm.registerActivity(data);
@@ -284,6 +289,23 @@ var $WebComponent = {
         });
     },
 
+    bindScormHandlers: function (instance) {
+        const data = $WebComponent.options[instance];
+        const $container = $('#wcContainer-' + instance);
+        const $node = $container.closest('.idevice_node');
+        if ($node.length === 0) return;
+
+        $node.off('click', '.Games-SendScore');
+        $node.on('click', '.Games-SendScore', function (e) {
+            e.preventDefault();
+            $WebComponent.sendScore(false, instance);
+            $exeDevices.iDevice.gamification.report.saveEvaluation(
+                data,
+                $WebComponent.isInExe
+            );
+        });
+    },
+
     enterCodeAccess: function (instance) {
         const data = $WebComponent.options[instance];
         const codeInput = $('#wcCodeAccessE-' + instance).val();
@@ -368,7 +390,11 @@ var $WebComponent = {
         $WebComponent.checkClueGame(instance);
 
         if (data.isScorm > 0) {
-            $WebComponent.sendScore(isEnd, instance);
+            // En modo manual (isScorm == 2) los envíos desde la API del componente
+            // no deben abrir popup; el popup solo debe aparecer al pulsar
+            // explícitamente el botón "Guardar puntuación".
+            const auto = data.isScorm == 2 ? true : isEnd;
+            $WebComponent.sendScore(auto, instance);
         }
         $exeDevices.iDevice.gamification.report.saveEvaluation(
             data,
