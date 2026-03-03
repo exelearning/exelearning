@@ -149,6 +149,9 @@
 *   Package: nunjucks
     *   Copyright: James Long
     *   License: BSD-2-Clause
+*   Package: pdfjs-dist
+    *   Copyright: owner or entity authorized by
+    *   License: Apache-2.0
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT
@@ -288,6 +291,9 @@
 *   File: /public/libs/jquery-ui/jquery-ui.min.js
     *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
+*   Files: /public/libs/pdfjs/*
+    *   Copyright: Mozilla Foundation
+    *   License: Apache License 2.0
 *   Files: /public/libs/pixo/*
     *   Copyright: Lee Robinson
     *   License: MIT
