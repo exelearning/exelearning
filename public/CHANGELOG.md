@@ -28,12 +28,11 @@
 - iDevice button issues when TinyMCE is in full-screen mode
 - Teacher Mode related issues
 - Duplicated results in the search tool
-- Base Style: presentation issues in preview
-- Zen Style: gap on first Text iDevice and unnecessary empty paragraphs
+- Base style: presentation issues in preview
+- Zen style: gap on first Text iDevice and unnecessary empty paragraphs
 - Duplicated Accessibility Toolbar files
 - Accessibility Toolbar presentation issues
 - Accessibility improvement: underlined links
-- Presentation issue in preview: left column should fit the page height
 - Embedded PDF and document links in preview mode
 - Pinned preview: style presentation issues
 - Game iDevices: mobile drag-and-drop issues and small screen visibility
