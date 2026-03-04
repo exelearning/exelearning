@@ -19,6 +19,50 @@ import {
  * like /viewer/html/html/page.html.
  */
 
+/**
+ * Wait for the preview iframe to navigate to a new URL and fully load.
+ * More reliable than waiting for specific elements, which may briefly appear
+ * during transitions.
+ */
+async function waitForIframeNavigation(
+    page: import('@playwright/test').Page,
+    prevUrl: string,
+    timeout = 15000,
+): Promise<void> {
+    await page.waitForFunction(
+        (prev: string) => {
+            const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+            try {
+                const doc = iframe?.contentDocument ?? iframe?.contentWindow?.document;
+                const curr = iframe?.contentWindow?.location?.href ?? '';
+                // URL must change and new document must finish loading.
+                // Do NOT gate on #siteNav: if navigation goes to a "not found" page,
+                // it won't have #siteNav but we still want the function to return
+                // (so the test can assert on the correct error content).
+                return curr !== prev && curr.length > 0 && doc?.readyState === 'complete';
+            } catch {
+                return false;
+            }
+        },
+        prevUrl,
+        { timeout },
+    );
+}
+
+/**
+ * Get current URL of the preview iframe from the main page context.
+ */
+async function getIframeUrl(page: import('@playwright/test').Page): Promise<string> {
+    return page.evaluate(() => {
+        const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+        try {
+            return iframe?.contentWindow?.location?.href ?? '';
+        } catch {
+            return '';
+        }
+    });
+}
+
 test.describe('Search in preview - subpage navigation', () => {
     test('should navigate correctly when clicking search results from a subpage', async ({
         authenticatedPage,
@@ -124,10 +168,30 @@ test.describe('Search in preview - subpage navigation', () => {
         const navCount = await navLinks.count();
         expect(navCount).toBeGreaterThanOrEqual(2);
 
+        // Capture current URL before navigating so we can detect when navigation completes
+        const urlBeforeNav = await getIframeUrl(page);
+
         // Click on second page link to navigate to subpage
         await navLinks.nth(1).click();
 
-        // 8. Click on search button - wait for the new page to load first
+        // Wait for the iframe to fully navigate to the subpage (URL must change and page must be ready)
+        await waitForIframeNavigation(page, urlBeforeNav);
+
+        // Additionally wait for the subpage URL to contain /html/ (confirms we're on a subpage)
+        await page.waitForFunction(
+            () => {
+                const iframe = document.querySelector('#preview-iframe') as HTMLIFrameElement;
+                try {
+                    return iframe?.contentWindow?.location?.pathname?.includes('/html/') ?? false;
+                } catch {
+                    return false;
+                }
+            },
+            undefined,
+            { timeout: 10000 },
+        );
+
+        // 8. Click on search button - now we are on the subpage
         const searchToggler = iframe.locator('#searchBarTogger');
         await searchToggler.waitFor({ state: 'visible', timeout: 15000 });
         await searchToggler.click();
@@ -145,10 +209,15 @@ test.describe('Search in preview - subpage navigation', () => {
         expect(resultsCount).toBeGreaterThanOrEqual(1);
 
         // 11. Click on a search result (first one)
+        // Capture URL before click so we can detect navigation
+        const urlBeforeFirstClick = await getIframeUrl(page);
         await searchResults.first().click();
 
-        // 12. Verify navigation worked - wait for the new page to load, then check no errors
-        await iframe.locator('article').first().waitFor({ timeout: 15000 });
+        // 12. Wait for iframe to navigate to the search result page (not just article to appear)
+        // The click handler briefly shows .page-content before navigation, so we must
+        // wait for an actual URL change + page load rather than element visibility.
+        await waitForIframeNavigation(page, urlBeforeFirstClick);
+
         const bodyAfterClick = await iframe.locator('body').innerText();
         expect(bodyAfterClick).not.toContain('File not found');
         expect(bodyAfterClick).not.toContain('Cannot GET');
@@ -173,10 +242,12 @@ test.describe('Search in preview - subpage navigation', () => {
             await searchResults2.first().waitFor({ timeout: 10000 });
 
             // Click on second result
+            const urlBeforeSecondClick = await getIframeUrl(page);
             await searchResults2.nth(1).click();
 
-            // Verify navigation worked again - wait for page load
-            await iframe.locator('article').first().waitFor({ timeout: 15000 });
+            // Wait for iframe to navigate to the second search result page
+            await waitForIframeNavigation(page, urlBeforeSecondClick);
+
             const bodyAfterClick2 = await iframe.locator('body').innerText();
             expect(bodyAfterClick2).not.toContain('File not found');
             expect(bodyAfterClick2).not.toContain('404');
