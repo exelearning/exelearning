@@ -315,12 +315,12 @@ var $exeDevice = {
                     url:
                         !rawParentId && order === 1
                             ? 'index'
-                            : $eXeInforme.normalizeFileName(row.pageName),
+                            : $exeDevice.normalizeFileName(row.pageName),
                 };
             }
 
             if (row.componentId) {
-                const dataIDs = $eXeInforme.getEvaluatioID(
+                const dataIDs = $exeDevice.getEvaluatioID(
                     row.htmlViewer,
                     row.jsonProperties
                 );
