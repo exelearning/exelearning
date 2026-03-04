@@ -404,7 +404,7 @@ export default class MenuStructureCompose {
         pageIcon.setAttribute('aria-hidden', 'true');
         
         let iconClass = 'page-icon';
-        const visibilityValue = node.properties.visibility?.value;
+        const visibilityValue = node.properties?.visibility?.value;
         if (visibilityValue === 'false' || visibilityValue === false) {
             iconClass = 'exe-visibility-off-green-icon';
         }
@@ -590,15 +590,13 @@ export default class MenuStructureCompose {
      */
     setPropertiesClassesToElement(nodeElement, node) {
         // visibility
-        if (node.properties.visibility.value != '') {
-            nodeElement.setAttribute(
-                'export-view',
-                node.properties.visibility.value
-            );
+        const visibilityValue = node.properties?.visibility?.value;
+        if (visibilityValue !== undefined && visibilityValue !== null && visibilityValue !== '') {
+            nodeElement.setAttribute('export-view', visibilityValue);
         }
         // highlight - add class when page is highlighted
         // Note: value can be boolean true or string 'true' depending on source (Yjs vs config)
-        const highlightValue = node.properties.highlight?.value;
+        const highlightValue = node.properties?.highlight?.value;
         if (highlightValue === 'true' || highlightValue === true) {
             nodeElement.classList.add('nav-element-highlighted');
         }
