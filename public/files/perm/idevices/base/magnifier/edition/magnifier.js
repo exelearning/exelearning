@@ -15,6 +15,8 @@ var $exeDevice = {
     msgs: {
         msgFullScreen: _('Full screen'),
         msgNotImage: _('The image is not available.'),
+        msgAuthor: c_('Authorship'),
+        msgAlt: c_('Alternative text'),
     },
     id: false,
     ci18n: {
@@ -68,7 +70,17 @@ var $exeDevice = {
                     </div>
                     <div class="d-flex align-items-center mb-3">
                         <label for="mnfFileInput" class="form-label me-2 mb-0 sr-av">${_('Image URL')}:</label>
-                        <input type="text" class="exe-file-picker form-control w-auto" id="mnfFileInput" />
+                        <input type="text" class="exe-file-picker form-control w-50" id="mnfFileInput" />
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3 w-50" id="mnfAuthorAlt">
+                        <div class="w-50">
+                            <label for="mnfAuthor" class="form-label">${_('Authorship')}</label>
+                            <input id="mnfAuthor" type="text" class="form-control w-100" />
+                        </div>
+                        <div class="w-50">
+                            <label for="mnfAlt" class="form-label">${_('Alternative text')}</label>
+                            <input id="mnfAlt" type="text" class="form-control w-100" />
+                        </div>
                     </div>
                     <div class="row align-items-center mb-3">
                         <label for="mnfWidthInput" class="col-auto col-form-label">${_('Image width')}:</label>
@@ -140,6 +152,8 @@ var $exeDevice = {
         $('#mnfFileInput').val(pathImage);
         $exeDevice.loadImageWithFallback(data);
         $('#mnfPreviewImage').attr('src', image);
+        $('#mnfAuthor').val(data.author || '');
+        $('#mnfAlt').val(data.alt || '');
 
         $('#mnfWidthInput').val(width);
         $('#mnfHeightInput').val(height);
@@ -226,6 +240,9 @@ var $exeDevice = {
 
         const textTextarea = html;
 
+        const author = $('#mnfAuthor').val() || '';
+        const alt = $('#mnfAlt').val() || '';
+
         return {
             id,
             typeGame: 'magnifier',
@@ -239,6 +256,9 @@ var $exeDevice = {
             initialZSize,
             maxZSize,
             glassSize,
+            author,
+            alt,
+            msgs: this.msgs,
             ideviceId: id,
         };
     },

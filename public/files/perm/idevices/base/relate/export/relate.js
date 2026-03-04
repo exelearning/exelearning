@@ -1386,7 +1386,7 @@ var $eXeRelaciona = {
     adjustFontSize: function ($container) {
         const $text = $container.find('.RLCP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 22,
+            maxFontSize = window.innerWidth <= 500 ? 16 : 22,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 

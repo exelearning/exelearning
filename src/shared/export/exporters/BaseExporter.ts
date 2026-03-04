@@ -20,6 +20,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
+import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
  * Abstract base class for exporters
@@ -388,33 +389,7 @@ export abstract class BaseExporter {
      * Get file extension from MIME type
      */
     getExtensionFromMime(mime: string): string {
-        const mimeToExt: Record<string, string> = {
-            'image/jpeg': '.jpg',
-            'image/png': '.png',
-            'image/gif': '.gif',
-            'image/webp': '.webp',
-            'image/svg+xml': '.svg',
-            'image/bmp': '.bmp',
-            'image/tiff': '.tiff',
-            'image/x-icon': '.ico',
-            'application/pdf': '.pdf',
-            'video/mp4': '.mp4',
-            'video/webm': '.webm',
-            'video/ogg': '.ogv',
-            'video/quicktime': '.mov',
-            'audio/mpeg': '.mp3',
-            'audio/ogg': '.ogg',
-            'audio/wav': '.wav',
-            'audio/webm': '.weba',
-            'application/zip': '.zip',
-            'application/json': '.json',
-            'text/plain': '.txt',
-            'text/html': '.html',
-            'text/css': '.css',
-            'application/javascript': '.js',
-            'application/octet-stream': '.bin',
-        };
-        return mimeToExt[mime] || '.bin';
+        return getExtensionFromMimeType(mime, true);
     }
 
     /**
@@ -469,7 +444,11 @@ export abstract class BaseExporter {
 
             for (const asset of assets) {
                 let folderPath = asset.folderPath || '';
-                const filename = asset.filename || `asset-${asset.id.substring(0, 8)}`;
+                // Treat 'unknown' same as missing: derive a proper name with extension from MIME
+                const filename =
+                    asset.filename && asset.filename !== 'unknown'
+                        ? asset.filename
+                        : this._deriveFilenameFromMime(asset.id, asset.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
@@ -504,6 +483,14 @@ export abstract class BaseExporter {
         }
 
         return this.assetExportPathMap;
+    }
+
+    /**
+     * Derive a fallback export filename from MIME type and asset ID.
+     * Used when an asset has no filename or has the placeholder value 'unknown'.
+     */
+    private _deriveFilenameFromMime(assetId: string, mime: string): string {
+        return deriveFilenameFromMime(assetId, mime);
     }
 
     /**

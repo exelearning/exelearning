@@ -350,6 +350,7 @@ export const SCORM_LIBRARIES = ['scorm/SCORM_API_wrapper.js', 'scorm/SCOFunction
  */
 export const MIME_TO_EXTENSION: Record<string, string> = {
     'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif',
     'image/webp': '.webp',
@@ -363,6 +364,7 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
     'video/ogg': '.ogv',
     'video/quicktime': '.mov',
     'audio/mpeg': '.mp3',
+    'audio/mp4': '.m4a',
     'audio/ogg': '.ogg',
     'audio/wav': '.wav',
     'audio/webm': '.weba',

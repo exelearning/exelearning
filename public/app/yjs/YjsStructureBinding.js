@@ -2739,6 +2739,10 @@ class YjsStructureBinding {
       }
     }
 
+    // Get component properties (visibility, teacherOnly, etc.)
+    const rawProps = compMap.get('properties');
+    const properties = rawProps && typeof rawProps.toJSON === 'function' ? rawProps.toJSON() : {};
+
     return {
       id: compMap.get('id'),
       ideviceId: compMap.get('ideviceId'),
@@ -2746,6 +2750,7 @@ class YjsStructureBinding {
       order: compMap.get('order') ?? index,
       htmlContent: htmlContent,
       jsonProperties: jsonProperties,
+      properties: properties,
       createdAt: compMap.get('createdAt'),
       updatedAt: compMap.get('updatedAt'),
       _ymap: compMap,

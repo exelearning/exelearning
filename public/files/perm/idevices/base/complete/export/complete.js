@@ -284,6 +284,7 @@ var $eXeCompleta = {
             }
         }
 
+        $eXeCompleta.removeTouchDragAndDrop(instance);
         $eXeCompleta.isDragging = false;
     },
 
@@ -1210,6 +1211,7 @@ var $eXeCompleta = {
                 },
             });
         $buttonsDiv.show();
+        $eXeCompleta.setupTouchDragAndDrop(instance);
     },
 
     moveCard: function ($item, $destino, instance) {
@@ -1423,6 +1425,181 @@ var $eXeCompleta = {
             mOptions,
             $eXeCompleta.isInExe
         );
+    },
+
+    /**
+     * Set up native touch drag-and-drop for a complete iDevice instance.
+     * Needed because jQuery UI draggable/droppable only handle mouse events.
+     *
+     * @param {number} instance - Instance index
+     */
+    setupTouchDragAndDrop: function (instance) {
+        $eXeCompleta.removeTouchDragAndDrop(instance);
+
+        const mOptions = $eXeCompleta.options[instance];
+        const gameContainer = document.querySelector(
+            `#cmptGameContainer-${instance}`
+        );
+        if (!gameContainer) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+
+            // Accept word buttons or filled inputs as drag sources
+            const $el = $(element);
+            const $button = $el.closest('.CMPT-WordsButton');
+            const $filled = $el.closest('.CMPT-Input.CMPT-Drag.CMPT-Filled');
+            const $draggable = $button.length ? $button : $filled;
+            if (!$draggable.length) return;
+
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+
+            if ($draggable.is('input')) {
+                // Represent a filled input as a styled div showing its value
+                touchHelper = $('<div>')
+                    .text($draggable.val())
+                    .addClass('CMPT-WordsButton CMPT-TouchHelper')
+                    .css({
+                        position: 'fixed',
+                        left: rect.left + 'px',
+                        top: rect.top + 'px',
+                        width: rect.width + 'px',
+                        'z-index': 10000,
+                        'pointer-events': 'none',
+                        margin: 0,
+                    })
+                    .appendTo('body');
+            } else {
+                touchHelper = $draggable
+                    .clone()
+                    .addClass('CMPT-TouchHelper')
+                    .css({
+                        position: 'fixed',
+                        left: rect.left + 'px',
+                        top: rect.top + 'px',
+                        width: rect.width + 'px',
+                        'z-index': 10000,
+                        'pointer-events': 'none',
+                        margin: 0,
+                    })
+                    .appendTo('body');
+            }
+
+            $eXeCompleta.isDragging = true;
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+
+            touchHelper.css({
+                left: touch.clientX - offsetX + 'px',
+                top: touch.clientY - offsetY + 'px',
+            });
+
+            // Detect the input below the finger (hide helper so elementFromPoint works)
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+            touchHelper.show();
+
+            const $target = $(elementBelow).closest('.CMPT-Input.CMPT-Drag');
+            $(`#cmptGameContainer-${instance} .CMPT-Input`).removeClass(
+                'hovering'
+            );
+            if ($target.length && $target[0] !== touchedEl) {
+                $target.addClass('hovering');
+            }
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $eXeCompleta.isDragging = false;
+            $(`#cmptGameContainer-${instance} .CMPT-Input`).removeClass(
+                'hovering'
+            );
+
+            // Find the target input under the finger
+            const elementBelow = document.elementFromPoint(
+                touch.clientX,
+                touch.clientY
+            );
+            const $target = $(elementBelow).closest('.CMPT-Input.CMPT-Drag');
+
+            if ($target.length && $target[0] !== touchedEl) {
+                $eXeCompleta.moveCard($(touchedEl), $target, instance);
+            }
+
+            touchedEl = null;
+        };
+
+        gameContainer.addEventListener('touchstart', touchStartHandler, {
+            passive: false,
+        });
+        gameContainer.addEventListener('touchmove', touchMoveHandler, {
+            passive: false,
+        });
+        gameContainer.addEventListener('touchend', touchEndHandler, {
+            passive: false,
+        });
+
+        mOptions._touchDragStart = touchStartHandler;
+        mOptions._touchDragMove = touchMoveHandler;
+        mOptions._touchDragEnd = touchEndHandler;
+        mOptions._touchDragContainer = gameContainer;
+    },
+
+    /**
+     * Remove native touch drag-and-drop event listeners for a complete iDevice instance.
+     *
+     * @param {number} instance - Instance index
+     */
+    removeTouchDragAndDrop: function (instance) {
+        const mOptions =
+            $eXeCompleta.options && $eXeCompleta.options[instance];
+        if (!mOptions) return;
+
+        const container = mOptions._touchDragContainer;
+        if (!container) return;
+
+        if (mOptions._touchDragStart) {
+            container.removeEventListener(
+                'touchstart',
+                mOptions._touchDragStart
+            );
+            mOptions._touchDragStart = null;
+        }
+        if (mOptions._touchDragMove) {
+            container.removeEventListener(
+                'touchmove',
+                mOptions._touchDragMove
+            );
+            mOptions._touchDragMove = null;
+        }
+        if (mOptions._touchDragEnd) {
+            container.removeEventListener('touchend', mOptions._touchDragEnd);
+            mOptions._touchDragEnd = null;
+        }
+        mOptions._touchDragContainer = null;
     },
 };
 $(function () {

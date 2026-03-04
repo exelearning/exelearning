@@ -57,7 +57,7 @@ const dynamicWebServer = process.env.E2E_BASE_URL
 
 // Static server config (port 3002)
 const staticWebServer = {
-    command: 'bunx serve dist/static -p 3002 --no-request-logging',
+    command: 'bun x serve dist/static -p 3002 --no-request-logging',
     url: 'http://localhost:3002',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2 minutes to start

@@ -21,8 +21,14 @@ var $exeDevice = {
         _('Group') + ' ' + 2,
         _('Group') + ' ' + 3,
         _('Group') + ' ' + 4,
+        _('Group') + ' ' + 5,
+        _('Group') + ' ' + 6,
+        _('Group') + ' ' + 7,
+        _('Group') + ' ' + 8,
+        _('Group') + ' ' + 9,
     ],
     numberGroups: 2,
+    maxGroups: 9,
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
@@ -221,35 +227,53 @@ var $exeDevice = {
                             </span>
                         </div>
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            <span>${_('Number of categories')}:</span>
-                            <div id="quextNumber2Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber2" type="radio" name="qxtnumber" value="2" checked="checked" />
-                                <label class="form-check-label" for="quextNumber2">2</label>
-                            </div>
-                            <div id="quextNumber3Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber3" type="radio" name="qxtnumber" value="3" />
-                                <label class="form-check-label" for="quextNumber3">3</label>
-                            </div>
-                            <div id="quextNumber4Div" class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-Number" id="quextNumber4" type="radio" name="qxtnumber" value="4" />
-                                <label class="form-check-label" for="quextNumber4">4</label>
-                            </div>
+                            <label for="clasificaENumGroups" class="mb-0">${_('Number of categories')}:</label>
+                            <select id="clasificaENumGroups" class="form-select form-select-sm" style="width:8ch">
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
                         </div>
                         <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle0" class="mb-0">${_('Category')} 1:</label>
                             <input type="text" id="clasificaTitle0" class="CQE-EGroup form-control" value="${_('Group')} 1"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle1" class="mb-0">${_('Category')} 2:</label>
                             <input type="text" id="clasificaTitle1" class="CQE-EGroup form-control" value="${_('Group')} 2"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle2" class="mb-0">${_('Category')} 3:</label>
                             <input type="text" id="clasificaTitle2" class="CQE-EGroup form-control" value="${_('Group')} 3"/>
                         </div>
-                        <div class="mb-3  align-items-center gap-2 flex-wrap">
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
                             <label for="clasificaTitle3" class="mb-0">${_('Category')} 4:</label>
                             <input type="text" id="clasificaTitle3" class="CQE-EGroup form-control" value="${_('Group')} 4"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle4" class="mb-0">${_('Category')} 5:</label>
+                            <input type="text" id="clasificaTitle4" class="CQE-EGroup form-control" value="${_('Group')} 5"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle5" class="mb-0">${_('Category')} 6:</label>
+                            <input type="text" id="clasificaTitle5" class="CQE-EGroup form-control" value="${_('Group')} 6"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle6" class="mb-0">${_('Category')} 7:</label>
+                            <input type="text" id="clasificaTitle6" class="CQE-EGroup form-control" value="${_('Group')} 7"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle7" class="mb-0">${_('Category')} 8:</label>
+                            <input type="text" id="clasificaTitle7" class="CQE-EGroup form-control" value="${_('Group')} 8"/>
+                        </div>
+                        <div class="mb-3 align-items-center gap-2 flex-wrap">
+                            <label for="clasificaTitle8" class="mb-0">${_('Category')} 9:</label>
+                            <input type="text" id="clasificaTitle8" class="CQE-EGroup form-control" value="${_('Group')} 9"/>
                         </div>
                         <div class="mb-3">
                             <span class="toggle-item" role="switch" aria-checked="false">
@@ -406,6 +430,11 @@ var $exeDevice = {
                         <option value="1">${_('Group')} 2</option>
                         <option value="2">${_('Group')} 3</option>
                         <option value="3">${_('Group')} 4</option>
+                        <option value="4">${_('Group')} 5</option>
+                        <option value="5">${_('Group')} 6</option>
+                        <option value="6">${_('Group')} 7</option>
+                        <option value="7">${_('Group')} 8</option>
+                        <option value="8">${_('Group')} 9</option>
                     </select>
                 </span>
            </p>
@@ -900,7 +929,7 @@ var $exeDevice = {
             ),
             time = parseInt(clear($('#clasificaETime').val())),
             author = $('#clasificaEAuthor').val(),
-            numberGroups = parseInt($('input[name=qxtnumber]:checked').val()),
+            numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
             evaluation = $('#clasificaEEvaluation').is(':checked'),
             evaluationID = $('#clasificaEEvaluationID').val(),
@@ -1310,7 +1339,7 @@ var $exeDevice = {
 
         $exeDevice.showGroups($exeDevice.numberGroups);
 
-        $('input.CQE-Number').on('click', function () {
+        $('#clasificaENumGroups').on('change', function () {
             const number = parseInt($(this).val());
             $exeDevice.showGroups(number);
         });
@@ -1638,6 +1667,21 @@ var $exeDevice = {
 
         game.imgCard = game.imgCard ?? '';
 
+        // Retrocompatibilidad: numberGroups podía guardarse como null/NaN.
+        // Si el valor es inválido, se infiere del grupo máximo de las tarjetas.
+        const ng = parseInt(game.numberGroups);
+        if (Number.isFinite(ng) && ng >= 2 && ng <= 9) {
+            game.numberGroups = ng;
+        } else {
+            const maxGroup = Array.isArray(game.wordsGame)
+                ? game.wordsGame.reduce((max, w) => {
+                      const g = parseInt(w.group);
+                      return Number.isFinite(g) ? Math.max(max, g) : max;
+                  }, 1)
+                : 1;
+            game.numberGroups = Math.min(Math.max(maxGroup + 1, 2), 9);
+        }
+
         $('#clasificaEShowMinimize').prop('checked', game.showMinimize);
         $('#clasificaEHasFeedBack').prop('checked', game.feedBack);
         $('#clasificaEPercentajeFB').val(game.percentajeFB);
@@ -1645,9 +1689,7 @@ var $exeDevice = {
         $('#clasificaETime').val(game.time);
         $('#clasificaEAuthor').val(game.author);
 
-        $(
-            `input.CQE-Number[name='qxtnumber'][value='${game.numberGroups}']`
-        ).prop('checked', true);
+        $('#clasificaENumGroups').val(game.numberGroups);
         $('#clasificaECustomMessages').prop('checked', game.customMessages);
         $('#clasificaEEvaluation').prop('checked', game.evaluation);
         $('#clasificaEEvaluationID')
@@ -1669,7 +1711,12 @@ var $exeDevice = {
         $exeDevice.showSelectOrder(game.customMessages && game.gameLevel !== 1);
         $exeDevice.updateQuestionsNumber();
 
-        $exeDevice.groups = game.groups;
+        // Retrocompatibilidad: versiones antiguas solo guardaban 4 grupos
+        $exeDevice.groups = game.groups.slice();
+        while ($exeDevice.groups.length < $exeDevice.maxGroups) {
+            const i = $exeDevice.groups.length;
+            $exeDevice.groups.push(_('Group') + ' ' + (i + 1));
+        }
         $exeDevice.numberGroups = game.numberGroups;
 
         $exeDevice.showGroups($exeDevice.numberGroups);
@@ -1688,7 +1735,7 @@ var $exeDevice = {
     },
 
     insertWords: function (lines) {
-        const lineFormat = /^(0|1|2|3)#([^#]+)$/;
+        const lineFormat = /^([0-8])#([^#]+)$/;
         let questions = [],
             valids = [];
 
@@ -1709,10 +1756,7 @@ var $exeDevice = {
         const numgroups = $exeDevice.validateGroups(valids);
         if (numgroups) {
             $exeDevice.numberGroups = numgroups;
-            $(`input.CQE-Number[name='qxtnumber'][value='${numgroups}']`).prop(
-                'checked',
-                true
-            );
+            $('#clasificaENumGroups').val(numgroups);
             $exeDevice.showGroups(numgroups);
         } else {
             $exeDevice.showMessage(_('Incorrect group number'));
@@ -1752,7 +1796,7 @@ var $exeDevice = {
 
         for (const element of elements) {
             const [group] = element.split('#');
-            if (group >= 0 && group <= 3) {
+            if (group >= 0 && group <= 8) {
                 groups[group] = (groups[group] || 0) + 1;
             } else {
                 return false;
@@ -1760,13 +1804,12 @@ var $exeDevice = {
         }
 
         const numGroups = Object.keys(groups).length;
-        const allGroupsPresent = [0, 1, 2, 3]
-            .slice(0, numGroups)
+        const allGroupsPresent = Array.from({ length: numGroups }, (_, i) => i)
             .every((group) =>
                 Object.prototype.hasOwnProperty.call(groups, group)
             );
 
-        return numGroups >= 2 && numGroups <= 4 && allGroupsPresent
+        return numGroups >= 2 && numGroups <= 9 && allGroupsPresent
             ? numGroups
             : false;
     },

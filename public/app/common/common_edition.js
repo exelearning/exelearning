@@ -515,6 +515,7 @@ var $exeDevicesEdition = {
                                         <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
                                         <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
                                         <option value="https://grok.com/?q=">Grok</option>
+                                        <option value="https://chat.qwen.ai/?text=">Qwen</option>
                                     </select>
                                    <button id="eXeEOpenChatGPTButton"  class="btn btn-primary ms-2"/>${_('Send to AI')}</button>
                                    <button id="eXeEIAButton"  class="btn btn-primary"/>${_('Add questions')}</button>

@@ -308,7 +308,7 @@ $i18n['eu'] = {
     '\\LARGE{Text}': '\\LARGE{Text}',
     'Huge text': 'Testu erraldoia',
     '\\huge{Text}': '\\huge{Text}',
-    'Huger text': 'Testu handiagoa',
+    'Extra large text': 'Testu handiagoa',
     '\\Huge{Text}': '\\Huge{Text}',
     'Blackboard bold': 'Arbela lodia',
     'Math bold': 'Matematika lodia',

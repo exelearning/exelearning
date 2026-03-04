@@ -27,7 +27,10 @@ export const LOCALES: Record<string, string> = {
     va: 'Valencià',
 };
 
-export const DEFAULT_LOCALE = 'en';
+/**
+ * Default locale: uses APP_LOCALE env var if set, otherwise defaults to 'en' (English)
+ */
+export const DEFAULT_LOCALE = process.env.APP_LOCALE || 'en';
 
 /**
  * Package export locales - extended list for content packages
@@ -111,7 +114,7 @@ interface XlfParseResult {
 const catalogues: Map<string, Map<string, string>> = new Map();
 
 /**
- * Current locale for the session (default: from env or 'en')
+ * Current locale for the session (default: from APP_LOCALE env or 'en')
  */
 let currentLocale: string = process.env.APP_LOCALE || DEFAULT_LOCALE;
 

@@ -1138,16 +1138,18 @@ test.describe('Image Gallery iDevice', () => {
          * Helper to create a folder in file manager
          */
         async function createFolderInFileManager(page: Page, folderName: string): Promise<void> {
-            // Handle the prompt dialog that appears
-            page.once('dialog', async dialog => {
-                await dialog.accept(folderName);
-            });
-
             // Click new folder button
             await page.click('.media-library-newfolder-btn');
 
+            // Handle the modal dialog for folder name input
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await page.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
+
             // Wait for folder to appear in grid
-            await page.waitForSelector(`.media-library-folder[data-folder-name="${folderName}"]`, { timeout: 5000 });
+            await page.waitForSelector(`.media-library-folder[data-folder-name="${folderName}"]`, { timeout: 10000 });
         }
 
         /**

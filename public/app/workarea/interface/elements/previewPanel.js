@@ -222,6 +222,155 @@ export default class PreviewPanelManager {
                 return;
             }
 
+
+
+            // Handle blob URL document open requests from preview iframe
+            if (event.data?.type === 'exe-blob-open-document' && fromPreviewIframe && this._blobUrlFiles) {
+                const href = event.data.href;
+                const currentDir = event.data.currentPage?.includes('/')
+                    ? event.data.currentPage.substring(0, event.data.currentPage.lastIndexOf('/') + 1)
+                    : '';
+                let targetPath = currentDir ? this._resolveRelativePath(currentDir + href) : href;
+                Logger.log(`[PreviewPanel] Blob URL document open: ${href} → ${targetPath}`);
+
+                const fileContent = this._findFileContent(this._blobUrlFiles, targetPath);
+                if (fileContent) {
+                    const bytes = fileContent instanceof ArrayBuffer
+                        ? new Uint8Array(fileContent)
+                        : fileContent instanceof Uint8Array
+                            ? fileContent
+                            : new TextEncoder().encode(fileContent);
+                    const ext = targetPath.split('.').pop()?.toLowerCase() || '';
+                    const mimeMap = {
+                        pdf: 'application/pdf', doc: 'application/msword',
+                        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        xls: 'application/vnd.ms-excel',
+                        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        ppt: 'application/vnd.ms-powerpoint',
+                        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                        odt: 'application/vnd.oasis.opendocument.text',
+                        ods: 'application/vnd.oasis.opendocument.spreadsheet',
+                        odp: 'application/vnd.oasis.opendocument.presentation',
+                        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                        gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+                        avif: 'image/avif', ico: 'image/x-icon',
+                        mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'video/webm',
+                        ogg: 'audio/ogg', wav: 'audio/wav', m4a: 'audio/mp4',
+                        zip: 'application/zip', rar: 'application/x-rar-compressed',
+                    };
+                    const mime = mimeMap[ext] || 'application/octet-stream';
+                    const blob = new Blob([bytes], { type: mime });
+                    if (ext === 'pdf') {
+                        // PDF: render with PDF.js in a new tab.
+                        // Chrome blocks PDFium for ALL SW-served and blob: PDF content.
+                        // PDF.js parses the PDF and renders each page to <canvas>, bypassing restrictions.
+                        const pdfBlobUrl = URL.createObjectURL(blob);
+                        const rawName = targetPath.split('/').pop() || 'document.pdf';
+                        const fileName = rawName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        const dlName = rawName.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                        const bp = (window.eXeLearning?.app?.getBasePath?.() || '') + '/';
+                        const wrapperHtml = '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+                            '<title>' + fileName + '</title>' +
+                            '<style>' +
+                            '*{margin:0;padding:0;box-sizing:border-box}' +
+                            'body{background:#474747}' +
+                            '#tb{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:4px;' +
+                            'padding:4px 8px;background:#323232;color:#d1d1d1;font:13px/1.4 system-ui;' +
+                            'box-shadow:0 1px 4px rgba(0,0,0,.5);user-select:none}' +
+                            '#tb button{background:none;border:1px solid #555;color:#d1d1d1;' +
+                            'padding:2px 8px;border-radius:3px;cursor:pointer;font:inherit;line-height:1.2}' +
+                            '#tb button:hover{background:#444;border-color:#777}' +
+                            '#tb .sp{width:1px;height:20px;background:#555;margin:0 2px}' +
+                            '#pages{display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:8px}' +
+                            'canvas{display:block;box-shadow:0 2px 8px rgba(0,0,0,0.4)}' +
+                            '#loading{color:#ccc;font-family:system-ui;text-align:center;padding:2rem;font-size:1.1rem}' +
+                            '#error{color:#ff6b6b;font-family:system-ui;text-align:center;padding:2rem;display:none}' +
+                            '</style></head><body>' +
+                            '<div id="tb" style="display:none">' +
+                            '<button id="prev" title="Previous">\u25C0</button>' +
+                            '<span><span id="pn">1</span> / <span id="pc">-</span></span>' +
+                            '<button id="next" title="Next">\u25B6</button>' +
+                            '<span class="sp"></span>' +
+                            '<button id="zo" title="Zoom out">\u2212</button>' +
+                            '<span id="zl">100%</span>' +
+                            '<button id="zi" title="Zoom in">+</button>' +
+                            '<button id="fw" title="Fit width">\u2194</button>' +
+                            '<span class="sp"></span>' +
+                            '<button id="dl" title="Download">\u2913</button>' +
+                            '</div>' +
+                            '<div id="loading">Loading PDF\u2026</div>' +
+                            '<div id="pages"></div>' +
+                            '<div id="error"></div>' +
+                            '<script type="module">' +
+                            'try{' +
+                            'var m=await import("' + bp + 'libs/pdfjs/pdf.min.mjs");' +
+                            'm.GlobalWorkerOptions.workerSrc="' + bp + 'libs/pdfjs/pdf.worker.min.mjs";' +
+                            'var pdf=await m.getDocument("' + pdfBlobUrl + '").promise;' +
+                            'document.getElementById("loading").style.display="none";' +
+                            'var tb=document.getElementById("tb");tb.style.display="flex";' +
+                            'document.getElementById("pc").textContent=pdf.numPages;' +
+                            'var fp=await pdf.getPage(1);var uv=fp.getViewport({scale:1});' +
+                            'var isc=Math.min((window.innerWidth-32)/uv.width,2);var sc=isc;' +
+                            'var pgs=document.getElementById("pages");var cs=[];' +
+                            'async function render(s){sc=s;' +
+                            'document.getElementById("zl").textContent=Math.round(s/isc*100)+"%";' +
+                            'var scrollRatio=0;if(cs.length){' +
+                            'var st=document.documentElement.scrollTop||document.body.scrollTop;' +
+                            'var sh=document.documentElement.scrollHeight-window.innerHeight;' +
+                            'if(sh>0)scrollRatio=st/sh;}' +
+                            'pgs.innerHTML="";cs=[];' +
+                            'for(var i=1;i<=pdf.numPages;i++){var pg=await pdf.getPage(i);' +
+                            'var vp=pg.getViewport({scale:s});' +
+                            'var c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;' +
+                            'pgs.appendChild(c);cs.push(c);' +
+                            'await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;}' +
+                            'var newSh=document.documentElement.scrollHeight-window.innerHeight;' +
+                            'if(newSh>0)window.scrollTo(0,scrollRatio*newSh);}' +
+                            'await render(sc);' +
+                            'window.addEventListener("scroll",function(){var th=tb.offsetHeight+10;' +
+                            'for(var i=0;i<cs.length;i++){if(cs[i].getBoundingClientRect().bottom>th){' +
+                            'document.getElementById("pn").textContent=i+1;break;}}});' +
+                            'document.getElementById("prev").onclick=function(){' +
+                            'var n=+document.getElementById("pn").textContent;' +
+                            'if(n>1&&cs[n-2])cs[n-2].scrollIntoView({behavior:"smooth"})};' +
+                            'document.getElementById("next").onclick=function(){' +
+                            'var n=+document.getElementById("pn").textContent;' +
+                            'if(n<pdf.numPages&&cs[n])cs[n].scrollIntoView({behavior:"smooth"})};' +
+                            'document.getElementById("zi").onclick=function(){render(sc*1.25)};' +
+                            'document.getElementById("zo").onclick=function(){render(sc/1.25)};' +
+                            'document.getElementById("fw").onclick=function(){' +
+                            'render(Math.min((window.innerWidth-32)/uv.width,2))};' +
+                            'document.getElementById("dl").onclick=async function(){' +
+                            'var d=await pdf.getData();var b=new Blob([d],{type:"application/pdf"});' +
+                            'var u=URL.createObjectURL(b);var a=document.createElement("a");' +
+                            'a.href=u;a.download="' + dlName + '";a.click();' +
+                            'setTimeout(function(){URL.revokeObjectURL(u)},60000)};' +
+                            '}catch(e){' +
+                            'document.getElementById("loading").style.display="none";' +
+                            'var el=document.getElementById("error");' +
+                            'el.style.display="block";' +
+                            'el.textContent="Error loading PDF: "+e.message;' +
+                            '}' +
+                            '</script></body></html>';
+                        const wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' });
+                        const wrapperUrl = URL.createObjectURL(wrapperBlob);
+                        window.open(wrapperUrl, '_blank');
+                        setTimeout(() => {
+                            URL.revokeObjectURL(wrapperUrl);
+                            URL.revokeObjectURL(pdfBlobUrl);
+                        }, 60000);
+                    } else {
+                        const blobUrl = URL.createObjectURL(blob);
+                        window.open(blobUrl, '_blank');
+                        // Clean up after a delay to allow the browser to open the URL
+                        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+                    }
+                } else {
+                    Logger.warn(`[PreviewPanel] Document not found in files: ${targetPath}`);
+                }
+                return;
+            }
+
             // Handle blob URL navigation requests from preview iframe
             if (event.data?.type === 'exe-blob-navigate' && fromPreviewIframe && this._blobUrlFiles) {
                 const href = event.data.href;
@@ -554,6 +703,7 @@ export default class PreviewPanelManager {
 
         this._blobUrlCurrentPage = pagePath;
         html = this._inlineResources(html, this._blobUrlFiles);
+        html = this._replacePdfEmbedsForBlob(html, this._blobUrlFiles);
         html = this._injectBlobNavigationHandler(html, pagePath);
         this._loadBlobUrlInIframe(html);
 
@@ -562,37 +712,198 @@ export default class PreviewPanelManager {
 
     /**
      * Inject a navigation handler script into HTML for blob URL mode.
-     * Intercepts link clicks to internal pages and sends postMessage to parent.
+     * External links open directly in a new tab. Document/media links and
+     * internal page links send postMessage to parent for handling.
      * @param {string} html - The HTML content
      * @param {string} currentPage - Current page path for relative resolution
      * @returns {string} HTML with navigation handler injected
      */
     _injectBlobNavigationHandler(html, currentPage) {
         const script = `<script>
-document.addEventListener('click', function(e) {
-    var link = e.target.closest('a[href]');
-    if (!link) return;
-    var href = link.getAttribute('href');
-    if (!href) return;
-    // Skip external links, anchors, mailto, javascript, blob, data
-    if (/^(https?:\\/\\/|#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
-    e.preventDefault();
-    // targetOrigin '*' is safe here: this message travels from the blob iframe
-    // to the previewPanel (same window), not to an external parent.
-    window.parent.postMessage({
-        type: 'exe-blob-navigate',
-        href: href,
-        currentPage: ${JSON.stringify(currentPage)}
-    }, '*');
-}, true);
+(function() {
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href) return;
+
+        // Allow anchors, mailto, javascript, blob, data
+        if (/^(#|mailto:|javascript:|blob:|data:)/i.test(href)) return;
+
+        // External links: open directly in new tab
+        if (/^https?:\\/\\//i.test(href)) {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer external');
+            return;
+        }
+
+        // Non-HTML resources (PDF, documents, media, etc.): ask parent to open as blob
+        // Skip images — they may be handled by lightbox/gallery scripts
+        var extMatch = href.match(/\\.([a-z0-9]+)(?:\\?[^#]*)?(#.*)?$/i);
+        if (extMatch && !/^html?$/i.test(extMatch[1]) && !/^(jpe?g|png|gif|svg|webp|avif|ico|bmp|tiff?)$/i.test(extMatch[1])) {
+            e.preventDefault();
+            window.parent.postMessage({
+                type: 'exe-blob-open-document',
+                href: href,
+                currentPage: ${JSON.stringify(currentPage)}
+            }, '*');
+            return;
+        }
+
+        // Internal HTML page: navigate via parent
+        e.preventDefault();
+        window.parent.postMessage({
+            type: 'exe-blob-navigate',
+            href: href,
+            currentPage: ${JSON.stringify(currentPage)}
+        }, '*');
+    }, true);
+})();
 </script>`;
+        // PDF.js embed rendering for blob URL mode: renders [data-exe-pdf-src] placeholders
+        const bp = (window.eXeLearning?.app?.getBasePath?.() || '') + '/';
+        const pdfScript = `<script>
+(function() {
+    function initPdfEmbeds() {
+        var embeds = document.querySelectorAll('[data-exe-pdf-src]');
+        if (embeds.length === 0) return;
+        import(${JSON.stringify(bp)}+'libs/pdfjs/pdf.min.mjs').then(function(m) {
+            m.GlobalWorkerOptions.workerSrc = ${JSON.stringify(bp)}+'libs/pdfjs/pdf.worker.min.mjs';
+            for (var i = 0; i < embeds.length; i++) renderPdfEmbed(m, embeds[i]);
+        }).catch(function(err) {
+            console.warn('[Preview] PDF.js load failed:', err);
+        });
+    }
+    function renderPdfEmbed(pdfjsLib, el) {
+        var src = el.getAttribute('data-exe-pdf-src');
+        if (!src) return;
+        var container = document.createElement('div');
+        container.style.cssText = 'width:'+el.style.width+';height:'+el.style.height+';overflow:auto;background:#525659;position:relative';
+        if (el.className) container.className = el.className;
+
+        var tb = document.createElement('div');
+        tb.className = 'exe-pdf-tb';
+        tb.style.cssText = 'position:sticky;top:0;z-index:10;display:none;align-items:center;gap:4px;' +
+            'padding:4px 8px;background:#323232;color:#d1d1d1;font:13px/1.4 system-ui;' +
+            'box-shadow:0 1px 4px rgba(0,0,0,.5);user-select:none';
+        var btnCss = 'background:none;border:1px solid #555;color:#d1d1d1;padding:2px 8px;border-radius:3px;cursor:pointer;font:inherit;line-height:1.2';
+        var spCss = 'width:1px;height:20px;background:#555;margin:0 2px';
+        tb.innerHTML = '<button class="ep" style="' + btnCss + '" title="Previous">\\u25C0</button>' +
+            '<span><span class="epn">1</span> / <span class="epc">-</span></span>' +
+            '<button class="en" style="' + btnCss + '" title="Next">\\u25B6</button>' +
+            '<span style="' + spCss + '"></span>' +
+            '<button class="ezo" style="' + btnCss + '" title="Zoom out">\\u2212</button>' +
+            '<span class="ezl">100%</span>' +
+            '<button class="ezi" style="' + btnCss + '" title="Zoom in">+</button>' +
+            '<button class="efw" style="' + btnCss + '" title="Fit width">\\u2194</button>' +
+            '<span style="' + spCss + '"></span>' +
+            '<button class="edl" style="' + btnCss + '" title="Download">\\u2913</button>';
+        container.appendChild(tb);
+
+        var pages = document.createElement('div');
+        pages.style.cssText = 'display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px';
+        container.appendChild(pages);
+        var loading = document.createElement('div');
+        loading.textContent = 'Loading PDF\\u2026';
+        loading.style.cssText = 'color:#ccc;font-family:system-ui;text-align:center;padding:1rem';
+        pages.appendChild(loading);
+        el.parentNode.replaceChild(container, el);
+        pdfjsLib.getDocument(src).promise.then(function(pdf) {
+            loading.remove();
+            tb.style.display = 'flex';
+            tb.querySelector('.epc').textContent = pdf.numPages;
+
+            var fp, uv, isc, sc, cs = [];
+            pdf.getPage(1).then(function(page) {
+                fp = page; uv = page.getViewport({scale:1});
+                isc = Math.min((container.clientWidth - 16) / uv.width, 2);
+                sc = isc;
+                return renderAll(sc);
+            });
+
+            function renderAll(s) {
+                sc = s;
+                tb.querySelector('.ezl').textContent = Math.round(s / isc * 100) + '%';
+                var scrollRatio = 0;
+                if (cs.length) {
+                    var sh = container.scrollHeight - container.clientHeight;
+                    if (sh > 0) scrollRatio = container.scrollTop / sh;
+                }
+                pages.innerHTML = ''; cs = [];
+                var chain = Promise.resolve();
+                for (var j = 1; j <= pdf.numPages; j++) {
+                    (function(num) {
+                        chain = chain.then(function() {
+                            return pdf.getPage(num).then(function(pg) {
+                                var vp = pg.getViewport({scale: s});
+                                var c = document.createElement('canvas');
+                                c.style.cssText = 'display:block;box-shadow:0 1px 4px rgba(0,0,0,0.3)';
+                                c.width = vp.width; c.height = vp.height;
+                                pages.appendChild(c); cs.push(c);
+                                return pg.render({canvasContext: c.getContext('2d'), viewport: vp}).promise;
+                            });
+                        });
+                    })(j);
+                }
+                return chain.then(function() {
+                    var newSh = container.scrollHeight - container.clientHeight;
+                    if (newSh > 0) container.scrollTop = scrollRatio * newSh;
+                });
+            }
+
+            container.addEventListener('scroll', function() {
+                var th = tb.offsetHeight + 8;
+                for (var j = 0; j < cs.length; j++) {
+                    if (cs[j].getBoundingClientRect().bottom - container.getBoundingClientRect().top > th) {
+                        tb.querySelector('.epn').textContent = j + 1; break;
+                    }
+                }
+            });
+            tb.querySelector('.ep').onclick = function() {
+                var n = +tb.querySelector('.epn').textContent;
+                if (n > 1 && cs[n - 2]) cs[n - 2].scrollIntoView({behavior:'smooth', block:'start'});
+            };
+            tb.querySelector('.en').onclick = function() {
+                var n = +tb.querySelector('.epn').textContent;
+                if (n < pdf.numPages && cs[n]) cs[n].scrollIntoView({behavior:'smooth', block:'start'});
+            };
+            tb.querySelector('.ezi').onclick = function() { renderAll(sc * 1.25); };
+            tb.querySelector('.ezo').onclick = function() { renderAll(sc / 1.25); };
+            tb.querySelector('.efw').onclick = function() {
+                renderAll(Math.min((container.clientWidth - 16) / uv.width, 2));
+            };
+            tb.querySelector('.edl').onclick = function() {
+                pdf.getData().then(function(d) {
+                    var b = new Blob([d], {type:'application/pdf'});
+                    var u = URL.createObjectURL(b);
+                    var a = document.createElement('a');
+                    a.href = u;
+                    var name = decodeURIComponent((src.split('/').pop() || 'document.pdf').split('?')[0].split('#')[0]);
+                    a.download = name;
+                    a.click();
+                    setTimeout(function() { URL.revokeObjectURL(u); }, 60000);
+                });
+            };
+        }).catch(function(err) {
+            loading.textContent = 'Error loading PDF: ' + err.message;
+            loading.style.color = '#ff6b6b';
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPdfEmbeds);
+    } else {
+        initPdfEmbeds();
+    }
+})();
+</script>`;
+        const allScripts = script + pdfScript;
         // Replace the LAST </body> to avoid matching inside inlined JS string literals
         const lastIndex = html.lastIndexOf('</body>');
         if (lastIndex !== -1) {
-            return html.substring(0, lastIndex) + script + html.substring(lastIndex);
+            return html.substring(0, lastIndex) + allScripts + html.substring(lastIndex);
         }
         // Fallback: append before closing html tag or at end
-        return html + script;
+        return html + allScripts;
     }
 
     /**
@@ -732,6 +1043,67 @@ document.addEventListener('click', function(e) {
         );
 
         return html;
+    }
+
+    /**
+     * Replace embedded PDF elements with blob URL placeholder divs for blob URL mode.
+     * In blob URL mode, relative PDF paths can't resolve from a blob: context.
+     * This creates blob URLs for each PDF and replaces the embed with a
+     * <div data-exe-pdf-src="blob:..."> placeholder that the PDF.js embed script renders.
+     * @param {string} html - The HTML content
+     * @param {Object} files - Files map from blob URL mode
+     * @returns {string} HTML with PDF embeds replaced
+     */
+    _replacePdfEmbedsForBlob(html, files) {
+        // Replace <object data="*.pdf"...>...</object>
+        html = html.replace(
+            /<object([^>]*?)data=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*)>[\s\S]*?<\/object>/gi,
+            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+        );
+
+        // Replace <embed src="*.pdf"...>
+        html = html.replace(
+            /<embed([^>]*?)src=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*?)\/?>/gi,
+            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+        );
+
+        // Replace <iframe src="*.pdf"...>...</iframe>
+        html = html.replace(
+            /<iframe([^>]*?)src=(["'])([^"']*\.pdf(?:[?#][^"']*)?)\2([^>]*)>[\s\S]*?<\/iframe>/gi,
+            (match, pre, _q, src, post) => this._createPdfBlobPlaceholder(files, src, match),
+        );
+
+        return html;
+    }
+
+    /**
+     * Create a blob URL placeholder div for a PDF embed element.
+     * @param {Object} files - Files map
+     * @param {string} src - PDF source path
+     * @param {string} originalHtml - Original element HTML (for dimension extraction)
+     * @returns {string} Placeholder div HTML or original HTML if file not found
+     * @private
+     */
+    _createPdfBlobPlaceholder(files, src, originalHtml) {
+        const content = this._findFileContent(files, src);
+        if (!content) return originalHtml;
+
+        const bytes = content instanceof ArrayBuffer ? new Uint8Array(content)
+            : content instanceof Uint8Array ? content : null;
+        if (!bytes) return originalHtml;
+
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blobUrl = URL.createObjectURL(blob);
+        if (!this._pdfEmbedBlobUrls) this._pdfEmbedBlobUrls = [];
+        this._pdfEmbedBlobUrls.push(blobUrl);
+
+        // Extract dimensions from original element
+        const wMatch = originalHtml.match(/width=(["']?)(\d+(?:px|%)?)\1/i);
+        const hMatch = originalHtml.match(/height=(["']?)(\d+(?:px|%)?)\1/i);
+        const w = wMatch ? wMatch[2] : '100%';
+        const h = hMatch ? hMatch[2] : '600px';
+
+        return `<div data-exe-pdf-src="${blobUrl}" style="width:${w};height:${h}"></div>`;
     }
 
     /**
@@ -1014,6 +1386,12 @@ document.addEventListener('click', function(e) {
                 URL.revokeObjectURL(iframe._blobUrl);
             }
         });
+
+        // Revoke PDF embed blob URLs (from blob URL mode)
+        if (this._pdfEmbedBlobUrls) {
+            this._pdfEmbedBlobUrls.forEach(url => URL.revokeObjectURL(url));
+            this._pdfEmbedBlobUrls = null;
+        }
 
         Logger.log('[PreviewPanel] Destroyed');
     }

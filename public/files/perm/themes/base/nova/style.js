@@ -63,14 +63,12 @@ var myTheme = {
                 $('#exe-client-search-text').focus();
             }
         });
-        if (!this.inIframe()) {
-            // Fixed navigation
-            $('#siteNav').wrap('<div id="sidebar-nav"></div>');
+        // Fixed navigation
+        $('#siteNav').wrap('<div id="sidebar-nav"></div>');
+        myTheme.checkNav();
+        $(window).bind('resize', function () {
             myTheme.checkNav();
-            $(window).bind('resize', function () {
-                myTheme.checkNav();
-            });
-        }
+        });
         // Search form
         this.searchForm();
 

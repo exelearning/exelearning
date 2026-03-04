@@ -495,50 +495,6 @@ global.createMockAssetCache = (assets = []) => ({
 });
 
 // ============================================================================
-// Mock AssetCacheManager Class (for tests that use new AssetCacheManager())
-// ============================================================================
-
-class MockAssetCacheManager {
-  constructor(projectId) {
-    this.projectId = projectId;
-    this._assets = new Map();
-  }
-
-  async init() {
-    return this;
-  }
-
-  async getAllAssets() {
-    return Array.from(this._assets.values());
-  }
-
-  async getAsset(assetId) {
-    return this._assets.get(assetId) || null;
-  }
-
-  async addAsset(blob, metadata) {
-    const assetId = 'mock-asset-' + Math.random().toString(36).substr(2, 9);
-    this._assets.set(assetId, { assetId, blob, metadata });
-    return assetId;
-  }
-
-  async removeAsset(assetId) {
-    this._assets.delete(assetId);
-  }
-
-  async clear() {
-    this._assets.clear();
-  }
-
-  destroy() {
-    this._assets.clear();
-  }
-}
-
-global.AssetCacheManager = MockAssetCacheManager;
-window.AssetCacheManager = MockAssetCacheManager;
-
-// ============================================================================
 // Console Spy Setup (optional)
 // ============================================================================
 

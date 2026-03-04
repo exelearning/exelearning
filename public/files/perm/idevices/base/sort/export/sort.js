@@ -420,6 +420,8 @@ var $eXeOrdena = {
                 $exeDevices.iDevice.gamification.media.playSound(audio);
             }
         });
+
+        $eXeOrdena.setupTouchDragAndDrop(instance);
     },
 
     randomPhrase: function (instance) {
@@ -808,13 +810,15 @@ var $eXeOrdena = {
             }
         }
 
+        if (window.innerWidth <= 500 && fontSize > 16) fontSize = 16;
+
         $text.css({ 'font-size': `${fontSize}px` });
     },
     adjustFontSize: function ($card) {
         const $container = $card.find('.ODNP-EText'),
             $text = $container.find('.ODNP-ETextDinamyc').eq(0),
             minFontSize = 10,
-            maxFontSize = 26,
+            maxFontSize = window.innerWidth <= 500 ? 16 : 26,
             widthc = $container.innerWidth(),
             heightc = $container.innerHeight();
 
@@ -1102,6 +1106,9 @@ var $eXeOrdena = {
         $(`#ordenaValidatePhrase-${instance}`).off('click');
 
         $(window).off('unload.eXeOrdena beforeunload.eXeOrdena');
+
+        $eXeOrdena.removeTouchDragAndDrop(instance);
+        $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
     },
 
     moveCard: function ($dragged, $target, instance) {
@@ -1222,6 +1229,8 @@ var $eXeOrdena = {
                 $eXeOrdena.moveCard($dragged, $target, instance);
             },
         });
+
+        $eXeOrdena.setupTouchPhraseDragAndDrop(instance);
     },
 
     moveCardPharse: function ($dragged, $target, instance) {
@@ -2095,6 +2104,199 @@ var $eXeOrdena = {
                 color: color,
             });
         }
+    },
+
+    setupTouchDragAndDrop: function (instance) {
+        $eXeOrdena.removeTouchDragAndDrop(instance);
+        const mOptions = $eXeOrdena.options[instance];
+        const container = document.querySelector(`#ordenaMultimedia-${instance}`);
+        if (!container) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $draggable = $(element).closest('.ODNP-NewCard');
+            if (!$draggable.length) return;
+            // Respect orderedColumns: header cards (order < gameColumns) are not draggable
+            if (mOptions.orderedColumns) {
+                const ord = parseInt($draggable.find('.ODNP-CardDraw').data('order'), 10);
+                if (ord < mOptions.gameColumns) return;
+            }
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+            touchHelper = $draggable.clone()
+                .addClass('ODNP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 10000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+            const $target = $(elementBelow).closest('.ODNP-NewCard');
+            $(`#ordenaMultimedia-${instance} .ODNP-NewCard`).removeClass('ODNP-Over');
+            if ($target.length && $target[0] !== touchedEl) $target.addClass('ODNP-Over');
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(`#ordenaMultimedia-${instance} .ODNP-NewCard`).removeClass('ODNP-Over');
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $target = $(elementBelow).closest('.ODNP-NewCard');
+            if ($target.length && $target[0] !== touchedEl) {
+                $eXeOrdena.moveCard($(touchedEl), $target, instance);
+            }
+            touchedEl = null;
+        };
+
+        container.addEventListener('touchstart', touchStartHandler, { passive: false });
+        container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        container.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        mOptions._touchDragStart = touchStartHandler;
+        mOptions._touchDragMove = touchMoveHandler;
+        mOptions._touchDragEnd = touchEndHandler;
+        mOptions._touchDragContainer = container;
+    },
+
+    removeTouchDragAndDrop: function (instance) {
+        const mOptions = $eXeOrdena.options && $eXeOrdena.options[instance];
+        if (!mOptions) return;
+        const container = mOptions._touchDragContainer;
+        if (!container) return;
+        if (mOptions._touchDragStart) {
+            container.removeEventListener('touchstart', mOptions._touchDragStart);
+            mOptions._touchDragStart = null;
+        }
+        if (mOptions._touchDragMove) {
+            container.removeEventListener('touchmove', mOptions._touchDragMove);
+            mOptions._touchDragMove = null;
+        }
+        if (mOptions._touchDragEnd) {
+            container.removeEventListener('touchend', mOptions._touchDragEnd);
+            mOptions._touchDragEnd = null;
+        }
+        mOptions._touchDragContainer = null;
+    },
+
+    setupTouchPhraseDragAndDrop: function (instance) {
+        $eXeOrdena.removeTouchPhraseDragAndDrop(instance);
+        const mOptions = $eXeOrdena.options[instance];
+        const container = document.querySelector(`#ordenaPhrasesContainer-${instance}`);
+        if (!container) return;
+
+        let touchedEl = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            if (!mOptions.gameStarted || mOptions.gameOver) return;
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $draggable = $(element).closest('.ODNP-Word');
+            if (!$draggable.length) return;
+            e.preventDefault();
+            touchedEl = $draggable[0];
+            const rect = touchedEl.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+            touchHelper = $draggable.clone()
+                .addClass('ODNP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    height: rect.height + 'px',
+                    'z-index': 10000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedEl) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+            const $target = $(elementBelow).closest('.ODNP-WordTarget');
+            $(`#ordenaPhrasesContainer-${instance} .ODNP-WordTarget`).removeClass('ODNP-WordOver');
+            if ($target.length) $target.addClass('ODNP-WordOver');
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedEl) return;
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(`#ordenaPhrasesContainer-${instance} .ODNP-WordTarget`).removeClass('ODNP-WordOver');
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const $target = $(elementBelow).closest('.ODNP-WordTarget');
+            if ($target.length) {
+                $eXeOrdena.moveCard($(touchedEl), $target, instance);
+            }
+            touchedEl = null;
+        };
+
+        container.addEventListener('touchstart', touchStartHandler, { passive: false });
+        container.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        container.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        mOptions._touchPhraseDragStart = touchStartHandler;
+        mOptions._touchPhraseDragMove = touchMoveHandler;
+        mOptions._touchPhraseDragEnd = touchEndHandler;
+        mOptions._touchPhraseContainer = container;
+    },
+
+    removeTouchPhraseDragAndDrop: function (instance) {
+        const mOptions = $eXeOrdena.options && $eXeOrdena.options[instance];
+        if (!mOptions) return;
+        const container = mOptions._touchPhraseContainer;
+        if (!container) return;
+        if (mOptions._touchPhraseDragStart) {
+            container.removeEventListener('touchstart', mOptions._touchPhraseDragStart);
+            mOptions._touchPhraseDragStart = null;
+        }
+        if (mOptions._touchPhraseDragMove) {
+            container.removeEventListener('touchmove', mOptions._touchPhraseDragMove);
+            mOptions._touchPhraseDragMove = null;
+        }
+        if (mOptions._touchPhraseDragEnd) {
+            container.removeEventListener('touchend', mOptions._touchPhraseDragEnd);
+            mOptions._touchPhraseDragEnd = null;
+        }
+        mOptions._touchPhraseContainer = null;
     },
 };
 $(function () {

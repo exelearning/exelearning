@@ -80,22 +80,46 @@ jobs:
       # Use the Makefile package target
       - name: Package application using Makefile
         env:
-          # GitHub Releases API token for electron-builder
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          # Only set signing secrets if they exist
-          WIN_CSC_LINK: ${{ secrets.CERT_P12 != '' && './windows-cert.pfx' || '' }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # choose publish mode depending on trigger:
           # - when triggered by a release.prereleased -> publish (PUBLISH=always)
           # - when triggered by push/merged PR -> do not publish (PUBLISH=never)
           # - skip publishing on forks
           PUBLISH: ${{ github.event_name == 'release' && github.repository_owner == 'exelearning' && 'always' || 'never' }}
         run: |
+          # GitHub Releases API token for electron-builder
+          export GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+
+          if [ "${{ github.repository_owner }}" = "exelearning" ]; then
+            echo "Official repo detected. Enabling signing/notarization only when secrets are available."
+
+            if [ -n "${{ secrets.MAC_CERT_P12 }}" ]; then
+              export CSC_LINK="${{ secrets.MAC_CERT_P12 }}"
+            fi
+            if [ -n "${{ secrets.MAC_CSC_KEY_PASSWORD }}" ]; then
+              export CSC_KEY_PASSWORD="${{ secrets.MAC_CSC_KEY_PASSWORD }}"
+            fi
+            if [ -n "${{ secrets.APPLE_ID }}" ]; then
+              export APPLE_ID="${{ secrets.APPLE_ID }}"
+            fi
+            if [ -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" ]; then
+              export APPLE_APP_SPECIFIC_PASSWORD="${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}"
+            fi
+            if [ -n "${{ secrets.APPLE_TEAM_ID }}" ]; then
+              export APPLE_TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
+            fi
+            if [ -n "${{ secrets.CERT_P12 }}" ]; then
+              export WIN_CSC_LINK="./windows-cert.pfx"
+            fi
+            if [ -n "${{ secrets.CSC_KEY_PASSWORD }}" ]; then
+              export WIN_CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
+            fi
+          else
+            echo "Fork detected. Building unsigned installers (no macOS signing/notarization)."
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            export SKIP_NOTARIZE=1
+            unset CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+
           # Run the package command with the version
           make package VERSION=${{ steps.get_version.outputs.version }}  PUBLISH=${{ env.PUBLISH }}
         shell: bash
