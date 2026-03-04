@@ -126,31 +126,29 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // Click on second page link to navigate to subpage
         await navLinks.nth(1).click();
-        await page.waitForTimeout(500);
 
-        // 8. Click on search button
+        // 8. Click on search button - wait for the new page to load first
         const searchToggler = iframe.locator('#searchBarTogger');
-        await searchToggler.waitFor({ state: 'visible', timeout: 10000 });
+        await searchToggler.waitFor({ state: 'visible', timeout: 15000 });
         await searchToggler.click();
-        await page.waitForTimeout(500);
 
         // 9. Enter search term and search
         const searchInput = iframe.locator('#exe-client-search-text');
         await searchInput.waitFor({ state: 'visible', timeout: 5000 });
         await searchInput.fill('SEARCHTERM');
         await searchInput.press('Enter');
-        await page.waitForTimeout(500);
 
-        // 10. Verify search results appear
+        // 10. Verify search results appear - wait for at least one result link
         const searchResults = iframe.locator('#exe-client-search-results-list a');
+        await searchResults.first().waitFor({ timeout: 10000 });
         const resultsCount = await searchResults.count();
         expect(resultsCount).toBeGreaterThanOrEqual(1);
 
         // 11. Click on a search result (first one)
         await searchResults.first().click();
-        await page.waitForTimeout(500);
 
-        // 12. Verify navigation worked - should NOT show "File not found" or 404
+        // 12. Verify navigation worked - wait for the new page to load, then check no errors
+        await iframe.locator('article').first().waitFor({ timeout: 15000 });
         const bodyAfterClick = await iframe.locator('body').innerText();
         expect(bodyAfterClick).not.toContain('File not found');
         expect(bodyAfterClick).not.toContain('Cannot GET');
@@ -162,21 +160,23 @@ test.describe('Search in preview - subpage navigation', () => {
 
         // 13. Try clicking on another result from this page (if multiple results exist)
         if (resultsCount >= 2) {
-            await searchToggler.click();
-            await page.waitForTimeout(500);
+            const searchToggler2 = iframe.locator('#searchBarTogger');
+            await searchToggler2.waitFor({ state: 'visible', timeout: 10000 });
+            await searchToggler2.click();
 
             const searchInput2 = iframe.locator('#exe-client-search-text');
+            await searchInput2.waitFor({ state: 'visible', timeout: 5000 });
             await searchInput2.fill('SEARCHTERM');
             await searchInput2.press('Enter');
-            await page.waitForTimeout(500);
 
             const searchResults2 = iframe.locator('#exe-client-search-results-list a');
+            await searchResults2.first().waitFor({ timeout: 10000 });
 
             // Click on second result
             await searchResults2.nth(1).click();
-            await page.waitForTimeout(500);
 
-            // Verify navigation worked again - no error page
+            // Verify navigation worked again - wait for page load
+            await iframe.locator('article').first().waitFor({ timeout: 15000 });
             const bodyAfterClick2 = await iframe.locator('body').innerText();
             expect(bodyAfterClick2).not.toContain('File not found');
             expect(bodyAfterClick2).not.toContain('404');
