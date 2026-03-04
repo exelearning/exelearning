@@ -268,11 +268,11 @@ describe('FileSystemResourceProvider', () => {
 
         it('should include entire directory when isDirectory pattern is passed', async () => {
             // Create a library directory with multiple files (like exe_atools)
-            await fs.ensureDir(path.join(testDir, 'app', 'common', 'exe_atools'));
-            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.js'), '/* JS */');
-            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.css'), '/* CSS */');
-            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'exe_atools.png'), 'PNG');
-            await fs.writeFile(path.join(testDir, 'app', 'common', 'exe_atools', 'font.woff2'), 'FONT');
+            await fs.ensureDir(path.join(testDir, 'libs', 'exe_atools'));
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.js'), '/* JS */');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.css'), '/* CSS */');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'exe_atools.png'), 'PNG');
+            await fs.writeFile(path.join(testDir, 'libs', 'exe_atools', 'font.woff2'), 'FONT');
 
             // Pass a pattern with isDirectory: true
             const patterns = [

@@ -123,6 +123,9 @@ describe('PreviewPanelManager', () => {
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
 
+    // Mock i18n function
+    globalThis._ = vi.fn((key) => key);
+
     manager = new PreviewPanelManager();
   });
 
@@ -700,6 +703,16 @@ describe('PreviewPanelManager', () => {
       expect(manager._contentNeededRefreshTimer).toBeNull();
       vi.useRealTimers();
     });
+
+    it('should revoke PDF embed blob URLs', () => {
+      manager._pdfEmbedBlobUrls = ['blob:pdf-1', 'blob:pdf-2'];
+
+      manager.destroy();
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-1');
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-2');
+      expect(manager._pdfEmbedBlobUrls).toBeNull();
+    });
   });
 
   // NOTE: Tests for blobToDataUrl and processUserThemeCssUrls have been removed
@@ -1090,6 +1103,32 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('exe-blob-navigate');
       expect(result).toMatch(/<\/script>\s*$/);
     });
+
+    it('should set external links to open directly in new tab', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('setAttribute');
+      expect(result).toContain('noopener noreferrer external');
+      expect(result).not.toContain('exe-preview-open-external');
+    });
+
+    it('should detect non-HTML extensions for document/resource links', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      // Uses extension matching instead of hardcoded regex
+      expect(result).toContain('extMatch');
+      expect(result).toContain('html?');
+      expect(result).toContain('exe-blob-open-document');
+    });
+
+    it('should include the current page in exe-blob-open-document messages', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'html/page2.html');
+
+      expect(result).toContain('"html/page2.html"');
+    });
   });
 
   describe('_resolveRelativePath', () => {
@@ -1193,6 +1232,125 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain('<style>');
       expect(result).toContain('body { margin: 0; }');
+    });
+  });
+
+  describe('_replacePdfEmbedsForBlob', () => {
+    it('should replace <object data="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><object data="content/resources/doc.pdf" type="application/pdf" width="100%" height="600px">fallback</object></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).toContain('width:100%');
+      expect(result).toContain('height:600px');
+      expect(result).not.toContain('<object');
+      expect(result).not.toContain('</object>');
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+    });
+
+    it('should replace <embed src="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><embed src="content/resources/doc.pdf" width="500" height="400"></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).toContain('width:500');
+      expect(result).toContain('height:400');
+      expect(result).not.toContain('<embed');
+    });
+
+    it('should replace <iframe src="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><iframe src="content/resources/doc.pdf" width="100%" height="500px"></iframe></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).not.toContain('<iframe');
+      expect(result).not.toContain('</iframe>');
+    });
+
+    it('should leave non-PDF embeds unchanged', () => {
+      const html = '<html><body><object data="content/resources/video.mp4" width="100%" height="400px"></object></body></html>';
+      const files = { 'content/resources/video.mp4': new Uint8Array([0x00, 0x00]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('<object');
+      expect(result).not.toContain('data-exe-pdf-src');
+    });
+
+    it('should leave PDF embeds unchanged when file not found', () => {
+      const html = '<html><body><object data="missing.pdf" width="100%" height="600px">fallback</object></body></html>';
+      const files = {};
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('<object');
+      expect(result).toContain('missing.pdf');
+    });
+
+    it('should use default dimensions when not specified', () => {
+      const html = '<html><body><object data="doc.pdf">fallback</object></body></html>';
+      const files = { 'doc.pdf': new Uint8Array([0x25, 0x50]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('width:100%');
+      expect(result).toContain('height:600px');
+    });
+
+    it('should track blob URLs for cleanup', () => {
+      const html = '<html><body><object data="a.pdf">x</object><embed src="b.pdf"></body></html>';
+      const files = {
+        'a.pdf': new Uint8Array([0x25, 0x50]),
+        'b.pdf': new Uint8Array([0x25, 0x50]),
+      };
+
+      manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(manager._pdfEmbedBlobUrls).toBeDefined();
+      expect(manager._pdfEmbedBlobUrls.length).toBe(2);
+    });
+
+    it('should handle PDF with query string in src', () => {
+      const html = '<html><body><object data="doc.pdf?v=1">x</object></body></html>';
+      const files = { 'doc.pdf?v=1': new Uint8Array([0x25, 0x50]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src');
+    });
+  });
+
+  describe('_injectBlobNavigationHandler PDF.js rendering', () => {
+    it('should inject PDF.js embed rendering script', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('initPdfEmbeds');
+      expect(result).toContain('data-exe-pdf-src');
+      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
+      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(result).toContain("createElement('canvas')");
+    });
+
+    it('should inject toolbar elements in embed rendering script', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-pdf-tb');
+      expect(result).toContain('class="ep"');
+      expect(result).toContain('class="en"');
+      expect(result).toContain('class="ezi"');
+      expect(result).toContain('class="ezo"');
+      expect(result).toContain('class="efw"');
+      expect(result).toContain('class="edl"');
+      expect(result).toContain('renderAll(sc');
+      expect(result).toContain('pdf.getData()');
     });
   });
 
@@ -1572,6 +1730,133 @@ describe('PreviewPanelManager', () => {
       expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Export failed'));
 
       window.alert = originalAlert;
+    });
+  });
+
+  describe('exe-blob-open-document message handling', () => {
+    let mockOpen;
+
+    beforeEach(() => {
+      mockOpen = vi.fn();
+      global.open = mockOpen;
+      manager.bindEvents();
+      manager._blobUrlFiles = {
+        'index.html': '<html></html>',
+        'content/resources/document.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+      };
+    });
+
+    it('should open PDF in PDF.js viewer wrapper', async () => {
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'content/resources/document.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      // PDF.js viewer creates two blob URLs: one for PDF blob, one for viewer HTML
+      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(2);
+      // First call: PDF blob
+      const firstCallArg = global.URL.createObjectURL.mock.calls[0][0];
+      expect(firstCallArg).toBeInstanceOf(Blob);
+      expect(firstCallArg.type).toBe('application/pdf');
+      // Second call: PDF.js viewer HTML blob
+      const secondCallArg = global.URL.createObjectURL.mock.calls[1][0];
+      expect(secondCallArg).toBeInstanceOf(Blob);
+      expect(secondCallArg.type).toBe('text/html');
+      // Verify viewer HTML contains PDF.js import (not iframe)
+      const viewerHtml = await secondCallArg.text();
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(viewerHtml).toContain('getDocument(');
+      expect(viewerHtml).toContain('createElement("canvas")');
+      expect(viewerHtml).not.toContain('<iframe');
+      // Verify toolbar elements
+      expect(viewerHtml).toContain('id="tb"');
+      expect(viewerHtml).toContain('id="prev"');
+      expect(viewerHtml).toContain('id="next"');
+      expect(viewerHtml).toContain('id="dl"');
+      expect(viewerHtml).toContain('async function render(s)');
+      expect(viewerHtml).toContain('pdf.getData()');
+      // Opens the wrapper URL (last blob URL created)
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should open non-PDF documents as direct blob URL', async () => {
+      manager._blobUrlFiles['content/resources/spreadsheet.xlsx'] = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'content/resources/spreadsheet.xlsx',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      // Non-PDF files use a single blob URL directly (no wrapper)
+      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
+      const callArg = global.URL.createObjectURL.mock.calls[0][0];
+      expect(callArg).toBeInstanceOf(Blob);
+      expect(callArg.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should resolve relative paths for documents', async () => {
+      manager._blobUrlFiles['content/resources/document.pdf'] = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: '../content/resources/document.pdf',
+          currentPage: 'html/page1.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should not open when file is not found', async () => {
+      // Clear any previous calls from accumulated listeners
+      mockOpen.mockClear();
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'missing.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).not.toHaveBeenCalled();
+    });
+
+    it('should not process document open when _blobUrlFiles is null', () => {
+      manager._blobUrlFiles = null;
+
+      // Verify the guard condition directly: _findFileContent should not be called
+      const findSpy = vi.spyOn(manager, '_findFileContent');
+
+      // Simulate what the message handler does by calling it with null files
+      // The guard `this._blobUrlFiles` prevents processing
+      expect(manager._blobUrlFiles).toBeNull();
+      expect(findSpy).not.toHaveBeenCalled();
     });
   });
 

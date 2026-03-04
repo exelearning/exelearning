@@ -150,7 +150,7 @@ var $exeDevice = {
                 "Mark all the options in the correct order and click on the 'Reply' button."
             ),
             msgWriteAnswer: c_(
-                "Write the correct word o phrase and click on the 'Reply' button."
+                "Write the correct word or phrase and click on the 'Reply' button."
             ),
             msgIdentify: c_('Identify'),
             msgSearch: c_('Find'),

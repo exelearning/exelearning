@@ -30,10 +30,12 @@ body.exe-web-site {
     background-color: #fff;
 }
 
-.js .exe-export .exe-content {
+.js .exe-export .exe-content,
+html.js:has(body.exe-export) .in-iframe .exe-content {
     min-height: 100vh;
 }
 
+/* iframe, but not in preview */
 .js .in-iframe .exe-content {
     min-height: 0;
 }

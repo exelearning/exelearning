@@ -63,9 +63,11 @@ var $exeDevice = {
             return null;
         }
 
-        // Check if we have exe-text-activity structure OR simple feedback structure
+        // Check if we have exe-text-activity structure OR simple feedback structure.
+        // Use structural markers (js-feedback + iDevice_buttons) instead of button class names
+        // so both legacy eXe 2.9 (feedbackbutton) and modern (feedbacktooglebutton) formats are detected.
         const hasActivityStructure = html.includes('exe-text-activity');
-        const hasSimpleFeedback = html.includes('feedback') && html.includes('feedbacktooglebutton');
+        const hasSimpleFeedback = html.includes('js-feedback') && html.includes('iDevice_buttons');
 
         if (!hasActivityStructure && !hasSimpleFeedback) {
             return null;
@@ -97,8 +99,9 @@ var $exeDevice = {
             }
         }
 
-        // Extract feedback button text
-        const feedbackButton = tempDiv.querySelector('.feedbacktooglebutton');
+        // Extract feedback button text — try both modern (feedbacktooglebutton) and
+        // legacy eXe 2.9 (feedbackbutton) class names, plus any other combined variants.
+        const feedbackButton = tempDiv.querySelector('.feedbacktooglebutton, .feedbackbutton');
         if (feedbackButton) {
             result[this.feedbakInputId] = feedbackButton.value || feedbackButton.getAttribute('value') || '';
         }
@@ -330,11 +333,13 @@ var $exeDevice = {
 
         let data = { ...this.idevicePreviousData };
 
-        // Check for embedded task info or simple feedback in textTextarea
-        // extractTaskInfoFromHtml handles both exe-text-activity and simple feedback formats
+        // Check for embedded task info or simple feedback in textTextarea.
+        // extractTaskInfoFromHtml handles both exe-text-activity (new) and simple feedback (legacy).
+        // Use structural markers to detect both modern (feedbacktooglebutton) and
+        // legacy eXe 2.9 (feedbackbutton) formats without relying on button class names.
         const textContent = data[this.textareaId];
-        if (textContent && (textContent.includes('exe-text-activity') || 
-            (textContent.includes('feedback') && textContent.includes('feedbacktooglebutton')))) {
+        if (textContent && (textContent.includes('exe-text-activity') ||
+            (textContent.includes('js-feedback') && textContent.includes('iDevice_buttons')))) {
             const extractedInfo = this.extractTaskInfoFromHtml(textContent);
             if (extractedInfo) {
                 // Merge extracted info into data (extracted values take precedence)
