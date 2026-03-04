@@ -660,7 +660,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 `<span class="exe-prop-description">${safeDesc}</span>`,
             );
             html = html.replace(
-                /<span class="exe-prop-license[^>]*>.*?<\/span>/g,
+                /<span class="exe-prop-license[^>]*>[\s\S]*?(?=<\/td>|<\/p>|<\/div>|<\/li>|$)/g,
                 `<span class="exe-prop-license">${safeLicenseHtml}</span>`,
             );
         }
@@ -996,10 +996,10 @@ ${userFooterHtml}</div></footer>`;
 </header>
 <div class="page-content">
 ${this.renderPageContent(page, '', projectTitle, undefined, {
-    author: options.author,
-    description: options.description,
-    license: options.license,
-})}
+                author: options.author,
+                description: options.description,
+                license: options.license,
+            })}
 </div>
 </section>\n`;
         }
