@@ -419,15 +419,25 @@ export class FileSystemResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch the raw content of `common_i18n.js` (the i18n template with c_("…") calls).
-     * @returns Template file content, or empty string if the file is not found
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Reads from `public/app/common/i18n/common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
      */
-    async fetchI18nTemplate(): Promise<string> {
-        const templatePath = path.join(this.publicDir, 'app', 'common', 'common_i18n.js');
-        if (await fs.pathExists(templatePath)) {
-            return fs.readFile(templatePath, 'utf-8');
+    async fetchI18nFile(language: string): Promise<string> {
+        const i18nDir = path.join(this.publicDir, 'app', 'common', 'i18n');
+        const lang = language.split('-')[0];
+
+        // Try exact language first, then base language, then English
+        for (const candidate of [language, lang, 'en']) {
+            const filePath = path.join(i18nDir, `common_i18n.${candidate}.js`);
+            if (await fs.pathExists(filePath)) {
+                return fs.readFile(filePath, 'utf-8');
+            }
         }
-        console.warn('[FileSystemResourceProvider] common_i18n.js template not found at:', templatePath);
+
+        console.warn('[FileSystemResourceProvider] common_i18n.{lang}.js not found for:', language);
         return '';
     }
 

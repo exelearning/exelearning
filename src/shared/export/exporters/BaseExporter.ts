@@ -20,7 +20,6 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 import { deriveFilenameFromMime, getExtensionFromMimeType } from '../../../config';
 
 /**
@@ -83,18 +82,12 @@ export abstract class BaseExporter {
     // =========================================================================
 
     /**
-     * Generate the `common_i18n.js` content for the given export language.
-     *
-     * Reads the template (`common_i18n.js` with `c_("…")` calls) and XLF
-     * translations from the resource provider, then replaces each call with
-     * the translated string (or the English source if no translation exists).
+     * Fetch the pre-built, pre-translated `common_i18n.js` content for the given language.
+     * The file is generated at build time by `scripts/build-i18n-bundles.js` and contains
+     * resolved string literals (no c_() calls) ready to include in the export ZIP.
      */
     protected async generateI18nContent(language: string): Promise<string> {
-        const [templateContent, translations] = await Promise.all([
-            this.resources.fetchI18nTemplate(),
-            this.resources.fetchI18nTranslations(language),
-        ]);
-        return generateI18nScript(templateContent, translations);
+        return this.resources.fetchI18nFile(language);
     }
 
     /**

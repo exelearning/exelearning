@@ -177,7 +177,7 @@ class MockResourceProvider implements ResourceProvider {
         return type;
     }
 
-    async fetchI18nTemplate(): Promise<string> {
+    async fetchI18nFile(_language: string): Promise<string> {
         return '';
     }
 

@@ -136,14 +136,11 @@ describe('Locale translations', () => {
   });
 
   describe('refreshI18nGlobals', () => {
-    const SAMPLE_TEMPLATE = `$exe_i18n = {
-    "previous": c_("Previous"),
-    "next": c_("Next"),
-    "block": c_("block")
-};`;
+    // Pre-built file: c_() already resolved to translated strings
+    const PREBUILT_ES = `$exe_i18n = { "previous": "Anterior", "next": "Siguiente", "block": "bloque" };`;
+    const PREBUILT_EN = `$exe_i18n = { "previous": "Previous", "next": "Next", "block": "block" };`;
 
     beforeEach(() => {
-      // Set up window.eXeLearning for URL construction
       window.eXeLearning = { version: 'v1.0.0', config: { basePath: '' } };
     });
 
@@ -152,12 +149,9 @@ describe('Locale translations', () => {
       delete window.$exe_i18n;
     });
 
-    it('should fetch the template and set $exe_i18n with content translations', async () => {
-      locale.c_strings = { translations: { Previous: 'Anterior', Next: 'Siguiente', block: 'bloque' } };
-      vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        text: async () => SAMPLE_TEMPLATE,
-      });
+    it('should fetch pre-built file and execute it to set $exe_i18n', async () => {
+      locale._contentLang = 'es';
+      vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
 
       await locale.refreshI18nGlobals();
 
@@ -166,33 +160,28 @@ describe('Locale translations', () => {
       expect(window.$exe_i18n.block).toBe('bloque');
     });
 
-    it('should fall back to English source strings when no content translations exist', async () => {
-      locale.c_strings = {};
-      vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        text: async () => SAMPLE_TEMPLATE,
-      });
+    it('should use contentLang derived from loadContentTranslationsStrings', async () => {
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+      await locale.refreshI18nGlobals();
+
+      expect(mockFetch).toHaveBeenCalledWith('/v1.0.0/app/common/i18n/common_i18n.es.js');
+    });
+
+    it('should fall back to English when locale file returns 404', async () => {
+      locale._contentLang = 'fr';
+      vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({ ok: true, text: async () => PREBUILT_EN });
 
       await locale.refreshI18nGlobals();
 
       expect(window.$exe_i18n.previous).toBe('Previous');
-      expect(window.$exe_i18n.next).toBe('Next');
     });
 
-    it('should cache the template and not re-fetch on subsequent calls', async () => {
-      locale.c_strings = {};
-      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        text: async () => SAMPLE_TEMPLATE,
-      });
-
-      await locale.refreshI18nGlobals();
-      await locale.refreshI18nGlobals();
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
-
-    it('should warn and return early when fetch fails', async () => {
+    it('should warn and return early when both fetches fail', async () => {
+      locale._contentLang = 'fr';
       vi.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 404 });
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -204,28 +193,22 @@ describe('Locale translations', () => {
 
     it('should construct URL with version prefix when version is set', async () => {
       window.eXeLearning = { version: 'v2.0.0', config: { basePath: '/app' } };
-      locale.c_strings = {};
-      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        text: async () => SAMPLE_TEMPLATE,
-      });
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
 
       await locale.refreshI18nGlobals();
 
-      expect(mockFetch).toHaveBeenCalledWith('/app/v2.0.0/app/common/common_i18n.js');
+      expect(mockFetch).toHaveBeenCalledWith('/app/v2.0.0/app/common/i18n/common_i18n.es.js');
     });
 
     it('should construct URL without version when version is empty', async () => {
       window.eXeLearning = { version: '', config: { basePath: '' } };
-      locale.c_strings = {};
-      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        text: async () => SAMPLE_TEMPLATE,
-      });
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
 
       await locale.refreshI18nGlobals();
 
-      expect(mockFetch).toHaveBeenCalledWith('/app/common/common_i18n.js');
+      expect(mockFetch).toHaveBeenCalledWith('/app/common/i18n/common_i18n.es.js');
     });
   });
 

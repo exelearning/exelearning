@@ -16,7 +16,7 @@ interface MockResourceFetcherInterface {
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
-    fetchI18nTemplate(): Promise<string | null>;
+    fetchI18nFile(language: string): Promise<string | null>;
     fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
@@ -114,19 +114,19 @@ class MockResourceFetcher implements MockResourceFetcherInterface {
         return this.globalFonts.get(fontId) || new Map();
     }
 
-    private i18nTemplate: string | null = null;
+    private i18nFile: string | null = null;
     private i18nTranslations: Record<string, string> = {};
 
-    setI18nTemplate(template: string | null): void {
-        this.i18nTemplate = template;
+    setI18nFile(content: string | null): void {
+        this.i18nFile = content;
     }
 
     setI18nTranslations(translations: Record<string, string>): void {
         this.i18nTranslations = translations;
     }
 
-    async fetchI18nTemplate(): Promise<string | null> {
-        return this.i18nTemplate;
+    async fetchI18nFile(_language: string): Promise<string | null> {
+        return this.i18nFile;
     }
 
     async fetchI18nTranslations(_language: string): Promise<Record<string, string>> {
@@ -644,18 +644,18 @@ describe('BrowserResourceProvider', () => {
         });
     });
 
-    describe('fetchI18nTemplate', () => {
+    describe('fetchI18nFile', () => {
         it('should return empty string when fetcher returns null', async () => {
-            mockFetcher.setI18nTemplate(null);
-            const result = await provider.fetchI18nTemplate();
+            mockFetcher.setI18nFile(null);
+            const result = await provider.fetchI18nFile('es');
             expect(result).toBe('');
         });
 
-        it('should return template content from fetcher', async () => {
-            const template = '$exe_i18n = { "previous": c_("Previous") };';
-            mockFetcher.setI18nTemplate(template);
-            const result = await provider.fetchI18nTemplate();
-            expect(result).toBe(template);
+        it('should return pre-built file content from fetcher', async () => {
+            const content = '$exe_i18n = { "previous": "Anterior", "next": "Siguiente" };';
+            mockFetcher.setI18nFile(content);
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe(content);
         });
     });
 

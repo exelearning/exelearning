@@ -213,14 +213,18 @@ export interface ResourceProvider {
     fetchGlobalFontFiles(fontName: string): Promise<Map<string, Uint8Array> | null>;
 
     /**
-     * Fetch the raw content of `common_i18n.js` (the i18n template with c_("…") calls).
-     * @returns Template file content, or empty string if not available
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Returns the content of `common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Resolved JS content (no c_() calls), ready to add to the export ZIP
      */
-    fetchI18nTemplate(): Promise<string>;
+    fetchI18nFile(language: string): Promise<string>;
 
     /**
      * Fetch i18n translations for a specific language as a source→target Map.
      * Falls back to an empty Map (which causes English source strings to be used).
+     * Used for resolving nav button labels (previous/next) at export time.
      * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
      * @returns Map<englishSource, translatedTarget>
      */

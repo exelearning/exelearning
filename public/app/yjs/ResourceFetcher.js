@@ -1221,21 +1221,34 @@ class ResourceFetcher {
   // =========================================================================
 
   /**
-   * Fetch the raw content of `common_i18n.js` (the i18n template with c_("…") calls).
-   * Works in both server and static mode (the file is always present in the app/).
-   * @returns {Promise<string|null>} Template content or null on failure
+   * Fetch the pre-built, pre-translated i18n JS file for the given language.
+   * Loads `app/common/i18n/common_i18n.{lang}.js` (generated at build time).
+   * Falls back to English if the locale file is not available.
+   * @param {string} language - BCP-47 language code (e.g., 'es', 'eu')
+   * @returns {Promise<string|null>} Resolved JS content or null on failure
    */
-  async fetchI18nTemplate() {
-    const url = `${this.basePath}/app/common/common_i18n.js`;
+  async fetchI18nFile(language) {
+    const lang = (language || 'en').split('-')[0];
+    const url = `${this.basePath}/app/common/i18n/common_i18n.${lang}.js`;
     try {
       const response = await fetch(url);
       if (!response.ok) {
-        console.warn(`[ResourceFetcher] Could not fetch i18n template: ${response.status}`);
+        // Fall back to English
+        if (lang !== 'en') {
+          const enUrl = `${this.basePath}/app/common/i18n/common_i18n.en.js`;
+          try {
+            const enResponse = await fetch(enUrl);
+            if (enResponse.ok) return enResponse.text();
+          } catch {
+            // ignore
+          }
+        }
+        console.warn(`[ResourceFetcher] Could not fetch i18n file for '${lang}': ${response.status}`);
         return null;
       }
       return response.text();
     } catch (e) {
-      console.warn('[ResourceFetcher] Failed to fetch i18n template:', e);
+      console.warn('[ResourceFetcher] Failed to fetch i18n file:', e);
       return null;
     }
   }

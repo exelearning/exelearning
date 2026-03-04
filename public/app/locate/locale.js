@@ -4,8 +4,8 @@ export default class Locale {
         this.lang = null;
         this.strings = {};
         this.c_strings = {};
-        /** Cached template text of common_i18n.js (fetched once, reused on language changes) */
-        this._i18nTemplate = null;
+        /** Content language used for the last refreshI18nGlobals() call */
+        this._contentLang = null;
         window._ = (s, idevice) => {
             // If idevice is passed, use getTranslation with iDevice support
             // Otherwise, use getGUITranslation (which has special processing: ~prefix, \\/)
@@ -35,6 +35,7 @@ export default class Locale {
     }
 
     async loadContentTranslationsStrings(lang) {
+        this._contentLang = lang;
         // Use ApiCallManager which handles both static and server modes internally
         // Result structure: { translations: { "key": "value", ... }, count?: number }
         const result = await this.app.api.getTranslations(lang);
@@ -105,46 +106,51 @@ export default class Locale {
     }
 
     /**
-     * Fetch and execute `common_i18n.js` with the current content-language translations.
+     * Load and execute the pre-built i18n JS file for the current content language.
      *
-     * Called after `loadContentTranslationsStrings()` so that `$exe_i18n` reflects the
-     * project's content language (e.g. Spanish) rather than English defaults.
-     * On language changes the method is called again; the template is cached after the
-     * first fetch.
+     * The file `app/common/i18n/common_i18n.{lang}.js` is generated at build time
+     * by `scripts/build-i18n-bundles.js` with all c_() calls already resolved to
+     * translated strings. This works in both server and static modes.
+     *
+     * Called after `loadContentTranslationsStrings()` so that `$exe_i18n` reflects
+     * the project's content language (e.g. Spanish) rather than English defaults.
      */
     async refreshI18nGlobals() {
-        if (!this._i18nTemplate) {
-            const version = window.eXeLearning?.version || '';
-            const basePath = window.eXeLearning?.config?.basePath || '';
-            const url = version
-                ? `${basePath}/${version}/app/common/common_i18n.js`
-                : `${basePath}/app/common/common_i18n.js`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn('[Locale] Failed to fetch common_i18n.js template:', response.status);
-                    return;
+        const lang = (this._contentLang || this.lang || 'en').split('-')[0];
+        const version = window.eXeLearning?.version || '';
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        const base = version ? `${basePath}/${version}` : basePath;
+        const url = `${base}/app/common/i18n/common_i18n.${lang}.js`;
+
+        let content = null;
+        try {
+            const response = await fetch(url);
+            if (response.ok) {
+                content = await response.text();
+            } else if (lang !== 'en') {
+                // Fall back to English
+                const enUrl = `${base}/app/common/i18n/common_i18n.en.js`;
+                try {
+                    const enResponse = await fetch(enUrl);
+                    if (enResponse.ok) content = await enResponse.text();
+                } catch {
+                    // ignore
                 }
-                this._i18nTemplate = await response.text();
-            } catch (e) {
-                console.warn('[Locale] Error fetching common_i18n.js:', e);
+            }
+            if (!content) {
+                console.warn('[Locale] Failed to fetch common_i18n file:', response.status);
                 return;
             }
+        } catch (e) {
+            console.warn('[Locale] Error fetching common_i18n file:', e);
+            return;
         }
 
-        // Resolve every c_("English source") call to the translated literal string.
-        // This is the same substitution the export pipeline applies, keeping workarea
-        // and export behaviour consistent.
-        const resolved = this._i18nTemplate.replace(
-            /c_\("((?:[^"\\]|\\.)*)"\)/g,
-            (_, source) => JSON.stringify(this.getContentTranslation(source))
-        );
-
         // Execute in global scope so that the implicit `$exe_i18n = {...}` assignment
-        // becomes a window property.  new Function() runs in non-strict mode and
+        // becomes a window property. new Function() runs in non-strict mode and
         // treats undeclared assignments as globals, matching <script> tag behaviour.
         // eslint-disable-next-line no-new-func
-        new Function(resolved)();
+        new Function(content)();
     }
 
     /**

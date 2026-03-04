@@ -549,26 +549,48 @@ describe('FileSystemResourceProvider', () => {
         });
     });
 
-    describe('fetchI18nTemplate', () => {
-        it('should return empty string when common_i18n.js does not exist', async () => {
-            const emptyDir = path.join(os.tmpdir(), `test-i18n-empty-${Date.now()}`);
-            await fs.ensureDir(emptyDir);
-            try {
-                const emptyProvider = new FileSystemResourceProvider(emptyDir);
-                const template = await emptyProvider.fetchI18nTemplate();
-                expect(template).toBe('');
-            } finally {
-                await fs.remove(emptyDir);
-            }
+    describe('fetchI18nFile', () => {
+        let i18nDir: string;
+
+        beforeEach(async () => {
+            i18nDir = path.join(testDir, 'app', 'common', 'i18n');
+            await fs.ensureDir(i18nDir);
         });
 
-        it('should return template content when common_i18n.js exists', async () => {
-            const templateContent = '$exe_i18n = { "previous": c_("Previous") };';
-            await fs.writeFile(path.join(testDir, 'app', 'common', 'common_i18n.js'), templateContent);
+        afterEach(async () => {
+            await fs.remove(i18nDir);
+        });
 
-            const template = await provider.fetchI18nTemplate();
+        it('should return empty string when no i18n file exists', async () => {
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe('');
+        });
 
-            expect(template).toBe(templateContent);
+        it('should return pre-built file content for the requested language', async () => {
+            const content = '$exe_i18n = { "previous": "Anterior", "next": "Siguiente" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.es.js'), content);
+
+            const result = await provider.fetchI18nFile('es');
+
+            expect(result).toBe(content);
+        });
+
+        it('should fall back to English when locale file is not found', async () => {
+            const enContent = '$exe_i18n = { "previous": "Previous", "next": "Next" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.en.js'), enContent);
+
+            const result = await provider.fetchI18nFile('fr');
+
+            expect(result).toBe(enContent);
+        });
+
+        it('should fall back to base language before English', async () => {
+            const ptContent = '$exe_i18n = { "previous": "Anterior", "next": "Próximo" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.pt.js'), ptContent);
+
+            const result = await provider.fetchI18nFile('pt-BR');
+
+            expect(result).toBe(ptContent);
         });
     });
 

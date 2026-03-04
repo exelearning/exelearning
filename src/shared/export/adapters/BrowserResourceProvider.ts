@@ -30,7 +30,7 @@ interface ResourceFetcherInterface {
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
-    fetchI18nTemplate(): Promise<string | null>;
+    fetchI18nFile(language: string): Promise<string | null>;
     fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
@@ -211,11 +211,13 @@ export class BrowserResourceProvider implements ResourceProvider {
     }
 
     /**
-     * Fetch the raw content of `common_i18n.js` (the i18n template with c_("…") calls).
-     * @returns Template file content, or empty string if not available
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Delegates to ResourceFetcher which fetches `app/common/i18n/common_i18n.{lang}.js`.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
      */
-    async fetchI18nTemplate(): Promise<string> {
-        const result = await this.fetcher.fetchI18nTemplate();
+    async fetchI18nFile(language: string): Promise<string> {
+        const result = await this.fetcher.fetchI18nFile(language);
         return result ?? '';
     }
 
