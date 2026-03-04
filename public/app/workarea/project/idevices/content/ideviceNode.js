@@ -258,6 +258,7 @@ export default class IdeviceNode {
                 this.properties.visibility.value
             );
         }
+        this.updateVisibilityIndicator();
         // css class
         if (this.properties.cssClass.value != '') {
             let cssClasses = this.properties.cssClass.value
@@ -270,6 +271,41 @@ export default class IdeviceNode {
         // teacher only - workarea visual indicator (separate class to avoid export hide rule)
         if (this.properties.teacherOnly?.value == 'true') {
             this.ideviceContent.classList.add('exe-teacher-highlight');
+        }
+    }
+
+    /**
+     * Update the visibility indicator based on the visibility property
+     */
+    updateVisibilityIndicator() {
+        if (!this.ideviceButtons) return;
+        
+        let indicator = this.ideviceButtons.querySelector('.visibility-off-indicator');
+        const visibilityValue = this.properties.visibility?.value;
+        const isVisible = visibilityValue !== 'false' && visibilityValue !== false;
+        
+        if (isVisible) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('visibility-off-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Hidden from export'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+                indicator.innerHTML = `<i class="small-icon exe-visibility-off-green-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Hidden from export')}</span>`;
+                
+                // Make indicator absolutely positioned to the far left
+                indicator.style.position = 'absolute';
+                indicator.style.left = '12px';
+                indicator.style.top = '50%';
+                indicator.style.transform = 'translateY(-50%)';
+                indicator.style.marginRight = '0';
+                
+                this.ideviceButtons.appendChild(indicator);
+            }
         }
     }
 
@@ -414,6 +450,7 @@ export default class IdeviceNode {
                 break;
         }
         this.addTooltips();
+        this.updateVisibilityIndicator();
         return this.ideviceButtons;
     }
 

@@ -264,6 +264,7 @@ export default class IdeviceBlockNode {
                 this.properties.visibility.value
             );
         }
+        this.updateVisibilityIndicator();
         // css classes
         if (this.properties.cssClass.value != '') {
             let cssClasses = this.properties.cssClass.value
@@ -285,6 +286,49 @@ export default class IdeviceBlockNode {
         // minimized
         if (this.properties.minimized.value == 'true') {
             this.toggleOff();
+        }
+    }
+
+    /**
+     * Update the visibility indicator based on the visibility property
+     */
+    updateVisibilityIndicator() {
+        if (!this.headElement) return;
+        
+        let indicator = this.headElement.querySelector('.visibility-off-indicator');
+        const visibilityValue = this.properties.visibility?.value;
+        const isVisible = visibilityValue !== 'false' && visibilityValue !== false;
+        
+        if (isVisible) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('visibility-off-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Hidden from export'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+
+                const icon = document.createElement('i');
+                icon.classList.add('small-icon', 'exe-visibility-off-green-icon');
+                icon.setAttribute('aria-hidden', 'true');
+                indicator.appendChild(icon);
+
+                const srText = document.createElement('span');
+                srText.classList.add('visually-hidden');
+                srText.textContent = _('Hidden from export');
+                indicator.appendChild(srText);
+                
+                // Make indicator absolutely positioned to the left so it doesn't displace other items
+                indicator.style.position = 'absolute';
+                indicator.style.left = '-32px';
+                this.headElement.style.position = 'relative';
+                
+                // Insert it into the header
+                this.headElement.appendChild(indicator);
+            }
         }
     }
 
