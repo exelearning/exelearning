@@ -453,16 +453,6 @@ export default class IdeviceBlockNode {
         }
         iconValue.setAttribute('src', iconSrc);
         iconValue.setAttribute('alt', icon.title);
-        /* To review (icon.type?)
-        switch (icon.type) {
-            case 'exe':
-                iconValue.innerHTML = icon.value;
-                break;
-            case 'img':
-                iconValue.style.backgroundImage = `url("${icon.value}")`;
-                break;
-        }
-        */
         return iconValue;
     }
 
@@ -647,7 +637,6 @@ export default class IdeviceBlockNode {
                 <li><button class="dropdown-item button-action-block" id="deleteBlock${id}"><span class="small-icon delete-icon-red"></span><span>${_('Delete box')}</span></button></li>
              </ul>
         </div>`;
-        // Check links (disabled) <li><button class="dropdown-item button-action-block" id="dropdownBlockMore-button-checkLinks${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
 
         this.blockButtons = document.createElement('div');
         this.blockButtons.classList.add('box_actions');
@@ -668,7 +657,6 @@ export default class IdeviceBlockNode {
         this.addBehaviourToggleBlockButton();
         this.addTooltips();
         this.addNoTranslateForGoogle();
-        // Check links (disabled) this.addBehaviourCheckBlockLinksButton();
 
         return this.blockButtons;
     }
@@ -695,31 +683,6 @@ export default class IdeviceBlockNode {
                     }
                 });
         });
-    }
-
-    /**
-     * Event check broken links
-     *
-     */
-    addBehaviourButtonCheckBrokenLinksBlock() {
-        this.blockButtonCheckBrokenLinks.addEventListener(
-            'click',
-            (element) => {
-                let blockId = this.blockId;
-                this.getOdeBlockBrokenLinksEvent(blockId).then((response) => {
-                    if (!response.responseMessage) {
-                        // Show eXe OdeBrokenList modal
-                        eXeLearning.app.modals.odebrokenlinks.show(response);
-                    } else {
-                        // Open eXe alert modal
-                        eXeLearning.app.modals.alert.show({
-                            title: _('Broken Links'),
-                            body: _('No broken links found.'),
-                        });
-                    }
-                });
-            }
-        );
     }
 
     /**
@@ -1077,31 +1040,7 @@ export default class IdeviceBlockNode {
     /**
      * Event check links
      *
-     */
-    /* To review (disabled)
-    addBehaviourCheckBlockLinksButton() {
-        this.blockButtons
-            .querySelector("#dropdownBlockMore-button-checkLinks"+this.blockId)
-            .addEventListener("click", element => {
-                let blockId = this.blockId;
-                Logger.log("check links");
-                this.getOdeBlockBrokenLinksEvent(blockId).then(response => {
-                    if (!response.responseMessage) {
-                        // Show eXe OdeBrokenList modal
-                        eXeLearning.app.modals.odebrokenlinks.show(response);
-                    } else {
-                        // Open eXe alert modal
-                        eXeLearning.app.modals.alert.show({
-                            title: _("Broken Links"),
-                            body: _('No broken links found.'),
-                        })
-                    }
-                })
-            });
-    }
-    */
 
-    /**
      * Download block as .block file
      * @param {*} odeBlockId
      */
