@@ -106,6 +106,18 @@ var $scrambledlist = {
             typeof data.showSolutions !== 'undefined'
                 ? data.showSolutions
                 : true;
+        data.attemptsNumber = $scrambledlist.getBoundedIntValue(
+            data.attemptsNumber,
+            1,
+            9,
+            1
+        );
+        data.pendingAttempts = $scrambledlist.getBoundedIntValue(
+            data.pendingAttempts,
+            0,
+            9,
+            data.attemptsNumber
+        );
 
         data.textButtonScorm =
             data.escapedData && data.exportScorm.textButtonScorm
@@ -412,6 +424,7 @@ var $scrambledlist = {
                    value="${$('.exe-sortableList-buttonText', activity).eq(0).text()}" />
           </p>
           <div id="exe-sortableList-${listOrder}-feedback"></div>
+                    <div id="exe-sortableList-${listOrder}-retry" class="d-none mt-2"></div>
         `;
 
         $(list)
@@ -471,47 +484,214 @@ var $scrambledlist = {
         var data = $(e).closest('.idevice_node').attr('data-idevice-json-data');
 
         data = JSON.parse(data);
+        data.pendingAttempts = this.getBoundedIntValue(
+            data.pendingAttempts,
+            0,
+            9,
+            this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1)
+        );
+        data.pendingAttempts = Math.max(data.pendingAttempts - 1, 0);
+        $(e)
+            .closest('.idevice_node')
+            .attr('data-idevice-json-data', JSON.stringify(data));
 
         this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
 
-        // Show the feedback
-        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
-            this.sendScore(nRightAnswers, userList[0].children.length, data);
-        } else {
-            if (right)
-                feedback
-                    .html(
-                        '<p>' +
-                            $('.exe-sortableList-rightText', activity).text() +
-                            '</p>'
-                    )
-                    .hide()
-                    .attr('class', 'feedback feedback-right')
-                    .fadeIn();
-            else if (!data.showSolutions) {
-                feedback
-                    .html('<p>' + data.msgs.msgTestFailed + '</p>')
-                    .hide()
-                    .attr('class', 'feedback feedback-wrong')
-                    .fadeIn();
-            } else {
-                feedback
-                    .html(
-                        '<p>' +
-                            $('.exe-sortableList-wrongText', activity).text() +
-                            '</p><ul>' +
-                            rightAnswers.html() +
-                            '</ul>'
-                    )
-                    .hide()
-                    .attr('class', 'feedback feedback-wrong')
-                    .fadeIn();
-            }
+        const errors = userList[0].children.length - nRightAnswers;
+        if (!right && data.pendingAttempts > 0) {
+            const retryQuestion = this.getRetryMessage(data, errors);
+            this.setListActiveState(listOrder, false);
+            this.showRetryPrompt(
+                listOrder,
+                retryQuestion,
+                data,
+                () => {
+                    // Re-enable game with randomized cards for the next attempt.
+                    this.retryGame(listOrder);
+                },
+                () => {
+                    this.showResultFeedback(
+                        activity,
+                        feedback,
+                        right,
+                        rightAnswers,
+                        data,
+                        nRightAnswers,
+                        userList[0].children.length
+                    );
+                }
+            );
+            return;
         }
+
+        this.showResultFeedback(
+            activity,
+            feedback,
+            right,
+            rightAnswers,
+            data,
+            nRightAnswers,
+            userList[0].children.length
+        );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
             $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
         }
+    },
+
+    showResultFeedback: function (
+        activity,
+        feedback,
+        right,
+        rightAnswers,
+        data,
+        nRightAnswers,
+        totalOptions
+    ) {
+        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
+            this.sendScore(nRightAnswers, totalOptions, data);
+            return;
+        }
+
+        if (right) {
+            feedback
+                .html(
+                    '<p>' +
+                        $('.exe-sortableList-rightText', activity).text() +
+                        '</p>'
+                )
+                .hide()
+                .attr('class', 'feedback feedback-right')
+                .fadeIn();
+            return;
+        }
+
+        if (!data.showSolutions) {
+            feedback
+                .html('<p>' + data.msgs.msgTestFailed + '</p>')
+                .hide()
+                .attr('class', 'feedback feedback-wrong')
+                .fadeIn();
+            return;
+        }
+
+        feedback
+            .html(
+                '<p>' +
+                    $('.exe-sortableList-wrongText', activity).text() +
+                    '</p><ul>' +
+                    rightAnswers.html() +
+                    '</ul>'
+            )
+            .hide()
+            .attr('class', 'feedback feedback-wrong')
+            .fadeIn();
+    },
+
+    getRetryMessage: function (data, errors) {
+        const hasCustomMsg =
+            data.msgs && typeof data.msgs.msgRetryAttempts === 'string';
+        const template = hasCustomMsg
+            ? data.msgs.msgRetryAttempts
+            : 'Has cometido %s errores. Te quedan %s intentos. ¿Quieres intentarlo de nuevo?';
+        return template
+            .replace('%s', errors)
+            .replace('%s', data.pendingAttempts);
+    },
+
+    showRetryPrompt: function (listOrder, message, data, onAccept, onCancel) {
+        const $retry = $('#exe-sortableList-' + listOrder + '-retry');
+        if (!$retry.length) {
+            if (typeof onCancel === 'function') onCancel();
+            return;
+        }
+
+        const acceptLabel =
+            (data.msgs &&
+                typeof data.msgs.msgAcceptRetry === 'string' &&
+                data.msgs.msgAcceptRetry) ||
+            'Aceptar';
+        const cancelLabel =
+            (data.msgs &&
+                typeof data.msgs.msgCancelRetry === 'string' &&
+                data.msgs.msgCancelRetry) ||
+            'Cancelar';
+        const msg = this.removeTags(message || '');
+        const html = `
+            <div class="feedback feedback-wrong p-2">
+                <p class="mb-2">${msg}</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary exe-sortableList-retry-accept">${acceptLabel}</button>
+                    <button type="button" class="btn btn-secondary exe-sortableList-retry-cancel">${cancelLabel}</button>
+                </div>
+            </div>
+        `;
+
+        $retry
+            .html(html)
+            .removeClass('d-none')
+            .addClass('d-block')
+            .off('click', '.exe-sortableList-retry-accept')
+            .off('click', '.exe-sortableList-retry-cancel');
+
+        $retry.on('click', '.exe-sortableList-retry-accept', () => {
+            $retry.empty().removeClass('d-block').addClass('d-none');
+            if (typeof onAccept === 'function') onAccept();
+        });
+
+        $retry.on('click', '.exe-sortableList-retry-cancel', () => {
+            $retry.empty().removeClass('d-block').addClass('d-none');
+            if (typeof onCancel === 'function') onCancel();
+        });
+    },
+
+    setListActiveState: function (listOrder, isActive) {
+        const $list = $('#exe-sortableList-' + listOrder);
+        if (!$list.length) return;
+
+        if (isActive) {
+            $list.css({ 'pointer-events': '', opacity: '' }).removeAttr(
+                'aria-disabled'
+            );
+            return;
+        }
+
+        $list
+            .css({ 'pointer-events': 'none', opacity: 0.65 })
+            .attr('aria-disabled', 'true');
+    },
+
+    retryGame: function (listOrder) {
+        const $userList = $('#exe-sortableList-' + listOrder);
+        const $rightAnswers = $('#exe-sortableListResults-' + listOrder);
+        const $feedback = $('#exe-sortableList-' + listOrder + '-feedback');
+        const $button = $('#exe-sortableListButton-' + listOrder);
+        const $retry = $('#exe-sortableList-' + listOrder + '-retry');
+
+        const baseList = [];
+        $('li', $rightAnswers).each(function () {
+            baseList.push($(this).html());
+        });
+
+        const randomizedList = this.randomizeArray(baseList.slice());
+        let listHtml = '';
+        randomizedList.forEach((item) => {
+            listHtml += '<li>' + item + '</li>';
+        });
+
+        $userList
+            .html(listHtml)
+            .sortable()
+            .bind('sortupdate', function () {
+                $scrambledlist.getListLinks(listOrder);
+            });
+
+        this.getListLinks(listOrder);
+        this.setupTouchDrag(listOrder);
+        this.setListActiveState(listOrder, true);
+        $feedback.empty().removeClass('feedback-right feedback-wrong');
+        $retry.empty().removeClass('d-block').addClass('d-none');
+        $button.show();
     },
 
     saveEvaluation: function (nRightAnswers, total, data) {
@@ -533,6 +713,12 @@ var $scrambledlist = {
         }
         if (hasChanged) return o;
         else return this.randomizeArray(original);
+    },
+
+    getBoundedIntValue: function (value, min, max, fallback) {
+        const parsed = parseInt(value, 10);
+        if (Number.isNaN(parsed)) return fallback;
+        return Math.min(Math.max(parsed, min), max);
     },
 
     /**
