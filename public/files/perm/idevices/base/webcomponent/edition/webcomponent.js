@@ -152,6 +152,10 @@ api.start();
                             <p id="wcEEvaluationHelp" class="WCE-TypeGameHelp exe-block-info">
                                 ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
                             </p>
+                            <p>
+                                <label for="wcJS">${_('JavaScript code')}:</label>
+                                <textarea id="wcJS" class="form-control" rows="10" spellcheck="false" placeholder="${_('Write your web component JavaScript code here...')}"></textarea>
+                            </p>
                         </div>
                     </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
@@ -218,6 +222,13 @@ api.start();
             $('#wcEEvaluationID').prop('disabled', !dataGame.evaluation);
             $exeDevicesEdition.iDevice.gamification.itinerary.setValues(dataGame.itinerary);
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(dataGame.msgs);
+            if (dataGame.wcJS) {
+                try {
+                    $('#wcJS').val(decodeURIComponent(dataGame.wcJS));
+                } catch (e) {
+                    $('#wcJS').val(dataGame.wcJS);
+                }
+            }
         }
     },
 
@@ -240,9 +251,14 @@ api.start();
             tinyMCE.get('eXeGameInstructions')?.getContent() || ''
         );
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || '';
+        const wcJS = ($('#wcJS').val() || '')
+            .replace(/^\s*<script[^>]*>/i, '')
+            .replace(/<\/script>\s*$/i, '')
+            .trim();
 
         dataGame.instructions = instructions ? encodeURIComponent(instructions) : '';
         dataGame.textAfter = textAfter ? encodeURIComponent(textAfter) : '';
+        dataGame.wcJS = wcJS ? encodeURIComponent(wcJS) : '';
 
         const json = JSON.stringify(dataGame);
         let divContent = instructions

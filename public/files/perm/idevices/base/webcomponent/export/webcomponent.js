@@ -68,6 +68,13 @@ var $WebComponent = {
             data.instructionsContent = extracted.html;
             data.textAfterContent = textAfterHtml || '';
             data.scriptDefs = extracted.scriptDefs;
+            const wcJsCode = $WebComponent.decodeStoredHtml(data.wcJS || '')
+                .replace(/^\s*<script[^>]*>/i, '')
+                .replace(/<\/script>\s*$/i, '')
+                .trim();
+            if (wcJsCode) {
+                data.scriptDefs.push({ src: '', text: wcJsCode });
+            }
 
             $WebComponent.options.push(data);
 
