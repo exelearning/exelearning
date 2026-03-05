@@ -269,7 +269,9 @@ body.exe-export {
     color: #333;
     background-color: #f4f4f4;
 }
-
+body#tinymce {
+    font-family: "Inter";
+}
 .js .exe-export .exe-content {
     min-height: calc(100vh - 30px);
 }

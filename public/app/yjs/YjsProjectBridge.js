@@ -113,6 +113,12 @@ class YjsProjectBridge {
       // Preload all assets into memory (from previous session or import)
       preloadedAssetCount = await this.assetManager.preloadAllAssets();
       Logger.log(`[YjsProjectBridge] AssetManager initialized (in-memory), preloaded ${preloadedAssetCount} assets`);
+
+      // Wire Cache API cleanup: when the last tab for this project closes, clear the asset cache
+      this.documentManager.setOnLastTabClosedCallback(() => {
+        this.assetManager?.clearCache().catch(() => {});
+      });
+      await this.documentManager.flushPendingExternalCleanup?.();
     }
 
     // NOTE: AssetCacheManager (this.assetCache) is deprecated and no longer instantiated
@@ -390,11 +396,23 @@ class YjsProjectBridge {
       }
 
       const currentLanguage = metadata.get('language');
-      
+
       // Only update if different from user preference
       if (currentLanguage !== userLocale) {
         Logger.log(`[YjsProjectBridge] Updating new project language: ${currentLanguage} → ${userLocale}`);
         metadata.set('language', userLocale);
+
+        // Re-translate default titles to match the corrected language.
+        // At this point _() already uses the user's preferred locale translations.
+        // Since this only runs for brand-new projects, titles are always the defaults.
+        metadata.set('title', _('Untitled document'));
+
+        const navigation = this.documentManager?.getNavigation();
+        const rootPage = navigation?.get(0);
+        if (rootPage) {
+          rootPage.set('title', _('New page'));
+          rootPage.set('pageName', _('New page'));
+        }
       }
     } catch (err) {
       // Non-critical - log and continue
@@ -2543,7 +2561,12 @@ class YjsProjectBridge {
     if (!this.documentManager) {
       throw new Error('[YjsProjectBridge] Not initialized');
     }
-    return this.documentManager.getAssets();
+    const assetsMap = this.documentManager.getAssets();
+    console.log('[YjsProjectBridge DEBUG] getAssetsMap:', {
+      initialized: !!this.documentManager,
+      mapSize: assetsMap?.size || 0
+    });
+    return assetsMap;
   }
 
   /**

@@ -16,8 +16,14 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
-
+import {
+    LIBRARY_PATTERNS,
+    getLicenseClass,
+    formatLicenseText,
+    shouldShowLicenseFooter,
+    getLicenseUrl,
+    formatShortLicenseText,
+} from '../constants';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -102,7 +108,11 @@ export class PageRenderer {
         const detectedLibraries = this.detectContentLibraries(originalContent);
 
         // Render page content (includes exe-package:elp → onclick transformation)
-        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap);
+        const pageContent = this.renderPageContent(page, basePath, projectTitle, assetExportPathMap, {
+            author: options.author,
+            description: options.description,
+            license: options.license,
+        });
 
         // Calculate page counter values
         const total = totalPages ?? allPages.length;
@@ -594,6 +604,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
+        metadata?: { author?: string; description?: string; license?: string },
     ): string {
         let html = '';
 
@@ -609,6 +620,49 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         // This is done here at render time, not during preprocessing, so the XML keeps the original protocol
         if (projectTitle) {
             html = this.replaceElpxProtocol(html, projectTitle);
+        }
+
+        // Sync project properties for download-source-file and similar iDevices
+        if (html.includes('exe-prop-')) {
+            const safeTitle = this.escapeHtml(projectTitle || '-');
+            const safeAuthor = this.escapeHtml(metadata?.author || '-');
+            const safeDesc = this.escapeHtml(metadata?.description || '-');
+            const safeLicense = this.escapeHtml(metadata?.license ? formatShortLicenseText(metadata.license) : '-');
+
+            let safeLicenseHtml = safeLicense;
+            if (metadata?.license) {
+                const shortText = formatShortLicenseText(metadata.license);
+                const isStandardCC = shortText.startsWith('Creative Commons');
+
+                if (isStandardCC) {
+                    const licenseUrl = getLicenseUrl(metadata.license);
+                    if (licenseUrl) {
+                        const cssClass = getLicenseClass(metadata.license);
+                        const classAttr = cssClass ? ` class="${cssClass}"` : '';
+                        safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                    }
+                }
+            }
+
+            // Strip out the read-only classes from the <td> wrappers just in case they slipped through
+            html = html.replace(/<td class="mceNonEditable exe-prop-locked\s*"[^>]*>/g, '<td>');
+
+            html = html.replace(
+                /<span class="exe-prop-title[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-title">${safeTitle}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-author[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-author">${safeAuthor}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-description[^>]*>.*?<\/span>/g,
+                `<span class="exe-prop-description">${safeDesc}</span>`,
+            );
+            html = html.replace(
+                /<span class="exe-prop-license[^>]*>[\s\S]*?(?=<\/td>|<\/p>|<\/div>|<\/li>|$)/g,
+                `<span class="exe-prop-license">${safeLicenseHtml}</span>`,
+            );
         }
 
         return html;
@@ -887,6 +941,7 @@ ${userFooterHtml}</div></footer>`;
             author?: string;
             license?: string;
             licenseUrl?: string;
+            description?: string;
             faviconPath?: string;
             faviconType?: string;
             detectedLibraries?: string[];
@@ -905,6 +960,7 @@ ${userFooterHtml}</div></footer>`;
             usedIdevices = [],
             license = '',
             licenseUrl = '',
+            description = '',
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
@@ -939,7 +995,11 @@ ${userFooterHtml}</div></footer>`;
 </div>
 </header>
 <div class="page-content">
-${this.renderPageContent(page, '', projectTitle)}
+${this.renderPageContent(page, '', projectTitle, undefined, {
+    author: options.author,
+    description: options.description,
+    license: options.license,
+})}
 </div>
 </section>\n`;
         }

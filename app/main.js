@@ -94,6 +94,10 @@ const MIME_TYPES = {
  * @returns {void}
  */
 function registerProtocolHandler() {
+    if (protocolHandlerRegistered) {
+        return;
+    }
+
     const staticDir = getStaticPath();
 
     protocol.handle('app', async (request) => {
@@ -151,6 +155,7 @@ function registerProtocolHandler() {
         }
     });
 
+    protocolHandlerRegistered = true;
     console.log('[Electron] Protocol handler registered for app://');
 }
 
@@ -197,6 +202,13 @@ let mainWindow;
 let isShuttingDown = false; // Flag to ensure the app only shuts down once
 let updaterInited = false; // guard
 let youtubeHeadersConfigured = false;
+let protocolHandlerRegistered = false;
+const windowsClosingByConfirmation = new WeakSet();
+const windowsCheckingUnsavedChanges = new WeakSet();
+const UNSAVED_CHANGES_CLOSE_ACTION = Object.freeze({
+    STAY: 0,
+    DISCARD: 1,
+});
 
 // Environment variables container
 let customEnv;
@@ -564,6 +576,123 @@ function configureYouTubeEmbedHeaders() {
     });
 }
 
+function confirmWindowCloseWithUnsavedChanges(ownerWindow, copy) {
+    const response = dialog.showMessageBoxSync(ownerWindow, {
+        type: 'warning',
+        buttons: [copy.stayButtonLabel, copy.discardButtonLabel],
+        defaultId: UNSAVED_CHANGES_CLOSE_ACTION.STAY,
+        cancelId: UNSAVED_CHANGES_CLOSE_ACTION.STAY,
+        noLink: true,
+        normalizeAccessKeys: true,
+        title: copy.title,
+        message: copy.message,
+        detail: copy.detail,
+    });
+
+    return response === UNSAVED_CHANGES_CLOSE_ACTION.DISCARD;
+}
+
+async function windowHasUnsavedChanges(win) {
+    if (!win || win.isDestroyed() || !win.webContents || win.webContents.isDestroyed()) {
+        return false;
+    }
+
+    try {
+        return await win.webContents.executeJavaScript(
+            `(() => {
+                const bridge = window.eXeLearning?.app?.project?._yjsBridge;
+                const documentManager = bridge?.documentManager;
+                const assetManager = bridge?.assetManager;
+                const hasUnsavedAssets =
+                    assetManager &&
+                    typeof assetManager.hasUnsavedAssets === 'function' &&
+                    assetManager.hasUnsavedAssets();
+                return documentManager?.isDirty === true || Boolean(hasUnsavedAssets);
+            })()`,
+            true,
+        );
+    } catch (error) {
+        console.warn('[Electron] Failed to read unsaved changes state from renderer:', error);
+        return false;
+    }
+}
+
+function getUnsavedChangesCloseCopy() {
+    return {
+        title: tOrDefault(
+            'desktop.unsavedChanges.title',
+            defaultLocale === 'es' ? 'Cambios sin guardar' : 'Unsaved changes',
+        ),
+        message: tOrDefault(
+            'desktop.unsavedChanges.message',
+            defaultLocale === 'es'
+                ? 'Hay cambios sin guardar en este proyecto.'
+                : 'This project has unsaved changes.',
+        ),
+        detail: tOrDefault(
+            'desktop.unsavedChanges.detail',
+            defaultLocale === 'es'
+                ? 'Si cierras ahora, se perderán los cambios más recientes. Puedes quedarte para guardar el proyecto primero.'
+                : 'If you close now, your latest changes will be lost. Stay to save the project first.',
+        ),
+        stayButtonLabel: tOrDefault(
+            'desktop.unsavedChanges.stay',
+            defaultLocale === 'es' ? 'Permanecer' : 'Stay',
+        ),
+        discardButtonLabel: tOrDefault(
+            'desktop.unsavedChanges.discard',
+            defaultLocale === 'es' ? 'Cerrar sin guardar' : 'Close without saving',
+        ),
+    };
+}
+
+function attachEditorWindowCloseGuard(win) {
+    win.on('close', async (event) => {
+        if (isShuttingDown || windowsClosingByConfirmation.has(win)) {
+            return;
+        }
+
+        if (windowsCheckingUnsavedChanges.has(win)) {
+            event.preventDefault();
+            return;
+        }
+
+        event.preventDefault();
+        windowsCheckingUnsavedChanges.add(win);
+
+        try {
+            const hasUnsavedChanges = await windowHasUnsavedChanges(win);
+
+            if (!hasUnsavedChanges) {
+                windowsClosingByConfirmation.add(win);
+                win.close();
+                return;
+            }
+
+            const shouldProceed = confirmWindowCloseWithUnsavedChanges(
+                win,
+                getUnsavedChangesCloseCopy(),
+            );
+
+            if (!shouldProceed) {
+                console.log('[Electron] Close cancelled because the project has unsaved changes');
+                return;
+            }
+
+            console.log('[Electron] User confirmed closing with unsaved changes');
+            windowsClosingByConfirmation.add(win);
+            win.close();
+        } finally {
+            windowsCheckingUnsavedChanges.delete(win);
+        }
+    });
+
+    win.on('closed', () => {
+        windowsClosingByConfirmation.delete(win);
+        windowsCheckingUnsavedChanges.delete(win);
+    });
+}
+
 async function createWindow() {
     initializePaths(); // Initialize paths before using them
     initializeEnv(); // Initialize environment variables afterward
@@ -596,6 +725,7 @@ async function createWindow() {
 
     // Show the menu bar in development mode, hide it in production
     mainWindow.setMenuBarVisibility(isDev);
+    attachEditorWindowCloseGuard(mainWindow);
 
     // Maximize the window and open it
     mainWindow.maximize();
@@ -800,14 +930,6 @@ async function createWindow() {
                 mainWindow.webContents.send('download-done', { ok: false, error: err.message });
             }
         }
-    });
-
-    // If any event blocks window closing, remove it
-    mainWindow.on('close', e => {
-        // This is to ensure any preventDefault() won't stop the closing
-        console.log('Window is being forced to close...');
-        e.preventDefault(); // Optional: Prevent default close event
-        mainWindow.destroy(); // Force destroy the window
     });
 
     mainWindow.on('closed', () => {
@@ -1129,6 +1251,7 @@ app.on('new-window-for-tab', () => {
     });
 
     newWindow.setMenuBarVisibility(isDev);
+    attachEditorWindowCloseGuard(newWindow);
     newWindow.loadURL('app://localhost/');
 
     attachOpenHandler(newWindow);
@@ -1154,9 +1277,7 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+    app.quit();
 });
 
 /**
@@ -1167,21 +1288,20 @@ function handleAppExit() {
         if (isShuttingDown) return;
         isShuttingDown = true;
 
-        if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.destroy();
-        }
-
-        // Exit the process after a short delay
         setTimeout(() => {
-            process.exit(0); // Exit the process forcefully
-        }, 500); // Delay for cleanup
+            if (BrowserWindow.getAllWindows().length === 0) {
+                process.exit(0);
+                return;
+            }
+
+            isShuttingDown = false;
+        }, 500);
+
+        app.quit();
     };
 
     process.on('SIGINT', cleanup); // Handle Ctrl + C
     process.on('SIGTERM', cleanup); // Handle kill command
-    process.on('exit', cleanup); // Handle exit event
-    app.on('window-all-closed', cleanup);
-    app.on('before-quit', cleanup);
 }
 
 app.on('activate', () => {

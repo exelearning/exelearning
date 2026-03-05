@@ -34,9 +34,11 @@ export default class UserPreferences {
 
         // Final fallback to minimal defaults
         // Note: advancedMode defaults to 'true' in static mode so all features are visible
+        // locale defaults to the app's configured locale (from server config)
         if (!preferencesConfig) {
+            const appLocale = app.eXeLearning?.config?.locale || 'en';
             preferencesConfig = {
-                locale: { title: 'Language', value: 'en', type: 'select' },
+                locale: { title: 'Language', value: appLocale, type: 'select' },
                 advancedMode: { title: 'Advanced Mode', value: isStaticMode ? 'true' : 'false', type: 'checkbox' },
                 versionControl: { title: 'Version Control', value: 'false', type: 'checkbox' },
             };
@@ -59,7 +61,7 @@ export default class UserPreferences {
      * @param {Array} preferences
      */
     setPreferences(preferences) {
-        for (let [key, value] of Object.entries(preferences)) {
+        for (let [key] of Object.entries(preferences)) {
             if (preferences[key]) {
                 if (this.preferences[key]) {
                     this.preferences[key].value = preferences[key].value;
@@ -161,6 +163,18 @@ export default class UserPreferences {
                 if (appConfig?.locale) {
                     this.preferences.locale.value = appConfig.locale;
                 }
+            }
+
+            // First launch: persist detected preferences (including browser-detected locale)
+            // so they are anchored and won't change if the browser language changes later
+            if (!stored && this.preferences.locale?.value) {
+                const toStore = { userPreferences: {} };
+                for (const [key, pref] of Object.entries(this.preferences)) {
+                    if (pref && typeof pref === 'object' && 'value' in pref) {
+                        toStore.userPreferences[key] = { value: pref.value };
+                    }
+                }
+                localStorage.setItem('exe_user_preferences', JSON.stringify(toStore));
             }
 
             // Apply preferences to UI

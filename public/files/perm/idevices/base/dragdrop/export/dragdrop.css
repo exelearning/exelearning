@@ -69,9 +69,8 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    max-width: 175px;
     width: 100%;
- 
+
 }
 
 .DADP-MediaTargetDiv img.DADP-ImageTarget {
@@ -145,6 +144,7 @@
 .DADP-TextTargetDiv .DADP-DS {
     width: 100%;
     text-align: center;
+    position: static;
 }
 
 .DADP-MediaSource {
@@ -177,11 +177,11 @@
 .DADP-Text1 .DADP-DS {
     border: none;
     width: 100%;
+    position: static;
 }
 
 .DADP-Text1 .DADP-TextSourceDiv .DADP-DS {
     width: 100%;
-    max-width: 160px;
     text-align: center;
     padding: 3px;
     font: 1.1em;
@@ -697,8 +697,13 @@
 }
 
 .DADP-NoSelect img{
-    -webkit-user-drag: none;      
-    pointer-events: none;   
+    -webkit-user-drag: none;
+    pointer-events: none;
+}
+
+.DADP-TouchHelper {
+    opacity: .85;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 
@@ -1065,7 +1070,6 @@ div:fullscreen .DADP-Definition {
 div:fullscreen .DADP-LinkMinimize {
     display: none;
 }
-
 
 @-moz-keyframes DADP-parpadeo {
     0% {
@@ -1529,6 +1533,14 @@ div:fullscreen .DADP-LinkMinimize {
         transform: translateY(-50%);
     }
 
+}
+
+@media screen and (max-width: 500px) {
+    .DADP-DragTargetContainer,
+    .DADP-DragSourceContainer {
+        width: 45%;
+        max-width: none;
+    }
 }
 
 @media screen and (max-width:375px) {

@@ -33,8 +33,8 @@
         <source>Mark all the options in the correct order and click on the "Reply" button.</source>
         <target>~ marchează toate opțiunile în ordinea corectă și apasă butonul „Răspunde”.</target>
       </trans-unit>
-      <trans-unit id="gcfIi2i" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
-        <source>Write the correct word o phrase and click on the "Reply" button.</source>
+      <trans-unit id="gcfIi2i" resname="Write the correct word or phrase and click on the &quot;Reply&quot; button.">
+        <source>Write the correct word or phrase and click on the "Reply" button.</source>
         <target>~Scrie cuvântul sau expresia corectă și apasă butonul „Răspunde”.</target>
       </trans-unit>
       <trans-unit id=".gszbqv" resname="Click on">
@@ -2061,8 +2061,8 @@
         <source>Huge text</source>
         <target>~Text uriaș</target>
       </trans-unit>
-      <trans-unit id="TRj6FQx" resname="Huger text">
-        <source>Huger text</source>
+      <trans-unit id="TRj6FQx" resname="Extra large text">
+        <source>Extra large text</source>
         <target>~Text uriaș</target>
       </trans-unit>
       <trans-unit id="cn6n9qo" resname="Blackboard bold">
@@ -12005,8 +12005,8 @@
         <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
         <target>~ Marcați toate opțiunile în ordinea corectă și faceți clic pe butonul „Răspunde”.  </target>
       </trans-unit>
-      <trans-unit id="1Uv.8KU" resname="Write the correct word o phrase and click on the 'Reply' button.">
-        <source>Write the correct word o phrase and click on the 'Reply' button.</source>
+      <trans-unit id="1Uv.8KU" resname="Write the correct word or phrase and click on the 'Reply' button.">
+        <source>Write the correct word or phrase and click on the 'Reply' button.</source>
         <target>~Scrieți cuvântul sau expresia corectă și faceți clic pe butonul „Răspunde”.  </target>
       </trans-unit>
       <trans-unit id="NT8emLb" resname="Point">

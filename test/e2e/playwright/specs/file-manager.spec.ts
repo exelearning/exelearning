@@ -159,12 +159,14 @@ async function uploadFile(page: Page, fixturePath: string): Promise<void> {
  * Helper to create a new folder
  */
 async function createFolder(page: Page, folderName: string): Promise<void> {
-    page.once('dialog', async dialog => {
-        await dialog.accept(folderName);
-    });
-
     const newFolderBtn = page.locator('#modalFileManager .media-library-newfolder-btn');
     await newFolderBtn.click();
+
+    const renameDialog = page.locator('#modalFileManager .media-library-rename-dialog');
+    await renameDialog.waitFor({ state: 'visible', timeout: 5000 });
+
+    await page.locator('#modalFileManager .rename-dialog-input').fill(folderName);
+    await page.locator('#modalFileManager .rename-dialog-confirm').click();
 
     await page.waitForSelector(`#modalFileManager .media-library-folder[data-folder-name="${folderName}"]`, {
         timeout: 10000,

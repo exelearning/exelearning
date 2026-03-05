@@ -1,4 +1,8 @@
 /* Text iDevice (export CSS) */
+.exe-text-activity > div {
+    display: flow-root;
+}
+
 .exe-text-activity div.inline {
     display: flex;
 }

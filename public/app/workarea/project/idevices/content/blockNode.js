@@ -42,6 +42,7 @@ export default class IdeviceBlockNode {
         this.canHaveHeirs = true;
         // Content parameters
         this.blockContent = null;
+        this.boxContent = null;
         this.headElement = null;
         this.idevicesContainerElement = null;
         this.iconElement = null;
@@ -239,6 +240,10 @@ export default class IdeviceBlockNode {
         if (newNode) {
             this.blockContent.appendChild(this.makeBlockHeadElement());
             this.addBehaviourChangeIcon();
+            // Box content wrapper (mirrors the export HTML structure)
+            this.boxContent = document.createElement('div');
+            this.boxContent.classList.add('box-content');
+            this.blockContent.appendChild(this.boxContent);
         }
         // Properties attributes/classes
         this.setPropertiesClassesToElement();
@@ -267,6 +272,10 @@ export default class IdeviceBlockNode {
             cssClasses.forEach((cls) => {
                 this.blockContent.classList.add(cls);
             });
+        }
+        // teacher only - workarea visual indicator (separate class to avoid export hide rule)
+        if (this.properties.teacherOnly?.value == 'true') {
+            this.blockContent.classList.add('exe-teacher-highlight');
         }
         // allow toggle
         if (this.properties.allowToggle.value != 'true') {

@@ -111,28 +111,15 @@ var $exeDevice = {
     },
 
     /**
+     * Updates the property placeholders with live data from eXe
      *
-     * @param {*} element
-     * @param {*} previousData
-     * @param {*} path
      */
-    init: function (element, previousData, path) {
-        //** eXeLearning idevice engine data ***************************
-        this.ideviceBody = element;
-        this.idevicePreviousData = previousData;
-        this.idevicePath = path;
-        //**************************************************************
-        this.createForm();
-    },
-
-    // Create the form to insert HTML in the TEXTAREA
-    createForm: function () {
+    updateProperties: function () {
+        var properties = eXe.app.getProjectProperties();
         var data1 = '-';
         var data2 = '-';
         var data3 = '-';
         var data4 = '-';
-
-        var properties = eXe.app.getProjectProperties();
 
         var _data1 = properties.pp_title;
         if (_data1 && _data1.value && _data1.value != '') {
@@ -151,7 +138,54 @@ var $exeDevice = {
             data4 = this.completeLicense(_data4.value);
         }
 
-        if (data1 == '-' && data2 == '-' && data3 == '-' && data4 == '-') {
+        if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
+            var doc = tinymce.editors[0].getDoc();
+            if (doc) {
+                $('.exe-prop-locked .exe-prop-title', doc).html(data1);
+                $('.exe-prop-locked .exe-prop-description', doc).html(data2);
+                $('.exe-prop-locked .exe-prop-author', doc).html(data3);
+                $('.exe-prop-locked .exe-prop-license', doc).html(data4);
+            }
+        }
+        var desc = $('#dpiDescription');
+        if (desc.length > 0) {
+            var content = desc.val();
+            if (content) {
+                var wrapper = $('<div></div>').html(content);
+                $('.exe-prop-locked .exe-prop-title', wrapper).html(data1);
+                $('.exe-prop-locked .exe-prop-description', wrapper).html(data2);
+                $('.exe-prop-locked .exe-prop-author', wrapper).html(data3);
+                $('.exe-prop-locked .exe-prop-license', wrapper).html(data4);
+                desc.val(wrapper.html());
+            }
+        }
+    },
+
+    /**
+     *
+     * @param {*} element
+     * @param {*} previousData
+     * @param {*} path
+     */
+    init: function (element, previousData, path) {
+        //** eXeLearning idevice engine data ***************************
+        this.ideviceBody = element;
+        this.idevicePreviousData = previousData;
+        this.idevicePath = path;
+        //**************************************************************
+        this.createForm();
+    },
+
+    // Create the form to insert HTML in the TEXTAREA
+    createForm: function () {
+        var properties = eXe.app.getProjectProperties();
+        var emptyP = true;
+        if (properties.pp_title && properties.pp_title.value && properties.pp_title.value != '') emptyP = false;
+        if (properties.pp_description && properties.pp_description.value && properties.pp_description.value != '') emptyP = false;
+        if (properties.pp_author && properties.pp_author.value && properties.pp_author.value != '') emptyP = false;
+        if (properties.pp_license && properties.pp_license.value && properties.pp_license.value != '') emptyP = false;
+
+        if (emptyP) {
             let text = _(
                 "Please don't forget to check the Properties tab: Title, language, license, author, description..."
             );
@@ -169,6 +203,14 @@ var $exeDevice = {
         );
         var str7 = c_('Download .elp file');
 
+        // Note: The td wraps the span with mceNonEditable so the entire cell is immutable to the user
+        // Styling is handled by global tinymce_5_extra.css to prevent inline styles from cloning to new rows
+        var tdClass = 'class="mceNonEditable exe-prop-locked"';
+        var pData1 = '<span class="exe-prop-title"></span>';
+        var pData2 = '<span class="exe-prop-description"></span>';
+        var pData3 = '<span class="exe-prop-author"></span>';
+        var pData4 = '<span class="exe-prop-license"></span>';
+
         var defaultContent =
             '\
 			<table class="exe-table exe-package-info">\
@@ -180,32 +222,32 @@ var $exeDevice = {
 						<th>' +
             str2 +
             ' </th>\
-						<td>' +
-            data1 +
+						<td ' + tdClass + '>' +
+            pData1 +
             ' </td>\
 					</tr>\
 					<tr>\
 						<th>' +
             str3 +
             ' </th>\
-						<td>' +
-            data2 +
+						<td ' + tdClass + '>' +
+            pData2 +
             ' </td>\
 					</tr>\
 					<tr>\
 						<th>' +
             str4 +
             ' </th>\
-						<td>' +
-            data3 +
+						<td ' + tdClass + '>' +
+            pData3 +
             ' </td>\
 					</tr>\
 					<tr>\
 						<th>' +
             str5 +
             ' </th>\
-						<td>' +
-            data4 +
+						<td ' + tdClass + '>' +
+            pData4 +
             ' </td>\
 					</tr>\
 				</tbody>\
@@ -265,6 +307,29 @@ var $exeDevice = {
 		';
         this.ideviceBody.innerHTML = html;
         this.loadPreviousValues();
+
+        // Populate values initially
+        this.updateProperties();
+
+        // Listen to focus changes
+        $(window).off('focus.dlSourceFile').on('focus.dlSourceFile', function () {
+            if ($('#eXeDownloadPackageForm').length > 0) {
+                $exeDevice.updateProperties();
+            } else {
+                $(window).off('focus.dlSourceFile');
+            }
+        });
+
+        // Update when TinyMCE is ready
+        var updateInterval = setInterval(function() {
+            if (tinymce.editors.length > 0 && tinymce.editors[0] && tinymce.editors[0].getDoc()) {
+                $exeDevice.updateProperties();
+                clearInterval(updateInterval);
+            }
+        }, 500);
+        setTimeout(function() {
+            clearInterval(updateInterval);
+        }, 5000);
     },
 
     /**
@@ -296,6 +361,30 @@ var $exeDevice = {
                 wrapper
             );
             if (dpiDescription.length == 1 && dpiDescription.html() != '') {
+                // Find table and convert plain text cells to placeholders
+                var table = $('table.exe-package-info', dpiDescription);
+                if (table.length == 1) {
+                    var tds = $('td', table);
+                    if (tds.length == 4) {
+                        var tdClass = 'mceNonEditable exe-prop-locked';
+                        
+                        var ensureTdLocked = function($td, propClass) {
+                            $td.attr('class', tdClass);
+                            $td.removeAttr('style'); // Strip legacy inline styles dynamically so they are no longer cloned
+                            if ($td.find('.' + propClass).length == 0) {
+                                $td.html('<span class="' + propClass + '"></span>');
+                            } else {
+                                // If span already exists, ensure it doesn't have legacy mceNonEditable classes
+                                $td.find('.' + propClass).removeClass('mceNonEditable').css({'opacity': '', 'cursor': ''});
+                            }
+                        };
+
+                        ensureTdLocked($(tds[0]), 'exe-prop-title');
+                        ensureTdLocked($(tds[1]), 'exe-prop-description');
+                        ensureTdLocked($(tds[2]), 'exe-prop-author');
+                        ensureTdLocked($(tds[3]), 'exe-prop-license');
+                    }
+                }
                 $('#dpiDescription').val(dpiDescription.html());
             }
             // Button
@@ -341,7 +430,7 @@ var $exeDevice = {
     save: function () {
         // Get the content
         if (tinymce.editors.length == 0) return $exeDevice.warningMessage; // The .exe-block-info is displayed
-        // Intructions
+        // Instructions
         var dpiDescription = tinymce.editors[0].getContent();
         if (dpiDescription == '') {
             eXe.app.alert(
@@ -351,6 +440,64 @@ var $exeDevice = {
             );
             return false;
         }
+
+        // Inject properties into HTML
+        var properties = eXe.app.getProjectProperties();
+        var data1 = '-'; var data2 = '-'; var data3 = '-'; var data4 = '-';
+        if (properties.pp_title && properties.pp_title.value) data1 = properties.pp_title.value;
+        if (properties.pp_description && properties.pp_description.value) data2 = properties.pp_description.value;
+        if (properties.pp_author && properties.pp_author.value) data3 = properties.pp_author.value;
+        if (properties.pp_license && properties.pp_license.value) data4 = this.completeLicense(properties.pp_license.value);
+
+        var descWrapper = $('<div></div>').html(dpiDescription);
+
+        // Remove cloned property spans from newly added rows
+        // to prevent overwriting user input in cloned rows
+        var fixClonedRows = function() {
+            var wrappers = descWrapper[0] ? [descWrapper[0]] : descWrapper.toArray();
+            for (var w = 0; w < wrappers.length; w++) {
+                var elements = wrappers[w].querySelectorAll('.exe-prop-title, .exe-prop-description, .exe-prop-author, .exe-prop-license');
+                for (var i = 0; i < elements.length; i++) {
+                    var el = elements[i];
+                    var td = el.closest ? el.closest('td') : null;
+                    // Fallback for older browsers if closest isn't available
+                    if (!td) {
+                        var curr = el.parentNode;
+                        while(curr && curr.tagName !== 'TD' && curr.tagName !== 'BODY') curr = curr.parentNode;
+                        if (curr && curr.tagName === 'TD') td = curr;
+                    }
+                    
+                    // Legitimate cells retain the exe-prop-locked class. 
+                    // Rows cloned by TinyMCE drop classes but keep contents/inline styles.
+                    if (td && !td.classList.contains('exe-prop-locked')) {
+                        td.style.backgroundColor = '';
+                        td.style.color = '';
+                        td.style.cursor = '';
+                        if (!td.getAttribute('style')) td.removeAttribute('style');
+                        
+                        // Strip the class so it cannot be targeted
+                        el.className = el.className.replace(/exe-prop-[a-z]+/g, '').trim();
+                        
+                        // Unwrap the span
+                        var parent = el.parentNode;
+                        while (el.firstChild) {
+                            parent.insertBefore(el.firstChild, el);
+                        }
+                        parent.removeChild(el);
+                    }
+                }
+            }
+        };
+
+        fixClonedRows();
+
+        $('.exe-prop-title', descWrapper).html(data1);
+        $('.exe-prop-description', descWrapper).html(data2);
+        $('.exe-prop-author', descWrapper).html(data3);
+        $('.exe-prop-license', descWrapper).html(data4);
+        
+
+        dpiDescription = descWrapper.html();
         // Button text
         var dpiButtonText = $('#dpiButtonText').val();
         // Remove HTML tags (just in case)

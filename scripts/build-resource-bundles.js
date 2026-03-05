@@ -266,9 +266,15 @@ function buildCommonLibsBundle(manifest) {
   const allFiles = [];
 
   for (const libName of commonLibs) {
-    const libPath = path.join(COMMON_PATH, libName);
+    // Some libraries live in public/libs/ (e.g. exe_atools, exe_elpx_download),
+    // others in public/app/common/. Try COMMON_PATH first, then LIBS_PATH.
+    let libPath = path.join(COMMON_PATH, libName);
+    if (!fs.existsSync(libPath)) {
+      libPath = path.join(LIBS_PATH, libName);
+    }
 
     if (!fs.existsSync(libPath)) {
+      console.warn(`  WARNING: library '${libName}' not found in common or libs directories`);
       continue;
     }
 

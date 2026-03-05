@@ -350,6 +350,7 @@ export const SCORM_LIBRARIES = ['scorm/SCORM_API_wrapper.js', 'scorm/SCOFunction
  */
 export const MIME_TO_EXTENSION: Record<string, string> = {
     'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
     'image/png': '.png',
     'image/gif': '.gif',
     'image/webp': '.webp',
@@ -363,6 +364,7 @@ export const MIME_TO_EXTENSION: Record<string, string> = {
     'video/ogg': '.ogv',
     'video/quicktime': '.mov',
     'audio/mpeg': '.mp3',
+    'audio/mp4': '.m4a',
     'audio/ogg': '.ogg',
     'audio/wav': '.wav',
     'audio/webm': '.weba',
@@ -652,6 +654,29 @@ export function formatLicenseText(licenseName: string): string {
     if (!licenseName) return '';
     const key = licenseName.toLowerCase().trim();
     return LICENSE_REGISTRY[key]?.displayName || licenseName;
+}
+
+/**
+ * Format license text for Fichero Fuente display.
+ * Generates the short format (e.g., "Creative Commons BY-NC 4.0") matching the editor view.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns Short formatted license text, or displayName if not a standard CC license
+ */
+export function formatShortLicenseText(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const entry = LICENSE_REGISTRY[key];
+
+    if (entry?.url?.includes('creativecommons.org/licenses/')) {
+        const match = entry.url.match(/licenses\/([^/]+\/[^/]+)\/?/);
+        if (match?.[1]) {
+            const type = match[1].replace('/', ' ').toUpperCase();
+            return `Creative Commons ${type}`;
+        }
+    }
+
+    return licenseName;
 }
 
 /**

@@ -11,6 +11,8 @@
  */
 
 var $scrambledlist = {
+    _touchHandlers: {},
+
     borderColors: {
         black: '#1c1b1b',
         blue: '#5877c6',
@@ -104,6 +106,18 @@ var $scrambledlist = {
             typeof data.showSolutions !== 'undefined'
                 ? data.showSolutions
                 : true;
+        data.attemptsNumber = $scrambledlist.getBoundedIntValue(
+            data.attemptsNumber,
+            1,
+            9,
+            1
+        );
+        data.pendingAttempts = $scrambledlist.getBoundedIntValue(
+            data.pendingAttempts,
+            0,
+            9,
+            data.attemptsNumber
+        );
 
         data.textButtonScorm =
             data.escapedData && data.exportScorm.textButtonScorm
@@ -410,6 +424,7 @@ var $scrambledlist = {
                    value="${$('.exe-sortableList-buttonText', activity).eq(0).text()}" />
           </p>
           <div id="exe-sortableList-${listOrder}-feedback"></div>
+                    <div id="exe-sortableList-${listOrder}-retry" class="d-none mt-2"></div>
         `;
 
         $(list)
@@ -424,6 +439,7 @@ var $scrambledlist = {
             });
 
         $scrambledlist.getListLinks(listOrder);
+        $scrambledlist.setupTouchDrag(listOrder);
 
         $(`#exe-sortableListButton-${listOrder}`).on('click', function () {
             $scrambledlist.check(this, listOrder);
@@ -435,6 +451,7 @@ var $scrambledlist = {
         $('#exe-sortableListButton-' + listOrder).hide();
         var list = $('#exe-sortableList-' + listOrder);
         $('a', list).hide();
+        $scrambledlist.removeTouchDrag(listOrder);
         list.sortable('destroy');
         // Check the answers
         var activity = $(e).parents('.exe-sortableList');
@@ -467,47 +484,214 @@ var $scrambledlist = {
         var data = $(e).closest('.idevice_node').attr('data-idevice-json-data');
 
         data = JSON.parse(data);
+        data.pendingAttempts = this.getBoundedIntValue(
+            data.pendingAttempts,
+            0,
+            9,
+            this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1)
+        );
+        data.pendingAttempts = Math.max(data.pendingAttempts - 1, 0);
+        $(e)
+            .closest('.idevice_node')
+            .attr('data-idevice-json-data', JSON.stringify(data));
 
         this.saveEvaluation(nRightAnswers, userList[0].children.length, data);
 
-        // Show the feedback
-        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
-            this.sendScore(nRightAnswers, userList[0].children.length, data);
-        } else {
-            if (right)
-                feedback
-                    .html(
-                        '<p>' +
-                            $('.exe-sortableList-rightText', activity).text() +
-                            '</p>'
-                    )
-                    .hide()
-                    .attr('class', 'feedback feedback-right')
-                    .fadeIn();
-            else if (!data.showSolutions) {
-                feedback
-                    .html('<p>' + data.msgs.msgTestFailed + '</p>')
-                    .hide()
-                    .attr('class', 'feedback feedback-wrong')
-                    .fadeIn();
-            } else {
-                feedback
-                    .html(
-                        '<p>' +
-                            $('.exe-sortableList-wrongText', activity).text() +
-                            '</p><ul>' +
-                            rightAnswers.html() +
-                            '</ul>'
-                    )
-                    .hide()
-                    .attr('class', 'feedback feedback-wrong')
-                    .fadeIn();
-            }
+        const errors = userList[0].children.length - nRightAnswers;
+        if (!right && data.pendingAttempts > 0) {
+            const retryQuestion = this.getRetryMessage(data, errors);
+            this.setListActiveState(listOrder, false);
+            this.showRetryPrompt(
+                listOrder,
+                retryQuestion,
+                data,
+                () => {
+                    // Re-enable game with randomized cards for the next attempt.
+                    this.retryGame(listOrder);
+                },
+                () => {
+                    this.showResultFeedback(
+                        activity,
+                        feedback,
+                        right,
+                        rightAnswers,
+                        data,
+                        nRightAnswers,
+                        userList[0].children.length
+                    );
+                }
+            );
+            return;
         }
+
+        this.showResultFeedback(
+            activity,
+            feedback,
+            right,
+            rightAnswers,
+            data,
+            nRightAnswers,
+            userList[0].children.length
+        );
         const listHtml = $('#sl' + data.id).html();
         if ($exeDevices.iDevice.gamification.math.hasLatex(listHtml)) {
             $exeDevices.iDevice.gamification.math.updateLatex('#sl' + data.id);
         }
+    },
+
+    showResultFeedback: function (
+        activity,
+        feedback,
+        right,
+        rightAnswers,
+        data,
+        nRightAnswers,
+        totalOptions
+    ) {
+        if (document.body.classList.contains('exe-scorm') && data.isScorm > 0) {
+            this.sendScore(nRightAnswers, totalOptions, data);
+            return;
+        }
+
+        if (right) {
+            feedback
+                .html(
+                    '<p>' +
+                        $('.exe-sortableList-rightText', activity).text() +
+                        '</p>'
+                )
+                .hide()
+                .attr('class', 'feedback feedback-right')
+                .fadeIn();
+            return;
+        }
+
+        if (!data.showSolutions) {
+            feedback
+                .html('<p>' + data.msgs.msgTestFailed + '</p>')
+                .hide()
+                .attr('class', 'feedback feedback-wrong')
+                .fadeIn();
+            return;
+        }
+
+        feedback
+            .html(
+                '<p>' +
+                    $('.exe-sortableList-wrongText', activity).text() +
+                    '</p><ul>' +
+                    rightAnswers.html() +
+                    '</ul>'
+            )
+            .hide()
+            .attr('class', 'feedback feedback-wrong')
+            .fadeIn();
+    },
+
+    getRetryMessage: function (data, errors) {
+        const hasCustomMsg =
+            data.msgs && typeof data.msgs.msgRetryAttempts === 'string';
+        const template = hasCustomMsg
+            ? data.msgs.msgRetryAttempts
+            : 'Has cometido %s errores. Te quedan %s intentos. ¿Quieres intentarlo de nuevo?';
+        return template
+            .replace('%s', errors)
+            .replace('%s', data.pendingAttempts);
+    },
+
+    showRetryPrompt: function (listOrder, message, data, onAccept, onCancel) {
+        const $retry = $('#exe-sortableList-' + listOrder + '-retry');
+        if (!$retry.length) {
+            if (typeof onCancel === 'function') onCancel();
+            return;
+        }
+
+        const acceptLabel =
+            (data.msgs &&
+                typeof data.msgs.msgAcceptRetry === 'string' &&
+                data.msgs.msgAcceptRetry) ||
+            'Aceptar';
+        const cancelLabel =
+            (data.msgs &&
+                typeof data.msgs.msgCancelRetry === 'string' &&
+                data.msgs.msgCancelRetry) ||
+            'Cancelar';
+        const msg = this.removeTags(message || '');
+        const html = `
+            <div class="feedback feedback-wrong p-2">
+                <p class="mb-2">${msg}</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary exe-sortableList-retry-accept">${acceptLabel}</button>
+                    <button type="button" class="btn btn-secondary exe-sortableList-retry-cancel">${cancelLabel}</button>
+                </div>
+            </div>
+        `;
+
+        $retry
+            .html(html)
+            .removeClass('d-none')
+            .addClass('d-block')
+            .off('click', '.exe-sortableList-retry-accept')
+            .off('click', '.exe-sortableList-retry-cancel');
+
+        $retry.on('click', '.exe-sortableList-retry-accept', () => {
+            $retry.empty().removeClass('d-block').addClass('d-none');
+            if (typeof onAccept === 'function') onAccept();
+        });
+
+        $retry.on('click', '.exe-sortableList-retry-cancel', () => {
+            $retry.empty().removeClass('d-block').addClass('d-none');
+            if (typeof onCancel === 'function') onCancel();
+        });
+    },
+
+    setListActiveState: function (listOrder, isActive) {
+        const $list = $('#exe-sortableList-' + listOrder);
+        if (!$list.length) return;
+
+        if (isActive) {
+            $list.css({ 'pointer-events': '', opacity: '' }).removeAttr(
+                'aria-disabled'
+            );
+            return;
+        }
+
+        $list
+            .css({ 'pointer-events': 'none', opacity: 0.65 })
+            .attr('aria-disabled', 'true');
+    },
+
+    retryGame: function (listOrder) {
+        const $userList = $('#exe-sortableList-' + listOrder);
+        const $rightAnswers = $('#exe-sortableListResults-' + listOrder);
+        const $feedback = $('#exe-sortableList-' + listOrder + '-feedback');
+        const $button = $('#exe-sortableListButton-' + listOrder);
+        const $retry = $('#exe-sortableList-' + listOrder + '-retry');
+
+        const baseList = [];
+        $('li', $rightAnswers).each(function () {
+            baseList.push($(this).html());
+        });
+
+        const randomizedList = this.randomizeArray(baseList.slice());
+        let listHtml = '';
+        randomizedList.forEach((item) => {
+            listHtml += '<li>' + item + '</li>';
+        });
+
+        $userList
+            .html(listHtml)
+            .sortable()
+            .bind('sortupdate', function () {
+                $scrambledlist.getListLinks(listOrder);
+            });
+
+        this.getListLinks(listOrder);
+        this.setupTouchDrag(listOrder);
+        this.setListActiveState(listOrder, true);
+        $feedback.empty().removeClass('feedback-right feedback-wrong');
+        $retry.empty().removeClass('d-block').addClass('d-none');
+        $button.show();
     },
 
     saveEvaluation: function (nRightAnswers, total, data) {
@@ -529,6 +713,12 @@ var $scrambledlist = {
         }
         if (hasChanged) return o;
         else return this.randomizeArray(original);
+    },
+
+    getBoundedIntValue: function (value, min, max, fallback) {
+        const parsed = parseInt(value, 10);
+        if (Number.isNaN(parsed)) return fallback;
+        return Math.min(Math.max(parsed, min), max);
     },
 
     /**
@@ -563,6 +753,128 @@ var $scrambledlist = {
         data.gameStarted = true;
         $exeDevices.iDevice.gamification.scorm.sendScoreNew(true, data);
     },
+    /**
+     * Set up native touch drag-and-drop for a sortable list instance.
+     * Needed because the HTML5 Sortable plugin only handles mouse events.
+     *
+     * @param {number} listOrder - Instance identifier for the sortable list
+     */
+    setupTouchDrag: function (listOrder) {
+        $scrambledlist.removeTouchDrag(listOrder);
+
+        const ul = document.getElementById('exe-sortableList-' + listOrder);
+        if (!ul) return;
+
+        let touchedItem = null, touchHelper = null, offsetX = 0, offsetY = 0;
+
+        const touchStartHandler = function (e) {
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const li = $(element).closest('#exe-sortableList-' + listOrder + ' li')[0];
+            if (!li) return;
+
+            e.preventDefault();
+            touchedItem = li;
+            const rect = li.getBoundingClientRect();
+            offsetX = touch.clientX - rect.left;
+            offsetY = touch.clientY - rect.top;
+
+            touchHelper = $(li).clone()
+                .addClass('SLP-TouchHelper')
+                .css({
+                    position: 'fixed',
+                    left: rect.left + 'px',
+                    top: rect.top + 'px',
+                    width: rect.width + 'px',
+                    'z-index': 1000,
+                    'pointer-events': 'none',
+                    margin: 0,
+                })
+                .appendTo('body');
+
+            $(touchedItem).addClass('sortable-dragging');
+        };
+
+        const touchMoveHandler = function (e) {
+            if (!touchedItem) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+
+            touchHelper.css({
+                left: (touch.clientX - offsetX) + 'px',
+                top: (touch.clientY - offsetY) + 'px',
+            });
+
+            // Detect the li beneath the finger (hide helper so elementFromPoint works)
+            touchHelper.hide();
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            touchHelper.show();
+
+            const targetLi = $(elementBelow).closest('#exe-sortableList-' + listOrder + ' li')[0];
+            $('#exe-sortableList-' + listOrder + ' li').removeClass('sortable-over');
+            if (targetLi && targetLi !== touchedItem) {
+                $(targetLi).addClass('sortable-over');
+            }
+        };
+
+        const touchEndHandler = function (e) {
+            if (!touchedItem) return;
+
+            const touch = e.changedTouches[0];
+            touchHelper.remove();
+            touchHelper = null;
+            $(touchedItem).removeClass('sortable-dragging');
+            $('#exe-sortableList-' + listOrder + ' li').removeClass('sortable-over');
+
+            // Find the target li under the finger
+            const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            const targetLi = $(elementBelow).closest('#exe-sortableList-' + listOrder + ' li')[0];
+
+            if (targetLi && targetLi !== touchedItem) {
+                const targetRect = targetLi.getBoundingClientRect();
+                const midY = targetRect.top + targetRect.height / 2;
+
+                // Insert before or after the target based on finger position relative to its midpoint
+                if (touch.clientY < midY) {
+                    $(targetLi).before($(touchedItem));
+                } else {
+                    $(targetLi).after($(touchedItem));
+                }
+
+                $scrambledlist.getListLinks(listOrder);
+            }
+
+            touchedItem = null;
+        };
+
+        ul.addEventListener('touchstart', touchStartHandler, { passive: false });
+        ul.addEventListener('touchmove', touchMoveHandler, { passive: false });
+        ul.addEventListener('touchend', touchEndHandler, { passive: false });
+
+        $scrambledlist._touchHandlers[listOrder] = {
+            touchstart: touchStartHandler,
+            touchmove: touchMoveHandler,
+            touchend: touchEndHandler,
+            ul: ul,
+        };
+    },
+
+    /**
+     * Remove native touch event listeners for a sortable list instance.
+     *
+     * @param {number} listOrder - Instance identifier for the sortable list
+     */
+    removeTouchDrag: function (listOrder) {
+        const handlers = $scrambledlist._touchHandlers && $scrambledlist._touchHandlers[listOrder];
+        if (!handlers) return;
+
+        handlers.ul.removeEventListener('touchstart', handlers.touchstart);
+        handlers.ul.removeEventListener('touchmove', handlers.touchmove);
+        handlers.ul.removeEventListener('touchend', handlers.touchend);
+
+        delete $scrambledlist._touchHandlers[listOrder];
+    },
+
     getMessages: function () {
         let msgs = {
             msgScoreScorm:

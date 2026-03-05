@@ -150,6 +150,10 @@ To see all available commands, run:
 make help
 ```
 
+## Known Issues
+
+Some legacy limitations and edge cases are documented in [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+
 ## Documentation
 
 The full project documentation is available in the [`doc`](./doc/index.md) directory

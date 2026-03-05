@@ -432,6 +432,20 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockContent.classList.contains('class3')).toBe(true);
         });
 
+        it('adds exe-teacher-highlight class when teacherOnly is true', () => {
+            block.properties.teacherOnly = { value: 'true' };
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.classList.contains('exe-teacher-highlight')).toBe(true);
+        });
+
+        it('does not add exe-teacher-highlight class when teacherOnly is false', () => {
+            block.properties.teacherOnly = { value: 'false' };
+            block.setPropertiesClassesToElement();
+
+            expect(block.blockContent.classList.contains('exe-teacher-highlight')).toBe(false);
+        });
+
         it('calls toggleOff when minimized is true', () => {
             const spy = vi.spyOn(block, 'toggleOff');
             block.properties.minimized.value = 'true';
@@ -939,6 +953,22 @@ describe('IdeviceBlockNode', () => {
         it('adds draggable class when draggable is true', () => {
             const content = block.generateBlockContentNode(true);
             expect(content.classList.contains('draggable')).toBe(true);
+        });
+
+        it('creates box-content div and sets boxContent property', () => {
+            block.generateBlockContentNode(true);
+            expect(block.boxContent).toBeDefined();
+            expect(block.boxContent.tagName).toBe('DIV');
+            expect(block.boxContent.classList.contains('box-content')).toBe(true);
+        });
+
+        it('appends box-content after box-head inside blockContent', () => {
+            block.generateBlockContentNode(true);
+            const children = Array.from(block.blockContent.children);
+            const headIndex = children.indexOf(block.headElement);
+            const boxContentIndex = children.indexOf(block.boxContent);
+            expect(headIndex).toBeGreaterThanOrEqual(0);
+            expect(boxContentIndex).toBeGreaterThan(headIndex);
         });
     });
 

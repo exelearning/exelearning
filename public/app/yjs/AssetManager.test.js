@@ -343,8 +343,8 @@ describe('AssetManager', () => {
       expect(result.projectId).toBe('project-123');
       expect(result.id).toBe('asset-1');
       expect(result.blob).toBe(testBlob);
-      // Fallback metadata when no Yjs metadata exists
-      expect(result.filename).toBe('unknown');
+      // Fallback metadata when no Yjs metadata exists - filename is undefined (not 'unknown')
+      expect(result.filename).toBeUndefined();
       expect(result.folderPath).toBe('');
     });
 

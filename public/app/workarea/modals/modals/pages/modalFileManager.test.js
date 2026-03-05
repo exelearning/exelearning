@@ -1183,7 +1183,7 @@ describe('ModalFilemanager', () => {
 
     it('should not extract if user cancels prompt', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
-      vi.spyOn(window, 'prompt').mockReturnValue(null); // User clicked Cancel
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null); // User clicked Cancel
       const loadSpy = vi.spyOn(modal, 'loadAssets');
       await modal.extractZipAsset();
       expect(loadSpy).not.toHaveBeenCalled();
@@ -1192,7 +1192,7 @@ describe('ModalFilemanager', () => {
     it('should show error if blob is not available', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: null };
       modal.assetManager.getAsset = vi.fn().mockResolvedValue(null);
-      vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('extracted-folder');
       await modal.extractZipAsset();
       expect(eXeLearning.app.toasts.createToast).toHaveBeenCalledWith(
         expect.objectContaining({ body: 'Could not read ZIP file', modal: true })
@@ -1201,7 +1201,7 @@ describe('ModalFilemanager', () => {
 
     it('should show error if fflate is not available', async () => {
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['x']) };
-      vi.spyOn(window, 'prompt').mockReturnValue('extracted-folder');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('extracted-folder');
       const originalFflate = window.fflate;
       window.fflate = undefined;
       await modal.extractZipAsset();
@@ -1223,7 +1223,7 @@ describe('ModalFilemanager', () => {
       };
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['zipdata']) };
-      vi.spyOn(window, 'prompt').mockReturnValue('test');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('test');
       modal.assetManager.insertImage = vi.fn().mockResolvedValue({ id: 'new-id' });
       const loadSpy = vi.spyOn(modal, 'loadAssets').mockResolvedValue();
 
@@ -1241,7 +1241,7 @@ describe('ModalFilemanager', () => {
       };
 
       modal.selectedAsset = { id: '1', filename: 'test.zip', mime: 'application/zip', blob: new Blob(['bad']) };
-      vi.spyOn(window, 'prompt').mockReturnValue('test');
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('test');
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await modal.extractZipAsset();
@@ -1254,7 +1254,7 @@ describe('ModalFilemanager', () => {
 
     it('should detect ZIP by extension when mime is not set', async () => {
       modal.selectedAsset = { id: '1', filename: 'archive.ZIP', mime: 'application/octet-stream', blob: new Blob(['x']) };
-      vi.spyOn(window, 'prompt').mockReturnValue(null); // User cancels
+      vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null); // User cancels
       // Should not warn about non-ZIP (means it detected it as ZIP)
       const warnSpy = vi.spyOn(console, 'warn');
       await modal.extractZipAsset();
@@ -1969,7 +1969,7 @@ describe('ModalFilemanager', () => {
       });
 
       it('should do nothing if prompt returns null', async () => {
-        window.prompt.mockReturnValue(null);
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue(null);
 
         await modal.createNewFolder();
 
@@ -1977,7 +1977,7 @@ describe('ModalFilemanager', () => {
       });
 
       it('should do nothing if prompt returns empty string', async () => {
-        window.prompt.mockReturnValue('');
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('');
 
         await modal.createNewFolder();
 
@@ -1985,7 +1985,7 @@ describe('ModalFilemanager', () => {
       });
 
       it('should reject invalid folder names', async () => {
-        window.prompt.mockReturnValue('invalid/name');
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('invalid/name');
 
         await modal.createNewFolder();
 
@@ -1997,7 +1997,7 @@ describe('ModalFilemanager', () => {
 
       it('should reject duplicate folder names', async () => {
         modal.folders = ['existing'];
-        window.prompt.mockReturnValue('existing');
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('existing');
 
         await modal.createNewFolder();
 
@@ -2008,7 +2008,7 @@ describe('ModalFilemanager', () => {
       });
 
       it('should create folder at root level', async () => {
-        window.prompt.mockReturnValue('new-folder');
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('new-folder');
 
         await modal.createNewFolder();
 
@@ -2018,7 +2018,7 @@ describe('ModalFilemanager', () => {
 
       it('should create nested folder', async () => {
         modal.currentPath = 'docs';
-        window.prompt.mockReturnValue('subfolder');
+        vi.spyOn(modal, '_showRenameDialog').mockResolvedValue('subfolder');
 
         await modal.createNewFolder();
 

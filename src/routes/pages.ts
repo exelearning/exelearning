@@ -17,6 +17,7 @@ import {
     findUserByEmail as findUserByEmailDefault,
     createUser as createUserDefault,
     findPreference as findPreferenceDefault,
+    setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
     checkProjectAccess as checkProjectAccessDefault,
@@ -82,6 +83,7 @@ export interface PagesQueriesDeps {
     findUserByEmail: typeof findUserByEmailDefault;
     createUser: typeof createUserDefault;
     findPreference: typeof findPreferenceDefault;
+    setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
@@ -144,6 +146,7 @@ const defaultQueries: PagesQueriesDeps = {
     findUserByEmail: findUserByEmailDefault,
     createUser: createUserDefault,
     findPreference: findPreferenceDefault,
+    setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
     checkProjectAccess: checkProjectAccessDefault,
@@ -213,6 +216,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findUserByEmail,
         createUser,
         findPreference,
+        setPreference,
         findProjectByUuid,
         findProjectByPlatformId,
         checkProjectAccess,
@@ -691,11 +695,23 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const userId = currentUser.id;
                 const email = currentUser.email || 'user@exelearning.net';
 
-                // Determine locale with fallback: user preference → browser Accept-Language → default
+                // Determine locale with fallback: user preference → APP_LOCALE → browser Accept-Language → default
                 const userLocale = await getUserLocalePreference(userId);
+                const appLocale = process.env.APP_LOCALE || null;
                 const acceptLanguage = request.headers.get('accept-language');
                 const browserLocale = detectLocaleFromHeader(acceptLanguage);
-                const locale = userLocale || browserLocale || DEFAULT_LOCALE;
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                // First time: auto-save locale as user preference for consistency
+                if (!userLocale) {
+                    try {
+                        await setPreference(db, Number(userId), 'locale', JSON.stringify({ value: locale }));
+                        console.log(`[Pages] Auto-saved locale preference '${locale}' for user ${userId}`);
+                    } catch (e) {
+                        // Non-critical - log and continue
+                        console.warn('[Pages] Failed to auto-save locale preference:', e);
+                    }
+                }
 
                 const user = {
                     id: userId,
@@ -934,9 +950,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
 
-                // Detect locale from Accept-Language header
+                // Detect locale from user preference → APP_LOCALE → Accept-Language header
+                const adminUserLocale = await getUserLocalePreference(currentUser.id);
                 const acceptLanguage = request.headers.get('accept-language');
-                const locale = detectLocaleFromHeader(acceptLanguage);
+                const locale = adminUserLocale || process.env.APP_LOCALE || detectLocaleFromHeader(acceptLanguage);
 
                 const email = currentUser.email || 'admin@exelearning.net';
                 const user = {

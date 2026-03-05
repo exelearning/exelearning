@@ -168,16 +168,14 @@
 
 .ODNP-CardDraw {
     position: relative;
-    margin-bottom: 0.6em;
     width: 100%;
-    height: 100%;
+    aspect-ratio: 1 / 1;
 }
 
 .ODNP-CardContainer {
-    position: relative;
+    position: absolute;
+    inset: 0;
     margin: 0;
-    height: 100%;
-    width: 100%;
     -webkit-perspective: 800px;
     -moz-perspective: 800px;
     -o-perspective: 800px;
@@ -194,12 +192,9 @@
 }
 
 .ODNP-Card1 {
-    width: 96%;
-    height: 96%;
     position: absolute;
+    inset: 2%;
     text-align: center;
-    left: 2%;
-    top: 2%;
     background-color: white;
     -webkit-transition: -webkit-transform 0.4s;
     -moz-transition: -moz-transform 0.4s;
@@ -235,10 +230,9 @@
 .ODNP-Card1 .ODNP-CardFront,
 .ODNP-Card1 .ODNP-CardBack {
     display: block;
-    height: 100%;
-    width: 100%;
-    text-align: center;
     position: absolute;
+    inset: 0;
+    text-align: center;
     background-color: white;
     -webkit-backface-visibility: hidden;
     -moz-backface-visibility: hidden;
@@ -728,7 +722,60 @@
     -webkit-transform: scale(1.1);
     transform: scale(1.1);
 }
+.ODNP-Target {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 10px;
+    row-gap: 0.5em;
+}
 
+.ODNP-Word {
+    cursor: move;
+    font-size: 1.5em;
+    color: #333;
+    border: 1px solid transparent;
+    background-color: rgb(255, 255, 255, .01);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px 6px;
+
+}
+
+.ODPN-WordDragging {
+    opacity: 0.2;
+    padding: 2px 6px;
+}
+
+.ODNP-WordOver {
+    background-color: rgb(255, 197, 147);
+}
+
+.ODNP-WordBorder {
+     border: 1px solid #aaaaaa;
+    padding: 2px 6px;
+    display: inline-block;
+    margin-left: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;  
+   
+}
+
+.ODNP-WordCorrect {
+    color: #006641
+}
+
+.hovering {
+    border: 1px solid orange;
+}
+
+.ODNP-TouchHelper {
+    opacity: 0.85;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
 
 
 /* Puntuacion */
@@ -1015,6 +1062,14 @@ div:fullscreen .ODNP-LinkMinimize {
         margin-top: 0.6em;
         justify-content: space-around;
     }
+
+}
+
+@media screen and (max-width:500px) {
+    .ODNP-Word,
+    .ODNP-EText {
+        font-size: 1em;
+    }
 }
 
 @media screen and (max-width:470px) {
@@ -1052,12 +1107,7 @@ div:fullscreen .ODNP-LinkMinimize {
     }
 
     .ODNP-Card1 {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        text-align: center;
-        left: 0;
-        top: 0;
+        inset: 0;
         border: 1px solid rgb(3, 112, 116);
         border-radius: 0.1em;
     }
@@ -1186,49 +1236,3 @@ div:fullscreen .ODNP-LinkMinimize {
     }
 }
 
-.ODNP-Target {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    margin: 10px;
-    min-height: 50px;
-}
-
-.ODNP-Word {
-    cursor: move;
-    font-size: 1.5em;
-    color: #333;
-    border: 1px solid transparent;
-    max-height: 1.8em;
-    background-color: rgb(255, 255, 255, .01);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px;
-
-}
-
-.ODPN-WordDragging {
-    opacity: 0.2;
-    padding: 2px 6px;
-}
-
-.ODNP-WordOver {
-    background-color: rgb(255, 197, 147);
-}
-
-.ODNP-WordBorder {
-    border: 1px solid #aaaaaa;
-    padding: 2px 6px;
-    display: inline-block;
-    margin-left: 2px;
-   
-}
-
-.ODNP-WordCorrect {
-    color: #006641
-}
-
-.hovering {
-    border: 1px solid orange;
-}

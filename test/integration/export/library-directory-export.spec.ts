@@ -64,7 +64,7 @@ describe('Library Directory Export (Issue #904)', () => {
             const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);
 
             // Read actual directory contents for comparison
-            const atoolsDir = path.join(PUBLIC_DIR, 'app/common/exe_atools');
+            const atoolsDir = path.join(PUBLIC_DIR, 'libs/exe_atools');
             if (await fs.pathExists(atoolsDir)) {
                 const actualFiles = await fs.readdir(atoolsDir);
                 const nonTestFiles = actualFiles.filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js'));

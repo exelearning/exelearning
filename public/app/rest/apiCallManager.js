@@ -1673,6 +1673,15 @@ export default class ApiCallManager {
                         });
                     }
 
+                    // Build odeComponentsSyncProperties from Yjs component properties
+                    // Convert booleans to strings since ideviceNode.setProperties compares with string 'true'/'false'
+                    const compProperties = comp.properties || {};
+                    const odeComponentsSyncProperties = {};
+                    Object.entries(compProperties).forEach(([key, value]) => {
+                        const stringValue = typeof value === 'boolean' ? (value ? 'true' : 'false') : value;
+                        odeComponentsSyncProperties[key] = { value: stringValue };
+                    });
+
                     return {
                         id: comp.id,
                         odeId: comp.id,
@@ -1686,7 +1695,7 @@ export default class ApiCallManager {
                         htmlViewName: htmlView,
                         jsonProperties: comp.jsonProperties || '{}',
                         odePagStructureSyncId: block.id,
-                        odeComponentsSyncProperties: [],
+                        odeComponentsSyncProperties: odeComponentsSyncProperties,
                         // Mark as coming from Yjs to prevent re-sync
                         fromYjs: true,
                         yjsComponentId: comp.id

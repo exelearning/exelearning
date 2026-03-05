@@ -73,7 +73,8 @@ var $text = {
         const btnDiv = temp.querySelector('.feedback-button');
         let buttonFeedBackText = data[this.feedbackTitleId];
         if (btnDiv) {
-            const inputEl = btnDiv.querySelector('input.feedbackbutton');
+            // Support both legacy eXe 2.9 (feedbackbutton) and modern (feedbacktooglebutton) formats
+            const inputEl = btnDiv.querySelector('input.feedbackbutton, input.feedbacktooglebutton');
             if (inputEl)
                 buttonFeedBackText = isInExe
                     ? c_(inputEl.value)
@@ -110,8 +111,7 @@ var $text = {
         const activityContent =
             infoContentHTML +
             contentHtml +
-            feedbackContentHTML +
-            `<p class="clearfix"></p>`;
+            feedbackContentHTML;
 
         let htmlContent = `<div class="${this.ideviceClass}">`;
         htmlContent += this.createMainContent(activityContent);
@@ -182,14 +182,6 @@ var $text = {
             }
         }
 
-        if ($node.find('.clearfix').length === 0) {
-            const $activity = $node.find('.exe-text');
-            if ($activity.length) {
-                $activity.append('<p class="clearfix"></p>');
-            } else {
-                $node.append('<p class="clearfix"></p>');
-            }
-        }
     },
 
     /**

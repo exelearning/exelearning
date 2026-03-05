@@ -1442,8 +1442,8 @@ test.describe('Text iDevice', () => {
             const previewPanel = page.locator('#previewsidenav');
             await expect(previewPanel).toBeVisible({ timeout: 15000 });
 
-            // Wait for PDF to be embedded in preview
-            // With SW-based preview, PDFs are served via HTTP and can render natively
+            // Wait for PDF to be rendered in preview
+            // PDF.js replaces original embed/object/iframe elements with canvas-based renderers
             await page
                 .waitForFunction(
                     () => {
@@ -1451,13 +1451,14 @@ test.describe('Text iDevice', () => {
                         if (!previewIframe?.contentDocument) return false;
 
                         const doc = previewIframe.contentDocument;
-                        // Check for PDF iframe, embed, or object element
+                        // PDF.js canvas rendering (toolbar + canvas elements)
+                        const pdfToolbar = doc.querySelector('.exe-pdf-tb') || doc.querySelector('#tb');
+                        const pdfCanvases = doc.querySelectorAll('canvas');
+                        // Legacy checks (original elements before PDF.js replaces them)
                         const pdfIframe = doc.querySelector('iframe[src*=".pdf"]');
                         const pdfEmbed = doc.querySelector('embed[type="application/pdf"]');
                         const pdfObject = doc.querySelector('object[data*=".pdf"]');
-                        // Also check for video/media element (TinyMCE might insert as media)
-                        const mediaElement = doc.querySelector('video[src*=".pdf"], iframe[src*="content/resources"]');
-                        return !!pdfIframe || !!pdfEmbed || !!pdfObject || !!mediaElement;
+                        return pdfCanvases.length > 0 || !!pdfToolbar || !!pdfIframe || !!pdfEmbed || !!pdfObject;
                     },
                     undefined,
                     { timeout: 20000, polling: 500 },
@@ -1470,36 +1471,34 @@ test.describe('Text iDevice', () => {
             await page.waitForTimeout(500);
 
             // Check for PDF in preview iframe
-            // With SW-based preview, PDFs are served via HTTP so they can render natively
-            // (no need for PDF.js workaround that was required for blob:// URLs)
+            // PDF.js replaces <object>/<embed>/<iframe> with canvas-based renderers
             const viewerInfo = await page.evaluate(() => {
                 const previewIframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
-                if (!previewIframe?.contentDocument) return { hasPdf: false };
+                if (!previewIframe?.contentDocument) return { hasPdf: false, canvasCount: 0 };
 
                 const doc = previewIframe.contentDocument;
 
-                // Check for various PDF embedding methods
+                // PDF.js canvas rendering
+                const pdfToolbar = doc.querySelector('.exe-pdf-tb') || doc.querySelector('#tb');
+                const pdfCanvases = doc.querySelectorAll('canvas');
+                // Legacy checks
                 const pdfIframe = doc.querySelector('iframe[src*=".pdf"]');
                 const pdfEmbed = doc.querySelector('embed[type="application/pdf"]');
                 const pdfObject = doc.querySelector('object[data*=".pdf"]');
-                const mediaElement = doc.querySelector('video, iframe[src*="content/resources"]');
-                const anyIframe = doc.querySelector('iframe');
 
                 return {
-                    hasPdf: !!pdfIframe || !!pdfEmbed || !!pdfObject || !!mediaElement || !!anyIframe,
+                    hasPdf: pdfCanvases.length > 0 || !!pdfToolbar || !!pdfIframe || !!pdfEmbed || !!pdfObject,
+                    canvasCount: pdfCanvases.length,
+                    hasToolbar: !!pdfToolbar,
                     hasPdfIframe: !!pdfIframe,
                     hasPdfEmbed: !!pdfEmbed,
                     hasPdfObject: !!pdfObject,
-                    hasMediaElement: !!mediaElement,
-                    hasAnyIframe: !!anyIframe,
-                    iframeSrc: anyIframe?.getAttribute('src') || '',
                 };
             });
 
             console.log('PDF viewer info:', viewerInfo);
 
-            // Verify PDF is embedded in preview
-            // With SW-based preview, the PDF should be in an iframe or embed element
+            // Verify PDF is rendered in preview (via PDF.js canvas or native embed)
             expect(viewerInfo.hasPdf).toBe(true);
         });
     });
@@ -2562,26 +2561,19 @@ test.describe('Text iDevice', () => {
             // Wait for dropdown menu to be visible
             await page.waitForSelector('#modalFileManager .dropdown-menu.show', { timeout: 5000 });
 
-            // Handle dialogs: prompt for folder name and alert for success
-            // Note: dialog.accept() with explicit value ensures consistent behavior across browsers
-            page.on('dialog', async dialog => {
-                if (dialog.type() === 'prompt') {
-                    // Accept prompt with the suggested folder name (ZIP filename without extension)
-                    await dialog.accept('aaa_web');
-                } else {
-                    // Accept alert dialogs (extraction success message)
-                    await dialog.accept();
-                }
-            });
-
             // Click extract button (it should be visible now since a ZIP is selected)
             const extractBtn = page.locator('#modalFileManager .dropdown-item.media-library-extract-btn');
             await expect(extractBtn).toBeVisible({ timeout: 5000 });
             await extractBtn.click();
 
+            // Handle the modal dialog for target folder name (pre-filled with "aaa_web")
+            await page
+                .locator('#modalFileManager .media-library-rename-dialog')
+                .waitFor({ state: 'visible', timeout: 5000 });
+            await page.locator('#modalFileManager .rename-dialog-confirm').click();
+
             // Wait for extraction to complete - the folder "aaa_web" should appear
-            // (the prompt dialog for folder name is auto-accepted by the dialog handler)
-            // After extraction, an alert "Extracted X files successfully" appears (also auto-accepted)
+            // (success is shown via toast, no dialog to dismiss)
             await page.waitForFunction(
                 () => {
                     const items = document.querySelectorAll('#modalFileManager .media-library-item');

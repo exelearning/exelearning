@@ -1286,6 +1286,82 @@ describe('AssetWebSocketHandler', () => {
       expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
     });
 
+    it('stores undefined filename when server has "unknown" for new asset', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'new-asset', filename: 'unknown', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue(null);
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'new-asset',
+          filename: undefined,
+        })
+      );
+    });
+
+    it('updates "unknown" filename when server has a real filename', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'existing-asset', filename: 'photo.jpg', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'existing-asset',
+        projectId: 'project-123',
+        filename: 'unknown',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      expect(mockAssetManager.putAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'existing-asset',
+          filename: 'photo.jpg',
+        })
+      );
+    });
+
+    it('does not update when both local and server have "unknown" filename', async () => {
+      global.fetch.mockResolvedValue({
+        ok: true,
+        json: mock(() => undefined).mockResolvedValue({
+          success: true,
+          data: [
+            { clientId: 'existing-asset', filename: 'unknown', mimeType: 'image/jpeg', size: 1000 },
+          ],
+        }),
+      });
+      mockAssetManager.getAsset.mockResolvedValue({
+        id: 'existing-asset',
+        projectId: 'project-123',
+        filename: 'unknown',
+        folderPath: '',
+        mime: 'image/jpeg',
+        size: 1000,
+      });
+
+      await handler.syncAssetsMetadataFromServer();
+
+      // No update because server filename is also 'unknown'
+      expect(mockAssetManager.putAsset).not.toHaveBeenCalled();
+    });
+
     it('skips assets without clientId', async () => {
       global.fetch.mockResolvedValue({
         ok: true,

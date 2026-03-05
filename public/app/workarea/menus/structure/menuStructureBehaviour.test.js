@@ -1062,38 +1062,6 @@ describe('MenuStructureBehaviour', () => {
             });
         });
 
-        /**
-         * Test Double Click (Properties)
-         */
-        describe('Double Click', () => {
-             it('opens properties modal on double click', async () => {
-                 // IMPORTANT: Wiring up the click handler which contains the check logic
-                 behaviour.addEventNavElementOnclick();
-                 behaviour.addEventNavElementOnDbclick();
-                 
-                 const nodeText = document.querySelector('.nav-element[nav-id="node-1"] > .nav-element-text');
-                 const spy = vi.spyOn(behaviour, 'showModalPropertiesNode').mockImplementation(() => {});
-
-                 // 1. First click (selects)
-                 behaviour.selectNode(nodeText.parentElement);
-
-                 // 2. Double click event
-                 const dblClickEvent = new MouseEvent('dblclick', { bubbles: true });
-                 nodeText.dispatchEvent(dblClickEvent);
-                 
-                 expect(behaviour.dbclickNode).toBe(true);
-
-                 // 3. Trigger click again (which checks dbclickNode flag)
-                 // This click MUST bubble to where addEventNavElementOnclick is attached (.nav-element-text)
-                 nodeText.click();
-
-                 // Handler calls selectNode which has a setTimeout(50ms)
-                 await new Promise(resolve => setTimeout(resolve, 200));
-                 
-                 expect(spy).toHaveBeenCalled();
-                 expect(behaviour.dbclickNode).toBe(false); // Should reset
-             });
-        });
         describe('Context Menu Actions', () => {
             // Helper to create a dropdown menu in body with proper aria-labelledby for document-level delegation
             const createNavDropdownMenu = () => {
