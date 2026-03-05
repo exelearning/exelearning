@@ -179,7 +179,10 @@ describe('generateI18nScript', () => {
     });
 
     it('should strip leading ~ from translations marked as pending review', () => {
-        const translations = new Map([['Previous', '~translated'], ['Next', 'translated']]);
+        const translations = new Map([
+            ['Previous', '~translated'],
+            ['Next', 'translated'],
+        ]);
         const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
 
         expect(script).not.toContain('~');
