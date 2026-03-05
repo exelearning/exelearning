@@ -117,7 +117,9 @@ export default class Locale {
      */
     async refreshI18nGlobals() {
         const lang = (this._contentLang || this.lang || 'en').split('-')[0];
-        const version = window.eXeLearning?.version || '';
+        // In static mode files are served at root with no version routing, skip version prefix
+        const isStatic = window.__EXE_STATIC_MODE__ === true;
+        const version = isStatic ? '' : (window.eXeLearning?.version || '');
         const basePath = window.eXeLearning?.config?.basePath || '';
         const base = version ? `${basePath}/${version}` : basePath;
         const url = `${base}/app/common/i18n/common_i18n.${lang}.js`;
