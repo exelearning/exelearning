@@ -125,7 +125,9 @@ const EXTERNAL_LINK_HANDLER_SCRIPT = `
 `;
 
 /**
- * Script to handle preview refresh notifications from SW
+ * Script to handle preview refresh notifications from SW.
+ * Also handles CONTENT_NEEDED: when the SW loses content, this relays
+ * the event to the main window via BroadcastChannel so it can regenerate.
  */
 const PREVIEW_REFRESH_SCRIPT = `
 <script data-injected-by="eXeLearning-Preview">
@@ -143,8 +145,59 @@ const PREVIEW_REFRESH_SCRIPT = `
                     window.location.reload();
                 }
             }
+            if (event.data && event.data.type === 'CONTENT_NEEDED') {
+                // SW lost its content — relay to main window via BroadcastChannel
+                try {
+                    var ch = new BroadcastChannel('exe-preview-recovery');
+                    ch.postMessage({ type: 'PREVIEW_CONTENT_LOST' });
+                    ch.close();
+                } catch (e) { /* BroadcastChannel not supported */ }
+            }
         });
     }
+})();
+</script>
+`;
+
+/**
+ * Script to keep the Service Worker alive by periodically pinging it.
+ * Only pings when the viewer page is visible. Stops when hidden.
+ * Cleans up on beforeunload.
+ */
+const KEEPALIVE_SCRIPT = `
+<script data-injected-by="eXeLearning-Preview">
+(function() {
+    var timer = null;
+    var INTERVAL = 20000; // 20 seconds
+
+    function ping() {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'GET_STATUS' });
+        }
+    }
+
+    function start() {
+        if (!timer) {
+            timer = setInterval(ping, INTERVAL);
+            ping(); // immediate first ping
+        }
+    }
+
+    function stop() {
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    // Start only when visible
+    if (!document.hidden) start();
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) { stop(); } else { start(); }
+    });
+
+    window.addEventListener('beforeunload', stop);
 })();
 </script>
 `;
@@ -417,6 +470,7 @@ function injectScripts(body, options = { openExternalLinksInNewWindow: true }) {
             scriptsToInject += EXTERNAL_LINK_HANDLER_SCRIPT;
         }
         scriptsToInject += PREVIEW_REFRESH_SCRIPT;
+        scriptsToInject += KEEPALIVE_SCRIPT;
         scriptsToInject += PDF_EMBED_HANDLER_SCRIPT;
 
         // Find insertion point (before </body> or </html>)
@@ -457,6 +511,16 @@ function createNotReadyResponse() {
             '<body style="font-family: system-ui; padding: 2rem; text-align: center;">' +
             '<h2>Preview not available</h2>' +
             '<p>Please open the preview panel to load content.</p>' +
+            '<script>' +
+            // Ask the main window to resend content via BroadcastChannel
+            'try{var ch=new BroadcastChannel("exe-preview-recovery");' +
+            'ch.postMessage({type:"PREVIEW_CONTENT_LOST"});ch.close();}catch(e){}' +
+            // Auto-reload when SW gets content back (CONTENT_UPDATED)
+            'if(navigator.serviceWorker){' +
+            'navigator.serviceWorker.addEventListener("message",function(e){' +
+            'if(e.data&&e.data.type==="CONTENT_UPDATED"){window.location.reload();}' +
+            '});}' +
+            '</script>' +
             '</body></html>',
         {
             status: 503,
@@ -622,6 +686,7 @@ if (typeof module !== 'undefined' && module.exports) {
         MIME_TYPES,
         EXTERNAL_LINK_HANDLER_SCRIPT,
         PREVIEW_REFRESH_SCRIPT,
+        KEEPALIVE_SCRIPT,
         PDF_EMBED_HANDLER_SCRIPT,
         getMimeType,
         extractFilePath,
@@ -718,6 +783,18 @@ if (typeof self !== 'undefined' && typeof self.addEventListener === 'function') 
                         fileCount: contentFiles.size,
                     });
                 }
+
+                // Broadcast CONTENT_UPDATED to all clients (needed for popup recovery)
+                // When content is restored after SW termination, other clients (e.g. popup
+                // windows showing the 503 page) need to know content is available again.
+                self.clients.matchAll().then(clients => {
+                    clients.forEach(client => {
+                        client.postMessage({
+                            type: 'CONTENT_UPDATED',
+                            updatedPaths: Object.keys(data.files),
+                        });
+                    });
+                });
                 break;
 
             case 'UPDATE_FILES':
