@@ -147,6 +147,10 @@ var $exeDevice = {
             const pageId = page.get('id') || page.get('pageId') || '';
             const pageTitle = page.get('title') || page.get('pageName') || '';
             const parentId = page.get('parentId') || null;
+            const parsedPageOrder = Number(page.get('order'));
+            const pageOrder = Number.isFinite(parsedPageOrder)
+                ? parsedPageOrder
+                : pageIdx;
 
             // Get blocks array
             const blocks = page.get('blocks');
@@ -160,7 +164,7 @@ var $exeDevice = {
                     navId: pageId,
                     ode_nav_structure_sync_id: pageId,
                     ode_session_id: sessionId,
-                    ode_nav_structure_sync_order: pageIdx,
+                    ode_nav_structure_sync_order: pageOrder,
                     navIsActive: 1,
                     componentId: null,
                     htmlViewer: null,
@@ -201,7 +205,7 @@ var $exeDevice = {
                         navId: pageId,
                         ode_nav_structure_sync_id: pageId,
                         ode_session_id: sessionId,
-                        ode_nav_structure_sync_order: pageIdx,
+                        ode_nav_structure_sync_order: pageOrder,
                         navIsActive: 1,
                         componentId: null,
                         htmlViewer: null,
@@ -247,7 +251,7 @@ var $exeDevice = {
                         navId: pageId,
                         ode_nav_structure_sync_id: pageId,
                         ode_session_id: sessionId,
-                        ode_nav_structure_sync_order: pageIdx,
+                        ode_nav_structure_sync_order: pageOrder,
                         navIsActive: 1,
                         componentId: componentId,
                         htmlViewer: htmlViewStr,
@@ -315,12 +319,12 @@ var $exeDevice = {
                     url:
                         !rawParentId && order === 1
                             ? 'index'
-                            : $eXeInforme.normalizeFileName(row.pageName),
+                            : $exeDevice.normalizeFileName(row.pageName),
                 };
             }
 
             if (row.componentId) {
-                const dataIDs = $eXeInforme.getEvaluatioID(
+                const dataIDs = $exeDevice.getEvaluatioID(
                     row.htmlViewer,
                     row.jsonProperties
                 );

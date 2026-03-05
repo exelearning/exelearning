@@ -71,6 +71,9 @@ var $exeDevice = {
             msgCheck: c_('Check'),
             msgSaveScore: c_('Save score'),
             msgTestFailed: c_("You didn't pass the test. Please try again"),
+            msgRetryAttempts: c_(
+                'You made %s errors. You have %s attempts left. Do you want to try again?'
+            ),
         };
     },
 
@@ -123,6 +126,12 @@ var $exeDevice = {
         this.showSolutions = !!(
             this.ideviceBody.querySelector('#sortableShowSolutions') || {}
         ).checked;
+        this.attemptsNumber = this.getBoundedIntValue(
+            this.ideviceBody.querySelector('#sortableAttemptsNumber'),
+            1,
+            9,
+            1
+        );
 
         this.textAfter = '';
         const ta = tinyMCE.get('eXeIdeviceTextAfter');
@@ -174,6 +183,7 @@ var $exeDevice = {
             scorerp: 0,
             idevice: 'idevice_node',
             showSolutions: this.showSolutions,
+            attemptsNumber: this.attemptsNumber,
             id: this.id,
         };
         return this.data;
@@ -272,6 +282,10 @@ var $exeDevice = {
                                     </span>
                                     <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
                                 </div>
+                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                    <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                                    <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                                </div>
                                 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                                     <div class="toggle-item mb-0">
                                         <span class="toggle-control">
@@ -327,6 +341,18 @@ var $exeDevice = {
                 const isHidden = help.classList.contains('d-none');
                 help.classList.toggle('d-none', !isHidden);
                 help.classList.toggle('d-block', isHidden);
+            });
+
+        $('#sortableAttemptsNumber')
+            .on('keyup', function () {
+                let v = this.value.replace(/\D/g, '').substring(0, 1);
+                this.value = v;
+            })
+            .on('focusout', function () {
+                let val = this.value.trim();
+                val = val === '' ? '1' : val;
+                val = Math.min(Math.max(parseInt(val, 10), 1), 9);
+                this.value = val;
             });
 
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
@@ -536,6 +562,8 @@ var $exeDevice = {
             typeof data.showSolutions !== 'undefined'
                 ? data.showSolutions
                 : true;
+        this.ideviceBody.querySelector('#sortableAttemptsNumber').value =
+            this.getBoundedIntValue(data.attemptsNumber, 1, 9, 1);
 
         data.weighted = data.weighted || 100;
         data.repeatActivity = data.repeatActivity || false;
@@ -551,6 +579,16 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs
         );
+    },
+
+    getBoundedIntValue: function (value, min, max, fallback) {
+        const raw =
+            value && typeof value === 'object' && 'value' in value
+                ? value.value
+                : value;
+        const parsed = parseInt(raw, 10);
+        if (Number.isNaN(parsed)) return fallback;
+        return Math.min(Math.max(parsed, min), max);
     },
 
     /**

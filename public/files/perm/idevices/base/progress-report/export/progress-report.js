@@ -79,12 +79,16 @@ var $eXeInforme = {
         );
         const flatPages = [];
 
-        navStructures.forEach((pageNode) => {
+        navStructures.forEach((pageNode, index) => {
             const odePageId =
                 pageNode.querySelector('odePageId')?.textContent || '';
             const odeParentPageId =
                 pageNode.querySelector('odeParentPageId')?.textContent || null;
             const name = pageNode.querySelector('pageName')?.textContent || '';
+            const parsedOrder = Number(
+                pageNode.querySelector('odeNavStructureOrder')?.textContent
+            );
+            const order = Number.isFinite(parsedOrder) ? parsedOrder : index;
             let components = [];
 
             const pagStructures = pageNode.querySelectorAll(
@@ -173,6 +177,7 @@ var $eXeInforme = {
                 odePageId,
                 id: odePageId,
                 name,
+                order,
                 parentID:
                     odeParentPageId && odeParentPageId.trim() !== ''
                         ? odeParentPageId
@@ -195,6 +200,17 @@ var $eXeInforme = {
                 roots.push(p);
             }
         });
+
+        const sortByOrder = (a, b) => (a.order || 0) - (b.order || 0);
+        const sortTree = (nodes) => {
+            nodes.sort(sortByOrder);
+            nodes.forEach((node) => {
+                if (Array.isArray(node.children) && node.children.length > 1) {
+                    sortTree(node.children);
+                }
+            });
+        };
+        sortTree(roots);
 
         return roots;
     },
@@ -444,6 +460,10 @@ var $eXeInforme = {
             const pageId = page.get('id') || page.get('pageId') || '';
             const pageTitle = page.get('title') || page.get('pageName') || '';
             const parentId = page.get('parentId') || null;
+            const parsedPageOrder = Number(page.get('order'));
+            const pageOrder = Number.isFinite(parsedPageOrder)
+                ? parsedPageOrder
+                : pageIdx;
 
             // Get blocks array
             const blocks = page.get('blocks');
@@ -457,7 +477,7 @@ var $eXeInforme = {
                     navId: pageId,
                     ode_nav_structure_sync_id: pageId,
                     ode_session_id: sessionId,
-                    ode_nav_structure_sync_order: pageIdx,
+                    ode_nav_structure_sync_order: pageOrder,
                     navIsActive: 1,
                     componentId: null,
                     htmlViewer: null,
@@ -498,7 +518,7 @@ var $eXeInforme = {
                         navId: pageId,
                         ode_nav_structure_sync_id: pageId,
                         ode_session_id: sessionId,
-                        ode_nav_structure_sync_order: pageIdx,
+                        ode_nav_structure_sync_order: pageOrder,
                         navIsActive: 1,
                         componentId: null,
                         htmlViewer: null,
@@ -544,7 +564,7 @@ var $eXeInforme = {
                         navId: pageId,
                         ode_nav_structure_sync_id: pageId,
                         ode_session_id: sessionId,
-                        ode_nav_structure_sync_order: pageIdx,
+                        ode_nav_structure_sync_order: pageOrder,
                         navIsActive: 1,
                         componentId: componentId,
                         htmlViewer: htmlViewStr,
