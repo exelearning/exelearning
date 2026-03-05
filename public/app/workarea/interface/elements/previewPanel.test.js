@@ -148,6 +148,8 @@ describe('PreviewPanelManager', () => {
       const subscribeSpy = vi.spyOn(manager, 'subscribeToChanges');
       const resetSpy = vi.spyOn(manager, 'resetToDefaultState').mockImplementation(() => {});
       const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler').mockImplementation(() => {});
+      const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener').mockImplementation(() => {});
+      const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener').mockImplementation(() => {});
 
       manager.init();
 
@@ -155,6 +157,8 @@ describe('PreviewPanelManager', () => {
       expect(subscribeSpy).toHaveBeenCalled();
       expect(resetSpy).toHaveBeenCalled();
       expect(visibilitySpy).toHaveBeenCalled();
+      expect(broadcastSpy).toHaveBeenCalled();
+      expect(swListenerSpy).toHaveBeenCalled();
     });
   });
 
@@ -181,11 +185,45 @@ describe('PreviewPanelManager', () => {
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
-      it('should return false when neither open nor pinned', () => {
+      it('should return true when popup is open', () => {
         manager.isOpen = false;
         manager.isPinned = false;
+        manager._popupWindow = { closed: false };
+
+        expect(manager._isPreviewVisible()).toBe(true);
+      });
+
+      it('should return false when popup is closed', () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = { closed: true };
 
         expect(manager._isPreviewVisible()).toBe(false);
+      });
+
+      it('should return false when neither open, pinned, nor popup', () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = null;
+
+        expect(manager._isPreviewVisible()).toBe(false);
+      });
+    });
+
+    describe('_isPopupOpen', () => {
+      it('should return true when popup exists and is not closed', () => {
+        manager._popupWindow = { closed: false };
+        expect(manager._isPopupOpen()).toBe(true);
+      });
+
+      it('should return false when popup is null', () => {
+        manager._popupWindow = null;
+        expect(manager._isPopupOpen()).toBe(false);
+      });
+
+      it('should return false when popup is closed', () => {
+        manager._popupWindow = { closed: true };
+        expect(manager._isPopupOpen()).toBe(false);
       });
     });
 
@@ -382,6 +420,204 @@ describe('PreviewPanelManager', () => {
         vi.useRealTimers();
       });
     });
+
+    describe('CONTENT_NEEDED with popup open', () => {
+      it('should refresh when CONTENT_NEEDED received and popup is open', async () => {
+        vi.useFakeTimers();
+        manager.bindEvents();
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = { closed: false };
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        const event = new MessageEvent('message', {
+          data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
+        });
+        window.dispatchEvent(event);
+
+        vi.advanceTimersByTime(150);
+
+        expect(refreshSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+    });
+
+    describe('BroadcastChannel recovery', () => {
+      it('should setup BroadcastChannel listener on init', () => {
+        const originalBC = globalThis.BroadcastChannel;
+        let capturedChannel = null;
+        globalThis.BroadcastChannel = class {
+          constructor(name) { this.name = name; capturedChannel = this; }
+          close() {}
+        };
+
+        manager._setupBroadcastChannelListener();
+
+        expect(capturedChannel).not.toBeNull();
+        expect(capturedChannel.name).toBe('exe-preview-recovery');
+        expect(manager._recoveryChannel).toBe(capturedChannel);
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+
+      it('should call refreshWithServiceWorker when PREVIEW_CONTENT_LOST received', async () => {
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+
+        const originalBC = globalThis.BroadcastChannel;
+        let onMessageHandler = null;
+        globalThis.BroadcastChannel = class {
+          constructor() {}
+          set onmessage(handler) { onMessageHandler = handler; }
+          get onmessage() { return onMessageHandler; }
+          close() {}
+        };
+
+        manager._setupBroadcastChannelListener();
+
+        // Simulate receiving PREVIEW_CONTENT_LOST
+        onMessageHandler({ data: { type: 'PREVIEW_CONTENT_LOST' } });
+
+        // Wait for async call
+        await vi.waitFor(() => {
+          expect(swRefreshSpy).toHaveBeenCalled();
+        });
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+
+      it('should not crash if BroadcastChannel is unavailable', () => {
+        const originalBC = globalThis.BroadcastChannel;
+        delete globalThis.BroadcastChannel;
+
+        expect(() => manager._setupBroadcastChannelListener()).not.toThrow();
+        expect(manager._recoveryChannel).toBeNull();
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+    });
+
+    describe('SW message listener', () => {
+      it('should setup navigator.serviceWorker message listener', () => {
+        const addEventSpy = vi.fn();
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: { addEventListener: addEventSpy, removeEventListener: vi.fn() },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+
+        expect(addEventSpy).toHaveBeenCalledWith('message', expect.any(Function));
+        expect(manager._swMessageHandler).toBeDefined();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+      });
+
+      it('should call refreshWithServiceWorker when CONTENT_NEEDED received and popup open', async () => {
+        vi.useFakeTimers();
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        manager._popupWindow = { closed: false };
+
+        let capturedHandler;
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: {
+            addEventListener: (type, handler) => { capturedHandler = handler; },
+            removeEventListener: vi.fn(),
+          },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+
+        // Simulate SW CONTENT_NEEDED
+        capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
+        vi.advanceTimersByTime(150);
+
+        expect(swRefreshSpy).toHaveBeenCalled();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+        vi.useRealTimers();
+      });
+
+      it('should not refresh when preview is not visible', async () => {
+        vi.useFakeTimers();
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = null;
+
+        let capturedHandler;
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: {
+            addEventListener: (type, handler) => { capturedHandler = handler; },
+            removeEventListener: vi.fn(),
+          },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+        capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
+        vi.advanceTimersByTime(150);
+
+        expect(swRefreshSpy).not.toHaveBeenCalled();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+        vi.useRealTimers();
+      });
+    });
+
+    describe('popup monitor', () => {
+      it('should start monitoring on _setupPopupMonitor', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+
+        manager._setupPopupMonitor();
+
+        expect(manager._popupMonitorTimer).not.toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should clear popup reference when popup closes', () => {
+        vi.useFakeTimers();
+        const popup = { closed: false };
+        manager._popupWindow = popup;
+
+        manager._setupPopupMonitor();
+
+        // Simulate popup closing
+        popup.closed = true;
+        vi.advanceTimersByTime(2500);
+
+        expect(manager._popupWindow).toBeNull();
+        expect(manager._popupMonitorTimer).toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should not clear popup reference while popup is open', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+
+        manager._setupPopupMonitor();
+
+        vi.advanceTimersByTime(2500);
+
+        expect(manager._popupWindow).not.toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should clear monitor on _clearPopupMonitor', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+        manager._setupPopupMonitor();
+
+        manager._clearPopupMonitor();
+
+        expect(manager._popupMonitorTimer).toBeNull();
+        vi.useRealTimers();
+      });
+    });
   });
 
   describe('open/close', () => {
@@ -481,6 +717,38 @@ describe('PreviewPanelManager', () => {
         expect.stringContaining('/viewer/index.html'),
         '_blank'
       );
+    });
+
+    it('should store popup window reference and start monitor', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockPopup = { closed: false };
+      global.open = vi.fn(() => mockPopup);
+      const monitorSpy = vi.spyOn(manager, '_setupPopupMonitor').mockImplementation(() => {});
+
+      await manager.extractToNewTab();
+
+      expect(manager._popupWindow).toBe(mockPopup);
+      expect(monitorSpy).toHaveBeenCalled();
+    });
+
+    it('should not store popup reference when popup is blocked', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+      global.open = vi.fn(() => null);
+
+      const mockClick = vi.fn();
+      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+        if (tag === 'a') {
+          return { click: mockClick, href: '', target: '' };
+        }
+        return document.createElement(tag);
+      });
+
+      await manager.extractToNewTab();
+
+      expect(manager._popupWindow).toBeNull();
     });
 
     it('should fallback to link click if popup is blocked', async () => {
@@ -713,6 +981,36 @@ describe('PreviewPanelManager', () => {
       expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-2');
       expect(manager._pdfEmbedBlobUrls).toBeNull();
     });
+
+    it('should clean up popup tracking, recovery channel, and SW listener', () => {
+      vi.useFakeTimers();
+      manager._popupWindow = { closed: false };
+      manager._setupPopupMonitor();
+
+      const closeSpy = vi.fn();
+      manager._recoveryChannel = { close: closeSpy };
+
+      const removeEventSpy = vi.fn();
+      const handler = vi.fn();
+      manager._swMessageHandler = handler;
+      const originalSW = navigator.serviceWorker;
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { removeEventListener: removeEventSpy },
+        configurable: true,
+      });
+
+      manager.destroy();
+
+      expect(manager._popupWindow).toBeNull();
+      expect(manager._popupMonitorTimer).toBeNull();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(manager._recoveryChannel).toBeNull();
+      expect(removeEventSpy).toHaveBeenCalledWith('message', handler);
+      expect(manager._swMessageHandler).toBeNull();
+
+      Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+      vi.useRealTimers();
+    });
   });
 
   // NOTE: Tests for blobToDataUrl and processUserThemeCssUrls have been removed
@@ -733,6 +1031,18 @@ describe('PreviewPanelManager', () => {
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(false);
       expect(mockElements['preview-sidenav-overlay'].classList.contains('active')).toBe(false);
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
+    });
+
+    it('should clear popup tracking state', () => {
+      vi.useFakeTimers();
+      manager._popupWindow = { closed: false };
+      manager._setupPopupMonitor();
+
+      manager.resetToDefaultState();
+
+      expect(manager._popupWindow).toBeNull();
+      expect(manager._popupMonitorTimer).toBeNull();
+      vi.useRealTimers();
     });
   });
 
