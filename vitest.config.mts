@@ -18,7 +18,7 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js'],
+        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
 
         // Exclude legacy code
         exclude: [

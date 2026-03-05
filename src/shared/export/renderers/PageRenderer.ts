@@ -16,8 +16,14 @@
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
 import { IdeviceRenderer } from './IdeviceRenderer';
-import { LIBRARY_PATTERNS, getLicenseClass, formatLicenseText, shouldShowLicenseFooter } from '../constants';
-
+import {
+    LIBRARY_PATTERNS,
+    getLicenseClass,
+    formatLicenseText,
+    shouldShowLicenseFooter,
+    getLicenseUrl,
+    formatShortLicenseText,
+} from '../constants';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -621,7 +627,22 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             const safeTitle = this.escapeHtml(projectTitle || '-');
             const safeAuthor = this.escapeHtml(metadata?.author || '-');
             const safeDesc = this.escapeHtml(metadata?.description || '-');
-            const safeLicense = this.escapeHtml(metadata?.license ? formatLicenseText(metadata.license) : '-');
+            const safeLicense = this.escapeHtml(metadata?.license ? formatShortLicenseText(metadata.license) : '-');
+
+            let safeLicenseHtml = safeLicense;
+            if (metadata?.license) {
+                const shortText = formatShortLicenseText(metadata.license);
+                const isStandardCC = shortText.startsWith('Creative Commons');
+
+                if (isStandardCC) {
+                    const licenseUrl = getLicenseUrl(metadata.license);
+                    if (licenseUrl) {
+                        const cssClass = getLicenseClass(metadata.license);
+                        const classAttr = cssClass ? ` class="${cssClass}"` : '';
+                        safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
+                    }
+                }
+            }
 
             // Strip out the read-only classes from the <td> wrappers just in case they slipped through
             html = html.replace(/<td class="mceNonEditable exe-prop-locked\s*"[^>]*>/g, '<td>');
@@ -639,8 +660,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                 `<span class="exe-prop-description">${safeDesc}</span>`,
             );
             html = html.replace(
-                /<span class="exe-prop-license[^>]*>.*?<\/span>/g,
-                `<span class="exe-prop-license">${safeLicense}</span>`,
+                /<span class="exe-prop-license[^>]*>[\s\S]*?(?=<\/td>|<\/p>|<\/div>|<\/li>|$)/g,
+                `<span class="exe-prop-license">${safeLicenseHtml}</span>`,
             );
         }
 

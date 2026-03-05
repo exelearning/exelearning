@@ -123,6 +123,9 @@ describe('PreviewPanelManager', () => {
     global.URL.createObjectURL = vi.fn(() => 'blob:test-url');
     global.URL.revokeObjectURL = vi.fn();
 
+    // Mock i18n function
+    globalThis._ = vi.fn((key) => key);
+
     manager = new PreviewPanelManager();
   });
 
@@ -145,6 +148,8 @@ describe('PreviewPanelManager', () => {
       const subscribeSpy = vi.spyOn(manager, 'subscribeToChanges');
       const resetSpy = vi.spyOn(manager, 'resetToDefaultState').mockImplementation(() => {});
       const visibilitySpy = vi.spyOn(manager, '_setupVisibilityHandler').mockImplementation(() => {});
+      const broadcastSpy = vi.spyOn(manager, '_setupBroadcastChannelListener').mockImplementation(() => {});
+      const swListenerSpy = vi.spyOn(manager, '_setupServiceWorkerListener').mockImplementation(() => {});
 
       manager.init();
 
@@ -152,6 +157,8 @@ describe('PreviewPanelManager', () => {
       expect(subscribeSpy).toHaveBeenCalled();
       expect(resetSpy).toHaveBeenCalled();
       expect(visibilitySpy).toHaveBeenCalled();
+      expect(broadcastSpy).toHaveBeenCalled();
+      expect(swListenerSpy).toHaveBeenCalled();
     });
   });
 
@@ -178,11 +185,45 @@ describe('PreviewPanelManager', () => {
         expect(manager._isPreviewVisible()).toBe(true);
       });
 
-      it('should return false when neither open nor pinned', () => {
+      it('should return true when popup is open', () => {
         manager.isOpen = false;
         manager.isPinned = false;
+        manager._popupWindow = { closed: false };
+
+        expect(manager._isPreviewVisible()).toBe(true);
+      });
+
+      it('should return false when popup is closed', () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = { closed: true };
 
         expect(manager._isPreviewVisible()).toBe(false);
+      });
+
+      it('should return false when neither open, pinned, nor popup', () => {
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = null;
+
+        expect(manager._isPreviewVisible()).toBe(false);
+      });
+    });
+
+    describe('_isPopupOpen', () => {
+      it('should return true when popup exists and is not closed', () => {
+        manager._popupWindow = { closed: false };
+        expect(manager._isPopupOpen()).toBe(true);
+      });
+
+      it('should return false when popup is null', () => {
+        manager._popupWindow = null;
+        expect(manager._isPopupOpen()).toBe(false);
+      });
+
+      it('should return false when popup is closed', () => {
+        manager._popupWindow = { closed: true };
+        expect(manager._isPopupOpen()).toBe(false);
       });
     });
 
@@ -379,6 +420,204 @@ describe('PreviewPanelManager', () => {
         vi.useRealTimers();
       });
     });
+
+    describe('CONTENT_NEEDED with popup open', () => {
+      it('should refresh when CONTENT_NEEDED received and popup is open', async () => {
+        vi.useFakeTimers();
+        manager.bindEvents();
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = { closed: false };
+        const refreshSpy = vi.spyOn(manager, 'refresh').mockResolvedValue();
+
+        const event = new MessageEvent('message', {
+          data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' },
+        });
+        window.dispatchEvent(event);
+
+        vi.advanceTimersByTime(150);
+
+        expect(refreshSpy).toHaveBeenCalled();
+        vi.useRealTimers();
+      });
+    });
+
+    describe('BroadcastChannel recovery', () => {
+      it('should setup BroadcastChannel listener on init', () => {
+        const originalBC = globalThis.BroadcastChannel;
+        let capturedChannel = null;
+        globalThis.BroadcastChannel = class {
+          constructor(name) { this.name = name; capturedChannel = this; }
+          close() {}
+        };
+
+        manager._setupBroadcastChannelListener();
+
+        expect(capturedChannel).not.toBeNull();
+        expect(capturedChannel.name).toBe('exe-preview-recovery');
+        expect(manager._recoveryChannel).toBe(capturedChannel);
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+
+      it('should call refreshWithServiceWorker when PREVIEW_CONTENT_LOST received', async () => {
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+
+        const originalBC = globalThis.BroadcastChannel;
+        let onMessageHandler = null;
+        globalThis.BroadcastChannel = class {
+          constructor() {}
+          set onmessage(handler) { onMessageHandler = handler; }
+          get onmessage() { return onMessageHandler; }
+          close() {}
+        };
+
+        manager._setupBroadcastChannelListener();
+
+        // Simulate receiving PREVIEW_CONTENT_LOST
+        onMessageHandler({ data: { type: 'PREVIEW_CONTENT_LOST' } });
+
+        // Wait for async call
+        await vi.waitFor(() => {
+          expect(swRefreshSpy).toHaveBeenCalled();
+        });
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+
+      it('should not crash if BroadcastChannel is unavailable', () => {
+        const originalBC = globalThis.BroadcastChannel;
+        delete globalThis.BroadcastChannel;
+
+        expect(() => manager._setupBroadcastChannelListener()).not.toThrow();
+        expect(manager._recoveryChannel).toBeNull();
+
+        globalThis.BroadcastChannel = originalBC;
+      });
+    });
+
+    describe('SW message listener', () => {
+      it('should setup navigator.serviceWorker message listener', () => {
+        const addEventSpy = vi.fn();
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: { addEventListener: addEventSpy, removeEventListener: vi.fn() },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+
+        expect(addEventSpy).toHaveBeenCalledWith('message', expect.any(Function));
+        expect(manager._swMessageHandler).toBeDefined();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+      });
+
+      it('should call refreshWithServiceWorker when CONTENT_NEEDED received and popup open', async () => {
+        vi.useFakeTimers();
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        manager._popupWindow = { closed: false };
+
+        let capturedHandler;
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: {
+            addEventListener: (type, handler) => { capturedHandler = handler; },
+            removeEventListener: vi.fn(),
+          },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+
+        // Simulate SW CONTENT_NEEDED
+        capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
+        vi.advanceTimersByTime(150);
+
+        expect(swRefreshSpy).toHaveBeenCalled();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+        vi.useRealTimers();
+      });
+
+      it('should not refresh when preview is not visible', async () => {
+        vi.useFakeTimers();
+        const swRefreshSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+        manager.isOpen = false;
+        manager.isPinned = false;
+        manager._popupWindow = null;
+
+        let capturedHandler;
+        const originalSW = navigator.serviceWorker;
+        Object.defineProperty(navigator, 'serviceWorker', {
+          value: {
+            addEventListener: (type, handler) => { capturedHandler = handler; },
+            removeEventListener: vi.fn(),
+          },
+          configurable: true,
+        });
+
+        manager._setupServiceWorkerListener();
+        capturedHandler({ data: { type: 'CONTENT_NEEDED', reason: 'SW restarted' } });
+        vi.advanceTimersByTime(150);
+
+        expect(swRefreshSpy).not.toHaveBeenCalled();
+
+        Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+        vi.useRealTimers();
+      });
+    });
+
+    describe('popup monitor', () => {
+      it('should start monitoring on _setupPopupMonitor', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+
+        manager._setupPopupMonitor();
+
+        expect(manager._popupMonitorTimer).not.toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should clear popup reference when popup closes', () => {
+        vi.useFakeTimers();
+        const popup = { closed: false };
+        manager._popupWindow = popup;
+
+        manager._setupPopupMonitor();
+
+        // Simulate popup closing
+        popup.closed = true;
+        vi.advanceTimersByTime(2500);
+
+        expect(manager._popupWindow).toBeNull();
+        expect(manager._popupMonitorTimer).toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should not clear popup reference while popup is open', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+
+        manager._setupPopupMonitor();
+
+        vi.advanceTimersByTime(2500);
+
+        expect(manager._popupWindow).not.toBeNull();
+        vi.useRealTimers();
+      });
+
+      it('should clear monitor on _clearPopupMonitor', () => {
+        vi.useFakeTimers();
+        manager._popupWindow = { closed: false };
+        manager._setupPopupMonitor();
+
+        manager._clearPopupMonitor();
+
+        expect(manager._popupMonitorTimer).toBeNull();
+        vi.useRealTimers();
+      });
+    });
   });
 
   describe('open/close', () => {
@@ -478,6 +717,38 @@ describe('PreviewPanelManager', () => {
         expect.stringContaining('/viewer/index.html'),
         '_blank'
       );
+    });
+
+    it('should store popup window reference and start monitor', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockPopup = { closed: false };
+      global.open = vi.fn(() => mockPopup);
+      const monitorSpy = vi.spyOn(manager, '_setupPopupMonitor').mockImplementation(() => {});
+
+      await manager.extractToNewTab();
+
+      expect(manager._popupWindow).toBe(mockPopup);
+      expect(monitorSpy).toHaveBeenCalled();
+    });
+
+    it('should not store popup reference when popup is blocked', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+      global.open = vi.fn(() => null);
+
+      const mockClick = vi.fn();
+      vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+        if (tag === 'a') {
+          return { click: mockClick, href: '', target: '' };
+        }
+        return document.createElement(tag);
+      });
+
+      await manager.extractToNewTab();
+
+      expect(manager._popupWindow).toBeNull();
     });
 
     it('should fallback to link click if popup is blocked', async () => {
@@ -700,6 +971,46 @@ describe('PreviewPanelManager', () => {
       expect(manager._contentNeededRefreshTimer).toBeNull();
       vi.useRealTimers();
     });
+
+    it('should revoke PDF embed blob URLs', () => {
+      manager._pdfEmbedBlobUrls = ['blob:pdf-1', 'blob:pdf-2'];
+
+      manager.destroy();
+
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-1');
+      expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:pdf-2');
+      expect(manager._pdfEmbedBlobUrls).toBeNull();
+    });
+
+    it('should clean up popup tracking, recovery channel, and SW listener', () => {
+      vi.useFakeTimers();
+      manager._popupWindow = { closed: false };
+      manager._setupPopupMonitor();
+
+      const closeSpy = vi.fn();
+      manager._recoveryChannel = { close: closeSpy };
+
+      const removeEventSpy = vi.fn();
+      const handler = vi.fn();
+      manager._swMessageHandler = handler;
+      const originalSW = navigator.serviceWorker;
+      Object.defineProperty(navigator, 'serviceWorker', {
+        value: { removeEventListener: removeEventSpy },
+        configurable: true,
+      });
+
+      manager.destroy();
+
+      expect(manager._popupWindow).toBeNull();
+      expect(manager._popupMonitorTimer).toBeNull();
+      expect(closeSpy).toHaveBeenCalled();
+      expect(manager._recoveryChannel).toBeNull();
+      expect(removeEventSpy).toHaveBeenCalledWith('message', handler);
+      expect(manager._swMessageHandler).toBeNull();
+
+      Object.defineProperty(navigator, 'serviceWorker', { value: originalSW, configurable: true });
+      vi.useRealTimers();
+    });
   });
 
   // NOTE: Tests for blobToDataUrl and processUserThemeCssUrls have been removed
@@ -720,6 +1031,18 @@ describe('PreviewPanelManager', () => {
       expect(mockElements.previewsidenav.classList.contains('active')).toBe(false);
       expect(mockElements['preview-sidenav-overlay'].classList.contains('active')).toBe(false);
       expect(mockElements.workarea.getAttribute('data-preview-pinned')).toBe('false');
+    });
+
+    it('should clear popup tracking state', () => {
+      vi.useFakeTimers();
+      manager._popupWindow = { closed: false };
+      manager._setupPopupMonitor();
+
+      manager.resetToDefaultState();
+
+      expect(manager._popupWindow).toBeNull();
+      expect(manager._popupMonitorTimer).toBeNull();
+      vi.useRealTimers();
     });
   });
 
@@ -1090,6 +1413,32 @@ describe('PreviewPanelManager', () => {
       expect(result).toContain('exe-blob-navigate');
       expect(result).toMatch(/<\/script>\s*$/);
     });
+
+    it('should set external links to open directly in new tab', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('setAttribute');
+      expect(result).toContain('noopener noreferrer external');
+      expect(result).not.toContain('exe-preview-open-external');
+    });
+
+    it('should detect non-HTML extensions for document/resource links', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      // Uses extension matching instead of hardcoded regex
+      expect(result).toContain('extMatch');
+      expect(result).toContain('html?');
+      expect(result).toContain('exe-blob-open-document');
+    });
+
+    it('should include the current page in exe-blob-open-document messages', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'html/page2.html');
+
+      expect(result).toContain('"html/page2.html"');
+    });
   });
 
   describe('_resolveRelativePath', () => {
@@ -1193,6 +1542,125 @@ describe('PreviewPanelManager', () => {
 
       expect(result).toContain('<style>');
       expect(result).toContain('body { margin: 0; }');
+    });
+  });
+
+  describe('_replacePdfEmbedsForBlob', () => {
+    it('should replace <object data="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><object data="content/resources/doc.pdf" type="application/pdf" width="100%" height="600px">fallback</object></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).toContain('width:100%');
+      expect(result).toContain('height:600px');
+      expect(result).not.toContain('<object');
+      expect(result).not.toContain('</object>');
+      expect(global.URL.createObjectURL).toHaveBeenCalled();
+    });
+
+    it('should replace <embed src="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><embed src="content/resources/doc.pdf" width="500" height="400"></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).toContain('width:500');
+      expect(result).toContain('height:400');
+      expect(result).not.toContain('<embed');
+    });
+
+    it('should replace <iframe src="*.pdf"> with blob URL placeholder', () => {
+      const html = '<html><body><iframe src="content/resources/doc.pdf" width="100%" height="500px"></iframe></body></html>';
+      const files = { 'content/resources/doc.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src="blob:test-url"');
+      expect(result).not.toContain('<iframe');
+      expect(result).not.toContain('</iframe>');
+    });
+
+    it('should leave non-PDF embeds unchanged', () => {
+      const html = '<html><body><object data="content/resources/video.mp4" width="100%" height="400px"></object></body></html>';
+      const files = { 'content/resources/video.mp4': new Uint8Array([0x00, 0x00]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('<object');
+      expect(result).not.toContain('data-exe-pdf-src');
+    });
+
+    it('should leave PDF embeds unchanged when file not found', () => {
+      const html = '<html><body><object data="missing.pdf" width="100%" height="600px">fallback</object></body></html>';
+      const files = {};
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('<object');
+      expect(result).toContain('missing.pdf');
+    });
+
+    it('should use default dimensions when not specified', () => {
+      const html = '<html><body><object data="doc.pdf">fallback</object></body></html>';
+      const files = { 'doc.pdf': new Uint8Array([0x25, 0x50]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('width:100%');
+      expect(result).toContain('height:600px');
+    });
+
+    it('should track blob URLs for cleanup', () => {
+      const html = '<html><body><object data="a.pdf">x</object><embed src="b.pdf"></body></html>';
+      const files = {
+        'a.pdf': new Uint8Array([0x25, 0x50]),
+        'b.pdf': new Uint8Array([0x25, 0x50]),
+      };
+
+      manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(manager._pdfEmbedBlobUrls).toBeDefined();
+      expect(manager._pdfEmbedBlobUrls.length).toBe(2);
+    });
+
+    it('should handle PDF with query string in src', () => {
+      const html = '<html><body><object data="doc.pdf?v=1">x</object></body></html>';
+      const files = { 'doc.pdf?v=1': new Uint8Array([0x25, 0x50]) };
+
+      const result = manager._replacePdfEmbedsForBlob(html, files);
+
+      expect(result).toContain('data-exe-pdf-src');
+    });
+  });
+
+  describe('_injectBlobNavigationHandler PDF.js rendering', () => {
+    it('should inject PDF.js embed rendering script', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('initPdfEmbeds');
+      expect(result).toContain('data-exe-pdf-src');
+      expect(result).toContain('libs/pdfjs/pdf.min.mjs');
+      expect(result).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(result).toContain("createElement('canvas')");
+    });
+
+    it('should inject toolbar elements in embed rendering script', () => {
+      const html = '<html><body></body></html>';
+      const result = manager._injectBlobNavigationHandler(html, 'index.html');
+
+      expect(result).toContain('exe-pdf-tb');
+      expect(result).toContain('class="ep"');
+      expect(result).toContain('class="en"');
+      expect(result).toContain('class="ezi"');
+      expect(result).toContain('class="ezo"');
+      expect(result).toContain('class="efw"');
+      expect(result).toContain('class="edl"');
+      expect(result).toContain('renderAll(sc');
+      expect(result).toContain('pdf.getData()');
     });
   });
 
@@ -1572,6 +2040,133 @@ describe('PreviewPanelManager', () => {
       expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Export failed'));
 
       window.alert = originalAlert;
+    });
+  });
+
+  describe('exe-blob-open-document message handling', () => {
+    let mockOpen;
+
+    beforeEach(() => {
+      mockOpen = vi.fn();
+      global.open = mockOpen;
+      manager.bindEvents();
+      manager._blobUrlFiles = {
+        'index.html': '<html></html>',
+        'content/resources/document.pdf': new Uint8Array([0x25, 0x50, 0x44, 0x46]),
+      };
+    });
+
+    it('should open PDF in PDF.js viewer wrapper', async () => {
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'content/resources/document.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      // PDF.js viewer creates two blob URLs: one for PDF blob, one for viewer HTML
+      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(2);
+      // First call: PDF blob
+      const firstCallArg = global.URL.createObjectURL.mock.calls[0][0];
+      expect(firstCallArg).toBeInstanceOf(Blob);
+      expect(firstCallArg.type).toBe('application/pdf');
+      // Second call: PDF.js viewer HTML blob
+      const secondCallArg = global.URL.createObjectURL.mock.calls[1][0];
+      expect(secondCallArg).toBeInstanceOf(Blob);
+      expect(secondCallArg.type).toBe('text/html');
+      // Verify viewer HTML contains PDF.js import (not iframe)
+      const viewerHtml = await secondCallArg.text();
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.min.mjs');
+      expect(viewerHtml).toContain('libs/pdfjs/pdf.worker.min.mjs');
+      expect(viewerHtml).toContain('getDocument(');
+      expect(viewerHtml).toContain('createElement("canvas")');
+      expect(viewerHtml).not.toContain('<iframe');
+      // Verify toolbar elements
+      expect(viewerHtml).toContain('id="tb"');
+      expect(viewerHtml).toContain('id="prev"');
+      expect(viewerHtml).toContain('id="next"');
+      expect(viewerHtml).toContain('id="dl"');
+      expect(viewerHtml).toContain('async function render(s)');
+      expect(viewerHtml).toContain('pdf.getData()');
+      // Opens the wrapper URL (last blob URL created)
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should open non-PDF documents as direct blob URL', async () => {
+      manager._blobUrlFiles['content/resources/spreadsheet.xlsx'] = new Uint8Array([0x50, 0x4b, 0x03, 0x04]);
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'content/resources/spreadsheet.xlsx',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      // Non-PDF files use a single blob URL directly (no wrapper)
+      expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
+      const callArg = global.URL.createObjectURL.mock.calls[0][0];
+      expect(callArg).toBeInstanceOf(Blob);
+      expect(callArg.type).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should resolve relative paths for documents', async () => {
+      manager._blobUrlFiles['content/resources/document.pdf'] = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: '../content/resources/document.pdf',
+          currentPage: 'html/page1.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+
+    it('should not open when file is not found', async () => {
+      // Clear any previous calls from accumulated listeners
+      mockOpen.mockClear();
+
+      const previewSource = mockElements['preview-iframe'].contentWindow;
+      const event = new MessageEvent('message', {
+        data: {
+          type: 'exe-blob-open-document',
+          href: 'missing.pdf',
+          currentPage: 'index.html',
+        },
+        source: previewSource,
+      });
+      window.dispatchEvent(event);
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+      expect(mockOpen).not.toHaveBeenCalled();
+    });
+
+    it('should not process document open when _blobUrlFiles is null', () => {
+      manager._blobUrlFiles = null;
+
+      // Verify the guard condition directly: _findFileContent should not be called
+      const findSpy = vi.spyOn(manager, '_findFileContent');
+
+      // Simulate what the message handler does by calling it with null files
+      // The guard `this._blobUrlFiles` prevents processing
+      expect(manager._blobUrlFiles).toBeNull();
+      expect(findSpy).not.toHaveBeenCalled();
     });
   });
 

@@ -308,7 +308,7 @@ $i18n['gl'] = {
     '\\LARGE{Text}': '\\LARGE{Text}',
     'Huge text': 'Texto moi grande',
     '\\huge{Text}': '\\huge{Text}',
-    'Huger text': 'Texto máis grande',
+    'Extra large text': 'Texto máis grande',
     '\\Huge{Text}': '\\Huge{Text}',
     'Blackboard bold': 'Pizarra negra',
     'Math bold': 'Grosa matemática',

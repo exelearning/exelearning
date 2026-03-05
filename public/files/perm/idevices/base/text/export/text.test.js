@@ -191,6 +191,50 @@ describe('text iDevice export', () => {
     it('is a function', () => {
       expect(typeof $text.getHTMLView).toBe('function');
     });
+
+    it('extracts button text from feedbackbutton (legacy eXe 2.9) when textFeedbackInput is empty', () => {
+      global.c_ = (v) => v;
+      // eXe is provided by vitest.setup.js; patch only isInExe for this test
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      const data = {
+        textTextarea: `<div class="exe-text"><p>Content</p></div>
+<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+<div class="feedback js-feedback js-hidden"><p>Feedback content</p></div>`,
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textInfoDurationTextInput: '',
+        textInfoParticipantsTextInput: '',
+      };
+      const result = $text.getHTMLView(data, '');
+      eXe.app.isInExe = origIsInExe;
+      expect(result).toContain('Evaluación');
+      expect(result).toContain('Feedback content');
+      expect(result).toContain('Content');
+    });
+
+    it('extracts button text from feedbacktooglebutton (eXe 4.0) when textFeedbackInput is empty', () => {
+      global.c_ = (v) => v;
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      const data = {
+        textTextarea: `<p>Content</p>
+<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbacktooglebutton" value="Mostrar" /></div>
+<div class="feedback js-feedback js-hidden"><p>Respuesta</p></div>`,
+        textFeedbackInput: '',
+        textFeedbackTextarea: '',
+        textInfoDurationInput: '',
+        textInfoParticipantsInput: '',
+        textInfoDurationTextInput: '',
+        textInfoParticipantsTextInput: '',
+      };
+      const result = $text.getHTMLView(data, '');
+      eXe.app.isInExe = origIsInExe;
+      expect(result).toContain('Mostrar');
+      expect(result).toContain('Respuesta');
+    });
   });
 
   describe('createMainContent', () => {
