@@ -73,14 +73,55 @@ var $exeDevice = {
                         <legend><a href="#">API</a></legend>
 <div>
 <p>${_('Use the following API in your web component JavaScript to communicate results to the iDevice:')}</p>
-<pre class="wc-api-doc">const api = this.closest('.WCP-MainContainer').exeAPI;
+<pre class="wc-api-doc">// ${_('Get the API reference (call once when the component initializes):')}
+const api = this.closest('.WCP-MainContainer').exeAPI;
+
+// ${_('Notify that the activity has started (call when the user begins):')}
 api.start();
-api.sendScore(hits, total, isEnd);
-${_('number of correct answers')}
-total: ${_('total number of items')}
-isEnd: ${_('true if this is the final submission')}
-${_('Sends the final score and ends the activity.')}
-</pre>
+
+// ${_('Send a partial or final score:')}
+// hits:   ${_('number of correct answers')}
+// misses: ${_('number of incorrect answers')}
+// total:  ${_('total number of evaluable items (0 if there is no fixed total)')}
+//         ${_('score is then calculated as: hits / (hits + misses) × 10 at the end')}
+// isEnd:  ${_('true for the final submission, false for intermediate updates')}
+api.sendScore(hits, misses, total, isEnd);
+
+// ${_('Shorthand for the final submission (equivalent to sendScore with isEnd=true):')}
+api.end(hits, misses, total);
+
+// ─────────────────────────────────────────────
+// ${_('USE CASE 1 — Quiz / questionnaire (known total)')}
+// ${_('Score = (hits × 10) / total. Partial sends update the score progressively.')}
+// ─────────────────────────────────────────────
+// ${_('On each correct answer:')}
+api.sendScore(numHits, numMisses, totalQuestions, false);
+// ${_('When the quiz ends:')}
+api.end(numHits, numMisses, totalQuestions);
+
+// ─────────────────────────────────────────────
+// ${_('USE CASE 2 — Time-based game (no fixed total)')}
+// ${_('Score = (hits × 10) / (hits + misses), calculated only at the end.')}
+// ${_('Intermediate sendScore calls with total=0 are ignored.')}
+// ─────────────────────────────────────────────
+// ${_('When the time runs out or the game ends:')}
+api.end(numHits, numMisses, 0);
+
+// ─────────────────────────────────────────────
+// ${_('USE CASE 3 — Sequential levels (known maximum)')}
+// ${_('Score = (levelsCompleted × 10) / totalLevels.')}
+// ─────────────────────────────────────────────
+// ${_('After completing each level (partial update):')}
+api.sendScore(levelsCompleted, 0, totalLevels, false);
+// ${_('When the game ends (victory or defeat):')}
+api.end(levelsCompleted, 0, totalLevels);
+
+// ─────────────────────────────────────────────
+// ${_('USE CASE 4 — Open simulator (no score)')}
+// ${_('Just notify that the user interacted with the component.')}
+// ─────────────────────────────────────────────
+api.start();
+// ${_('No sendScore needed if there is nothing to evaluate.')}</pre>
 </div>
                     </fieldset>
                     <fieldset class="exe-fieldset">
@@ -200,7 +241,6 @@ ${_('Sends the final score and ends the activity.')}
         );
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || '';
 
-        // Almacenar en JSON para lectura segura en edition y export (patrón guess)
         dataGame.instructions = instructions ? encodeURIComponent(instructions) : '';
         dataGame.textAfter = textAfter ? encodeURIComponent(textAfter) : '';
 
@@ -256,12 +296,6 @@ ${_('Sends the final score and ends the activity.')}
         };
     },
 
-    /**
-     * Limpia artefactos de doble codificación de TinyMCE en atributos src/href.
-     * TinyMCE puede almacenar blob: URLs o URLs externas con comillas literales
-     * envolventes (p. ej. src='"https://..."'), lo que provoca peticiones %22...%22
-     * al insertar el HTML en el DOM. Se corrige antes de guardar.
-     */
     sanitizeHtml: function (html) {
         if (!html) return html;
         const tpl = document.createElement('template');

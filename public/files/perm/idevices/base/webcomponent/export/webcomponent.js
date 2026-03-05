@@ -348,20 +348,25 @@ var $WebComponent = {
             },
             /**
              * Envía la puntuación parcial o final.
+             * Los envíos parciales (isEnd=false) no actualizan la puntuación almacenada.
              * @param {number} hits    - Número de aciertos.
+             * @param {number} misses  - Número de fallos.
              * @param {number} total   - Total de ítems evaluables.
+             *                          0 si no hay total fijo (juegos por tiempo):
+             *                          la puntuación se calcula como hits/(hits+misses)*10.
              * @param {boolean} isEnd  - true si es el envío definitivo.
              */
-            sendScore: function (hits, total, isEnd) {
-                $WebComponent.onScore(hits, total, !!isEnd, instance);
+            sendScore: function (hits, misses, total, isEnd) {
+                $WebComponent.onScore(hits, misses, total, !!isEnd, instance);
             },
             /**
              * Notifica el fin de la actividad y envía la puntuación final.
-             * @param {number} hits  - Número de aciertos.
-             * @param {number} total - Total de ítems evaluables.
+             * @param {number} hits   - Número de aciertos.
+             * @param {number} misses - Número de fallos.
+             * @param {number} total  - Total de ítems (0 = calcular como hits+misses).
              */
-            end: function (hits, total) {
-                $WebComponent.onScore(hits, total, true, instance);
+            end: function (hits, misses, total) {
+                $WebComponent.onScore(hits, misses, total, true, instance);
             },
         };
     },
@@ -380,13 +385,28 @@ var $WebComponent = {
         );
     },
 
-    onScore: function (hits, total, isEnd, instance) {
+    onScore: function (hits, misses, total, isEnd, instance) {
         const data = $WebComponent.options[instance];
-        data.hits = Number(hits) || 0;
-        data.total = Number(total) || 1;
-        // scorerp en escala 0–10, igual que el resto de iDevices
-        data.scorerp = (data.hits * 10) / data.total;
 
+        const h = Number(hits) || 0;
+        const m = Number(misses) || 0;
+        const t = Number(total) || 0;
+
+        if (t > 0) {
+            // Total conocido: score = (aciertos * 10) / total
+            data.hits = h;
+            data.total = t;
+            data.scorerp = Math.min((h * 10) / t, 10);
+        } else {
+            // Sin total fijo: esperar al envío final; score = (aciertos * 10) / (aciertos + fallos)
+            if (!isEnd) return;
+            const computed = h + m;
+            data.hits = h;
+            data.total = computed || 1;
+            data.scorerp = computed > 0 ? (h * 10) / computed : 0;
+        }
+
+        // Comprobar pista solo cuando scorerp ya está calculado
         $WebComponent.checkClueGame(instance);
 
         if (data.isScorm > 0) {
