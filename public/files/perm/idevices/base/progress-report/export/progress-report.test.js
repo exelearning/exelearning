@@ -491,4 +491,97 @@ describe('progress-report iDevice (export)', () => {
       expect(typeof $eXeInforme.loadFromDom).toBe('function');
     });
   });
+
+  describe('ordering regressions', () => {
+    it('extractIdevicesFromYjs uses page order instead of navigation index', () => {
+      const makeYMap = (data) => ({
+        get: (key) => data[key],
+      });
+
+      const pageA = makeYMap({
+        id: 'page-a',
+        title: 'Page A',
+        parentId: null,
+        order: 5,
+        blocks: {
+          length: 0,
+          get: () => null,
+        },
+      });
+
+      const pageB = makeYMap({
+        id: 'page-b',
+        title: 'Page B',
+        parentId: null,
+        order: 1,
+        blocks: {
+          length: 0,
+          get: () => null,
+        },
+      });
+
+      const navigation = {
+        length: 2,
+        get: (idx) => (idx === 0 ? pageA : pageB),
+      };
+
+      const yjsBridge = {
+        documentManager: {
+          ydoc: {
+            getArray: () => navigation,
+          },
+        },
+      };
+
+      const result = $eXeInforme.extractIdevicesFromYjs(yjsBridge, 'session-1');
+
+      const rowA = result.find((row) => row.odePageId === 'page-a');
+      const rowB = result.find((row) => row.odePageId === 'page-b');
+
+      expect(rowA.ode_nav_structure_sync_order).toBe(5);
+      expect(rowB.ode_nav_structure_sync_order).toBe(1);
+    });
+
+    it('parseOdeXmlToJson sorts pages by odeNavStructureOrder', () => {
+      const originalDOMParser = global.DOMParser;
+
+      const makeTextNode = (value) => ({ textContent: value });
+      const makeNavNode = ({ id, parentId, name, order }) => ({
+        querySelector: (selector) => {
+          if (selector === 'odePageId') return makeTextNode(id);
+          if (selector === 'odeParentPageId') return makeTextNode(parentId || '');
+          if (selector === 'pageName') return makeTextNode(name);
+          if (selector === 'odeNavStructureOrder') return makeTextNode(String(order));
+          return null;
+        },
+        querySelectorAll: (selector) => {
+          if (selector === 'odePagStructures > odePagStructure') return [];
+          return [];
+        },
+      });
+
+      const nodeB = makeNavNode({ id: 'page-b', parentId: null, name: 'Page B', order: 2 });
+      const nodeA = makeNavNode({ id: 'page-a', parentId: null, name: 'Page A', order: 1 });
+
+      global.DOMParser = class {
+        parseFromString() {
+          return {
+            querySelectorAll: (selector) => {
+              if (selector === 'odeNavStructures > odeNavStructure') {
+                return [nodeB, nodeA];
+              }
+              return [];
+            },
+          };
+        }
+      };
+
+      try {
+        const result = $eXeInforme.parseOdeXmlToJson('<ode />');
+        expect(result.map((p) => p.id)).toEqual(['page-a', 'page-b']);
+      } finally {
+        global.DOMParser = originalDOMParser;
+      }
+    });
+  });
 });
