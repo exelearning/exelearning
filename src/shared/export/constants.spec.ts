@@ -25,6 +25,7 @@ import {
     getLicenseUrl,
     LICENSE_REGISTRY,
     shouldShowLicenseFooter,
+    formatShortLicenseText,
 } from './constants';
 import { resetIdeviceConfigCache, loadIdeviceConfigs } from '../../services/idevice-config';
 
@@ -799,6 +800,27 @@ describe('Constants', () => {
             it('should return input as-is for unknown licenses', () => {
                 expect(formatLicenseText('some unknown license')).toBe('some unknown license');
                 expect(formatLicenseText('custom license text')).toBe('custom license text');
+            });
+        });
+
+        describe('formatShortLicenseText', () => {
+            it('should return short uppercase format for known CC licenses', () => {
+                expect(formatShortLicenseText('creative commons: attribution - share alike 4.0')).toBe(
+                    'Creative Commons BY-SA 4.0',
+                );
+                expect(formatShortLicenseText('creative commons: attribution 4.0')).toBe('Creative Commons BY 4.0');
+                expect(formatShortLicenseText('creative commons: attribution - non commercial 4.0')).toBe(
+                    'Creative Commons BY-NC 4.0',
+                );
+            });
+
+            it('should return fallback raw string for CC0 public domain', () => {
+                expect(formatShortLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
+            });
+
+            it('should return fallback displayName for other licenses', () => {
+                expect(formatShortLicenseText('public domain')).toBe('public domain');
+                expect(formatShortLicenseText('gnu/gpl')).toBe('gnu/gpl');
             });
         });
 
