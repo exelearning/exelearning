@@ -52,6 +52,17 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
         eo: 'Menuo',
         ro: 'Meniu',
     },
+    page: {
+        en: 'Page',
+        es: 'Página',
+        ca: 'Pàgina',
+        va: 'Pàgina',
+        gl: 'Páxina',
+        eu: 'Orria',
+        pt: 'Página',
+        eo: 'Paĝo',
+        ro: 'Pagină',
+    },
 
     // Toggle/visibility
     show: {

@@ -420,6 +420,7 @@ window.$exeExport = {
         translateI18nElement('previous', 'Previous');
         translateI18nElement('next', 'Next');
         translateI18nElement('menu', 'Menu');
+        translateI18nElement('page', 'Page');
     },
 
     /**
