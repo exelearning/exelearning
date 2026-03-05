@@ -68,7 +68,42 @@ var $exeDevice = {
                     ${_('Create a custom web component by writing HTML and JavaScript code.')}
                     <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
-                <div class="exe-form-tab" title="${_('General settings')}">                   
+                <div class="exe-form-tab" title="${_('General settings')}">
+                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete this activity.'))}
+                    <fieldset class="exe-fieldset">
+                        <legend><a href="#">${_('HTML code')}</a></legend>
+                        <div>
+                            <p>
+                                <label for="wcHTML" class="sr-av">${_('HTML code')}:</label>
+                                <textarea id="wcHTML" class="exe-html-editor form-control exe-instructions-textarea" rows="4"></textarea>
+                            </p>
+                            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                                <span class="toggle-item mb-0" data-target="wcEEvaluationIDWrapper" role="switch" aria-checked="false">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="wcEEvaluation" />
+                                        <span class="toggle-visual"></span>
+                                    </span>
+                                    <label class="toggle-label" for="wcEEvaluation">${_('Progress report')}.</label>
+                                </span>
+                                <span id="wcEEvaluationIDWrapper" class="d-flex align-items-center gap-1">
+                                    <label for="wcEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                                    <input type="text" id="wcEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
+                                </span>
+                                <strong class="GameModeLabel">
+                                    <a href="#wcEEvaluationHelp" id="wcEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
+                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
+                                    </a>
+                                </strong>
+                            </div>
+                            <p id="wcEEvaluationHelp" class="WCE-TypeGameHelp exe-block-info">
+                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
+                            </p>
+                            <p>
+                                <label for="wcJS">${_('JavaScript code')}:</label>
+                                <textarea id="wcJS" class="form-control" rows="10" spellcheck="false" placeholder="${_('Write your web component JavaScript code here...')}"></textarea>
+                            </p>
+                        </div>
+                    </fieldset>
                     <fieldset class="exe-fieldset exe-fieldset-closed">
                         <legend><a href="#">API</a></legend>
 <div>
@@ -124,40 +159,6 @@ api.start();
 // ${_('No sendScore needed if there is nothing to evaluate.')}</pre>
 </div>
                     </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Build your web component with this editor')}</a></legend>
-                        <div>
-                            <p>
-                                <label for="eXeGameInstructions" class="sr-av">${_('Build your web component with this editor')}:</label>
-                                <textarea id="eXeGameInstructions" class="exe-html-editor form-control exe-instructions-textarea" rows="4"></textarea>
-                            </p>
-                            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                                <span class="toggle-item mb-0" data-target="wcEEvaluationIDWrapper" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="wcEEvaluation" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="wcEEvaluation">${_('Progress report')}.</label>
-                                </span>
-                                <span id="wcEEvaluationIDWrapper" class="d-flex align-items-center gap-1">
-                                    <label for="wcEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                                    <input type="text" id="wcEEvaluationID" disabled class="form-control" value="${eXeLearning.app.project.odeId || ''}" />
-                                </span>
-                                <strong class="GameModeLabel">
-                                    <a href="#wcEEvaluationHelp" id="wcEEvaluationHelpLnk" class="GameModeHelpLink" title="${_('Help')}">
-                                        <img src="${path}quextIEHelp.png" width="18" height="18" alt="${_('Help')}" />
-                                    </a>
-                                </strong>
-                            </div>
-                            <p id="wcEEvaluationHelp" class="WCE-TypeGameHelp exe-block-info">
-                                ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
-                            <p>
-                                <label for="wcJS">${_('JavaScript code')}:</label>
-                                <textarea id="wcJS" class="form-control" rows="10" spellcheck="false" placeholder="${_('Write your web component JavaScript code here...')}"></textarea>
-                            </p>
-                        </div>
-                    </fieldset>
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                 </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
@@ -199,9 +200,12 @@ api.start();
         if (previousId) {
             $exeDevice.id = previousId;
         }
-        const instructions = $('.webcomponent-instructions', wrapper);
-        if (instructions.length === 1)
-            $('#eXeGameInstructions').val(instructions.html());
+        const instructionsPrev = $('.webcomponent-instructions', wrapper);
+        if (instructionsPrev.length === 1)
+            $('#eXeGameInstructions').val(instructionsPrev.html());
+        const html = $('.webcomponent-html', wrapper);
+        if (html.length === 1)
+            $('#wcHTML').val(html.html());
         const textAfter = $('.webcomponent-extra-content', wrapper);
         if (textAfter.length === 1)
             $('#eXeIdeviceTextAfter').val(textAfter.html());
@@ -250,6 +254,9 @@ api.start();
         const instructions = $exeDevice.sanitizeHtml(
             tinyMCE.get('eXeGameInstructions')?.getContent() || ''
         );
+        const html = $exeDevice.sanitizeHtml(
+            tinyMCE.get('wcHTML')?.getContent() || ''
+        );
         const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || '';
         const wcJS = ($('#wcJS').val() || '')
             .replace(/^\s*<script[^>]*>/i, '')
@@ -257,12 +264,16 @@ api.start();
             .trim();
 
         dataGame.instructions = instructions ? encodeURIComponent(instructions) : '';
+        dataGame.html = html ? encodeURIComponent(html) : '';
         dataGame.textAfter = textAfter ? encodeURIComponent(textAfter) : '';
         dataGame.wcJS = wcJS ? encodeURIComponent(wcJS) : '';
 
         const json = JSON.stringify(dataGame);
         let divContent = instructions
             ? `<div class="webcomponent-instructions">${instructions}</div>`
+            : '';
+        divContent += html
+            ? `<div class="webcomponent-html">${html}</div>`
             : '';
 
         divContent += `<div class="webcomponent-DataGame js-hidden">${json}</div>`;

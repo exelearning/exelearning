@@ -54,18 +54,25 @@ var $WebComponent = {
             data.obtainedClue = false;
 
             const instructionsNode = $('.webcomponent-instructions', this).eq(0);
+            const htmlNode = $('.webcomponent-html', this).eq(0);
             const textAfterNode = $('.webcomponent-extra-content', this).eq(0);
             const instructionsStored = $WebComponent.decodeStoredHtml(data.instructions || '');
+            const htmlStored = $WebComponent.decodeStoredHtml(data.html || '');
             const textAfterStored = $WebComponent.decodeStoredHtml(data.textAfter || '');
             const instructionsHtml =
                 instructionsNode.length === 1
                     ? instructionsNode.html()
                     : instructionsStored;
+            const htmlHTML =
+                htmlNode.length === 1
+                    ? htmlNode.html()
+                    : htmlStored;
             const textAfterHtml =
                 textAfterNode.length === 1 ? textAfterNode.html() : textAfterStored;
 
-            const extracted = $WebComponent.extractScriptsFromHtml(instructionsHtml || '');
-            data.instructionsContent = extracted.html;
+            const extracted = $WebComponent.extractScriptsFromHtml(htmlHTML || '');
+            data.instructionsContent = instructionsHtml || '';
+            data.htmlContent = extracted.html;
             data.textAfterContent = textAfterHtml || '';
             data.scriptDefs = extracted.scriptDefs;
             const wcJsCode = $WebComponent.decodeStoredHtml(data.wcJS || '')
@@ -81,6 +88,7 @@ var $WebComponent = {
             const component = $WebComponent.CreateInterface(i);
             dl.before(component).remove();
             instructionsNode.remove();
+            htmlNode.remove();
             textAfterNode.remove();
 
             $WebComponent.executeScripts(data.scriptDefs || []);
@@ -122,6 +130,7 @@ var $WebComponent = {
         const data = $WebComponent.options[instance];
         const msgs = data.msgs || {};
         const instructions = data.instructionsContent || '';
+        const htmlContent = data.htmlContent || '';
         const textAfter = data.textAfterContent || '';
 
         let content = `<div class="WCP-MainContainer" id="wcContainer-${instance}">`;
@@ -131,7 +140,8 @@ var $WebComponent = {
         content += `<p id="wcPShowClue-${instance}" class="WCP-PShowClue"></p>`;
         content += `</div>`;
 
-        if (instructions) content += `<div class="WCP-Content">${instructions}</div>`;
+        if (instructions) content += `<div class="WCP-Instructions">${instructions}</div>`;
+        if (htmlContent) content += `<div class="WCP-Content">${htmlContent}</div>`;
         if (textAfter)
             content += `<div class="webcomponent-extra-content">${textAfter}</div>`;
 
