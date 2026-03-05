@@ -479,6 +479,58 @@ describe('progress-report edition iDevice', () => {
         test('should be defined as a function', () => {
             expect(typeof $exeDevice.extractIdevicesFromYjs).toBe('function');
         });
+
+        test('should use page order instead of navigation index', () => {
+            const makeYMap = (data) => ({
+                get: (key) => data[key],
+            });
+
+            const pageA = makeYMap({
+                id: 'page-a',
+                title: 'Page A',
+                parentId: null,
+                order: 9,
+                blocks: {
+                    length: 0,
+                    get: () => null,
+                },
+            });
+
+            const pageB = makeYMap({
+                id: 'page-b',
+                title: 'Page B',
+                parentId: null,
+                order: 2,
+                blocks: {
+                    length: 0,
+                    get: () => null,
+                },
+            });
+
+            const navigation = {
+                length: 2,
+                get: (idx) => (idx === 0 ? pageA : pageB),
+            };
+
+            const yjsBridge = {
+                documentManager: {
+                    ydoc: {
+                        getArray: () => navigation,
+                    },
+                },
+            };
+
+            const result = $exeDevice.extractIdevicesFromYjs(
+                yjsBridge,
+                'session-1'
+            );
+
+            const rowA = result.find((row) => row.odePageId === 'page-a');
+            const rowB = result.find((row) => row.odePageId === 'page-b');
+
+            expect(rowA.ode_nav_structure_sync_order).toBe(9);
+            expect(rowB.ode_nav_structure_sync_order).toBe(2);
+        });
     });
 
     describe('msgs property', () => {
