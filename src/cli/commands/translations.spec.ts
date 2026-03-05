@@ -94,13 +94,14 @@ describe('Translations Command', () => {
             expect(result.message).not.toContain('Cleaned');
         });
 
-        it('should return stats with extracted and cleaned counts', async () => {
+        it('should return stats with extracted, cleaned, and removed counts', async () => {
             const { execute } = await import('./translations');
             const result = await execute([], { locale: 'es', 'clean-only': true });
 
             expect(result.stats).toBeDefined();
             expect(typeof result.stats?.extracted).toBe('number');
             expect(typeof result.stats?.cleaned).toBe('number');
+            expect(typeof result.stats?.removed).toBe('number');
             expect(Array.isArray(result.stats?.locales)).toBe(true);
         });
     });
@@ -243,6 +244,131 @@ describe('Translations Command', () => {
             expect(content).toContain('dialog.message.error');
         });
 
+        it('should extract _() GUI translation pattern', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(
+                path.join(appDir, 'component.js'),
+                `const label = _('Export page');
+                 const tip = _("Selection granularity");`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Export page');
+            expect(content).toContain('Selection granularity');
+        });
+
+        it('should extract c_() content translation pattern', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(path.join(appDir, 'content.js'), `const text = c_('Content translation key');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Content translation key');
+        });
+
+        it('should not match c_ when extracting _() pattern', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            // c_('key') should only be matched by c_ pattern, not by _() pattern
+            await fs.writeFile(path.join(appDir, 'mixed.js'), `const a = c_('only.content'); const b = _('only.gui');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('only.content');
+            expect(content).toContain('only.gui');
+            // Each key should appear only once
+            const contentMatches = content.match(/resname="only\.content"/g);
+            const guiMatches = content.match(/resname="only\.gui"/g);
+            expect(contentMatches?.length || 0).toBe(1);
+            expect(guiMatches?.length || 0).toBe(1);
+        });
+
+        it('should extract Nunjucks | trans filter pattern', async () => {
+            const viewsDir = path.join(testDir, 'views');
+            await fs.ensureDir(viewsDir);
+            await fs.writeFile(
+                path.join(viewsDir, 'template.njk'),
+                `<button>{{ 'Print preview' | trans }}</button>
+                 <span>{{ "Link validation" | trans }}</span>`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Print preview');
+            expect(content).toContain('Link validation');
+        });
+
+        it('should extract _() inside template literals', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            // Use concatenation to avoid lint warning about template placeholder in string
+            const fileContent = 'const html = `<label>' + '$' + '{_("Template literal key")}</label>`;';
+            await fs.writeFile(path.join(appDir, 'templated.js'), fileContent);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Template literal key');
+        });
+
+        it('should extract TRANS_PREFIX runtime translatable strings', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            // Simulate config.ts pattern: `${TRANS_PREFIX}Language`
+            await fs.writeFile(
+                path.join(srcDir, 'config.ts'),
+                [
+                    "import { TRANS_PREFIX } from '../services/translation';",
+                    // Use concatenation to avoid lint warning about template placeholder
+                    'const a = `' + '$' + '{TRANS_PREFIX}Language`;',
+                    'const b = `' + '$' + '{TRANS_PREFIX}Include MathJax (advanced features)`;',
+                ].join('\n'),
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Language');
+            expect(content).toContain('Include MathJax (advanced features)');
+        });
+
+        it('should extract from public/libs/ directory', async () => {
+            const libsDir = path.join(testDir, 'public', 'libs');
+            await fs.ensureDir(libsDir);
+            await fs.writeFile(path.join(libsDir, 'custom-lib.js'), `const msg = t('libs.custom.label');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('libs.custom.label');
+        });
+
+        it('should extract from public/files/perm/idevices/ directory', async () => {
+            const idevicesDir = path.join(testDir, 'public', 'files', 'perm', 'idevices', 'digcompedu');
+            await fs.ensureDir(idevicesDir);
+            await fs.writeFile(path.join(idevicesDir, 'edition.js'), `const label = _('Selection granularity');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Selection granularity');
+        });
+
         it('should skip template expressions', async () => {
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
@@ -254,6 +380,107 @@ describe('Translations Command', () => {
             const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
             // Should not add keys with template expressions
             expect(content).not.toContain('${');
+        });
+    });
+
+    describe('obsolete trans-unit removal', () => {
+        it('should remove trans-units whose keys are not in source code', async () => {
+            // Create source file with only one key
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('keep.this.key');`);
+
+            // Create XLF with two keys: one valid, one obsolete
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="abc" resname="keep.this.key">
+        <source>keep.this.key</source>
+        <target>Mantener esta clave</target>
+      </trans-unit>
+      <trans-unit id="def" resname="obsolete.key">
+        <source>obsolete.key</source>
+        <target>Clave obsoleta</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.removed).toBe(1);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('keep.this.key');
+            expect(content).not.toContain('obsolete.key');
+        });
+
+        it('should not remove any trans-units when all keys are valid', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(
+                path.join(srcDir, 'feature.ts'),
+                `const a = trans('key.one'); const b = trans('key.two');`,
+            );
+
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="a" resname="key.one">
+        <source>key.one</source>
+        <target>Uno</target>
+      </trans-unit>
+      <trans-unit id="b" resname="key.two">
+        <source>key.two</source>
+        <target>Dos</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.stats?.removed).toBe(0);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('key.one');
+            expect(content).toContain('key.two');
+        });
+
+        it('should report removed count in message when obsolete keys found', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('valid.key');`);
+
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="a" resname="valid.key">
+        <source>valid.key</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="b" resname="dead.key">
+        <source>dead.key</source>
+        <target>Muerta</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.message).toContain('Removed');
+            expect(result.message).toContain('obsolete');
         });
     });
 

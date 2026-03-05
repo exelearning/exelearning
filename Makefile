@@ -283,6 +283,12 @@ tmp-cleanup: check-bun
 translations: check-bun
 	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
 
+# Clean obsolete translation strings
+# Usage: make translations-cleanup [LOCALE=es]
+.PHONY: translations-cleanup
+translations-cleanup: check-bun
+	@$(CLI) translations --clean-only $(if $(LOCALE),--locale=$(LOCALE),)
+
 # Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]
 .PHONY: update-licenses

@@ -23,6 +23,7 @@ export interface TranslationsResult {
     stats?: {
         extracted: number;
         cleaned: number;
+        removed: number;
         locales: string[];
     };
 }
@@ -70,16 +71,26 @@ function isInvalidKey(key: string): boolean {
 async function extractTranslationKeys(): Promise<Set<string>> {
     const keys = new Set<string>();
 
-    // Patterns to search for trans() calls
+    // Patterns to search for translation function calls
     const patterns = [
         /trans\(\s*['"]([^'"]+)['"]/g, // trans('key') or trans("key")
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
         /__\(\s*['"]([^'"]+)['"]/g, // __('key') or __("key")
         /\bt\(\s*['"]([^'"]+)['"]/g, // t('key') or t("key")
+        /(?<![.\w])_\(\s*['"]([^'"]+)['"]/g, // _('key') - GUI translations (negative lookbehind avoids c_)
+        /\bc_\(\s*['"]([^'"]+)['"]/g, // c_('key') - content translations
+        /['"]([^'"]+)['"]\s*\|\s*trans\b/g, // 'key' | trans - Nunjucks filter
+        /\$\{TRANS_PREFIX\}([^`$]+)/g, // ${TRANS_PREFIX}Key - runtime translatable strings
     ];
 
     // Source directories to scan
-    const sourceGlobs = [new Glob('src/**/*.ts'), new Glob('views/**/*.njk'), new Glob('public/app/**/*.js')];
+    const sourceGlobs = [
+        new Glob('src/**/*.ts'),
+        new Glob('views/**/*.njk'),
+        new Glob('public/app/**/*.js'),
+        new Glob('public/libs/**/*.js'),
+        new Glob('public/files/perm/idevices/**/*.js'),
+    ];
 
     for (const glob of sourceGlobs) {
         for await (const filePath of glob.scan({ cwd: process.cwd(), absolute: true })) {
@@ -205,6 +216,36 @@ function cleanXlfContent(content: string): { content: string; cleaned: boolean }
 }
 
 /**
+ * Remove trans-units whose resname is not in the valid keys set.
+ * Returns the cleaned content and count of removed units.
+ */
+function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { content: string; removed: number } {
+    if (validKeys.size === 0) {
+        return { content, removed: 0 };
+    }
+
+    let removed = 0;
+
+    // Match each <trans-unit ...> ... </trans-unit> block (with optional trailing whitespace)
+    const transUnitPattern = /<trans-unit\b[^>]*>[\s\S]*?<\/trans-unit>\s*/g;
+    const resnamePattern = /resname="([^"]+)"/;
+
+    const result = content.replace(transUnitPattern, match => {
+        const resnameMatch = match.match(resnamePattern);
+        if (resnameMatch) {
+            const resname = resnameMatch[1];
+            if (!validKeys.has(resname)) {
+                removed++;
+                return '';
+            }
+        }
+        return match;
+    });
+
+    return { content: result, removed };
+}
+
+/**
  * Process a single locale
  */
 async function processLocale(
@@ -212,17 +253,18 @@ async function processLocale(
     keys: Set<string>,
     extractOnly: boolean,
     cleanOnly: boolean,
-): Promise<{ extracted: number; cleaned: boolean }> {
+): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
     const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
-        return { extracted: 0, cleaned: false };
+        return { extracted: 0, cleaned: false, removed: 0 };
     }
 
     let content = fs.readFileSync(xlfPath, 'utf-8');
     let extracted = 0;
     let cleaned = false;
+    let removed = 0;
 
     // Extract: add new keys
     if (!cleanOnly && keys.size > 0) {
@@ -231,17 +273,27 @@ async function processLocale(
         extracted = result.added;
     }
 
-    // Clean: remove invalid entries
+    // Clean: remove invalid entries and obsolete trans-units
     if (!extractOnly) {
-        const result = cleanXlfContent(content);
-        content = result.content;
-        cleaned = result.cleaned;
+        const cleanResult = cleanXlfContent(content);
+        content = cleanResult.content;
+        cleaned = cleanResult.cleaned;
+
+        // Remove trans-units whose keys no longer exist in source code
+        if (keys.size > 0) {
+            const obsoleteResult = removeObsoleteTransUnits(content, keys);
+            content = obsoleteResult.content;
+            removed = obsoleteResult.removed;
+            if (removed > 0) {
+                cleaned = true;
+            }
+        }
     }
 
     // Write back
     fs.writeFileSync(xlfPath, content, 'utf-8');
 
-    return { extracted, cleaned };
+    return { extracted, cleaned, removed };
 }
 
 export async function execute(
@@ -272,22 +324,21 @@ export async function execute(
         };
     }
 
-    // Extract keys from source files (unless clean-only)
-    let keys = new Set<string>();
-    if (!cleanOnly) {
-        info('Scanning source files for translation keys...');
-        keys = await extractTranslationKeys();
-        info(`Found ${keys.size} unique translation keys`);
-    }
+    // Always extract keys from source files (needed for both extraction and cleanup)
+    info('Scanning source files for translation keys...');
+    const keys = await extractTranslationKeys();
+    info(`Found ${keys.size} unique translation keys`);
 
     // Process each locale
     let totalExtracted = 0;
     let totalCleaned = 0;
+    let totalRemoved = 0;
 
     for (const locale of locales) {
         info(`Processing locale: ${locale}`);
         const result = await processLocale(locale, keys, extractOnly, cleanOnly);
         totalExtracted += result.extracted;
+        totalRemoved += result.removed;
         if (result.cleaned) totalCleaned++;
     }
 
@@ -297,6 +348,9 @@ export async function execute(
     }
     if (!extractOnly) {
         messages.push(`Cleaned ${totalCleaned}/${locales.length} XLF files`);
+        if (totalRemoved > 0) {
+            messages.push(`Removed ${totalRemoved} obsolete trans-units across ${locales.length} locales`);
+        }
     }
 
     return {
@@ -305,6 +359,7 @@ export async function execute(
         stats: {
             extracted: totalExtracted,
             cleaned: totalCleaned,
+            removed: totalRemoved,
             locales,
         },
     };
@@ -331,15 +386,22 @@ ${colors.cyan('Extraction:')}
   - trans('key'), trans("key")
   - __('key'), __("key")
   - t('key'), t("key")
+  - _('key'), _("key") (GUI translations)
+  - c_('key'), c_("key") (content translations)
+  - 'key' | trans (Nunjucks filter)
+  - $\{TRANS_PREFIX}Key (runtime translatable strings)
 
   Source directories:
   - src/**/*.ts
   - views/**/*.njk
   - public/app/**/*.js
+  - public/libs/**/*.js
+  - public/files/perm/idevices/**/*.js
 
 ${colors.cyan('Cleanup:')}
   - Replaces <target>__...</target> with <target></target>
   - Removes trans-units with source starting with \\\\
+  - Removes obsolete trans-units not found in source code
   - Cleans up multiple empty lines
 
 ${colors.cyan('Examples:')}
