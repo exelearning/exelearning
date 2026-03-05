@@ -1067,6 +1067,91 @@ describe('PageRenderer', () => {
     });
 
     describe('renderPageContent', () => {
+        it('should sync project properties when content contains exe-prop- classes', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                // Note: we have an mceNonEditable td that should have its classes stripped in output
+                                content: `
+                                    <td class="mceNonEditable exe-prop-locked"><span class="exe-prop-title"></span></td>
+                                    <span class="exe-prop-author"></span>
+                                    <span class="exe-prop-description"></span>
+                                    <span class="exe-prop-license"></span>
+                                `,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'My Testing Project', undefined, {
+                author: 'Pablo',
+                description: 'Test Desc',
+                license: 'creative commons: attribution - share alike 4.0',
+            });
+
+            expect(html).toContain('<td><span class="exe-prop-title">My Testing Project</span></td>');
+            expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
+            expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
+            );
+        });
+
+        it('should output raw string when license is a non-standard CC like CC0', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'Title', undefined, {
+                license: 'creative commons: cc0 1.0',
+            });
+
+            expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
+        });
+
+        it('should output safe simple text when license is not configured without crashing', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(
+                page,
+                '',
+                'Title',
+                undefined,
+                {}, // missing metadata including license
+            );
+
+            // Just a span with escaped '-'
+            expect(html).toContain('<span class="exe-prop-license">-</span>');
+        });
+
         it('should render blocks with components', () => {
             const page = createTestPage({
                 blocks: [
