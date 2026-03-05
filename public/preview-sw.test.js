@@ -10,6 +10,7 @@ import {
     MIME_TYPES,
     EXTERNAL_LINK_HANDLER_SCRIPT,
     PREVIEW_REFRESH_SCRIPT,
+    KEEPALIVE_SCRIPT,
     PDF_EMBED_HANDLER_SCRIPT,
     getMimeType,
     extractFilePath,
@@ -69,6 +70,25 @@ describe('Preview Service Worker', () => {
             expect(PREVIEW_REFRESH_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
             expect(PREVIEW_REFRESH_SCRIPT).toContain('CONTENT_UPDATED');
             expect(PREVIEW_REFRESH_SCRIPT).toContain('window.location.reload()');
+        });
+
+        it('should have PREVIEW_REFRESH_SCRIPT handle CONTENT_NEEDED via BroadcastChannel', () => {
+            expect(PREVIEW_REFRESH_SCRIPT).toContain('CONTENT_NEEDED');
+            expect(PREVIEW_REFRESH_SCRIPT).toContain('exe-preview-recovery');
+            expect(PREVIEW_REFRESH_SCRIPT).toContain('PREVIEW_CONTENT_LOST');
+            expect(PREVIEW_REFRESH_SCRIPT).toContain('BroadcastChannel');
+        });
+
+        it('should have KEEPALIVE_SCRIPT defined', () => {
+            expect(KEEPALIVE_SCRIPT).toContain('data-injected-by="eXeLearning-Preview"');
+            expect(KEEPALIVE_SCRIPT).toContain('GET_STATUS');
+            expect(KEEPALIVE_SCRIPT).toContain('setInterval');
+            expect(KEEPALIVE_SCRIPT).toContain('visibilitychange');
+            expect(KEEPALIVE_SCRIPT).toContain('beforeunload');
+        });
+
+        it('should have KEEPALIVE_SCRIPT use 20 second interval', () => {
+            expect(KEEPALIVE_SCRIPT).toContain('20000');
         });
 
         it('should have PDF_EMBED_HANDLER_SCRIPT defined', () => {
@@ -330,6 +350,25 @@ describe('Preview Service Worker', () => {
             expect(resultHtml).toContain('window.location.reload()');
         });
 
+        it('should always include keepalive script', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body);
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('GET_STATUS');
+            expect(resultHtml).toContain('setInterval');
+        });
+
+        it('should include keepalive script even when external links disabled', () => {
+            const html = '<!DOCTYPE html><html><body></body></html>';
+            const body = new TextEncoder().encode(html);
+            const result = injectScripts(body, { openExternalLinksInNewWindow: false });
+            const resultHtml = new TextDecoder().decode(result);
+
+            expect(resultHtml).toContain('GET_STATUS');
+        });
+
         it('should always include PDF embed handler script', () => {
             const html = '<!DOCTYPE html><html><body></body></html>';
             const body = new TextEncoder().encode(html);
@@ -375,6 +414,20 @@ describe('Preview Service Worker', () => {
             const text = await response.text();
             expect(text).toContain('Preview not available');
             expect(text).toContain('open the preview panel');
+        });
+
+        it('should include recovery script that sends PREVIEW_CONTENT_LOST via BroadcastChannel', async () => {
+            const response = createNotReadyResponse();
+            const text = await response.text();
+            expect(text).toContain('exe-preview-recovery');
+            expect(text).toContain('PREVIEW_CONTENT_LOST');
+        });
+
+        it('should include CONTENT_UPDATED listener for auto-reload', async () => {
+            const response = createNotReadyResponse();
+            const text = await response.text();
+            expect(text).toContain('CONTENT_UPDATED');
+            expect(text).toContain('window.location.reload()');
         });
     });
 
