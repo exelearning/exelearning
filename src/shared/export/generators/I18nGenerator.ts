@@ -83,7 +83,8 @@ export function generateI18nScript(templateContent: string, translations: Map<st
     return templateContent.replace(/c_\("((?:[^"\\]|\\.)*)"\)/g, (_match, escaped: string) => {
         // Unescape JS string escapes to get the raw English source string
         const source = escaped.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-        const translated = translations.get(source) ?? source;
+        let translated = translations.get(source) ?? source;
+        if (translated.startsWith('~')) translated = translated.slice(1);
         return JSON.stringify(translated);
     });
 }

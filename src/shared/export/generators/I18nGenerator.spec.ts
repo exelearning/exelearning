@@ -177,4 +177,11 @@ describe('generateI18nScript', () => {
         const script = generateI18nScript(SAMPLE_TEMPLATE, new Map());
         expect(script).toContain('"block": "block"');
     });
+
+    it('should strip leading ~ from translations marked as pending review', () => {
+        const translations = new Map([['Previous', '~translated'], ['Next', 'translated']]);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).not.toContain('~');
+    });
 });
