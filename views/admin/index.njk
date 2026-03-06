@@ -1007,6 +1007,36 @@
             padding: 2rem;
             color: var(--admin-text-muted);
         }
+        .admin-code-textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            min-height: 200px;
+        }
+        .admin-code-example {
+            margin-top: 0.75rem;
+            background: var(--admin-bg, #f8f9fa);
+            border: 1px solid var(--admin-border, #dee2e6);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .admin-code-example summary {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--admin-text-muted, #6c757d);
+            cursor: pointer;
+            user-select: none;
+        }
+        .admin-code-example pre {
+            margin: 0;
+            padding: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            border-top: 1px solid var(--admin-border, #dee2e6);
+        }
     </style>
 </head>
 <body>
@@ -1046,6 +1076,10 @@
             <a href="#settings" class="admin-nav-link d-none" data-section="settings">
                 <span class="mi">tune</span>
                 {{ t.settings or 'Settings' }}
+            </a>
+            <a href="#presentation" class="admin-nav-link" data-section="presentation">
+                <span class="mi">tune</span>
+                {{ t.customization or 'Customization' }}
             </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
@@ -1625,6 +1659,56 @@
                     </div>
                 </div>
             </section>
+
+            <section id="presentation" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">tune</span>
+                            {{ t.customization or 'Customization' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="presentationSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="presentationSaveStatus" class="admin-settings-status"></span>
+                        </div>
+                        <div class="admin-settings-group">
+                            <div class="admin-field">
+                                <label for="customHeadHtmlInput">{{ t.custom_head_html_label or 'Custom HEAD HTML' }}</label>
+                                <textarea id="customHeadHtmlInput" class="admin-input admin-code-textarea" data-setting-key="CUSTOM_HEAD_HTML" data-setting-type="string" rows="12">{{ adminSettings.presentation.custom_head_html }}</textarea>
+                                <small>{{ t.custom_head_html_help or 'HTML injected into the &lt;head&gt; of all user pages (login, workarea, error pages). Not applied to the admin panel.' }}</small>
+                                <small>
+                                    {{ t.custom_head_html_jquery_note or 'jQuery is available on all user pages.' }}
+                                    {{ t.custom_head_html_hook_label or 'To run code only in the workarea after the app is fully loaded, define' }}
+                                    <code>window.$eXeLearningCustom.init()</code>:
+                                </small>
+                                <details class="admin-code-example">
+                                    <summary>{{ t.custom_head_html_example or 'Example' }}</summary>
+                                    <pre>&lt;style&gt;
+    /* Your custom CSS here */
+&lt;/style&gt;
+
+&lt;script&gt;
+jQuery(function () {
+    // Runs when DOM is loaded (login, workarea, error pages, etc.)
+});
+window.$eXeLearningCustom = {
+    init: function () {
+        // Runs only in the workarea, after the app has fully loaded.
+        // window.eXeLearning is available here.
+    }
+};
+&lt;/script&gt;</pre>
+                                </details>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -1780,7 +1864,8 @@
             cannot_impersonate_admin: '{{ t.cannot_impersonate_admin or "Cannot impersonate administrator users" }}',
             cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
             confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
-            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}'
+            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
+            presentation: '{{ t.customization or "Customization" }}'
         };
 
         // State
@@ -1823,7 +1908,8 @@
                 users: T.users,
                 projects: T.projects,
                 extensions: T.extensions,
-                settings: T.settings
+                settings: T.settings,
+                presentation: T.customization
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
@@ -1877,6 +1963,51 @@
                     }
                 } finally {
                     settingsSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Presentation save
+        const presentationSaveBtn = document.getElementById('presentationSaveBtn');
+        const presentationSaveStatus = document.getElementById('presentationSaveStatus');
+
+        if (presentationSaveBtn) {
+            presentationSaveBtn.addEventListener('click', async () => {
+                presentationSaveBtn.setAttribute('disabled', 'disabled');
+                if (presentationSaveStatus) {
+                    presentationSaveStatus.textContent = 'Guardando...';
+                    presentationSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const textarea = document.getElementById('customHeadHtmlInput');
+                    const settings = [{
+                        key: 'CUSTOM_HEAD_HTML',
+                        value: textarea ? textarea.value : '',
+                        type: 'string'
+                    }];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = 'Guardado';
+                        presentationSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            presentationSaveStatus.textContent = '';
+                            presentationSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = 'Error';
+                        presentationSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    presentationSaveBtn.removeAttribute('disabled');
                 }
             });
         }

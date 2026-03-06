@@ -274,6 +274,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     DROPBOX_CLIENT_SECRET: { value: process.env.DROPBOX_CLIENT_SECRET || 'example.com', type: 'string' },
     OPENEQUELLA_CLIENT_ID: { value: process.env.OPENEQUELLA_CLIENT_ID || 'example.com', type: 'string' },
     OPENEQUELLA_CLIENT_SECRET: { value: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com', type: 'string' },
+    CUSTOM_HEAD_HTML: { value: '', type: 'string' },
 };
 
 // ============================================================================

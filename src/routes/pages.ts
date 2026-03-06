@@ -32,6 +32,7 @@ import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
 import {
     getAuthMethods as getAuthMethodsFromSettings,
     getSettingBoolean as getSettingBooleanFromSettings,
+    getSettingString as getSettingStringFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -125,6 +126,7 @@ export interface PagesTemplateDeps {
 export interface PagesSettingsDeps {
     getAuthMethods: typeof getAuthMethodsFromSettings;
     getSettingBoolean: typeof getSettingBooleanFromSettings;
+    getSettingString: typeof getSettingStringFromSettings;
 }
 
 /**
@@ -181,6 +183,7 @@ const defaultUtils: PagesUtilsDeps = {
 const defaultSettings: PagesSettingsDeps = {
     getAuthMethods: getAuthMethodsFromSettings,
     getSettingBoolean: getSettingBooleanFromSettings,
+    getSettingString: getSettingStringFromSettings,
 };
 
 // Default dependencies
@@ -226,7 +229,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
-    const { getAuthMethods, getSettingBoolean } = deps.settings ?? defaultSettings;
+    const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
 
     /**
      * Get user's locale preference from database
@@ -437,6 +440,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const rawReturnUrl = typedQuery?.returnUrl || '';
                 const returnUrl = isValidReturnUrl(rawReturnUrl) ? rawReturnUrl : '';
 
+                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
+
                 const viewModel = {
                     app_version: getAppVersion(),
                     auth_methods: authMethods,
@@ -450,6 +455,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     basePath: getBasePath(),
                     returnUrl,
                     impersonation,
+                    customHeadHtml,
                 };
 
                 const html = renderTemplate('security/login', viewModel);
@@ -476,6 +482,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const loginUrl = prefixPath('/login');
                     return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent(returnUrl)}`, 302);
                 }
+
+                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
 
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
@@ -570,6 +578,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     reason: accessCheck.reason,
                                     locale: 'en',
                                     impersonation,
+                                    customHeadHtml,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -587,6 +596,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 reason: 'ACCESS_DENIED',
                                 locale: 'en',
                                 impersonation,
+                                customHeadHtml,
                             });
                             set.status = 403;
                             return new Response(html, {
@@ -609,6 +619,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     reason: accessCheck.reason,
                                     locale: 'en',
                                     impersonation,
+                                    customHeadHtml,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -623,6 +634,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 error: 'Project Not Found',
                                 message: 'The requested project does not exist.',
                                 impersonation,
+                                customHeadHtml,
                             });
                             set.status = 404;
                             return new Response(html, {
@@ -891,6 +903,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     t,
                     basePath,
                     impersonation,
+                    customHeadHtml,
                 };
 
                 // Set locale for Nunjucks template rendering (fixes | trans filter)
@@ -1006,6 +1019,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     uninstall: trans('Uninstall', {}, locale),
                     activate: trans('Activate', {}, locale),
                     deactivate: trans('Deactivate', {}, locale),
+                    customization: trans('Customization', {}, locale),
+                    custom_head_html_label: trans('Custom HEAD HTML', {}, locale),
+                    custom_head_html_help: trans('HTML injected into the <head> of all user pages (login, workarea, error pages). Not applied to the admin panel.', {}, locale),
+                    custom_head_html_jquery_note: trans('jQuery is available on all user pages.', {}, locale),
+                    custom_head_html_hook_label: trans('To run code only in the workarea after the app is fully loaded, define {hook}:', {}, locale),
+                    custom_head_html_example: trans('Example', {}, locale),
                 };
 
                 let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
@@ -1078,6 +1097,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         openequella_client_id: process.env.OPENEQUELLA_CLIENT_ID || 'example.com',
                         openequella_client_secret: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com',
                     },
+                    presentation: {
+                        custom_head_html: '',
+                    },
                 };
 
                 const adminSettingsMap: Record<
@@ -1130,6 +1152,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         path: ['storage_integrations', 'openequella_client_secret'],
                         type: 'string',
                     },
+                    CUSTOM_HEAD_HTML: { path: ['presentation', 'custom_head_html'], type: 'string' },
                 };
 
                 try {
@@ -1201,12 +1224,14 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             // Access Denied Page (standalone route for redirects)
             // =====================================================
-            .get('/access-denied', ({ impersonation }) => {
+            .get('/access-denied', async ({ impersonation }) => {
                 const basePath = getBasePath();
+                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
                 const html = renderTemplate('workarea/access-denied', {
                     basePath,
                     locale: 'en',
                     impersonation,
+                    customHeadHtml,
                 });
                 return new Response(html, {
                     status: 403,

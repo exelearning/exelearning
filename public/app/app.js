@@ -135,8 +135,6 @@ export default class App {
         await this.tmpStringList();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
-        // Execute the custom JavaScript code
-        await this.runCustomJavaScriptCode();
         // Compose and initialize shortcuts
         await this.initializedShortcuts();
 
@@ -164,6 +162,9 @@ export default class App {
             });
             this._readyResolve = null;
         }
+
+        // Execute the custom JavaScript code after the app is fully ready
+        await this.runCustomJavaScriptCode();
     }
 
     /**
