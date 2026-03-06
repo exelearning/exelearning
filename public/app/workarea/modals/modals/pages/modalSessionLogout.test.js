@@ -141,15 +141,24 @@ describe('ModalSessionLogout', () => {
       expect(window.location.href).toBe('/base/workarea?project=uuid-1');
     });
 
-    it('should save Yjs project and navigate to workarea when newFile is true', async () => {
+    it('should save Yjs project and create new project when newFile is true', async () => {
       const saveSpy = vi.fn().mockResolvedValue(true);
       window.eXeLearning.app.project._yjsEnabled = true;
       window.eXeLearning.app.project._yjsBridge = { saveManager: { save: saveSpy } };
 
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ uuid: 'new-uuid-123' }),
+      });
+
       await modal.saveSession({ odeSessionId: 's' }, { newFile: true });
 
       expect(saveSpy).toHaveBeenCalled();
-      expect(window.location.href).toBe('/base/workarea');
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/base/api/project/create-quick',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(window.location.href).toBe('/base/workarea?project=new-uuid-123&new=1');
     });
 
     it('should show alert when Yjs save fails', async () => {
@@ -242,17 +251,27 @@ describe('ModalSessionLogout', () => {
       vi.useRealTimers();
     });
 
-    it('should navigate directly for Yjs project without saving', () => {
+    it('should navigate directly for Yjs project without saving', async () => {
       vi.useFakeTimers();
+      // Set up transitionToProject mock
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+
       const closeSpy = vi.spyOn(modal, 'close');
       modal.show({ openYjsProject: true, projectUuid: 'uuid-2' });
       vi.advanceTimersByTime(500);
 
       const noButton = mockElement.querySelector('.modal-footer .session-logout-without-save');
       noButton.click();
+      // Allow async handler to complete
+      await vi.advanceTimersByTimeAsync(0);
 
-      expect(window.location.href).toBe('/base/workarea?project=uuid-2');
       expect(closeSpy).toHaveBeenCalled();
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'open',
+        projectUuid: 'uuid-2',
+        skipSave: true,
+      });
       vi.useRealTimers();
     });
 

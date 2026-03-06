@@ -20,8 +20,17 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
+     * Show the save-before-transition dialog.
      *
-     * @param {*} data
+     * @param {Object} data
+     * @param {string} [data.title] - Modal title
+     * @param {string} [data.forceOpen] - Label for the "don't save" button
+     * @param {Object} [data.pendingAction] - Action descriptor for transitionToProject:
+     *   { action: 'new'|'open'|'import', projectUuid?, file? }
+     * @param {boolean} [data.offlineExit] - Electron: save-and-close flow
+     * @param {boolean} [data.newFile] - Legacy compat: treated as { action: 'new' }
+     * @param {boolean} [data.openYjsProject] - Legacy compat: treated as { action: 'open' }
+     * @param {string} [data.projectUuid] - Legacy compat: for openYjsProject
      */
     show(data) {
         // Set title
@@ -38,8 +47,27 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
+     * Build the pending action object from data (supports both new and legacy formats).
+     * @param {Object} data
+     * @returns {Object} - { action, projectUuid?, file? }
+     */
+    _resolvePendingAction(data) {
+        if (data.pendingAction) {
+            return data.pendingAction;
+        }
+        // Legacy compat: derive pendingAction from old-style flags
+        if (data.openYjsProject && data.projectUuid) {
+            return { action: 'open', projectUuid: data.projectUuid };
+        }
+        if (data.newFile) {
+            return { action: 'new' };
+        }
+        // Fallback: no project transition, just exit
+        return null;
+    }
+
+    /**
      * setFooterContent
-     *
      */
     setFooterContent(data) {
         let saveSessionButton = this.saveSessionButton.cloneNode(true);
@@ -58,9 +86,6 @@ export default class ModalSessionLogout extends Modal {
 
     /**
      * setSaveSessionButton
-     *
-     * @param {*} saveSessionButton
-     * @returns
      */
     setSaveSessionButton(saveSessionButton, data) {
         saveSessionButton.innerHTML = _('Yes');
@@ -70,9 +95,6 @@ export default class ModalSessionLogout extends Modal {
 
     /**
      * setNotSaveSessionButton
-     *
-     * @param {*} notSaveSessionButton
-     * @returns
      */
     setNotSaveSessionButton(notSaveSessionButton, data) {
         notSaveSessionButton.innerHTML = data.forceOpen
@@ -88,31 +110,6 @@ export default class ModalSessionLogout extends Modal {
     closeOfflineApp() {
         window.onbeforeunload = null;
         window.close();
-    }
-
-    /**
-     * saveSessionEventListener
-     *
-     * @param {*} saveSessionButton
-     */
-    saveSessionEventListener(saveSessionButton, data) {
-        saveSessionButton.addEventListener('click', async () => {
-            // Handle offline exit: save and close app
-            if (data.offlineExit) {
-                this.close();
-                await this.saveAndCloseOffline();
-                return;
-            }
-
-            let odeParams = [];
-
-            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
-            odeParams['odeVersion'] = eXeLearning.app.project.odeVersion;
-            odeParams['odeId'] = eXeLearning.app.project.odeId;
-
-            this.saveSession(odeParams, data);
-            this.close();
-        });
     }
 
     /**
@@ -144,12 +141,69 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
-     * notSaveSessionEventListener
-     *
-     * @param {*} notSaveSessionButton
+     * "Yes" (save) button click handler.
+     */
+    saveSessionEventListener(saveSessionButton, data) {
+        saveSessionButton.addEventListener('click', async () => {
+            // Handle offline exit: save and close app
+            if (data.offlineExit) {
+                this.close();
+                await this.saveAndCloseOffline();
+                return;
+            }
+
+            // Static mode: save-as-elp then create new project
+            const isStaticMode =
+                eXeLearning?.app?.capabilities?.storage?.remote === false &&
+                !window.electronAPI;
+            if (data.newFile && isStaticMode) {
+                if (eXeLearning.app.project?.exportToElpxViaYjs) {
+                    await eXeLearning.app.project.exportToElpxViaYjs({
+                        saveAs: false,
+                    });
+                }
+                this.close();
+                if (typeof window.newProject === 'function') {
+                    window.newProject();
+                }
+                return;
+            }
+
+            // Online mode: save + transition via full reload
+            const pendingAction = this._resolvePendingAction(data);
+            if (pendingAction && eXeLearning.app.project?.transitionToProject) {
+                this.close();
+                try {
+                    await eXeLearning.app.project.transitionToProject({
+                        ...pendingAction,
+                        skipSave: false,
+                    });
+                } catch (error) {
+                    console.error('[SessionLogout] Error during transition:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error saving'),
+                        body: _('An error occurred while saving the project'),
+                        contentId: 'error',
+                    });
+                }
+                return;
+            }
+
+            // Legacy fallback: use old saveSession path
+            let odeParams = [];
+            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
+            odeParams['odeVersion'] = eXeLearning.app.project.odeVersion;
+            odeParams['odeId'] = eXeLearning.app.project.odeId;
+            this.saveSession(odeParams, data);
+            this.close();
+        });
+    }
+
+    /**
+     * "No" (don't save) button click handler.
      */
     notSaveSessionEventListener(notSaveSessionButton, data) {
-        notSaveSessionButton.addEventListener('click', () => {
+        notSaveSessionButton.addEventListener('click', async () => {
             // Handle offline exit: close app without saving
             if (data.offlineExit) {
                 this.close();
@@ -169,31 +223,36 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
-            // Handle Yjs project navigation (from Recent Projects menu)
-            if (data.openYjsProject && data.projectUuid) {
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
+            // Online mode: transition without save
+            const pendingAction = this._resolvePendingAction(data);
+            if (pendingAction && eXeLearning.app.project?.transitionToProject) {
                 this.close();
+                try {
+                    await eXeLearning.app.project.transitionToProject({
+                        ...pendingAction,
+                        skipSave: true,
+                    });
+                } catch (error) {
+                    console.error('[SessionLogout] Error during transition:', error);
+                }
                 return;
             }
 
+            // Legacy fallback for flows without pendingAction
             let odeParams = [];
             odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
 
             if (data.openOdeFile) {
                 if (data.localOdeFile) {
-                    // Check if this is a large file upload
                     if (data.isLargeFile && data.odeFile) {
-                        // For large files, resume the upload process
                         eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                             data.odeFile,
                             false,
                             false,
-                            true, // skipSessionCheck
-                            true // forceCloseSession
+                            true,
+                            true
                         );
                     } else {
-                        // For regular files, use the normal flow
                         eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
                             data.odeFileName,
                             data.odeFilePath
@@ -213,9 +272,7 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
-     * saveSession
-     *
-     * @param {*} odeParams
+     * saveSession (legacy path - used when transitionToProject is not available)
      */
     async saveSession(odeParams, data) {
         // Handle Yjs-enabled projects: use SaveManager instead of legacy API
@@ -246,16 +303,28 @@ export default class ModalSessionLogout extends Modal {
 
                 // Handle navigation based on action type
                 if (data.openYjsProject && data.projectUuid) {
-                    // Navigate to another Yjs project
                     const basePath = window.eXeLearning?.config?.basePath || '';
                     window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
                 } else if (data.newFile) {
-                    // Creating new file - reload to create new project
                     window.onbeforeunload = null;
                     const basePath = window.eXeLearning?.config?.basePath || '';
-                    window.location.href = `${basePath}/workarea`;
+                    try {
+                        const createResp = await fetch(`${basePath}/api/project/create-quick`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ title: window._ ? _('Untitled') : 'Untitled' })
+                        });
+                        if (createResp.ok) {
+                            const createData = await createResp.json();
+                            window.location.href = `${basePath}/workarea?project=${createData.uuid}&new=1`;
+                        } else {
+                            window.location.href = `${basePath}/projects`;
+                        }
+                    } catch {
+                        window.location.href = `${basePath}/projects`;
+                    }
                 } else if (data.openOdeFile) {
-                    // Opening a file
                     if (data.localOdeFile) {
                         if (data.isLargeFile && data.odeFile) {
                             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
@@ -277,7 +346,6 @@ export default class ModalSessionLogout extends Modal {
                         );
                     }
                 } else {
-                    // Default: close session
                     window.onbeforeunload = null;
                     this.closeSession(odeParams['odeSessionId'], data);
                 }
@@ -304,18 +372,15 @@ export default class ModalSessionLogout extends Modal {
                     this.closeSession(odeParams['odeSessionId'], data);
                 } else if (data.openOdeFile) {
                     if (data.localOdeFile) {
-                        // Check if this is a large file upload
                         if (data.isLargeFile && data.odeFile) {
-                            // For large files, resume the upload process
                             eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
                                 data.odeFile,
                                 false,
                                 false,
-                                true, // skipSessionCheck
-                                true // forceCloseSession
+                                true,
+                                true
                             );
                         } else {
-                            // For regular files, use the normal flow
                             eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
                                 data.odeFileName,
                                 data.odeFilePath
@@ -347,9 +412,7 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
-     * closeSession
-     *
-     * @param {*} odeSessionId
+     * closeSession (legacy path)
      */
     async closeSession(odeSessionId, data) {
         let params = { odeSessionId: odeSessionId };
@@ -367,7 +430,6 @@ export default class ModalSessionLogout extends Modal {
                                 payload: eXeLearning.user.username,
                             });
                         }
-                        // We leave half a second for the notification to have time to be triggered
                         setTimeout(() => {
                             let pathname = window.location.pathname.split('/');
                             let basePathname = pathname
