@@ -414,7 +414,7 @@ class SaveManager {
   async uploadWithSession(projectId, assetManager, pendingAssets, toast, progressOpts = {}) {
     const { onProgress } = progressOpts;
     const totalFiles = pendingAssets.length;
-    const totalBytes = pendingAssets.reduce((sum, a) => sum + (a.size || 0), 0);
+    const totalBytes = pendingAssets.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
 
     Logger.log(
       `[SaveManager] Starting session upload: ${totalFiles} files, ` +
@@ -430,7 +430,7 @@ class SaveManager {
     const manifest = pendingAssets.map(asset => ({
       clientId: asset.id,
       filename: asset.filename || `asset-${asset.id}`,
-      size: asset.size || 0,
+      size: asset.size || asset.blob?.size || 0,
       mimeType: asset.mime || 'application/octet-stream',
     }));
 
@@ -507,7 +507,7 @@ class SaveManager {
       // Upload each chunk sequentially (same session token, multiple HTTP requests)
       for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
         const chunk = chunks[chunkIndex];
-        const chunkBytes = chunk.reduce((sum, a) => sum + (a.size || 0), 0);
+        const chunkBytes = chunk.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
 
         Logger.log(
           `[SaveManager] Uploading session batch ${chunkIndex + 1}/${chunks.length} ` +
@@ -532,8 +532,9 @@ class SaveManager {
         formData.append('metadata', JSON.stringify(metadata));
 
         // Load blobs on-demand for this chunk (avoids holding all blobs in memory)
+        // Fall back to existing blob property for backwards compatibility
         for (const asset of chunk) {
-          const blob = asset.blob || await assetManager.getBlob(asset.id);
+          const blob = asset.blob || (assetManager.getBlob ? await assetManager.getBlob(asset.id) : null);
           if (!blob) {
             console.warn('[SaveManager] Asset missing blob:', asset.id);
             continue;
@@ -1021,12 +1022,14 @@ class SaveManager {
     const sortedAssets = this.sortAssetsByPriority(pendingAssets);
 
     // Separate large files (chunked upload) from small files (batch/session upload)
-    const largeAssets = sortedAssets.filter(a => (a.size || 0) > this.CHUNK_UPLOAD_THRESHOLD);
-    const smallAssets = sortedAssets.filter(a => (a.size || 0) <= this.CHUNK_UPLOAD_THRESHOLD);
+    // Use metadata size first, fall back to blob.size for backwards compatibility
+    const getAssetSize = (a) => a.size || a.blob?.size || 0;
+    const largeAssets = sortedAssets.filter(a => getAssetSize(a) > this.CHUNK_UPLOAD_THRESHOLD);
+    const smallAssets = sortedAssets.filter(a => getAssetSize(a) <= this.CHUNK_UPLOAD_THRESHOLD);
 
     // Calculate progress weights based on total bytes
-    const largeTotalBytes = largeAssets.reduce((sum, a) => sum + (a.size || 0), 0);
-    const smallTotalBytes = smallAssets.reduce((sum, a) => sum + (a.size || 0), 0);
+    const largeTotalBytes = largeAssets.reduce((sum, a) => sum + getAssetSize(a), 0);
+    const smallTotalBytes = smallAssets.reduce((sum, a) => sum + getAssetSize(a), 0);
     const totalBytes = largeTotalBytes + smallTotalBytes;
 
     // Progress allocation: proportional to bytes
@@ -1170,7 +1173,7 @@ class SaveManager {
     let failedCount = 0;
 
     // Track bytes uploaded for smooth progress
-    const totalBytes = largeAssets.reduce((sum, a) => sum + (a.size || 0), 0);
+    const totalBytes = largeAssets.reduce((sum, a) => sum + (a.size || a.blob?.size || 0), 0);
     let bytesUploaded = 0;
     const assetBytesUploaded = new Map(); // Track per-asset progress
 
@@ -1192,12 +1195,13 @@ class SaveManager {
 
       const results = await Promise.allSettled(
         batch.map(async (asset) => {
-          const assetBytes = asset.size || 0;
+          const assetBytes = asset.size || asset.blob?.size || 0;
           const assetSize = assetBytes / (1024 * 1024);
 
           try {
             // Load blob on-demand from Cache API (avoids holding all blobs in memory)
-            const blob = await assetManager.getBlob(asset.id);
+            // Fall back to existing blob property for backwards compatibility
+            const blob = asset.blob || (assetManager.getBlob ? await assetManager.getBlob(asset.id) : null);
             if (!blob) {
               console.warn(`[SaveManager] Large asset ${asset.id} has no blob, skipping`);
               return { success: false, asset, error: new Error('No blob available') };
@@ -1468,8 +1472,8 @@ class SaveManager {
     const metadata = [];
 
     for (const asset of assets) {
-      // Load blob on-demand from Cache API
-      const blob = asset.blob || await assetManager.getBlob(asset.id);
+      // Load blob on-demand from Cache API, fall back to existing blob
+      const blob = asset.blob || (assetManager.getBlob ? await assetManager.getBlob(asset.id) : null);
       if (!blob) {
         console.warn(`[SaveManager] Asset ${asset.id} has no blob, skipping from batch`);
         continue;

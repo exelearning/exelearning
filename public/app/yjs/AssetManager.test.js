@@ -1782,14 +1782,14 @@ describe('AssetManager', () => {
       expect(assetManager.hasUnsavedAssets()).toBe(true);
     });
 
-    it('returns false when asset is not uploaded but blob not in memory', () => {
+    it('returns true when asset is not uploaded even if blob not in memory', () => {
       mockYjsBridge._assetsMap.set('asset-1', {
         filename: 'test.jpg',
         uploaded: false,
       });
-      // No blob in blobCache - blob was never stored locally
+      // No blob in blobCache — uploaded flag is the source of truth, not blobCache
 
-      expect(assetManager.hasUnsavedAssets()).toBe(false);
+      expect(assetManager.hasUnsavedAssets()).toBe(true);
     });
   });
 
@@ -2048,7 +2048,7 @@ describe('AssetManager', () => {
         expect(retrieved).toBeInstanceOf(Blob);
       });
 
-      it('restores blob to memory after Cache API hit', async () => {
+      it('does NOT restore blob to memory after Cache API hit (saves RAM)', async () => {
         const blob = new Blob(['cached blob'], { type: 'text/plain' });
         await assetManager._putToCache('asset-restore', blob);
 
@@ -2056,10 +2056,11 @@ describe('AssetManager', () => {
         assetManager.blobCache.delete('asset-restore');
         expect(assetManager.blobCache.has('asset-restore')).toBe(false);
 
-        await assetManager.getBlob('asset-restore');
+        const retrieved = await assetManager.getBlob('asset-restore');
 
-        // Should now be in memory
-        expect(assetManager.blobCache.has('asset-restore')).toBe(true);
+        // Should NOT be restored to memory — Cache API is the persistent store
+        expect(retrieved).toBeInstanceOf(Blob);
+        expect(assetManager.blobCache.has('asset-restore')).toBe(false);
       });
 
       it('returns null when not found anywhere', async () => {
