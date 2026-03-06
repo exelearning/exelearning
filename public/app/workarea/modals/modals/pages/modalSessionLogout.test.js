@@ -180,6 +180,22 @@ describe('ModalSessionLogout', () => {
       vi.useRealTimers();
     });
 
+    it('should still redirect to /logout when save throws on Yes click', async () => {
+      vi.useFakeTimers();
+      window.eXeLearning.app.project._yjsBridge.saveManager.save = vi.fn().mockRejectedValue(new Error('save error'));
+
+      modal.show({});
+      vi.advanceTimersByTime(500);
+
+      const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
+      yesButton.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+      expect(window.location.href).toBe('/base/logout');
+      vi.useRealTimers();
+    });
+
     it('should redirect to /logout without saving on No click', async () => {
       vi.useFakeTimers();
       modal.show({});
