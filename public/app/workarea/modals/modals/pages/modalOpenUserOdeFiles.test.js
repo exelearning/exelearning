@@ -84,7 +84,6 @@ describe('modalOpenUserOdeFiles', () => {
           odeVersion: '1',
           odeId: 'ode-1',
           openLoad: vi.fn().mockResolvedValue(),
-          reinitializeWithProject: vi.fn().mockResolvedValue(),
           importElpDirectly: vi.fn().mockResolvedValue({}),
           refreshAfterDirectImport: vi.fn().mockResolvedValue(),
           idevices: {
@@ -1449,36 +1448,7 @@ describe('modalOpenUserOdeFiles', () => {
         title: 'Open project',
         forceOpen: 'Open without saving',
         pendingAction: { action: 'open', projectUuid: 'proj-1' },
-        openYjsProject: true,
-        projectUuid: 'proj-1',
       });
-    });
-  });
-
-  describe('openUserOdeFilesWithOpenSession', () => {
-    it('should load project when response OK', async () => {
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
-      });
-      const loadSpy = vi.spyOn(modal, 'loadOdeTheme');
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      expect(window.eXeLearning.app.project.odeSession).toBe('s1');
-      expect(window.eXeLearning.app.project.openLoad).toHaveBeenCalled();
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('should show error when response fails', async () => {
-      vi.useFakeTimers();
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'NOPE',
-      });
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
     });
   });
 
@@ -1673,7 +1643,7 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
 
-    it('should open directly when no unsaved changes', async () => {
+    it('should use transitionToProject when no unsaved changes and originalFile available', async () => {
       window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
         responseMessage: 'ERROR',
       });
@@ -1683,9 +1653,15 @@ describe('modalOpenUserOdeFiles', () => {
           hasUnsavedChanges: vi.fn(() => false),
         },
       };
-      const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
-      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
-      expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+      const originalFile = new File(['x'], 'a.elp');
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false, null, false, originalFile);
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: originalFile,
+        skipSave: true,
+      });
     });
 
     it('should show session logout when unsaved changes exist', async () => {
@@ -1700,36 +1676,6 @@ describe('modalOpenUserOdeFiles', () => {
       };
       await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
-    });
-  });
-
-  describe('openUserLocalOdeFilesWithOpenSession', () => {
-    it('should redirect on Yjs response', async () => {
-      Object.defineProperty(window, 'location', {
-        value: { href: '' },
-        writable: true,
-      });
-      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
-        projectUuid: 'proj-1',
-        elpImportPath: '/tmp/a.elp',
-      });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      expect(window.location.href).toContain('/workarea?project=proj-1&import=');
-    });
-
-    it('should show error on failure', async () => {
-      vi.useFakeTimers();
-      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
-        responseMessage: 'ERROR',
-      });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
     });
   });
 

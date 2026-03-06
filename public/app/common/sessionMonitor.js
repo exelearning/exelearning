@@ -195,6 +195,7 @@ export default class SessionMonitor {
 
         // Clear beforeunload handler to allow redirect
         try {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
         } catch (_error) {
             // Ignore failures restoring beforeunload handler.

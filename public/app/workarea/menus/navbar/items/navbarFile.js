@@ -1236,7 +1236,6 @@ export default class NavbarFile {
             const data = {
                 title: _('New file'),
                 forceOpen: _('Create new file without saving'),
-                newFile: true,
                 pendingAction: { action: 'new' },
             };
             eXeLearning.app.modals.sessionlogout.show(data);
@@ -1255,6 +1254,7 @@ export default class NavbarFile {
             this.isStaticModeWithoutElectron() &&
             typeof window.newProject === 'function'
         ) {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             window.newProject();
             return;
@@ -1275,6 +1275,7 @@ export default class NavbarFile {
         }
 
         // Legacy fallback: redirect to projects page
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
         window.onbeforeunload = null;
         const basePath = window.eXeLearning?.config?.basePath || '';
         window.location.href = `${basePath}/projects`;
@@ -1584,6 +1585,7 @@ export default class NavbarFile {
             );
 
         if (response.responseMessage == 'OK') {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             window.location.replace(response.returnUrl);
         } else {
@@ -1780,12 +1782,11 @@ export default class NavbarFile {
                         false;
 
                     if (hasUnsaved) {
-                        // Show confirmation modal with Yjs support
+                        // Show confirmation modal with pendingAction
                         const data = {
                             title: _('Open project'),
                             forceOpen: _('Open without saving'),
-                            openYjsProject: true,
-                            projectUuid: projectUuid,
+                            pendingAction: { action: 'open', projectUuid },
                         };
                         eXeLearning.app.modals.sessionlogout.show(data);
                     } else {

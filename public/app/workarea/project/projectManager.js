@@ -320,84 +320,6 @@ export default class projectManager {
     }
 
     /**
-     * Reinitialize Yjs with a new project (without page reload)
-     * Used when opening a new ELP file to switch to a different project
-     * @param {string} projectUuid - The new project UUID
-     * @param {Object} options - Options
-     * @param {boolean} options.isNewProject - Skip server load for new projects
-     */
-    async reinitializeWithProject(projectUuid, options = {}) {
-        Logger.log('[ProjectManager] Reinitializing with new project:', projectUuid);
-
-        // Disconnect existing Yjs connection if present
-        if (this._yjsBridge) {
-            Logger.log('[ProjectManager] Disconnecting existing Yjs bridge...');
-            try {
-                await this._yjsBridge.disconnect();
-            } catch (err) {
-                console.warn('[ProjectManager] Error disconnecting Yjs:', err);
-            }
-            this._yjsBridge = null;
-        }
-
-        // Clear existing Yjs bindings
-        this._yjsBindings.clear();
-
-        // Update project ID FIRST (before resetProject which may trigger observers)
-        this.yjsProjectId = projectUuid;
-        window.eXeLearning.projectId = projectUuid;
-        this.odeId = projectUuid;
-
-        // Reinitialize Yjs BEFORE resetProject (so Yjs bindings work)
-        const YjsProjectBridge = window.YjsModules?.YjsProjectBridge;
-        if (!YjsProjectBridge) {
-            throw new Error('YjsProjectBridge not available');
-        }
-
-        // Get auth token
-        const authToken = this.app?.auth?.getToken?.() ||
-                          eXeLearning?.config?.token ||
-                          localStorage.getItem('authToken');
-
-        // Determine mode from capabilities (derived from RuntimeConfig - single source of truth)
-        // Note: this.offlineInstallation is a legacy field kept for backward compatibility
-        // New code should use app.capabilities instead
-        const collaborationEnabled = this.app?.capabilities?.collaboration?.enabled ?? !this.offlineInstallation;
-
-        // Create new bridge (constructor takes app, not projectId)
-        this._yjsBridge = new YjsProjectBridge(this.app);
-
-        // Initialize the bridge with projectUuid
-        await this._yjsBridge.initialize(projectUuid, authToken, {
-            enableWebSocket: collaborationEnabled,
-            enableIndexedDB: true,
-            offline: !collaborationEnabled,
-            isNewProject: options.isNewProject,
-            skipSyncWait: options.skipSyncWait ?? false,
-        });
-
-        this._yjsEnabled = true;
-        if (typeof this._yjsBridge?.enableAutoSync === 'function') {
-            this._yjsBridge.enableAutoSync();
-        }
-        Logger.log('[ProjectManager] Yjs reinitialized for project:', projectUuid);
-
-        // Reset project state AFTER Yjs is initialized (structure loading needs Yjs)
-        Logger.log('[ProjectManager] About to call resetProject...');
-        this.resetProject();
-        Logger.log('[ProjectManager] resetProject completed');
-
-        // Capture baseline state to enable dirty tracking
-        // This must be called AFTER resetProject to prevent false positives
-        if (this._yjsBridge?.documentManager) {
-            this._yjsBridge.documentManager.captureBaselineState();
-            Logger.log('[ProjectManager] Baseline state captured for dirty tracking');
-        }
-
-        Logger.log('[ProjectManager] reinitializeWithProject returning');
-    }
-
-    /**
      * Import an ELP file directly (file already in memory)
      * @param {File} file - The ELP file to import
      * @param {Object} options - Import options
@@ -465,8 +387,6 @@ export default class projectManager {
         }
 
         // Rebind concurrent users to the current Yjs document manager.
-        // This is required after reinitializeWithProject() because the bridge changes
-        // without a full page reload.
         if (this.app?.interface?.concurrentUsers?.rebindToCurrentDocumentManager) {
             this.app.interface.concurrentUsers.rebindToCurrentDocumentManager();
         }
@@ -678,6 +598,7 @@ export default class projectManager {
         }
 
         // 2. Clear beforeunload to prevent browser "Leave site?" dialog
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
         window.onbeforeunload = null;
 
         // 3. Redirect based on action (always full page reload)

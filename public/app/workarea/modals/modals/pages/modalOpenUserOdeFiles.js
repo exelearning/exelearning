@@ -761,9 +761,6 @@ export default class modalOpenUserOdeFiles extends Modal {
                 title: _('Open project'),
                 forceOpen: _('Open without saving'),
                 pendingAction: { action: 'open', projectUuid },
-                // Legacy compat flags (used by legacy saveSession path)
-                openYjsProject: true,
-                projectUuid: projectUuid,
             };
             eXeLearning.app.modals.sessionlogout.show(data);
             return;
@@ -780,6 +777,7 @@ export default class modalOpenUserOdeFiles extends Modal {
             });
         } else {
             // Fallback: direct redirect
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
             const basePath = window.eXeLearning?.config?.basePath || '';
@@ -1400,11 +1398,6 @@ export default class modalOpenUserOdeFiles extends Modal {
                     title: _('Open project'),
                     forceOpen: _('Open without saving'),
                     pendingAction: { action: 'import', file: odeFile },
-                    // Legacy compat flags
-                    openOdeFile: true,
-                    localOdeFile: true,
-                    odeFile: odeFile,
-                    isLargeFile: true,
                 };
                 eXeLearning.app.modals.sessionlogout.show(data);
                 return;
@@ -1719,6 +1712,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                     Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                     // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                    window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                     window.onbeforeunload = null;
                     window._skipLeaveSessionModal = true;
                     const importParam = encodeURIComponent(response.elpImportPath);
@@ -1785,12 +1779,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                         eXeLearning.app.modals.sessionlogout.show({
                             title: _('Open project'),
                             forceOpen: _('Open without saving'),
-                            openOdeFile: true,
-                            localOdeFile: true,
-                            isLargeFile: true,
-                            odeFile: originalFile,
-                            odeFileName,
-                            odeFilePath,
+                            pendingAction: { action: 'import', file: originalFile },
                         });
 
                         return;
@@ -1812,7 +1801,17 @@ export default class modalOpenUserOdeFiles extends Modal {
                         yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
                     if (hasUnsaved) {
-                        eXeLearning.app.modals.sessionlogout.show(data);
+                        eXeLearning.app.modals.sessionlogout.show({
+                            title: _('Open project'),
+                            forceOpen: _('Open without saving'),
+                            pendingAction: { action: 'import', file: originalFile },
+                        });
+                    } else if (originalFile && eXeLearning.app.project?.transitionToProject) {
+                        await eXeLearning.app.project.transitionToProject({
+                            action: 'import',
+                            file: originalFile,
+                            skipSave: true,
+                        });
                     } else {
                         this.openUserLocalOdeFilesWithOpenSession(
                             odeFileName,
@@ -1867,6 +1866,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                 Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                 // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                 window.onbeforeunload = null;
                 const importParam = encodeURIComponent(response.elpImportPath);
                 const basePath = window.eXeLearning?.config?.basePath || '';

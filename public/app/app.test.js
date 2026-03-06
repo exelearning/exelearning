@@ -2570,19 +2570,25 @@ describe('Module-level event handlers', () => {
     }
   });
 
-  it('beforeunload handler returns undefined', () => {
+  it('beforeunload handler is installed via UnsavedChangesHelper', () => {
+    // Mock UnsavedChangesHelper
+    const setupSpy = vi.fn();
+    window.UnsavedChangesHelper = { setupBeforeUnloadHandler: setupSpy };
+
     // Simulate user interaction to trigger the installation of beforeunload
     const event = new Event('pointerdown');
     window.dispatchEvent(event);
 
-    // Now check if onbeforeunload returns undefined (no confirmation dialog)
-    if (typeof window.onbeforeunload === 'function') {
-      const result = window.onbeforeunload({});
-      expect(result).toBeUndefined();
-    }
+    expect(setupSpy).toHaveBeenCalled();
+
+    delete window.UnsavedChangesHelper;
   });
 
   it('beforeunload is installed only once', () => {
+    // Mock UnsavedChangesHelper
+    const setupSpy = vi.fn();
+    window.UnsavedChangesHelper = { setupBeforeUnloadHandler: setupSpy };
+
     // Simulate multiple user interactions
     const pointerEvent = new Event('pointerdown');
     const keyEvent = new Event('keydown');
@@ -2590,8 +2596,10 @@ describe('Module-level event handlers', () => {
     window.dispatchEvent(pointerEvent);
     window.dispatchEvent(keyEvent);
 
-    // Should not throw and onbeforeunload should be set
-    expect(typeof window.onbeforeunload).toBe('function');
+    // Should only be called once (second event listener already removed via {once: true})
+    expect(setupSpy.mock.calls.length).toBeLessThanOrEqual(1);
+
+    delete window.UnsavedChangesHelper;
   });
 });
 

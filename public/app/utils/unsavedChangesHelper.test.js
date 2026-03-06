@@ -356,5 +356,45 @@ describe('UnsavedChangesHelper', () => {
 
       addEventListenerSpy.mockRestore();
     });
+
+    it('should skip confirmation in Electron mode', () => {
+      mockDocumentManager.isDirty = true;
+      window.electronAPI = { someMethod: vi.fn() };
+
+      let capturedHandler;
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+        if (event === 'beforeunload') capturedHandler = handler;
+      });
+
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+
+      const mockEvent = { preventDefault: vi.fn(), returnValue: undefined };
+      capturedHandler(mockEvent);
+
+      expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+
+      delete window.electronAPI;
+      addEventListenerSpy.mockRestore();
+    });
+
+    it('should trigger confirmation when there are unsaved assets', () => {
+      mockDocumentManager.isDirty = false;
+      mockYjsBridge.assetManager = { hasUnsavedAssets: vi.fn(() => true) };
+
+      let capturedHandler;
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation((event, handler) => {
+        if (event === 'beforeunload') capturedHandler = handler;
+      });
+
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+
+      const mockEvent = { preventDefault: vi.fn(), returnValue: undefined };
+      capturedHandler(mockEvent);
+
+      expect(mockEvent.preventDefault).toHaveBeenCalled();
+      expect(mockEvent.returnValue).toBe('');
+
+      addEventListenerSpy.mockRestore();
+    });
   });
 });
