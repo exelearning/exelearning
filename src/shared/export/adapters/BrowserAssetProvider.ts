@@ -184,16 +184,13 @@ export class BrowserAssetProvider implements AssetProvider {
                     );
                 }
 
-                // Convert all blobs to ArrayBuffer in parallel for better performance
+                // Convert blobs to ArrayBuffer sequentially to reduce peak memory.
+                // Parallel conversion (Promise.all) would hold ALL blobs AND ALL
+                // ArrayBuffers simultaneously (~2x project size in RAM).
                 const assetsWithBlob = assets.filter(asset => asset.blob);
-                const conversions = await Promise.all(
-                    assetsWithBlob.map(async asset => {
-                        const arrayBuffer = await asset.blob!.arrayBuffer();
-                        return { asset, arrayBuffer };
-                    }),
-                );
 
-                for (const { asset, arrayBuffer } of conversions) {
+                for (const asset of assetsWithBlob) {
+                    const arrayBuffer = await asset.blob!.arrayBuffer();
                     const assetId = String(asset.id);
                     const filename = !isUnknownFilename(asset.filename)
                         ? asset.filename!
@@ -311,6 +308,43 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async getProjectAssets(): Promise<ExportAsset[]> {
         return this.getAllAssets();
+    }
+
+    /**
+     * Process assets one at a time via callback, avoiding building the full array.
+     * This reduces peak memory by processing and releasing each asset sequentially.
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => void | Promise<void>): Promise<void> {
+        if (!this.assetManager) return;
+
+        const assets = await this.assetManager.getProjectAssets();
+        const assetsWithBlob = assets.filter(asset => asset.blob);
+
+        for (const asset of assetsWithBlob) {
+            const arrayBuffer = await asset.blob!.arrayBuffer();
+            const assetId = String(asset.id);
+            const filename = !isUnknownFilename(asset.filename)
+                ? asset.filename!
+                : deriveFilenameFromMime(assetId, asset.mime);
+
+            let originalPath: string;
+            if (asset.folderPath) {
+                originalPath = `${asset.folderPath}/${filename}`;
+            } else if (asset.originalPath?.includes(assetId)) {
+                originalPath = asset.originalPath;
+            } else {
+                originalPath = `${assetId}/${filename}`;
+            }
+
+            await callback({
+                id: assetId,
+                filename,
+                originalPath,
+                folderPath: asset.folderPath || '',
+                mime: asset.mime || 'application/octet-stream',
+                data: new Uint8Array(arrayBuffer),
+            });
+        }
     }
 
     /**

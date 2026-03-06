@@ -343,22 +343,35 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
-                const exportPath = exportPathMap.get(asset.id);
-                if (!exportPath) {
-                    console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
-                    continue;
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(asset => {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (!exportPath) {
+                        console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
+                        return;
+                    }
+
+                    const zipPath = `content/resources/${exportPath}`;
+                    this.zip.addFile(zipPath, asset.data);
+                    if (trackingList) trackingList.push(zipPath);
+                    assetsAdded++;
+                });
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (!exportPath) {
+                        console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
+                        continue;
+                    }
+
+                    const zipPath = `content/resources/${exportPath}`;
+                    this.zip.addFile(zipPath, asset.data);
+                    if (trackingList) trackingList.push(zipPath);
+                    assetsAdded++;
                 }
-
-                // Store in content/resources/{exportPath}
-                const zipPath = `content/resources/${exportPath}`;
-
-                this.zip.addFile(zipPath, asset.data);
-                if (trackingList) trackingList.push(zipPath);
-                assetsAdded++;
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);

@@ -254,6 +254,14 @@ export interface AssetProvider {
      * @returns Asset info or null if not found
      */
     getAsset(assetId: string): Promise<ExportAsset | null>;
+
+    /**
+     * Process assets one at a time via callback, avoiding loading all into memory.
+     * When available, exporters should prefer this over getAllAssets() to reduce
+     * peak memory usage for large projects.
+     * @param callback - Called with each asset sequentially
+     */
+    forEachAsset?(callback: (asset: ExportAsset) => void | Promise<void>): Promise<void>;
 }
 
 /**

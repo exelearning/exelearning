@@ -375,6 +375,71 @@ describe('BrowserAssetProvider', () => {
         });
     });
 
+    describe('forEachAsset', () => {
+        it('should process each asset via callback', async () => {
+            mockManager.addAsset('asset1', 'content1', { filename: 'file1.png', mime: 'image/png' });
+            mockManager.addAsset('asset2', 'content2', { filename: 'file2.jpg', mime: 'image/jpeg' });
+
+            const collected: Array<{ id: string; filename: string }> = [];
+            await provider.forEachAsset(asset => {
+                collected.push({ id: asset.id, filename: asset.filename });
+            });
+
+            expect(collected.length).toBe(2);
+            expect(collected.map(a => a.id)).toContain('asset1');
+            expect(collected.map(a => a.id)).toContain('asset2');
+        });
+
+        it('should convert blobs to Uint8Array', async () => {
+            const content = 'Test content';
+            mockManager.addAsset('test-asset', content, { filename: 'test.txt', mime: 'text/plain' });
+
+            let receivedData: Uint8Array | null = null;
+            await provider.forEachAsset(asset => {
+                receivedData = asset.data as Uint8Array;
+            });
+
+            expect(receivedData).toBeInstanceOf(Uint8Array);
+            expect(new TextDecoder().decode(receivedData!)).toBe(content);
+        });
+
+        it('should use folderPath for originalPath when set', async () => {
+            mockManager.addAsset('folder-asset', 'content', {
+                filename: 'image.png',
+                folderPath: 'images/subfolder',
+                mime: 'image/png',
+            });
+
+            let receivedPath: string | null = null;
+            await provider.forEachAsset(asset => {
+                receivedPath = asset.originalPath;
+            });
+
+            expect(receivedPath).toBe('images/subfolder/image.png');
+        });
+
+        it('should do nothing with null asset manager', async () => {
+            const nullProvider = new BrowserAssetProvider(null);
+            const collected: string[] = [];
+            await nullProvider.forEachAsset(asset => {
+                collected.push(asset.id);
+            });
+            expect(collected).toEqual([]);
+        });
+
+        it('should support async callbacks', async () => {
+            mockManager.addAsset('async-asset', 'content', { filename: 'file.txt' });
+
+            const collected: string[] = [];
+            await provider.forEachAsset(async asset => {
+                await new Promise(resolve => setTimeout(resolve, 1));
+                collected.push(asset.id);
+            });
+
+            expect(collected).toEqual(['async-asset']);
+        });
+    });
+
     describe('Null asset manager', () => {
         it('should return null from getAsset with no manager', async () => {
             const nullProvider = new BrowserAssetProvider(null);
