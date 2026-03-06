@@ -223,18 +223,23 @@ async function countAllIdevices(page: Page): Promise<number> {
  */
 async function handleConfirmDialog(page: Page, confirm: boolean): Promise<void> {
     const modal = page.locator('.modal.show');
-    if ((await modal.count()) > 0) {
-        const btn = confirm
-            ? modal.locator('.btn-primary, .btn-confirm, button:has-text("Yes"), button:has-text("Si")')
-            : modal.locator('.btn-secondary, .btn-cancel, button:has-text("No"), button:has-text("Cancel")');
+    // Wait for modal to appear (it may be triggered asynchronously after drag)
+    try {
+        await modal.waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+        // No modal appeared — nothing to handle
+        return;
+    }
 
-        if ((await btn.count()) > 0) {
-            await btn.first().click();
-            // Wait for modal to be dismissed instead of fixed timeout
-            await page.waitForFunction(() => document.querySelectorAll('.modal.show').length === 0, null, {
-                timeout: 5000,
-            });
-        }
+    const btn = confirm
+        ? modal.locator('.btn-primary, .btn-confirm, button:has-text("Yes"), button:has-text("Si")')
+        : modal.locator('.btn-secondary, .btn-cancel, button:has-text("No"), button:has-text("Cancel")');
+
+    if ((await btn.count()) > 0) {
+        await btn.first().click();
+        await page.waitForFunction(() => document.querySelectorAll('.modal.show').length === 0, null, {
+            timeout: 5000,
+        });
     }
 }
 
