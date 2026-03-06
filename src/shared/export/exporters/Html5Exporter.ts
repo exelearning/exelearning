@@ -856,17 +856,29 @@ export class Html5Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
-                const exportPath = exportPathMap.get(asset.id);
-                if (!exportPath) continue;
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(asset => {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (!exportPath) return;
 
-                const filePath = `content/resources/${exportPath}`;
-                files.set(filePath, asset.data);
-                if (trackingList) trackingList.push(filePath);
-                assetsAdded++;
+                    const filePath = `content/resources/${exportPath}`;
+                    files.set(filePath, asset.data);
+                    if (trackingList) trackingList.push(filePath);
+                    assetsAdded++;
+                });
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    const exportPath = exportPathMap.get(asset.id);
+                    if (!exportPath) continue;
+
+                    const filePath = `content/resources/${exportPath}`;
+                    files.set(filePath, asset.data);
+                    if (trackingList) trackingList.push(filePath);
+                    assetsAdded++;
+                }
             }
         } catch (e) {
             console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
