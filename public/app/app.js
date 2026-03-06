@@ -1279,12 +1279,6 @@ export default class App {
                 lastModified: res.mtimeMs || Date.now(),
             });
 
-            // Store original path for save functionality
-            if (window.electronAPI && window.electronAPI.setSavedPath) {
-                const projectKey = this.project?.odeSession || 'default';
-                await window.electronAPI.setSavedPath(projectKey, filePath);
-            }
-
             // Use existing upload function
             this.modals.openuserodefiles.largeFilesUpload(file);
         } catch (error) {

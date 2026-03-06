@@ -1769,27 +1769,6 @@ export default class modalOpenUserOdeFiles extends Modal {
                 } catch (_e) {
                     // Intentional: Electron global may not exist
                 }
-                // Remember the chosen local ELP path (prefer original local path if available)
-                try {
-                    const originalPath = window.__originalElpPath;
-                    if (
-                        window.electronAPI &&
-                        typeof window.electronAPI.setSavedPath === 'function' &&
-                        (originalPath || odeFilePath)
-                    ) {
-                        const key =
-                            response.odeId ||
-                            window.__currentProjectId ||
-                            'default';
-                        window.electronAPI.setSavedPath(
-                            key,
-                            originalPath || odeFilePath
-                        );
-                    }
-                } catch (_e) {
-                    // Intentional: Electron API call may fail in browser
-                }
-
                 // If server returned a Yjs project UUID, redirect to the new URL-based workarea
                 // with import parameter so frontend can use ElpxImporter
                 if (response.projectUuid && response.elpImportPath) {
@@ -1918,27 +1897,6 @@ export default class modalOpenUserOdeFiles extends Modal {
             } catch (_e) {
                 // Intentional: Electron global may not exist
             }
-            // Remember the chosen local ELP path (prefer original local path if available)
-            try {
-                const originalPath = window.__originalElpPath;
-                if (
-                    window.electronAPI &&
-                    typeof window.electronAPI.setSavedPath === 'function' &&
-                    (originalPath || odeFilePath)
-                ) {
-                    const key =
-                        response.odeId ||
-                        window.__currentProjectId ||
-                        'default';
-                    window.electronAPI.setSavedPath(
-                        key,
-                        originalPath || odeFilePath
-                    );
-                }
-            } catch (_e) {
-                // Intentional: Electron API call may fail in browser
-            }
-
             // If server returned a Yjs project UUID, redirect with import param
             if (response.projectUuid && response.elpImportPath) {
                 Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
