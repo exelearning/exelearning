@@ -529,8 +529,9 @@ const YjsProjectManagerMixin = {
      */
     projectManager.exportToElpxViaYjs = async function () {
       if (this._yjsEnabled && this._yjsBridge) {
-        await this._yjsBridge.exportToElpx();
+        return await this._yjsBridge.exportToElpx();
       }
+      return { saved: false };
     };
 
     /**

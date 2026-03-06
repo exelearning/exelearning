@@ -2614,7 +2614,9 @@ class YjsProjectBridge {
             }
             const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
-            await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            // saveBuffer returns false when the user cancels the OS save dialog
+            const saved = await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            if (!saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
@@ -2629,6 +2631,7 @@ class YjsProjectBridge {
             URL.revokeObjectURL(url);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          return { saved: true };
         } else {
           throw new Error(result.error || 'Export failed');
         }

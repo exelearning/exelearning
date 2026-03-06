@@ -1544,12 +1544,35 @@ describe('NavbarFile', () => {
         });
 
         it('should export via Yjs and update UI on success', async () => {
-            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue();
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: true });
 
             await navbarFile.downloadProjectViaYjs();
 
             // Save always prompts — no saveAs parameter needed
             expect(eXeLearning.app.project.exportToElpxViaYjs).toHaveBeenCalledWith();
+            expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
+        });
+
+        it('should not markClean or update UI when user cancels save dialog', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: false });
+            eXeLearning.app.project._yjsBridge = { documentManager: { markClean: vi.fn() } };
+            window.electronAPI = { saveBuffer: vi.fn() };
+
+            await navbarFile.downloadProjectViaYjs();
+
+            expect(eXeLearning.app.project._yjsBridge.documentManager.markClean).not.toHaveBeenCalled();
+            expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).not.toHaveBeenCalled();
+        });
+
+        it('should markClean in Electron mode on successful save', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({ saved: true });
+            const markClean = vi.fn();
+            eXeLearning.app.project._yjsBridge = { documentManager: { markClean } };
+            window.electronAPI = { saveBuffer: vi.fn() };
+
+            await navbarFile.downloadProjectViaYjs();
+
+            expect(markClean).toHaveBeenCalled();
             expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
         });
 
@@ -1639,7 +1662,7 @@ describe('NavbarFile', () => {
 
         it('should use electronAPI.saveBuffer in Electron mode', async () => {
             eXeLearning.config.isOfflineInstallation = true;
-            window.electronAPI = { saveBuffer: vi.fn().mockResolvedValue() };
+            window.electronAPI = { saveBuffer: vi.fn().mockResolvedValue(true) };
             window.__currentProjectId = 'proj-1';
 
             const result = await navbarFile.exportViaYjs('HTML5', 'html5');
@@ -1650,6 +1673,17 @@ describe('NavbarFile', () => {
                 'proj-1:html5',
                 'export.zip'
             );
+        });
+
+        it('should return true without success toast when Electron save is cancelled', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = { saveBuffer: vi.fn().mockResolvedValue(false) };
+            window.__currentProjectId = 'proj-1';
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(window.electronAPI.saveBuffer).toHaveBeenCalled();
         });
     });
 

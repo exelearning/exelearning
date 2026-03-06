@@ -1868,7 +1868,13 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
-            await eXeLearning.app.project.exportToElpxViaYjs();
+            const result = await eXeLearning.app.project.exportToElpxViaYjs();
+
+            // If user cancelled the OS save dialog, leave project dirty
+            if (result?.saved === false) {
+                toast.remove();
+                return;
+            }
 
             toast.toastBody.innerHTML = _('File saved.');
             Logger.log('[NavbarFile] Project saved via Yjs');
@@ -1989,11 +1995,15 @@ export default class NavbarFile {
                     const exportKey = `${key}:${fallbackApiFormat}`;
                     const exportFilename = result.filename || 'export.zip';
 
-                    await window.electronAPI.saveBuffer(
+                    const saved = await window.electronAPI.saveBuffer(
                         base64Data,
                         exportKey,
                         exportFilename
                     );
+                    if (!saved) {
+                        toast.remove();
+                        return true; // Handled client-side (cancel should not trigger server fallback)
+                    }
                     Logger.log(
                         `[NavbarFile] Unified export via Electron: ${exportFilename}`
                     );
