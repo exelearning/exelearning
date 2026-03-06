@@ -109,7 +109,7 @@ describe('NavbarFile', () => {
                     save: vi.fn(),
                     _yjsEnabled: false,
                     _yjsBridge: null,
-                    reinitializeWithProject: null,
+                    transitionToProject: null,
                     exportToElpxViaYjs: null,
                     importFromElpxViaYjs: null,
                     openLoad: vi.fn(),
@@ -1121,7 +1121,6 @@ describe('NavbarFile', () => {
             expect(eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
                 title: 'New file',
                 forceOpen: 'Create new file without saving',
-                newFile: true,
                 pendingAction: { action: 'new' },
             });
             expect(navbarFile.createSession).not.toHaveBeenCalled();
@@ -1386,8 +1385,7 @@ describe('NavbarFile', () => {
             expect(eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
                 title: 'Open project',
                 forceOpen: 'Open without saving',
-                openYjsProject: true,
-                projectUuid: 'proj-2',
+                pendingAction: { action: 'open', projectUuid: 'proj-2' },
             });
         });
 

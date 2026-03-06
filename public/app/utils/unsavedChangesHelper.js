@@ -232,7 +232,17 @@ const UnsavedChangesHelper = {
     }
 
     this._beforeUnloadHandler = (event) => {
-      if (this.hasUnsavedChanges()) {
+      // Electron handles close flow separately
+      if (window.electronAPI) return;
+
+      const app = window.eXeLearning?.app;
+      const assetManager = app?.project?._yjsBridge?.assetManager;
+      const hasUnsavedAssets =
+        assetManager &&
+        typeof assetManager.hasUnsavedAssets === 'function' &&
+        assetManager.hasUnsavedAssets();
+
+      if (this.hasUnsavedChanges() || hasUnsavedAssets) {
         // Standard way to trigger the browser's "Leave site?" dialog
         event.preventDefault();
         // For older browsers
