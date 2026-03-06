@@ -736,14 +736,14 @@ var $exeDevice = {
                     accept = 'video';
                 }
 
-                const hasAnyPickerButton =
-                    $input.siblings('input.exe-pick-any-file, input.exe-pick-image').length >
+                const hasOwnPickerButton =
+                    $input.next('input.exe-pick-any-file, input.exe-pick-image').length >
                         0 ||
                     $container.find(
                         `input[type="button"][data-filepicker="${id}"]`
                     ).length > 0;
 
-                if (hasAnyPickerButton) return;
+                if (hasOwnPickerButton) return;
 
                 if (
                     !$container.find(
