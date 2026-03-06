@@ -1448,6 +1448,7 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
         title: 'Open project',
         forceOpen: 'Open without saving',
+        pendingAction: { action: 'open', projectUuid: 'proj-1' },
         openYjsProject: true,
         projectUuid: 'proj-1',
       });
@@ -1575,17 +1576,16 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
     });
 
-    it('should process in-memory import and refresh UI', async () => {
-      window.history.pushState = vi.fn();
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ uuid: 'proj-1' })),
-      });
+    it('should use transitionToProject for import in online mode', async () => {
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
-      expect(window.eXeLearning.app.project.reinitializeWithProject).toHaveBeenCalledWith('proj-1', { skipSyncWait: true });
-      expect(window.eXeLearning.app.project.importElpDirectly).toHaveBeenCalled();
-      expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: file,
+        skipSave: true,
+      });
     });
 
     it('should upload and open properties file', async () => {
@@ -1873,56 +1873,40 @@ describe('modalOpenUserOdeFiles', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should skip static mode when capabilities is undefined and use direct processing', async () => {
+    it('should skip static mode when capabilities is undefined and use transitionToProject', async () => {
       delete window.eXeLearning.app.capabilities;
 
-      // Mock fetch for direct in-memory processing path
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
-      });
-      window.fetch = mockFetch;
-
-      // Mock project reinitialize for direct processing
-      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
-      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
-      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use fetch for direct processing, not legacy API
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/project/create-quick'),
-        expect.any(Object)
-      );
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
     });
 
-    it('should skip static mode when storage.remote is true and use direct processing', async () => {
+    it('should skip static mode when storage.remote is true and use transitionToProject', async () => {
       window.eXeLearning.app.capabilities = { storage: { remote: true } };
 
-      // Mock fetch for direct in-memory processing path
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
-      });
-      window.fetch = mockFetch;
-
-      // Mock project reinitialize for direct processing
-      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
-      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
-      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use fetch for direct processing, not static mode
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/project/create-quick'),
-        expect.any(Object)
-      );
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
     });
   });
 });

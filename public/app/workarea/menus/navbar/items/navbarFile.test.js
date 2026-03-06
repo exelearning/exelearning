@@ -1090,9 +1090,7 @@ describe('NavbarFile', () => {
 
             await navbarFile.newSession('session-123');
 
-            expect(navbarFile.createSession).toHaveBeenCalledWith({
-                odeSessionId: 'session-123',
-            });
+            expect(navbarFile.createSession).toHaveBeenCalled();
             expect(eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
         });
 
@@ -1106,9 +1104,7 @@ describe('NavbarFile', () => {
 
             await navbarFile.newSession('session-123');
 
-            expect(navbarFile.createSession).toHaveBeenCalledWith({
-                odeSessionId: 'session-123',
-            });
+            expect(navbarFile.createSession).toHaveBeenCalled();
             expect(eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
         });
 
@@ -1126,6 +1122,7 @@ describe('NavbarFile', () => {
                 title: 'New file',
                 forceOpen: 'Create new file without saving',
                 newFile: true,
+                pendingAction: { action: 'new' },
             });
             expect(navbarFile.createSession).not.toHaveBeenCalled();
         });
@@ -1143,7 +1140,7 @@ describe('NavbarFile', () => {
             window.newProject = vi.fn();
             global.fetch = vi.fn();
 
-            await navbarFile.createSession({ odeSessionId: 'session-123' });
+            await navbarFile.createSession();
 
             expect(window.newProject).toHaveBeenCalled();
             expect(global.fetch).not.toHaveBeenCalled();
@@ -1151,56 +1148,36 @@ describe('NavbarFile', () => {
             expect(window.onbeforeunload).toBeNull();
         });
 
-        it('should use legacy mode when Yjs is not enabled', async () => {
-            eXeLearning.app.project._yjsEnabled = false;
-            eXeLearning.app.api.postCloseSession.mockResolvedValue({
-                responseMessage: 'OK',
-            });
+        it('should use transitionToProject when available', async () => {
+            const transitionSpy = vi.fn().mockResolvedValue();
+            eXeLearning.app.project.transitionToProject = transitionSpy;
 
-            await navbarFile.createSession({ odeSessionId: 'session-123' });
+            await navbarFile.createSession();
 
-            expect(eXeLearning.app.api.postCloseSession).toHaveBeenCalledWith({
-                odeSessionId: 'session-123',
+            expect(transitionSpy).toHaveBeenCalledWith({
+                action: 'new',
+                skipSave: true,
             });
+        });
+
+        it('should redirect to projects page when transitionToProject is available but fails', async () => {
+            const transitionSpy = vi.fn().mockRejectedValue(new Error('Network error'));
+            eXeLearning.app.project.transitionToProject = transitionSpy;
+
+            await navbarFile.createSession();
+
+            expect(transitionSpy).toHaveBeenCalled();
             expect(window.onbeforeunload).toBeNull();
-            expect(window.location.href).toBe('/workarea');
+            expect(window.location.href).toBe('/projects');
         });
 
-        it('should use Yjs mode when enabled', async () => {
-            eXeLearning.app.project._yjsEnabled = true;
-            eXeLearning.app.project.reinitializeWithProject = vi.fn();
+        it('should fall back to redirect when transitionToProject is not available', async () => {
+            eXeLearning.app.project.transitionToProject = undefined;
 
-            // Use global.fetch since the source code uses the global fetch
-            global.fetch = vi.fn().mockResolvedValue({
-                ok: true,
-                json: async () => ({ uuid: 'new-project-uuid' }),
-            });
+            await navbarFile.createSession();
 
-            await navbarFile.createSession({ odeSessionId: 'session-123' });
-
-            expect(global.fetch).toHaveBeenCalledWith(
-                '/api/project/create-quick',
-                expect.objectContaining({
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                })
-            );
-        });
-
-        it('should fall back to legacy mode on Yjs error', async () => {
-            eXeLearning.app.project._yjsEnabled = true;
-            eXeLearning.app.project.reinitializeWithProject = vi.fn();
-
-            // Use global.fetch to simulate network error
-            global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
-            eXeLearning.app.api.postCloseSession.mockResolvedValue({
-                responseMessage: 'OK',
-            });
-
-            await navbarFile.createSession({ odeSessionId: 'session-123' });
-
-            expect(eXeLearning.app.api.postCloseSession).toHaveBeenCalled();
+            expect(window.onbeforeunload).toBeNull();
+            expect(window.location.href).toBe('/projects');
         });
     });
 
