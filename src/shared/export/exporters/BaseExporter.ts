@@ -78,6 +78,32 @@ export abstract class BaseExporter {
     abstract getFileSuffix(): string;
 
     // =========================================================================
+    // i18n Content Generation
+    // =========================================================================
+
+    /**
+     * Fetch the pre-built, pre-translated `common_i18n.js` content for the given language.
+     * The file is generated at build time by `scripts/build-i18n-bundles.js` and contains
+     * resolved string literals (no c_() calls) ready to include in the export ZIP.
+     */
+    protected async generateI18nContent(language: string): Promise<string> {
+        return this.resources.fetchI18nFile(language);
+    }
+
+    /**
+     * Fetch translated labels for the navigation buttons (Previous / Next).
+     * Labels are resolved from XLF translations so the exported HTML already
+     * contains the correct text for the content language — no runtime JS needed.
+     */
+    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string }> {
+        const translations = await this.resources.fetchI18nTranslations(language);
+        return {
+            previous: translations.get('Previous') || 'Previous',
+            next: translations.get('Next') || 'Next',
+        };
+    }
+
+    // =========================================================================
     // Structure Access Methods
     // =========================================================================
 

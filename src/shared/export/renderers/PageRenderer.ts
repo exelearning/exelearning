@@ -151,7 +151,7 @@ export class PageRenderer {
         // Build nav buttons HTML (hidden for SCORM/IMS - LMS handles navigation)
         const navButtonsHtml = hideNavButtons
             ? ''
-            : this.renderNavButtons(page, allPages, basePath, language, pageFilenameMap);
+            : this.renderNavButtons(page, allPages, basePath, options.navLabels, pageFilenameMap);
 
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
@@ -712,43 +712,48 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
     }
 
     /**
-     * Render navigation buttons (prev/next links)
-     * Outputs English text with data-i18n attributes for runtime translation via $exe_i18n.
+     * Render navigation buttons (prev/next links).
+     * Uses pre-translated labels resolved at export time from XLF translations,
+     * so the exported HTML already contains the correct text for the content language.
      * @param page - Current page
      * @param allPages - All pages
      * @param basePath - Base path
-     * @param _language - Deprecated, translation now happens at runtime via $exe_i18n
+     * @param navLabels - Translated labels ({ previous, next }); defaults to English
+     * @param pageFilenameMap - Optional map for collision-safe filenames
      * @returns Navigation buttons HTML
      */
     renderNavButtons(
         page: ExportPage,
         allPages: ExportPage[],
         basePath: string,
-        _language: string = 'en',
+        navLabels?: { previous: string; next: string },
         pageFilenameMap?: Map<string, string>,
     ): string {
+        const prevLabel = navLabels?.previous || 'Previous';
+        const nextLabel = navLabels?.next || 'Next';
+
         const currentIndex = allPages.findIndex(p => p.id === page.id);
         const prevPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
         const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
 
         const parts: string[] = ['<div class="nav-buttons">'];
 
-        // Previous button
         if (prevPage) {
             const link = this.getPageLink(prevPage, allPages, basePath, pageFilenameMap);
             parts.push(
-                `<a href="${link}" title="Previous" class="nav-button nav-button-left"><span>Previous</span></a>`,
+                `<a href="${link}" title="${prevLabel}" class="nav-button nav-button-left"><span>${prevLabel}</span></a>`,
             );
         } else {
-            parts.push('<span class="nav-button nav-button-left" aria-hidden="true"><span>Previous</span></span>');
+            parts.push(`<span class="nav-button nav-button-left" aria-hidden="true"><span>${prevLabel}</span></span>`);
         }
 
-        // Next button
         if (nextPage) {
             const link = this.getPageLink(nextPage, allPages, basePath, pageFilenameMap);
-            parts.push(`<a href="${link}" title="Next" class="nav-button nav-button-right"><span>Next</span></a>`);
+            parts.push(
+                `<a href="${link}" title="${nextLabel}" class="nav-button nav-button-right"><span>${nextLabel}</span></a>`,
+            );
         } else {
-            parts.push('<span class="nav-button nav-button-right" aria-hidden="true"><span>Next</span></span>');
+            parts.push(`<span class="nav-button nav-button-right" aria-hidden="true"><span>${nextLabel}</span></span>`);
         }
 
         parts.push('</div>');
@@ -764,8 +769,8 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns Pagination HTML
      * @deprecated Use renderNavButtons instead
      */
-    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string, language: string = 'en'): string {
-        return this.renderNavButtons(page, allPages, basePath, language);
+    renderPagination(page: ExportPage, allPages: ExportPage[], basePath: string): string {
+        return this.renderNavButtons(page, allPages, basePath);
     }
 
     /**

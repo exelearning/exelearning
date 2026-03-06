@@ -25,7 +25,6 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
 
 /**
@@ -305,7 +304,7 @@ export class Epub3Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             this.zip.addFile('EPUB/libs/common_i18n.js', i18nContent);
             this.addManifestItem('common-i18n', 'libs/common_i18n.js', 'application/javascript');
 

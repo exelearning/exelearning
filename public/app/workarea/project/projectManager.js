@@ -46,6 +46,10 @@ export default class projectManager {
         await this.app.locale.loadContentTranslationsStrings(
             this.properties.properties.pp_lang.value
         );
+        // Generate $exe_i18n with the project's content-language translations.
+        // common_i18n.js is NOT loaded as a static script; it is resolved here so
+        // that c_("Next") becomes e.g. "Siguiente" for Spanish content.
+        await this.app.locale.refreshI18nGlobals();
 
         // Load project visibility for share button
         if (this.app.interface?.shareButton) {
@@ -625,6 +629,7 @@ export default class projectManager {
         await this.app.locale.loadContentTranslationsStrings(
             this.properties.properties.pp_lang.value
         );
+        await this.app.locale.refreshI18nGlobals();
         // Load structure data
         await this.loadStructureData();
         // Load title

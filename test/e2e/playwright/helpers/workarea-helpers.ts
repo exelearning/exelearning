@@ -1254,6 +1254,8 @@ export async function enableSearchOption(page: Page): Promise<void> {
  * Handles the rename modal that appears after cloning by pressing Escape
  */
 export async function cloneCurrentPage(page: Page): Promise<void> {
+    // Dismiss any blocking alert modal before attempting to click the clone button
+    await dismissBlockingAlertModal(page);
     const cloneBtn = page.locator('.button_nav_action.action_clone');
     await cloneBtn.waitFor({ state: 'visible', timeout: 5000 });
     await cloneBtn.click();

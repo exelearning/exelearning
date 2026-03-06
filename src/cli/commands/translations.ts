@@ -76,6 +76,7 @@ async function extractTranslationKeys(): Promise<Set<string>> {
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
         /__\(\s*['"]([^'"]+)['"]/g, // __('key') or __("key")
         /\bt\(\s*['"]([^'"]+)['"]/g, // t('key') or t("key")
+        /\bc_\(\s*['"]([^'"]+)['"]/g, // c_('key') or c_("key") — content translations in common_i18n.js
     ];
 
     // Source directories to scan
