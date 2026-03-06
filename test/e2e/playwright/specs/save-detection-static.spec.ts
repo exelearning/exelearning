@@ -64,14 +64,14 @@ test.describe('Save Detection - Static', () => {
             { timeout: 5000 },
         );
 
-        // When clean, the listener should NOT set returnValue
+        // When clean, the listener should NOT set returnValue to ''
         const cleanResult = await page.evaluate(() => {
             const evt = new Event('beforeunload', { cancelable: true }) as any;
-            evt.returnValue = undefined;
             window.dispatchEvent(evt);
-            return { returnValue: evt.returnValue };
+            return { returnValue: evt.returnValue, defaultPrevented: evt.defaultPrevented };
         });
-        expect(cleanResult.returnValue).toBeUndefined();
+        expect(cleanResult.returnValue).not.toBe('');
+        expect(cleanResult.defaultPrevented).toBe(false);
 
         await page.evaluate(() => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
@@ -80,14 +80,13 @@ test.describe('Save Detection - Static', () => {
         });
         await page.waitForTimeout(300);
 
-        // When dirty, the listener SHOULD set returnValue to ''
+        // When dirty, the listener SHOULD prevent default (trigger "Leave site?" dialog)
         const dirtyResult = await page.evaluate(() => {
             const evt = new Event('beforeunload', { cancelable: true }) as any;
-            evt.returnValue = undefined;
             window.dispatchEvent(evt);
-            return { returnValue: evt.returnValue };
+            return { defaultPrevented: evt.defaultPrevented };
         });
-        expect(dirtyResult.returnValue).toBe('');
+        expect(dirtyResult.defaultPrevented).toBe(true);
     });
 
     test('static opening ELPX starts clean and becomes dirty after changes', async ({ staticPage }) => {

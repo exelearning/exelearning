@@ -26,6 +26,9 @@ import EmbeddingBridge from './core/EmbeddingBridge.js';
 import { HIDE_UI_ATTR_MAP, applyHideUI } from './core/ui-visibility.js';
 // DOM translation for static mode
 import DOMTranslator from './locate/domTranslator.js';
+// Unsaved changes helper
+import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
+window.UnsavedChangesHelper = UnsavedChangesHelper;
 
 export default class App {
     constructor(eXeLearning) {
