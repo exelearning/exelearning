@@ -860,7 +860,7 @@ var $exeDevice = {
         p.author = $('#clasificaEAuthor').val();
         p.alt = $('#clasificaEAlt').val();
         p.url = $('#clasificaEURLImage').val().trim();
-        p.audio = $('#clasificaEURLAudio').val();
+        p.audio = $('#clasificaEURLAudio').val().trim();
         p.eText = $('#clasificaEText').val();
         p.color = $('#clasificaEColor').val();
         p.backcolor = $('#clasificaEBackColor').val();
@@ -874,7 +874,7 @@ var $exeDevice = {
             message = msgs.msgCompleteText;
         } else if (
             p.type === 2 &&
-            (p.eText.trim().length === 0 || p.url.length === 0)
+            (p.eText.trim().length === 0 || p.url.length < 5)
         ) {
             message = msgs.msgCompleteBoth;
         }

@@ -130,7 +130,7 @@ var $exeDevice = {
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgEOneQuestion = _('Please provide at least one question');
+        msgs.msgEOneQuestion = _('Please create at least one card');
         msgs.msgTypeChoose = _(
             'Please check all the answers in the right order'
         );
@@ -492,7 +492,7 @@ var $exeDevice = {
                 $cardactive = $('#ordenaEDatosCarta-' + $exeDevice.activeID),
                 dataCard = $exeDevice.cardToJson($cardcopy);
             dataCard.id = $exeDevice.getID();
-            $cardactive.after($exeDevice.jsonToCard(dataCard, true));
+            $cardactive.after($exeDevice.jsonToCard(dataCard, false));
             $exeDevice.activeID = dataCard.id;
         } else if ($exeDevice.typeEditC == 1) {
             $('#ordenaEPasteC').hide();
@@ -735,6 +735,15 @@ var $exeDevice = {
                 } else if (idLower.includes('video')) {
                     accept = 'video';
                 }
+
+                const hasAnyPickerButton =
+                    $input.siblings('input.exe-pick-any-file, input.exe-pick-image').length >
+                        0 ||
+                    $container.find(
+                        `input[type="button"][data-filepicker="${id}"]`
+                    ).length > 0;
+
+                if (hasAnyPickerButton) return;
 
                 if (
                     !$container.find(
