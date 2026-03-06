@@ -737,6 +737,14 @@ describe('NavbarFile', () => {
             expect(mockButtons.downloadProjectAsButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
         });
 
+        it('setDownloadProjectAsEvent click handler should call downloadProjectEvent', () => {
+            vi.spyOn(navbarFile, 'downloadProjectEvent').mockImplementation(() => {});
+            navbarFile.setDownloadProjectAsEvent();
+            const clickHandler = mockButtons.downloadProjectAsButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+            expect(navbarFile.downloadProjectEvent).toHaveBeenCalled();
+        });
+
         it('setSaveProjectOfflineEvent should add click listener when button exists', () => {
             navbarFile.setSaveProjectOfflineEvent();
             expect(mockButtons.saveOfflineButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
@@ -1627,6 +1635,21 @@ describe('NavbarFile', () => {
 
             expect(result).toBe(true);
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalled();
+        });
+
+        it('should use electronAPI.saveBuffer in Electron mode', async () => {
+            eXeLearning.config.isOfflineInstallation = true;
+            window.electronAPI = { saveBuffer: vi.fn().mockResolvedValue() };
+            window.__currentProjectId = 'proj-1';
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(window.electronAPI.saveBuffer).toHaveBeenCalledWith(
+                expect.any(String),
+                'proj-1:html5',
+                'export.zip'
+            );
         });
     });
 
