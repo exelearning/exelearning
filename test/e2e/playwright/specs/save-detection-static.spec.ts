@@ -57,13 +57,19 @@ test.describe('Save Detection - Static', () => {
         );
 
         await page.dispatchEvent('body', 'pointerdown');
-        await page.waitForFunction(() => typeof window.onbeforeunload === 'function', undefined, { timeout: 5000 });
+        // Wait for UnsavedChangesHelper to install its beforeunload listener
+        await page.waitForFunction(
+            () => (window as any).UnsavedChangesHelper?._beforeUnloadHandler != null,
+            undefined,
+            { timeout: 5000 },
+        );
 
+        // When clean, the listener should NOT set returnValue
         const cleanResult = await page.evaluate(() => {
-            const evt = { preventDefault: () => {}, returnValue: undefined };
-            const handler = window.onbeforeunload;
-            const ret = handler ? handler(evt) : undefined;
-            return { ret, returnValue: evt.returnValue };
+            const evt = new Event('beforeunload', { cancelable: true }) as any;
+            evt.returnValue = undefined;
+            window.dispatchEvent(evt);
+            return { returnValue: evt.returnValue };
         });
         expect(cleanResult.returnValue).toBeUndefined();
 
@@ -74,11 +80,12 @@ test.describe('Save Detection - Static', () => {
         });
         await page.waitForTimeout(300);
 
+        // When dirty, the listener SHOULD set returnValue to ''
         const dirtyResult = await page.evaluate(() => {
-            const evt = { preventDefault: () => {}, returnValue: undefined };
-            const handler = window.onbeforeunload;
-            const ret = handler ? handler(evt) : undefined;
-            return { ret, returnValue: evt.returnValue };
+            const evt = new Event('beforeunload', { cancelable: true }) as any;
+            evt.returnValue = undefined;
+            window.dispatchEvent(evt);
+            return { returnValue: evt.returnValue };
         });
         expect(dirtyResult.returnValue).toBe('');
     });
