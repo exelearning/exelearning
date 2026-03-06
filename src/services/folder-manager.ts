@@ -522,7 +522,12 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
         for (const [entryPath, data] of Object.entries(unzipped)) {
             // Validate path security to prevent Zip Slip
             const normalized = path.normalize(entryPath);
-            if (normalized.startsWith('..') || path.isAbsolute(normalized) || entryPath.includes('\0') || entryPath.includes('\\')) {
+            if (
+                normalized.startsWith('..') ||
+                path.isAbsolute(normalized) ||
+                entryPath.includes('\0') ||
+                entryPath.includes('\\')
+            ) {
                 return {
                     success: false,
                     error: 'Security error: invalid file paths detected',

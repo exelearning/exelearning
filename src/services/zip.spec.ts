@@ -123,8 +123,8 @@ describe('ZIP Service', () => {
                         return {
                             '../../evil.txt': new Uint8Array([1, 2, 3]),
                         };
-                    }
-                } as any
+                    },
+                } as any,
             });
 
             const extractDir = path.join(testDir, 'extracted_safe');
