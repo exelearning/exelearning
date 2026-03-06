@@ -1677,6 +1677,40 @@ describe('modalOpenUserOdeFiles', () => {
       await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
+
+    it('should show session logout with pendingAction when unsaved changes exist and originalFile available', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      const originalFile = new File(['x'], 'course.elp');
+      await modal.openLocalElpFile('course.elp', '/tmp/course.elp', false, null, false, originalFile);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pendingAction: { action: 'import', file: originalFile },
+        }),
+      );
+    });
+
+    it('should fall back to openUserLocalOdeFilesWithOpenSession when no originalFile and no transitionToProject', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      // Remove transitionToProject so else branch is hit
+      delete window.eXeLearning.app.project.transitionToProject;
+      const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
+      expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
+    });
   });
 
   describe('cleanupOrphanedBackdrops', () => {

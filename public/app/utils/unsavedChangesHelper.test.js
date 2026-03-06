@@ -377,6 +377,22 @@ describe('UnsavedChangesHelper', () => {
       addEventListenerSpy.mockRestore();
     });
 
+    it('should remove handler on re-setup (prevents duplicates)', () => {
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation(() => {});
+
+      // First setup
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+      const firstHandler = UnsavedChangesHelper._beforeUnloadHandler;
+
+      // Second setup should remove the first handler
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('beforeunload', firstHandler);
+
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
     it('should trigger confirmation when there are unsaved assets', () => {
       mockDocumentManager.isDirty = false;
       mockYjsBridge.assetManager = { hasUnsavedAssets: vi.fn(() => true) };
@@ -395,6 +411,37 @@ describe('UnsavedChangesHelper', () => {
       expect(mockEvent.returnValue).toBe('');
 
       addEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('removeBeforeUnloadHandler', () => {
+    it('should remove the stored handler via removeEventListener', () => {
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener').mockImplementation(() => {});
+
+      // Set up handler first
+      UnsavedChangesHelper.setupBeforeUnloadHandler();
+      const handler = UnsavedChangesHelper._beforeUnloadHandler;
+      expect(handler).toBeTruthy();
+
+      // Remove it
+      UnsavedChangesHelper.removeBeforeUnloadHandler();
+
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('beforeunload', handler);
+      expect(UnsavedChangesHelper._beforeUnloadHandler).toBeNull();
+
+      addEventListenerSpy.mockRestore();
+      removeEventListenerSpy.mockRestore();
+    });
+
+    it('should do nothing when no handler was set', () => {
+      UnsavedChangesHelper._beforeUnloadHandler = null;
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+      UnsavedChangesHelper.removeBeforeUnloadHandler();
+
+      expect(removeEventListenerSpy).not.toHaveBeenCalled();
+      removeEventListenerSpy.mockRestore();
     });
   });
 });
