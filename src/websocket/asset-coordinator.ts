@@ -35,6 +35,7 @@ import type { Database, Project, Asset } from '../db/types';
 import {
     findProjectByUuid as defaultFindProjectByUuid,
     findAssetByClientId as defaultFindAssetByClientId,
+    findAssetsByClientIds as defaultFindAssetsByClientIds,
 } from '../db/queries';
 import { db } from '../db/client';
 import {
@@ -80,6 +81,7 @@ const ASSET_MESSAGE_TYPES: AssetMessageType[] = [
 export interface AssetCoordinatorDeps {
     findProjectByUuid?: (db: Kysely<Database>, uuid: string) => Promise<Project | undefined>;
     findAssetByClientId?: (db: Kysely<Database>, clientId: string, projectId: number) => Promise<Asset | undefined>;
+    findAssetsByClientIds?: (db: Kysely<Database>, clientIds: string[], projectId: number) => Promise<Asset[]>;
     priorityQueue?: {
         registerRequest: (request: PriorityQueueRequest) => void;
         registerActiveSlot: (slot: ActiveSlot) => void;
@@ -114,6 +116,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     const {
         findProjectByUuid = defaultFindProjectByUuid,
         findAssetByClientId = defaultFindAssetByClientId,
+        findAssetsByClientIds = defaultFindAssetsByClientIds,
         priorityQueue = defaultPriorityQueue,
         uploadSessionManager = defaultUploadSessionManager,
         generateId = randomUUID,
@@ -775,9 +778,11 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         try {
             const project = await findProjectByUuid(db, projectUuid);
             if (project) {
+                const existingAssets = await findAssetsByClientIds(db, assetIds, project.id);
+                const existingAssetIds = new Set(existingAssets.map(a => a.client_id));
+
                 for (const assetId of assetIds) {
-                    const asset = await findAssetByClientId(db, assetId, project.id);
-                    if (!asset) {
+                    if (!existingAssetIds.has(assetId)) {
                         missingAssets.push(assetId);
                     }
                 }
