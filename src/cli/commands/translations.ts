@@ -38,6 +38,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /\.test\.js$/, // Frontend test files
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
+    /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
 ];
 
 /**
@@ -77,9 +78,13 @@ async function extractTranslationKeys(): Promise<Set<string>> {
         /trans\(\s*['"]([^'"]+)['"]/g, // trans('key') or trans("key")
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
         /__\(\s*['"]([^'"]+)['"]/g, // __('key') or __("key")
+        /__\(\s*`([^`]+)`/g, // __(`key`)
         /\bt\(\s*['"]([^'"]+)['"]/g, // t('key') or t("key")
+        /\bt\(\s*`([^`]+)`/g, // t(`key`)
         /(?<![.\w])_\(\s*['"]([^'"]+)['"]/g, // _('key') - GUI translations (negative lookbehind avoids c_)
+        /(?<![.\w])_\(\s*`([^`]+)`/g, // _(`key`) - GUI translations with backticks
         /\bc_\(\s*['"]([^'"]+)['"]/g, // c_('key') - content translations
+        /\bc_\(\s*`([^`]+)`/g, // c_(`key`) - content translations with backticks
         /['"]([^'"]+)['"]\s*\|\s*trans\b/g, // 'key' | trans - Nunjucks filter
         /\$\{TRANS_PREFIX\}([^`$]+)/g, // ${TRANS_PREFIX}Key - runtime translatable strings
     ];

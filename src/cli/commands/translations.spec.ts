@@ -292,6 +292,33 @@ describe('Translations Command', () => {
             expect(guiMatches?.length || 0).toBe(1);
         });
 
+        it('should extract c_() with backtick quotes', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(
+                path.join(appDir, 'backtick-content.js'),
+                'const text = c_(`Generate 10 words or less`);',
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Generate 10 words or less');
+        });
+
+        it('should extract _() with backtick quotes', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(path.join(appDir, 'backtick-gui.js'), 'const label = _(`Export settings`);');
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Export settings');
+        });
+
         it('should extract Nunjucks | trans filter pattern', async () => {
             const viewsDir = path.join(testDir, 'views');
             await fs.ensureDir(viewsDir);
