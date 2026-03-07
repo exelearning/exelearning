@@ -2535,9 +2535,7 @@ describe('Pages Routes', () => {
         });
 
         it('should return 400 for path traversal attempt', async () => {
-            const res = await app.handle(
-                new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'),
-            );
+            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
 
             expect(res.status).toBe(400);
         });

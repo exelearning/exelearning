@@ -2015,7 +2015,7 @@ describe('Admin Routes', () => {
                             {},
                             {
                                 listFiles: async () => ['logo.png'],
-                                getStats: async () => ({ size: 2048 } as any),
+                                getStats: async () => ({ size: 2048 }) as any,
                             },
                         ),
                     ),
@@ -2065,9 +2065,7 @@ describe('Admin Routes', () => {
 
             it('should return 400 when path is unsafe', async () => {
                 const token = await generateAdminToken();
-                const app = new Elysia().use(
-                    createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })),
-                );
+                const app = new Elysia().use(createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })));
 
                 const file = new File([Buffer.from('data')], 'evil.png', { type: 'image/png' });
                 const formData = new FormData();
@@ -2090,9 +2088,7 @@ describe('Admin Routes', () => {
         describe('DELETE /api/admin/customization/assets/:filename', () => {
             it('should return 400 for unsafe filename', async () => {
                 const token = await generateAdminToken();
-                const app = new Elysia().use(
-                    createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })),
-                );
+                const app = new Elysia().use(createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })));
 
                 const response = await app.handle(
                     new Request('http://localhost/api/admin/customization/assets/evil.png', {
@@ -2108,9 +2104,7 @@ describe('Admin Routes', () => {
 
             it('should return 404 when asset file does not exist', async () => {
                 const token = await generateAdminToken();
-                const app = new Elysia().use(
-                    createAdminRoutes(createMockDeps({}, { fileExists: async () => false })),
-                );
+                const app = new Elysia().use(createAdminRoutes(createMockDeps({}, { fileExists: async () => false })));
 
                 const response = await app.handle(
                     new Request('http://localhost/api/admin/customization/assets/logo.png', {
@@ -2126,9 +2120,7 @@ describe('Admin Routes', () => {
 
             it('should delete the asset and return success', async () => {
                 const token = await generateAdminToken();
-                const app = new Elysia().use(
-                    createAdminRoutes(createMockDeps({}, { fileExists: async () => true })),
-                );
+                const app = new Elysia().use(createAdminRoutes(createMockDeps({}, { fileExists: async () => true })));
 
                 const response = await app.handle(
                     new Request('http://localhost/api/admin/customization/assets/logo.png', {
