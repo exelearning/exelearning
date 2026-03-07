@@ -36,9 +36,22 @@ function createMockDeps(overrides: Partial<AssetCoordinatorDeps> = {}): AssetCoo
                     filename: 'test.jpg',
                     mime_type: 'image/jpeg',
                     file_size: '1024',
-                };
+                } as any;
             }
-            return null;
+            return undefined;
+        },
+        findAssetsByClientIds: async (_db: any, clientIds: string[], projectId: number) => {
+            const results = [];
+            if (projectId === 1 && clientIds.includes('asset-123')) {
+                results.push({
+                    id: 1,
+                    client_id: 'asset-123',
+                    filename: 'test.jpg',
+                    mime_type: 'image/jpeg',
+                    file_size: '1024',
+                } as any);
+            }
+            return results;
         },
         priorityQueue: {
             registerRequest: () => {},
