@@ -947,18 +947,12 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                             message: 'Invalid file. Allowed: .ico, .png, .svg, .gif, .jpg, .webp',
                         };
                     }
-                    const originalName = pathModule
-                        .basename(file.name)
-                        .replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const originalName = pathModule.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
                     if (!originalName) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid filename' };
                     }
-                    const faviconDir = pathModule.join(
-                        fileHelper.getFilesDir(),
-                        'customization',
-                        'favicon',
-                    );
+                    const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
                     // Remove previous favicon files
                     for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
                         await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
@@ -981,11 +975,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // DELETE /api/admin/customization/favicon — remove custom favicon
             .delete('/api/admin/customization/favicon', async ({ jwtPayload }) => {
-                const faviconDir = pathModule.join(
-                    fileHelper.getFilesDir(),
-                    'customization',
-                    'favicon',
-                );
+                const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
                 for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
                     await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
                 }
@@ -1005,18 +995,12 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // GET /api/admin/customization/assets — list custom asset files
             .get('/api/admin/customization/assets', async () => {
-                const assetsDir = pathModule.join(
-                    fileHelper.getFilesDir(),
-                    'customization',
-                    'assets',
-                );
+                const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
                 const files = await fileHelper.listFiles(assetsDir).catch(() => []);
                 const basePath = getBasePath();
                 const assets = await Promise.all(
-                    files.map(async (filename) => {
-                        const stats = await fileHelper.getStats(
-                            pathModule.join(assetsDir, filename),
-                        );
+                    files.map(async filename => {
+                        const stats = await fileHelper.getStats(pathModule.join(assetsDir, filename));
                         return {
                             filename,
                             size: stats?.size ?? 0,
@@ -1036,18 +1020,12 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         set.status = 400;
                         return { error: 'Bad Request', message: 'No file uploaded' };
                     }
-                    const originalName = pathModule
-                        .basename(file.name)
-                        .replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const originalName = pathModule.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
                     if (!originalName) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid filename' };
                     }
-                    const assetsDir = pathModule.join(
-                        fileHelper.getFilesDir(),
-                        'customization',
-                        'assets',
-                    );
+                    const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
                     if (!fileHelper.isPathSafe(assetsDir, originalName)) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'Invalid filename' };
@@ -1068,11 +1046,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
             // DELETE /api/admin/customization/assets/:filename — remove a custom asset
             .delete('/api/admin/customization/assets/:filename', async ({ params, set }) => {
-                const assetsDir = pathModule.join(
-                    fileHelper.getFilesDir(),
-                    'customization',
-                    'assets',
-                );
+                const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
                 if (!fileHelper.isPathSafe(assetsDir, params.filename)) {
                     set.status = 400;
                     return { error: 'Bad Request', message: 'Invalid filename' };

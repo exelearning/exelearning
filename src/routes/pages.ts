@@ -542,8 +542,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const rawReturnUrl = typedQuery?.returnUrl || '';
                 const returnUrl = isValidReturnUrl(rawReturnUrl) ? rawReturnUrl : '';
 
-                const { customHeadHtml, appName, customFaviconUrl } =
-                    await getCustomizationSettings();
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
 
                 const viewModel = {
                     app_version: getAppVersion(),
@@ -588,8 +587,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent(returnUrl)}`, 302);
                 }
 
-                const { customHeadHtml, appName, customFaviconUrl } =
-                    await getCustomizationSettings();
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
 
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
@@ -1137,19 +1135,39 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     deactivate: trans('Deactivate', {}, locale),
                     customization: trans('Customization', {}, locale),
                     custom_head_html_label: trans('Custom HEAD HTML', {}, locale),
-                    custom_head_html_help: trans('HTML injected into the <head> of all user pages (login, workarea, error pages). Not applied to the admin panel.', {}, locale),
+                    custom_head_html_help: trans(
+                        'HTML injected into the <head> of all user pages (login, workarea, error pages). Not applied to the admin panel.',
+                        {},
+                        locale,
+                    ),
                     custom_head_html_jquery_note: trans('jQuery is available on all user pages.', {}, locale),
-                    custom_head_html_hook_label: trans('To run code only in the workarea after the app is fully loaded, define {hook}:', {}, locale),
+                    custom_head_html_hook_label: trans(
+                        'To run code only in the workarea after the app is fully loaded, define {hook}:',
+                        {},
+                        locale,
+                    ),
                     custom_head_html_example: trans('Example', {}, locale),
                     app_identity_label: trans('App Identity', {}, locale),
                     app_name_label: trans('Application name', {}, locale),
-                    app_name_help: trans('Page title shown in the browser tab. Leave empty to use "eXeLearning".', {}, locale),
+                    app_name_help: trans(
+                        'Page title shown in the browser tab. Leave empty to use "eXeLearning".',
+                        {},
+                        locale,
+                    ),
                     app_favicon_label: trans('Favicon', {}, locale),
-                    app_favicon_help: trans('Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.', {}, locale),
+                    app_favicon_help: trans(
+                        'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.',
+                        {},
+                        locale,
+                    ),
                     app_favicon_upload: trans('Upload favicon', {}, locale),
                     app_favicon_delete: trans('Delete favicon', {}, locale),
                     custom_assets_label: trans('Custom Assets', {}, locale),
-                    custom_assets_help: trans('Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.', {}, locale),
+                    custom_assets_help: trans(
+                        'Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.',
+                        {},
+                        locale,
+                    ),
                     custom_assets_upload: trans('Upload file', {}, locale),
                     custom_assets_delete: trans('Delete', {}, locale),
                     custom_assets_empty: trans('No files uploaded yet.', {}, locale),
@@ -1359,8 +1377,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             .get('/access-denied', async ({ impersonation }) => {
                 const basePath = getBasePath();
-                const { customHeadHtml, appName, customFaviconUrl } =
-                    await getCustomizationSettings();
+                const { customHeadHtml, appName, customFaviconUrl } = await getCustomizationSettings();
                 const html = renderTemplate('workarea/access-denied', {
                     basePath,
                     locale: 'en',
