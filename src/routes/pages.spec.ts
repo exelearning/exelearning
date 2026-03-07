@@ -159,6 +159,7 @@ function createMockSettings(): PagesSettingsDeps {
             return methods;
         },
         getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
+        getSettingString: async (_db: any, _key: string, fallback: string) => fallback,
     };
 }
 
