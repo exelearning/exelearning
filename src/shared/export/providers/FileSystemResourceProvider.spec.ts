@@ -548,4 +548,106 @@ describe('FileSystemResourceProvider', () => {
             expect(logo?.toString()).toBe('PNG_IMAGE_DATA');
         });
     });
+
+    describe('fetchI18nFile', () => {
+        let i18nDir: string;
+
+        beforeEach(async () => {
+            i18nDir = path.join(testDir, 'app', 'common', 'i18n');
+            await fs.ensureDir(i18nDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(i18nDir);
+        });
+
+        it('should return empty string when no i18n file exists', async () => {
+            const result = await provider.fetchI18nFile('es');
+            expect(result).toBe('');
+        });
+
+        it('should return pre-built file content for the requested language', async () => {
+            const content = '$exe_i18n = { "previous": "Anterior", "next": "Siguiente" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.es.js'), content);
+
+            const result = await provider.fetchI18nFile('es');
+
+            expect(result).toBe(content);
+        });
+
+        it('should fall back to English when locale file is not found', async () => {
+            const enContent = '$exe_i18n = { "previous": "Previous", "next": "Next" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.en.js'), enContent);
+
+            const result = await provider.fetchI18nFile('fr');
+
+            expect(result).toBe(enContent);
+        });
+
+        it('should fall back to base language before English', async () => {
+            const ptContent = '$exe_i18n = { "previous": "Anterior", "next": "Próximo" };';
+            await fs.writeFile(path.join(i18nDir, 'common_i18n.pt.js'), ptContent);
+
+            const result = await provider.fetchI18nFile('pt-BR');
+
+            expect(result).toBe(ptContent);
+        });
+    });
+
+    describe('fetchI18nTranslations', () => {
+        const xlfContent = `<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="1" resname="Previous">
+        <source>Previous</source>
+        <target>Anterior</target>
+      </trans-unit>
+      <trans-unit id="2" resname="Next">
+        <source>Next</source>
+        <target>Siguiente</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        // translationsDir lives one level above publicDir (testDir)
+        let translationsDir: string;
+
+        beforeEach(async () => {
+            translationsDir = path.join(testDir, '..', 'translations');
+            await fs.ensureDir(translationsDir);
+        });
+
+        afterEach(async () => {
+            await fs.remove(translationsDir);
+        });
+
+        it('should return empty map when XLF file does not exist', async () => {
+            const map = await provider.fetchI18nTranslations('es');
+            expect(map.size).toBe(0);
+        });
+
+        it('should parse translations from XLF file', async () => {
+            await fs.writeFile(path.join(translationsDir, 'messages.es.xlf'), xlfContent);
+
+            const map = await provider.fetchI18nTranslations('es');
+
+            expect(map.get('Previous')).toBe('Anterior');
+            expect(map.get('Next')).toBe('Siguiente');
+        });
+
+        it('should fall back to base language for regional variant', async () => {
+            await fs.writeFile(path.join(translationsDir, 'messages.pt.xlf'), xlfContent);
+
+            const map = await provider.fetchI18nTranslations('pt-BR');
+
+            expect(map.get('Previous')).toBe('Anterior');
+        });
+
+        it('should return empty map for unknown language', async () => {
+            const map = await provider.fetchI18nTranslations('xx');
+            expect(map.size).toBe(0);
+        });
+    });
 });

@@ -25,7 +25,6 @@ import type {
 } from '../interfaces';
 import { BaseExporter } from './BaseExporter';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
-import { generateI18nScript } from '../generators/I18nGenerator';
 
 export class Html5Exporter extends BaseExporter {
     private getBrowserLatexPreRenderer(): {
@@ -111,6 +110,9 @@ export class Html5Exporter extends BaseExporter {
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
+            // Fetch translated nav button labels for the content language
+            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -128,6 +130,7 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
+                    navLabels,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -263,7 +266,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content
@@ -403,6 +406,7 @@ export class Html5Exporter extends BaseExporter {
         faviconInfo?: FaviconInfo | null,
         pageFilenameMap?: Map<string, string>,
         assetExportPathMap?: Map<string, string>,
+        navLabels?: { previous: string; next: string },
     ): string {
         const basePath = isIndex ? '' : '../';
         const usedIdevices = this.getUsedIdevicesForPage(page);
@@ -462,6 +466,8 @@ export class Html5Exporter extends BaseExporter {
             assetExportPathMap,
             // Application version for generator meta tag
             version: meta.exelearningVersion,
+            // Pre-translated nav button labels (resolved from XLF at export time)
+            navLabels,
         });
     }
 
@@ -597,6 +603,9 @@ export class Html5Exporter extends BaseExporter {
             // Build asset export path map for URL transformation
             const assetExportPathMap = await this.buildAssetExportPathMap();
 
+            // Fetch translated nav button labels for the content language
+            const navLabels = await this.fetchNavLabels(meta.language || 'en');
+
             // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
@@ -614,6 +623,7 @@ export class Html5Exporter extends BaseExporter {
                     faviconInfo,
                     pageFilenameMap,
                     assetExportPathMap,
+                    navLabels,
                 );
 
                 // Pre-render LaTeX ONLY if addMathJax is false
@@ -725,7 +735,7 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 7.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
 
             // 8. Detect and fetch additional required libraries based on content

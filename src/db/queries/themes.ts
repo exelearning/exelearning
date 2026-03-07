@@ -324,43 +324,35 @@ export async function upsertBaseTheme(
         license?: string | null;
     },
 ): Promise<void> {
-    const existing = await findBaseThemeByDirName(db, data.dir_name);
-
-    if (existing) {
-        // Update metadata but preserve is_enabled setting
-        await db
-            .updateTable('themes')
-            .set({
-                display_name: data.display_name,
-                description: data.description ?? null,
-                version: data.version ?? null,
-                author: data.author ?? null,
-                license: data.license ?? null,
-                updated_at: now(),
-            })
-            .where('id', '=', existing.id)
-            .execute();
-    } else {
-        // Insert new builtin theme
-        await db
-            .insertInto('themes')
-            .values({
-                dir_name: data.dir_name,
+    await db
+        .insertInto('themes')
+        .values({
+            dir_name: data.dir_name,
+            display_name: data.display_name,
+            description: data.description ?? null,
+            version: data.version ?? null,
+            author: data.author ?? null,
+            license: data.license ?? null,
+            is_builtin: 1,
+            is_enabled: 1,
+            is_default: 0,
+            sort_order: 0,
+            storage_path: null,
+            created_at: now(),
+            updated_at: now(),
+        })
+        .onConflict(oc =>
+            oc.column('dir_name').doUpdateSet({
                 display_name: data.display_name,
                 description: data.description ?? null,
                 version: data.version ?? null,
                 author: data.author ?? null,
                 license: data.license ?? null,
                 is_builtin: 1,
-                is_enabled: 1, // Enabled by default
-                is_default: 0,
-                sort_order: 0,
-                storage_path: null, // Builtin themes use filesystem
-                created_at: now(),
                 updated_at: now(),
-            })
-            .execute();
-    }
+            }),
+        )
+        .execute();
 }
 
 /**
