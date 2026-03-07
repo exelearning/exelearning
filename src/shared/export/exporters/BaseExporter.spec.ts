@@ -136,7 +136,16 @@ class MockAssetProvider implements AssetProvider {
 
 // Mock asset provider with forEachAsset support (for memory-efficient export tests)
 class MockAssetProviderWithForEach extends MockAssetProvider {
-    async forEachAsset(callback: (asset: { id: string; filename: string; originalPath: string; folderPath?: string; mime: string; data: Uint8Array | Blob }) => void | Promise<void>): Promise<void> {
+    async forEachAsset(
+        callback: (asset: {
+            id: string;
+            filename: string;
+            originalPath: string;
+            folderPath?: string;
+            mime: string;
+            data: Uint8Array | Blob;
+        }) => void | Promise<void>,
+    ): Promise<void> {
         const assets = await this.getAllAssets();
         for (const asset of assets) {
             await callback({
@@ -956,7 +965,12 @@ describe('BaseExporter', () => {
 
             const forEachZip = new MockZipProvider();
             const forEachDoc = new MockDocument({}, []);
-            const forEachExporter = new TestExporter(forEachDoc, new MockResourceProvider(), customForEachAssets, forEachZip);
+            const forEachExporter = new TestExporter(
+                forEachDoc,
+                new MockResourceProvider(),
+                customForEachAssets,
+                forEachZip,
+            );
 
             const count = await forEachExporter.addAssetsToZipWithResourcePath();
 
