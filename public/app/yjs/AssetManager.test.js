@@ -1118,6 +1118,158 @@ describe('AssetManager', () => {
       // Should not throw, just warn
       expect(mockYjsBridge._assetsMap.has('nonexistent')).toBe(false);
     });
+
+    it('evicts blob from blobCache after marking uploaded', async () => {
+      mockYjsBridge._assetsMap.set('a1', {
+        filename: 'test.jpg',
+        uploaded: false,
+      });
+      assetManager.blobCache.set('a1', new Blob(['test']));
+
+      await assetManager.markAssetUploaded('a1');
+
+      expect(assetManager.blobCache.has('a1')).toBe(false);
+    });
+  });
+
+  describe('evictFromMemoryCache', () => {
+    it('removes blob from blobCache', () => {
+      assetManager.blobCache.set('asset-1', new Blob(['data']));
+      expect(assetManager.blobCache.has('asset-1')).toBe(true);
+
+      assetManager.evictFromMemoryCache('asset-1');
+
+      expect(assetManager.blobCache.has('asset-1')).toBe(false);
+    });
+
+    it('does nothing for non-existent entries', () => {
+      assetManager.evictFromMemoryCache('nonexistent');
+      expect(assetManager.blobCache.has('nonexistent')).toBe(false);
+    });
+  });
+
+  describe('getPendingAssetsMetadata', () => {
+    it('returns metadata for assets with uploaded=false', () => {
+      mockYjsBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: false, size: 100 });
+      mockYjsBridge._assetsMap.set('a2', { filename: 'f2.jpg', uploaded: true, size: 200 });
+      mockYjsBridge._assetsMap.set('a3', { filename: 'f3.jpg', uploaded: false, size: 300 });
+
+      const pending = assetManager.getPendingAssetsMetadata();
+
+      expect(pending.length).toBe(2);
+      expect(pending.map(a => a.id)).toContain('a1');
+      expect(pending.map(a => a.id)).toContain('a3');
+      expect(pending[0].projectId).toBe(assetManager.projectId);
+    });
+
+    it('returns empty array when no pending assets', () => {
+      mockYjsBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: true });
+
+      const pending = assetManager.getPendingAssetsMetadata();
+      expect(pending).toEqual([]);
+    });
+
+    it('does not include blob property', () => {
+      mockYjsBridge._assetsMap.set('a1', { filename: 'f1.jpg', uploaded: false });
+      assetManager.blobCache.set('a1', new Blob(['data']));
+
+      const pending = assetManager.getPendingAssetsMetadata();
+      expect(pending[0].blob).toBeUndefined();
+    });
+  });
+
+  describe('putAsset evicts from blobCache after Cache API write', () => {
+    it('evicts blob from blobCache after _putToCache succeeds', async () => {
+      const blob = new Blob(['test'], { type: 'text/plain' });
+      const asset = {
+        id: 'evict-test',
+        blob,
+        filename: 'test.txt',
+        mime: 'text/plain',
+        size: 4,
+        uploaded: false,
+      };
+
+      assetManager.putAsset(asset);
+
+      // Blob should be in blobCache immediately
+      expect(assetManager.blobCache.has('evict-test')).toBe(true);
+
+      // Wait for the async _putToCache to complete and evict
+      await new Promise(r => setTimeout(r, 50));
+
+      // Should be evicted from memory after Cache API write
+      expect(assetManager.blobCache.has('evict-test')).toBe(false);
+
+      // But still accessible via Cache API fallback
+      const retrieved = await assetManager.getBlob('evict-test');
+      expect(retrieved).toBeInstanceOf(Blob);
+    });
+  });
+
+  describe('putBlob evicts from blobCache after Cache API write', () => {
+    it('evicts blob from blobCache after _putToCache succeeds', async () => {
+      const blob = new Blob(['test'], { type: 'text/plain' });
+
+      await assetManager.putBlob('evict-blob-test', blob);
+
+      // Wait for async eviction
+      await new Promise(r => setTimeout(r, 50));
+
+      expect(assetManager.blobCache.has('evict-blob-test')).toBe(false);
+
+      // Still accessible via Cache API
+      const retrieved = await assetManager.getBlob('evict-blob-test');
+      expect(retrieved).toBeInstanceOf(Blob);
+    });
+
+    it('keeps blob in memory when Cache API write fails', async () => {
+      const blob = new Blob(['keep-me'], { type: 'text/plain' });
+
+      // Make _putToCache reject
+      const originalPutToCache = assetManager._putToCache.bind(assetManager);
+      assetManager._putToCache = mock(() => Promise.reject(new Error('Cache API error')));
+
+      await assetManager.putBlob('cache-fail-blob', blob);
+
+      // Wait for async catch handler
+      await new Promise(r => setTimeout(r, 50));
+
+      // Blob should remain in memory since cache write failed
+      expect(assetManager.blobCache.has('cache-fail-blob')).toBe(true);
+
+      // Restore original
+      assetManager._putToCache = originalPutToCache;
+    });
+  });
+
+  describe('putAsset keeps blob in memory when Cache API fails', () => {
+    it('does not evict from blobCache when _putToCache rejects', async () => {
+      const blob = new Blob(['keep-me'], { type: 'text/plain' });
+      const asset = {
+        id: 'cache-fail-asset',
+        blob,
+        filename: 'test.txt',
+        mime: 'text/plain',
+        size: 7,
+        uploaded: false,
+      };
+
+      // Make _putToCache reject
+      const originalPutToCache = assetManager._putToCache.bind(assetManager);
+      assetManager._putToCache = mock(() => Promise.reject(new Error('Cache API error')));
+
+      assetManager.putAsset(asset);
+
+      // Wait for async catch handler
+      await new Promise(r => setTimeout(r, 50));
+
+      // Blob should remain in memory since cache write failed
+      expect(assetManager.blobCache.has('cache-fail-asset')).toBe(true);
+
+      // Restore original
+      assetManager._putToCache = originalPutToCache;
+    });
   });
 
   describe('deleteAsset', () => {
