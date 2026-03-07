@@ -3,170 +3,188 @@
  */
 
 import { describe, it, expect } from 'bun:test';
-import { generateI18nScript, getI18nTranslation } from './I18nGenerator';
+import { parseXlfTranslations, generateI18nScript } from './I18nGenerator';
 
-describe('I18nGenerator', () => {
-    describe('generateI18nScript', () => {
-        it('should generate valid JavaScript with $exe_i18n object', () => {
-            const script = generateI18nScript('en');
+// Minimal XLIFF 1.2 fixture with a handful of Spanish translations
+const SAMPLE_ES_XLF = `<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="1" resname="Previous">
+        <source>Previous</source>
+        <target>Anterior</target>
+      </trans-unit>
+      <trans-unit id="2" resname="Next">
+        <source>Next</source>
+        <target>Siguiente</target>
+      </trans-unit>
+      <trans-unit id="3" resname="Menu">
+        <source>Menu</source>
+        <target>Menú</target>
+      </trans-unit>
+      <trans-unit id="4" resname="Toggle content">
+        <source>Toggle content</source>
+        <target>Ocultar/Mostrar contenido</target>
+      </trans-unit>
+      <trans-unit id="5" resname="block">
+        <source>block</source>
+        <target>bloque</target>
+      </trans-unit>
+      <trans-unit id="6" resname="abcdefghijklmnopqrstuvwxyz">
+        <source>abcdefghijklmnopqrstuvwxyz</source>
+        <target>abcdefghijklmnñopqrstuvwxyz</target>
+      </trans-unit>
+      <trans-unit id="7" resname="Reload game?">
+        <source>Reload game?</source>
+        <target>¿Recargar el juego?</target>
+      </trans-unit>
+      <trans-unit id="8" resname="Entities &amp; test">
+        <source>Entities &amp; test</source>
+        <target>Entidades &amp; prueba</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
 
-            expect(script).toContain('$exe_i18n=');
-            expect(script).toContain('$exe_i18n.exeGames=');
-        });
+// Minimal common_i18n.js template
+const SAMPLE_TEMPLATE = `// The content of this file should be generated dynamically in the .elpx's language.
+$exe_i18n = {
+    "previous": c_("Previous"),
+    "next": c_("Next"),
+    "menu": c_("Menu"),
+    "toggleContent": c_("Toggle content"),
+    "block": c_("block")
+};
+$exe_i18n.exeGames = {
+    "confirmReload": c_("Reload game?"),
+    "az": c_("abcdefghijklmnopqrstuvwxyz")
+};
 
-        it('should include all required main translation keys', () => {
-            const script = generateI18nScript('en');
+// Export for Node.js/CommonJS (tests)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = $exe_i18n;
+}`;
 
-            // Navigation keys
-            expect(script).toContain('"previous"');
-            expect(script).toContain('"next"');
-            expect(script).toContain('"menu"');
+describe('parseXlfTranslations', () => {
+    it('should parse source→target pairs from a valid XLF file', () => {
+        const map = parseXlfTranslations(SAMPLE_ES_XLF);
 
-            // Toggle/visibility keys
-            expect(script).toContain('"show"');
-            expect(script).toContain('"hide"');
-            expect(script).toContain('"toggleContent"');
-
-            // Feedback keys
-            expect(script).toContain('"showFeedback"');
-            expect(script).toContain('"hideFeedback"');
-            expect(script).toContain('"correct"');
-            expect(script).toContain('"incorrect"');
-
-            // Action keys
-            expect(script).toContain('"download"');
-            expect(script).toContain('"print"');
-            expect(script).toContain('"search"');
-
-            // Accessibility keys
-            expect(script).toContain('"accessibility_tools"');
-            expect(script).toContain('"teacher_mode"');
-        });
-
-        it('should include game translation keys', () => {
-            const script = generateI18nScript('en');
-
-            expect(script).toContain('"hangManGame"');
-            expect(script).toContain('"accept"');
-            expect(script).toContain('"yes"');
-            expect(script).toContain('"no"');
-            expect(script).toContain('"play"');
-            expect(script).toContain('"playAgain"');
-            expect(script).toContain('"az"');
-        });
-
-        it('should include block translation for search results', () => {
-            const script = generateI18nScript('en');
-            expect(script).toContain('"block":"block"');
-
-            const scriptEs = generateI18nScript('es');
-            expect(scriptEs).toContain('"block":"bloque"');
-        });
-
-        it('should generate Spanish translations for es language', () => {
-            const script = generateI18nScript('es');
-
-            // Check for Spanish translations
-            expect(script).toContain('"toggleContent":"Ocultar/Mostrar contenido"');
-            expect(script).toContain('"previous":"Anterior"');
-            expect(script).toContain('"next":"Siguiente"');
-            expect(script).toContain('"show":"Mostrar"');
-            expect(script).toContain('"hide":"Ocultar"');
-        });
-
-        it('should generate Catalan translations for ca language', () => {
-            const script = generateI18nScript('ca');
-
-            expect(script).toContain('"toggleContent":"Commuta el contingut"');
-            expect(script).toContain('"previous":"Anterior"');
-            expect(script).toContain('"next":"Següent"');
-        });
-
-        it('should include Spanish alphabet with ñ for es language', () => {
-            const script = generateI18nScript('es');
-
-            expect(script).toContain('"az":"abcdefghijklmnñopqrstuvwxyz"');
-        });
-
-        it('should include English alphabet without ñ for en language', () => {
-            const script = generateI18nScript('en');
-
-            expect(script).toContain('"az":"abcdefghijklmnopqrstuvwxyz"');
-        });
-
-        it('should include CommonJS export for tests', () => {
-            const script = generateI18nScript('en');
-
-            expect(script).toContain('module.exports');
-            expect(script).toContain('$exe_i18n');
-        });
-
-        it('should produce parseable JavaScript', () => {
-            const script = generateI18nScript('en');
-
-            // Try to extract and parse the JSON part
-            const mainMatch = script.match(/\$exe_i18n=(\{[^}]+\});/);
-            expect(mainMatch).not.toBeNull();
-            if (mainMatch) {
-                const parsed = JSON.parse(mainMatch[1]);
-                expect(parsed).toHaveProperty('toggleContent');
-                expect(parsed).toHaveProperty('previous');
-                expect(parsed).toHaveProperty('next');
-            }
-        });
-
-        it('should include ELPX download translation keys', () => {
-            const script = generateI18nScript('en');
-
-            expect(script).toContain('"elpxGenerating":"Generating..."');
-            expect(script).toContain('"elpxFolderPickerTimeout"');
-            expect(script).toContain('"elpxFolderPickerEmpty"');
-            expect(script).toContain('"elpxFileProtocolWarning"');
-        });
-
-        it('should generate Spanish ELPX download translations', () => {
-            const script = generateI18nScript('es');
-
-            expect(script).toContain('"elpxGenerating":"Generando..."');
-            expect(script).toContain('"elpxFileProtocolWarning":"Modo local:');
-        });
-
-        it('should generate French ELPX download translations', () => {
-            const script = generateI18nScript('fr');
-
-            expect(script).toContain('"elpxGenerating":"Génération..."');
-            expect(script).toContain('"elpxFileProtocolWarning":"Mode local :');
-        });
-
-        it('should handle unknown language by falling back to English', () => {
-            const script = generateI18nScript('xx');
-
-            // Should use English fallback
-            expect(script).toContain('"toggleContent":"Toggle content"');
-        });
+        expect(map.get('Previous')).toBe('Anterior');
+        expect(map.get('Next')).toBe('Siguiente');
+        expect(map.get('Menu')).toBe('Menú');
+        expect(map.get('Toggle content')).toBe('Ocultar/Mostrar contenido');
     });
 
-    describe('getI18nTranslation', () => {
-        it('should return Spanish translation for toggleContent', () => {
-            const translation = getI18nTranslation('toggleContent', 'es');
-            expect(translation).toBe('Ocultar/Mostrar contenido');
-        });
+    it('should decode XML entities in source and target', () => {
+        const map = parseXlfTranslations(SAMPLE_ES_XLF);
+        expect(map.get('Entities & test')).toBe('Entidades & prueba');
+    });
 
-        it('should return English translation for toggleContent', () => {
-            const translation = getI18nTranslation('toggleContent', 'en');
-            expect(translation).toBe('Toggle content');
-        });
+    it('should return an empty Map for an empty XLF string', () => {
+        const map = parseXlfTranslations('');
+        expect(map.size).toBe(0);
+    });
 
-        it('should return the key itself if not found', () => {
-            const translation = getI18nTranslation('unknownKey', 'en');
-            expect(translation).toBe('unknownKey');
-        });
+    it('should skip trans-unit elements without a <target>', () => {
+        const xlfWithMissing = `<xliff>
+  <body>
+    <trans-unit id="1"><source>Hello</source></trans-unit>
+    <trans-unit id="2"><source>World</source><target>Mundo</target></trans-unit>
+  </body>
+</xliff>`;
+        const map = parseXlfTranslations(xlfWithMissing);
+        expect(map.has('Hello')).toBe(false);
+        expect(map.get('World')).toBe('Mundo');
+    });
 
-        it('should return translations for various keys', () => {
-            expect(getI18nTranslation('previous', 'es')).toBe('Anterior');
-            expect(getI18nTranslation('next', 'es')).toBe('Siguiente');
-            expect(getI18nTranslation('show', 'es')).toBe('Mostrar');
-            expect(getI18nTranslation('hide', 'es')).toBe('Ocultar');
-        });
+    it('should handle multiline source and target values', () => {
+        const xlf = `<xliff>
+  <body>
+    <trans-unit id="1">
+      <source>Line one</source>
+      <target>Línea uno</target>
+    </trans-unit>
+  </body>
+</xliff>`;
+        const map = parseXlfTranslations(xlf);
+        expect(map.get('Line one')).toBe('Línea uno');
+    });
+});
+
+describe('generateI18nScript', () => {
+    it('should replace c_("…") calls with Spanish translations', () => {
+        const translations = parseXlfTranslations(SAMPLE_ES_XLF);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        // The template has spaces around the value: "previous": c_("Previous"),
+        // so the output retains the spacing: "previous": "Anterior",
+        expect(script).toContain('"previous": "Anterior"');
+        expect(script).toContain('"next": "Siguiente"');
+        expect(script).toContain('"menu": "Menú"');
+        expect(script).toContain('"toggleContent": "Ocultar/Mostrar contenido"');
+    });
+
+    it('should fall back to English source string for missing translations', () => {
+        // Empty translations map → all values are the English source strings
+        const script = generateI18nScript(SAMPLE_TEMPLATE, new Map());
+
+        expect(script).toContain('"previous": "Previous"');
+        expect(script).toContain('"next": "Next"');
+        expect(script).toContain('"menu": "Menu"');
+        expect(script).toContain('"toggleContent": "Toggle content"');
+    });
+
+    it('should replace the alphabet key correctly', () => {
+        const translations = parseXlfTranslations(SAMPLE_ES_XLF);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).toContain('"az": "abcdefghijklmnñopqrstuvwxyz"');
+    });
+
+    it('should JSON-encode translated strings (handle special characters)', () => {
+        const translations = new Map([['Menu', 'Menú']]);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        // JSON.stringify("Menú") = '"Menú"' — should appear without broken encoding
+        expect(script).toContain('"Menú"');
+    });
+
+    it('should not leave any c_("…") calls in the output', () => {
+        const translations = parseXlfTranslations(SAMPLE_ES_XLF);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).not.toContain('c_(');
+    });
+
+    it('should preserve all non-c_() content unchanged (comments, structure)', () => {
+        const translations = parseXlfTranslations(SAMPLE_ES_XLF);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).toContain('// The content of this file');
+        expect(script).toContain('$exe_i18n =');
+        expect(script).toContain('$exe_i18n.exeGames =');
+        expect(script).toContain('module.exports');
+    });
+
+    it('should produce valid JavaScript (block key in Spanish)', () => {
+        const translations = parseXlfTranslations(SAMPLE_ES_XLF);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).toContain('"block": "bloque"');
+    });
+
+    it('should use English fallback for an unknown language (empty map)', () => {
+        const script = generateI18nScript(SAMPLE_TEMPLATE, new Map());
+        expect(script).toContain('"block": "block"');
+    });
+
+    it('should strip leading ~ from translations marked as pending review', () => {
+        const translations = new Map([
+            ['Previous', '~translated'],
+            ['Next', 'translated'],
+        ]);
+        const script = generateI18nScript(SAMPLE_TEMPLATE, translations);
+
+        expect(script).not.toContain('~');
     });
 });

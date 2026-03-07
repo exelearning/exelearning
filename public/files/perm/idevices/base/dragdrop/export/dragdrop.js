@@ -360,10 +360,8 @@ var $eXeDragDrop = {
             }, 1000);
             $eXeDragDrop.updateTime(mOptions.time * 60, instance);
         }
-        setTimeout(function () {
-            $eXeDragDrop.initializeDragAndDrop(instance);
-            mOptions.gameStarted = true;
-        }, 2000);
+        $eXeDragDrop.initializeDragAndDrop(instance);
+        mOptions.gameStarted = true;
     },
 
     initializeDragAndDrop: function (instance) {

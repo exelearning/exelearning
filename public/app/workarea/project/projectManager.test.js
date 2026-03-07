@@ -1697,7 +1697,7 @@ describe('ProjectManager', () => {
                 load: vi.fn(),
                 loadPropertiesFromYjs: vi.fn(),
             };
-            mockApp.locale = { loadContentTranslationsStrings: vi.fn() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn(), refreshI18nGlobals: vi.fn() };
             mockApp.interface.shareButton = { loadVisibilityFromProject: vi.fn() };
             projectManager.structure = { subscribeToYjsChanges: vi.fn() };
         });
@@ -1809,7 +1809,7 @@ describe('ProjectManager', () => {
             };
             mockApp.interface.loadingScreen = { show: vi.fn(), hide: vi.fn() };
             mockApp.interface.odeTitleElement = { setTitle: vi.fn() };
-            mockApp.locale = { loadContentTranslationsStrings: vi.fn().mockResolvedValue() };
+            mockApp.locale = { loadContentTranslationsStrings: vi.fn().mockResolvedValue(), refreshI18nGlobals: vi.fn().mockResolvedValue() };
             window.eXeLearning.app.modals.openuserodefiles = { close: vi.fn() };
         });
 
