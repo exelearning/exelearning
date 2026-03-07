@@ -13,6 +13,9 @@ permissions:
 
 jobs:
   translate:
+    # Skip PR comments: issue_comment fires for both issues and PRs,
+    # but we only have issues:write permission.
+    if: ${{ !github.event.issue.pull_request }}
     runs-on: ubuntu-latest
 
     steps:
@@ -34,7 +37,7 @@ jobs:
           CUSTOM_BOT_NOTE: "Auto-translated to English."
 
           # Skip translating content created by these actors (useful to avoid bots).
-          SKIP_ACTORS: 'dependabot[bot],renovate[bot],github-actions[bot]'
+          SKIP_ACTORS: 'dependabot[bot],renovate[bot],github-actions[bot],cloudflare-workers-and-pages[bot]'
 
           # Do not translate content under these markdown headings.
           # Handy to keep logs, screenshots, or confirmations unchanged.
