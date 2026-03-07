@@ -46,6 +46,27 @@ describe('dragdrop iDevice export', () => {
     $eXeDragDrop = loadExportIdevice(code);
   });
 
+  describe('startGame', () => {
+    it('initializes drag and drop immediately on first start', () => {
+      const instance = 6;
+      $eXeDragDrop.options[instance] = {
+        gameStarted: false,
+        gameOver: false,
+        type: 0,
+        time: 0,
+      };
+
+      const initSpy = vi
+        .spyOn($eXeDragDrop, 'initializeDragAndDrop')
+        .mockImplementation(() => {});
+
+      $eXeDragDrop.startGame(instance);
+
+      expect(initSpy).toHaveBeenCalledWith(instance);
+      expect($eXeDragDrop.options[instance].gameStarted).toBe(true);
+    });
+  });
+
   describe('setupTouchDragAndDrop', () => {
     it('exists as a function', () => {
       expect(typeof $eXeDragDrop.setupTouchDragAndDrop).toBe('function');
