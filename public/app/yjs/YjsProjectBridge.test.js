@@ -5975,6 +5975,7 @@ describe('YjsProjectBridge', () => {
         markClean: mock(() => {}),
         markDirty: mock(() => {}),
         captureBaselineState: mock(() => {}),
+        clearUndoStack: mock(() => {}),
         isDirty: false,
         _initialized: true,
       };
@@ -6000,6 +6001,23 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file, { clearExisting: true });
 
       expect(bridge.documentManager.markClean).toHaveBeenCalled();
+    });
+
+    it('clears undo stack after import with clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+
+      await bridge.importFromElpx(file, { clearExisting: true });
+
+      expect(bridge.documentManager.clearUndoStack).toHaveBeenCalled();
+    });
+
+    it('does not clear undo stack when importing without clearExisting', async () => {
+      const file = new File(['test'], 'test.elpx');
+      bridge.documentManager.isDirty = false;
+
+      await bridge.importFromElpx(file, { clearExisting: false });
+
+      expect(bridge.documentManager.clearUndoStack).not.toHaveBeenCalled();
     });
 
     it('marks document dirty when importing without clearExisting', async () => {

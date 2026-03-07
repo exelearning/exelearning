@@ -2700,6 +2700,9 @@ class YjsProjectBridge {
       if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
         this.documentManager.captureBaselineState();
       }
+      if (typeof this.documentManager?.clearUndoStack === 'function') {
+        this.documentManager.clearUndoStack();
+      }
     } else if (this.documentManager && !this.documentManager.isDirty) {
       this.documentManager.markDirty();
     }
