@@ -384,7 +384,7 @@ describe('Translations Command', () => {
     });
 
     describe('obsolete trans-unit removal', () => {
-        it('should remove trans-units whose keys are not in source code', async () => {
+        it('should remove trans-units whose keys are not in source code when --remove-obsolete is set', async () => {
             // Create source file with only one key
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
@@ -409,7 +409,7 @@ describe('Translations Command', () => {
             await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
 
             const { execute } = await import('./translations');
-            const result = await execute([], { locale: 'es', 'clean-only': true });
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
 
             expect(result.success).toBe(true);
             expect(result.stats?.removed).toBe(1);
@@ -417,6 +417,40 @@ describe('Translations Command', () => {
             const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
             expect(content).toContain('keep.this.key');
             expect(content).not.toContain('obsolete.key');
+        });
+
+        it('should NOT remove obsolete trans-units by default (without --remove-obsolete)', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'feature.ts'), `const msg = trans('keep.this.key');`);
+
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="abc" resname="keep.this.key">
+        <source>keep.this.key</source>
+        <target>Mantener esta clave</target>
+      </trans-unit>
+      <trans-unit id="def" resname="obsolete.key">
+        <source>obsolete.key</source>
+        <target>Clave obsoleta</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.removed).toBe(0);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // Both keys should still be present
+            expect(content).toContain('keep.this.key');
+            expect(content).toContain('obsolete.key');
         });
 
         it('should not remove any trans-units when all keys are valid', async () => {
@@ -445,7 +479,7 @@ describe('Translations Command', () => {
             await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
 
             const { execute } = await import('./translations');
-            const result = await execute([], { locale: 'es', 'clean-only': true });
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
 
             expect(result.stats?.removed).toBe(0);
 
@@ -477,10 +511,58 @@ describe('Translations Command', () => {
             await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
 
             const { execute } = await import('./translations');
-            const result = await execute([], { locale: 'es', 'clean-only': true });
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
 
             expect(result.message).toContain('Removed');
             expect(result.message).toContain('obsolete');
+        });
+
+        it('should not incorrectly remove trans-units with XML-escaped resnames', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            // Source code has unescaped ampersands and angle brackets
+            await fs.writeFile(
+                path.join(srcDir, 'feature.ts'),
+                `const a = trans('Use 100% of CPU & memory');
+                 const b = trans('Value must be < 100 & > 0');`,
+            );
+
+            // XLF has XML-escaped versions of those keys
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="a" resname="Use 100% of CPU &amp; memory">
+        <source>Use 100% of CPU &amp; memory</source>
+        <target>Usar 100% de CPU y memoria</target>
+      </trans-unit>
+      <trans-unit id="b" resname="Value must be &lt; 100 &amp; &gt; 0">
+        <source>Value must be &lt; 100 &amp; &gt; 0</source>
+        <target>El valor debe ser &lt; 100 y &gt; 0</target>
+      </trans-unit>
+      <trans-unit id="c" resname="truly.obsolete.key">
+        <source>truly.obsolete.key</source>
+        <target>Realmente obsoleta</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(true);
+            // Only the truly obsolete key should be removed
+            expect(result.stats?.removed).toBe(1);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            // XML-escaped keys should be preserved
+            expect(content).toContain('&amp; memory');
+            expect(content).toContain('&lt; 100');
+            expect(content).toContain('&gt; 0');
+            // Truly obsolete key should be removed
+            expect(content).not.toContain('truly.obsolete.key');
         });
     });
 

@@ -277,17 +277,17 @@ endif
 tmp-cleanup: check-bun
 	@$(CLI) tmp:cleanup $(if $(MAX_AGE),--max-age=$(MAX_AGE),) $(if $(DRY_RUN),--dry-run,)
 
-# Extract and clean translations
-# Usage: make translations [LOCALE=es] [EXTRACT_ONLY=1] [CLEAN_ONLY=1]
+# Extract new translation keys (does not clean or remove anything)
+# Usage: make translations [LOCALE=es]
 .PHONY: translations
 translations: check-bun
-	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
+	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
 
-# Clean obsolete translation strings
+# Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
 # Usage: make translations-cleanup [LOCALE=es]
 .PHONY: translations-cleanup
 translations-cleanup: check-bun
-	@$(CLI) translations --clean-only $(if $(LOCALE),--locale=$(LOCALE),)
+	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]

@@ -5,8 +5,9 @@
  * Usage: bun cli translations [options]
  * Options:
  *   --locale <code>   Process specific locale only
- *   --extract-only    Only extract strings (skip cleanup)
- *   --clean-only      Only clean XLF files (skip extraction)
+ *   --extract-only       Only extract strings (skip cleanup)
+ *   --clean-only         Only clean XLF files (skip extraction)
+ *   --remove-obsolete    Remove trans-units not found in source code
  */
 import { parseArgs, getString, getBoolean, hasHelp } from '../utils/args';
 import { success, error, warning, info, colors, EXIT_CODES } from '../utils/output';
@@ -185,6 +186,18 @@ function escapeXml(str: string): string {
 }
 
 /**
+ * Unescape XML entities back to plain characters
+ */
+function unescapeXml(str: string): string {
+    return str
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+}
+
+/**
  * Clean XLF file content
  */
 function cleanXlfContent(content: string): { content: string; cleaned: boolean } {
@@ -234,7 +247,7 @@ function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { co
         const resnameMatch = match.match(resnamePattern);
         if (resnameMatch) {
             const resname = resnameMatch[1];
-            if (!validKeys.has(resname)) {
+            if (!validKeys.has(unescapeXml(resname))) {
                 removed++;
                 return '';
             }
@@ -253,6 +266,7 @@ async function processLocale(
     keys: Set<string>,
     extractOnly: boolean,
     cleanOnly: boolean,
+    removeObsolete: boolean,
 ): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
     const xlfPath = path.join(TRANSLATIONS_DIR, `messages.${locale}.xlf`);
 
@@ -279,8 +293,8 @@ async function processLocale(
         content = cleanResult.content;
         cleaned = cleanResult.cleaned;
 
-        // Remove trans-units whose keys no longer exist in source code
-        if (keys.size > 0) {
+        // Remove trans-units whose keys no longer exist in source code (only with explicit flag)
+        if (removeObsolete && keys.size > 0) {
             const obsoleteResult = removeObsoleteTransUnits(content, keys);
             content = obsoleteResult.content;
             removed = obsoleteResult.removed;
@@ -304,6 +318,7 @@ export async function execute(
     const specificLocale = getString(flags, 'locale');
     const extractOnly = getBoolean(flags, 'extract-only', false);
     const cleanOnly = getBoolean(flags, 'clean-only', false);
+    const removeObsolete = getBoolean(flags, 'remove-obsolete', false);
 
     // Determine locales to process
     const locales = specificLocale ? [specificLocale] : Object.keys(LOCALES);
@@ -336,7 +351,7 @@ export async function execute(
 
     for (const locale of locales) {
         info(`Processing locale: ${locale}`);
-        const result = await processLocale(locale, keys, extractOnly, cleanOnly);
+        const result = await processLocale(locale, keys, extractOnly, cleanOnly, removeObsolete);
         totalExtracted += result.extracted;
         totalRemoved += result.removed;
         if (result.cleaned) totalCleaned++;
@@ -373,10 +388,11 @@ ${colors.cyan('Usage:')}
   bun cli translations [options]
 
 ${colors.cyan('Options:')}
-  --locale <code>   Process specific locale only
-  --extract-only    Only extract strings (skip cleanup)
-  --clean-only      Only clean XLF files (skip extraction)
-  -h, --help        Show this help message
+  --locale <code>      Process specific locale only
+  --extract-only       Only extract strings (skip cleanup)
+  --clean-only         Only clean XLF files (skip extraction)
+  --remove-obsolete    Remove trans-units not found in source code (destructive)
+  -h, --help           Show this help message
 
 ${colors.cyan('Available Locales:')}
   ${Object.keys(LOCALES).join(', ')}
@@ -401,14 +417,15 @@ ${colors.cyan('Extraction:')}
 ${colors.cyan('Cleanup:')}
   - Replaces <target>__...</target> with <target></target>
   - Removes trans-units with source starting with \\\\
-  - Removes obsolete trans-units not found in source code
+  - Removes obsolete trans-units not found in source code (requires --remove-obsolete)
   - Cleans up multiple empty lines
 
 ${colors.cyan('Examples:')}
-  bun cli translations                   # Extract and clean all locales
-  bun cli translations --locale=es       # Process Spanish only
-  bun cli translations --extract-only    # Only add new keys
-  bun cli translations --clean-only      # Only clean invalid entries
+  bun cli translations                              # Extract and clean all locales
+  bun cli translations --locale=es                  # Process Spanish only
+  bun cli translations --extract-only               # Only add new keys
+  bun cli translations --clean-only                 # Only clean invalid entries
+  bun cli translations --clean-only --remove-obsolete  # Clean and remove obsolete keys
 `);
 }
 
