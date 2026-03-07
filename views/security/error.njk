@@ -6,7 +6,7 @@
     <style>.error-page-logo{top: -7%;}</style>
 {% endblock %}
 
-{% block title %}eXeLearning{% endblock %}
+{% block title %}{{ appName or 'eXeLearning' }}{% endblock %}
 
 {% block body %}
 <section class="error-page bg-white vh-100 d-flex justify-content-center align-items-center flex-column" id="error-tpl">

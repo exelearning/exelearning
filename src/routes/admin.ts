@@ -38,6 +38,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { getBasePath } from '../utils/basepath.util';
 import { getSystemInfo } from '../services/system-info';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
 import * as pathModule from 'path';
@@ -275,6 +276,8 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     OPENEQUELLA_CLIENT_ID: { value: process.env.OPENEQUELLA_CLIENT_ID || 'example.com', type: 'string' },
     OPENEQUELLA_CLIENT_SECRET: { value: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com', type: 'string' },
     CUSTOM_HEAD_HTML: { value: '', type: 'string' },
+    APP_NAME: { value: '', type: 'string' },
+    APP_FAVICON_PATH: { value: '', type: 'string' },
 };
 
 // ============================================================================
@@ -918,6 +921,169 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     message: 'User deleted',
                     deletedProjectsCount,
                 };
+            })
+
+            // ================================================================
+            // Customization: Favicon
+            // ================================================================
+
+            // POST /api/admin/customization/favicon — upload custom favicon
+            .post(
+                '/api/admin/customization/favicon',
+                async ({ body, set, jwtPayload }) => {
+                    const FAVICON_ALLOWED_TYPES = [
+                        'image/x-icon',
+                        'image/png',
+                        'image/svg+xml',
+                        'image/gif',
+                        'image/jpeg',
+                        'image/webp',
+                    ];
+                    const file = (body as { file: File }).file;
+                    if (!file || !FAVICON_ALLOWED_TYPES.includes(file.type)) {
+                        set.status = 400;
+                        return {
+                            error: 'Bad Request',
+                            message: 'Invalid file. Allowed: .ico, .png, .svg, .gif, .jpg, .webp',
+                        };
+                    }
+                    const originalName = pathModule
+                        .basename(file.name)
+                        .replace(/[^a-zA-Z0-9._-]/g, '_');
+                    if (!originalName) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    const faviconDir = pathModule.join(
+                        fileHelper.getFilesDir(),
+                        'customization',
+                        'favicon',
+                    );
+                    // Remove previous favicon files
+                    for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
+                        await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
+                    }
+                    await fileHelper.writeFile(
+                        pathModule.join(faviconDir, originalName),
+                        Buffer.from(await file.arrayBuffer()),
+                    );
+                    await queries.setSetting(
+                        db as unknown as AppSettingsDb,
+                        'APP_FAVICON_PATH',
+                        originalName,
+                        'string',
+                        jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                    );
+                    return { success: true, filename: originalName };
+                },
+                { body: t.Object({ file: t.File() }) },
+            )
+
+            // DELETE /api/admin/customization/favicon — remove custom favicon
+            .delete('/api/admin/customization/favicon', async ({ jwtPayload }) => {
+                const faviconDir = pathModule.join(
+                    fileHelper.getFilesDir(),
+                    'customization',
+                    'favicon',
+                );
+                for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
+                    await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
+                }
+                await queries.setSetting(
+                    db as unknown as AppSettingsDb,
+                    'APP_FAVICON_PATH',
+                    '',
+                    'string',
+                    jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                );
+                return { success: true };
+            })
+
+            // ================================================================
+            // Customization: Assets
+            // ================================================================
+
+            // GET /api/admin/customization/assets — list custom asset files
+            .get('/api/admin/customization/assets', async () => {
+                const assetsDir = pathModule.join(
+                    fileHelper.getFilesDir(),
+                    'customization',
+                    'assets',
+                );
+                const files = await fileHelper.listFiles(assetsDir).catch(() => []);
+                const basePath = getBasePath();
+                const assets = await Promise.all(
+                    files.map(async (filename) => {
+                        const stats = await fileHelper.getStats(
+                            pathModule.join(assetsDir, filename),
+                        );
+                        return {
+                            filename,
+                            size: stats?.size ?? 0,
+                            url: `${basePath}/customization/assets/${encodeURIComponent(filename)}`,
+                        };
+                    }),
+                );
+                return { assets };
+            })
+
+            // POST /api/admin/customization/assets — upload a custom asset file
+            .post(
+                '/api/admin/customization/assets',
+                async ({ body, set }) => {
+                    const file = (body as { file: File }).file;
+                    if (!file) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'No file uploaded' };
+                    }
+                    const originalName = pathModule
+                        .basename(file.name)
+                        .replace(/[^a-zA-Z0-9._-]/g, '_');
+                    if (!originalName) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    const assetsDir = pathModule.join(
+                        fileHelper.getFilesDir(),
+                        'customization',
+                        'assets',
+                    );
+                    if (!fileHelper.isPathSafe(assetsDir, originalName)) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    await fileHelper.writeFile(
+                        pathModule.join(assetsDir, originalName),
+                        Buffer.from(await file.arrayBuffer()),
+                    );
+                    const basePath = getBasePath();
+                    return {
+                        success: true,
+                        filename: originalName,
+                        url: `${basePath}/customization/assets/${encodeURIComponent(originalName)}`,
+                    };
+                },
+                { body: t.Object({ file: t.File() }) },
+            )
+
+            // DELETE /api/admin/customization/assets/:filename — remove a custom asset
+            .delete('/api/admin/customization/assets/:filename', async ({ params, set }) => {
+                const assetsDir = pathModule.join(
+                    fileHelper.getFilesDir(),
+                    'customization',
+                    'assets',
+                );
+                if (!fileHelper.isPathSafe(assetsDir, params.filename)) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid filename' };
+                }
+                const targetPath = pathModule.join(assetsDir, params.filename);
+                if (!(await fileHelper.fileExists(targetPath))) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'File not found' };
+                }
+                await fileHelper.remove(targetPath);
+                return { success: true };
             })
     );
 }

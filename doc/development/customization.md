@@ -5,7 +5,10 @@ There are two complementary approaches depending on your deployment type:
 | Approach | How | Works in static mode | Requires server |
 |---|---|---|---|
 | **Custom files** | Edit `custom.css` / `custom.js` on the filesystem | Yes | No |
-| **Admin panel** | Admin → Customization → Custom HEAD HTML | No | Yes |
+| **App name** | Admin → Customization → App Identity | No | Yes |
+| **Favicon** | Admin → Customization → App Identity | No | Yes |
+| **Custom HEAD HTML** | Admin → Customization → Custom HEAD HTML | No | Yes |
+| **Custom Assets** | Admin → Customization → Custom Assets | No | Yes |
 
 ---
 
@@ -62,6 +65,17 @@ window.$eXeLearningCustom = {
 
 For admins who have web access to the admin panel but not to the server filesystem. Requires a running server with database support.
 
+All features in this section are online-only and require clicking **Save** unless noted otherwise.
+
+### App Identity
+
+**Admin → Customization → App Identity**
+
+- **Application name**: sets the `<title>` tag on login, workarea, and error pages. Leave empty to use the default "eXeLearning".
+- **Favicon**: replaces the default favicon on all user-facing pages. Accepted formats: `.ico`, `.png`, `.svg`, `.gif`, `.jpg`, `.webp`. The favicon upload takes effect immediately (separate AJAX call, no Save needed).
+
+### Custom HEAD HTML
+
 **Admin → Customization → Custom HEAD HTML**
 
 The content is injected into the `<head>` of all user-facing pages (login, workarea, error pages). It is not injected into the admin panel itself.
@@ -92,6 +106,20 @@ window.$eXeLearningCustom = {
 ```
 
 > **Note:** `window.$eXeLearningCustom` defined here takes precedence over `public/app/workarea/custom.js`, which will not overwrite it.
+
+### Custom Assets
+
+**Admin → Customization → Custom Assets**
+
+Upload images, fonts, or other static files to be used from within Custom HEAD HTML.
+
+- Uploaded files are stored in `FILES_DIR/customization/assets/`.
+- Each file is publicly served at `{BASE_PATH}/customization/assets/{filename}` (no authentication required).
+- Reference these URLs from your Custom HEAD HTML to include self-hosted assets.
+- Useful for: custom logo images, web fonts, icon sprites, and similar resources.
+- Multiple files can be uploaded at once.
+- A **Copy URL** button in the admin table makes it easy to grab the correct path.
+- Asset uploads and deletions take effect immediately (no Save needed).
 
 ---
 

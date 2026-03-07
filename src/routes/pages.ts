@@ -49,11 +49,35 @@ import {
     generateSessionId as generateSessionIdDefault,
     getSession as getSessionDefault,
 } from '../services/session-manager';
-import { createSessionDirectories as createSessionDirectoriesDefault } from '../services/file-helper';
+import {
+    createSessionDirectories as createSessionDirectoriesDefault,
+    getFilesDir,
+    readFile as readFileFromDisk,
+    fileExists as fileExistsOnDisk,
+} from '../services/file-helper';
+import * as pathModule from 'path';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import { decodePlatformJWT } from '../utils/platform-jwt';
 import type { JwtPayload } from './types/request-payloads';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
+
+const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
+    '.ico': 'image/x-icon',
+    '.png': 'image/png',
+    '.svg': 'image/svg+xml',
+    '.gif': 'image/gif',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.webp': 'image/webp',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.mp4': 'video/mp4',
+    '.mp3': 'audio/mpeg',
+};
 
 /**
  * Login page query parameters
@@ -256,6 +280,25 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     }
 
     /**
+     * Reads APP_NAME, APP_FAVICON_PATH and CUSTOM_HEAD_HTML from settings.
+     * Returns values ready to pass to any page viewModel.
+     */
+    async function getCustomizationSettings(): Promise<{
+        customHeadHtml: string;
+        appName: string;
+        customFaviconUrl: string;
+    }> {
+        const basePath = getBasePath();
+        const [customHeadHtml, appName, appFaviconPath] = await Promise.all([
+            getSettingString(db, 'CUSTOM_HEAD_HTML', ''),
+            getSettingString(db, 'APP_NAME', ''),
+            getSettingString(db, 'APP_FAVICON_PATH', ''),
+        ]);
+        const customFaviconUrl = appFaviconPath ? `${basePath}/customization/favicon` : '';
+        return { customHeadHtml, appName, customFaviconUrl };
+    }
+
+    /**
      * Pages routes
      */
     return (
@@ -339,6 +382,65 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 } catch {
                     return { currentUser: null, isGuest: false, impersonation: null };
                 }
+            })
+
+            // =====================================================
+            // Public: Serve custom favicon (no auth required)
+            // =====================================================
+            .get('/customization/favicon', async ({ set }) => {
+                const faviconFilename = await getSettingString(db, 'APP_FAVICON_PATH', '');
+                if (!faviconFilename) {
+                    return new Response(null, {
+                        status: 302,
+                        headers: { Location: `${getBasePath()}/favicon.ico` },
+                    });
+                }
+                const faviconDir = pathModule.join(getFilesDir(), 'customization', 'favicon');
+                const filePath = pathModule.resolve(faviconDir, faviconFilename);
+                const resolvedDir = pathModule.resolve(faviconDir);
+                if (!filePath.startsWith(resolvedDir + pathModule.sep) && filePath !== resolvedDir) {
+                    set.status = 400;
+                    return;
+                }
+                if (!(await fileExistsOnDisk(filePath))) {
+                    return new Response(null, {
+                        status: 302,
+                        headers: { Location: `${getBasePath()}/favicon.ico` },
+                    });
+                }
+                const content = await readFileFromDisk(filePath);
+                const ext = pathModule.extname(faviconFilename).toLowerCase();
+                return new Response(content as unknown as BodyInit, {
+                    headers: {
+                        'Content-Type': CUSTOMIZATION_MIME_TYPES[ext] ?? 'application/octet-stream',
+                        'Cache-Control': 'public, max-age=3600',
+                    },
+                });
+            })
+
+            // =====================================================
+            // Public: Serve custom assets (no auth required)
+            // =====================================================
+            .get('/customization/assets/:filename', async ({ params, set }) => {
+                const assetsDir = pathModule.join(getFilesDir(), 'customization', 'assets');
+                const filePath = pathModule.resolve(assetsDir, params.filename);
+                const resolvedDir = pathModule.resolve(assetsDir);
+                if (!filePath.startsWith(resolvedDir + pathModule.sep) && filePath !== resolvedDir) {
+                    set.status = 400;
+                    return;
+                }
+                if (!(await fileExistsOnDisk(filePath))) {
+                    set.status = 404;
+                    return;
+                }
+                const content = await readFileFromDisk(filePath);
+                const ext = pathModule.extname(params.filename).toLowerCase();
+                return new Response(content as unknown as BodyInit, {
+                    headers: {
+                        'Content-Type': CUSTOMIZATION_MIME_TYPES[ext] ?? 'application/octet-stream',
+                        'Cache-Control': 'public, max-age=3600',
+                    },
+                });
             })
 
             // =====================================================
@@ -440,7 +542,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const rawReturnUrl = typedQuery?.returnUrl || '';
                 const returnUrl = isValidReturnUrl(rawReturnUrl) ? rawReturnUrl : '';
 
-                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
+                const { customHeadHtml, appName, customFaviconUrl } =
+                    await getCustomizationSettings();
 
                 const viewModel = {
                     app_version: getAppVersion(),
@@ -456,6 +559,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     returnUrl,
                     impersonation,
                     customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 };
 
                 const html = renderTemplate('security/login', viewModel);
@@ -483,7 +588,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return Response.redirect(`${loginUrl}?returnUrl=${encodeURIComponent(returnUrl)}`, 302);
                 }
 
-                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
+                const { customHeadHtml, appName, customFaviconUrl } =
+                    await getCustomizationSettings();
 
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
@@ -579,6 +685,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     locale: 'en',
                                     impersonation,
                                     customHeadHtml,
+                                    appName,
+                                    customFaviconUrl,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -597,6 +705,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 locale: 'en',
                                 impersonation,
                                 customHeadHtml,
+                                appName,
+                                customFaviconUrl,
                             });
                             set.status = 403;
                             return new Response(html, {
@@ -620,6 +730,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                     locale: 'en',
                                     impersonation,
                                     customHeadHtml,
+                                    appName,
+                                    customFaviconUrl,
                                 });
                                 set.status = 403;
                                 return new Response(html, {
@@ -635,6 +747,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 message: 'The requested project does not exist.',
                                 impersonation,
                                 customHeadHtml,
+                                appName,
+                                customFaviconUrl,
                             });
                             set.status = 404;
                             return new Response(html, {
@@ -904,6 +1018,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     basePath,
                     impersonation,
                     customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 };
 
                 // Set locale for Nunjucks template rendering (fixes | trans filter)
@@ -1025,6 +1141,19 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     custom_head_html_jquery_note: trans('jQuery is available on all user pages.', {}, locale),
                     custom_head_html_hook_label: trans('To run code only in the workarea after the app is fully loaded, define {hook}:', {}, locale),
                     custom_head_html_example: trans('Example', {}, locale),
+                    app_identity_label: trans('App Identity', {}, locale),
+                    app_name_label: trans('Application name', {}, locale),
+                    app_name_help: trans('Page title shown in the browser tab. Leave empty to use "eXeLearning".', {}, locale),
+                    app_favicon_label: trans('Favicon', {}, locale),
+                    app_favicon_help: trans('Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.', {}, locale),
+                    app_favicon_upload: trans('Upload favicon', {}, locale),
+                    app_favicon_delete: trans('Delete favicon', {}, locale),
+                    custom_assets_label: trans('Custom Assets', {}, locale),
+                    custom_assets_help: trans('Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.', {}, locale),
+                    custom_assets_upload: trans('Upload file', {}, locale),
+                    custom_assets_delete: trans('Delete', {}, locale),
+                    custom_assets_empty: trans('No files uploaded yet.', {}, locale),
+                    custom_assets_copy_url: trans('Copy URL', {}, locale),
                 };
 
                 let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
@@ -1099,6 +1228,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     },
                     presentation: {
                         custom_head_html: '',
+                        app_name: '',
+                        app_favicon_path: '',
                     },
                 };
 
@@ -1153,6 +1284,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         type: 'string',
                     },
                     CUSTOM_HEAD_HTML: { path: ['presentation', 'custom_head_html'], type: 'string' },
+                    APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
+                    APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
                 };
 
                 try {
@@ -1226,12 +1359,15 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             // =====================================================
             .get('/access-denied', async ({ impersonation }) => {
                 const basePath = getBasePath();
-                const customHeadHtml = await getSettingString(db, 'CUSTOM_HEAD_HTML', '');
+                const { customHeadHtml, appName, customFaviconUrl } =
+                    await getCustomizationSettings();
                 const html = renderTemplate('workarea/access-denied', {
                     basePath,
                     locale: 'en',
                     impersonation,
                     customHeadHtml,
+                    appName,
+                    customFaviconUrl,
                 });
                 return new Response(html, {
                     status: 403,
