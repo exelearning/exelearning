@@ -1869,4 +1869,278 @@ describe('Admin Routes', () => {
             expect(body.error).toBe('FORBIDDEN');
         });
     });
+
+    describe('Customization endpoints', () => {
+        describe('POST /api/admin/customization/favicon', () => {
+            it('should return 400 for invalid file type', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const file = new File([Buffer.from('text content')], 'favicon.txt', {
+                    type: 'text/plain',
+                });
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/favicon', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                const body = await response.json();
+                expect(body.error).toBe('Bad Request');
+            });
+
+            it('should upload a valid PNG favicon', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const file = new File([Buffer.from('fake-png-data')], 'favicon.png', {
+                    type: 'image/png',
+                });
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/favicon', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.success).toBe(true);
+                expect(body.filename).toBe('favicon.png');
+            });
+
+            it('should upload a valid ICO favicon', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const file = new File([Buffer.from('fake-ico-data')], 'favicon.ico', {
+                    type: 'image/x-icon',
+                });
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/favicon', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.success).toBe(true);
+                expect(body.filename).toBe('favicon.ico');
+            });
+        });
+
+        describe('DELETE /api/admin/customization/favicon', () => {
+            it('should delete the custom favicon and return success', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/favicon', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.success).toBe(true);
+            });
+
+            it('should clear setting even when favicon dir has existing files', async () => {
+                const token = await generateAdminToken();
+                const removedFiles: string[] = [];
+                const app = new Elysia().use(
+                    createAdminRoutes(
+                        createMockDeps(
+                            {},
+                            {
+                                listFiles: async () => ['old-favicon.png'],
+                                remove: async (path: string) => {
+                                    removedFiles.push(path);
+                                },
+                            },
+                        ),
+                    ),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/favicon', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                expect(removedFiles.length).toBe(1);
+            });
+        });
+
+        describe('GET /api/admin/customization/assets', () => {
+            it('should return empty list when no assets exist', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets', {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.assets).toEqual([]);
+            });
+
+            it('should return list of assets with size and url', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(
+                    createAdminRoutes(
+                        createMockDeps(
+                            {},
+                            {
+                                listFiles: async () => ['logo.png'],
+                                getStats: async () => ({ size: 2048 } as any),
+                            },
+                        ),
+                    ),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets', {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.assets).toHaveLength(1);
+                expect(body.assets[0].filename).toBe('logo.png');
+                expect(body.assets[0].size).toBe(2048);
+                expect(body.assets[0].url).toContain('/customization/assets/logo.png');
+            });
+        });
+
+        describe('POST /api/admin/customization/assets', () => {
+            it('should upload a valid asset file', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(createAdminRoutes(createMockDeps()));
+
+                const file = new File([Buffer.from('font-data')], 'font.woff2', {
+                    type: 'font/woff2',
+                });
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.success).toBe(true);
+                expect(body.filename).toBe('font.woff2');
+                expect(body.url).toContain('/customization/assets/font.woff2');
+            });
+
+            it('should return 400 when path is unsafe', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(
+                    createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })),
+                );
+
+                const file = new File([Buffer.from('data')], 'evil.png', { type: 'image/png' });
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${token}` },
+                        body: formData,
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                const body = await response.json();
+                expect(body.error).toBe('Bad Request');
+            });
+        });
+
+        describe('DELETE /api/admin/customization/assets/:filename', () => {
+            it('should return 400 for unsafe filename', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(
+                    createAdminRoutes(createMockDeps({}, { isPathSafe: () => false })),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets/evil.png', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                const body = await response.json();
+                expect(body.error).toBe('Bad Request');
+            });
+
+            it('should return 404 when asset file does not exist', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(
+                    createAdminRoutes(createMockDeps({}, { fileExists: async () => false })),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets/logo.png', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(404);
+                const body = await response.json();
+                expect(body.error).toBe('Not Found');
+            });
+
+            it('should delete the asset and return success', async () => {
+                const token = await generateAdminToken();
+                const app = new Elysia().use(
+                    createAdminRoutes(createMockDeps({}, { fileExists: async () => true })),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/customization/assets/logo.png', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                );
+
+                expect(response.status).toBe(200);
+                const body = await response.json();
+                expect(body.success).toBe(true);
+            });
+        });
+    });
 });

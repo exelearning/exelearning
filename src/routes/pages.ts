@@ -130,6 +130,8 @@ export interface PagesSessionManagerDeps {
  */
 export interface PagesFileHelperDeps {
     createSessionDirectories: typeof createSessionDirectoriesDefault;
+    fileExists: typeof fileExistsOnDisk;
+    readFile: typeof readFileFromDisk;
 }
 
 /**
@@ -190,6 +192,8 @@ const defaultSessionManager: PagesSessionManagerDeps = {
 // Default file helper
 const defaultFileHelper: PagesFileHelperDeps = {
     createSessionDirectories: createSessionDirectoriesDefault,
+    fileExists: fileExistsOnDisk,
+    readFile: readFileFromDisk,
 };
 
 // Default template
@@ -254,6 +258,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
     const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
+    const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
      * Get user's locale preference from database
@@ -402,13 +407,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     set.status = 400;
                     return;
                 }
-                if (!(await fileExistsOnDisk(filePath))) {
+                if (!(await fileExists(filePath))) {
                     return new Response(null, {
                         status: 302,
                         headers: { Location: `${getBasePath()}/favicon.ico` },
                     });
                 }
-                const content = await readFileFromDisk(filePath);
+                const content = await readFile(filePath);
                 const ext = pathModule.extname(faviconFilename).toLowerCase();
                 return new Response(content as unknown as BodyInit, {
                     headers: {
@@ -429,11 +434,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     set.status = 400;
                     return;
                 }
-                if (!(await fileExistsOnDisk(filePath))) {
+                if (!(await fileExists(filePath))) {
                     set.status = 404;
                     return;
                 }
-                const content = await readFileFromDisk(filePath);
+                const content = await readFile(filePath);
                 const ext = pathModule.extname(params.filename).toLowerCase();
                 return new Response(content as unknown as BodyInit, {
                     headers: {
