@@ -130,7 +130,7 @@ export default class MenuStructureBehaviour {
 
                 const navElement = element.parentElement;
                 const isRangeSelection = event.shiftKey;
-                const isToggleSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+                const isToggleSelection = event.ctrlKey || event.metaKey;
 
                 if (isRangeSelection || isToggleSelection) {
                     this.handleMultiSelectionClick(navElement, event);
@@ -151,7 +151,7 @@ export default class MenuStructureBehaviour {
     }
 
     /**
-     * Handle Shift/Ctrl/Cmd/CapsLock click selection for multi-select.
+     * Handle Shift/Ctrl/Cmd click selection for multi-select.
      *
      * @param {Element} navElement
      * @param {MouseEvent} event
@@ -163,7 +163,7 @@ export default class MenuStructureBehaviour {
         if (!clickedId) return;
 
         const isRangeSelection = event.shiftKey;
-        const isAdditiveSelection = event.ctrlKey || event.metaKey || event.getModifierState?.('CapsLock');
+        const isAdditiveSelection = event.ctrlKey || event.metaKey;
         const currentSelection = new Set(this.getSelectedNodeIds({ excludeRoot: false }));
         let nextSelection = new Set(currentSelection);
 
