@@ -520,6 +520,23 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
 
         // Process each entry in the ZIP
         for (const [entryPath, data] of Object.entries(unzipped)) {
+            // Validate path security to prevent Zip Slip
+            const normalized = path.normalize(entryPath);
+            if (
+                normalized.startsWith('..') ||
+                path.isAbsolute(normalized) ||
+                entryPath.includes('\0') ||
+                entryPath.includes('\\')
+            ) {
+                return {
+                    success: false,
+                    error: 'Security error: invalid file paths detected',
+                    extractedCount: 0,
+                    folders: [],
+                    assets: [],
+                };
+            }
+
             // Skip directories
             if (entryPath.endsWith('/')) {
                 continue;
@@ -532,10 +549,10 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
 
             // Calculate folder path within target
             const dirname = path.dirname(entryPath);
-            const filename = path.basename(entryPath);
+            const entryFilename = path.basename(entryPath);
 
             // Skip hidden files
-            if (filename.startsWith('.')) {
+            if (entryFilename.startsWith('.')) {
                 continue;
             }
 
@@ -554,7 +571,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             }
 
             // Check for filename conflicts
-            const existingAsset = await queries.findAssetByPath(db, projectId, assetFolderPath, filename);
+            const existingAsset = await queries.findAssetByPath(db, projectId, assetFolderPath, entryFilename);
             if (existingAsset) {
                 // Skip duplicates (could also rename, but skip is safer)
                 continue;
@@ -562,7 +579,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
 
             // Generate client ID and storage path
             const clientId = crypto.randomUUID();
-            const storagePath = path.join(projectAssetsDir, clientId, filename);
+            const storagePath = path.join(projectAssetsDir, clientId, entryFilename);
 
             // Write file to storage
             try {
@@ -573,7 +590,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             }
 
             // Detect mime type from extension
-            const ext = path.extname(filename).toLowerCase();
+            const ext = path.extname(entryFilename).toLowerCase();
             const mimeTypes: Record<string, string> = {
                 '.html': 'text/html',
                 '.htm': 'text/html',
@@ -607,7 +624,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             // Create asset record
             const newAssetData: NewAsset = {
                 project_id: projectId,
-                filename,
+                filename: entryFilename,
                 storage_path: storagePath,
                 mime_type: detectedMime,
                 file_size: data.length.toString(),

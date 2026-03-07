@@ -115,6 +115,35 @@ describe('ZIP Service', () => {
             const extracted = await fs.readFile(path.join(extractDir, 'test.bin'));
             expect(extracted).toEqual(binaryData);
         });
+
+        it('should reject path traversal in zip (Zip Slip)', async () => {
+            const evilZipService = createZipService({
+                fflate: {
+                    unzipSync: () => {
+                        return {
+                            '../../evil.txt': new Uint8Array([1, 2, 3]),
+                        };
+                    },
+                } as any,
+            });
+
+            const extractDir = path.join(testDir, 'extracted_safe');
+            await fs.ensureDir(extractDir);
+
+            const dummyBuffer = Buffer.from([]);
+            let errorCaught = false;
+            try {
+                await evilZipService.extractZipFromBuffer(dummyBuffer, extractDir);
+            } catch (err: any) {
+                errorCaught = true;
+                expect(err.message).toContain('Security error: invalid file paths detected');
+            }
+            expect(errorCaught).toBe(true);
+
+            // Ensure file was not extracted outside
+            const evilPath = path.join(extractDir, '../../evil.txt');
+            expect(await fs.pathExists(evilPath)).toBe(false);
+        });
     });
 
     describe('createZip', () => {
