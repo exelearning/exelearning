@@ -130,7 +130,7 @@ var $exeDevice = {
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgEOneQuestion = _('Please provide at least one question');
+        msgs.msgEOneQuestion = _('Please create at least one card');
         msgs.msgTypeChoose = _(
             'Please check all the answers in the right order'
         );
@@ -492,7 +492,7 @@ var $exeDevice = {
                 $cardactive = $('#ordenaEDatosCarta-' + $exeDevice.activeID),
                 dataCard = $exeDevice.cardToJson($cardcopy);
             dataCard.id = $exeDevice.getID();
-            $cardactive.after($exeDevice.jsonToCard(dataCard, true));
+            $cardactive.after($exeDevice.jsonToCard(dataCard, false));
             $exeDevice.activeID = dataCard.id;
         } else if ($exeDevice.typeEditC == 1) {
             $('#ordenaEPasteC').hide();
@@ -711,6 +711,8 @@ var $exeDevice = {
         const $container = $('#ordenaEDatosCarta-' + cardId);
         if (!$container.length) return;
 
+        const filemanager = window.eXeLearning?.app?.modals?.filemanager;
+
         $container
             .find(
                 '.exe-file-picker:not(.initialized), .exe-image-picker:not(.initialized)'
@@ -718,24 +720,31 @@ var $exeDevice = {
             .each(function () {
                 const $input = $(this);
                 $input.addClass('initialized');
-                const id = $input.attr('id'),
-                    css = $input.hasClass('exe-image-picker')
-                        ? 'exe-pick-image'
-                        : 'exe-pick-any-file',
-                    type = css === 'exe-pick-image' ? 'image' : 'media';
+                const id = $input.attr('id');
+                const idLower = id.toLowerCase();
+                const isImage =
+                    $input.hasClass('exe-image-picker') ||
+                    idLower.includes('urlimage');
+                const css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
 
-                let $fileInput = $('#' + `_browseFor${id}`);
-                if (!$fileInput.length) {
-                    $fileInput = $('<input>', {
-                        id: `_browseFor${id}`,
-                        type: 'file',
-                        accept: type === 'image' ? 'image/*' : undefined,
-                        style: 'display:none;',
-                    }).on('change', function (event) {
-                        $exeDevice.processFile(event.target.files[0], id, type);
-                    });
-                    $container.append($fileInput);
+                let accept = null;
+                if (isImage) {
+                    accept = 'image';
+                } else if (idLower.includes('audio')) {
+                    accept = 'audio';
+                } else if (idLower.includes('video')) {
+                    accept = 'video';
                 }
+
+                const hasOwnPickerButton =
+                    $input.next('input.exe-pick-any-file, input.exe-pick-image').length >
+                        0 ||
+                    $container.find(
+                        `input[type="button"][data-filepicker="${id}"]`
+                    ).length > 0;
+
+                if (hasOwnPickerButton) return;
+
                 if (
                     !$container.find(
                         `input[type="button"][data-filepicker="${id}"]`
@@ -746,11 +755,30 @@ var $exeDevice = {
                         class: css,
                         value: _('Select a file'),
                         'data-filepicker': id,
-                    }).on('click', function () {
-                        $fileInput.trigger('click');
                     });
                     $input.after($button);
                 }
+
+                // Local binding prevents legacy delegated handlers from opening native dialogs.
+                $container
+                    .find(`input[type="button"][data-filepicker="${id}"]`)
+                    .off('click.sortPicker')
+                    .on('click.sortPicker', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+
+                        if (!filemanager) return;
+
+                        filemanager.show({
+                            accept: accept,
+                            onSelect: function (result) {
+                                $input.val(result.assetUrl);
+                                $input[0].dataset.blobUrl = result.blobUrl;
+                                $input.trigger('change');
+                            },
+                        });
+                    });
             });
     },
     processFile: function (file, id, type) {

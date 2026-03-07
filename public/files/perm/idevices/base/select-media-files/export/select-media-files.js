@@ -615,10 +615,13 @@ var $eXeSeleccionaMedias = {
             (t) => t.url && t.url.trim() !== ''
         ).length;
 
+        const effectiveModeTable =
+            mOptions.modeTable || $eXeSeleccionaMedias.isSmallViewport();
+
         const $viewModeIcon = $(`#slcViewMode-${instance}`).find(
             'div.exeQuextIcons'
         );
-        if (mOptions.modeTable) {
+        if (effectiveModeTable) {
             $viewModeIcon
                 .removeClass('exeQuextIcons-ModeTable')
                 .addClass('exeQuextIcons-ModeMansory');
@@ -628,7 +631,7 @@ var $eXeSeleccionaMedias = {
             '.SLCMP-Multimedia'
         );
         if (totalImages === 0) {
-            if (mOptions.modeTable) {
+            if (effectiveModeTable) {
                 $viewModeIcon
                     .removeClass('exeQuextIcons-ModeTable')
                     .addClass('exeQuextIcons-ModeMansory');
@@ -640,7 +643,7 @@ var $eXeSeleccionaMedias = {
             $multimedia.find('img.SLCMP-Image').on('load error', () => {
                 imagesLoaded++;
                 if (imagesLoaded === totalImages) {
-                    if (mOptions.modeTable) {
+                    if (effectiveModeTable) {
                         $gameContainer.addClass('SLCMP-ModeTable');
                     } else {
                         $eXeSeleccionaMedias.initializeMasonry(instance);
@@ -648,6 +651,8 @@ var $eXeSeleccionaMedias = {
                 }
             });
         }
+
+        $eXeSeleccionaMedias.applyResponsiveLayout(instance);
     },
 
     checkQuestion(instance) {
@@ -922,6 +927,12 @@ var $eXeSeleccionaMedias = {
 
         $('#slcViewMode-' + instance).click(function (e) {
             e.preventDefault();
+
+            if ($eXeSeleccionaMedias.isSmallViewport()) {
+                $eXeSeleccionaMedias.applyResponsiveLayout(instance);
+                return;
+            }
+
             $('#slcViewMode-' + instance)
                 .find('div.exeQuextIcons')
                 .removeClass(
@@ -944,6 +955,12 @@ var $eXeSeleccionaMedias = {
                 mOptions.modeTable = true;
             }
         });
+
+        $(window)
+            .off('resize.sLcmpResponsive' + instance)
+            .on('resize.sLcmpResponsive' + instance, function () {
+                $eXeSeleccionaMedias.applyResponsiveLayout(instance);
+            });
 
         $('#slcmpMainContainer-' + instance)
             .closest('article')
@@ -1014,6 +1031,7 @@ var $eXeSeleccionaMedias = {
         $('#slcmpReboot-' + instance).off('click');
         $('#slcViewMode-' + instance).off('click');
         $('#slcmpAudioDef-' + instance).off('click');
+        $(window).off('resize.sLcmpResponsive' + instance);
     },
 
     refreshGames: function (instance) {
@@ -1026,6 +1044,37 @@ var $eXeSeleccionaMedias = {
             !document.webkitFullscreenElement &&
             !document.msFullscreenElement
         );
+    },
+
+    isSmallViewport: function () {
+        return window.matchMedia('(max-width: 550px)').matches;
+    },
+
+    applyResponsiveLayout: function (instance) {
+        const mOptions = $eXeSeleccionaMedias.options[instance];
+        if (!mOptions) return;
+
+        const $multimediaContainer = $('#slcmpMultimedia-' + instance);
+        const $icon = $('#slcViewMode-' + instance).find('div.exeQuextIcons');
+        if (!$multimediaContainer.length) return;
+
+        // On small screens we force table mode to avoid Masonry absolute positioning overlaps.
+        if ($eXeSeleccionaMedias.isSmallViewport()) {
+            $multimediaContainer.addClass('SLCMP-ModeTable');
+            $eXeSeleccionaMedias.destroyMasonry(instance);
+            $icon
+                .removeClass('exeQuextIcons-ModeTable')
+                .addClass('exeQuextIcons-ModeMansory');
+            return;
+        }
+
+        if (mOptions.modeTable) {
+            $multimediaContainer.addClass('SLCMP-ModeTable');
+            $eXeSeleccionaMedias.destroyMasonry(instance);
+            $icon
+                .removeClass('exeQuextIcons-ModeTable')
+                .addClass('exeQuextIcons-ModeMansory');
+        }
     },
 
     initializeMasonry: function (instance) {
