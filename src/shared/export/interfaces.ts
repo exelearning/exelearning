@@ -61,7 +61,7 @@ export interface ExportMetadata {
 
     // Export options (from project properties)
     addExeLink?: boolean; // "Made with eXeLearning" link
-    addPagination?: boolean; // Page counter (Página X/Y)
+    addPagination?: boolean; // Page counter (Page X/Y)
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
@@ -611,8 +611,8 @@ export interface PageRenderOptions {
     /** EPUB export indicator - loads guard script for duplicate execution protection */
     isEpub?: boolean;
 
-    /** Translated labels for previous/next navigation buttons (resolved at export time from XLF) */
-    navLabels?: { previous: string; next: string };
+    /** Translated labels for navigation buttons (resolved at export time from XLF) */
+    navLabels?: { previous: string; next: string; page: string };
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;

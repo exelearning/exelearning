@@ -860,7 +860,7 @@ var $exeDevice = {
         p.author = $('#clasificaEAuthor').val();
         p.alt = $('#clasificaEAlt').val();
         p.url = $('#clasificaEURLImage').val().trim();
-        p.audio = $('#clasificaEURLAudio').val();
+        p.audio = $('#clasificaEURLAudio').val().trim();
         p.eText = $('#clasificaEText').val();
         p.color = $('#clasificaEColor').val();
         p.backcolor = $('#clasificaEBackColor').val();
@@ -868,28 +868,18 @@ var $exeDevice = {
         p.msgHit = $('#clasificaEMessageOK').val();
         p.msgError = $('#clasificaEMessageKO').val();
 
-        if (p.type === 0 && p.url.length < 5 && p.audio.length === 0) {
+        if (p.type === 0 && p.url.length < 5) {
             message = msgs.msgCompleteImage;
-        } else if (
-            p.type === 1 &&
-            p.eText.length === 0 &&
-            p.audio.length === 0
-        ) {
+        } else if (p.type === 1 && p.eText.trim().length === 0) {
             message = msgs.msgCompleteText;
         } else if (
             p.type === 2 &&
-            (p.eText.length === 0 || p.url.length === 0)
+            (p.eText.trim().length === 0 || p.url.length < 5)
         ) {
             message = msgs.msgCompleteBoth;
         }
 
-        if (p.type === 0) {
-            p.eText = '';
-        } else if (p.type === 1) {
-            p.url = '';
-        } else if (p.type === 2) {
-            ///
-        }
+        p = $exeDevice.normalizeQuestionByType(p);
 
         if (message.length === 0) {
             $exeDevice.wordsGame[$exeDevice.active] = p;
@@ -965,14 +955,17 @@ var $exeDevice = {
             return false;
         }
 
-        for (const mquestion of $exeDevice.wordsGame) {
+        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
+            const mquestion = $exeDevice.normalizeQuestionByType(
+                $exeDevice.wordsGame[i]
+            );
+            $exeDevice.wordsGame[i] = mquestion;
             if (
-                (mquestion.type === 0 &&
-                    mquestion.url.length < 4 &&
-                    mquestion.audio.length === 0) ||
-                (mquestion.type === 1 &&
-                    mquestion.eText.length === 0 &&
-                    mquestion.audio.length === 0)
+                (mquestion.type === 0 && mquestion.url.length < 4) ||
+                (mquestion.type === 1 && mquestion.eText.trim().length === 0) ||
+                (mquestion.type === 2 &&
+                    (mquestion.url.length < 4 ||
+                        mquestion.eText.trim().length === 0))
             ) {
                 $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
                 return false;
@@ -1027,6 +1020,20 @@ var $exeDevice = {
             }
         );
         return false;
+    },
+
+    normalizeQuestionByType: function (question) {
+        const q = { ...question };
+        if (q.type === 0) {
+            q.eText = '';
+        } else if (q.type === 1) {
+            q.url = '';
+            q.x = 0;
+            q.y = 0;
+            q.author = '';
+            q.alt = '';
+        }
+        return q;
     },
 
     showImage: function (url, x, y, alt) {
