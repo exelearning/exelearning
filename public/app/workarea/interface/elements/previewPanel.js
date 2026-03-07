@@ -43,6 +43,11 @@ export default class PreviewPanelManager {
         // Blob URL navigation state
         this._blobUrlFiles = null;
         this._blobUrlCurrentPage = null;
+
+        // Popup window tracking
+        this._popupWindow = null;
+        this._popupMonitorTimer = null;
+        this._recoveryChannel = null;
     }
 
     /**
@@ -53,6 +58,8 @@ export default class PreviewPanelManager {
         this.subscribeToChanges();
         this.resetToDefaultState();
         this._setupVisibilityHandler();
+        this._setupBroadcastChannelListener();
+        this._setupServiceWorkerListener();
         Logger.log('[PreviewPanel] Initialized');
     }
 
@@ -65,6 +72,10 @@ export default class PreviewPanelManager {
         this.isOpen = false;
         this.panel?.classList.remove('active');
         this.overlay?.classList.remove('active');
+
+        // Clean up popup tracking
+        this._popupWindow = null;
+        this._clearPopupMonitor();
 
         const workarea = document.getElementById('workarea');
         workarea?.setAttribute('data-preview-pinned', 'false');
@@ -91,11 +102,94 @@ export default class PreviewPanelManager {
     }
 
     /**
-     * Check if preview is currently visible (open or pinned)
+     * Setup BroadcastChannel listener for popup recovery.
+     * The popup's PREVIEW_REFRESH_SCRIPT relays CONTENT_NEEDED from the SW
+     * as PREVIEW_CONTENT_LOST via BroadcastChannel. This listener picks it up
+     * and triggers a content refresh so the popup can recover.
+     */
+    _setupBroadcastChannelListener() {
+        if (typeof BroadcastChannel === 'undefined') return;
+
+        this._recoveryChannel = new BroadcastChannel('exe-preview-recovery');
+        this._recoveryChannel.onmessage = (event) => {
+            if (event.data?.type === 'PREVIEW_CONTENT_LOST') {
+                Logger.log('[PreviewPanel] Popup reported content lost, refreshing SW content...');
+                this.refreshWithServiceWorker().catch((err) => {
+                    Logger.error('[PreviewPanel] Failed to recover popup content:', err);
+                });
+            }
+        };
+        Logger.log('[PreviewPanel] BroadcastChannel listener installed');
+    }
+
+    /**
+     * Listen for CONTENT_NEEDED messages directly from the Service Worker.
+     * SW client.postMessage() arrives on navigator.serviceWorker, NOT window.
+     * This ensures the main window can respond to SW recovery requests
+     * even when no preview iframe or popup has the relay script loaded.
+     */
+    _setupServiceWorkerListener() {
+        if (typeof navigator === 'undefined' || !navigator.serviceWorker?.addEventListener) return;
+
+        this._swMessageHandler = (event) => {
+            if (event.data?.type === 'CONTENT_NEEDED' && this._isPreviewVisible()) {
+                Logger.log('[PreviewPanel] SW requested content refresh (direct):', event.data.reason);
+                // Debounce to avoid multiple refreshes
+                if (this._swContentNeededTimer) {
+                    clearTimeout(this._swContentNeededTimer);
+                }
+                this._swContentNeededTimer = setTimeout(() => {
+                    this._swContentNeededTimer = null;
+                    this.refreshWithServiceWorker().catch((err) => {
+                        Logger.error('[PreviewPanel] Failed to resend content to SW:', err);
+                    });
+                }, 100);
+            }
+        };
+
+        navigator.serviceWorker.addEventListener('message', this._swMessageHandler);
+        Logger.log('[PreviewPanel] Service Worker message listener installed');
+    }
+
+    /**
+     * Start polling to detect when popup window closes.
+     * When closed, clean up the reference and stop polling.
+     */
+    _setupPopupMonitor() {
+        this._clearPopupMonitor();
+        this._popupMonitorTimer = setInterval(() => {
+            if (!this._isPopupOpen()) {
+                Logger.log('[PreviewPanel] Popup window closed');
+                this._popupWindow = null;
+                this._clearPopupMonitor();
+            }
+        }, 2000);
+    }
+
+    /**
+     * Clear popup monitor interval
+     */
+    _clearPopupMonitor() {
+        if (this._popupMonitorTimer) {
+            clearInterval(this._popupMonitorTimer);
+            this._popupMonitorTimer = null;
+        }
+    }
+
+    /**
+     * Check if preview is currently visible (open, pinned, or popup open)
      * @returns {boolean}
      */
     _isPreviewVisible() {
-        return this.isOpen || this.isPinned;
+        return this.isOpen || this.isPinned || this._isPopupOpen();
+    }
+
+    /**
+     * Check if a popup preview window is currently open
+     * @returns {boolean}
+     */
+    _isPopupOpen() {
+        return this._popupWindow != null && !this._popupWindow.closed;
     }
 
     /**
@@ -1210,6 +1304,8 @@ export default class PreviewPanelManager {
             const newTab = window.open(viewerUrl, '_blank');
 
             if (newTab) {
+                this._popupWindow = newTab;
+                this._setupPopupMonitor();
                 Logger.log('[PreviewPanel] Preview opened in new tab');
             } else {
                 Logger.warn('[PreviewPanel] Popup blocked - trying fallback');
@@ -1378,6 +1474,26 @@ export default class PreviewPanelManager {
         if (this._contentNeededRefreshTimer) {
             clearTimeout(this._contentNeededRefreshTimer);
             this._contentNeededRefreshTimer = null;
+        }
+
+        // Clean up popup tracking
+        this._popupWindow = null;
+        this._clearPopupMonitor();
+
+        // Close recovery BroadcastChannel
+        if (this._recoveryChannel) {
+            this._recoveryChannel.close();
+            this._recoveryChannel = null;
+        }
+
+        // Remove SW message listener
+        if (this._swMessageHandler) {
+            navigator.serviceWorker?.removeEventListener('message', this._swMessageHandler);
+            this._swMessageHandler = null;
+        }
+        if (this._swContentNeededTimer) {
+            clearTimeout(this._swContentNeededTimer);
+            this._swContentNeededTimer = null;
         }
 
         // Revoke blob URLs

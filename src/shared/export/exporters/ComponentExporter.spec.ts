@@ -78,6 +78,14 @@ class MockResourceProvider implements ResourceProvider {
         files.set('content/css/base.css', new TextEncoder().encode('/* base css */'));
         return files;
     }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider

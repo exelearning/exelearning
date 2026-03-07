@@ -21,7 +21,6 @@ import { Html5Exporter } from './Html5Exporter';
 import { ImsManifestGenerator } from '../generators/ImsManifest';
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
-import { generateI18nScript } from '../generators/I18nGenerator';
 import { GlobalFontGenerator } from '../utils/GlobalFontGenerator';
 
 export class ImsExporter extends Html5Exporter {
@@ -206,7 +205,7 @@ export class ImsExporter extends Html5Exporter {
             }
 
             // 4.5. Generate localized i18n file
-            const i18nContent = generateI18nScript(meta.language || 'en');
+            const i18nContent = await this.generateI18nContent(meta.language || 'en');
             this.zip.addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
             commonFiles.push('libs/common_i18n.js');
 

@@ -344,7 +344,7 @@ describe('PageRenderer', () => {
     });
 
     describe('renderNavButtons', () => {
-        it('should render prev/next nav buttons', () => {
+        it('should render prev/next nav buttons with English fallback labels', () => {
             const pages: ExportPage[] = [
                 createTestPage({ id: 'page-1', title: 'First' }),
                 createTestPage({ id: 'page-2', title: 'Second' }),
@@ -358,8 +358,23 @@ describe('PageRenderer', () => {
             expect(html).toContain('nav-button-right');
             expect(html).toContain('Previous');
             expect(html).toContain('Next');
-            // No data-i18n attributes (matches legacy PHP)
             expect(html).not.toContain('data-i18n');
+        });
+
+        it('should use translated labels when navLabels is provided', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'page-1', title: 'First' }),
+                createTestPage({ id: 'page-2', title: 'Second' }),
+                createTestPage({ id: 'page-3', title: 'Third' }),
+            ];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
+
+            const html = renderer.renderNavButtons(pages[1], pages, '', navLabels);
+
+            expect(html).toContain('Anterior');
+            expect(html).toContain('Siguiente');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
 
         it('should render disabled prev button for first page', () => {
@@ -373,9 +388,8 @@ describe('PageRenderer', () => {
             // First page: disabled prev (span with aria-hidden), enabled next (anchor)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -390,9 +404,8 @@ describe('PageRenderer', () => {
             // Last page: enabled prev (anchor), disabled next (span with aria-hidden)
             expect(html).toContain('nav-button-left');
             expect(html).toContain('nav-button-right');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).toContain('<a href=');
-            // No data-i18n attributes
             expect(html).not.toContain('data-i18n');
         });
 
@@ -403,28 +416,21 @@ describe('PageRenderer', () => {
 
             // Single page: both buttons disabled (spans with aria-hidden)
             expect(html).toContain('nav-buttons');
-            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true"');
-            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true"');
+            expect(html).toContain('<span class="nav-button nav-button-left" aria-hidden="true">');
+            expect(html).toContain('<span class="nav-button nav-button-right" aria-hidden="true">');
             expect(html).not.toContain('<a href=');
-            // No data-i18n attributes
-            expect(html).not.toContain('data-i18n');
         });
 
-        it('should always output English text regardless of language param (deprecated)', () => {
-            const pages: ExportPage[] = [
-                createTestPage({ id: 'page-1', title: 'First' }),
-                createTestPage({ id: 'page-2', title: 'Second' }),
-            ];
+        it('should use translated labels for disabled buttons too', () => {
+            const pages: ExportPage[] = [createTestPage({ id: 'page-1', title: 'Only' })];
+            const navLabels = { previous: 'Anterior', next: 'Siguiente' };
 
-            // Language param is deprecated; runtime translation via $exe_i18n
-            const htmlEs = renderer.renderNavButtons(pages[0], pages, '', 'es');
-            const htmlEn = renderer.renderNavButtons(pages[0], pages, '', 'en');
+            const html = renderer.renderNavButtons(pages[0], pages, '', navLabels);
 
-            // Both should output the same English text (runtime translation handles localization)
-            expect(htmlEs).toContain('Previous');
-            expect(htmlEs).toContain('Next');
-            expect(htmlEn).toContain('Previous');
-            expect(htmlEn).toContain('Next');
+            expect(html).toContain('<span>Anterior</span>');
+            expect(html).toContain('<span>Siguiente</span>');
+            expect(html).not.toContain('Previous');
+            expect(html).not.toContain('Next');
         });
     });
 
@@ -1067,6 +1073,91 @@ describe('PageRenderer', () => {
     });
 
     describe('renderPageContent', () => {
+        it('should sync project properties when content contains exe-prop- classes', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                // Note: we have an mceNonEditable td that should have its classes stripped in output
+                                content: `
+                                    <td class="mceNonEditable exe-prop-locked"><span class="exe-prop-title"></span></td>
+                                    <span class="exe-prop-author"></span>
+                                    <span class="exe-prop-description"></span>
+                                    <span class="exe-prop-license"></span>
+                                `,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'My Testing Project', undefined, {
+                author: 'Pablo',
+                description: 'Test Desc',
+                license: 'creative commons: attribution - share alike 4.0',
+            });
+
+            expect(html).toContain('<td><span class="exe-prop-title">My Testing Project</span></td>');
+            expect(html).toContain('<span class="exe-prop-author">Pablo</span>');
+            expect(html).toContain('<span class="exe-prop-description">Test Desc</span>');
+
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/licenses/by-sa/4.0/" rel="license" class="cc cc-by-sa"><span></span>Creative Commons BY-SA 4.0</a></span>',
+            );
+        });
+
+        it('should output raw string when license is a non-standard CC like CC0', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(page, '', 'Title', undefined, {
+                license: 'creative commons: cc0 1.0',
+            });
+
+            expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
+        });
+
+        it('should output safe simple text when license is not configured without crashing', () => {
+            const page = createTestPage({
+                blocks: [
+                    {
+                        id: 'block1',
+                        components: [
+                            {
+                                id: 'comp1',
+                                content: `<span class="exe-prop-license"></span>`,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+            const html = renderer.renderPageContent(
+                page,
+                '',
+                'Title',
+                undefined,
+                {}, // missing metadata including license
+            );
+
+            // Just a span with escaped '-'
+            expect(html).toContain('<span class="exe-prop-license">-</span>');
+        });
+
         it('should render blocks with components', () => {
             const page = createTestPage({
                 blocks: [

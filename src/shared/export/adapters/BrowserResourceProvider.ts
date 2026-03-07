@@ -30,6 +30,8 @@ interface ResourceFetcherInterface {
     fetchExeLogo(): Promise<Blob | null>;
     fetchContentCss(): Promise<Map<string, Blob>>;
     fetchGlobalFontFiles(fontId: string): Promise<Map<string, Blob>>;
+    fetchI18nFile(language: string): Promise<string | null>;
+    fetchI18nTranslations(language: string): Promise<Record<string, string>>;
 }
 
 /**
@@ -206,6 +208,28 @@ export class BrowserResourceProvider implements ResourceProvider {
         }
         const blobMap = await this.fetcher.fetchGlobalFontFiles(fontId);
         return this.convertBlobMapToUint8ArrayMap(blobMap);
+    }
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Delegates to ResourceFetcher which fetches `app/common/i18n/common_i18n.{lang}.js`.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
+     */
+    async fetchI18nFile(language: string): Promise<string> {
+        const result = await this.fetcher.fetchI18nFile(language);
+        return result ?? '';
+    }
+
+    /**
+     * Fetch i18n translations for a specific language.
+     * Delegates to ResourceFetcher which handles static vs server mode.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Map<englishSource, translatedTarget>
+     */
+    async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
+        const record = await this.fetcher.fetchI18nTranslations(language);
+        return new Map(Object.entries(record));
     }
 
     /**

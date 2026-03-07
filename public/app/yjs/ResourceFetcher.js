@@ -1217,6 +1217,79 @@ class ResourceFetcher {
   }
 
   // =========================================================================
+  // i18n Template & Translations
+  // =========================================================================
+
+  /**
+   * Fetch the pre-built, pre-translated i18n JS file for the given language.
+   * Loads `app/common/i18n/common_i18n.{lang}.js` (generated at build time).
+   * Falls back to English if the locale file is not available.
+   * @param {string} language - BCP-47 language code (e.g., 'es', 'eu')
+   * @returns {Promise<string|null>} Resolved JS content or null on failure
+   */
+  async fetchI18nFile(language) {
+    const lang = (language || 'en').split('-')[0];
+    const url = `${this.basePath}/app/common/i18n/common_i18n.${lang}.js`;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        // Fall back to English
+        if (lang !== 'en') {
+          const enUrl = `${this.basePath}/app/common/i18n/common_i18n.en.js`;
+          try {
+            const enResponse = await fetch(enUrl);
+            if (enResponse.ok) return enResponse.text();
+          } catch {
+            // ignore
+          }
+        }
+        console.warn(`[ResourceFetcher] Could not fetch i18n file for '${lang}': ${response.status}`);
+        return null;
+      }
+      return response.text();
+    } catch (e) {
+      console.warn('[ResourceFetcher] Failed to fetch i18n file:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch i18n translations for a specific language as a plain object { source: target }.
+   * In static mode, uses the pre-loaded __EXE_STATIC_DATA__.
+   * In server mode, fetches from the API translation endpoint.
+   * @param {string} language - BCP-47 language code (e.g., 'es', 'eu')
+   * @returns {Promise<Record<string, string>>} Plain object mapping source → target
+   */
+  async fetchI18nTranslations(language) {
+    const safeLocale = language || 'en';
+
+    // Static mode: translations are embedded in __EXE_STATIC_DATA__
+    if (this.isStaticMode) {
+      const data = window.__EXE_STATIC_DATA__?.translations;
+      if (data) {
+        const baseLang = safeLocale.split('-')[0];
+        const result = data[safeLocale] || data[baseLang] || data.en || {};
+        return result.translations || {};
+      }
+      return {};
+    }
+
+    // Server mode: fetch from the translations API
+    try {
+      const response = await fetch(`${this.basePath}/api/translations/${safeLocale}`);
+      if (!response.ok) {
+        // Graceful fallback: return empty (callers will use English source strings)
+        return {};
+      }
+      const json = await response.json();
+      return json.translations || {};
+    } catch (e) {
+      console.warn(`[ResourceFetcher] Failed to fetch translations for '${safeLocale}':`, e);
+      return {};
+    }
+  }
+
+  // =========================================================================
   // Utility Methods
   // =========================================================================
 

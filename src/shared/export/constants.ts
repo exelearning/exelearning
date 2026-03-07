@@ -657,6 +657,29 @@ export function formatLicenseText(licenseName: string): string {
 }
 
 /**
+ * Format license text for Fichero Fuente display.
+ * Generates the short format (e.g., "Creative Commons BY-NC 4.0") matching the editor view.
+ *
+ * @param licenseName - The license name from metadata
+ * @returns Short formatted license text, or displayName if not a standard CC license
+ */
+export function formatShortLicenseText(licenseName: string): string {
+    if (!licenseName) return '';
+    const key = licenseName.toLowerCase().trim().replace(/\s+/g, ' ');
+    const entry = LICENSE_REGISTRY[key];
+
+    if (entry?.url?.includes('creativecommons.org/licenses/')) {
+        const match = entry.url.match(/licenses\/([^/]+\/[^/]+)\/?/);
+        if (match?.[1]) {
+            const type = match[1].replace('/', ' ').toUpperCase();
+            return `Creative Commons ${type}`;
+        }
+    }
+
+    return licenseName;
+}
+
+/**
  * Check if a license should show a footer in exports.
  * Returns false for empty license or licenses with hideInFooter: true in the registry.
  *
