@@ -91,15 +91,16 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Fetch translated labels for the navigation buttons (Previous / Next).
+     * Fetch translated labels for navigation buttons (Previous / Next / Page counter).
      * Labels are resolved from XLF translations so the exported HTML already
      * contains the correct text for the content language — no runtime JS needed.
      */
-    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string }> {
+    protected async fetchNavLabels(language: string): Promise<{ previous: string; next: string; page: string }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         return {
             previous: translations.get('Previous') || 'Previous',
             next: translations.get('Next') || 'Next',
+            page: translations.get('Page') || 'Page',
         };
     }
 

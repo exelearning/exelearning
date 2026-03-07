@@ -130,6 +130,7 @@ export class PageRenderer {
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
+            pageLabel: options.navLabels?.page,
         });
 
         // Build search box div (only if enabled)
@@ -560,13 +561,14 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
+            pageLabel?: string;
         },
     ): string {
-        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination } = options;
+        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination, pageLabel } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
-            ? ` <p class="page-counter"> <span class="page-counter-label">Página </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            ? ` <p class="page-counter"> <span class="page-counter-label">${pageLabel || 'Page'} </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
             : '';
 
         // Check if page title should be hidden and get effective title

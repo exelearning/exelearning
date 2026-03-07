@@ -1458,12 +1458,13 @@ var $eXeDescubre = {
             state = $noImage.data('state'),
             x = parseFloat($image.data('x')),
             y = parseFloat($image.data('y')),
-            url = $image.data('url'),
-            alt = $image.attr('alt') || 'No disponibLe',
-            audio = $audio.data('audio') || '',
-            stxt = $textdinamic.text() || '',
+            url = ($image.data('url') || '').toString(),
+            alt = $image.attr('alt') || 'No disponible',
+            audio = ($audio.data('audio') || '').toString(),
+            stxt = ($textdinamic.text() || '').trim(),
             color = $text.data('color'),
-            backcolor = $text.data('backcolor');
+            backcolor = $text.data('backcolor'),
+            hasImage = url.trim().length > 4;
 
         $text.hide();
         $image.hide();
@@ -1471,7 +1472,7 @@ var $eXeDescubre = {
         $audio.hide();
         $noImage.hide();
 
-        if (url.length > 3) {
+        if (hasImage) {
             $image.attr('alt', alt);
             $image.show();
             $image
@@ -1498,8 +1499,7 @@ var $eXeDescubre = {
         }
         if (stxt.length > 0) {
             $text.show();
-            const bk =
-                url.length > 5 ? $eXeDescubre.hexToRgba(backcolor) : backcolor;
+            const bk = hasImage ? $eXeDescubre.hexToRgba(backcolor) : backcolor;
             $text.css({
                 color: color,
                 'background-color': bk,
@@ -1513,7 +1513,7 @@ var $eXeDescubre = {
         $audio.removeClass('DescubreQP-LinkAudio');
 
         if (audio.length > 0) {
-            if (url.length < 5 && stxt.length == 0) {
+            if (!hasImage && stxt.length == 0) {
                 $audio.addClass('DescubreQP-LinkAudioBig');
             } else {
                 $audio.addClass('DescubreQP-LinkAudio');

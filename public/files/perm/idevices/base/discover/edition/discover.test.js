@@ -4,6 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Mock global objects
 global.$ = vi.fn(() => ({
@@ -471,6 +476,21 @@ describe('Discover Edition Functions', () => {
             const result = $exeDevice.createlinksAudio(wordsGame);
             expect(result).toContain('href="valid_audio.mp3"');
             expect(result).toContain('descubre-LinkAudios-3');
+        });
+    });
+
+    describe('loadPreviousValues regression', () => {
+        it('should call showQuestion(0) when previous data is empty', () => {
+            const realExeDevice = global.loadIdevice(join(__dirname, 'discover.js'));
+            const showQuestionSpy = vi.fn();
+
+            realExeDevice.showQuestion = showQuestionSpy;
+            realExeDevice.idevicePreviousData = '';
+
+            realExeDevice.loadPreviousValues();
+
+            expect(showQuestionSpy).toHaveBeenCalledTimes(1);
+            expect(showQuestionSpy).toHaveBeenCalledWith(0);
         });
     });
 });
