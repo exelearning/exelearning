@@ -766,5 +766,31 @@ describe('Folder Manager Service', () => {
             expect(result.success).toBe(false);
             expect(result.error).toContain('not found');
         });
+
+        it('should reject zip slip (path traversal) in zip contents', async () => {
+            const evilZipContent: Record<string, Uint8Array> = {
+                '../../evil.html': new TextEncoder().encode('<html>evil</html>'),
+                '../other_evil.css': new TextEncoder().encode('body { background: red; }'),
+            };
+            const zipped = fflate.zipSync(evilZipContent);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'evil.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'evil.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'evil-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('Security error: invalid file paths detected');
+        });
     });
 });

@@ -604,6 +604,29 @@ describe('Theme Queries', () => {
             expect(updated?.display_name).toBe('Updated Toggle Theme');
         });
 
+        test('should update existing non-builtin theme with same dir_name', async () => {
+            // Create a site theme (is_builtin=0) with a dir_name
+            await createTheme(db, {
+                dir_name: 'conflict-theme',
+                display_name: 'Site Version',
+                is_builtin: 0,
+                is_enabled: 0,
+            });
+
+            // Upsert a base theme with the same dir_name — should update, not fail
+            await upsertBaseTheme(db, {
+                dir_name: 'conflict-theme',
+                display_name: 'Base Version',
+                version: '1.0.0',
+            });
+
+            const theme = await findThemeByDirName(db, 'conflict-theme');
+            expect(theme).toBeDefined();
+            expect(theme?.display_name).toBe('Base Version');
+            expect(theme?.is_builtin).toBe(1);
+            expect(theme?.version).toBe('1.0.0');
+        });
+
         test('should handle null optional fields', async () => {
             await upsertBaseTheme(db, {
                 dir_name: 'minimal-theme',

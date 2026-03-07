@@ -483,7 +483,7 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('class="page-counter"');
         });
 
-        it('should show Página label in Spanish when addPagination is true', () => {
+        it('should use "Page" as default label when no pageLabel is provided', () => {
             const page = createTestPage();
 
             const html = renderer.renderPageHeader(page, {
@@ -493,7 +493,21 @@ describe('PageRenderer', () => {
                 addPagination: true,
             });
 
-            expect(html).toContain('Página');
+            expect(html).toContain('class="page-counter-label">Page ');
+        });
+
+        it('should use the provided pageLabel in the page counter', () => {
+            const page = createTestPage();
+
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+                addPagination: true,
+                pageLabel: 'Página',
+            });
+
+            expect(html).toContain('class="page-counter-label">Página ');
         });
 
         it('should render package-subtitle when projectSubtitle is provided', () => {
