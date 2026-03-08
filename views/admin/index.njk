@@ -1757,7 +1757,7 @@
                                         <div class="admin-settings-group">
                                             <div class="admin-field">
                                                 <textarea id="customHeadHtmlInput" class="admin-input admin-code-textarea" data-setting-key="CUSTOM_HEAD_HTML" data-setting-type="string" rows="12">{{ adminSettings.presentation.custom_head_html }}</textarea>
-                                                <small>{{ t.custom_head_html_help or 'HTML injected into the &lt;head&gt; of all user pages (login, workarea, error pages). Not applied to the admin panel.' }}</small>
+                                                <small>{{ t.custom_head_html_help or 'HTML injected into the &lt;head&gt; of all user pages (login, workarea, error pages). Not applied to the admin panel. Only &lt;style&gt;, &lt;meta&gt;, &lt;link&gt;, &lt;script&gt; and &lt;base&gt; tags are allowed; any other tags will be removed automatically.' }}</small>
                                                 <small>
                                                     {{ t.custom_head_html_jquery_note or 'jQuery is available on all user pages.' }}
                                                     {{ t.custom_head_html_hook_label or 'To run code only in the workarea after the app is fully loaded, define' }}
@@ -2099,6 +2099,11 @@ window.$eXeLearningCustom = {
                         body: JSON.stringify({ settings }),
                     });
                     if (!res.ok) throw new Error('Failed to save');
+                    const resData = await res.json();
+                    // Update textarea with the sanitized value returned by the server
+                    if (resData.sanitizedValues?.CUSTOM_HEAD_HTML !== undefined && textarea) {
+                        textarea.value = resData.sanitizedValues.CUSTOM_HEAD_HTML;
+                    }
                     if (presentationSaveStatus) {
                         presentationSaveStatus.textContent = 'Guardado';
                         presentationSaveStatus.classList.add('success');

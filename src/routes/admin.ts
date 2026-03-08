@@ -168,6 +168,133 @@ function getRequestClientIp(request: Request): string | null {
 }
 
 /**
+ * HTML tags allowed in the Custom HEAD HTML setting.
+ * Only these tags are valid in <head> and safe for injection.
+ */
+const ALLOWED_HEAD_TAGS = new Set(['style', 'meta', 'link', 'script', 'base']);
+
+/**
+ * Allowed tags that are void elements (no closing tag).
+ */
+const VOID_HEAD_TAGS = new Set(['meta', 'link', 'base']);
+
+/**
+ * Sanitize Custom HEAD HTML: keep only allowed tags (style, meta, link, script, base).
+ * Removes entire elements — including their text content — whose tag is not in the allowed list.
+ * Any top-level text not inside an allowed element is also discarded.
+ *
+ * Uses an iterative parser so content of disallowed elements is never left behind.
+ */
+export function sanitizeCustomHeadHtml(html: string): string {
+    if (!html) return '';
+
+    const kept: string[] = [];
+    let pos = 0;
+    const len = html.length;
+
+    while (pos < len) {
+        // Advance to the next '<'; discard any top-level text before it
+        const lt = html.indexOf('<', pos);
+        if (lt === -1) break;
+
+        // Preserve HTML comments: <!-- ... -->
+        if (html.startsWith('<!--', lt)) {
+            const end = html.indexOf('-->', lt + 4);
+            if (end === -1) break;
+            kept.push(html.slice(lt, end + 3));
+            pos = end + 3;
+            continue;
+        }
+
+        // Skip orphaned closing tags
+        if (html[lt + 1] === '/') {
+            const gt = html.indexOf('>', lt);
+            pos = gt === -1 ? len : gt + 1;
+            continue;
+        }
+
+        // Parse the tag name
+        const tagMatch = /^<([a-zA-Z][a-zA-Z0-9-]*)/i.exec(html.slice(lt));
+        if (!tagMatch) {
+            pos = lt + 1;
+            continue;
+        }
+
+        const tagName = tagMatch[1].toLowerCase();
+        const isAllowed = ALLOWED_HEAD_TAGS.has(tagName);
+
+        // Find the end of the opening tag
+        const gt = html.indexOf('>', lt);
+        if (gt === -1) break;
+
+        const isSelfClosing = html[gt - 1] === '/';
+
+        if (VOID_HEAD_TAGS.has(tagName) || isSelfClosing) {
+            // Void or self-closing tag — no closing tag to find
+            if (isAllowed) kept.push(html.slice(lt, gt + 1));
+            pos = gt + 1;
+        } else {
+            // Paired element — find matching closing tag and include/skip the whole block
+            const closeRe = new RegExp(`</${tagName}\\s*>`, 'i');
+            const afterOpen = gt + 1;
+            const closeMatch = closeRe.exec(html.slice(afterOpen));
+            const endPos = closeMatch ? afterOpen + closeMatch.index + closeMatch[0].length : afterOpen;
+            if (isAllowed) kept.push(html.slice(lt, endPos));
+            pos = endPos;
+        }
+    }
+
+    return kept.join('\n').trim();
+}
+
+/**
+ * MIME types allowed for custom asset uploads.
+ * Derived from ALLOWED_EXTENSIONS in config.ts.
+ */
+export const ALLOWED_ASSET_MIME_TYPES = new Set([
+    // Images
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/svg+xml',
+    'image/webp',
+    // Audio
+    'audio/mpeg', // mp3
+    'audio/ogg', // ogg
+    'audio/wav', // wav
+    'audio/mp4', // m4a
+    'audio/x-wav', // wav alternative
+    'audio/wave', // wav alternative
+    // Video
+    'video/mp4', // mp4
+    'video/webm', // webm
+    'video/ogg', // ogv
+    // Documents
+    'application/pdf', // pdf
+    // Archives
+    'application/zip', // zip
+    'application/x-zip-compressed', // zip alternative
+    // Text / Code
+    'text/plain', // txt
+    'text/html', // html, htm
+    'text/css', // css
+    'text/javascript', // js (legacy MIME)
+    'text/xml', // xml
+    'application/javascript', // js
+    'application/json', // json
+    'application/xml', // xml alternative
+    // Fonts
+    'font/ttf', // ttf
+    'font/woff', // woff
+    'font/woff2', // woff2
+    'application/x-font-ttf', // ttf alternative
+    'application/font-woff', // woff alternative
+    'application/font-woff2', // woff2 alternative
+    'application/vnd.ms-fontobject', // eot
+]);
+
+/**
  * Sanitize user for API response (remove password)
  */
 function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[] } {
@@ -381,12 +508,18 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 '/api/admin/settings',
                 async ({ body, set, jwtPayload }) => {
                     const data = body as { settings: Array<{ key: string; value: string; type: string }> };
+                    const sanitizedValues: Record<string, string> = {};
 
                     for (const setting of data.settings) {
                         const def = ADMIN_SETTINGS_DEFAULTS[setting.key];
                         if (!def) {
                             set.status = 400;
                             return { error: 'Bad Request', message: `Unknown setting: ${setting.key}` };
+                        }
+
+                        if (setting.key === 'CUSTOM_HEAD_HTML') {
+                            setting.value = sanitizeCustomHeadHtml(setting.value);
+                            sanitizedValues['CUSTOM_HEAD_HTML'] = setting.value;
                         }
 
                         if (setting.key === 'APP_AUTH_METHODS') {
@@ -430,7 +563,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         }
                     }
 
-                    return { success: true };
+                    return { success: true, sanitizedValues };
                 },
                 { body: updateSettingsSchema },
             )
@@ -1019,6 +1152,13 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     if (!file) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'No file uploaded' };
+                    }
+                    if (!ALLOWED_ASSET_MIME_TYPES.has(file.type)) {
+                        set.status = 400;
+                        return {
+                            error: 'Bad Request',
+                            message: `File type '${file.type}' is not allowed`,
+                        };
                     }
                     const originalName = pathModule.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
                     if (!originalName) {
