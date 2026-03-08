@@ -1601,7 +1601,7 @@ describe('Admin Routes', () => {
             expect(sanitizeCustomHeadHtml('')).toBe('');
         });
 
-        it('should keep allowed tags: style, meta, link, script, base', () => {
+        it('should keep allowed tags: style, meta, link, script', () => {
             const html = `<style>body{color:red}</style>
 <meta charset="utf-8">
 <link rel="stylesheet" href="custom.css">
@@ -1612,7 +1612,7 @@ describe('Admin Routes', () => {
             expect(result).toContain('<meta charset="utf-8">');
             expect(result).toContain('<link rel="stylesheet"');
             expect(result).toContain('<script src="custom.js">');
-            expect(result).toContain('<base href="/">');
+            expect(result).not.toContain('<base');
         });
 
         it('should remove <title> tag and its content', () => {

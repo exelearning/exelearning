@@ -171,15 +171,15 @@ function getRequestClientIp(request: Request): string | null {
  * HTML tags allowed in the Custom HEAD HTML setting.
  * Only these tags are valid in <head> and safe for injection.
  */
-const ALLOWED_HEAD_TAGS = new Set(['style', 'meta', 'link', 'script', 'base']);
+const ALLOWED_HEAD_TAGS = new Set(['style', 'meta', 'link', 'script']);
 
 /**
  * Allowed tags that are void elements (no closing tag).
  */
-const VOID_HEAD_TAGS = new Set(['meta', 'link', 'base']);
+const VOID_HEAD_TAGS = new Set(['meta', 'link']);
 
 /**
- * Sanitize Custom HEAD HTML: keep only allowed tags (style, meta, link, script, base).
+ * Sanitize Custom HEAD HTML: keep only allowed tags (style, meta, link, script).
  * Removes entire elements — including their text content — whose tag is not in the allowed list.
  * Any top-level text not inside an allowed element is also discarded.
  *
