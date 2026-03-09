@@ -979,6 +979,40 @@ describe('common_edition.js', () => {
           '_blank'
         );
       });
+
+      it('saveButton click shows alert when questions textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsArea').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows alert when IA textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsIA').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('openChatGPTButton click shows alert when no AI service selected', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Test prompt');
+        $('#eXeEIASelect').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please select an AI assistant.');
+        expect(global.window.open).not.toHaveBeenCalled();
+      });
     });
   });
 
