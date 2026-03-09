@@ -223,16 +223,45 @@ const UnsavedChangesHelper = {
   /**
    * Set up the beforeunload handler to warn about unsaved changes.
    * This is automatically called when the YjsDocumentManager initializes.
+   * The handler reference is stored so it can be removed on re-setup.
    */
   setupBeforeUnloadHandler() {
-    window.addEventListener('beforeunload', (event) => {
-      if (this.hasUnsavedChanges()) {
+    // Remove previous handler if it exists (prevents duplicates on re-init)
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+    }
+
+    this._beforeUnloadHandler = (event) => {
+      // Electron handles close flow separately
+      if (window.electronAPI) return;
+
+      const app = window.eXeLearning?.app;
+      const assetManager = app?.project?._yjsBridge?.assetManager;
+      const hasUnsavedAssets =
+        assetManager &&
+        typeof assetManager.hasUnsavedAssets === 'function' &&
+        assetManager.hasUnsavedAssets();
+
+      if (this.hasUnsavedChanges() || hasUnsavedAssets) {
         // Standard way to trigger the browser's "Leave site?" dialog
         event.preventDefault();
         // For older browsers
         event.returnValue = '';
       }
-    });
+    };
+
+    window.addEventListener('beforeunload', this._beforeUnloadHandler);
+  },
+
+  /**
+   * Remove the beforeunload handler.
+   * Useful when intentionally navigating away (project transitions).
+   */
+  removeBeforeUnloadHandler() {
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener('beforeunload', this._beforeUnloadHandler);
+      this._beforeUnloadHandler = null;
+    }
   },
 };
 
