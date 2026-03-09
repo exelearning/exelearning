@@ -492,6 +492,142 @@ describe('progress-report iDevice (export)', () => {
     });
   });
 
+  describe('preview data sources', () => {
+    it('extractIdevicesFromPagesData uses window.exeSearchData when data-pages is not available', () => {
+      const originalDollar = global.$;
+      const originalJQuery = global.jQuery;
+      const originalSearchData = window.exeSearchData;
+
+      try {
+        global.$ = (selector) => {
+          if (selector === '#exe-client-search') {
+            return { attr: () => '' };
+          }
+          return {
+            attr: () => '',
+            length: 0,
+            each: () => {},
+            find: () => ({ length: 0, each: () => {}, text: () => '' }),
+          };
+        };
+        global.jQuery = global.$;
+
+        window.exeSearchData = {
+          'page-1': {
+            name: 'Page 1',
+            order: 1,
+            blocks: {
+              'block-1': {
+                name: 'Block 1',
+                order: 1,
+                idevices: {
+                  'idevice-1': {
+                    order: 1,
+                    htmlView: '<div data-evaluationid="ev-1" data-evaluationb="true"></div>',
+                    jsonProperties: null,
+                  },
+                },
+              },
+            },
+          },
+        };
+
+        const result = $eXeInforme.extractIdevicesFromPagesData();
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(1);
+        expect(result[0].odePageId).toBe('page-1');
+        expect(result[0].componentId).toBe('idevice-1');
+      } finally {
+        window.exeSearchData = originalSearchData;
+        global.$ = originalDollar;
+        global.jQuery = originalJQuery;
+      }
+    });
+
+    it('extractIdevicesFromPagesData extracts odeIdeviceTypeName from data-idevice-type in htmlView', () => {
+      const originalSearchData = window.exeSearchData;
+
+      try {
+        window.exeSearchData = {
+          'page-1': {
+            name: 'Page 1',
+            order: 1,
+            blocks: {
+              'block-1': {
+                name: 'Block 1',
+                order: 1,
+                idevices: {
+                  'idevice-typed': {
+                    order: 1,
+                    htmlView:
+                      '<article class="idevice_node quiz" data-idevice-type="quiz" data-idevice-id="idevice-typed"></article>',
+                    jsonProperties: null,
+                  },
+                  'idevice-untyped': {
+                    order: 2,
+                    htmlView: '<div>no type attribute here</div>',
+                    jsonProperties: null,
+                  },
+                },
+              },
+            },
+          },
+        };
+
+        const result = $eXeInforme.extractIdevicesFromPagesData();
+        expect(result.length).toBe(2);
+
+        const typed = result.find((r) => r.componentId === 'idevice-typed');
+        expect(typed.odeIdeviceTypeName).toBe('quiz');
+
+        const untyped = result.find((r) => r.componentId === 'idevice-untyped');
+        expect(untyped.odeIdeviceTypeName).toBe('');
+      } finally {
+        window.exeSearchData = originalSearchData;
+      }
+    });
+
+    it('extractIdevicesFromParentYjs reads from window.opener in new-tab preview', () => {
+      const originalOpenerDescriptor = Object.getOwnPropertyDescriptor(window, 'opener');
+      const originalExtractFromYjs = $eXeInforme.extractIdevicesFromYjs;
+
+      try {
+        $eXeInforme.extractIdevicesFromYjs = () => [
+          { odePageId: 'page-from-opener', componentId: 'idevice-from-opener' },
+        ];
+
+        Object.defineProperty(window, 'opener', {
+          configurable: true,
+          value: {
+            eXeLearning: {
+              app: {
+                project: {
+                  odeSession: 'session-opener',
+                  _yjsBridge: {
+                    documentManager: {},
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const result = $eXeInforme.extractIdevicesFromParentYjs();
+        expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(1);
+        expect(result[0].odePageId).toBe('page-from-opener');
+      } finally {
+        $eXeInforme.extractIdevicesFromYjs = originalExtractFromYjs;
+
+        if (originalOpenerDescriptor) {
+          Object.defineProperty(window, 'opener', originalOpenerDescriptor);
+        } else {
+          delete window.opener;
+        }
+      }
+    });
+  });
+
   describe('ordering regressions', () => {
     it('extractIdevicesFromYjs uses page order instead of navigation index', () => {
       const makeYMap = (data) => ({

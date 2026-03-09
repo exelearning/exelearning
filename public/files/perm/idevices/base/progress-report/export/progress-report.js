@@ -64,6 +64,10 @@ var $eXeInforme = {
                 $eXeInforme.applyTypeShow(mOption.typeshow, idx);
             })
             .catch(() => {
+                if ($eXeInforme._hasPagesMetadata()) {
+                    $eXeInforme.loadFromDom(mOption, idx);
+                    return;
+                }
                 const $msg = $(`#informeNotLocal-${idx}`);
                 if ($msg.length) {
                     $msg.show();
@@ -226,7 +230,215 @@ var $eXeInforme = {
     isPreviewMode: function () {
         const hasExePreview = $('body').hasClass('exe-preview');
         const hasPreview = $('body').hasClass('preview');
-        return hasExePreview || hasPreview;
+        const isViewerPath = /\/viewer\//i.test(window.location.pathname);
+        return hasExePreview || hasPreview || isViewerPath;
+    },
+
+    /**
+     * Returns true when pages metadata is available for DOM extraction.
+     * Covers both the data-pages attribute path and the window.exeSearchData path
+     * (SW preview opened in a new tab), so all callers use a single consistent check.
+     */
+    _hasPagesMetadata: function () {
+        const rawPages = $('#exe-client-search').attr('data-pages');
+        if (rawPages && rawPages.length > 0) return true;
+        return !!(typeof window !== 'undefined' && window.exeSearchData);
+    },
+
+    /**
+     * Extract iDevices from #exe-client-search[data-pages] (export/preview metadata).
+     * This source already includes the complete course map, even when a single page is rendered.
+     */
+    extractIdevicesFromPagesData: function () {
+        const items = [];
+        // In SW preview opened in a new tab, data can come from search_index.js
+        // as window.exeSearchData instead of the data-pages attribute.
+        const rawPages = $('#exe-client-search').attr('data-pages');
+        const globalPages =
+            typeof window !== 'undefined' && window.exeSearchData
+                ? window.exeSearchData
+                : null;
+
+        if (!rawPages && !globalPages) return items;
+
+        let pagesMap;
+        try {
+            pagesMap = rawPages ? JSON.parse(rawPages) : globalPages;
+        } catch (_) {
+            // If parsing data-pages fails, still try exeSearchData object.
+            if (!globalPages || typeof globalPages !== 'object') {
+                return items;
+            }
+            pagesMap = globalPages;
+        }
+
+        const pageEntries = Object.entries(pagesMap || {});
+        pageEntries.sort(([, a], [, b]) => {
+            const aOrder = Number(a?.order);
+            const bOrder = Number(b?.order);
+            if (Number.isFinite(aOrder) && Number.isFinite(bOrder)) {
+                return aOrder - bOrder;
+            }
+            return 0;
+        });
+
+        pageEntries.forEach(([pageId, page], pageIdx) => {
+            const pageName = page?.name || 'Page ' + (pageIdx + 1);
+            const blocks = page?.blocks || {};
+            const blockEntries = Object.entries(blocks);
+
+            if (blockEntries.length === 0) {
+                items.push({
+                    odePageId: pageId,
+                    odeParentPageId: null,
+                    pageName: pageName,
+                    navId: pageId,
+                    ode_nav_structure_sync_id: pageId,
+                    ode_session_id: 'preview',
+                    ode_nav_structure_sync_order: pageIdx + 1,
+                    navIsActive: 1,
+                    componentId: null,
+                    htmlViewer: '',
+                    jsonProperties: null,
+                    ode_idevice_id: null,
+                    odeIdeviceTypeName: null,
+                    ode_pag_structure_sync_id: null,
+                    componentSessionId: 'preview',
+                    componentPageId: pageId,
+                    ode_block_id: null,
+                    ode_components_sync_order: 0,
+                    componentIsActive: 1,
+                    blockName: '',
+                    blockOrder: 0,
+                });
+                return;
+            }
+
+            blockEntries.forEach(([blockId, block], blockIdx) => {
+                const blockName = block?.name || '';
+                const blockOrder = Number(block?.order);
+                const resolvedBlockOrder = Number.isFinite(blockOrder)
+                    ? blockOrder
+                    : blockIdx;
+                const idevices = block?.idevices || {};
+                const ideviceEntries = Object.entries(idevices);
+
+                if (ideviceEntries.length === 0) {
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: null,
+                        pageName: pageName,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: 'preview',
+                        ode_nav_structure_sync_order: pageIdx + 1,
+                        navIsActive: 1,
+                        componentId: null,
+                        htmlViewer: '',
+                        jsonProperties: null,
+                        ode_idevice_id: null,
+                        odeIdeviceTypeName: null,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: 'preview',
+                        componentPageId: pageId,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: 0,
+                        componentIsActive: 1,
+                        blockName: blockName,
+                        blockOrder: resolvedBlockOrder,
+                    });
+                    return;
+                }
+
+                ideviceEntries.forEach(([ideviceId, idevice], ideviceIdx) => {
+                    const ideviceOrder = Number(idevice?.order);
+                    const resolvedIdeviceOrder = Number.isFinite(ideviceOrder)
+                        ? ideviceOrder
+                        : ideviceIdx;
+
+                    // Try to recover the iDevice type from the rendered HTML snippet.
+                    // The attribute data-idevice-type is present on the root article of every iDevice.
+                    const typeMatch = (idevice?.htmlView || '').match(
+                        /data-idevice-type="([^"]+)"/
+                    );
+                    const odeIdeviceTypeName =
+                        (typeMatch && typeMatch[1]) || idevice?.type || '';
+
+                    items.push({
+                        odePageId: pageId,
+                        odeParentPageId: null,
+                        pageName: pageName,
+                        navId: pageId,
+                        ode_nav_structure_sync_id: pageId,
+                        ode_session_id: 'preview',
+                        ode_nav_structure_sync_order: pageIdx + 1,
+                        navIsActive: 1,
+                        componentId: ideviceId,
+                        htmlViewer: idevice?.htmlView || '',
+                        jsonProperties: idevice?.jsonProperties || null,
+                        ode_idevice_id: ideviceId,
+                        odeIdeviceTypeName: odeIdeviceTypeName,
+                        ode_pag_structure_sync_id: blockId,
+                        componentSessionId: 'preview',
+                        componentPageId: pageId,
+                        ode_block_id: blockId,
+                        ode_components_sync_order: resolvedIdeviceOrder,
+                        componentIsActive: 1,
+                        blockName: blockName,
+                        blockOrder: resolvedBlockOrder,
+                    });
+                });
+            });
+        });
+
+        return items;
+    },
+
+    /**
+     * Extract iDevices from parent workarea Yjs bridge when running inside preview iframe.
+     * This provides the full project structure even if the iframe only renders one page.
+     */
+    extractIdevicesFromParentYjs: function () {
+        try {
+            if (typeof window === 'undefined') return [];
+
+            // Order matters:
+            // 1) current window (embedded preview),
+            // 2) parent iframe host,
+            // 3) opener tab (preview-extract-button new tab).
+            const hostWindows = [window, window.parent, window.opener].filter(
+                (host, index, array) => {
+                    if (!host) return false;
+                    return array.indexOf(host) === index;
+                }
+            );
+
+            for (let i = 0; i < hostWindows.length; i++) {
+                const host = hostWindows[i];
+                try {
+                    const hostProject = host?.eXeLearning?.app?.project || null;
+                    if (!hostProject) continue;
+
+                    const yjsBridge = hostProject._yjsBridge;
+                    if (!yjsBridge || !yjsBridge.documentManager) continue;
+
+                    const sessionId = hostProject.odeSession || 'preview';
+                    const items = $eXeInforme.extractIdevicesFromYjs(
+                        yjsBridge,
+                        sessionId
+                    );
+                    if (Array.isArray(items) && items.length > 0) {
+                        return items;
+                    }
+                } catch (_) {
+                    // Cross-origin or inaccessible host window. Try next one.
+                }
+            }
+
+            return [];
+        } catch (_) {
+            return [];
+        }
     },
 
     /**
@@ -234,13 +446,51 @@ var $eXeInforme = {
      * The preview HTML contains all pages as <article class="spa-page"> with idevice_node articles inside
      */
     extractIdevicesFromDom: function () {
+        const fromParentYjs = $eXeInforme.extractIdevicesFromParentYjs();
+        if (Array.isArray(fromParentYjs) && fromParentYjs.length > 0) {
+            return fromParentYjs;
+        }
+
+        const fromPagesData = $eXeInforme.extractIdevicesFromPagesData();
+        if (Array.isArray(fromPagesData) && fromPagesData.length > 0) {
+            return fromPagesData;
+        }
+
         const items = [];
-        const $pages = $('article.spa-page');
+        let $pages = $('article.spa-page');
+        if ($pages.length === 0) {
+            $pages = $('main.page');
+        }
+        if ($pages.length === 0) {
+            // Match only elements whose ID starts with "page-" to avoid false positives
+            // with generic layout containers (e.g. <main id="wrapper">).
+            $pages = $('article[id^="page-"], main[id^="page-"]');
+        }
+
+        // Only use body's data-page-id as fallback in single-page exports where the
+        // page container element may lack its own id. For multi-page SPA exports each
+        // article already carries its own id, so reusing body's value would produce
+        // duplicate page IDs across iterations.
+        const bodyPageId = $pages.length === 1 ? ($('body').attr('data-page-id') || '') : '';
 
         $pages.each(function (pageIdx) {
             const $page = $(this);
-            const pageId = ($page.attr('id') || '').replace('page-', '') || 'page-' + pageIdx;
-            const pageTitle = $page.attr('data-page-title') || $page.find('.page-header-spa h1').text() || 'Page ' + (pageIdx + 1);
+            const rawPageId =
+                $page.attr('data-page-id') ||
+                $page.attr('id') ||
+                bodyPageId ||
+                '';
+            const pageId =
+                rawPageId
+                    .replace(/^page-content-/, '')
+                    .replace(/^page-/, '') ||
+                'page-' + pageIdx;
+            const pageTitle =
+                $page.attr('data-page-title') ||
+                $page.find('.page-header-spa h1').text() ||
+                $page.find('.page-title').first().text() ||
+                $('h2.page-title').first().text() ||
+                'Page ' + (pageIdx + 1);
 
             // Find parent from navigation links
             const $navLink = $('a[data-page-id="' + pageId + '"]');
@@ -266,7 +516,7 @@ var $eXeInforme = {
                     navId: pageId,
                     ode_nav_structure_sync_id: pageId,
                     ode_session_id: 'preview',
-                    ode_nav_structure_sync_order: pageIdx,
+                    ode_nav_structure_sync_order: pageIdx + 1,
                     navIsActive: 1,
                     componentId: null,
                     htmlViewer: '',
@@ -327,7 +577,7 @@ var $eXeInforme = {
                         navId: pageId,
                         ode_nav_structure_sync_id: pageId,
                         ode_session_id: 'preview',
-                        ode_nav_structure_sync_order: pageIdx,
+                        ode_nav_structure_sync_order: pageIdx + 1,
                         navIsActive: 1,
                         componentId: componentId,
                         htmlViewer: htmlViewer,
@@ -388,11 +638,11 @@ var $eXeInforme = {
             if (i === 0) {
                 $eXeInforme.addEvents();
             }
-            
-            if (eXe.app.isInExe()) {
-                $eXeInforme.getIdevicesBySessionId(true, mOption, i);
-            } else if ($eXeInforme.isPreviewMode()) {
+
+            if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
                 $eXeInforme.loadFromDom(mOption, i);
+            } else if (eXe.app.isInExe()) {
+                $eXeInforme.getIdevicesBySessionId(true, mOption, i);
             } else {
                 $eXeInforme.loadFromContentXml(mOption, i);
             }
@@ -1481,10 +1731,10 @@ var $eXeInforme = {
                     'dataEvaluation-' + mOption.evaluationID
                 );
                 mOption.dataIDevices = [];
-                if (eXe.app.isInExe()) {
-                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
-                } else if ($eXeInforme.isPreviewMode()) {
+                if ($eXeInforme._hasPagesMetadata() || $eXeInforme.isPreviewMode()) {
                     $eXeInforme.loadFromDom(mOption, idx);
+                } else if (eXe.app.isInExe()) {
+                    $eXeInforme.getIdevicesBySessionId(false, mOption, idx);
                 } else {
                     $eXeInforme.loadFromContentXml(mOption, idx);
                 }
