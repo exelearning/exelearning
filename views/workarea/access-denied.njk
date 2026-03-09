@@ -6,7 +6,7 @@
     <style>.error-page-logo{top: -7%;}</style>
 {% endblock %}
 
-{% block title %}{{ 'error.access_denied' | trans }} - eXeLearning{% endblock %}
+{% block title %}{{ 'error.access_denied' | trans }} - {{ appName or 'eXeLearning' }}{% endblock %}
 
 {% block body %}
 <section class="error-page bg-white vh-100 d-flex justify-content-center align-items-center flex-column" id="access-denied-tpl">

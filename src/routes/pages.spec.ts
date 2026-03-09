@@ -127,6 +127,8 @@ function createMockFileHelper(): PagesFileHelperDeps {
         createSessionDirectories: async (_sessionId: string) => {
             // Do nothing in tests
         },
+        fileExists: async (_filePath: string) => false,
+        readFile: async (_filePath: string) => Buffer.from(''),
     };
 }
 
@@ -159,6 +161,7 @@ function createMockSettings(): PagesSettingsDeps {
             return methods;
         },
         getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
+        getSettingString: async (_db: any, _key: string, fallback: string) => fallback,
     };
 }
 
@@ -2432,6 +2435,109 @@ describe('Pages Routes', () => {
             );
 
             expect(templateData.config.isOfflineInstallation).toBe(true);
+        });
+    });
+
+    describe('GET /customization/favicon', () => {
+        it('should redirect to default favicon when no custom favicon is configured', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location')).toContain('/favicon.ico');
+        });
+
+        it('should redirect to default favicon when configured file does not exist on disk', async () => {
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return 'favicon.png';
+                        return fallback;
+                    },
+                },
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => false,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(302);
+            expect(res.headers.get('location')).toContain('/favicon.ico');
+        });
+
+        it('should serve the custom favicon file when it exists', async () => {
+            const faviconContent = Buffer.from('fake-png-data');
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return 'favicon.png';
+                        return fallback;
+                    },
+                },
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => true,
+                    readFile: async (_path: string) => faviconContent,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('image/png');
+        });
+
+        it('should return 400 for path traversal in favicon filename', async () => {
+            const customDeps = {
+                ...mockDeps,
+                settings: {
+                    ...createMockSettings(),
+                    getSettingString: async (_db: any, key: string, fallback: string) => {
+                        if (key === 'APP_FAVICON_PATH') return '../etc/passwd';
+                        return fallback;
+                    },
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/favicon'));
+
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe('GET /customization/assets/:filename', () => {
+        it('should return 404 when asset file does not exist', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/assets/image.png'));
+
+            expect(res.status).toBe(404);
+        });
+
+        it('should serve the asset file when it exists', async () => {
+            const fileContent = Buffer.from('image-data');
+            const customDeps = {
+                ...mockDeps,
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (_path: string) => true,
+                    readFile: async (_path: string) => fileContent,
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/assets/image.png'));
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('content-type')).toBe('image/png');
+        });
+
+        it('should return 400 for path traversal attempt', async () => {
+            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
+
+            expect(res.status).toBe(400);
         });
     });
 
