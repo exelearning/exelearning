@@ -287,11 +287,7 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         custom_head_html_example: trans('Example', {}, locale),
         app_identity_label: trans('App Identity', {}, locale),
         app_name_label: trans('Application name', {}, locale),
-        app_name_help: trans(
-            'Page title shown in the browser tab. Leave empty to use "eXeLearning".',
-            {},
-            locale,
-        ),
+        app_name_help: trans('Page title shown in the browser tab. Leave empty to use "eXeLearning".', {}, locale),
         app_favicon_label: trans('Favicon', {}, locale),
         app_favicon_help: trans(
             'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.',
