@@ -1094,7 +1094,6 @@ describe('NavbarFile', () => {
         it('should use static newProject flow when running in static web mode', async () => {
             eXeLearning.app.capabilities = { storage: { remote: false } };
             window.__EXE_STATIC_MODE__ = true;
-            window.electronAPI = null;
             window.newProject = vi.fn();
             global.fetch = vi.fn();
 
@@ -1104,6 +1103,18 @@ describe('NavbarFile', () => {
             expect(global.fetch).not.toHaveBeenCalled();
             expect(eXeLearning.app.api.postCloseSession).not.toHaveBeenCalled();
             expect(window.onbeforeunload).toBeNull();
+        });
+
+        it('should use static newProject flow in Electron mode', async () => {
+            eXeLearning.app.capabilities = { storage: { remote: false } };
+            window.electronAPI = { save: vi.fn() };
+            window.newProject = vi.fn();
+            global.fetch = vi.fn();
+
+            await navbarFile.createSession();
+
+            expect(window.newProject).toHaveBeenCalled();
+            expect(global.fetch).not.toHaveBeenCalled();
         });
 
         it('should use transitionToProject when available', async () => {

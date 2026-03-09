@@ -317,17 +317,15 @@ export default class NavbarFile {
     }
 
     /**
-     * Static web mode (PWA/browser) where no backend session APIs are available.
-     * Electron desktop is excluded.
+     * Static mode (PWA/browser or Electron) where no backend session APIs are available.
      *
      * @returns {boolean}
      */
-    isStaticModeWithoutElectron() {
+    isStaticMode() {
         const capabilities = eXeLearning?.app?.capabilities;
         return (
-            !window.electronAPI &&
-            (window.__EXE_STATIC_MODE__ === true ||
-                capabilities?.storage?.remote === false)
+            window.__EXE_STATIC_MODE__ === true ||
+            capabilities?.storage?.remote === false
         );
     }
 
@@ -1210,7 +1208,7 @@ export default class NavbarFile {
      */
     async createSession() {
         if (
-            this.isStaticModeWithoutElectron() &&
+            this.isStaticMode() &&
             typeof window.newProject === 'function'
         ) {
             window.UnsavedChangesHelper?.removeBeforeUnloadHandler();

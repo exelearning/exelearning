@@ -3316,5 +3316,51 @@ describe('ProjectManager', () => {
             const body = JSON.parse(global.fetch.mock.calls[0][1].body);
             expect(body.title).toBe('MyProject');
         });
+
+        describe('static mode', () => {
+            beforeEach(() => {
+                window.eXeLearning.app = { capabilities: { storage: { remote: false } } };
+                projectManager.app = window.eXeLearning.app;
+                window.location.reload = vi.fn();
+            });
+
+            it('new action: reloads page without server call', async () => {
+                await projectManager.transitionToProject({ action: 'new' });
+
+                expect(global.fetch).not.toHaveBeenCalled();
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('import action: stores file, sets sessionStorage flag, and reloads', async () => {
+                const file = new File(['content'], 'course.elpx');
+                await projectManager.transitionToProject({ action: 'import', file });
+
+                expect(global.fetch).not.toHaveBeenCalled();
+                expect(sessionStorage.getItem('exe-pending-import')).toBe('1');
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('open action: sets projectId and reloads', async () => {
+                await projectManager.transitionToProject({ action: 'open', projectUuid: 'existing-uuid' });
+
+                expect(window.eXeLearning.projectId).toBe('existing-uuid');
+                expect(window.location.reload).toHaveBeenCalled();
+            });
+
+            it('uses exportToElpxViaYjs for save instead of server saveManager', async () => {
+                const mockExport = vi.fn().mockResolvedValue({ saved: true });
+                const mockServerSave = vi.fn();
+                projectManager.exportToElpxViaYjs = mockExport;
+                projectManager._yjsBridge = {
+                    saveManager: { save: mockServerSave },
+                    documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+                };
+
+                await projectManager.transitionToProject({ action: 'new', skipSave: false });
+
+                expect(mockExport).toHaveBeenCalled();
+                expect(mockServerSave).not.toHaveBeenCalled();
+            });
+        });
     });
 });

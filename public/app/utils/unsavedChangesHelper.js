@@ -265,9 +265,4 @@ const UnsavedChangesHelper = {
   },
 };
 
-// Export for use
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = UnsavedChangesHelper;
-} else {
-  window.UnsavedChangesHelper = UnsavedChangesHelper;
-}
+export default UnsavedChangesHelper;
