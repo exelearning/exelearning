@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v4.0.0-beta2 – 2026-03-04
+## v4.0.0-beta2 – 2026-03-11
 
 ### Added
 
@@ -8,12 +8,16 @@
 - Classify iDevice: increase max categories from 4 to 9
 - Download source file iDevice: auto-update Project Properties
 - Magnifier iDevice: add image authorship and alt text field
+- Progress report iDevice: improved mobile responsiveness
+- Scrambled list iDevice: add configurable attempts number
 - Visual distinction (temporary border) for Teacher Mode within the application
 - Zen and Nova styles: visual distinction for Teacher Mode
 - Accessibility improvement: underlined links
 - File Manager: use modal dialog instead of native `window.prompt()`
 - CPU compatibility check for the Bun runtime with warning for incompatible CPUs
 - Clean Yjs IndexedDB on tab close
+- Known Issues documentation file
+- Customization options in the admin panel: app title, favicon, head html and assets
 - Strings revision
 - Complete Spanish translation
 
@@ -24,6 +28,8 @@
 - Desktop no longer closes silently with unsaved changes
 - Boxes missing `.box-content` within eXe
 - `common_i18n.js` not generated based on the package language
+- CapsLock key no longer triggers multi-selection
+- Untranslated page counter
 - Untranslated Previous/Next navigation buttons
 - TinyMCE media type selection issue
 - TinyMCE deleting part of link titles
@@ -37,11 +43,20 @@
 - Accessibility Toolbar presentation issues
 - Embedded PDF and document links in preview mode
 - Pinned preview: style presentation issues
+- Preview in new window stopping after ~1 minute (Service Worker content loss)
 - Game iDevices: mobile drag-and-drop issues and small screen visibility
+- Progress report iDevice: data refresh and page order sync
+- Select Media and Sort iDevices: media selection issues in cloned cards
 - Page scroll position after saving an iDevice
 - File Manager preview issue in WAF-protected environments
 - Race condition causing Image Optimizer to get stuck in "Queued"
+- Traversal vulnerability (Zip Slip) in the ZIP extraction logic
 - Assets exported with unknown/unknown_N filenames
+- Optimize asset check to use a single bulk database query
+- Constraint error in PostgreSQL when syncing builtin themes
+- MySQL/MariaDB syntax error in theme upsert
+- Browser versions: use full reloads for online project transitions to avoid state collisions
+- Desktop versions: make Save always prompt in Electron and remove remembered-path overwrites
 - Typo in Windows build package
 - Homebrew push on release
 - CI/CD pipelines for forks: skip signing and external publishing when secrets are unavailable
@@ -50,6 +65,9 @@
 
 - Bun upgraded to 1.3.10
 - Updated multiple dependencies and devDependencies to their latest versions, including `dotenv`, `elysia`, `fast-xml-parser`, `ioredis`, `jsdom`, `kysely`, `lib0`, `mermaid`, `mysql2`, and development tools such as `@babel/core`, `electron`, and `esbuild`
+- actions/download-artifact: 6 → 8
+- actions/upload-artifact: 4 → 7
+- docker/login-action: 3 → 4
 
 ### Removed
 
