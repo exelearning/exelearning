@@ -165,22 +165,14 @@ describe('modalTemplateSelection', () => {
       expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalled();
     });
 
-    it('should clear saved path when electron API is available', async () => {
-      vi.useFakeTimers();
+    it('should clear __originalElpPath when loading a template', async () => {
       window.__originalElpPath = '/tmp/original.elpx';
       window.__currentProjectId = 'project-1';
-      window.electronAPI = {
-        clearSavedPath: vi.fn().mockResolvedValue(true),
-      };
 
       const template = { name: 'T1', path: 'P1' };
-      const loadPromise = modal.loadTemplate(template);
-      await vi.runAllTimersAsync();
-      await loadPromise;
+      await modal.loadTemplate(template);
 
       expect(window.__originalElpPath).toBeUndefined();
-      expect(window.electronAPI.clearSavedPath).toHaveBeenCalledWith('project-1');
-      vi.useRealTimers();
     });
 
     it('should show alert when fetch fails', async () => {

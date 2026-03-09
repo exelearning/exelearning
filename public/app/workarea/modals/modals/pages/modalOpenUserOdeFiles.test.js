@@ -84,7 +84,6 @@ describe('modalOpenUserOdeFiles', () => {
           odeVersion: '1',
           odeId: 'ode-1',
           openLoad: vi.fn().mockResolvedValue(),
-          reinitializeWithProject: vi.fn().mockResolvedValue(),
           importElpDirectly: vi.fn().mockResolvedValue({}),
           refreshAfterDirectImport: vi.fn().mockResolvedValue(),
           idevices: {
@@ -1448,36 +1447,8 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith({
         title: 'Open project',
         forceOpen: 'Open without saving',
-        openYjsProject: true,
-        projectUuid: 'proj-1',
+        pendingAction: { action: 'open', projectUuid: 'proj-1' },
       });
-    });
-  });
-
-  describe('openUserOdeFilesWithOpenSession', () => {
-    it('should load project when response OK', async () => {
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
-      });
-      const loadSpy = vi.spyOn(modal, 'loadOdeTheme');
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      expect(window.eXeLearning.app.project.odeSession).toBe('s1');
-      expect(window.eXeLearning.app.project.openLoad).toHaveBeenCalled();
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('should show error when response fails', async () => {
-      vi.useFakeTimers();
-      window.eXeLearning.app.api.postSelectedOdeFile.mockResolvedValueOnce({
-        responseMessage: 'NOPE',
-      });
-      await modal.openUserOdeFilesWithOpenSession('proj-1');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
     });
   });
 
@@ -1575,17 +1546,16 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).not.toHaveBeenCalled();
     });
 
-    it('should process in-memory import and refresh UI', async () => {
-      window.history.pushState = vi.fn();
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: vi.fn().mockResolvedValue(JSON.stringify({ uuid: 'proj-1' })),
-      });
+    it('should use transitionToProject for import in online mode', async () => {
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
       const file = new File(['x'], 'sample.elp', { type: 'application/zip' });
       await modal.largeFilesUpload(file);
-      expect(window.eXeLearning.app.project.reinitializeWithProject).toHaveBeenCalledWith('proj-1', { skipSyncWait: true });
-      expect(window.eXeLearning.app.project.importElpDirectly).toHaveBeenCalled();
-      expect(window.eXeLearning.app.project.refreshAfterDirectImport).toHaveBeenCalled();
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: file,
+        skipSave: true,
+      });
     });
 
     it('should upload and open properties file', async () => {
@@ -1673,7 +1643,7 @@ describe('modalOpenUserOdeFiles', () => {
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
 
-    it('should open directly when no unsaved changes', async () => {
+    it('should use transitionToProject when no unsaved changes and originalFile available', async () => {
       window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
         responseMessage: 'ERROR',
       });
@@ -1683,9 +1653,15 @@ describe('modalOpenUserOdeFiles', () => {
           hasUnsavedChanges: vi.fn(() => false),
         },
       };
-      const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
-      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
-      expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
+      const originalFile = new File(['x'], 'a.elp');
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false, null, false, originalFile);
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: originalFile,
+        skipSave: true,
+      });
     });
 
     it('should show session logout when unsaved changes exist', async () => {
@@ -1701,35 +1677,39 @@ describe('modalOpenUserOdeFiles', () => {
       await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
       expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalled();
     });
-  });
 
-  describe('openUserLocalOdeFilesWithOpenSession', () => {
-    it('should redirect on Yjs response', async () => {
-      Object.defineProperty(window, 'location', {
-        value: { href: '' },
-        writable: true,
-      });
-      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
-        responseMessage: 'OK',
-        odeSessionId: 's1',
-        odeVersionId: 'v1',
-        odeId: 'o1',
-        projectUuid: 'proj-1',
-        elpImportPath: '/tmp/a.elp',
-      });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      expect(window.location.href).toContain('/workarea?project=proj-1&import=');
-    });
-
-    it('should show error on failure', async () => {
-      vi.useFakeTimers();
+    it('should show session logout with pendingAction when unsaved changes exist and originalFile available', async () => {
       window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
         responseMessage: 'ERROR',
       });
-      await modal.openUserLocalOdeFilesWithOpenSession('a.elp', '/tmp/a.elp');
-      vi.advanceTimersByTime(modal.timeMax);
-      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalled();
-      vi.useRealTimers();
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => true),
+        },
+      };
+      const originalFile = new File(['x'], 'course.elp');
+      await modal.openLocalElpFile('course.elp', '/tmp/course.elp', false, null, false, originalFile);
+      expect(window.eXeLearning.app.modals.sessionlogout.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pendingAction: { action: 'import', file: originalFile },
+        }),
+      );
+    });
+
+    it('should fall back to openUserLocalOdeFilesWithOpenSession when no originalFile and no transitionToProject', async () => {
+      window.eXeLearning.app.api.postLocalOdeFile.mockResolvedValueOnce({
+        responseMessage: 'ERROR',
+      });
+      window.eXeLearning.app.project._yjsBridge = {
+        documentManager: {
+          hasUnsavedChanges: vi.fn(() => false),
+        },
+      };
+      // Remove transitionToProject so else branch is hit
+      delete window.eXeLearning.app.project.transitionToProject;
+      const openSpy = vi.spyOn(modal, 'openUserLocalOdeFilesWithOpenSession').mockResolvedValue();
+      await modal.openLocalElpFile('a.elp', '/tmp/a.elp', false);
+      expect(openSpy).toHaveBeenCalledWith('a.elp', '/tmp/a.elp');
     });
   });
 
@@ -1873,56 +1853,40 @@ describe('modalOpenUserOdeFiles', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should skip static mode when capabilities is undefined and use direct processing', async () => {
+    it('should skip static mode when capabilities is undefined and use transitionToProject', async () => {
       delete window.eXeLearning.app.capabilities;
 
-      // Mock fetch for direct in-memory processing path
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
-      });
-      window.fetch = mockFetch;
-
-      // Mock project reinitialize for direct processing
-      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
-      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
-      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use fetch for direct processing, not legacy API
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/project/create-quick'),
-        expect.any(Object)
-      );
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
     });
 
-    it('should skip static mode when storage.remote is true and use direct processing', async () => {
+    it('should skip static mode when storage.remote is true and use transitionToProject', async () => {
       window.eXeLearning.app.capabilities = { storage: { remote: true } };
 
-      // Mock fetch for direct in-memory processing path
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        text: () => Promise.resolve(JSON.stringify({ uuid: 'test-uuid' })),
-      });
-      window.fetch = mockFetch;
-
-      // Mock project reinitialize for direct processing
-      window.eXeLearning.app.project.reinitializeWithProject = vi.fn().mockResolvedValue();
-      window.eXeLearning.app.project.importElpDirectly = vi.fn().mockResolvedValue({});
-      window.eXeLearning.app.project.refreshAfterDirectImport = vi.fn().mockResolvedValue();
+      const transitionSpy = vi.fn().mockResolvedValue();
+      window.eXeLearning.app.project.transitionToProject = transitionSpy;
 
       const mockFile = new File(['test'], 'test.elpx', { type: 'application/octet-stream' });
 
       await modal.largeFilesUpload(mockFile, false, false, false, false);
 
-      // Should use fetch for direct processing, not static mode
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/project/create-quick'),
-        expect.any(Object)
-      );
+      // Should use transitionToProject for import, not static mode
+      expect(transitionSpy).toHaveBeenCalledWith({
+        action: 'import',
+        file: mockFile,
+        skipSave: true,
+      });
     });
   });
 });

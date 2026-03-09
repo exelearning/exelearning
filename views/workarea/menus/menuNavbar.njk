@@ -29,7 +29,6 @@
                     {% endif %}
                     <li class="dropdown-divider exe-online"></li>
                     <li class="exe-online"><a id="navbar-button-save" class="dropdown-item" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
-                    <li class="d-none"><a id="navbar-button-save-as" class="dropdown-item exe-online" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span>{{ t.save_as or 'Save as' }}</a></li>
                     <li class="dropdown dropend exe-online">
                         <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAs" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.download_as or 'Download as...' }}</a>
                         <ul class="dropdown-menu" aria-labelledby="dropdownExportAs">
@@ -50,7 +49,6 @@
                         <li class="d-none"><a id="navbar-button-import-elp" class="dropdown-item" href="#"><span class="small-icon import-icon-green"></span> {{ t.import_elpx or 'Import (.elpx…)' }}</a></li>
                         <li class="dropdown-divider"></li>
                         <li><a class="dropdown-item" id="navbar-button-save-offline" href="#" data-shortcut="Mod+S" aria-keyshortcuts="Control+S Meta+S"><span class="small-icon save-icon-green"></span> {{ t.save or 'Save' }}</a></li>
-                        <li><a class="dropdown-item" id="navbar-button-save-as-offline" href="#" data-shortcut="Mod+Shift+S" aria-keyshortcuts="Control+Shift+S Meta+Shift+S"><span class="small-icon save-icon"></span> {{ t.save_as or 'Save as' }}</a></li>
                         <li class="dropdown dropend">
                             <a class="dropdown-item dropdown-toggle" href="#" id="dropdownExportAsOffline" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="small-icon download-icon-green"></span> {{ t.export_as or 'Export as...' }}</a>
                             <ul class="dropdown-menu" aria-labelledby="dropdownExportAsOffline">

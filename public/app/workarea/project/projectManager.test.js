@@ -31,7 +31,19 @@ vi.mock('./structure/structureEngine.js', () => {
     };
 });
 
-import ProjectManager from './projectManager.js';
+vi.mock('../interface/importProgress.js', () => {
+    return {
+        default: vi.fn().mockImplementation(function () {
+            return {
+                show: vi.fn(),
+                hide: vi.fn(),
+                update: vi.fn(),
+            };
+        }),
+    };
+});
+
+import ProjectManager, { storePendingImport, retrievePendingImport } from './projectManager.js';
 
 describe('ProjectManager', () => {
     let projectManager;
@@ -968,110 +980,6 @@ describe('ProjectManager', () => {
             window.YjsModules = null;
             await projectManager.initializeYjs();
             expect(projectManager._yjsEnabled).toBe(false);
-        });
-    });
-
-    describe('reinitializeWithProject', () => {
-        it('throws error when YjsProjectBridge not available', async () => {
-            window.YjsModules = {};
-            await expect(
-                projectManager.reinitializeWithProject('new-uuid'),
-            ).rejects.toThrow('YjsProjectBridge not available');
-        });
-
-        it('disconnects existing bridge if present', async () => {
-            const mockDisconnect = vi.fn();
-            projectManager._yjsBridge = { disconnect: mockDisconnect };
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('new-uuid');
-            } catch {
-                // Expected to fail, we just want to test disconnect was called
-            }
-
-            expect(mockDisconnect).toHaveBeenCalled();
-            expect(projectManager._yjsBridge).toBe(null);
-        });
-
-        it('clears Yjs bindings', async () => {
-            projectManager._yjsBindings.set('test', 'binding');
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('new-uuid');
-            } catch {
-                // Expected to fail
-            }
-
-            expect(projectManager._yjsBindings.size).toBe(0);
-        });
-
-        it('updates project IDs before bridge creation', async () => {
-            window.YjsModules = {};
-
-            try {
-                await projectManager.reinitializeWithProject('my-new-project');
-            } catch {
-                // Expected to fail
-            }
-
-            expect(projectManager.yjsProjectId).toBe('my-new-project');
-            expect(projectManager.odeId).toBe('my-new-project');
-        });
-
-        it('passes skipSyncWait option to bridge initialize', async () => {
-            const mockInitialize = vi.fn().mockResolvedValue();
-            // Create a proper constructor class for mocking
-            class MockBridge {
-                constructor() {
-                    this.initialize = mockInitialize;
-                }
-            }
-            window.YjsModules = { YjsProjectBridge: MockBridge };
-            // Mock localStorage
-            const originalLocalStorage = global.localStorage;
-            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
-
-            await projectManager.reinitializeWithProject('test-uuid', {
-                skipSyncWait: true,
-            });
-
-            expect(mockInitialize).toHaveBeenCalledWith(
-                'test-uuid',
-                null, // authToken from localStorage.getItem mock
-                expect.objectContaining({
-                    skipSyncWait: true,
-                }),
-            );
-
-            global.localStorage = originalLocalStorage;
-        });
-
-        it('defaults skipSyncWait to false when not provided', async () => {
-            const mockInitialize = vi.fn().mockResolvedValue();
-            // Create a proper constructor class for mocking
-            class MockBridge {
-                constructor() {
-                    this.initialize = mockInitialize;
-                }
-            }
-            window.YjsModules = { YjsProjectBridge: MockBridge };
-            // Mock localStorage
-            const originalLocalStorage = global.localStorage;
-            global.localStorage = { getItem: vi.fn().mockReturnValue(null) };
-
-            await projectManager.reinitializeWithProject('test-uuid');
-
-            expect(mockInitialize).toHaveBeenCalledWith(
-                'test-uuid',
-                null, // authToken from localStorage.getItem mock
-                expect.objectContaining({
-                    skipSyncWait: false,
-                }),
-            );
-
-            global.localStorage = originalLocalStorage;
         });
     });
 
@@ -2972,6 +2880,441 @@ describe('ProjectManager', () => {
             mockApp.themes = null;
 
             await expect(projectManager.refreshAfterDirectImport()).resolves.not.toThrow();
+        });
+    });
+
+    // ===========================================
+    // storePendingImport / retrievePendingImport (IndexedDB)
+    // ===========================================
+
+    describe('storePendingImport and retrievePendingImport', () => {
+        let fakeDb;
+        let fakeStore;
+        let fakeTx;
+
+        /**
+         * Build a fake IndexedDB mock.
+         * For storePendingImport the tx.oncomplete fires right after transaction().
+         * For retrievePendingImport the get().onsuccess sets tx.oncomplete, so we
+         * need get().onsuccess to fire first, then tx.oncomplete after it.
+         *
+         * @param {Object} opts
+         * @param {Error}  [opts.openError]   - make indexedDB.open fail
+         * @param {Error}  [opts.txError]     - make tx.onerror fire
+         * @param {*}      [opts.getResult]   - value returned by store.get().result
+         * @param {boolean}[opts.getError]    - make get request fire onerror
+         */
+        function makeFakeIndexedDB({ openError, txError, getResult, getError } = {}) {
+            fakeTx = {
+                objectStore: null, // set below
+                oncomplete: null,
+                onerror: null,
+            };
+
+            fakeStore = {
+                put: vi.fn(),
+                delete: vi.fn(),
+                get: vi.fn(() => {
+                    const req = { result: getResult, onsuccess: null, onerror: null };
+                    Promise.resolve().then(() => {
+                        if (getError) {
+                            req.onerror?.();
+                        } else {
+                            req.onsuccess?.();
+                            // After onsuccess runs (which may set tx.oncomplete), fire it
+                            Promise.resolve().then(() => fakeTx.oncomplete?.());
+                        }
+                    });
+                    return req;
+                }),
+            };
+
+            fakeTx.objectStore = vi.fn(() => fakeStore);
+
+            fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => {
+                    if (txError) {
+                        Promise.resolve().then(() => {
+                            fakeTx.error = txError;
+                            fakeTx.onerror?.();
+                        });
+                    } else {
+                        // For storePendingImport: oncomplete is set synchronously after put(),
+                        // so we fire it on next microtick.
+                        Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    }
+                    return fakeTx;
+                }),
+                close: vi.fn(),
+            };
+
+            const fakeRequest = {
+                result: fakeDb,
+                onupgradeneeded: null,
+                onsuccess: null,
+                onerror: null,
+            };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    if (openError) {
+                        Promise.resolve().then(() => {
+                            fakeRequest.error = openError;
+                            fakeRequest.onerror?.();
+                        });
+                    } else {
+                        Promise.resolve().then(() => {
+                            fakeRequest.onupgradeneeded?.();
+                            fakeRequest.onsuccess?.();
+                        });
+                    }
+                    return fakeRequest;
+                }),
+            };
+        }
+
+        afterEach(() => {
+            delete global.indexedDB;
+        });
+
+        it('storePendingImport stores file bytes in IndexedDB', async () => {
+            makeFakeIndexedDB();
+            const file = new File(['hello'], 'test.elp');
+            await storePendingImport(file);
+            expect(fakeStore.put).toHaveBeenCalledWith(
+                expect.objectContaining({ name: 'test.elp', bytes: expect.any(ArrayBuffer) }),
+                'pending-import',
+            );
+        });
+
+        it('storePendingImport rejects on IDB open error', async () => {
+            makeFakeIndexedDB({ openError: new Error('IDB open failed') });
+            const file = new File(['x'], 'a.elp');
+            await expect(storePendingImport(file)).rejects.toThrow('IDB open failed');
+        });
+
+        it('storePendingImport rejects on transaction error', async () => {
+            makeFakeIndexedDB({ txError: new Error('tx error') });
+            const file = new File(['x'], 'b.elp');
+            await expect(storePendingImport(file)).rejects.toThrow('tx error');
+        });
+
+        it('retrievePendingImport returns File from stored data', async () => {
+            makeFakeIndexedDB({ getResult: { name: 'my.elp', bytes: new ArrayBuffer(4) } });
+            const file = await retrievePendingImport();
+            expect(file).toBeInstanceOf(File);
+            expect(file.name).toBe('my.elp');
+        });
+
+        it('retrievePendingImport returns null when no data exists', async () => {
+            makeFakeIndexedDB({ getResult: undefined });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+
+        it('retrievePendingImport returns null on IDB open error', async () => {
+            makeFakeIndexedDB({ openError: new Error('open fail') });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+
+        it('retrievePendingImport returns null on get request error', async () => {
+            makeFakeIndexedDB({ getError: true });
+            const result = await retrievePendingImport();
+            expect(result).toBeNull();
+        });
+    });
+
+    // ===========================================
+    // _processPendingImport
+    // ===========================================
+
+    describe('_processPendingImport', () => {
+        beforeEach(() => {
+            projectManager.importFromElpxViaYjs = vi.fn().mockResolvedValue({});
+            window.history.replaceState = vi.fn();
+        });
+
+        afterEach(() => {
+            delete global.indexedDB;
+        });
+
+        it('returns early when pendingImport param is not 1', async () => {
+            const params = new URLSearchParams('');
+            await projectManager._processPendingImport(params);
+            // importFromElpxViaYjs should NOT have been called
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+        });
+
+        /**
+         * Helper to set up a fake IndexedDB for retrievePendingImport.
+         * Handles the correct async sequencing: get.onsuccess → tx.oncomplete.
+         */
+        function setupFakeIDB(getResult) {
+            const fakeTx = { objectStore: null, oncomplete: null, onerror: null };
+            const fakeStore = {
+                get: vi.fn(() => {
+                    const req = { result: getResult, onsuccess: null, onerror: null };
+                    Promise.resolve().then(() => {
+                        req.onsuccess?.();
+                        Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    });
+                    return req;
+                }),
+                delete: vi.fn(),
+            };
+            fakeTx.objectStore = vi.fn(() => fakeStore);
+            const fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => fakeTx),
+                close: vi.fn(),
+            };
+            const fakeRequest = { result: fakeDb, onupgradeneeded: null, onsuccess: null, onerror: null };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    Promise.resolve().then(() => {
+                        fakeRequest.onupgradeneeded?.();
+                        fakeRequest.onsuccess?.();
+                    });
+                    return fakeRequest;
+                }),
+            };
+        }
+
+        it('cleans URL and returns when no file found in IndexedDB', async () => {
+            setupFakeIDB(undefined);
+
+            const params = new URLSearchParams('pendingImport=1');
+            await projectManager._processPendingImport(params);
+
+            expect(projectManager.importFromElpxViaYjs).not.toHaveBeenCalled();
+            expect(window.history.replaceState).toHaveBeenCalled();
+        });
+
+        it('imports file and cleans URL on success', async () => {
+            setupFakeIDB({ name: 'test.elp', bytes: new ArrayBuffer(8) });
+
+            const params = new URLSearchParams('pendingImport=1');
+            await projectManager._processPendingImport(params);
+
+            expect(projectManager.importFromElpxViaYjs).toHaveBeenCalledTimes(1);
+            expect(window.history.replaceState).toHaveBeenCalled();
+        });
+
+        it('hides progress on import error (finally block)', async () => {
+            projectManager.importFromElpxViaYjs = vi.fn().mockRejectedValue(new Error('import fail'));
+            setupFakeIDB({ name: 'fail.elp', bytes: new ArrayBuffer(4) });
+
+            const params = new URLSearchParams('pendingImport=1');
+            await expect(projectManager._processPendingImport(params)).rejects.toThrow('import fail');
+        });
+    });
+
+    // ===========================================
+    // _cleanPendingImportUrl
+    // ===========================================
+
+    describe('_cleanPendingImportUrl', () => {
+        let originalReplaceState;
+
+        beforeEach(() => {
+            originalReplaceState = window.history.replaceState;
+            window.history.replaceState = vi.fn();
+        });
+
+        afterEach(() => {
+            window.history.replaceState = originalReplaceState;
+        });
+
+        it('removes pendingImport and new params from URL', () => {
+            // Simulate location with params
+            Object.defineProperty(window, 'location', {
+                value: {
+                    ...window.location,
+                    search: '?project=abc&pendingImport=1&new=1',
+                    pathname: '/workarea',
+                },
+                writable: true,
+            });
+
+            projectManager._cleanPendingImportUrl();
+
+            expect(window.history.replaceState).toHaveBeenCalledWith(
+                {},
+                '',
+                expect.stringContaining('project=abc'),
+            );
+            const calledUrl = window.history.replaceState.mock.calls[0][2];
+            expect(calledUrl).not.toContain('pendingImport');
+            expect(calledUrl).not.toContain('new');
+        });
+
+        it('preserves project param', () => {
+            Object.defineProperty(window, 'location', {
+                value: {
+                    search: '?project=xyz&pendingImport=1',
+                    pathname: '/workarea',
+                },
+                writable: true,
+            });
+
+            projectManager._cleanPendingImportUrl();
+
+            const calledUrl = window.history.replaceState.mock.calls[0][2];
+            expect(calledUrl).toContain('project=xyz');
+        });
+    });
+
+    // ===========================================
+    // transitionToProject
+    // ===========================================
+
+    describe('transitionToProject', () => {
+        let originalFetch;
+
+        beforeEach(() => {
+            originalFetch = global.fetch;
+            // Default: successful API response
+            global.fetch = vi.fn().mockResolvedValue({
+                ok: true,
+                json: vi.fn().mockResolvedValue({ uuid: 'new-uuid-123' }),
+            });
+
+            window.eXeLearning = {
+                ...window.eXeLearning,
+                config: { basePath: '' },
+            };
+            window.UnsavedChangesHelper = {
+                removeBeforeUnloadHandler: vi.fn(),
+            };
+            window.onbeforeunload = vi.fn();
+
+            // Mock location
+            Object.defineProperty(window, 'location', {
+                value: { href: '', pathname: '/workarea', search: '' },
+                writable: true,
+            });
+
+            // IndexedDB mock for 'import' action
+            const fakeStore = { put: vi.fn() };
+            const fakeTx = { objectStore: vi.fn(() => fakeStore), oncomplete: null, onerror: null };
+            const fakeDb = {
+                objectStoreNames: { contains: vi.fn(() => true) },
+                createObjectStore: vi.fn(),
+                transaction: vi.fn(() => {
+                    Promise.resolve().then(() => fakeTx.oncomplete?.());
+                    return fakeTx;
+                }),
+                close: vi.fn(),
+            };
+            const fakeRequest = { result: fakeDb, onupgradeneeded: null, onsuccess: null, onerror: null };
+            global.indexedDB = {
+                open: vi.fn(() => {
+                    Promise.resolve().then(() => {
+                        fakeRequest.onupgradeneeded?.();
+                        fakeRequest.onsuccess?.();
+                    });
+                    return fakeRequest;
+                }),
+            };
+        });
+
+        afterEach(() => {
+            global.fetch = originalFetch;
+            delete global.indexedDB;
+        });
+
+        it('new action: creates project and redirects', async () => {
+            await projectManager.transitionToProject({ action: 'new' });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                '/api/project/create-quick',
+                expect.objectContaining({ method: 'POST' }),
+            );
+            expect(window.location.href).toBe('/workarea?project=new-uuid-123&new=1');
+        });
+
+        it('open action: redirects to workarea with project uuid', async () => {
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'proj-42' });
+
+            expect(window.location.href).toBe('/workarea?project=proj-42');
+        });
+
+        it('import action: stores file in IndexedDB and redirects', async () => {
+            const file = new File(['content'], 'course.elpx');
+            await projectManager.transitionToProject({ action: 'import', file });
+
+            expect(global.fetch).toHaveBeenCalledWith(
+                '/api/project/create-quick',
+                expect.objectContaining({ method: 'POST' }),
+            );
+            expect(window.location.href).toBe('/workarea?project=new-uuid-123&new=1&pendingImport=1');
+        });
+
+        it('saves current project when skipSave is false and has unsaved changes', async () => {
+            const mockSave = vi.fn().mockResolvedValue(true);
+            projectManager._yjsBridge = {
+                saveManager: { save: mockSave },
+                documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+            };
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p1' });
+
+            expect(mockSave).toHaveBeenCalled();
+        });
+
+        it('skips save when skipSave is true', async () => {
+            const mockSave = vi.fn();
+            projectManager._yjsBridge = {
+                saveManager: { save: mockSave },
+                documentManager: { hasUnsavedChanges: vi.fn(() => true) },
+            };
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p2', skipSave: true });
+
+            expect(mockSave).not.toHaveBeenCalled();
+        });
+
+        it('clears beforeunload handlers', async () => {
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p3' });
+
+            expect(window.UnsavedChangesHelper.removeBeforeUnloadHandler).toHaveBeenCalled();
+            expect(window.onbeforeunload).toBeNull();
+        });
+
+        it('throws when API returns non-ok response (new)', async () => {
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+
+            await expect(
+                projectManager.transitionToProject({ action: 'new' }),
+            ).rejects.toThrow('Failed to create project: 500');
+        });
+
+        it('throws when API returns non-ok response (import)', async () => {
+            global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 403 });
+            const file = new File(['x'], 'test.elp');
+
+            await expect(
+                projectManager.transitionToProject({ action: 'import', file }),
+            ).rejects.toThrow('Failed to create project: 403');
+        });
+
+        it('uses basePath from config', async () => {
+            window.eXeLearning.config.basePath = '/app';
+
+            await projectManager.transitionToProject({ action: 'open', projectUuid: 'p4' });
+
+            expect(window.location.href).toBe('/app/workarea?project=p4');
+        });
+
+        it('import action uses file name as project title', async () => {
+            const file = new File(['x'], 'MyProject.elpx');
+            await projectManager.transitionToProject({ action: 'import', file });
+
+            const body = JSON.parse(global.fetch.mock.calls[0][1].body);
+            expect(body.title).toBe('MyProject');
         });
     });
 });

@@ -2573,10 +2573,9 @@ class YjsProjectBridge {
    * Export project to .elpx file
    * Uses SharedExporters (TypeScript unified pipeline) when available
    * Filename is automatically generated from project title (sanitized: lowercase, no accents, no special chars)
-   * @param {Object} options - Export options
-   * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+   * In Electron/Desktop mode, always prompts for save destination (no silent overwrite).
    */
-  async exportToElpx(options = {}) {
+  async exportToElpx() {
     // Ensure exelearning_version is set in metadata before export
     if (this.documentManager?._updateVersionMetadata) {
       await this.documentManager._updateVersionMetadata();
@@ -2615,15 +2614,9 @@ class YjsProjectBridge {
             }
             const base64Data = btoa(binary);
             const key = window.__currentProjectId || 'default';
-
-            if (options.saveAs) {
-              // Save As: always prompt for new location
-              await window.electronAPI.saveBufferAs(base64Data, key, exportFilename);
-            } else {
-              // Save: use remembered path or prompt first time
-              // If opened from legacy .elp, main.js will prompt for new .elpx location
-              await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
-            }
+            // saveBuffer returns false when the user cancels the OS save dialog
+            const saved = await window.electronAPI.saveBuffer(base64Data, key, exportFilename);
+            if (!saved) return { saved: false };
             Logger.log('[YjsProjectBridge] ELPX exported via Electron:', exportFilename);
           } else {
             // Browser mode: direct download
@@ -2638,6 +2631,7 @@ class YjsProjectBridge {
             URL.revokeObjectURL(url);
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
+          return { saved: true };
         } else {
           throw new Error(result.error || 'Export failed');
         }
@@ -2699,6 +2693,9 @@ class YjsProjectBridge {
       }
       if (!this.documentManager?._initialized && typeof this.documentManager?.captureBaselineState === 'function') {
         this.documentManager.captureBaselineState();
+      }
+      if (typeof this.documentManager?.clearUndoStack === 'function') {
+        this.documentManager.clearUndoStack();
       }
     } else if (this.documentManager && !this.documentManager.isDirty) {
       this.documentManager.markDirty();
