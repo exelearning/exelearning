@@ -42,6 +42,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+views[\\/]+admin[\\/]+/, // Admin-only Nunjucks templates
     /[\\/]+app[\\/]+admin[\\/]+/, // Admin-only frontend JS
     /[\\/]+routes[\\/]+admin/, // Admin-only backend routes
+    /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
 ];
 
 /**
