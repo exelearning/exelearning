@@ -269,30 +269,31 @@ function getDialogFilterForExt(ext) {
     }
 }
 
-function proposeSavePath(lastDir, suggestedName = null) {
+function proposeSavePath(lastDir, effectiveName = null) {
     try {
-        const ext = getKnownExt(suggestedName) || DEFAULT_EXTENSION;
+        const ext = getKnownExt(effectiveName) || DEFAULT_EXTENSION;
         const dir = lastDir || app.getPath('documents');
-        const base = suggestedName
-            ? path.basename(suggestedName, path.extname(suggestedName))
+        const base = effectiveName
+            ? path.basename(effectiveName, path.extname(effectiveName))
             : 'document';
         return path.join(dir, `${base}${ext}`);
     } catch (_e) {
-        return suggestedName || `document${DEFAULT_EXTENSION}`;
+        return effectiveName || `document${DEFAULT_EXTENSION}`;
     }
 }
 
-async function promptSave(owner, suggestedName = null, lastDir = null) {
-    const inferredExt = getKnownExt(suggestedName) || DEFAULT_EXTENSION;
+async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
+    const effectiveName = storedName || suggestedName;
+    const inferredExt = getKnownExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
         title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
-        defaultPath: proposeSavePath(lastDir, suggestedName),
+        defaultPath: proposeSavePath(lastDir, effectiveName),
         buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
         ...(filter ? { filters: [filter] } : {}),
     });
     if (canceled || !filePath) return null;
-    return ensureExt(filePath, suggestedName || `document${DEFAULT_EXTENSION}`);
+    return ensureExt(filePath, effectiveName || `document${DEFAULT_EXTENSION}`);
 }
 
 // ──────────────  Simple settings (no external deps)  ──────────────
@@ -328,6 +329,23 @@ function setLastSaveDir(key, dirPath) {
     const s = readSettings();
     s.lastSaveDir = s.lastSaveDir || {};
     s.lastSaveDir[key] = dirPath;
+    writeSettings(s);
+}
+
+function getLastSaveInfo(key) {
+    const s = readSettings();
+    return {
+        dir: s.lastSaveDir?.[key] || null,
+        name: s.lastSaveName?.[key] || null,
+    };
+}
+
+function setLastSaveInfo(key, dirPath, fileName) {
+    const s = readSettings();
+    s.lastSaveDir = s.lastSaveDir || {};
+    s.lastSaveDir[key] = dirPath;
+    s.lastSaveName = s.lastSaveName || {};
+    s.lastSaveName[key] = fileName;
     writeSettings(s);
 }
 
@@ -1288,11 +1306,11 @@ async function saveUrlWithDialog(e, { downloadUrl, projectKey, suggestedName }) 
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
         const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const lastDir = getLastSaveDir(key);
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const targetPath = await promptSave(owner, suggestedName, lastDir);
+        const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
-        setLastSaveDir(key, path.dirname(targetPath));
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
         return await streamToFile(downloadUrl, targetPath, wc);
     } catch (_e) {
@@ -1335,13 +1353,13 @@ async function saveBufferWithDialog(e, { base64Data, projectKey, suggestedName }
     if (!base64Data) return false;
     try {
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
-        const owner = BrowserWindow.fromWebContents(wc);
+        const owner = wc ? BrowserWindow.fromWebContents(wc) : mainWindow;
         const key = projectKey || 'default';
-        const lastDir = getLastSaveDir(key);
+        const { dir: lastDir, name: storedName } = getLastSaveInfo(key);
 
-        const targetPath = await promptSave(owner, suggestedName, lastDir);
+        const targetPath = await promptSave(owner, suggestedName, lastDir, storedName);
         if (!targetPath) return false;
-        setLastSaveDir(key, path.dirname(targetPath));
+        setLastSaveInfo(key, path.dirname(targetPath), path.basename(targetPath));
 
         const buffer = Buffer.from(base64Data, 'base64');
         fs.writeFileSync(targetPath, buffer);
