@@ -230,8 +230,8 @@ describe('Translations Command', () => {
                 path.join(srcDir, 'multi-patterns.ts'),
                 `
                     const a = trans('dialog.title.save');
-                    const b = __('dialog.button.cancel');
-                    const c = t('dialog.message.error');
+                    const b = _('dialog.button.cancel');
+                    const c = c_('dialog.message.error');
                 `,
             );
 
@@ -375,7 +375,7 @@ describe('Translations Command', () => {
         it('should extract from public/libs/ directory', async () => {
             const libsDir = path.join(testDir, 'public', 'libs');
             await fs.ensureDir(libsDir);
-            await fs.writeFile(path.join(libsDir, 'custom-lib.js'), `const msg = t('libs.custom.label');`);
+            await fs.writeFile(path.join(libsDir, 'custom-lib.js'), `const msg = _('libs.custom.label');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
@@ -780,9 +780,9 @@ describe('Translations Command', () => {
             const appDir = path.join(testDir, 'public', 'app');
             await fs.ensureDir(appDir);
             // Create a test file with a translation key
-            await fs.writeFile(path.join(appDir, 'component.test.js'), `const msg = t('testjs.file.translation');`);
+            await fs.writeFile(path.join(appDir, 'component.test.js'), `const msg = _('testjs.file.translation');`);
             // Create a regular file with a translation key
-            await fs.writeFile(path.join(appDir, 'component.js'), `const msg = t('regular.js.translation');`);
+            await fs.writeFile(path.join(appDir, 'component.js'), `const msg = _('regular.js.translation');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
@@ -797,11 +797,11 @@ describe('Translations Command', () => {
         it('should exclude exe_math directory', async () => {
             const exeMathDir = path.join(testDir, 'public', 'app', 'common', 'exe_math');
             await fs.ensureDir(exeMathDir);
-            // Create a file in exe_math with t() calls (like MathJax has)
-            await fs.writeFile(path.join(exeMathDir, 'mathjax.js'), `function x(t){return t('mathfontexe');}`);
+            // Create a file in exe_math with _() calls (like MathJax has)
+            await fs.writeFile(path.join(exeMathDir, 'mathjax.js'), `function x(_){return _('mathfontexe');}`);
             // Create a regular file outside exe_math
             const appDir = path.join(testDir, 'public', 'app');
-            await fs.writeFile(path.join(appDir, 'regular.js'), `const msg = t('regular.app.translation');`);
+            await fs.writeFile(path.join(appDir, 'regular.js'), `const msg = _('regular.app.translation');`);
 
             const { execute } = await import('./translations');
             await execute([], { locale: 'es', 'extract-only': true });
