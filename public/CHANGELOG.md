@@ -37,6 +37,7 @@
 - iDevice button issues when TinyMCE is in full-screen mode
 - Teacher Mode related issues
 - Duplicated results in the search tool
+- Style icons: fix inconsistencies in file names
 - Base style: presentation issues in preview
 - Zen style: gap on first Text iDevice and unnecessary empty paragraphs
 - Duplicated Accessibility Toolbar files
