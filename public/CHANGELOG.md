@@ -20,6 +20,7 @@
 ### Fixed
 
 - Mixed languages on first launch
+- File > New / Open / Import flow: fix issues in static mode and desktop app
 - Pixelated application icons
 - Desktop no longer closes silently with unsaved changes
 - Boxes missing `.box-content` within eXe
