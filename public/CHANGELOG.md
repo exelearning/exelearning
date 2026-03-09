@@ -19,7 +19,7 @@
 - Known Issues documentation file
 - Admin panel customization options: app title, favicon, head HTML, and assets
 - Strings revision
-- Complete Spanish translation
+- Complete translations: Italian (IT), Spanish (ES), Romanian (RO), and Valencian (VA)
 
 ### Fixed
 
