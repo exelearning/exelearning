@@ -11,6 +11,7 @@
 - Progress report iDevice: improve mobile responsiveness
 - Scrambled list iDevice: add configurable number of attempts
 - Visual distinction (temporary border) for Teacher Mode within the application
+- Visual indicators for pages, boxes and iDevices that will not be visible in the export
 - Zen and Nova styles: visual distinction for Teacher Mode
 - Accessibility improvement: underlined links
 - File Manager: use modal dialog instead of native `window.prompt()`
