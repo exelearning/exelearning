@@ -4715,7 +4715,7 @@
       </trans-unit>
       <trans-unit id="A3_STN3" resname="Unsaved changes detected. Save your iDevice before continuing.">
         <source>Unsaved changes detected. Save your iDevice before continuing.</source>
-        <target>~Estàs editant un iDevice. Per favor, tanca’l abans de continuar.</target>
+        <target>Estas editant un iDevice. Per favor, tanca'l abans de continuar.</target>
       </trans-unit>
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>
@@ -11935,7 +11935,7 @@
       </trans-unit>
       <trans-unit id="y7yTA4h" resname="Someone else is editing this page. Please wait until they finish before adding new iDevices.">
         <source>Someone else is editing this page. Please wait until they finish before adding new iDevices.</source>
-        <target>~Algú està editant esta pàgina. Per favor, espera que acabe abans d’afegir nous iDevices.</target>
+        <target>Algú està editant esta pàgina. Per favor, espera que acabe abans d'afegir nous iDevices.</target>
       </trans-unit>
       <trans-unit id="fTgJugq" resname="Accordion">
         <source>Accordion</source>
@@ -12003,15 +12003,15 @@
       </trans-unit>
       <trans-unit id="7JewVxf" resname="Mark all the options in the correct order and click on the 'Reply' button.">
         <source>Mark all the options in the correct order and click on the 'Reply' button.</source>
-        <target>~Marca totes les opcions en l'orde correcte i fes clic en 'Respon'.</target>
+        <target>Marca totes les opcions en l'orde correcte i fes clic en 'Respon'.</target>
       </trans-unit>
       <trans-unit id="1Uv.8KU" resname="Write the correct word or phrase and click on the 'Reply' button.">
         <source>Write the correct word or phrase and click on the 'Reply' button.</source>
-        <target>~Escriu la paraula o frase correcta i fes clic en 'Respon'.</target>
+        <target>Escriu la paraula o frase correcta i fes clic en 'Respon'.</target>
       </trans-unit>
       <trans-unit id="NT8emLb" resname="Point">
         <source>Point</source>
-        <target>~Punt</target>
+        <target>Punt</target>
       </trans-unit>
       <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
         <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
@@ -12023,227 +12023,227 @@
       </trans-unit>
       <trans-unit id="wITS3E8" resname="Subtitles">
         <source>Subtitles</source>
-        <target>~Subtítols</target>
+        <target>Subtítols</target>
       </trans-unit>
       <trans-unit id="p1GMehK" resname="The question marked as next in case of success does not exist.">
         <source>The question marked as next in case of success does not exist.</source>
-        <target>~La pregunta marcada com a següent en cas d'èxit no existix.</target>
+        <target>La pregunta marcada com a següent en cas d'èxit no existix.</target>
       </trans-unit>
       <trans-unit id="LeOpK1j" resname="The question marked as next in case of error does not exist.">
         <source>The question marked as next in case of error does not exist.</source>
-        <target>~La pregunta marcada com a següent en cas d'error no existix.</target>
+        <target>La pregunta marcada com a següent en cas d'error no existix.</target>
       </trans-unit>
       <trans-unit id="ba_wdXQ" resname="You must indicate a title for this point.">
         <source>You must indicate a title for this point.</source>
-        <target>~Has d'indicar un títol per a este punt.</target>
+        <target>Has d'indicar un títol per a este punt.</target>
       </trans-unit>
       <trans-unit id="xK6t01n" resname="You must mark a point on the map.">
         <source>You must mark a point on the map.</source>
-        <target>~Has de marcar un punt en el mapa.</target>
+        <target>Has de marcar un punt en el mapa.</target>
       </trans-unit>
       <trans-unit id="lpAEkR5" resname="You must draw an area on the map.">
         <source>You must draw an area on the map.</source>
-        <target>~Has de dibuixar una àrea en el mapa.</target>
+        <target>Has de dibuixar una àrea en el mapa.</target>
       </trans-unit>
       <trans-unit id="n8rcPWg" resname="Select an audio file.">
         <source>Select an audio file.</source>
-        <target>~Selecciona un fitxer d'àudio.</target>
+        <target>Selecciona un fitxer d'àudio.</target>
       </trans-unit>
       <trans-unit id="RldIKEd" resname="Error in the submap.">
         <source>Error in the submap.</source>
-        <target>~Error en el submapa.</target>
+        <target>Error en el submapa.</target>
       </trans-unit>
       <trans-unit id="uUeUHlo" resname="You must indicate one point at least.">
         <source>You must indicate one point at least.</source>
-        <target>~Has d'indicar almenys un punt.</target>
+        <target>Has d'indicar almenys un punt.</target>
       </trans-unit>
       <trans-unit id="M4qH7Ay" resname="You must close all the edited maps before saving the activity.">
         <source>You must close all the edited maps before saving the activity.</source>
-        <target>~Has de tancar tots els mapes editats abans de guardar l'activitat.</target>
+        <target>Has de tancar tots els mapes editats abans de guardar l'activitat.</target>
       </trans-unit>
       <trans-unit id="KGtJNRC" resname="You must close the edited presentation before saving the activity.">
         <source>You must close the edited presentation before saving the activity.</source>
-        <target>~Has de tancar la presentació editada abans de guardar l'activitat.</target>
+        <target>Has de tancar la presentació editada abans de guardar l'activitat.</target>
       </trans-unit>
       <trans-unit id="trEwQnv" resname="There must be at least one slide in the presentation.">
         <source>There must be at least one slide in the presentation.</source>
-        <target>~Hi ha d'haver almenys una diapositiva en la presentació.</target>
+        <target>Hi ha d'haver almenys una diapositiva en la presentació.</target>
       </trans-unit>
       <trans-unit id="T_wgZpR" resname="Indicate, using commas, the correct order in which points must be clicked">
         <source>Indicate, using commas, the correct order in which points must be clicked</source>
-        <target>~Indica, usant comes, l'orde correcte en què s'han de fer clic en els punts</target>
+        <target>Indica, usant comes, l'orde correcte en què s'han de fer clic en els punts</target>
       </trans-unit>
       <trans-unit id="K.oLNZO" resname="Assessment">
         <source>Assessment</source>
-        <target>~Avaluació</target>
+        <target>Avaluació</target>
       </trans-unit>
       <trans-unit id="kN1WEsB" resname="Click on the active areas or image icons.">
         <source>Click on the active areas or image icons.</source>
-        <target>~Fes clic en les àrees actives o icones d'imatge.</target>
+        <target>Fes clic en les àrees actives o icones d'imatge.</target>
       </trans-unit>
       <trans-unit id="3S7zvT5" resname="Visited points">
         <source>Visited points</source>
-        <target>~Punts visitats</target>
+        <target>Punts visitats</target>
       </trans-unit>
       <trans-unit id="Z_erAJ9" resname="Identify Spot">
         <source>Identify Spot</source>
-        <target>~Identificar punt</target>
+        <target>Identificar punt</target>
       </trans-unit>
       <trans-unit id="0tv0gq." resname="Quiz">
         <source>Quiz</source>
-        <target>~Prova</target>
+        <target>Prova</target>
       </trans-unit>
       <trans-unit id="WbcXn4C" resname="Percentage of visited contents necessary to be able to carry out the activity questionnaire">
         <source>Percentage of visited contents necessary to be able to carry out the activity questionnaire</source>
-        <target>~Percentatge de continguts visitats necessaris per a poder realitzar el qüestionari de l'activitat</target>
+        <target>Percentatge de continguts visitats necessaris per a poder realitzar el qüestionari de l'activitat</target>
       </trans-unit>
       <trans-unit id="qrLfvL6" resname="Percentage of questionnaire questions">
         <source>Percentage of questionnaire questions</source>
-        <target>~Percentatge de preguntes del qüestionari</target>
+        <target>Percentatge de preguntes del qüestionari</target>
       </trans-unit>
       <trans-unit id="ViRXl6m" resname="Percentage of questions">
         <source>Percentage of questions</source>
-        <target>~Percentatge de preguntes</target>
+        <target>Percentatge de preguntes</target>
       </trans-unit>
       <trans-unit id="3SaNCTl" resname="Close map">
         <source>Close map</source>
-        <target>~Tancar mapa</target>
+        <target>Tancar mapa</target>
       </trans-unit>
       <trans-unit id="MF5bsM." resname="URL:">
         <source>URL:</source>
-        <target>~URL:</target>
+        <target>URL:</target>
       </trans-unit>
       <trans-unit id="r.t2gAo" resname="Add point">
         <source>Add point</source>
-        <target>~Afegir punt</target>
+        <target>Afegir punt</target>
       </trans-unit>
       <trans-unit id="BLRU8pT" resname="First point">
         <source>First point</source>
-        <target>~Primer punt</target>
+        <target>Primer punt</target>
       </trans-unit>
       <trans-unit id="aM3uWcL" resname="Previous point">
         <source>Previous point</source>
-        <target>~Punt anterior</target>
+        <target>Punt anterior</target>
       </trans-unit>
       <trans-unit id="psVYtzn" resname="Point number">
         <source>Point number</source>
-        <target>~Número de punt</target>
+        <target>Número de punt</target>
       </trans-unit>
       <trans-unit id="Y5a4Un_" resname="Next Point">
         <source>Next Point</source>
-        <target>~Següent punt</target>
+        <target>Següent punt</target>
       </trans-unit>
       <trans-unit id="F9.lXSp" resname="Last point">
         <source>Last point</source>
-        <target>~Últim punt</target>
+        <target>Últim punt</target>
       </trans-unit>
       <trans-unit id=".kAqpe4" resname="Delete point">
         <source>Delete point</source>
-        <target>~Eliminar punt</target>
+        <target>Eliminar punt</target>
       </trans-unit>
       <trans-unit id="j1nAaAs" resname="Copy point">
         <source>Copy point</source>
-        <target>~Copiar punt</target>
+        <target>Copiar punt</target>
       </trans-unit>
       <trans-unit id="y5_XTAH" resname="Cut point">
         <source>Cut point</source>
-        <target>~Retallar punt</target>
+        <target>Retallar punt</target>
       </trans-unit>
       <trans-unit id="ubCFUNH" resname="Paste point">
         <source>Paste point</source>
-        <target>~Apegar punt</target>
+        <target>Apegar punt</target>
       </trans-unit>
       <trans-unit id="ii4yOfr" resname="Number of points">
         <source>Number of points</source>
-        <target>~Nombre de punts</target>
+        <target>Nombre de punts</target>
       </trans-unit>
       <trans-unit id="0uw0IQw" resname="Simple">
         <source>Simple</source>
-        <target>~Simple</target>
+        <target>Simple</target>
       </trans-unit>
       <trans-unit id="3.EXYl6" resname="Edit map points">
         <source>Edit map points</source>
-        <target>~Editar punts del mapa</target>
+        <target>Editar punts del mapa</target>
       </trans-unit>
       <trans-unit id="MnWGio8" resname="Edit presentation points">
         <source>Edit presentation points</source>
-        <target>~Editar punts de la presentació</target>
+        <target>Editar punts de la presentació</target>
       </trans-unit>
       <trans-unit id="gi2kFJd" resname="Add a slide">
         <source>Add a slide</source>
-        <target>~Afegir una diapositiva</target>
+        <target>Afegir una diapositiva</target>
       </trans-unit>
       <trans-unit id="nfRETaO" resname="First slide">
         <source>First slide</source>
-        <target>~Primera diapositiva</target>
+        <target>Primera diapositiva</target>
       </trans-unit>
       <trans-unit id="J7AD2WY" resname="Previous slide">
         <source>Previous slide</source>
-        <target>~Diapositiva anterior</target>
+        <target>Diapositiva anterior</target>
       </trans-unit>
       <trans-unit id="RNdnixZ" resname="Slide number">
         <source>Slide number</source>
-        <target>~Número de diapositiva</target>
+        <target>Número de diapositiva</target>
       </trans-unit>
       <trans-unit id="HhLfmcn" resname="Next slide">
         <source>Next slide</source>
-        <target>~Següent diapositiva</target>
+        <target>Següent diapositiva</target>
       </trans-unit>
       <trans-unit id="ha1bzRD" resname="Last slide">
         <source>Last slide</source>
-        <target>~Última diapositiva</target>
+        <target>Última diapositiva</target>
       </trans-unit>
       <trans-unit id="hwvrJ42" resname="Delete slide">
         <source>Delete slide</source>
-        <target>~Eliminar diapositiva</target>
+        <target>Eliminar diapositiva</target>
       </trans-unit>
       <trans-unit id="._aMYKW" resname="Copy slide">
         <source>Copy slide</source>
-        <target>~Copiar diapositiva</target>
+        <target>Copiar diapositiva</target>
       </trans-unit>
       <trans-unit id="ome7TNM" resname="Cut slide">
         <source>Cut slide</source>
-        <target>~Retallar diapositiva</target>
+        <target>Retallar diapositiva</target>
       </trans-unit>
       <trans-unit id="XsyCqfE" resname="Paste slide">
         <source>Paste slide</source>
-        <target>~Apegar diapositiva</target>
+        <target>Apegar diapositiva</target>
       </trans-unit>
       <trans-unit id="iITl9r1" resname="Questionnaire">
         <source>Questionnaire</source>
-        <target>~Qüestionari</target>
+        <target>Qüestionari</target>
       </trans-unit>
       <trans-unit id="4PvSFE1" resname="Additional content">
         <source>Additional content</source>
-        <target>~Contingut addicional</target>
+        <target>Contingut addicional</target>
       </trans-unit>
       <trans-unit id="ngTWGb2" resname="Invisible area">
         <source>Invisible area</source>
-        <target>~Àrea invisible</target>
+        <target>Àrea invisible</target>
       </trans-unit>
       <trans-unit id="bz2ryXq" resname="Pushpin">
         <source>Pushpin</source>
-        <target>~Xinxeta</target>
+        <target>Xinxeta</target>
       </trans-unit>
       <trans-unit id="_MltP1k" resname="Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s">
         <source>Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s</source>
-        <target>~Proporciona una paraula i la seua definició. Pots alternar entre: 'La paraula comença' o 'La paraula conté', fent clic en %s</target>
+        <target>Proporciona una paraula i la seua definició. Pots alternar entre: 'La paraula comença' o 'La paraula conté', fent clic en %s</target>
       </trans-unit>
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
-        <target>~Has de proporcionar el temps per a veure la solució</target>
+        <target>Has de proporcionar el temps per a veure la solució</target>
       </trans-unit>
       <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
         <source>Import (.elpx…)</source>
-        <target>~Importa (.elpx…)</target>
+        <target>Importa (.elpx…)</target>
       </trans-unit>
       <trans-unit id="I0XyrRF" resname="Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.">
         <source>Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.</source>
-        <target>~Importa fitxers .elpx, .elp o .zip editables. El contingut importat s’afegirà després de l’última pàgina del projecte actual.</target>
+        <target>Importa fitxers .elpx, .elp o .zip editables. El contingut importat s'afegirà després de l'última pàgina del projecte actual.</target>
       </trans-unit>
       <trans-unit id="IOajJx_" resname="Unexpected error importing file.">
         <source>Unexpected error importing file.</source>
-        <target>~Error inesperat en importar el fitxer.</target>
+        <target>Error inesperat en importar el fitxer.</target>
       </trans-unit>
       <trans-unit id="SIDjSV." resname="iDevice">
         <source>iDevice</source>
@@ -12879,295 +12879,295 @@
       </trans-unit>
       <trans-unit id="BeLvQEU" resname="Error while uploading the file.">
         <source>Error while uploading the file.</source>
-        <target>~Error en pujar el fitxer.</target>
+        <target>Error en pujar el fitxer.</target>
       </trans-unit>
       <trans-unit id="ZVCy6PA" resname="Completed successfully">
         <source>Completed successfully</source>
-        <target>~Completat amb èxit</target>
+        <target>Completat amb èxit</target>
       </trans-unit>
       <trans-unit id="CEZIpnQ" resname="An unexpected error occurred while processing the file.">
         <source>An unexpected error occurred while processing the file.</source>
-        <target>~S'ha produït un error inesperat processant el fitxer.</target>
+        <target>S'ha produït un error inesperat processant el fitxer.</target>
       </trans-unit>
       <trans-unit id="vGlqvyV" resname="Unexpected error during upload">
         <source>Unexpected error during upload</source>
-        <target>~Error inesperat durant la pujada</target>
+        <target>Error inesperat durant la pujada</target>
       </trans-unit>
       <trans-unit id="DlutuO4" resname="New from Template">
         <source>New from Template</source>
-        <target>~Nou des de plantilla</target>
+        <target>Nou des de plantilla</target>
       </trans-unit>
       <trans-unit id="M_Llf6E" resname="Failed to load template. Please try again.">
         <source>Failed to load template. Please try again.</source>
-        <target>~No s'ha pogut carregar la plantilla. Torneu-ho a provar.</target>
+        <target>No s'ha pogut carregar la plantilla. Torneu-ho a provar.</target>
       </trans-unit>
       <trans-unit id="xCsb28x" resname="Processing file">
         <source>Processing file</source>
-        <target>~Processant fitxer</target>
+        <target>Processant fitxer</target>
       </trans-unit>
       <trans-unit id="ywaQ_Vp" resname="Preparing upload...">
         <source>Preparing upload...</source>
-        <target>~Preparant la pujada...</target>
+        <target>Preparant la pujada...</target>
       </trans-unit>
       <trans-unit id="AVv4iei" resname="This may take a few moments for large files...">
         <source>This may take a few moments for large files...</source>
-        <target>~Això pot tardar uns moments per a fitxers grans...</target>
+        <target>Això pot tardar uns moments per a fitxers grans...</target>
       </trans-unit>
       <trans-unit id="oPy4NMk" resname="Uploading">
         <source>Uploading</source>
-        <target>~Pujant</target>
+        <target>Pujant</target>
       </trans-unit>
       <trans-unit id="uSZfo5R" resname="Uploading file...">
         <source>Uploading file...</source>
-        <target>~Pujant fitxer...</target>
+        <target>Pujant fitxer...</target>
       </trans-unit>
       <trans-unit id="Pjnplq6" resname="Extracting files...">
         <source>Extracting files...</source>
-        <target>~Extraient fitxers...</target>
+        <target>Extraient fitxers...</target>
       </trans-unit>
       <trans-unit id="UU1fb0X" resname="Extracting ZIP file contents. This may take several minutes for large files.">
         <source>Extracting ZIP file contents. This may take several minutes for large files.</source>
-        <target>~Extraient el contingut del fitxer ZIP. Això pot tardar diversos minuts per a fitxers grans.</target>
+        <target>Extraient el contingut del fitxer ZIP. Això pot tardar diversos minuts per a fitxers grans.</target>
       </trans-unit>
       <trans-unit id="qmGls_W" resname="Processing content...">
         <source>Processing content...</source>
-        <target>~Processant contingut...</target>
+        <target>Processant contingut...</target>
       </trans-unit>
       <trans-unit id="a0ZvaE4" resname="Reading and validating file structure. Almost done!">
         <source>Reading and validating file structure. Almost done!</source>
-        <target>~Llegint i validant l'estructura del fitxer. Gairebé acabat!</target>
+        <target>Llegint i validant l'estructura del fitxer. Gairebé acabat!</target>
       </trans-unit>
       <trans-unit id="msb5FOD" resname="Finalizing...">
         <source>Finalizing...</source>
-        <target>~Finalitzant...</target>
+        <target>Finalitzant...</target>
       </trans-unit>
       <trans-unit id="z9fMpq3" resname="Completing the process...">
         <source>Completing the process...</source>
-        <target>~Completant el procés...</target>
+        <target>Completant el procés...</target>
       </trans-unit>
       <trans-unit id="641t3eO" resname="Processing...">
         <source>Processing...</source>
-        <target>~Processant...</target>
+        <target>Processant...</target>
       </trans-unit>
       <trans-unit id="WrPqN4D" resname="Please wait...">
         <source>Please wait...</source>
-        <target>~Espereu, si us plau...</target>
+        <target>Espereu, si us plau...</target>
       </trans-unit>
       <trans-unit id="4.iC7Dw" resname="Error processing file">
         <source>Error processing file</source>
-        <target>~Error processant el fitxer</target>
+        <target>Error processant el fitxer</target>
       </trans-unit>
       <trans-unit id="SDFoFKb" resname="Quick edit">
         <source>Quick edit</source>
-        <target>~Edició ràpida</target>
+        <target>Edició ràpida</target>
       </trans-unit>
       <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
         <source>Another user is editing an iDevice on this block.</source>
-        <target>~Un altre usuari està editant un iDevice en aquest bloc.</target>
+        <target>Un altre usuari està editant un iDevice en aquest bloc.</target>
       </trans-unit>
       <trans-unit id="qSRqFDl" resname="Missing file name or path">
         <source>Missing file name or path</source>
-        <target>~Falta el nom o el camí del fitxer</target>
+        <target>Falta el nom o el camí del fitxer</target>
       </trans-unit>
       <trans-unit id="T7Qvhcc" resname="Invalid request data">
         <source>Invalid request data</source>
-        <target>~Dades de la sol·licitud no vàlides</target>
+        <target>Dades de la sol·licitud no vàlides</target>
       </trans-unit>
       <trans-unit id="dsSqvHh" resname="Uploaded file not found">
         <source>Uploaded file not found</source>
-        <target>~Fitxer pujat no trobat</target>
+        <target>Fitxer pujat no trobat</target>
       </trans-unit>
       <trans-unit id="ORp5XHR" resname="Invalid file type">
         <source>Invalid file type</source>
-        <target>~Tipus de fitxer no vàlid</target>
+        <target>Tipus de fitxer no vàlid</target>
       </trans-unit>
       <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
         <source>Highlight this page in the website navigation menu</source>
-        <target>~Resalta aquesta pàgina al menú de navegació del lloc web</target>
+        <target>Resalta aquesta pàgina al menú de navegació del lloc web</target>
       </trans-unit>
       <trans-unit id="dBXXN24" resname="Subtitle">
         <source>Subtitle</source>
-        <target>~Subtítol</target>
+        <target>Subtítol</target>
       </trans-unit>
       <trans-unit id="DQPL3WX" resname="Adds additional information to the main title.">
         <source>Adds additional information to the main title.</source>
-        <target>~Afig informació addicional al títol principal.</target>
+        <target>Afig informació addicional al títol principal.</target>
       </trans-unit>
       <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
         <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
-        <target>~Este fitxer ha sigut creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Per favor, actualitza l'aplicació.</target>
+        <target>Este fitxer ha sigut creat amb una versió més recent d'eXeLearning. Algunes funcions podrien no funcionar correctament. Per favor, actualitza l'aplicació.</target>
       </trans-unit>
       <trans-unit id="send_to_platform_001" resname="Send to %s">
         <source>Send to %s</source>
-        <target>~Envia a %s</target>
+        <target>Envia a %s</target>
       </trans-unit>
       <trans-unit id="finish_001" resname="Finish">
         <source>Finish</source>
-        <target>~Finalitza</target>
+        <target>Finalitza</target>
       </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
-        <target>~Contingut eXeLearning (.elpx)</target>
+        <target>Contingut eXeLearning (.elpx)</target>
       </trans-unit>
       <trans-unit id="l0zhbcx" resname="Project Properties">
         <source>Project Properties</source>
-        <target>~Propietats del projecte</target>
+        <target>Propietats del projecte</target>
       </trans-unit>
       <trans-unit id="0v6ignb" resname="Private">
         <source>Private</source>
-        <target>~Privat</target>
+        <target>Privat</target>
       </trans-unit>
       <trans-unit id="eenusd4" resname="Public">
         <source>Public</source>
-        <target>~Públic</target>
+        <target>Públic</target>
       </trans-unit>
       <trans-unit id="gpqv2n0" resname="Add subpage">
         <source>Add subpage</source>
-        <target>~Afegir subpàgina</target>
+        <target>Afegir subpàgina</target>
       </trans-unit>
       <trans-unit id="s4fafe4" resname="Page options">
         <source>Page options</source>
-        <target>~Opcions de la pàgina</target>
+        <target>Opcions de la pàgina</target>
       </trans-unit>
       <trans-unit id="t6gx1zg" resname="Admin Panel">
         <source>Admin Panel</source>
-        <target>~Panell d’administració</target>
+        <target>Panell d’administració</target>
       </trans-unit>
       <trans-unit id="97v8o0o" resname="Dashboard">
         <source>Dashboard</source>
-        <target>~Tauler de control</target>
+        <target>Tauler de control</target>
       </trans-unit>
       <trans-unit id="rg4ghhn" resname="Users">
         <source>Users</source>
-        <target>~Usuaris</target>
+        <target>Usuaris</target>
       </trans-unit>
       <trans-unit id="9n8g103" resname="Extensions">
         <source>Extensions</source>
-        <target>~Extensions</target>
+        <target>Extensions</target>
       </trans-unit>
       <trans-unit id="is2c65e" resname="Back to Workarea">
         <source>Back to Workarea</source>
-        <target>~Tornar a l’àrea de treball</target>
+        <target>Tornar a l’àrea de treball</target>
       </trans-unit>
       <trans-unit id="ido9zkb" resname="Total Users">
         <source>Total Users</source>
-        <target>~Total d’usuaris</target>
+        <target>Total d’usuaris</target>
       </trans-unit>
       <trans-unit id="97zb4ob" resname="Active Users">
         <source>Active Users</source>
-        <target>~Usuaris actius</target>
+        <target>Usuaris actius</target>
       </trans-unit>
       <trans-unit id="qsnxt4j" resname="Total Projects">
         <source>Total Projects</source>
-        <target>~Total de projectes</target>
+        <target>Total de projectes</target>
       </trans-unit>
       <trans-unit id="62o4xbm" resname="Active Projects">
         <source>Active Projects</source>
-        <target>~Projectes actius</target>
+        <target>Projectes actius</target>
       </trans-unit>
       <trans-unit id="thx7n6r" resname="User Management">
         <source>User Management</source>
-        <target>~Gestió d’usuaris</target>
+        <target>Gestió d'usuaris</target>
       </trans-unit>
       <trans-unit id="7fgea8i" resname="Create User">
         <source>Create User</source>
-        <target>~Crear usuari</target>
+        <target>Crear usuari</target>
       </trans-unit>
       <trans-unit id="e6y5yhc" resname="Roles">
         <source>Roles</source>
-        <target>~Rols</target>
+        <target>Rols</target>
       </trans-unit>
       <trans-unit id="me3hgwd" resname="Status">
         <source>Status</source>
-        <target>~Estat</target>
+        <target>Estat</target>
       </trans-unit>
       <trans-unit id="riwysa5" resname="Active">
         <source>Active</source>
-        <target>~Actiu</target>
+        <target>Actiu</target>
       </trans-unit>
       <trans-unit id="rpczs42" resname="Inactive">
         <source>Inactive</source>
-        <target>~Inactiu</target>
+        <target>Inactiu</target>
       </trans-unit>
       <trans-unit id="scb0g0f" resname="Are you sure you want to delete this user?">
         <source>Are you sure you want to delete this user?</source>
-        <target>~Estàs segur que vols eliminar aquest usuari?</target>
+        <target>Estàs segur que vols eliminar aquest usuari?</target>
       </trans-unit>
       <trans-unit id="206lr7c" resname="Installed">
         <source>Installed</source>
-        <target>~Instal·lat</target>
+        <target>Instal·lat</target>
       </trans-unit>
       <trans-unit id="kheuv6b" resname="Available">
         <source>Available</source>
-        <target>~Disponible</target>
+        <target>Disponible</target>
       </trans-unit>
       <trans-unit id="780lvnb" resname="Install">
         <source>Install</source>
-        <target>~Instal·lar</target>
+        <target>Instal·lar</target>
       </trans-unit>
       <trans-unit id="jbuazkh" resname="Uninstall">
         <source>Uninstall</source>
-        <target>~Desinstal·lar</target>
+        <target>Desinstal·lar</target>
       </trans-unit>
       <trans-unit id="8q7x8kf" resname="Deactivate">
         <source>Deactivate</source>
-        <target>~Desactivar</target>
+        <target>Desactivar</target>
       </trans-unit>
       <trans-unit id="gzolll2" resname="Download File">
         <source>Download File</source>
-        <target>~Descarregar fitxer</target>
+        <target>Descarregar fitxer</target>
       </trans-unit>
       <trans-unit id="3o5e6xn" resname="Play/Pause">
         <source>Play/Pause</source>
-        <target>~Reproduir/Pausa</target>
+        <target>Reproduir/Pausa</target>
       </trans-unit>
       <trans-unit id="zwn29lg" resname="Mute Toggle">
         <source>Mute Toggle</source>
-        <target>~Silenciar/Activar so</target>
+        <target>Silenciar/Activar so</target>
       </trans-unit>
       <trans-unit id="0q5vhca" resname="Captions/Subtitles">
         <source>Captions/Subtitles</source>
-        <target>~Subtítols</target>
+        <target>Subtítols</target>
       </trans-unit>
       <trans-unit id="vhzfvis" resname="Turn off Fullscreen">
         <source>Turn off Fullscreen</source>
-        <target>~Desactivar pantalla completa</target>
+        <target>Desactivar pantalla completa</target>
       </trans-unit>
       <trans-unit id="hj9pm4k" resname="Go Fullscreen">
         <source>Go Fullscreen</source>
-        <target>~Pantalla completa</target>
+        <target>Pantalla completa</target>
       </trans-unit>
       <trans-unit id="axjjt28" resname="Unmute">
         <source>Unmute</source>
-        <target>~Activar so</target>
+        <target>Activar so</target>
       </trans-unit>
       <trans-unit id="0nqn4fr" resname="Mute">
         <source>Mute</source>
-        <target>~Silenciar</target>
+        <target>Silenciar</target>
       </trans-unit>
       <trans-unit id="yiopv0y" resname="Download Video">
         <source>Download Video</source>
-        <target>~Descarregar vídeo</target>
+        <target>Descarregar vídeo</target>
       </trans-unit>
       <trans-unit id="mtjehjt" resname="Log in as">
         <source>Log in as</source>
-        <target>~Iniciar sessió com a</target>
+        <target>Iniciar sessió com a</target>
       </trans-unit>
       <trans-unit id="jf82g6l" resname="Cannot impersonate administrator users">
         <source>Cannot impersonate administrator users</source>
-        <target>~No es pot suplantar els usuaris administradors</target>
+        <target>No es pot suplantar els usuaris administradors</target>
       </trans-unit>
       <trans-unit id="xgvdods" resname="Cannot impersonate your own account">
         <source>Cannot impersonate your own account</source>
-        <target>~No pots suplantar la teua pròpia compte</target>
+        <target>No pots suplantar el teu pròpi compte</target>
       </trans-unit>
       <trans-unit id="0nivv3b" resname="Start impersonation as {email}?">
         <source>Start impersonation as {email}?</source>
-        <target>~Iniciar suplantació com a {email}?</target>
+        <target>Iniciar suplantació com a {email}?</target>
       </trans-unit>
       <trans-unit id="5nbvdcq" resname="Failed to start impersonation">
         <source>Failed to start impersonation</source>
-        <target>~Error en iniciar la suplantació</target>
+        <target>Error en iniciar la suplantació</target>
       </trans-unit>
     </body>
   </file>
