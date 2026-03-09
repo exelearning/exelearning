@@ -925,6 +925,7 @@ help:
 	@echo "  make revoke-role EMAIL=x ROLE=y               Remove role from user"
 	@echo "  make tmp-cleanup [MAX_AGE=86400]              Clean temp files"
 	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
+	@echo "  make translations-cleanup                     Remove obsolete translation strings"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"
