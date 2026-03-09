@@ -8,8 +8,8 @@
 - Classify iDevice: increase max categories from 4 to 9
 - Download source file iDevice: auto-update Project Properties
 - Magnifier iDevice: add image authorship and alt text field
-- Progress report iDevice: improved mobile responsiveness
-- Scrambled list iDevice: add configurable attempts number
+- Progress report iDevice: improve mobile responsiveness
+- Scrambled list iDevice: add configurable number of attempts
 - Visual distinction (temporary border) for Teacher Mode within the application
 - Zen and Nova styles: visual distinction for Teacher Mode
 - Accessibility improvement: underlined links
@@ -17,7 +17,7 @@
 - CPU compatibility check for the Bun runtime with warning for incompatible CPUs
 - Clean Yjs IndexedDB on tab close
 - Known Issues documentation file
-- Customization options in the admin panel: app title, favicon, head html and assets
+- Admin panel customization options: app title, favicon, head HTML, and assets
 - Strings revision
 - Complete Spanish translation
 
@@ -28,7 +28,7 @@
 - Desktop no longer closes silently with unsaved changes
 - Boxes missing `.box-content` within eXe
 - `common_i18n.js` not generated based on the package language
-- CapsLock key no longer triggers multi-selection
+- Caps Lock key no longer triggers multi-selection
 - Untranslated page counter
 - Untranslated Previous/Next navigation buttons
 - TinyMCE media type selection issue
@@ -72,7 +72,7 @@
 ### Removed
 
 - Double-click handler for page properties to prevent unintended modal opening
-- Removed "Static Editor" from the title of the static version
+- "Static Editor" removed from the title of the static version
 
 ---
 
