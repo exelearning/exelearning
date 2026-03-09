@@ -118,18 +118,28 @@ function registerProtocolHandler() {
             return new Response('Forbidden', { status: 403 });
         }
 
+        // SPA fallback: serve index.html for routes without file extensions
+        const spaFallback = () => {
+            if (!path.extname(pathname)) {
+                const indexPath = path.join(staticDir, 'index.html');
+                return net.fetch(pathToFileURL(indexPath).toString());
+            }
+            return new Response('Not Found', { status: 404 });
+        };
+
         try {
             // net.fetch can read from ASAR archives
             const fileUrl = pathToFileURL(filePath).toString();
-            const response = await net.fetch(fileUrl);
+            let response;
+            try {
+                response = await net.fetch(fileUrl);
+            } catch {
+                // net.fetch throws ERR_FILE_NOT_FOUND for missing files
+                return spaFallback();
+            }
 
             if (!response.ok) {
-                // SPA fallback: serve index.html for unknown paths without extensions
-                if (!path.extname(pathname)) {
-                    const indexPath = path.join(staticDir, 'index.html');
-                    return net.fetch(pathToFileURL(indexPath).toString());
-                }
-                return new Response('Not Found', { status: 404 });
+                return spaFallback();
             }
 
             // Determine MIME type

@@ -281,8 +281,11 @@ export default class projectManager {
      * @param {URLSearchParams} urlParams
      */
     async _processPendingImport(urlParams) {
-        const hasPendingImport = urlParams.get('pendingImport') === '1';
+        const staticPending = sessionStorage.getItem('exe-pending-import') === '1';
+        const hasPendingImport =
+            urlParams.get('pendingImport') === '1' || staticPending;
         if (!hasPendingImport) return;
+        sessionStorage.removeItem('exe-pending-import');
 
         const file = await retrievePendingImport();
         if (!file) {
@@ -315,7 +318,8 @@ export default class projectManager {
         const urlParams = new URLSearchParams(window.location.search);
         urlParams.delete('pendingImport');
         urlParams.delete('new');
-        const cleanUrl = window.location.pathname + '?' + urlParams.toString();
+        const qs = urlParams.toString();
+        const cleanUrl = window.location.pathname + (qs ? '?' + qs : '');
         window.history.replaceState({}, '', cleanUrl);
     }
 
@@ -587,13 +591,24 @@ export default class projectManager {
      */
     async transitionToProject({ action, projectUuid, file, skipSave = false }) {
         const basePath = window.eXeLearning?.config?.basePath || '';
+        const isStaticMode =
+            window.__EXE_STATIC_MODE__ === true ||
+            this.app?.capabilities?.storage?.remote === false;
 
         // 1. Save current project if needed
         if (!skipSave) {
-            const saveManager = this._yjsBridge?.saveManager;
             const hasUnsaved = this._yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
-            if (hasUnsaved && saveManager) {
-                await saveManager.save();
+
+            if (hasUnsaved) {
+                if (isStaticMode && this.exportToElpxViaYjs) {
+                    // Static/Electron: prompt "Save As" dialog
+                    await this.exportToElpxViaYjs();
+                } else {
+                    const saveManager = this._yjsBridge?.saveManager;
+                    if (saveManager) {
+                        await saveManager.save();
+                    }
+                }
             }
         }
 
@@ -602,40 +617,58 @@ export default class projectManager {
         window.onbeforeunload = null;
 
         // 3. Redirect based on action (always full page reload)
+
         switch (action) {
             case 'new': {
-                const resp = await fetch(`${basePath}/api/project/create-quick`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ title: window._ ? _('Untitled') : 'Untitled' }),
-                });
-                if (!resp.ok) {
-                    throw new Error(`Failed to create project: ${resp.status}`);
+                if (isStaticMode) {
+                    // Static/Electron: reload generates a fresh UUID automatically
+                    window.location.reload();
+                } else {
+                    const resp = await fetch(`${basePath}/api/project/create-quick`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ title: window._ ? _('Untitled') : 'Untitled' }),
+                    });
+                    if (!resp.ok) {
+                        throw new Error(`Failed to create project: ${resp.status}`);
+                    }
+                    const data = await resp.json();
+                    window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1`;
                 }
-                const data = await resp.json();
-                window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1`;
                 break;
             }
             case 'open':
-                window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+                if (isStaticMode) {
+                    // Static/Electron: set projectId and reload (no server routes)
+                    window.eXeLearning.projectId = projectUuid;
+                    window.location.reload();
+                } else {
+                    window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+                }
                 break;
             case 'import': {
                 // Store file in IndexedDB before reload
                 await storePendingImport(file);
-                // Create project on server
-                const title = file.name.replace(/\.(elp|elpx)$/i, '') || 'Imported';
-                const resp = await fetch(`${basePath}/api/project/create-quick`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ title }),
-                });
-                if (!resp.ok) {
-                    throw new Error(`Failed to create project: ${resp.status}`);
+                if (isStaticMode) {
+                    // Signal for _processPendingImport after reload
+                    sessionStorage.setItem('exe-pending-import', '1');
+                    window.location.reload();
+                } else {
+                    // Create project on server
+                    const title = file.name.replace(/\.(elp|elpx)$/i, '') || 'Imported';
+                    const resp = await fetch(`${basePath}/api/project/create-quick`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ title }),
+                    });
+                    if (!resp.ok) {
+                        throw new Error(`Failed to create project: ${resp.status}`);
+                    }
+                    const data = await resp.json();
+                    window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1&pendingImport=1`;
                 }
-                const data = await resp.json();
-                window.location.href = `${basePath}/workarea?project=${data.uuid}&new=1&pendingImport=1`;
                 break;
             }
         }
