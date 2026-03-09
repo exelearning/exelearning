@@ -806,6 +806,7 @@ function generateModalsHtml(): string {
         'pages/printpreview.njk',
         'pages/imageoptimizer.njk',
         'pages/globalsearch.njk',
+        'pages/regenerateproject.njk',
     ];
 
     let modalsHtml = '';

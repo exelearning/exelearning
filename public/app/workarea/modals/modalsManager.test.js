@@ -23,6 +23,7 @@ import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
+import ModalRegenerateProject from './modals/pages/modalRegenerateProject.js';
 import { GlobalSearchModal } from '../../search/index.js';
 
 // Mock all modal classes
@@ -50,6 +51,7 @@ vi.mock('./modals/pages/modalUploadProgress.js');
 vi.mock('./modals/pages/modalShare.js');
 vi.mock('./modals/pages/modalPrintPreview.js');
 vi.mock('./modals/pages/modalImageOptimizer.js');
+vi.mock('./modals/pages/modalRegenerateProject.js');
 vi.mock('../../search/index.js', () => {
   const MockGlobalSearchModal = vi.fn().mockImplementation(function() {
     this.behaviour = vi.fn();
@@ -114,6 +116,7 @@ describe('ModalsManagement', () => {
       expect(ModalShare).toHaveBeenCalledWith(modalsManager);
       expect(ModalPrintPreview).toHaveBeenCalledWith(modalsManager);
       expect(ModalImageOptimizer).toHaveBeenCalledWith(modalsManager);
+      expect(ModalRegenerateProject).toHaveBeenCalledWith(modalsManager);
       expect(GlobalSearchModal).toHaveBeenCalledWith(modalsManager);
     });
   });
@@ -133,11 +136,12 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(24); // GlobalSearch is 24th
+      expect(list).toHaveLength(25); // RegenerateProject + GlobalSearch
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
       expect(list).toContain(modalsManager.printpreview);
       expect(list).toContain(modalsManager.imageoptimizer);
+      expect(list).toContain(modalsManager.regenerateproject);
       expect(list).toContain(modalsManager.globalsearch);
     });
   });

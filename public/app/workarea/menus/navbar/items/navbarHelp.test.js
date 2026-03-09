@@ -26,6 +26,9 @@ describe('NavbarHelp', () => {
           about: {
             show: vi.fn(),
           },
+          regenerateproject: {
+            show: vi.fn(),
+          },
         },
       },
     };
@@ -40,6 +43,7 @@ describe('NavbarHelp', () => {
       exeWeb: { addEventListener: vi.fn() },
       reportBug: { addEventListener: vi.fn() },
       about: { addEventListener: vi.fn() },
+      regenerateProject: { addEventListener: vi.fn() },
     };
 
     // Mock navbar element with querySelector
@@ -54,6 +58,7 @@ describe('NavbarHelp', () => {
         if (selector === '#navbar-button-exe-web') return mockButtons.exeWeb;
         if (selector === '#navbar-button-report-bug') return mockButtons.reportBug;
         if (selector === '#navbar-button-about-exe') return mockButtons.about;
+        if (selector === '#navbar-button-regenerate-project') return mockButtons.regenerateProject;
         return null;
       }),
     };
@@ -111,6 +116,10 @@ describe('NavbarHelp', () => {
       expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-about-exe');
     });
 
+    it('should query regenerate project button', () => {
+      expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-regenerate-project');
+    });
+
     it('should store button references', () => {
       expect(navbarHelp.assistantButton).toBe(mockButtons.assistant);
       expect(navbarHelp.tutorialButton).toBe(mockButtons.tutorial);
@@ -120,6 +129,7 @@ describe('NavbarHelp', () => {
       expect(navbarHelp.exeWebButton).toBe(mockButtons.exeWeb);
       expect(navbarHelp.reportBugButton).toBe(mockButtons.reportBug);
       expect(navbarHelp.aboutButton).toBe(mockButtons.about);
+      expect(navbarHelp.regenerateProjectButton).toBe(mockButtons.regenerateProject);
     });
   });
 
@@ -134,6 +144,7 @@ describe('NavbarHelp', () => {
         exeWeb: vi.spyOn(navbarHelp, 'setExeWebEvent'),
         reportBug: vi.spyOn(navbarHelp, 'setReportBugEvent'),
         about: vi.spyOn(navbarHelp, 'setAboutExeEvent'),
+        regenerateProject: vi.spyOn(navbarHelp, 'setRegenerateProjectEvent'),
       };
 
       navbarHelp.setEvents();
@@ -388,6 +399,32 @@ describe('NavbarHelp', () => {
     });
   });
 
+  describe('setRegenerateProjectEvent', () => {
+    it('should add click event listener to regenerate project button', () => {
+      navbarHelp.setRegenerateProjectEvent();
+
+      expect(mockButtons.regenerateProject.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+
+    it('should call regenerateProjectEvent when button is clicked', () => {
+      const spy = vi.spyOn(navbarHelp, 'regenerateProjectEvent');
+      navbarHelp.setRegenerateProjectEvent();
+
+      const clickHandler = mockButtons.regenerateProject.addEventListener.mock.calls[0][1];
+      clickHandler();
+
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('regenerateProjectEvent', () => {
+    it('should show regenerate project modal', () => {
+      navbarHelp.regenerateProjectEvent();
+
+      expect(window.eXeLearning.app.modals.regenerateproject.show).toHaveBeenCalled();
+    });
+  });
+
   describe('integration', () => {
     it('should setup all event listeners on setEvents call', () => {
       navbarHelp.setEvents();
@@ -400,6 +437,7 @@ describe('NavbarHelp', () => {
       expect(mockButtons.exeWeb.addEventListener).toHaveBeenCalled();
       expect(mockButtons.reportBug.addEventListener).toHaveBeenCalled();
       expect(mockButtons.about.addEventListener).toHaveBeenCalled();
+      expect(mockButtons.regenerateProject.addEventListener).toHaveBeenCalled();
     });
 
     it('should show modals when respective buttons clicked', () => {

@@ -27,6 +27,9 @@ export default class NavbarFile {
         this.aboutButton = this.menu.navbar.querySelector(
             '#navbar-button-about-exe'
         );
+        this.regenerateProjectButton = this.menu.navbar.querySelector(
+            '#navbar-button-regenerate-project'
+        );
     }
 
     /**
@@ -42,6 +45,7 @@ export default class NavbarFile {
         this.setExeWebEvent();
         this.setReportBugEvent();
         this.setAboutExeEvent();
+        this.setRegenerateProjectEvent();
     }
 
     /**************************************************************************************
@@ -135,6 +139,19 @@ export default class NavbarFile {
         });
     }
 
+    /**
+     * Regenerate project
+     * Help -> Regenerate project...
+     *
+     */
+    setRegenerateProjectEvent() {
+        if (this.regenerateProjectButton) {
+            this.regenerateProjectButton.addEventListener('click', () => {
+                this.regenerateProjectEvent();
+            });
+        }
+    }
+
     /**************************************************************************************
      * EVENTS
      **************************************************************************************/
@@ -204,5 +221,13 @@ export default class NavbarFile {
      */
     aboutExeEvent() {
         eXeLearning.app.modals.about.show();
+    }
+
+    /**
+     * Show Regenerate project modal
+     *
+     */
+    regenerateProjectEvent() {
+        eXeLearning.app.modals.regenerateproject.show();
     }
 }

@@ -58,6 +58,7 @@ export class ElpxExporter extends Html5Exporter {
     async export(options?: ExportOptions): Promise<ExportResult> {
         const exportFilename = options?.filename || this.buildFilename();
         const elpxOptions = options as ElpxExportOptions | undefined;
+        this.flattenResources = elpxOptions?.flattenResources ?? false;
 
         try {
             let pages = this.buildPageList();

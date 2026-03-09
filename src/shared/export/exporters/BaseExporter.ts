@@ -45,6 +45,8 @@ export abstract class BaseExporter {
     protected assetFilenameMap: Map<string, string> | null = null;
     // Cache for asset export path lookups (folderPath-based)
     protected assetExportPathMap: Map<string, string> | null = null;
+    // When true, all asset folder paths are flattened to root level
+    protected flattenResources: boolean = false;
 
     constructor(document: ExportDocument, resources: ResourceProvider, assets: AssetProvider, zip: ZipProvider) {
         this.document = document;
@@ -470,7 +472,7 @@ export abstract class BaseExporter {
             const assets = await this.assets.getAllAssets();
 
             for (const asset of assets) {
-                let folderPath = asset.folderPath || '';
+                let folderPath = this.flattenResources ? '' : asset.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
                 const filename =
                     asset.filename && asset.filename !== 'unknown'

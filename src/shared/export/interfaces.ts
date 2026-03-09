@@ -484,6 +484,8 @@ export interface ElpxExportOptions extends ExportOptions {
     includeHtmlContent?: boolean;
     /** Root page ID for single page export */
     rootPageId?: string;
+    /** Flatten all asset folder paths to root (removes subfolders) */
+    flattenResources?: boolean;
 }
 
 // =============================================================================

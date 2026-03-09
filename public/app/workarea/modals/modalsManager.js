@@ -22,6 +22,7 @@ import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
+import ModalRegenerateProject from './modals/pages/modalRegenerateProject.js';
 import { GlobalSearchModal } from '../../search/index.js';
 
 export default class ModalsManagement {
@@ -51,6 +52,7 @@ export default class ModalsManagement {
         this.share = null;
         this.printpreview = null;
         this.imageoptimizer = null;
+        this.regenerateproject = null;
         this.globalsearch = null;
     }
 
@@ -82,6 +84,7 @@ export default class ModalsManagement {
         this.share = new ModalShare(this);
         this.printpreview = new ModalPrintPreview(this);
         this.imageoptimizer = new ModalImageOptimizer(this);
+        this.regenerateproject = new ModalRegenerateProject(this);
         this.globalsearch = new GlobalSearchModal(this);
     }
 
@@ -112,6 +115,7 @@ export default class ModalsManagement {
         this.share.behaviour();
         this.printpreview.behaviour();
         this.imageoptimizer.behaviour();
+        this.regenerateproject.behaviour();
         this.globalsearch.behaviour();
     }
 
@@ -145,6 +149,7 @@ export default class ModalsManagement {
             this.share,
             this.printpreview,
             this.imageoptimizer,
+            this.regenerateproject,
             this.globalsearch,
         ];
     }
