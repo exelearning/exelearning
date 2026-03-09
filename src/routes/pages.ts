@@ -29,6 +29,7 @@ import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { getAppVersion } from '../utils/version';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
+import { buildAdminTranslations } from './admin';
 import {
     getAuthMethods as getAuthMethodsFromSettings,
     getSettingBoolean as getSettingBooleanFromSettings,
@@ -1097,87 +1098,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     roles: userRoles,
                 };
 
-                const t = {
-                    admin_panel: trans('Admin Panel', {}, locale),
-                    dashboard: trans('Dashboard', {}, locale),
-                    users: trans('Users', {}, locale),
-                    extensions: trans('Extensions', {}, locale),
-                    settings: trans('Settings', {}, locale),
-                    back_to_workarea: trans('Back to Workarea', {}, locale),
-                    logout: trans('Logout', {}, locale),
-                    total_users: trans('Total Users', {}, locale),
-                    active_users: trans('Active Users', {}, locale),
-                    total_projects: trans('Total Projects', {}, locale),
-                    active_projects: trans('Active Projects', {}, locale),
-                    user_management: trans('User Management', {}, locale),
-                    create_user: trans('Create User', {}, locale),
-                    email: trans('Email', {}, locale),
-                    roles: trans('Roles', {}, locale),
-                    status: trans('Status', {}, locale),
-                    actions: trans('Actions', {}, locale),
-                    edit: trans('Edit', {}, locale),
-                    delete: trans('Delete', {}, locale),
-                    save: trans('Save', {}, locale),
-                    cancel: trans('Cancel', {}, locale),
-                    active: trans('Active', {}, locale),
-                    inactive: trans('Inactive', {}, locale),
-                    search: trans('Search', {}, locale),
-                    loading: trans('Loading...', {}, locale),
-                    confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
-                    log_in_as: trans('Log in as', {}, locale),
-                    cannot_impersonate_admin: trans('Cannot impersonate administrator users', {}, locale),
-                    cannot_impersonate_self: trans('Cannot impersonate your own account', {}, locale),
-                    confirm_impersonate: trans('Start impersonation as {email}?', {}, locale),
-                    impersonation_failed: trans('Failed to start impersonation', {}, locale),
-                    styles: trans('Styles', {}, locale),
-                    idevices: trans('iDevices', {}, locale),
-                    templates: trans('Templates', {}, locale),
-                    installed: trans('Installed', {}, locale),
-                    available: trans('Available', {}, locale),
-                    install: trans('Install', {}, locale),
-                    uninstall: trans('Uninstall', {}, locale),
-                    activate: trans('Activate', {}, locale),
-                    deactivate: trans('Deactivate', {}, locale),
-                    customization: trans('Customization', {}, locale),
-                    custom_head_html_label: trans('Custom HEAD HTML', {}, locale),
-                    custom_head_html_help: trans(
-                        'HTML injected into the <head> of all user pages (login, workarea, error pages). Not applied to the admin panel.',
-                        {},
-                        locale,
-                    ),
-                    custom_head_html_jquery_note: trans('jQuery is available on all user pages.', {}, locale),
-                    custom_head_html_hook_label: trans(
-                        'To run code only in the workarea after the app is fully loaded, define {hook}:',
-                        {},
-                        locale,
-                    ),
-                    custom_head_html_example: trans('Example', {}, locale),
-                    app_identity_label: trans('App Identity', {}, locale),
-                    app_name_label: trans('Application name', {}, locale),
-                    app_name_help: trans(
-                        'Page title shown in the browser tab. Leave empty to use "eXeLearning".',
-                        {},
-                        locale,
-                    ),
-                    app_favicon_label: trans('Favicon', {}, locale),
-                    app_favicon_help: trans(
-                        'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.',
-                        {},
-                        locale,
-                    ),
-                    app_favicon_upload: trans('Upload favicon', {}, locale),
-                    app_favicon_delete: trans('Delete favicon', {}, locale),
-                    custom_assets_label: trans('Custom Assets', {}, locale),
-                    custom_assets_help: trans(
-                        'Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.',
-                        {},
-                        locale,
-                    ),
-                    custom_assets_upload: trans('Upload file', {}, locale),
-                    custom_assets_delete: trans('Delete', {}, locale),
-                    custom_assets_empty: trans('No files uploaded yet.', {}, locale),
-                    custom_assets_copy_url: trans('Copy URL', {}, locale),
-                };
+                const t = buildAdminTranslations(locale);
 
                 let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
                 const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {

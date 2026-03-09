@@ -39,6 +39,9 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
     /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
+    /[\\/]+views[\\/]+admin[\\/]+/, // Admin-only Nunjucks templates
+    /[\\/]+app[\\/]+admin[\\/]+/, // Admin-only frontend JS
+    /[\\/]+routes[\\/]+admin/, // Admin-only backend routes
 ];
 
 /**
@@ -78,12 +81,6 @@ async function extractTranslationKeys(): Promise<Set<string>> {
         /trans\(\s*'([^']+)'/g, // trans('key') - single-quoted
         /trans\(\s*"([^"]+)"/g, // trans("key") - double-quoted
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
-        /__\(\s*'([^']+)'/g, // __('key') - single-quoted
-        /__\(\s*"([^"]+)"/g, // __("key") - double-quoted
-        /__\(\s*`([^`]+)`/g, // __(`key`)
-        /\bt\(\s*'([^']+)'/g, // t('key') - single-quoted
-        /\bt\(\s*"([^"]+)"/g, // t("key") - double-quoted
-        /\bt\(\s*`([^`]+)`/g, // t(`key`)
         /(?<![.\w])_\(\s*'([^']+)'/g, // _('key') - GUI translations, single-quoted
         /(?<![.\w])_\(\s*"([^"]+)"/g, // _("key") - GUI translations, double-quoted
         /(?<![.\w])_\(\s*`([^`]+)`/g, // _(`key`) - GUI translations with backticks
