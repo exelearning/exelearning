@@ -38,6 +38,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { getBasePath } from '../utils/basepath.util';
 import { getSystemInfo } from '../services/system-info';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
 import * as pathModule from 'path';
@@ -167,6 +168,133 @@ function getRequestClientIp(request: Request): string | null {
 }
 
 /**
+ * HTML tags allowed in the Custom HEAD HTML setting.
+ * Only these tags are valid in <head> and safe for injection.
+ */
+const ALLOWED_HEAD_TAGS = new Set(['style', 'meta', 'link', 'script']);
+
+/**
+ * Allowed tags that are void elements (no closing tag).
+ */
+const VOID_HEAD_TAGS = new Set(['meta', 'link']);
+
+/**
+ * Sanitize Custom HEAD HTML: keep only allowed tags (style, meta, link, script).
+ * Removes entire elements — including their text content — whose tag is not in the allowed list.
+ * Any top-level text not inside an allowed element is also discarded.
+ *
+ * Uses an iterative parser so content of disallowed elements is never left behind.
+ */
+export function sanitizeCustomHeadHtml(html: string): string {
+    if (!html) return '';
+
+    const kept: string[] = [];
+    let pos = 0;
+    const len = html.length;
+
+    while (pos < len) {
+        // Advance to the next '<'; discard any top-level text before it
+        const lt = html.indexOf('<', pos);
+        if (lt === -1) break;
+
+        // Preserve HTML comments: <!-- ... -->
+        if (html.startsWith('<!--', lt)) {
+            const end = html.indexOf('-->', lt + 4);
+            if (end === -1) break;
+            kept.push(html.slice(lt, end + 3));
+            pos = end + 3;
+            continue;
+        }
+
+        // Skip orphaned closing tags
+        if (html[lt + 1] === '/') {
+            const gt = html.indexOf('>', lt);
+            pos = gt === -1 ? len : gt + 1;
+            continue;
+        }
+
+        // Parse the tag name
+        const tagMatch = /^<([a-zA-Z][a-zA-Z0-9-]*)/i.exec(html.slice(lt));
+        if (!tagMatch) {
+            pos = lt + 1;
+            continue;
+        }
+
+        const tagName = tagMatch[1].toLowerCase();
+        const isAllowed = ALLOWED_HEAD_TAGS.has(tagName);
+
+        // Find the end of the opening tag
+        const gt = html.indexOf('>', lt);
+        if (gt === -1) break;
+
+        const isSelfClosing = html[gt - 1] === '/';
+
+        if (VOID_HEAD_TAGS.has(tagName) || isSelfClosing) {
+            // Void or self-closing tag — no closing tag to find
+            if (isAllowed) kept.push(html.slice(lt, gt + 1));
+            pos = gt + 1;
+        } else {
+            // Paired element — find matching closing tag and include/skip the whole block
+            const closeRe = new RegExp(`</${tagName}\\s*>`, 'i');
+            const afterOpen = gt + 1;
+            const closeMatch = closeRe.exec(html.slice(afterOpen));
+            const endPos = closeMatch ? afterOpen + closeMatch.index + closeMatch[0].length : afterOpen;
+            if (isAllowed) kept.push(html.slice(lt, endPos));
+            pos = endPos;
+        }
+    }
+
+    return kept.join('\n').trim();
+}
+
+/**
+ * MIME types allowed for custom asset uploads.
+ * Derived from ALLOWED_EXTENSIONS in config.ts.
+ */
+export const ALLOWED_ASSET_MIME_TYPES = new Set([
+    // Images
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/svg+xml',
+    'image/webp',
+    // Audio
+    'audio/mpeg', // mp3
+    'audio/ogg', // ogg
+    'audio/wav', // wav
+    'audio/mp4', // m4a
+    'audio/x-wav', // wav alternative
+    'audio/wave', // wav alternative
+    // Video
+    'video/mp4', // mp4
+    'video/webm', // webm
+    'video/ogg', // ogv
+    // Documents
+    'application/pdf', // pdf
+    // Archives
+    'application/zip', // zip
+    'application/x-zip-compressed', // zip alternative
+    // Text / Code
+    'text/plain', // txt
+    'text/html', // html, htm
+    'text/css', // css
+    'text/javascript', // js (legacy MIME)
+    'text/xml', // xml
+    'application/javascript', // js
+    'application/json', // json
+    'application/xml', // xml alternative
+    // Fonts
+    'font/ttf', // ttf
+    'font/woff', // woff
+    'font/woff2', // woff2
+    'application/x-font-ttf', // ttf alternative
+    'application/font-woff', // woff alternative
+    'application/font-woff2', // woff2 alternative
+    'application/vnd.ms-fontobject', // eot
+]);
+
+/**
  * Sanitize user for API response (remove password)
  */
 function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[] } {
@@ -274,6 +402,9 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     DROPBOX_CLIENT_SECRET: { value: process.env.DROPBOX_CLIENT_SECRET || 'example.com', type: 'string' },
     OPENEQUELLA_CLIENT_ID: { value: process.env.OPENEQUELLA_CLIENT_ID || 'example.com', type: 'string' },
     OPENEQUELLA_CLIENT_SECRET: { value: process.env.OPENEQUELLA_CLIENT_SECRET || 'example.com', type: 'string' },
+    CUSTOM_HEAD_HTML: { value: '', type: 'string' },
+    APP_NAME: { value: '', type: 'string' },
+    APP_FAVICON_PATH: { value: '', type: 'string' },
 };
 
 // ============================================================================
@@ -377,12 +508,18 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 '/api/admin/settings',
                 async ({ body, set, jwtPayload }) => {
                     const data = body as { settings: Array<{ key: string; value: string; type: string }> };
+                    const sanitizedValues: Record<string, string> = {};
 
                     for (const setting of data.settings) {
                         const def = ADMIN_SETTINGS_DEFAULTS[setting.key];
                         if (!def) {
                             set.status = 400;
                             return { error: 'Bad Request', message: `Unknown setting: ${setting.key}` };
+                        }
+
+                        if (setting.key === 'CUSTOM_HEAD_HTML') {
+                            setting.value = sanitizeCustomHeadHtml(setting.value);
+                            sanitizedValues['CUSTOM_HEAD_HTML'] = setting.value;
                         }
 
                         if (setting.key === 'APP_AUTH_METHODS') {
@@ -426,7 +563,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         }
                     }
 
-                    return { success: true };
+                    return { success: true, sanitizedValues };
                 },
                 { body: updateSettingsSchema },
             )
@@ -917,6 +1054,150 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     message: 'User deleted',
                     deletedProjectsCount,
                 };
+            })
+
+            // ================================================================
+            // Customization: Favicon
+            // ================================================================
+
+            // POST /api/admin/customization/favicon — upload custom favicon
+            .post(
+                '/api/admin/customization/favicon',
+                async ({ body, set, jwtPayload }) => {
+                    const FAVICON_ALLOWED_TYPES = [
+                        'image/x-icon',
+                        'image/png',
+                        'image/svg+xml',
+                        'image/gif',
+                        'image/jpeg',
+                        'image/webp',
+                    ];
+                    const file = (body as { file: File }).file;
+                    if (!file || !FAVICON_ALLOWED_TYPES.includes(file.type)) {
+                        set.status = 400;
+                        return {
+                            error: 'Bad Request',
+                            message: 'Invalid file. Allowed: .ico, .png, .svg, .gif, .jpg, .webp',
+                        };
+                    }
+                    const originalName = pathModule.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
+                    if (!originalName) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
+                    // Remove previous favicon files
+                    for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
+                        await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
+                    }
+                    await fileHelper.writeFile(
+                        pathModule.join(faviconDir, originalName),
+                        Buffer.from(await file.arrayBuffer()),
+                    );
+                    await queries.setSetting(
+                        db as unknown as AppSettingsDb,
+                        'APP_FAVICON_PATH',
+                        originalName,
+                        'string',
+                        jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                    );
+                    return { success: true, filename: originalName };
+                },
+                { body: t.Object({ file: t.File() }) },
+            )
+
+            // DELETE /api/admin/customization/favicon — remove custom favicon
+            .delete('/api/admin/customization/favicon', async ({ jwtPayload }) => {
+                const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
+                for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
+                    await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
+                }
+                await queries.setSetting(
+                    db as unknown as AppSettingsDb,
+                    'APP_FAVICON_PATH',
+                    '',
+                    'string',
+                    jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                );
+                return { success: true };
+            })
+
+            // ================================================================
+            // Customization: Assets
+            // ================================================================
+
+            // GET /api/admin/customization/assets — list custom asset files
+            .get('/api/admin/customization/assets', async () => {
+                const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
+                const files = await fileHelper.listFiles(assetsDir).catch(() => []);
+                const basePath = getBasePath();
+                const assets = await Promise.all(
+                    files.map(async filename => {
+                        const stats = await fileHelper.getStats(pathModule.join(assetsDir, filename));
+                        return {
+                            filename,
+                            size: stats?.size ?? 0,
+                            url: `${basePath}/customization/assets/${encodeURIComponent(filename)}`,
+                        };
+                    }),
+                );
+                return { assets };
+            })
+
+            // POST /api/admin/customization/assets — upload a custom asset file
+            .post(
+                '/api/admin/customization/assets',
+                async ({ body, set }) => {
+                    const file = (body as { file: File }).file;
+                    if (!file) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'No file uploaded' };
+                    }
+                    if (!ALLOWED_ASSET_MIME_TYPES.has(file.type)) {
+                        set.status = 400;
+                        return {
+                            error: 'Bad Request',
+                            message: `File type '${file.type}' is not allowed`,
+                        };
+                    }
+                    const originalName = pathModule.basename(file.name).replace(/[^a-zA-Z0-9._-]/g, '_');
+                    if (!originalName) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
+                    if (!fileHelper.isPathSafe(assetsDir, originalName)) {
+                        set.status = 400;
+                        return { error: 'Bad Request', message: 'Invalid filename' };
+                    }
+                    await fileHelper.writeFile(
+                        pathModule.join(assetsDir, originalName),
+                        Buffer.from(await file.arrayBuffer()),
+                    );
+                    const basePath = getBasePath();
+                    return {
+                        success: true,
+                        filename: originalName,
+                        url: `${basePath}/customization/assets/${encodeURIComponent(originalName)}`,
+                    };
+                },
+                { body: t.Object({ file: t.File() }) },
+            )
+
+            // DELETE /api/admin/customization/assets/:filename — remove a custom asset
+            .delete('/api/admin/customization/assets/:filename', async ({ params, set }) => {
+                const assetsDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'assets');
+                if (!fileHelper.isPathSafe(assetsDir, params.filename)) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid filename' };
+                }
+                const targetPath = pathModule.join(assetsDir, params.filename);
+                if (!(await fileHelper.fileExists(targetPath))) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'File not found' };
+                }
+                await fileHelper.remove(targetPath);
+                return { success: true };
             })
     );
 }

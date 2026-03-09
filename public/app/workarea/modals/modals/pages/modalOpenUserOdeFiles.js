@@ -760,24 +760,29 @@ export default class modalOpenUserOdeFiles extends Modal {
             const data = {
                 title: _('Open project'),
                 forceOpen: _('Open without saving'),
-                openYjsProject: true,
-                projectUuid: projectUuid,
+                pendingAction: { action: 'open', projectUuid },
             };
             eXeLearning.app.modals.sessionlogout.show(data);
             return;
         }
 
         // No unsaved changes, proceed with navigation
-        // Close modal
         this.close();
 
-        // Clear beforeunload handler to prevent browser dialog
-        window.onbeforeunload = null;
-
-        // Redirect to workarea with project UUID
-        Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
-        const basePath = window.eXeLearning?.config?.basePath || '';
-        window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+        if (eXeLearning.app.project?.transitionToProject) {
+            await eXeLearning.app.project.transitionToProject({
+                action: 'open',
+                projectUuid,
+                skipSave: true,
+            });
+        } else {
+            // Fallback: direct redirect
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+            window.onbeforeunload = null;
+            Logger.log(`[OpenProject] Opening project: ${projectUuid}`);
+            const basePath = window.eXeLearning?.config?.basePath || '';
+            window.location.href = `${basePath}/workarea?project=${projectUuid}`;
+        }
     }
 
     /**
@@ -1376,30 +1381,24 @@ export default class modalOpenUserOdeFiles extends Modal {
             return;
         }
 
-        // Check for unsaved changes BEFORE uploading (only for large files and not imports)
+        // Check for unsaved changes BEFORE processing (only for ELP files, not imports)
         if (!skipSessionCheck && !isImportIdevices && !isImportProperties) {
-            // Check for unsaved changes using Yjs mechanism
             const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
             const hasUnsaved =
                 yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
             if (hasUnsaved) {
-                // There are unsaved changes - show confirmation modal
-                const data = {
-                    title: _('Open project'),
-                    forceOpen: _('Open without saving'),
-                    openOdeFile: true,
-                    localOdeFile: true,
-                    odeFile: odeFile, // Pass the file object
-                    isLargeFile: true,
-                };
-
                 // Close open files modal
                 if (this.modal && this.modal._isShown) {
                     this.close();
                 }
 
-                // Show session logout modal and return (don't upload yet)
+                // Show session logout modal with pendingAction for import
+                const data = {
+                    title: _('Open project'),
+                    forceOpen: _('Open without saving'),
+                    pendingAction: { action: 'import', file: odeFile },
+                };
                 eXeLearning.app.modals.sessionlogout.show(data);
                 return;
             }
@@ -1471,99 +1470,16 @@ export default class modalOpenUserOdeFiles extends Modal {
                     return;
                 }
 
-                // Create a new project via API to get UUID
-                const projectTitle = odeFileName.replace(/\.(elp|elpx)$/i, '') || 'Imported Project';
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                const authToken = this.getAuthToken();
-                const createResponse = await fetch(`${basePath}/api/project/create-quick`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ title: projectTitle })
+                // Online mode: store file in IndexedDB and do a full page reload
+                progressModal.hide();
+                this.cleanupOrphanedBackdrops();
+
+                Logger.log(`[OpenFile] Storing file in IndexedDB for import after reload: ${odeFileName}`);
+                await eXeLearning.app.project.transitionToProject({
+                    action: 'import',
+                    file: odeFile,
+                    skipSave: true,
                 });
-
-                const responseText = await createResponse.text();
-                let projectData;
-
-                try {
-                    projectData = JSON.parse(responseText);
-                } catch (e) {
-                    console.error('[OpenFile] Failed to parse response:', responseText);
-                    throw new Error('Invalid server response');
-                }
-
-                if (!createResponse.ok) {
-                    console.error('[OpenFile] Failed to create project:', createResponse.status, projectData);
-                    throw new Error(projectData.message || `Failed to create project: ${createResponse.status}`);
-                }
-
-                Logger.log('[OpenFile] Project data received:', projectData);
-
-                const projectUuid = projectData.uuid;
-                if (!projectUuid) {
-                    console.error('[OpenFile] No UUID in response:', projectData);
-                    throw new Error('Server did not return a project UUID');
-                }
-
-                Logger.log(`[OpenFile] Created project ${projectUuid}, processing ELP directly in memory...`);
-
-                // Clear beforeunload handler to prevent browser dialog
-                window.onbeforeunload = null;
-
-                // Process file directly in memory without redirect
-                try {
-                    // Reinitialize Yjs with the new project (keeps everything in memory)
-                    // Skip sync wait to avoid delay when opening local ELP files
-                    await eXeLearning.app.project.reinitializeWithProject(projectUuid, {
-                        skipSyncWait: true,
-                    });
-                    Logger.log(`[OpenFile] Yjs reinitialized for project ${projectUuid}`);
-
-                    // Hide progress modal before showing inline progress
-                    progressModal.hide();
-                    this.cleanupOrphanedBackdrops();
-
-                    // Show inline progress in workarea
-                    const importProgress = new ImportProgress();
-                    importProgress.show();
-
-                    // Import the ELP file directly with progress callback
-                    const stats = await eXeLearning.app.project.importElpDirectly(odeFile, {
-                        onProgress: (progress) => importProgress.update(progress)
-                    });
-                    Logger.log(`[OpenFile] Import complete:`, stats);
-
-                    // Hide inline progress
-                    importProgress.hide();
-
-                    // Update URL without page reload (wrapped in try-catch to handle browser extensions blocking pushState)
-                    try {
-                        const basePath = window.eXeLearning?.config?.basePath || '';
-                        window.history.pushState({}, '', `${basePath}/workarea?project=${projectUuid}`);
-                    } catch (pushStateError) {
-                        // Some browser extensions (security/privacy) block pushState - this is non-critical
-                        console.warn('[OpenFile] pushState blocked (likely by browser extension):', pushStateError.message);
-                    }
-
-                    // Refresh UI to show imported content (WITHOUT reset/reload from API)
-                    // Don't call openLoad() as it would reset and clear the imported content
-                    await eXeLearning.app.project.refreshAfterDirectImport();
-
-                    Logger.log(`[OpenFile] Successfully opened ${odeFileName}`);
-                } catch (err) {
-                    console.error('[OpenFile] Error processing file in memory:', err);
-                    // Ensure progress is hidden on error
-                    const importProgress = document.querySelector('#import-progress-overlay');
-                    if (importProgress) importProgress.remove();
-                    eXeLearning.app.modals.alert.show({
-                        title: _('Import error'),
-                        body: err.message || _('An error occurred while opening the file.'),
-                        contentId: 'error',
-                    });
-                }
                 return;
             } catch (err) {
                 console.error('[OpenFile] Error in direct client processing:', err);
@@ -1775,6 +1691,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                     Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                     // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                    window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                     window.onbeforeunload = null;
                     window._skipLeaveSessionModal = true;
                     const importParam = encodeURIComponent(response.elpImportPath);
@@ -1841,12 +1758,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                         eXeLearning.app.modals.sessionlogout.show({
                             title: _('Open project'),
                             forceOpen: _('Open without saving'),
-                            openOdeFile: true,
-                            localOdeFile: true,
-                            isLargeFile: true,
-                            odeFile: originalFile,
-                            odeFileName,
-                            odeFilePath,
+                            pendingAction: { action: 'import', file: originalFile },
                         });
 
                         return;
@@ -1868,7 +1780,17 @@ export default class modalOpenUserOdeFiles extends Modal {
                         yjsBridge?.documentManager?.hasUnsavedChanges?.() || false;
 
                     if (hasUnsaved) {
-                        eXeLearning.app.modals.sessionlogout.show(data);
+                        eXeLearning.app.modals.sessionlogout.show({
+                            title: _('Open project'),
+                            forceOpen: _('Open without saving'),
+                            pendingAction: { action: 'import', file: originalFile },
+                        });
+                    } else if (originalFile && eXeLearning.app.project?.transitionToProject) {
+                        await eXeLearning.app.project.transitionToProject({
+                            action: 'import',
+                            file: originalFile,
+                            skipSave: true,
+                        });
                     } else {
                         this.openUserLocalOdeFilesWithOpenSession(
                             odeFileName,
@@ -1902,6 +1824,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                 Logger.log(`[OpenFile] Redirecting to Yjs project: ${response.projectUuid}`);
                 Logger.log(`[OpenFile] Import path: ${response.elpImportPath}`);
                 // Clear beforeunload handler to prevent browser "Leave site?" dialog
+                window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                 window.onbeforeunload = null;
                 const importParam = encodeURIComponent(response.elpImportPath);
                 const basePath = window.eXeLearning?.config?.basePath || '';

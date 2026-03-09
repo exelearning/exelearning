@@ -1185,8 +1185,6 @@ export default class NavbarFile {
      * @param {*} odeSessionId
      */
     async newSession(odeSessionId) {
-        let params = { odeSessionId: odeSessionId };
-
         // Check for unsaved changes using Yjs mechanism
         const yjsBridge = eXeLearning?.app?.project?._yjsBridge;
         const hasUnsaved =
@@ -1197,80 +1195,49 @@ export default class NavbarFile {
             const data = {
                 title: _('New file'),
                 forceOpen: _('Create new file without saving'),
-                newFile: true,
+                pendingAction: { action: 'new' },
             };
             eXeLearning.app.modals.sessionlogout.show(data);
         } else {
             // No unsaved changes, create new session directly
-            this.createSession(params);
+            this.createSession();
         }
     }
 
     /**
      * createSession
-     * Creates a new project/session. In Yjs mode, this is done without page reload.
+     * Creates a new project/session. Always does a full page reload in online mode.
      */
-    async createSession(params) {
+    async createSession() {
         if (
             this.isStaticModeWithoutElectron() &&
             typeof window.newProject === 'function'
         ) {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             window.newProject();
             return;
         }
 
-        // In Yjs mode: create project without page reload
-        if (eXeLearning.app.project?._yjsEnabled &&
-            eXeLearning.app.project?.reinitializeWithProject) {
-            Logger.log('[NavbarFile] Creating new project in Yjs mode');
+        // Use transitionToProject for a clean full-page-reload transition
+        if (eXeLearning.app.project?.transitionToProject) {
             try {
-                // Create new project on backend
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                const response = await fetch(`${basePath}/api/project/create-quick`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ title: _('Untitled') })
+                await eXeLearning.app.project.transitionToProject({
+                    action: 'new',
+                    skipSave: true,
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to create project: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const projectUuid = data.uuid;
-
-                if (!projectUuid) {
-                    throw new Error('Server did not return a project UUID');
-                }
-
-                Logger.log('[NavbarFile] New project created:', projectUuid);
-
-                // Clear beforeunload handler
-                window.onbeforeunload = null;
-
-                // Redirect to workarea with new project (clean page load)
-                // This ensures all state is properly initialized
-                window.location.href = `${basePath}/workarea?project=${projectUuid}&new=1`;
                 return;
             } catch (error) {
-                console.error('[NavbarFile] Failed to create new project in Yjs mode:', error);
+                console.error('[NavbarFile] Failed to create new project:', error);
                 // Fall through to legacy behavior
             }
         }
 
-        // Legacy mode: use postCloseSession and full page reload
-        await eXeLearning.app.api.postCloseSession(params).then((response) => {
-            if (response.responseMessage == 'OK') {
-                // Clear beforeunload handler to prevent browser "Leave site?" dialog
-                window.onbeforeunload = null;
-                // Redirect to /workarea without project parameter
-                // Backend will create a new project and redirect back with new UUID
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                window.location.href = `${basePath}/workarea`;
-            }
-        });
+        // Legacy fallback: redirect to projects page
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+        window.onbeforeunload = null;
+        const basePath = window.eXeLearning?.config?.basePath || '';
+        window.location.href = `${basePath}/projects`;
     }
 
     /**
@@ -1577,6 +1544,7 @@ export default class NavbarFile {
             );
 
         if (response.responseMessage == 'OK') {
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             window.location.replace(response.returnUrl);
         } else {
@@ -1773,12 +1741,11 @@ export default class NavbarFile {
                         false;
 
                     if (hasUnsaved) {
-                        // Show confirmation modal with Yjs support
+                        // Show confirmation modal with pendingAction
                         const data = {
                             title: _('Open project'),
                             forceOpen: _('Open without saving'),
-                            openYjsProject: true,
-                            projectUuid: projectUuid,
+                            pendingAction: { action: 'open', projectUuid },
                         };
                         eXeLearning.app.modals.sessionlogout.show(data);
                     } else {

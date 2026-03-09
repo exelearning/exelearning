@@ -26,6 +26,9 @@ import EmbeddingBridge from './core/EmbeddingBridge.js';
 import { HIDE_UI_ATTR_MAP, applyHideUI } from './core/ui-visibility.js';
 // DOM translation for static mode
 import DOMTranslator from './locate/domTranslator.js';
+// Unsaved changes helper
+import UnsavedChangesHelper from './utils/unsavedChangesHelper.js';
+window.UnsavedChangesHelper = UnsavedChangesHelper;
 
 export default class App {
     constructor(eXeLearning) {
@@ -135,8 +138,6 @@ export default class App {
         await this.tmpStringList();
         // Add the notranslate class to some elements
         await this.addNoTranslateForGoogle();
-        // Execute the custom JavaScript code
-        await this.runCustomJavaScriptCode();
         // Compose and initialize shortcuts
         await this.initializedShortcuts();
 
@@ -164,6 +165,9 @@ export default class App {
             });
             this._readyResolve = null;
         }
+
+        // Execute the custom JavaScript code after the app is fully ready
+        await this.runCustomJavaScriptCode();
     }
 
     /**
@@ -1552,25 +1556,10 @@ function __exeInstallBeforeUnloadOnce() {
     if (__exeBeforeUnloadInstalled) return;
     __exeBeforeUnloadInstalled = true;
 
-    window.onbeforeunload = function (event) {
-        if (window.electronAPI) return undefined;
-
-        const docManager = window.eXeLearning?.app?.project?._yjsBridge?.documentManager;
-        const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
-        const hasUnsavedAssets =
-            assetManager &&
-            typeof assetManager.hasUnsavedAssets === 'function' &&
-            assetManager.hasUnsavedAssets();
-        const isDirty = docManager?.isDirty === true;
-
-        if (isDirty || hasUnsavedAssets) {
-            event.preventDefault();
-            event.returnValue = '';
-            return '';
-        }
-
-        return undefined;
-    };
+    // Delegate to UnsavedChangesHelper (single source of truth for beforeunload)
+    if (window.UnsavedChangesHelper) {
+        window.UnsavedChangesHelper.setupBeforeUnloadHandler();
+    }
 }
 
 // Listen for the first trusted user interaction and install then.
