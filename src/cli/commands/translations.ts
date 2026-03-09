@@ -77,20 +77,30 @@ function isInvalidKey(key: string): boolean {
 async function extractTranslationKeys(): Promise<Set<string>> {
     const keys = new Set<string>();
 
-    // Patterns to search for translation function calls
-    const patterns = [
-        /trans\(\s*'([^']+)'/g, // trans('key') - single-quoted
-        /trans\(\s*"([^"]+)"/g, // trans("key") - double-quoted
+    // Patterns for static single/double-quoted strings.
+    // (?:[^'\\]|\\.)* correctly handles escape sequences like \' so that
+    // _('Fick\'s Law') is captured as  Fick\'s Law  (raw, matching the XLF).
+    // ${...} inside single/double quotes is a literal placeholder, not a JS
+    // template expression, so we do NOT apply the ${...} filter here.
+    const quotedPatterns = [
+        /trans\(\s*'((?:[^'\\]|\\.)*)'/g, // trans('key')
+        /trans\(\s*"((?:[^"\\]|\\.)*)"/g, // trans("key")
+        /(?<![.\w])_\(\s*'((?:[^'\\]|\\.)*)'/g, // _('key')
+        /(?<![.\w])_\(\s*"((?:[^"\\]|\\.)*)"/g, // _("key")
+        /\bc_\(\s*'((?:[^'\\]|\\.)*)'/g, // c_('key')
+        /\bc_\(\s*"((?:[^"\\]|\\.)*)"/g, // c_("key")
+        /'((?:[^'\\]|\\.)*)'\s*\|\s*trans\b/g, // 'key' | trans
+        /"((?:[^"\\]|\\.)*)"\s*\|\s*trans\b/g, // "key" | trans
+    ];
+
+    // Patterns for template literals (backticks).
+    // ${...} here IS a JS interpolation — keys containing it are dynamic and
+    // cannot be static translation keys, so we filter them out.
+    const templatePatterns = [
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
-        /(?<![.\w])_\(\s*'([^']+)'/g, // _('key') - GUI translations, single-quoted
-        /(?<![.\w])_\(\s*"([^"]+)"/g, // _("key") - GUI translations, double-quoted
-        /(?<![.\w])_\(\s*`([^`]+)`/g, // _(`key`) - GUI translations with backticks
-        /\bc_\(\s*'([^']+)'/g, // c_('key') - content translations, single-quoted
-        /\bc_\(\s*"([^"]+)"/g, // c_("key") - content translations, double-quoted
-        /\bc_\(\s*`([^`]+)`/g, // c_(`key`) - content translations with backticks
-        /'([^']+)'\s*\|\s*trans\b/g, // 'key' | trans - Nunjucks filter, single-quoted
-        /"([^"]+)"\s*\|\s*trans\b/g, // "key" | trans - Nunjucks filter, double-quoted
-        /\$\{TRANS_PREFIX\}([^`$]+)/g, // ${TRANS_PREFIX}Key - runtime translatable strings
+        /(?<![.\w])_\(\s*`([^`]+)`/g, // _(`key`)
+        /\bc_\(\s*`([^`]+)`/g, // c_(`key`)
+        /\$\{TRANS_PREFIX\}([^`$]+)/g, // ${TRANS_PREFIX}Key
     ];
 
     // Source directories to scan
@@ -104,21 +114,33 @@ async function extractTranslationKeys(): Promise<Set<string>> {
 
     for (const glob of sourceGlobs) {
         for await (const filePath of glob.scan({ cwd: process.cwd(), absolute: true })) {
-            // Skip excluded files/directories
             if (shouldExcludeFile(filePath)) {
                 continue;
             }
 
             try {
                 const content = fs.readFileSync(filePath, 'utf-8');
-                for (const pattern of patterns) {
-                    // Reset regex state
+
+                // Quoted patterns: keep raw captured value (matches XLF resname form).
+                // No trim — trailing/leading spaces are part of the key.
+                for (const pattern of quotedPatterns) {
                     pattern.lastIndex = 0;
                     let match;
                     while ((match = pattern.exec(content)) !== null) {
-                        const key = match[1].trim();
-                        // Skip keys that look like template expressions, are empty,
-                        // start with backslash, or match test patterns
+                        const key = match[1];
+                        if (key && !key.startsWith('\\') && !isInvalidKey(key)) {
+                            keys.add(key);
+                        }
+                    }
+                }
+
+                // Template patterns: skip keys with ${...} (runtime interpolations).
+                // No trim here either.
+                for (const pattern of templatePatterns) {
+                    pattern.lastIndex = 0;
+                    let match;
+                    while ((match = pattern.exec(content)) !== null) {
+                        const key = match[1];
                         if (key && !key.includes('${') && !key.startsWith('\\') && !isInvalidKey(key)) {
                             keys.add(key);
                         }
