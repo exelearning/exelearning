@@ -38,6 +38,7 @@ import {
 } from '../db/queries/projects';
 import { getUserStorageUsage as getUserStorageUsageDefault } from '../db/queries/assets';
 import { requireAdmin, hasRole, ROLES, PROTECTED_ROLE } from '../utils/guards';
+import { trans } from '../services/translation';
 import { getBasePath } from '../utils/basepath.util';
 import { getSystemInfo } from '../services/system-info';
 import { createFileHelper, type FileHelper } from '../services/file-helper';
@@ -140,6 +141,170 @@ const getJwtSecret = () => {
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+/**
+ * Build the translation object for the admin panel template.
+ * Kept here so these strings are excluded from the main translation extraction.
+ */
+export function buildAdminTranslations(locale: string): Record<string, string> {
+    return {
+        // Navigation / layout
+        admin_panel: trans('Admin Panel', {}, locale),
+        dashboard: trans('Dashboard', {}, locale),
+        menu: trans('Menu', {}, locale),
+        navigation: trans('Navigation', {}, locale),
+        back_to_workarea: trans('Back to Workarea', {}, locale),
+        logout: trans('Logout', {}, locale),
+        version: trans('Version', {}, locale),
+        // Common actions
+        save: trans('Save', {}, locale),
+        cancel: trans('Cancel', {}, locale),
+        edit: trans('Edit', {}, locale),
+        delete: trans('Delete', {}, locale),
+        create: trans('Create', {}, locale),
+        download: trans('Download', {}, locale),
+        preview: trans('Preview', {}, locale),
+        search: trans('Search', {}, locale),
+        required: trans('Required', {}, locale),
+        // Common statuses / labels
+        active: trans('Active', {}, locale),
+        inactive: trans('Inactive', {}, locale),
+        enabled: trans('Enabled', {}, locale),
+        loading: trans('Loading...', {}, locale),
+        updating: trans('Updating...', {}, locale),
+        deleting: trans('Deleting...', {}, locale),
+        archiving: trans('Archiving...', {}, locale),
+        error_loading: trans('Error loading data', {}, locale),
+        // Common field labels
+        email: trans('Email', {}, locale),
+        password: trans('Password', {}, locale),
+        name: trans('Name', {}, locale),
+        title: trans('Title', {}, locale),
+        description: trans('Description', {}, locale),
+        author: trans('Author', {}, locale),
+        locale: trans('Locale', {}, locale),
+        roles: trans('Roles', {}, locale),
+        status: trans('Status', {}, locale),
+        actions: trans('Actions', {}, locale),
+        source: trans('Source', {}, locale),
+        filename: trans('Filename', {}, locale),
+        created: trans('Created', {}, locale),
+        visibility: trans('Visibility', {}, locale),
+        // Selection / bulk actions
+        select_all: trans('Select All', {}, locale),
+        clear_selection: trans('Clear', {}, locale),
+        selected: trans('selected', {}, locale),
+        delete_selected: trans('Delete Selected', {}, locale),
+        // Dashboard stats
+        total_users: trans('Total Users', {}, locale),
+        active_users: trans('Active Users', {}, locale),
+        total_projects: trans('Total Projects', {}, locale),
+        active_projects: trans('Active Projects', {}, locale),
+        // Sections
+        users: trans('Users', {}, locale),
+        projects: trans('Projects', {}, locale),
+        extensions: trans('Extensions', {}, locale),
+        settings: trans('Settings', {}, locale),
+        styles: trans('Styles', {}, locale),
+        templates: trans('Templates', {}, locale),
+        global_settings: trans('Global Settings', {}, locale),
+        system_info: trans('System Info', {}, locale),
+        // User management
+        user_management: trans('User Management', {}, locale),
+        create_user: trans('Create User', {}, locale),
+        edit_user: trans('Edit User', {}, locale),
+        display_name: trans('Display Name', {}, locale),
+        log_in_as: trans('Log in as', {}, locale),
+        cannot_impersonate_admin: trans('Cannot impersonate administrator users', {}, locale),
+        cannot_impersonate_self: trans('Cannot impersonate your own account', {}, locale),
+        confirm_impersonate: trans('Start impersonation as {email}?', {}, locale),
+        impersonation_failed: trans('Failed to start impersonation', {}, locale),
+        confirm_delete: trans('Are you sure you want to delete this user?', {}, locale),
+        confirm_delete_bulk: trans('Are you sure you want to delete {count} users?', {}, locale),
+        // Project management
+        project_management: trans('Project Management', {}, locale),
+        owner: trans('Owner', {}, locale),
+        base: trans('Base', {}, locale),
+        site: trans('Site', {}, locale),
+        protected: trans('Protected', {}, locale),
+        archive: trans('Archive', {}, locale),
+        view_project: trans('View Project', {}, locale),
+        download_elpx: trans('Download .elpx', {}, locale),
+        confirm_delete_project: trans('Are you sure you want to delete this project?', {}, locale),
+        confirm_delete_project_bulk: trans('Are you sure you want to delete {count} projects?', {}, locale),
+        all_statuses: trans('All statuses', {}, locale),
+        all_visibility: trans('All visibility', {}, locale),
+        user: trans('User', {}, locale),
+        // Themes management
+        themes_management: trans('Themes Management', {}, locale),
+        no_themes: trans('No themes available.', {}, locale),
+        set_default: trans('Set', {}, locale),
+        default: trans('Default', {}, locale),
+        cannot_disable_default: trans('Cannot disable the default theme', {}, locale),
+        default_theme_set: trans('Default theme set', {}, locale),
+        theme_uploaded: trans('Theme uploaded successfully', {}, locale),
+        theme_deleted: trans('Theme deleted', {}, locale),
+        upload_theme: trans('Upload Theme', {}, locale),
+        // Templates management
+        templates_management: trans('Templates Management', {}, locale),
+        no_templates: trans('No templates for this locale.', {}, locale),
+        confirm_delete_template: trans('Are you sure you want to delete the template', {}, locale),
+        confirm_delete_theme: trans('Are you sure you want to delete the theme', {}, locale),
+        template_uploaded: trans('Template uploaded successfully', {}, locale),
+        template_deleted: trans('Template deleted', {}, locale),
+        upload_template: trans('Upload Template', {}, locale),
+        // Settings — general
+        platform_and_collaboration: trans('Platform and collaboration', {}, locale),
+        enabled_auth_methods: trans('Enabled authentication methods.', {}, locale),
+        allows_install_themes_online: trans('Allows installing themes online.', {}, locale),
+        allows_install_idevices_online: trans('Allows installing iDevices online.', {}, locale),
+        // Settings — storage & quotas
+        storage_and_quotas: trans('Storage and quotas', {}, locale),
+        quota_mb: trans('Quota (MB)', {}, locale),
+        quota_help: trans('Leave empty for unlimited quota', {}, locale),
+        default_quota_mb: trans('Default quota (MB).', {}, locale),
+        max_storage_per_user: trans('Maximum storage per user (MB).', {}, locale),
+        max_upload_size: trans('Maximum upload size (MB).', {}, locale),
+        unlimited: trans('Unlimited', {}, locale),
+        count_autosave_in_quota: trans('Counts autosave in quota.', {}, locale),
+        // Settings — autosave
+        autosave: trans('Autosave', {}, locale),
+        autosave_interval: trans('Autosave interval (seconds).', {}, locale),
+        // Customization
+        customization: trans('Customization', {}, locale),
+        custom_head_html_label: trans('Custom HEAD HTML', {}, locale),
+        custom_head_html_help: trans(
+            'HTML injected into the <head> of all user pages (login, workarea, error pages). Not applied to the admin panel. Only <style>, <meta>, <link> and <script> tags are allowed; any other tags will be removed automatically.',
+            {},
+            locale,
+        ),
+        custom_head_html_jquery_note: trans('jQuery is available on all user pages.', {}, locale),
+        custom_head_html_hook_label: trans(
+            'To run code only in the workarea after the app is fully loaded, define',
+            {},
+            locale,
+        ),
+        custom_head_html_example: trans('Example', {}, locale),
+        app_identity_label: trans('App Identity', {}, locale),
+        app_name_label: trans('Application name', {}, locale),
+        app_name_help: trans('Page title shown in the browser tab. Leave empty to use "eXeLearning".', {}, locale),
+        app_favicon_label: trans('Favicon', {}, locale),
+        app_favicon_help: trans(
+            'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.',
+            {},
+            locale,
+        ),
+        app_favicon_delete: trans('Delete favicon', {}, locale),
+        custom_assets_label: trans('Custom Assets', {}, locale),
+        custom_assets_help: trans(
+            'Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.',
+            {},
+            locale,
+        ),
+        custom_assets_empty: trans('No files uploaded yet.', {}, locale),
+        custom_assets_copy_url: trans('Copy URL', {}, locale),
+    };
+}
 
 /**
  * Parse and validate an ID parameter from route params.

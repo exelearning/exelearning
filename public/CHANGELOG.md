@@ -7,13 +7,14 @@
 - Text iDevice: improve feedback detection with legacy compatibility (eXe 2.9)
 - Classify iDevice: increase max categories from 4 to 9
 - Download source file iDevice: auto-update Project Properties
-- Magnifier iDevice: add image authorship and alt text field
+- Magnifier iDevice: add image authorship and alt text
 - Progress report iDevice: improve mobile responsiveness
 - Scrambled list iDevice: add configurable number of attempts
+- Use eXe modal instead of system `alert` for success messages when adding AI questions
 - Visual distinction (temporary border) for Teacher Mode within the application
 - Visual indicators for pages, boxes and iDevices that will not be visible in the export
 - Zen and Nova styles: visual distinction for Teacher Mode
-- Accessibility improvement: underlined links
+- Accessibility: underline links
 - File Manager: use modal dialog instead of native `window.prompt()`
 - CPU compatibility check for the Bun runtime with warning for incompatible CPUs
 - Clean Yjs IndexedDB on tab close
