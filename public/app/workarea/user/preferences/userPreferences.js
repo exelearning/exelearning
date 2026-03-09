@@ -237,6 +237,7 @@ export default class UserPreferences {
                 this._showStaticReloadWarning();
                 return;
             }
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
             window.onbeforeunload = null;
             window.location.reload();
         }

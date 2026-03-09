@@ -525,13 +525,13 @@ const YjsProjectManagerMixin = {
     /**
      * Export project to .elpx file via Yjs
      * Filename is auto-generated from project title (sanitized: lowercase, no accents, no special chars)
-     * @param {Object} options - Export options
-     * @param {boolean} options.saveAs - If true, always prompt for save location (Save As behavior)
+     * In Electron/Desktop mode, always prompts for save destination.
      */
-    projectManager.exportToElpxViaYjs = async function (options = {}) {
+    projectManager.exportToElpxViaYjs = async function () {
       if (this._yjsEnabled && this._yjsBridge) {
-        await this._yjsBridge.exportToElpx(options);
+        return await this._yjsBridge.exportToElpx();
       }
+      return { saved: false };
     };
 
     /**

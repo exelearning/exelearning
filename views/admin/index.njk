@@ -1007,6 +1007,65 @@
             padding: 2rem;
             color: var(--admin-text-muted);
         }
+        .admin-code-textarea {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            resize: vertical;
+            min-height: 200px;
+        }
+        .admin-code-example {
+            margin-top: 0.75rem;
+            background: var(--admin-bg, #f8f9fa);
+            border: 1px solid var(--admin-border, #dee2e6);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .admin-code-example summary {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--admin-text-muted, #6c757d);
+            cursor: pointer;
+            user-select: none;
+        }
+        .admin-code-example pre {
+            margin: 0;
+            padding: 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            border-top: 1px solid var(--admin-border, #dee2e6);
+        }
+        .admin-favicon-preview {
+            border: 1px solid var(--admin-border, #dee2e6);
+            border-radius: 4px;
+            object-fit: contain;
+            background: var(--admin-bg, #f8f9fa);
+        }
+        .btn-admin-icon {
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            color: var(--admin-text-muted, #6c757d);
+            border-radius: 4px;
+            vertical-align: middle;
+        }
+        .btn-admin-icon:hover {
+            background: var(--admin-bg, #f8f9fa);
+            color: var(--admin-text, #374151);
+        }
+        .admin-file-input-sm {
+            max-width: 300px;
+        }
+        .admin-file-input-sm::file-selector-button {
+            margin-top: 0;
+        }
+        .accordion-button:not(.collapsed) {
+            background-color: var(--admin-primary-light);
+            color: var(--bs-accordion-btn-color);
+        }
     </style>
 </head>
 <body>
@@ -1046,6 +1105,10 @@
             <a href="#settings" class="admin-nav-link d-none" data-section="settings">
                 <span class="mi">tune</span>
                 {{ t.settings or 'Settings' }}
+            </a>
+            <a href="#presentation" class="admin-nav-link" data-section="presentation">
+                <span class="mi">tune</span>
+                {{ t.customization or 'Customization' }}
             </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
@@ -1625,6 +1688,133 @@
                     </div>
                 </div>
             </section>
+
+            <section id="presentation" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">tune</span>
+                            {{ t.customization or 'Customization' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="presentationSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="presentationSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="accordion" id="customizationAccordion">
+
+                            <!-- Panel 1: App Identity -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingIdentity">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseIdentity" aria-expanded="true" aria-controls="collapseIdentity">
+                                        <span class="mi mi-sm me-2">web_asset</span>
+                                        {{ t.app_identity_label or 'App Identity' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseIdentity" class="accordion-collapse collapse show" aria-labelledby="headingIdentity" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <label for="appNameInput">{{ t.app_name_label or 'Application name' }}</label>
+                                                <input id="appNameInput" class="admin-input" type="text" data-setting-key="APP_NAME" data-setting-type="string" value="{{ adminSettings.presentation.app_name }}" placeholder="eXeLearning">
+                                                <small>{{ t.app_name_help or 'Page title shown in the browser tab. Leave empty to use "eXeLearning".' }}</small>
+                                            </div>
+                                            <div class="admin-field">
+                                                <label>{{ t.app_favicon_label or 'Favicon' }}</label>
+                                                <div id="faviconPreviewArea" class="{% if adminSettings.presentation.app_favicon_path %}d-flex{% else %}d-none{% endif %} align-items-center gap-3 mb-2">
+                                                    <img id="faviconPreviewImg" src="{{ basePath }}/customization/favicon" alt="favicon" width="32" height="32" class="admin-favicon-preview">
+                                                    <button type="button" id="faviconDeleteBtn" class="btn-admin-outline btn-sm">
+                                                        <span class="mi mi-sm">delete</span>
+                                                        {{ t.app_favicon_delete or 'Delete favicon' }}
+                                                    </button>
+                                                </div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <input type="file" id="faviconFileInput" class="form-control form-control-sm admin-file-input-sm" accept=".ico,.png,.svg,.gif,.jpg,.jpeg,.webp">
+                                                    <span id="faviconUploadStatus" class="admin-settings-status"></span>
+                                                </div>
+                                                <small class="mt-1 d-block">{{ t.app_favicon_help or 'Icon shown in the browser tab and bookmarks. Leave empty to use the default favicon.' }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel 2: Custom HEAD HTML -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingCustomHtml">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustomHtml" aria-expanded="false" aria-controls="collapseCustomHtml">
+                                        <span class="mi mi-sm me-2">code</span>
+                                        {{ t.custom_head_html_label or 'Custom HEAD HTML' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseCustomHtml" class="accordion-collapse collapse" aria-labelledby="headingCustomHtml" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <textarea id="customHeadHtmlInput" class="admin-input admin-code-textarea" data-setting-key="CUSTOM_HEAD_HTML" data-setting-type="string" rows="12">{{ adminSettings.presentation.custom_head_html }}</textarea>
+                                                <small>{{ t.custom_head_html_help or 'HTML injected into the &lt;head&gt; of all user pages (login, workarea, error pages). Not applied to the admin panel. Only &lt;style&gt;, &lt;meta&gt;, &lt;link&gt; and &lt;script&gt; tags are allowed; any other tags will be removed automatically.' }}</small>
+                                                <small>
+                                                    {{ t.custom_head_html_jquery_note or 'jQuery is available on all user pages.' }}
+                                                    {{ t.custom_head_html_hook_label or 'To run code only in the workarea after the app is fully loaded, define' }}
+                                                    <code>window.$eXeLearningCustom.init()</code>:
+                                                </small>
+                                                <details class="admin-code-example">
+                                                    <summary>{{ t.custom_head_html_example or 'Example' }}</summary>
+                                                    <pre>&lt;style&gt;
+    /* Your custom CSS here */
+&lt;/style&gt;
+
+&lt;script&gt;
+jQuery(function () {
+    // Runs when DOM is loaded (login, workarea, error pages, etc.)
+});
+window.$eXeLearningCustom = {
+    init: function () {
+        // Runs only in the workarea, after the app has fully loaded.
+        // window.eXeLearning is available here.
+    }
+};
+&lt;/script&gt;</pre>
+                                                </details>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel 3: Custom Assets -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingAssets">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssets" aria-expanded="false" aria-controls="collapseAssets">
+                                        <span class="mi mi-sm me-2">attach_file</span>
+                                        {{ t.custom_assets_label or 'Custom Assets' }}
+                                    </button>
+                                </h2>
+                                <div id="collapseAssets" class="accordion-collapse collapse" aria-labelledby="headingAssets" data-bs-parent="#customizationAccordion">
+                                    <div class="accordion-body">
+                                        <div class="admin-settings-group">
+                                            <div class="admin-field">
+                                                <small class="d-block mb-3">{{ t.custom_assets_help or 'Upload images or other files to reference them from the Custom HEAD HTML via CSS or JS. Copy the URL of each file to use it in your code.' }}</small>
+                                                <div class="d-flex align-items-center gap-2 mb-3">
+                                                    <input type="file" id="assetFileInput" class="form-control form-control-sm admin-file-input-sm" multiple>
+                                                    <span id="assetUploadStatus" class="admin-settings-status"></span>
+                                                </div>
+                                                <div id="customAssetsList"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -1780,7 +1970,8 @@
             cannot_impersonate_admin: '{{ t.cannot_impersonate_admin or "Cannot impersonate administrator users" }}',
             cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
             confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
-            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}'
+            impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
+            presentation: '{{ t.customization or "Customization" }}'
         };
 
         // State
@@ -1823,7 +2014,8 @@
                 users: T.users,
                 projects: T.projects,
                 extensions: T.extensions,
-                settings: T.settings
+                settings: T.settings,
+                presentation: T.customization
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
@@ -1880,6 +2072,267 @@
                 }
             });
         }
+
+        // Presentation save
+        const presentationSaveBtn = document.getElementById('presentationSaveBtn');
+        const presentationSaveStatus = document.getElementById('presentationSaveStatus');
+
+        if (presentationSaveBtn) {
+            presentationSaveBtn.addEventListener('click', async () => {
+                presentationSaveBtn.setAttribute('disabled', 'disabled');
+                if (presentationSaveStatus) {
+                    presentationSaveStatus.textContent = 'Guardando...';
+                    presentationSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const appNameInput = document.getElementById('appNameInput');
+                    const textarea = document.getElementById('customHeadHtmlInput');
+                    const settings = [
+                        { key: 'APP_NAME', value: appNameInput ? appNameInput.value : '', type: 'string' },
+                        { key: 'CUSTOM_HEAD_HTML', value: textarea ? textarea.value : '', type: 'string' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+                    const resData = await res.json();
+                    // Update textarea with the sanitized value returned by the server
+                    if (resData.sanitizedValues?.CUSTOM_HEAD_HTML !== undefined && textarea) {
+                        textarea.value = resData.sanitizedValues.CUSTOM_HEAD_HTML;
+                    }
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = 'Guardado';
+                        presentationSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            presentationSaveStatus.textContent = '';
+                            presentationSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (presentationSaveStatus) {
+                        presentationSaveStatus.textContent = 'Error';
+                        presentationSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    presentationSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // =============================================
+        // Favicon management
+        // =============================================
+        function updateFaviconPreview(hasCustomFavicon) {
+            const previewArea = document.getElementById('faviconPreviewArea');
+            if (!previewArea) return;
+            if (hasCustomFavicon) {
+                previewArea.classList.remove('d-none');
+                previewArea.classList.add('d-flex');
+                const img = document.getElementById('faviconPreviewImg');
+                if (img) img.src = `${BASE_PATH}/customization/favicon?t=${Date.now()}`;
+            } else {
+                previewArea.classList.add('d-none');
+                previewArea.classList.remove('d-flex');
+            }
+        }
+
+        const faviconFileInput = document.getElementById('faviconFileInput');
+        const faviconDeleteBtn = document.getElementById('faviconDeleteBtn');
+        const faviconUploadStatus = document.getElementById('faviconUploadStatus');
+
+        if (faviconFileInput) {
+            faviconFileInput.addEventListener('change', async () => {
+                const file = faviconFileInput.files?.[0];
+                if (!file) return;
+                if (faviconUploadStatus) {
+                    faviconUploadStatus.textContent = '...';
+                    faviconUploadStatus.className = 'admin-settings-status';
+                }
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                    const res = await fetch(`${API_BASE}/customization/favicon`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData,
+                    });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.message || 'Upload failed');
+                    }
+                    if (faviconUploadStatus) {
+                        faviconUploadStatus.textContent = '✓';
+                        faviconUploadStatus.classList.add('success');
+                        setTimeout(() => {
+                            faviconUploadStatus.textContent = '';
+                            faviconUploadStatus.className = 'admin-settings-status';
+                        }, 3000);
+                    }
+                    updateFaviconPreview(true);
+                    faviconFileInput.value = '';
+                } catch (err) {
+                    if (faviconUploadStatus) {
+                        faviconUploadStatus.textContent = err?.message || 'Error';
+                        faviconUploadStatus.classList.add('error');
+                    }
+                }
+            });
+        }
+
+        if (faviconDeleteBtn) {
+            faviconDeleteBtn.addEventListener('click', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/customization/favicon`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (!res.ok) throw new Error('Delete failed');
+                    updateFaviconPreview(false);
+                } catch (err) {
+                    alert(err?.message || 'Error deleting favicon');
+                }
+            });
+        }
+
+        // =============================================
+        // Custom Assets management
+        // =============================================
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).catch(() => {
+                const el = document.createElement('textarea');
+                el.value = text;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            });
+        }
+
+        async function loadCustomAssets() {
+            const container = document.getElementById('customAssetsList');
+            if (!container) return;
+            container.innerHTML = '<p class="text-muted small">{{ t.loading or "Loading..." }}</p>';
+            try {
+                const res = await fetch(`${API_BASE}/customization/assets`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load assets');
+                const data = await res.json();
+                if (!data.assets || data.assets.length === 0) {
+                    container.innerHTML = '<p class="text-muted small">{{ t.custom_assets_empty or "No files uploaded yet." }}</p>';
+                    return;
+                }
+                container.innerHTML = `
+                    <table class="admin-table">
+                        <thead><tr><th>File</th><th>URL</th><th>Size</th><th></th></tr></thead>
+                        <tbody>
+                            ${data.assets.map(asset => `
+                                <tr>
+                                    <td class="text-break">${escapeHtml(asset.filename)}</td>
+                                    <td>
+                                        <code class="text-break small">${escapeHtml(asset.url)}</code>
+                                        <button type="button" class="btn-admin-icon ms-1 js-copy-url" data-url="${escapeHtml(asset.url)}" title="{{ t.custom_assets_copy_url or 'Copy URL' }}">
+                                            <span class="mi mi-sm">content_copy</span>
+                                        </button>
+                                    </td>
+                                    <td class="text-nowrap">${formatBytes(asset.size)}</td>
+                                    <td>
+                                        <button type="button" class="btn-admin-outline btn-sm js-delete-asset" data-filename="${escapeHtml(asset.filename)}">
+                                            <span class="mi mi-sm">delete</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>`;
+            } catch (err) {
+                container.innerHTML = `<p class="text-danger small">${escapeHtml(err?.message || 'Error loading assets')}</p>`;
+            }
+        }
+
+        // Event delegation for dynamically rendered asset buttons
+        document.getElementById('customAssetsList')?.addEventListener('click', async (e) => {
+            const copyBtn = e.target.closest('.js-copy-url');
+            if (copyBtn) {
+                copyToClipboard(copyBtn.dataset.url);
+                return;
+            }
+            const deleteBtn = e.target.closest('.js-delete-asset');
+            if (deleteBtn) {
+                const filename = deleteBtn.dataset.filename;
+                if (!confirm(`Delete "${filename}"?`)) return;
+                try {
+                    const res = await fetch(`${API_BASE}/customization/assets/${encodeURIComponent(filename)}`, {
+                        method: 'DELETE',
+                        credentials: 'include',
+                    });
+                    if (!res.ok) throw new Error('Delete failed');
+                    loadCustomAssets();
+                } catch (err) {
+                    alert(err?.message || 'Error deleting file');
+                }
+            }
+        });
+
+        const assetFileInput = document.getElementById('assetFileInput');
+        const assetUploadStatus = document.getElementById('assetUploadStatus');
+
+        if (assetFileInput) {
+            assetFileInput.addEventListener('change', async () => {
+                const files = Array.from(assetFileInput.files || []);
+                if (!files.length) return;
+                if (assetUploadStatus) {
+                    assetUploadStatus.textContent = '...';
+                    assetUploadStatus.className = 'admin-settings-status';
+                }
+                let errors = 0;
+                for (const file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    try {
+                        const res = await fetch(`${API_BASE}/customization/assets`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData,
+                        });
+                        if (!res.ok) {
+                            const data = await res.json().catch(() => ({}));
+                            throw new Error(data.message || 'Upload failed');
+                        }
+                    } catch {
+                        errors++;
+                    }
+                }
+                if (assetUploadStatus) {
+                    if (errors === 0) {
+                        assetUploadStatus.textContent = '✓';
+                        assetUploadStatus.classList.add('success');
+                        setTimeout(() => {
+                            assetUploadStatus.textContent = '';
+                            assetUploadStatus.className = 'admin-settings-status';
+                        }, 3000);
+                    } else {
+                        assetUploadStatus.textContent = `${errors} file(s) failed`;
+                        assetUploadStatus.classList.add('error');
+                    }
+                }
+                assetFileInput.value = '';
+                loadCustomAssets();
+            });
+        }
+
+        // Load assets when the Custom Assets accordion panel opens
+        document.getElementById('collapseAssets')?.addEventListener('show.bs.collapse', loadCustomAssets);
 
         function collectAdminSettings() {
             const inputs = Array.from(document.querySelectorAll('[data-setting-key]'));
