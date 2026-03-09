@@ -136,6 +136,9 @@ test.describe('Theme Import from ELPX', () => {
             )
             .toBeGreaterThan(0);
 
+        // Ensure page has finished any navigation (ELPX import may reload in online mode)
+        await page.waitForLoadState('load');
+
         // Check theme in Yjs metadata (even if not fully installed, it should be recorded)
         const themeMetadata = await page.evaluate(() => {
             try {

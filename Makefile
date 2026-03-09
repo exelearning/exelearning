@@ -134,10 +134,27 @@ endif
 .PHONY: deps
 deps: check-bun
 	@LOCK=/tmp/.exe-bun-lock; \
+	PIDFILE=/tmp/.exe-bun-lock.pid; \
 	if mkdir "$$LOCK" 2>/dev/null; then \
-		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; exit $$RET; \
+		echo $$$$ > "$$PIDFILE"; \
+		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
 	else \
-		while [ -d "$$LOCK" ]; do sleep 0.5; done; \
+		if [ -f "$$PIDFILE" ] && ! kill -0 $$(cat "$$PIDFILE") 2>/dev/null; then \
+			echo "[deps] Removing stale lock (owner PID no longer running)"; \
+			rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+			mkdir "$$LOCK" 2>/dev/null; \
+			echo $$$$ > "$$PIDFILE"; \
+			bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
+		fi; \
+		WAITED=0; \
+		while [ -d "$$LOCK" ]; do \
+			sleep 0.5; WAITED=$$((WAITED + 1)); \
+			if [ $$WAITED -ge 120 ]; then \
+				echo "[deps] Lock held for >60s — removing stale lock"; \
+				rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+				break; \
+			fi; \
+		done; \
 	fi
 
 # Build CSS
@@ -169,6 +186,7 @@ endif
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
 run-app: check-bun check-env deps css bundle
+	@bun add --no-save electron-updater electron-log electron-context-menu 2>/dev/null || true
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."
