@@ -61,6 +61,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
         // Ensure target directory exists
         await fs.ensureDir(targetDir);
+        const resolvedTargetDir = path.resolve(targetDir);
 
         // Use sync version for reliability in Node.js/Bun environment
         const unzipped = fflate.unzipSync(uint8ZipData);
@@ -68,14 +69,19 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
         // Extract all files
         for (const [relativePath, data] of Object.entries(unzipped)) {
-            // Skip directories (they end with /)
-            if (relativePath.endsWith('/')) {
-                await fs.ensureDir(path.join(targetDir, relativePath));
-                continue;
+            // Build target path
+            const targetPath = path.resolve(resolvedTargetDir, relativePath);
+
+            // Prevent path traversal (Zip Slip)
+            if (!targetPath.startsWith(resolvedTargetDir + path.sep) && targetPath !== resolvedTargetDir) {
+                throw new Error(`Security error: invalid file paths detected: ${relativePath}`);
             }
 
-            // Build target path
-            const targetPath = path.join(targetDir, relativePath);
+            // Skip directories (they end with /)
+            if (relativePath.endsWith('/')) {
+                await fs.ensureDir(targetPath);
+                continue;
+            }
 
             // Ensure parent directory exists
             await fs.ensureDir(path.dirname(targetPath));
@@ -94,6 +100,7 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
         // Ensure target directory exists
         await fs.ensureDir(targetDir);
+        const resolvedTargetDir = path.resolve(targetDir);
 
         // Use sync version for reliability in Node.js/Bun environment
         const unzipped = fflate.unzipSync(uint8ZipData);
@@ -101,14 +108,19 @@ export function createZipService(deps: ZipDeps = {}): ZipService {
 
         // Extract all files
         for (const [relativePath, data] of Object.entries(unzipped)) {
-            // Skip directories (they end with /)
-            if (relativePath.endsWith('/')) {
-                await fs.ensureDir(path.join(targetDir, relativePath));
-                continue;
+            // Build target path
+            const targetPath = path.resolve(resolvedTargetDir, relativePath);
+
+            // Prevent path traversal (Zip Slip)
+            if (!targetPath.startsWith(resolvedTargetDir + path.sep) && targetPath !== resolvedTargetDir) {
+                throw new Error(`Security error: invalid file paths detected: ${relativePath}`);
             }
 
-            // Build target path
-            const targetPath = path.join(targetDir, relativePath);
+            // Skip directories (they end with /)
+            if (relativePath.endsWith('/')) {
+                await fs.ensureDir(targetPath);
+                continue;
+            }
 
             // Ensure parent directory exists
             await fs.ensureDir(path.dirname(targetPath));

@@ -491,14 +491,36 @@ var $exeDevice = {
             $('#descubreEAlt-' + k).val(p.alt);
             $('#descubreEURLAudio-' + k).val(p.audio);
             $exeDevice.showImage(p.url, p.x, p.y, p.alt, k);
-            $('#descubreETextDiv-' + k).css({
-                color: p.color,
-                'background-color': $exeDevice.hexToRgba(p.backcolor),
-            });
+            $exeDevice.updateTextOverlay(k);
         }
         $('#descubreEMessageOK').val(q.msgHit);
         $('#descubreEMessageKO').val(q.msgError);
         $('#descubreENumberQuestion').text(i + 1);
+    },
+
+    updateTextOverlay: function (index) {
+        const $textDiv = $('#descubreETextDiv-' + index);
+        const rawText = $('#descubreEText-' + index).val() || '';
+        const text = rawText.trim();
+        const color = $('#descubreEColor-' + index).val() || '#000000';
+        const backcolor = $('#descubreEBackColor-' + index).val() || '#ffffff';
+        const url = ($('#descubreEURLImage-' + index).val() || '').trim();
+        const hasImage = url.length > 4;
+
+        $textDiv.text(rawText);
+        if (text.length === 0) {
+            $textDiv.hide();
+            return;
+        }
+
+        $textDiv
+            .css({
+                color: color,
+                'background-color': hasImage
+                    ? $exeDevice.hexToRgba(backcolor)
+                    : backcolor,
+            })
+            .show();
     },
 
     hexToRgba: function (hex) {
@@ -787,6 +809,9 @@ var $exeDevice = {
             $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
+            $exeDevice.showQuestion(0);
+        } else {
+            // Ensure initial cards apply the same overlay styles as loaded questions.
             $exeDevice.showQuestion(0);
         }
     },
@@ -1482,61 +1507,49 @@ var $exeDevice = {
         });
 
         $('#descubreEText-0').on('keyup', function () {
-            $('#descubreETextDiv-0').text($(this).val());
+            $exeDevice.updateTextOverlay(0);
         });
 
         $('#descubreEText-1').on('keyup', function () {
-            $('#descubreETextDiv-1').text($(this).val());
+            $exeDevice.updateTextOverlay(1);
         });
         $('#descubreEText-2').on('keyup', function () {
-            $('#descubreETextDiv-2').text($(this).val());
+            $exeDevice.updateTextOverlay(2);
         });
 
         $('#descubreEText-3').on('keyup', function () {
-            $('#descubreETextDiv-3').text($(this).val());
+            $exeDevice.updateTextOverlay(3);
         });
 
         $('#descubreEBackColor-0').on('change', function () {
-            $('#descubreETextDiv-0').css(
-                'background-color',
-                $exeDevice.hexToRgba($(this).val())
-            );
+            $exeDevice.updateTextOverlay(0);
         });
 
         $('#descubreEBackColor-1').on('change', function () {
-            $('#descubreETextDiv-1').css(
-                'background-color',
-                $exeDevice.hexToRgba($(this).val())
-            );
+            $exeDevice.updateTextOverlay(1);
         });
         $('#descubreEBackColor-2').on('change', function () {
-            $('#descubreETextDiv-2').css(
-                'background-color',
-                $exeDevice.hexToRgba($(this).val())
-            );
+            $exeDevice.updateTextOverlay(2);
         });
 
         $('#descubreEBackColor-3').on('change', function () {
-            $('#descubreETextDiv-3').css(
-                'background-color',
-                $exeDevice.hexToRgba($(this).val())
-            );
+            $exeDevice.updateTextOverlay(3);
         });
 
         $('#descubreEColor-0').on('change', function () {
-            $('#descubreETextDiv-0').css('color', $(this).val());
+            $exeDevice.updateTextOverlay(0);
         });
 
         $('#descubreEColor-1').on('change', function () {
-            $('#descubreETextDiv-1').css('color', $(this).val());
+            $exeDevice.updateTextOverlay(1);
         });
 
         $('#descubreEColor-2').on('change', function () {
-            $('#descubreETextDiv-2').css('color', $(this).val());
+            $exeDevice.updateTextOverlay(2);
         });
 
         $('#descubreEColor-3').on('change', function () {
-            $('#descubreETextDiv-3').css('color', $(this).val());
+            $exeDevice.updateTextOverlay(3);
         });
 
         $('#descubreEImage-0').on('click', function (e) {
@@ -1832,6 +1845,7 @@ var $exeDevice = {
         if (url.length > 0) {
             $exeDevice.showImage(url, x, y, alt, number);
         }
+        $exeDevice.updateTextOverlay(number);
     },
 
     loadAudio: function (url) {
@@ -1879,12 +1893,9 @@ var $exeDevice = {
             $('#descubreEURLAudio-' + i).val('');
             $('#descubreEColor-' + i).val('#000000');
             $('#descubreEBackColor-' + i).val('#ffffff');
-            $('#descubreETextDiv-' + i).css({
-                color: '#000000',
-                'background-color': $exeDevice.hexToRgba('#ffffff'),
-            });
 
             $exeDevice.showImage('', 0, 0, _('No image'), i);
+            $exeDevice.updateTextOverlay(i);
         }
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
     },

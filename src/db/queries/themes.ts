@@ -9,9 +9,10 @@
  * All functions accept db as first parameter for dependency injection
  */
 import type { Kysely } from 'kysely';
+import { sql } from 'kysely';
 import type { Database, Theme, NewTheme, ThemeUpdate } from '../types';
 import { now } from '../types';
-import { insertAndReturn, updateByIdAndReturn } from '../helpers';
+import { insertAndReturn, updateByIdAndReturn, getDialect } from '../helpers';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -324,41 +325,66 @@ export async function upsertBaseTheme(
         license?: string | null;
     },
 ): Promise<void> {
-    const existing = await findBaseThemeByDirName(db, data.dir_name);
+    const timestamp = now();
+    const description = data.description ?? null;
+    const version = data.version ?? null;
+    const author = data.author ?? null;
+    const license = data.license ?? null;
 
-    if (existing) {
-        // Update metadata but preserve is_enabled setting
-        await db
-            .updateTable('themes')
-            .set({
-                display_name: data.display_name,
-                description: data.description ?? null,
-                version: data.version ?? null,
-                author: data.author ?? null,
-                license: data.license ?? null,
-                updated_at: now(),
-            })
-            .where('id', '=', existing.id)
-            .execute();
+    if (getDialect() === 'mysql') {
+        // MySQL/MariaDB: ON CONFLICT syntax not supported, use ON DUPLICATE KEY UPDATE
+        await sql`
+            INSERT INTO ${sql.table('themes')}
+                (${sql.ref('dir_name')}, ${sql.ref('display_name')}, ${sql.ref('description')},
+                 ${sql.ref('version')}, ${sql.ref('author')}, ${sql.ref('license')},
+                 ${sql.ref('is_builtin')}, ${sql.ref('is_enabled')}, ${sql.ref('is_default')},
+                 ${sql.ref('sort_order')}, ${sql.ref('storage_path')},
+                 ${sql.ref('created_at')}, ${sql.ref('updated_at')})
+            VALUES
+                (${data.dir_name}, ${data.display_name}, ${description},
+                 ${version}, ${author}, ${license},
+                 ${1}, ${1}, ${0},
+                 ${0}, ${null},
+                 ${timestamp}, ${timestamp})
+            ON DUPLICATE KEY UPDATE
+                ${sql.ref('display_name')} = ${data.display_name},
+                ${sql.ref('description')} = ${description},
+                ${sql.ref('version')} = ${version},
+                ${sql.ref('author')} = ${author},
+                ${sql.ref('license')} = ${license},
+                ${sql.ref('is_builtin')} = ${1},
+                ${sql.ref('updated_at')} = ${timestamp}
+        `.execute(db);
     } else {
-        // Insert new builtin theme
+        // SQLite/PostgreSQL: ON CONFLICT DO UPDATE
         await db
             .insertInto('themes')
             .values({
                 dir_name: data.dir_name,
                 display_name: data.display_name,
-                description: data.description ?? null,
-                version: data.version ?? null,
-                author: data.author ?? null,
-                license: data.license ?? null,
+                description,
+                version,
+                author,
+                license,
                 is_builtin: 1,
-                is_enabled: 1, // Enabled by default
+                is_enabled: 1,
                 is_default: 0,
                 sort_order: 0,
-                storage_path: null, // Builtin themes use filesystem
-                created_at: now(),
-                updated_at: now(),
+                storage_path: null,
+                created_at: timestamp,
+                updated_at: timestamp,
             })
+            .onConflict(oc =>
+                oc.column('dir_name').doUpdateSet({
+                    display_name: data.display_name,
+                    description,
+                    version,
+                    author,
+                    license,
+                    is_builtin: 1,
+                    updated_at: timestamp,
+                }),
+            )
             .execute();
     }
 }
