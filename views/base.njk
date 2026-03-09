@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="robots" content="noindex">
         <title>{% block title %}{% endblock %}</title>
-        <link rel="icon" href="{{ '/favicon.ico' | asset }}">
+        <link rel="icon" href="{{ customFaviconUrl or ('/favicon.ico' | asset) }}">
         {% block stylesheets %}
         {# Default stylesheets #}
         <link rel="stylesheet" href="{{ '/style/server.css' | asset }}">
@@ -51,6 +51,7 @@
             }
         </style>
         {% endif %}
+        {% if customHeadHtml %}{{ customHeadHtml | safe }}{% endif %}
     </head>
     <body class="{% block class %}{% endblock %}" id="{% block id %}{% endblock %}">
         {% if impersonation and impersonation.isActive %}
