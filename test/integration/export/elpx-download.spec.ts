@@ -143,6 +143,22 @@ class FileResourceProvider implements ResourceProvider {
     normalizeIdeviceType(type: string): string {
         return type.toLowerCase().replace(/idevice$/i, '');
     }
+
+    async fetchExeLogo(): Promise<Buffer | null> {
+        return null;
+    }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
+        return null;
+    }
+
+    async fetchI18nFile(_language: string): Promise<string> {
+        return '';
+    }
+
+    async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
+        return new Map();
+    }
 }
 
 // Mock asset provider

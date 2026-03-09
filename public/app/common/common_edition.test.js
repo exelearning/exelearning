@@ -830,12 +830,15 @@ describe('common_edition.js', () => {
 
     describe('addEvents', () => {
       let originalAlert;
+      let originalExeAlert;
       let originalWindowOpen;
 
       beforeEach(() => {
         originalAlert = global.alert;
+        originalExeAlert = globalThis.eXe?.app?.alert;
         originalWindowOpen = global.window.open;
         global.alert = vi.fn();
+        globalThis.eXe.app.alert = vi.fn();
         global.window.open = vi.fn();
         document.body.innerHTML = `
           <textarea id="eXeEQuestionsArea"></textarea>
@@ -861,6 +864,7 @@ describe('common_edition.js', () => {
 
       afterEach(() => {
         global.alert = originalAlert;
+        globalThis.eXe.app.alert = originalExeAlert;
         global.window.open = originalWindowOpen;
       });
 
@@ -871,7 +875,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
         expect(saveQuestionsMock).toHaveBeenCalled();
       });
 
@@ -882,8 +886,8 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeESaveButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('InvalidLine'));
       });
 
       it('iaButton click shows success alert when all lines are valid', () => {
@@ -894,7 +898,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('The questions have been added successfully');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The questions have been added successfully');
       });
 
       it('iaButton click shows invalid lines alert when some lines are invalid', () => {
@@ -905,8 +909,8 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEIAButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
-        expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('The following lines are invalid:'));
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith(expect.stringContaining('BadFormat'));
       });
 
       it('openChatGPTButton click shows alert when prompt is empty', () => {
@@ -916,7 +920,7 @@ describe('common_edition.js', () => {
         globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
         $('#eXeEOpenChatGPTButton').trigger('click');
 
-        expect(global.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('There is no query to send to the assistant.');
         expect(global.window.open).not.toHaveBeenCalled();
       });
 
@@ -974,6 +978,40 @@ describe('common_edition.js', () => {
           'https://chatgpt.com/?q=test%20prompt%20with%20spaces',
           '_blank'
         );
+      });
+
+      it('saveButton click shows alert when questions textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsArea').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeESaveButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('iaButton click shows alert when IA textarea is empty', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEQuestionsIA').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEIAButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please enter at least one question.');
+        expect(saveQuestionsMock).not.toHaveBeenCalled();
+      });
+
+      it('openChatGPTButton click shows alert when no AI service selected', () => {
+        const saveQuestionsMock = vi.fn();
+        $('#eXeEPromptArea').val('Test prompt');
+        $('#eXeEIASelect').val('');
+
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.addEvents(0, saveQuestionsMock);
+        $('#eXeEOpenChatGPTButton').trigger('click');
+
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Please select an AI assistant.');
+        expect(global.window.open).not.toHaveBeenCalled();
       });
     });
   });

@@ -20,8 +20,14 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
+     * Show the save-before-transition dialog.
      *
-     * @param {*} data
+     * @param {Object} data
+     * @param {string} [data.title] - Modal title
+     * @param {string} [data.forceOpen] - Label for the "don't save" button
+     * @param {Object} [data.pendingAction] - Action descriptor for transitionToProject:
+     *   { action: 'new'|'open'|'import', projectUuid?, file? }
+     * @param {boolean} [data.offlineExit] - Electron: save-and-close flow
      */
     show(data) {
         // Set title
@@ -39,7 +45,6 @@ export default class ModalSessionLogout extends Modal {
 
     /**
      * setFooterContent
-     *
      */
     setFooterContent(data) {
         let saveSessionButton = this.saveSessionButton.cloneNode(true);
@@ -58,9 +63,6 @@ export default class ModalSessionLogout extends Modal {
 
     /**
      * setSaveSessionButton
-     *
-     * @param {*} saveSessionButton
-     * @returns
      */
     setSaveSessionButton(saveSessionButton, data) {
         saveSessionButton.innerHTML = _('Yes');
@@ -70,9 +72,6 @@ export default class ModalSessionLogout extends Modal {
 
     /**
      * setNotSaveSessionButton
-     *
-     * @param {*} notSaveSessionButton
-     * @returns
      */
     setNotSaveSessionButton(notSaveSessionButton, data) {
         notSaveSessionButton.innerHTML = data.forceOpen
@@ -86,33 +85,9 @@ export default class ModalSessionLogout extends Modal {
      * Close the offline app (Electron window)
      */
     closeOfflineApp() {
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
         window.onbeforeunload = null;
         window.close();
-    }
-
-    /**
-     * saveSessionEventListener
-     *
-     * @param {*} saveSessionButton
-     */
-    saveSessionEventListener(saveSessionButton, data) {
-        saveSessionButton.addEventListener('click', async () => {
-            // Handle offline exit: save and close app
-            if (data.offlineExit) {
-                this.close();
-                await this.saveAndCloseOffline();
-                return;
-            }
-
-            let odeParams = [];
-
-            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
-            odeParams['odeVersion'] = eXeLearning.app.project.odeVersion;
-            odeParams['odeId'] = eXeLearning.app.project.odeId;
-
-            this.saveSession(odeParams, data);
-            this.close();
-        });
     }
 
     /**
@@ -144,12 +119,59 @@ export default class ModalSessionLogout extends Modal {
     }
 
     /**
-     * notSaveSessionEventListener
-     *
-     * @param {*} notSaveSessionButton
+     * "Yes" (save) button click handler.
+     */
+    saveSessionEventListener(saveSessionButton, data) {
+        saveSessionButton.addEventListener('click', async () => {
+            // Handle offline exit: save and close app
+            if (data.offlineExit) {
+                this.close();
+                await this.saveAndCloseOffline();
+                return;
+            }
+
+            // Online mode: save + transition via full reload
+            const pendingAction = data.pendingAction;
+            if (pendingAction && eXeLearning.app.project?.transitionToProject) {
+                this.close();
+                try {
+                    await eXeLearning.app.project.transitionToProject({
+                        ...pendingAction,
+                        skipSave: false,
+                    });
+                } catch (error) {
+                    console.error('[SessionLogout] Error during transition:', error);
+                    eXeLearning.app.modals.alert.show({
+                        title: _('Error saving'),
+                        body: _('An error occurred while saving the project'),
+                        contentId: 'error',
+                    });
+                }
+                return;
+            }
+
+            // Pure logout with save: save and redirect
+            this.close();
+            try {
+                const saveManager = eXeLearning.app.project?._yjsBridge?.saveManager;
+                if (saveManager) {
+                    await saveManager.save();
+                }
+            } catch (error) {
+                console.error('[SessionLogout] Error saving before logout:', error);
+            }
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+            window.onbeforeunload = null;
+            const basePath = window.eXeLearning?.config?.basePath || '';
+            window.location.href = `${basePath}/logout`;
+        });
+    }
+
+    /**
+     * "No" (don't save) button click handler.
      */
     notSaveSessionEventListener(notSaveSessionButton, data) {
-        notSaveSessionButton.addEventListener('click', () => {
+        notSaveSessionButton.addEventListener('click', async () => {
             // Handle offline exit: close app without saving
             if (data.offlineExit) {
                 this.close();
@@ -157,229 +179,27 @@ export default class ModalSessionLogout extends Modal {
                 return;
             }
 
-            // Static mode: new file without saving
-            const isStaticMode =
-                eXeLearning?.app?.capabilities?.storage?.remote === false &&
-                !window.electronAPI;
-            if (data.newFile && isStaticMode) {
+            // Online mode: transition without save
+            const pendingAction = data.pendingAction;
+            if (pendingAction && eXeLearning.app.project?.transitionToProject) {
                 this.close();
-                if (typeof window.newProject === 'function') {
-                    window.newProject();
+                try {
+                    await eXeLearning.app.project.transitionToProject({
+                        ...pendingAction,
+                        skipSave: true,
+                    });
+                } catch (error) {
+                    console.error('[SessionLogout] Error during transition:', error);
                 }
                 return;
             }
 
-            // Handle Yjs project navigation (from Recent Projects menu)
-            if (data.openYjsProject && data.projectUuid) {
-                const basePath = window.eXeLearning?.config?.basePath || '';
-                window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
-                this.close();
-                return;
-            }
-
-            let odeParams = [];
-            odeParams['odeSessionId'] = eXeLearning.app.project.odeSession;
-
-            if (data.openOdeFile) {
-                if (data.localOdeFile) {
-                    // Check if this is a large file upload
-                    if (data.isLargeFile && data.odeFile) {
-                        // For large files, resume the upload process
-                        eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                            data.odeFile,
-                            false,
-                            false,
-                            true, // skipSessionCheck
-                            true // forceCloseSession
-                        );
-                    } else {
-                        // For regular files, use the normal flow
-                        eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
-                            data.odeFileName,
-                            data.odeFilePath
-                        );
-                    }
-                } else {
-                    eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                        data.id
-                    );
-                }
-                this.close();
-            } else {
-                window.onbeforeunload = null;
-                this.closeSession(odeParams['odeSessionId'], data);
-            }
-        });
-    }
-
-    /**
-     * saveSession
-     *
-     * @param {*} odeParams
-     */
-    async saveSession(odeParams, data) {
-        // Handle Yjs-enabled projects: use SaveManager instead of legacy API
-        const isYjsEnabled = eXeLearning?.app?.project?._yjsEnabled;
-        const saveManager = eXeLearning?.app?.project?._yjsBridge?.saveManager;
-
-        if (isYjsEnabled && saveManager) {
-            try {
-                const isStaticMode =
-                    eXeLearning?.app?.capabilities?.storage?.remote === false &&
-                    !window.electronAPI;
-
-                if (data.newFile && isStaticMode) {
-                    if (eXeLearning.app.project?.exportToElpxViaYjs) {
-                        await eXeLearning.app.project.exportToElpxViaYjs({
-                            saveAs: false,
-                        });
-                    }
-                    this.close();
-                    if (typeof window.newProject === 'function') {
-                        window.newProject();
-                    }
-                    return;
-                }
-
-                // Save current project using Yjs SaveManager
-                await saveManager.save();
-
-                // Handle navigation based on action type
-                if (data.openYjsProject && data.projectUuid) {
-                    // Navigate to another Yjs project
-                    const basePath = window.eXeLearning?.config?.basePath || '';
-                    window.location.href = `${basePath}/workarea?project=${data.projectUuid}`;
-                } else if (data.newFile) {
-                    // Creating new file - reload to create new project
-                    window.onbeforeunload = null;
-                    const basePath = window.eXeLearning?.config?.basePath || '';
-                    window.location.href = `${basePath}/workarea`;
-                } else if (data.openOdeFile) {
-                    // Opening a file
-                    if (data.localOdeFile) {
-                        if (data.isLargeFile && data.odeFile) {
-                            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                                data.odeFile,
-                                false,
-                                false,
-                                true,
-                                true
-                            );
-                        } else {
-                            eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
-                                data.odeFileName,
-                                data.odeFilePath
-                            );
-                        }
-                    } else {
-                        eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                            data.id
-                        );
-                    }
-                } else {
-                    // Default: close session
-                    window.onbeforeunload = null;
-                    this.closeSession(odeParams['odeSessionId'], data);
-                }
-            } catch (error) {
-                console.error('[SessionLogout] Error saving Yjs project:', error);
-                eXeLearning.app.modals.alert.show({
-                    title: _('Error saving'),
-                    body: _('An error occurred while saving the project'),
-                    contentId: 'error',
-                });
-            }
-            return;
-        }
-
-        let params = {
-            odeSessionId: odeParams['odeSessionId'],
-            odeVersion: odeParams['odeVersion'],
-            odeId: odeParams['odeId'],
-        };
-        await eXeLearning.app.api.postOdeSave(params).then((response) => {
-            if (response.responseMessage == 'OK') {
-                if (!data.openOdeFile && !data.newFile) {
-                    window.onbeforeunload = null;
-                    this.closeSession(odeParams['odeSessionId'], data);
-                } else if (data.openOdeFile) {
-                    if (data.localOdeFile) {
-                        // Check if this is a large file upload
-                        if (data.isLargeFile && data.odeFile) {
-                            // For large files, resume the upload process
-                            eXeLearning.app.modals.openuserodefiles.largeFilesUpload(
-                                data.odeFile,
-                                false,
-                                false,
-                                true, // skipSessionCheck
-                                true // forceCloseSession
-                            );
-                        } else {
-                            // For regular files, use the normal flow
-                            eXeLearning.app.modals.openuserodefiles.openUserLocalOdeFilesWithOpenSession(
-                                data.odeFileName,
-                                data.odeFilePath
-                            );
-                        }
-                    } else {
-                        eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession(
-                            data.id
-                        );
-                    }
-                } else {
-                    eXeLearning.app.menus.navbar.file.createSession(params);
-                }
-            } else {
-                let errorTextMessage = _(
-                    'An error occurred while saving the file: ${response.responseMessage}'
-                );
-                errorTextMessage = errorTextMessage.replace(
-                    '${response.responseMessage}',
-                    response.responseMessage
-                );
-                eXeLearning.app.modals.alert.show({
-                    title: _('Error saving'),
-                    body: _(errorTextMessage),
-                    contentId: 'error',
-                });
-            }
-        });
-    }
-
-    /**
-     * closeSession
-     *
-     * @param {*} odeSessionId
-     */
-    async closeSession(odeSessionId, data) {
-        let params = { odeSessionId: odeSessionId };
-        if (data.newFile) {
-            eXeLearning.app.menus.navbar.file.createSession(params);
+            // Pure logout without save: redirect
             this.close();
-        } else {
-            await eXeLearning.app.api
-                .postCloseSession(params)
-                .then((response) => {
-                    if (response.responseMessage == 'OK') {
-                        if (!this.offlineInstallation) {
-                            this.realTimeEventNotifier.notify(odeSessionId, {
-                                name: 'user-exiting',
-                                payload: eXeLearning.user.username,
-                            });
-                        }
-                        // We leave half a second for the notification to have time to be triggered
-                        setTimeout(() => {
-                            let pathname = window.location.pathname.split('/');
-                            let basePathname = pathname
-                                .splice(0, pathname.length - 1)
-                                .join('/');
-                            window.location.href =
-                                window.location.origin +
-                                basePathname +
-                                '/logout';
-                        }, 500);
-                    }
-                });
-        }
+            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
+            window.onbeforeunload = null;
+            const basePath = window.eXeLearning?.config?.basePath || '';
+            window.location.href = `${basePath}/logout`;
+        });
     }
 }

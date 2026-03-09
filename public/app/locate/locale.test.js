@@ -135,6 +135,83 @@ describe('Locale translations', () => {
     });
   });
 
+  describe('refreshI18nGlobals', () => {
+    // Pre-built file: c_() already resolved to translated strings
+    const PREBUILT_ES = `$exe_i18n = { "previous": "Anterior", "next": "Siguiente", "block": "bloque" };`;
+    const PREBUILT_EN = `$exe_i18n = { "previous": "Previous", "next": "Next", "block": "block" };`;
+
+    beforeEach(() => {
+      window.eXeLearning = { version: 'v1.0.0', config: { basePath: '' } };
+    });
+
+    afterEach(() => {
+      delete window.eXeLearning;
+      delete window.$exe_i18n;
+    });
+
+    it('should fetch pre-built file and execute it to set $exe_i18n', async () => {
+      locale._contentLang = 'es';
+      vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+      await locale.refreshI18nGlobals();
+
+      expect(window.$exe_i18n.previous).toBe('Anterior');
+      expect(window.$exe_i18n.next).toBe('Siguiente');
+      expect(window.$exe_i18n.block).toBe('bloque');
+    });
+
+    it('should use contentLang derived from loadContentTranslationsStrings', async () => {
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+      await locale.refreshI18nGlobals();
+
+      expect(mockFetch).toHaveBeenCalledWith('/v1.0.0/app/common/i18n/common_i18n.es.js');
+    });
+
+    it('should fall back to English when locale file returns 404', async () => {
+      locale._contentLang = 'fr';
+      vi.spyOn(global, 'fetch')
+        .mockResolvedValueOnce({ ok: false, status: 404 })
+        .mockResolvedValueOnce({ ok: true, text: async () => PREBUILT_EN });
+
+      await locale.refreshI18nGlobals();
+
+      expect(window.$exe_i18n.previous).toBe('Previous');
+    });
+
+    it('should warn and return early when both fetches fail', async () => {
+      locale._contentLang = 'fr';
+      vi.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 404 });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await locale.refreshI18nGlobals();
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch'), 404);
+      expect(window.$exe_i18n).toBeUndefined();
+    });
+
+    it('should construct URL with version prefix when version is set', async () => {
+      window.eXeLearning = { version: 'v2.0.0', config: { basePath: '/app' } };
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+      await locale.refreshI18nGlobals();
+
+      expect(mockFetch).toHaveBeenCalledWith('/app/v2.0.0/app/common/i18n/common_i18n.es.js');
+    });
+
+    it('should construct URL without version when version is empty', async () => {
+      window.eXeLearning = { version: '', config: { basePath: '' } };
+      locale._contentLang = 'es';
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, text: async () => PREBUILT_ES });
+
+      await locale.refreshI18nGlobals();
+
+      expect(mockFetch).toHaveBeenCalledWith('/app/common/i18n/common_i18n.es.js');
+    });
+  });
+
   describe('getGUITranslation edge cases', () => {
     it('should return original string with escaped quotes removed when key not found', () => {
       locale.strings = { translations: {} };

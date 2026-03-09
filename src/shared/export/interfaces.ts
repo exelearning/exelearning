@@ -61,7 +61,7 @@ export interface ExportMetadata {
 
     // Export options (from project properties)
     addExeLink?: boolean; // "Made with eXeLearning" link
-    addPagination?: boolean; // Page counter (Página X/Y)
+    addPagination?: boolean; // Page counter (Page X/Y)
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
@@ -211,6 +211,24 @@ export interface ResourceProvider {
      * @returns Map of relative path -> content buffer
      */
     fetchGlobalFontFiles(fontName: string): Promise<Map<string, Uint8Array> | null>;
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Returns the content of `common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Resolved JS content (no c_() calls), ready to add to the export ZIP
+     */
+    fetchI18nFile(language: string): Promise<string>;
+
+    /**
+     * Fetch i18n translations for a specific language as a source→target Map.
+     * Falls back to an empty Map (which causes English source strings to be used).
+     * Used for resolving nav button labels (previous/next) at export time.
+     * @param language - BCP-47 language code (e.g., 'es', 'en', 'eu')
+     * @returns Map<englishSource, translatedTarget>
+     */
+    fetchI18nTranslations(language: string): Promise<Map<string, string>>;
 }
 
 /**
@@ -592,6 +610,9 @@ export interface PageRenderOptions {
 
     /** EPUB export indicator - loads guard script for duplicate execution protection */
     isEpub?: boolean;
+
+    /** Translated labels for navigation buttons (resolved at export time from XLF) */
+    navLabels?: { previous: string; next: string; page: string };
 
     // Detected libraries from content scanning (MathJax, Mermaid, etc.)
     detectedLibraries?: LibraryDetectionResult;

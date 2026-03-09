@@ -16,6 +16,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
+import { parseXlfTranslations } from '../generators/I18nGenerator';
 
 /**
  * Resource file entry
@@ -415,5 +416,56 @@ export class FileSystemResourceProvider implements ResourceProvider {
         }
 
         return fontFiles;
+    }
+
+    /**
+     * Fetch the pre-built, pre-translated i18n JS file for the given language.
+     * Reads from `public/app/common/i18n/common_i18n.{lang}.js` (generated at build time).
+     * Falls back to English if the locale file is not available.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
+     */
+    async fetchI18nFile(language: string): Promise<string> {
+        const i18nDir = path.join(this.publicDir, 'app', 'common', 'i18n');
+        const lang = language.split('-')[0];
+
+        // Try exact language first, then base language, then English
+        for (const candidate of [language, lang, 'en']) {
+            const filePath = path.join(i18nDir, `common_i18n.${candidate}.js`);
+            if (await fs.pathExists(filePath)) {
+                return fs.readFile(filePath, 'utf-8');
+            }
+        }
+
+        console.warn('[FileSystemResourceProvider] common_i18n.{lang}.js not found for:', language);
+        return '';
+    }
+
+    /**
+     * Fetch i18n translations for a specific language from the XLF file.
+     * @param language - BCP-47 language code (e.g., 'es', 'eu')
+     * @returns Map<englishSource, translatedTarget>, empty if not found
+     */
+    async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
+        // XLF files live one level above publicDir, in translations/
+        const translationsDir = path.join(this.publicDir, '..', 'translations');
+        const xlfPath = path.join(translationsDir, `messages.${language}.xlf`);
+
+        if (await fs.pathExists(xlfPath)) {
+            const xlfContent = await fs.readFile(xlfPath, 'utf-8');
+            return parseXlfTranslations(xlfContent);
+        }
+
+        // Try base language (e.g. 'pt' for 'pt-BR')
+        const baseLang = language.split('-')[0];
+        if (baseLang !== language) {
+            const basePath = path.join(translationsDir, `messages.${baseLang}.xlf`);
+            if (await fs.pathExists(basePath)) {
+                const xlfContent = await fs.readFile(basePath, 'utf-8');
+                return parseXlfTranslations(xlfContent);
+            }
+        }
+
+        return new Map();
     }
 }

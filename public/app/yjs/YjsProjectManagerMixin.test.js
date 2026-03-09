@@ -1100,18 +1100,19 @@ describe('YjsProjectManagerMixin', () => {
       YjsProjectManagerMixin.applyMixin(projectManager);
     });
 
-    it('does nothing when Yjs not enabled', async () => {
-      // Should not throw
-      await projectManager.exportToElpxViaYjs();
+    it('returns saved false when Yjs not enabled', async () => {
+      const result = await projectManager.exportToElpxViaYjs();
+      expect(result).toEqual({ saved: false });
     });
 
-    it('delegates to bridge when enabled', async () => {
-      mockBridge.exportToElpx = mock(() => undefined).mockResolvedValue();
+    it('delegates to bridge and propagates result when enabled', async () => {
+      mockBridge.exportToElpx = mock(() => Promise.resolve({ saved: true }));
       await projectManager.enableYjsMode(123, 'token');
 
-      await projectManager.exportToElpxViaYjs();
+      const result = await projectManager.exportToElpxViaYjs();
 
       expect(mockBridge.exportToElpx).toHaveBeenCalled();
+      expect(result).toEqual({ saved: true });
     });
   });
 
