@@ -43,6 +43,7 @@
 - File Manager preview issue in WAF-protected environments
 - Race condition causing Image Optimizer to get stuck in "Queued"
 - Assets exported with unknown/unknown_N filenames
+- `make run-app` workflow: install missing Electron libraries to fix runtime errors
 - Typo in Windows build package
 - Homebrew push on release
 - CI/CD pipelines for forks: skip signing and external publishing when secrets are unavailable
