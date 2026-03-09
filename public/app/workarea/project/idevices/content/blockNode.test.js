@@ -384,6 +384,21 @@ describe('IdeviceBlockNode', () => {
             expect(node.getAttribute('drop')).toBe('["idevice"]');
         });
 
+        it('shows visibility off indicator when visibility is false', () => {
+            block.properties.visibility.value = 'false';
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-visibility-off-green-icon')).not.toBeNull();
+        });
+
+        it('does not show visibility off indicator when visibility is true', () => {
+            block.properties.visibility.value = 'true';
+            const node = block.generateBlockContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).toBeNull();
+        });
+
         it('reuses existing element when newNode is false', () => {
             block.blockContent = document.createElement('article');
             block.blockContent.classList.add('old-class');

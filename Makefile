@@ -134,10 +134,27 @@ endif
 .PHONY: deps
 deps: check-bun
 	@LOCK=/tmp/.exe-bun-lock; \
+	PIDFILE=/tmp/.exe-bun-lock.pid; \
 	if mkdir "$$LOCK" 2>/dev/null; then \
-		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; exit $$RET; \
+		echo $$$$ > "$$PIDFILE"; \
+		bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
 	else \
-		while [ -d "$$LOCK" ]; do sleep 0.5; done; \
+		if [ -f "$$PIDFILE" ] && ! kill -0 $$(cat "$$PIDFILE") 2>/dev/null; then \
+			echo "[deps] Removing stale lock (owner PID no longer running)"; \
+			rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+			mkdir "$$LOCK" 2>/dev/null; \
+			echo $$$$ > "$$PIDFILE"; \
+			bun install; RET=$$?; rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; exit $$RET; \
+		fi; \
+		WAITED=0; \
+		while [ -d "$$LOCK" ]; do \
+			sleep 0.5; WAITED=$$((WAITED + 1)); \
+			if [ $$WAITED -ge 120 ]; then \
+				echo "[deps] Lock held for >60s — removing stale lock"; \
+				rmdir "$$LOCK" 2>/dev/null; rm -f "$$PIDFILE"; \
+				break; \
+			fi; \
+		done; \
 	fi
 
 # Build CSS
@@ -169,6 +186,7 @@ endif
 # Start full app: Static files + Electron (no server needed)
 .PHONY: run-app
 run-app: check-bun check-env deps css bundle
+	@bun add --no-save electron-updater electron-log electron-context-menu 2>/dev/null || true
 	@echo "Building static files..."
 	@bun scripts/build-static-bundle.ts
 	@echo "Copying static files to app/..."
@@ -277,11 +295,17 @@ endif
 tmp-cleanup: check-bun
 	@$(CLI) tmp:cleanup $(if $(MAX_AGE),--max-age=$(MAX_AGE),) $(if $(DRY_RUN),--dry-run,)
 
-# Extract and clean translations
-# Usage: make translations [LOCALE=es] [EXTRACT_ONLY=1] [CLEAN_ONLY=1]
+# Extract new translation keys (does not clean or remove anything)
+# Usage: make translations [LOCALE=es]
 .PHONY: translations
 translations: check-bun
-	@$(CLI) translations $(if $(LOCALE),--locale=$(LOCALE),) $(if $(EXTRACT_ONLY),--extract-only,) $(if $(CLEAN_ONLY),--clean-only,)
+	@$(CLI) translations --extract-only $(if $(LOCALE),--locale=$(LOCALE),)
+
+# Clean and remove obsolete translation strings (destructive: removes trans-units not found in source)
+# Usage: make translations-cleanup [LOCALE=es]
+.PHONY: translations-cleanup
+translations-cleanup: check-bun
+	@$(CLI) translations --clean-only --remove-obsolete $(if $(LOCALE),--locale=$(LOCALE),)
 
 # Update license information in public/libs/README.md
 # Usage: make update-licenses [DRY_RUN=1]
@@ -901,6 +925,7 @@ help:
 	@echo "  make revoke-role EMAIL=x ROLE=y               Remove role from user"
 	@echo "  make tmp-cleanup [MAX_AGE=86400]              Clean temp files"
 	@echo "  make translations [LOCALE=es]                 Extract/clean translations"
+	@echo "  make translations-cleanup                     Remove obsolete translation strings"
 	@echo "  make update-licenses [DRY_RUN=1]              Update license info"
 	@echo ""
 	@echo "ELPX Processing:"

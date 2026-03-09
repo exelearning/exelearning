@@ -361,10 +361,22 @@ describe('MenuStructureCompose', () => {
             expect(result.getAttribute('title')).toBe('Test Page');
         });
 
-        it('should contain page icon', () => {
+        it('should contain page icon when visible', () => {
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
             const pageIcon = result.querySelector('.page-icon');
             expect(pageIcon).not.toBeNull();
+            const hideIcon = result.querySelector('.exe-visibility-off-green-icon');
+            expect(hideIcon).toBeNull();
+        });
+
+        it('should contain visibility off icon instead of page icon when not visible', () => {
+            mockNode.properties = { visibility: { value: 'false' } };
+            const result = menuStructureCompose.makeNodeTextElement(mockNode);
+            const pageIcon = result.querySelector('.page-icon');
+            expect(pageIcon).toBeNull();
+            const hideIcon = result.querySelector('.exe-visibility-off-green-icon');
+            expect(hideIcon).not.toBeNull();
+            expect(hideIcon.classList.contains('medium-icon')).toBe(true);
         });
 
         it('should contain node text span with pageName', () => {

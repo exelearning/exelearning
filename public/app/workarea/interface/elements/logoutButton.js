@@ -53,6 +53,7 @@ export default class LogoutButton {
                     eXeLearning.app.api
                         .postCloseSession(params)
                         .then((response) => {
+                            window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                             window.onbeforeunload = null;
                             let pathname =
                                 window.location.pathname.split('/');
@@ -131,6 +132,7 @@ export default class LogoutButton {
      * Close the offline app (Electron window)
      */
     closeOfflineApp() {
+        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
         window.onbeforeunload = null;
         window.close();
     }
@@ -147,6 +149,7 @@ export default class LogoutButton {
                 eXeLearning.app.api
                     .postCloseSession(params)
                     .then((response) => {
+                        window.UnsavedChangesHelper?.removeBeforeUnloadHandler();
                         window.onbeforeunload = null;
                         let pathname = window.location.pathname.split('/');
                         let basePathname = pathname
