@@ -258,6 +258,7 @@ export default class IdeviceNode {
                 this.properties.visibility.value
             );
         }
+        this.updateVisibilityIndicator();
         // css class
         if (this.properties.cssClass.value != '') {
             let cssClasses = this.properties.cssClass.value
@@ -270,6 +271,41 @@ export default class IdeviceNode {
         // teacher only - workarea visual indicator (separate class to avoid export hide rule)
         if (this.properties.teacherOnly?.value == 'true') {
             this.ideviceContent.classList.add('exe-teacher-highlight');
+        }
+    }
+
+    /**
+     * Update the visibility indicator based on the visibility property
+     */
+    updateVisibilityIndicator() {
+        if (!this.ideviceButtons) return;
+        
+        let indicator = this.ideviceButtons.querySelector('.visibility-off-indicator');
+        const visibilityValue = this.properties.visibility?.value;
+        const isVisible = visibilityValue !== 'false' && visibilityValue !== false;
+        
+        if (isVisible) {
+            if (indicator) indicator.remove();
+        } else {
+            if (!indicator) {
+                indicator = document.createElement('span');
+                indicator.classList.add('visibility-off-indicator', 'btn', 'disabled', 'd-flex', 'justify-content-center', 'align-items-center');
+                indicator.setAttribute('title', _('Hidden from export'));
+                indicator.style.padding = '0.25rem 0.5rem';
+                indicator.style.opacity = '1';
+                indicator.style.border = 'none';
+                indicator.style.background = 'transparent';
+                indicator.innerHTML = `<i class="small-icon exe-visibility-off-green-icon" aria-hidden="true"></i><span class="visually-hidden">${_('Hidden from export')}</span>`;
+                
+                // Make indicator absolutely positioned to the far left
+                indicator.style.position = 'absolute';
+                indicator.style.left = '12px';
+                indicator.style.top = '50%';
+                indicator.style.transform = 'translateY(-50%)';
+                indicator.style.marginRight = '0';
+                
+                this.ideviceButtons.appendChild(indicator);
+            }
         }
     }
 
@@ -336,7 +372,6 @@ export default class IdeviceNode {
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-center d-flex justify-content-center align-items-center btn-delete-idevice exe-advanced" type="button" id=deleteIdevice${id} title="${_('Delete iDevice')}"><span class="small-icon delete-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Delete iDevice')}</span></button>
                     <button class="btn-action-menu btn button-secondary secondary-green button-square button-combo combo-right d-flex justify-content-center align-items-center btn-undo-idevice" type="button" id=undoIdevice${id} title="${_('Discard changes')}"><span class="small-icon undo-icon-green" aria-hidden="true"></span><span class='visually-hidden'>${_('Discard changes')}</span></button>
                 </div>`;
-                // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
                 // drag&drop
                 this.ideviceButtons.setAttribute('draggable', false);
@@ -345,7 +380,6 @@ export default class IdeviceNode {
                 this.addBehaviourUndoIdeviceButton();
                 this.addBehaviourDeleteIdeviceButton();
                 this.addNoTranslateForGoogle();
-                // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
             case 'export':
                 // action edition
@@ -395,7 +429,6 @@ export default class IdeviceNode {
                     </ul>
                     <button class="btn-action-menu btn button-secondary secondary-green button-narrow button-combo combo-left d-flex justify-content-center align-items-center btn-minify-idevice" type="button" id=minifyIdevice${id} title="${_('Toggle content')}"><span id="minifyIdevice${id}icon" class="small-icon ${minifyIdeviceIcon}" aria-hidden="true"></span><span class='visually-hidden'>${_('Toggle content')}</span></button>
                 </div>`;
-                // Check links (disabled) <li><button class="dropdown-item button-action-block" id="checkLinksIdevice${id}"><span class="auto-icon" aria-hidden="true">links</span>${_('Check links')}</button></li>
                 this.ideviceButtons.innerHTML = blockButtonsHTML;
                 // drag&drop (disabled when locked by another user)
                 this.ideviceButtons.setAttribute('draggable', !isLockedByOther);
@@ -410,10 +443,10 @@ export default class IdeviceNode {
                 this.addBehaviourExportIdeviceButton();
                 this.addBehaviourMinifyIdeviceButton();
                 this.addNoTranslateForGoogle();
-                // Check links (disabled) this.addBehaviouCheckBrokenLinksIdeviceButton();
                 break;
         }
         this.addTooltips();
+        this.updateVisibilityIndicator();
         return this.ideviceButtons;
     }
 
@@ -1400,36 +1433,6 @@ export default class IdeviceNode {
         ).addClass('exe-app-tooltip');
         eXeLearning.app.common.initTooltips(this.ideviceButtons);
     }
-
-    /**
-     *
-     */
-    /* To review (disabled)
-    addBehaviouCheckBrokenLinksIdeviceButton() {
-        this.ideviceButtons
-            .querySelector('#checkLinksIdevice' + this.odeIdeviceId)
-            .addEventListener('click', (element) => {
-                let ideviceId = this.odeIdeviceId;
-                this.getOdeIdeviceBrokenLinksEvent(ideviceId).then(
-                    (response) => {
-                        if (!response.responseMessage) {
-                            // Show eXe OdeBrokenList modal
-                            eXeLearning.app.modals.odebrokenlinks.show(
-                                response,
-                            );
-                        } else {
-                            // Open eXe alert modal
-                            eXeLearning.app.modals.alert.show({
-                                title: _('Broken Links'),
-                                body: _('No broken links found.'),
-                            });
-                        }
-                    },
-                );
-            },
-        );
-    }
-    */
 
     /**
      * Download iDevice as .idevice file
