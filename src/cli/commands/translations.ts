@@ -75,17 +75,23 @@ async function extractTranslationKeys(): Promise<Set<string>> {
 
     // Patterns to search for translation function calls
     const patterns = [
-        /trans\(\s*['"]([^'"]+)['"]/g, // trans('key') or trans("key")
+        /trans\(\s*'([^']+)'/g, // trans('key') - single-quoted
+        /trans\(\s*"([^"]+)"/g, // trans("key") - double-quoted
         /trans\(\s*`([^`]+)`/g, // trans(`key`)
-        /__\(\s*['"]([^'"]+)['"]/g, // __('key') or __("key")
+        /__\(\s*'([^']+)'/g, // __('key') - single-quoted
+        /__\(\s*"([^"]+)"/g, // __("key") - double-quoted
         /__\(\s*`([^`]+)`/g, // __(`key`)
-        /\bt\(\s*['"]([^'"]+)['"]/g, // t('key') or t("key")
+        /\bt\(\s*'([^']+)'/g, // t('key') - single-quoted
+        /\bt\(\s*"([^"]+)"/g, // t("key") - double-quoted
         /\bt\(\s*`([^`]+)`/g, // t(`key`)
-        /(?<![.\w])_\(\s*['"]([^'"]+)['"]/g, // _('key') - GUI translations (negative lookbehind avoids c_)
+        /(?<![.\w])_\(\s*'([^']+)'/g, // _('key') - GUI translations, single-quoted
+        /(?<![.\w])_\(\s*"([^"]+)"/g, // _("key") - GUI translations, double-quoted
         /(?<![.\w])_\(\s*`([^`]+)`/g, // _(`key`) - GUI translations with backticks
-        /\bc_\(\s*['"]([^'"]+)['"]/g, // c_('key') - content translations
+        /\bc_\(\s*'([^']+)'/g, // c_('key') - content translations, single-quoted
+        /\bc_\(\s*"([^"]+)"/g, // c_("key") - content translations, double-quoted
         /\bc_\(\s*`([^`]+)`/g, // c_(`key`) - content translations with backticks
-        /['"]([^'"]+)['"]\s*\|\s*trans\b/g, // 'key' | trans - Nunjucks filter
+        /'([^']+)'\s*\|\s*trans\b/g, // 'key' | trans - Nunjucks filter, single-quoted
+        /"([^"]+)"\s*\|\s*trans\b/g, // "key" | trans - Nunjucks filter, double-quoted
         /\$\{TRANS_PREFIX\}([^`$]+)/g, // ${TRANS_PREFIX}Key - runtime translatable strings
     ];
 
@@ -145,7 +151,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
     const resnamePattern = /resname="([^"]+)"/g;
     let match;
     while ((match = resnamePattern.exec(xlfContent)) !== null) {
-        existingKeys.add(match[1]);
+        existingKeys.add(unescapeXml(match[1]));
     }
 
     // Find keys to add
@@ -160,7 +166,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
         .map(key => {
             const id = generateTransUnitId();
             return `      <trans-unit id="${id}" resname="${escapeXml(key)}">
-        <source>${escapeXml(key)}</source>
+        <source>${escapeXmlText(key)}</source>
         <target></target>
       </trans-unit>`;
         })
@@ -191,6 +197,14 @@ function escapeXml(str: string): string {
 }
 
 /**
+ * Escape XML text content (between tags). Only &, <, > need escaping.
+ * Quotes are valid in text content and should NOT be escaped.
+ */
+function escapeXmlText(str: string): string {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
  * Unescape XML entities back to plain characters
  */
 function unescapeXml(str: string): string {
@@ -210,23 +224,26 @@ function cleanXlfContent(content: string): { content: string; cleaned: boolean }
     let result = content;
 
     // 1. Replace <target>__...</target> with <target></target>
-    const targetPattern = /<target>__([^<]*)<\/target>/g;
-    if (targetPattern.test(result)) {
-        result = result.replace(targetPattern, '<target></target>');
+    const afterTarget = result.replace(/<target>__([^<]*)<\/target>/g, '<target></target>');
+    if (afterTarget !== result) {
+        result = afterTarget;
         cleaned = true;
     }
 
     // 2. Remove trans-units with source starting with \\
-    const backslashPattern = /<trans-unit\b[^>]*>[\s\S]*?<source>\\\\[^<]*<\/source>[\s\S]*?<\/trans-unit>\s*/g;
-    if (backslashPattern.test(result)) {
-        result = result.replace(backslashPattern, '');
+    const afterBackslash = result.replace(
+        /<trans-unit\b[^>]*>[\s\S]*?<source>\\\\[^<]*<\/source>[\s\S]*?<\/trans-unit>\s*/g,
+        '',
+    );
+    if (afterBackslash !== result) {
+        result = afterBackslash;
         cleaned = true;
     }
 
     // 3. Clean up multiple empty lines
-    const multipleNewlines = /\n\s*\n\s*\n/g;
-    if (multipleNewlines.test(result)) {
-        result = result.replace(multipleNewlines, '\n\n');
+    const afterNewlines = result.replace(/\n\s*\n\s*\n/g, '\n\n');
+    if (afterNewlines !== result) {
+        result = afterNewlines;
         cleaned = true;
     }
 

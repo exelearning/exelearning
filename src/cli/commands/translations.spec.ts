@@ -396,6 +396,63 @@ describe('Translations Command', () => {
             expect(content).toContain('Selection granularity');
         });
 
+        it('should extract _() with embedded double quotes in single-quoted string', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(
+                path.join(appDir, 'quotes.js'),
+                `const msg = _('Select the correct options and click on the "Reply" button.');`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Select the correct options and click on the "Reply" button.');
+        });
+
+        it('should extract c_() with embedded single quotes in double-quoted string', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(path.join(appDir, 'quotes2.js'), `const msg = c_("It's a beautiful day");`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain("It's a beautiful day");
+        });
+
+        it('should not create duplicate trans-unit when key contains quotes', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(path.join(appDir, 'dup.js'), `const msg = _('Made with "eXeLearning"');`);
+
+            // XLF already has this key with &quot; in resname
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="abc123" resname="Made with &quot;eXeLearning&quot;">
+        <source>Made with "eXeLearning"</source>
+        <target>Hecho con "eXeLearning"</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'extract-only': true });
+
+            expect(result.stats?.extracted).toBe(0);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            const matches = content.match(/eXeLearning/g);
+            // Should appear exactly 3 times (resname + source + target), not 6 (duplicate trans-unit)
+            expect(matches?.length).toBe(3);
+        });
+
         it('should skip template expressions', async () => {
             const srcDir = path.join(testDir, 'src');
             await fs.ensureDir(srcDir);
@@ -542,6 +599,42 @@ describe('Translations Command', () => {
 
             expect(result.message).toContain('Removed');
             expect(result.message).toContain('obsolete');
+        });
+
+        it('should preserve trans-units with embedded quotes when using --remove-obsolete', async () => {
+            const appDir = path.join(testDir, 'public', 'app');
+            await fs.ensureDir(appDir);
+            await fs.writeFile(
+                path.join(appDir, 'quotes-cleanup.js'),
+                `const msg = _('Select the correct options and click on the "Reply" button.');`,
+            );
+
+            const xlfContent = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2">
+  <file>
+    <body>
+      <trans-unit id="a" resname="Select the correct options and click on the &quot;Reply&quot; button.">
+        <source>Select the correct options and click on the "Reply" button.</source>
+        <target>Selecciona las opciones correctas y haz clic en el botón "Responder".</target>
+      </trans-unit>
+      <trans-unit id="b" resname="obsolete.string">
+        <source>obsolete.string</source>
+        <target>Cadena obsoleta</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), xlfContent);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true, 'remove-obsolete': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.removed).toBe(1);
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('&quot;Reply&quot;');
+            expect(content).not.toContain('obsolete.string');
         });
 
         it('should not incorrectly remove trans-units with XML-escaped resnames', async () => {
