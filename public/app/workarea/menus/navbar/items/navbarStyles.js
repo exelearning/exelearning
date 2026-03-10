@@ -959,14 +959,16 @@ export default class NavbarFile {
     }
 
     /**
-     * Download a theme from the bundled ZIP files
-     * Works in both online and static mode since bundles are pre-built
-     * @param {Object} theme - Theme object with dirName and name properties
+     * Download a theme from the bundled ZIP files or API endpoint
+     * Base themes use pre-built static bundles, site/admin themes use API for on-demand ZIP generation
+     * @param {Object} theme - Theme object with dirName, name, and type properties
      */
     async downloadThemeFromBundle(theme) {
         try {
             const basePath = eXeLearning.config?.basePath || '';
-            const bundleUrl = `${basePath}/bundles/themes/${theme.dirName}.zip`;
+            const bundleUrl = (theme.type === 'site' || theme.type === 'admin')
+                ? `${basePath}/api/resources/bundle/theme/${theme.dirName}`
+                : `${basePath}/bundles/themes/${theme.dirName}.zip`;
 
             const response = await fetch(bundleUrl);
             if (!response.ok) {

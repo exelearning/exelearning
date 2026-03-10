@@ -457,6 +457,29 @@ describe('NavbarStyles', () => {
         clickSpy.mockRestore();
     });
 
+    it('downloads site theme zip from API endpoint', async () => {
+        const mockBlob = new Blob(['test'], { type: 'application/zip' });
+        const mockResponse = {
+            ok: true,
+            blob: vi.fn().mockResolvedValue(mockBlob),
+        };
+        global.fetch = vi.fn().mockResolvedValue(mockResponse);
+
+        const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        navbarStyles.downloadThemeZip({ dirName: 'site-1', name: 'Site Theme', type: 'site', downloadable: '1' });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(fetch).toHaveBeenCalledWith('/api/resources/bundle/theme/site-1');
+        expect(clickSpy).toHaveBeenCalled();
+
+        createObjectURLSpy.mockRestore();
+        revokeObjectURLSpy.mockRestore();
+        clickSpy.mockRestore();
+    });
+
     it('shows alert when theme is not downloadable', async () => {
         const alertSpy = vi.spyOn(navbarStyles, 'showElementAlert');
         await navbarStyles.downloadThemeZip({ dirName: 'user-1', downloadable: '0' });
