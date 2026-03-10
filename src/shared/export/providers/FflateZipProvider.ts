@@ -102,6 +102,7 @@ export class FflateZipProvider implements ZipProvider, ZipArchive {
             });
 
             for (const [filePath, data] of this.files) {
+                this.files.delete(filePath); // Free uncompressed data before compression
                 const file = new fflate.ZipDeflate(filePath, { level: 6 });
                 zipper.add(file);
                 file.push(data, true);

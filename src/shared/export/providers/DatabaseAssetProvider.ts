@@ -377,13 +377,14 @@ export class DatabaseAssetProvider implements AssetProvider {
 
     /**
      * List asset metadata without loading binary data.
+     * Verifies each DB asset's storage_path exists on disk to filter out orphaned records.
      */
     async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
         const result: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = [];
 
         const dbAssets = await this.queries.findAllAssetsForProject(this.db, this.projectId);
         for (const dbAsset of dbAssets) {
-            if (dbAsset.storage_path) {
+            if (dbAsset.storage_path && (await fs.pathExists(dbAsset.storage_path))) {
                 result.push({
                     id: dbAsset.client_id || String(dbAsset.id),
                     filename: dbAsset.filename,

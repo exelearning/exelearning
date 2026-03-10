@@ -116,7 +116,6 @@ export class Html5Exporter extends BaseExporter {
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and add directly to ZIP
             // Pages are added to ZIP immediately to avoid storing all HTML in memory
             // Manifest script tags are injected inline (they reference the file, not its content)
-            const pageFilenames: string[] = [];
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
@@ -208,7 +207,6 @@ export class Html5Exporter extends BaseExporter {
                 const filename = i === 0 ? 'index.html' : `html/${pageUniqueFilename}`;
                 this.zip.addFile(filename, html);
                 if (fileList) fileList.push(filename);
-                pageFilenames.push(filename);
             }
 
             // 2. Add search_index.js if search box is enabled
