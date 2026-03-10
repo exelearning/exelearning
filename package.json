@@ -165,6 +165,13 @@
         "description": "eXeLearning project file",
         "role": "Editor",
         "mimeType": "application/x-exelearning-elpx"
+      },
+      {
+        "ext": "elp",
+        "name": "eXeLearning Project (Legacy)",
+        "description": "eXeLearning legacy project file",
+        "role": "Editor",
+        "mimeType": "application/x-exelearning-elp"
       }
     ],
     "extraResources": [
