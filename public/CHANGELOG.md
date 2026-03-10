@@ -22,7 +22,7 @@
 - Admin panel customization options: app title, favicon, head HTML, and assets
 - Add `make translations-cleanup` command to remove obsolete translation strings
 - Strings revision
-- Complete translations: Italian (IT), Spanish (ES), Romanian (RO), and Valencian (VA)
+- Complete translations: Galician (GL), Italian (IT), Spanish (ES), Romanian (RO) and Valencian (VA)
 
 ### Fixed
 
