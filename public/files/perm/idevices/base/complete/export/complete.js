@@ -1048,7 +1048,7 @@ var $eXeCompleta = {
 
         const unique = (value, index, self) => self.indexOf(value) === index;
         wl = wl.filter(unique);
-        wl.sort();
+        wl = $exeDevices.iDevice.gamification.helpers.shuffleAds(wl);
 
         let s = `<select data-number="${num}" class="CMPT-Select">`;
         s += '<option val="0"></option>';
@@ -1095,7 +1095,7 @@ var $eXeCompleta = {
 
         const unique = (value, index, self) => self.indexOf(value) === index;
         words = words.filter(unique);
-        words.sort();
+        words = $exeDevices.iDevice.gamification.helpers.shuffleAds(words);
 
         let s = `<select data-number="${num}" class="CMPT-Select">`;
         s += '<option val="0"></option>';
@@ -1167,7 +1167,7 @@ var $eXeCompleta = {
             wordsCorrect = wordsCorrect.concat(wordsErrors);
         }
         mOptions.oWords = {};
-        wordsCorrect.sort();
+        wordsCorrect = $exeDevices.iDevice.gamification.helpers.shuffleAds(wordsCorrect);
         wordsa = [...wordsCorrect];
         if (!mOptions.caseSensitive) {
             wordsa = wordsa.map((name) => name.toLowerCase());

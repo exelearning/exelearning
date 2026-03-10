@@ -38,6 +38,7 @@ describe('complete iDevice export', () => {
 
   beforeEach(() => {
     global.$eXeCompleta = undefined;
+    global.$exeDevices.iDevice.gamification.helpers.shuffleAds = (arr) => [...arr];
 
     const filePath = join(__dirname, 'complete.js');
     const code = readFileSync(filePath, 'utf-8');
@@ -269,6 +270,41 @@ describe('complete iDevice export', () => {
       expect(html).toContain('&lt;');
       expect(html).toContain('=');
       expect(html).toContain('&gt;');
+    });
+  });
+
+  describe('getWordArrayJson', () => {
+    it('keeps word counters correct when shuffle changes order', () => {
+      const instanceId = 'shuffle-invariant';
+      const originalShuffle = global.$exeDevices.iDevice.gamification.helpers.shuffleAds;
+      const originalCreateButtons = $eXeCompleta.createButtons;
+      global.$exeDevices.iDevice.gamification.helpers.shuffleAds = (arr) => [...arr].reverse();
+      $eXeCompleta.createButtons = vi.fn();
+
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.id = `cmptButonsDiv-${instanceId}`;
+      document.body.appendChild(buttonsDiv);
+
+      $eXeCompleta.options[instanceId] = {
+        words: ['Alpha|A', 'beta'],
+        wordsErrors: 'ALPHA|gamma',
+        caseSensitive: false,
+      };
+
+      try {
+        $eXeCompleta.getWordArrayJson(instanceId);
+        expect($eXeCompleta.options[instanceId].oWords).toEqual({
+          alpha: 2,
+          beta: 1,
+          gamma: 1,
+        });
+      } finally {
+        global.$exeDevices.iDevice.gamification.helpers.shuffleAds = originalShuffle;
+        $eXeCompleta.createButtons = originalCreateButtons;
+        if (buttonsDiv.parentNode) {
+          buttonsDiv.parentNode.removeChild(buttonsDiv);
+        }
+      }
     });
   });
 
