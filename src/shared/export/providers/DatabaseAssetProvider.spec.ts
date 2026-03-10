@@ -346,6 +346,130 @@ describe('DatabaseAssetProvider', () => {
         });
     });
 
+    describe('forEachAsset', () => {
+        it('should iterate over session assets sequentially', async () => {
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+            const processed: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(count).toBeGreaterThan(0);
+            expect(processed).toContain('asset-uuid-123');
+        });
+
+        it('should iterate over database assets', async () => {
+            const storagePath = path.join(tempDir, 'db-storage', 'db-asset.png');
+            await fs.ensureDir(path.dirname(storagePath));
+            await fs.writeFile(storagePath, Buffer.from('db asset content'));
+
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'db-asset-1',
+                        filename: 'db-asset.png',
+                        storage_path: storagePath,
+                    }),
+                ],
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const processed: string[] = [];
+            const count = await provider.forEachAsset(async asset => {
+                processed.push(asset.id);
+            });
+
+            expect(count).toBe(1);
+            expect(processed).toContain('db-asset-1');
+        });
+
+        it('should return 0 for empty provider', async () => {
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const count = await provider.forEachAsset(async () => {});
+            expect(count).toBe(0);
+        });
+    });
+
+    describe('listAssetMetadata', () => {
+        it('should return metadata without binary data', async () => {
+            const storagePath = path.join(tempDir, 'db-storage', 'meta-asset.png');
+            await fs.ensureDir(path.dirname(storagePath));
+            await fs.writeFile(storagePath, Buffer.from('meta content'));
+
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'meta-uuid',
+                        filename: 'meta-asset.png',
+                        storage_path: storagePath,
+                        mime_type: 'image/png',
+                    }),
+                ],
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, mockQueries);
+            const metadata = await provider.listAssetMetadata();
+
+            expect(metadata.length).toBe(1);
+            expect(metadata[0].id).toBe('meta-uuid');
+            expect(metadata[0].filename).toBe('meta-asset.png');
+            expect(metadata[0].mime).toBe('image/png');
+            expect((metadata[0] as any).data).toBeUndefined();
+        });
+
+        it('should return empty array for empty provider', async () => {
+            const provider = new DatabaseAssetProvider(mockDb, 1, undefined, createMockQueries());
+            const metadata = await provider.listAssetMetadata();
+            expect(metadata).toEqual([]);
+        });
+    });
+
+    describe('listAssetMetadata and forEachAsset consistency', () => {
+        it('should return the same asset IDs from both methods with session path assets', async () => {
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, createMockQueries());
+
+            const meta = await provider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await provider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+        });
+
+        it('should return the same asset IDs with combined DB and session assets', async () => {
+            const storagePath = path.join(tempDir, 'db-storage', 'db-asset.png');
+            await fs.ensureDir(path.dirname(storagePath));
+            await fs.writeFile(storagePath, Buffer.from('db asset content'));
+
+            const mockQueries = createMockQueries({
+                findAllAssetsForProject: async () => [
+                    createMockDbAsset({
+                        client_id: 'db-asset-1',
+                        filename: 'db-asset.png',
+                        storage_path: storagePath,
+                    }),
+                ],
+            });
+
+            const provider = new DatabaseAssetProvider(mockDb, 1, tempDir, mockQueries);
+
+            const meta = await provider.listAssetMetadata();
+            const idsFromMeta = new Set(meta.map(a => a.id));
+
+            const iterated: string[] = [];
+            await provider.forEachAsset(async asset => {
+                iterated.push(asset.id);
+            });
+
+            expect(new Set(iterated)).toEqual(idsFromMeta);
+            expect(idsFromMeta.has('db-asset-1')).toBe(true);
+            expect(idsFromMeta.has('asset-uuid-123')).toBe(true);
+        });
+    });
+
     describe('edge cases', () => {
         it('should handle asset paths with spaces', async () => {
             // Create asset with space in filename

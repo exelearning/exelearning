@@ -71,20 +71,43 @@ export class FflateZipProvider implements ZipProvider, ZipArchive {
     }
 
     /**
-     * Generate the ZIP archive
+     * Generate the ZIP archive using fflate's streaming Zip class.
+     * This avoids building an intermediate Zippable object (~1x uncompressed size saved at peak).
      */
     async generate(): Promise<Uint8Array> {
-        // Convert files map to fflate format
-        const zipData: fflate.Zippable = {};
-
-        for (const [path, data] of this.files) {
-            // fflate expects the data with optional compression options
-            // Use level 6 for good compression/speed balance
-            zipData[path] = [data, { level: 6 }];
+        if (this.files.size === 0) {
+            return fflate.zipSync({});
         }
 
-        // Use zipSync for simplicity (async version would use zip())
-        return fflate.zipSync(zipData);
+        const chunks: Uint8Array[] = [];
+        let totalLength = 0;
+
+        return new Promise<Uint8Array>((resolve, reject) => {
+            const zipper = new fflate.Zip((err, data, final) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                chunks.push(data);
+                totalLength += data.length;
+                if (final) {
+                    const result = new Uint8Array(totalLength);
+                    let offset = 0;
+                    for (const chunk of chunks) {
+                        result.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+                    resolve(result);
+                }
+            });
+
+            for (const [filePath, data] of this.files) {
+                const file = new fflate.ZipDeflate(filePath, { level: 6 });
+                zipper.add(file);
+                file.push(data, true);
+            }
+            zipper.end();
+        });
     }
 
     /**

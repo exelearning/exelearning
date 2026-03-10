@@ -15,6 +15,7 @@
  */
 
 import type {
+    ExportAsset,
     ExportPage,
     ExportMetadata,
     ExportOptions,
@@ -770,13 +771,12 @@ export class Epub3Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
-                    continue;
+                    return;
                 }
 
                 // Store in EPUB/content/resources/{exportPath} (matching HTML references)
@@ -790,6 +790,15 @@ export class Epub3Exporter extends BaseExporter {
                 this.addManifestItem(this.generateUniqueId(`asset-${asset.id}`), zipPath, mimeType);
 
                 assetsAdded++;
+            };
+
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(processAsset);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    await processAsset(asset);
+                }
             }
         } catch (e) {
             console.warn('[Epub3Exporter] Failed to add assets:', e);

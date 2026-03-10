@@ -3042,12 +3042,12 @@ class YjsProjectBridge {
    * @private
    */
   _uint8ArrayToBase64(uint8Array) {
-    let binary = '';
-    const len = uint8Array.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
+    const CHUNK = 0x8000;
+    const parts = [];
+    for (let i = 0; i < uint8Array.byteLength; i += CHUNK) {
+      parts.push(String.fromCharCode.apply(null, uint8Array.subarray(i, Math.min(i + CHUNK, uint8Array.byteLength))));
     }
-    return btoa(binary);
+    return btoa(parts.join(''));
   }
 
   /**

@@ -1949,13 +1949,14 @@ export default class NavbarFile {
                     eXeLearning?.config?.isOfflineInstallation &&
                     window.electronAPI?.saveBuffer
                 ) {
-                    // Convert ArrayBuffer to base64 for IPC transfer
+                    // Convert ArrayBuffer to base64 for IPC transfer (chunked to avoid O(n²) string concat)
                     const uint8Array = new Uint8Array(result.data);
-                    let binary = '';
-                    for (let i = 0; i < uint8Array.length; i++) {
-                        binary += String.fromCharCode(uint8Array[i]);
+                    const CHUNK = 0x8000;
+                    const parts = [];
+                    for (let i = 0; i < uint8Array.length; i += CHUNK) {
+                        parts.push(String.fromCharCode.apply(null, uint8Array.subarray(i, Math.min(i + CHUNK, uint8Array.length))));
                     }
-                    const base64Data = btoa(binary);
+                    const base64Data = btoa(parts.join(''));
                     const key = window.__currentProjectId || 'default';
                     const exportKey = `${key}:${fallbackApiFormat}`;
                     const exportFilename = result.filename || 'export.zip';

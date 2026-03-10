@@ -293,6 +293,194 @@ export class FileSystemAssetProvider implements AssetProvider {
     }
 
     /**
+     * Process assets one at a time via callback.
+     * Reads each file from disk sequentially, so only one asset's data is in memory at a time.
+     *
+     * @returns Number of assets processed
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
+        let count = 0;
+        const processAsset = async (asset: ExportAsset) => {
+            await callback(asset);
+            count++;
+        };
+
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        if (await fs.pathExists(contentResourcesPath)) {
+            await this.forEachAssetInDirectory(contentResourcesPath, 'content/resources', processAsset);
+        }
+
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
+            const dirPath = path.join(this.basePath, dir);
+            if (await fs.pathExists(dirPath)) {
+                await this.forEachAssetInDirectory(dirPath, dir, processAsset);
+            }
+        }
+
+        // Root assets
+        const entries = await fs.readdir(this.basePath, { withFileTypes: true });
+        const assetExtensions = new Set([
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.svg',
+            '.bmp',
+            '.ico',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.aac',
+            '.flac',
+            '.m4a',
+            '.mp4',
+            '.webm',
+            '.ogv',
+            '.avi',
+            '.mov',
+            '.pdf',
+            '.doc',
+            '.docx',
+            '.xls',
+            '.xlsx',
+            '.ppt',
+            '.pptx',
+            '.zip',
+            '.rar',
+            '.7z',
+        ]);
+        for (const entry of entries) {
+            if (entry.isFile()) {
+                const ext = path.extname(entry.name).toLowerCase();
+                if (assetExtensions.has(ext)) {
+                    const asset = await this.getAsset(entry.name);
+                    if (asset) {
+                        await processAsset(asset);
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /**
+     * Recursively process assets from a directory one at a time
+     */
+    private async forEachAssetInDirectory(
+        dirPath: string,
+        relativePath: string,
+        callback: (asset: ExportAsset) => Promise<void>,
+    ): Promise<void> {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            const entryRelativePath = `${relativePath}/${entry.name}`;
+
+            if (entry.isDirectory()) {
+                await this.forEachAssetInDirectory(fullPath, entryRelativePath, callback);
+            } else if (entry.isFile()) {
+                const asset = await this.getAsset(entryRelativePath);
+                if (asset) {
+                    await callback(asset);
+                }
+            }
+        }
+    }
+
+    /**
+     * List asset metadata without loading binary data.
+     * Scans directories for files and returns metadata only.
+     */
+    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+        const result: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = [];
+
+        const collectMetadata = async (dirPath: string, relativePath: string) => {
+            if (!(await fs.pathExists(dirPath))) return;
+            const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name);
+                const entryRelativePath = `${relativePath}/${entry.name}`;
+
+                if (entry.isDirectory()) {
+                    await collectMetadata(fullPath, entryRelativePath);
+                } else if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+                    const folderPath = this.extractFolderPath(entryRelativePath);
+                    const filename = entry.name;
+                    const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+
+                    result.push({ id: assetId, filename, folderPath, mime: mimeType });
+                }
+            }
+        };
+
+        const contentResourcesPath = path.join(this.basePath, 'content', 'resources');
+        await collectMetadata(contentResourcesPath, 'content/resources');
+
+        const legacyAssetDirs = ['resources', 'images', 'media', 'files'];
+        for (const dir of legacyAssetDirs) {
+            await collectMetadata(path.join(this.basePath, dir), dir);
+        }
+
+        // Root-level assets (legacy ELP format)
+        const assetExtensions = new Set([
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp',
+            '.svg',
+            '.bmp',
+            '.ico',
+            '.mp3',
+            '.wav',
+            '.ogg',
+            '.aac',
+            '.flac',
+            '.m4a',
+            '.mp4',
+            '.webm',
+            '.ogv',
+            '.avi',
+            '.mov',
+            '.pdf',
+            '.doc',
+            '.docx',
+            '.xls',
+            '.xlsx',
+            '.ppt',
+            '.pptx',
+            '.zip',
+            '.rar',
+            '.7z',
+        ]);
+
+        if (await fs.pathExists(this.basePath)) {
+            const rootEntries = await fs.readdir(this.basePath, { withFileTypes: true });
+            for (const entry of rootEntries) {
+                if (entry.isFile()) {
+                    const ext = path.extname(entry.name).toLowerCase();
+                    if (assetExtensions.has(ext)) {
+                        const mimeType = EXTENSION_TO_MIME[ext] || 'application/octet-stream';
+                        const folderPath = this.extractFolderPath(entry.name);
+                        const filename = entry.name;
+                        const assetId = folderPath ? `${folderPath}/${filename}` : filename;
+                        result.push({ id: assetId, filename, folderPath, mime: mimeType });
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
      * Check if an asset exists
      * @param assetPath - Relative path to asset
      * @returns True if asset exists

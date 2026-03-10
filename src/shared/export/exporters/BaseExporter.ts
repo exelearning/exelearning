@@ -10,6 +10,7 @@ import type {
     ExportDocument,
     ExportPage,
     ExportMetadata,
+    ExportAsset,
     ResourceProvider,
     AssetProvider,
     ZipProvider,
@@ -316,17 +317,23 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const assetId = asset.id;
                 const filename = asset.filename || `asset-${assetId}`;
-                // Use originalPath if available, otherwise construct from id/filename
                 const assetPath = asset.originalPath || `${assetId}/${filename}`;
                 const zipPath = prefix ? `${prefix}${assetPath}` : assetPath;
 
                 this.zip.addFile(zipPath, asset.data);
                 assetsAdded++;
+            };
+
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(processAsset);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    await processAsset(asset);
+                }
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
@@ -344,22 +351,28 @@ export abstract class BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: ExportAsset) => {
                 const exportPath = exportPathMap.get(asset.id);
                 if (!exportPath) {
                     console.warn(`[BaseExporter] No export path for asset: ${asset.id}`);
-                    continue;
+                    return;
                 }
 
-                // Store in content/resources/{exportPath}
                 const zipPath = `content/resources/${exportPath}`;
-
                 this.zip.addFile(zipPath, asset.data);
                 if (trackingList) trackingList.push(zipPath);
                 assetsAdded++;
+            };
+
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(processAsset);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    await processAsset(asset);
+                }
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to add assets to ZIP:', e);
@@ -430,19 +443,28 @@ export abstract class BaseExporter {
         this.assetFilenameMap = new Map<string, string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
-
-            for (const asset of assets) {
-                const id = asset.id;
-                let filename = asset.filename;
-
-                if (!filename) {
-                    // Generate filename from mime type
-                    const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
-                    filename = `asset-${id.substring(0, 8)}${ext}`;
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            if (this.assets.listAssetMetadata) {
+                const metadata = await this.assets.listAssetMetadata();
+                for (const item of metadata) {
+                    let filename = item.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(item.mime || 'application/octet-stream');
+                        filename = `asset-${item.id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(item.id, filename);
                 }
-
-                this.assetFilenameMap.set(id, filename);
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    const id = asset.id;
+                    let filename = asset.filename;
+                    if (!filename) {
+                        const ext = this.getExtensionFromMime(asset.mime || 'application/octet-stream');
+                        filename = `asset-${id.substring(0, 8)}${ext}`;
+                    }
+                    this.assetFilenameMap.set(id, filename);
+                }
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset map:', e);
@@ -467,24 +489,31 @@ export abstract class BaseExporter {
         const usedPaths = new Set<string>();
 
         try {
-            const assets = await this.assets.getAllAssets();
+            // Use lightweight metadata listing when available (avoids loading binary data)
+            const items: Array<{ id: string; filename: string; folderPath?: string; mime: string }> = this.assets
+                .listAssetMetadata
+                ? await this.assets.listAssetMetadata()
+                : (await this.assets.getAllAssets()).map(a => ({
+                      id: a.id,
+                      filename: a.filename,
+                      folderPath: a.folderPath,
+                      mime: a.mime,
+                  }));
 
-            for (const asset of assets) {
-                let folderPath = asset.folderPath || '';
+            for (const item of items) {
+                let folderPath = item.folderPath || '';
                 // Treat 'unknown' same as missing: derive a proper name with extension from MIME
                 const filename =
-                    asset.filename && asset.filename !== 'unknown'
-                        ? asset.filename
-                        : this._deriveFilenameFromMime(asset.id, asset.mime);
+                    item.filename && item.filename !== 'unknown'
+                        ? item.filename
+                        : this._deriveFilenameFromMime(item.id, item.mime);
 
                 // Fix duplicated filename pattern: if folderPath equals filename or ends with /filename,
                 // the asset has been incorrectly stored with duplicated path (e.g., "file.pdf/file.pdf")
                 // This can happen from corrupted ELPX files or bugs in asset saving
                 if (folderPath === filename) {
-                    // folderPath equals filename - remove the duplication
                     folderPath = '';
                 } else if (folderPath.endsWith(`/${filename}`)) {
-                    // folderPath ends with /filename - remove the trailing duplicate
                     folderPath = folderPath.slice(0, -(filename.length + 1));
                 }
 
@@ -503,7 +532,7 @@ export abstract class BaseExporter {
                 }
 
                 usedPaths.add(finalPath.toLowerCase());
-                this.assetExportPathMap.set(asset.id, finalPath);
+                this.assetExportPathMap.set(item.id, finalPath);
             }
         } catch (e) {
             console.warn('[BaseExporter] Failed to build asset export path map:', e);

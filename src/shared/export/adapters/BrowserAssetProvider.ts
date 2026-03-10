@@ -184,47 +184,10 @@ export class BrowserAssetProvider implements AssetProvider {
                     );
                 }
 
-                // Convert all blobs to ArrayBuffer in parallel for better performance
+                // Convert all blobs to ExportAsset in parallel for better performance
                 const assetsWithBlob = assets.filter(asset => asset.blob);
-                const conversions = await Promise.all(
-                    assetsWithBlob.map(async asset => {
-                        const arrayBuffer = await asset.blob!.arrayBuffer();
-                        return { asset, arrayBuffer };
-                    }),
-                );
-
-                for (const { asset, arrayBuffer } of conversions) {
-                    const assetId = String(asset.id);
-                    const filename = !isUnknownFilename(asset.filename)
-                        ? asset.filename!
-                        : deriveFilenameFromMime(assetId, asset.mime);
-
-                    // Determine originalPath based on folderPath (folder support)
-                    // Priority:
-                    // 1. If folderPath is set, use folderPath/filename
-                    // 2. If originalPath includes UUID, use it as-is
-                    // 3. Fallback to uuid/filename
-                    let originalPath: string;
-                    if (asset.folderPath) {
-                        // Use folder path for organized assets
-                        originalPath = `${asset.folderPath}/${filename}`;
-                    } else if (asset.originalPath?.includes(assetId)) {
-                        // Path already includes UUID (e.g., "abc123/elcid.png" or "content/resources/abc123/elcid.png")
-                        originalPath = asset.originalPath;
-                    } else {
-                        // Construct correct path with UUID folder
-                        originalPath = `${assetId}/${filename}`;
-                    }
-
-                    result.push({
-                        id: assetId,
-                        filename,
-                        originalPath,
-                        folderPath: asset.folderPath || '',
-                        mime: asset.mime || 'application/octet-stream',
-                        data: new Uint8Array(arrayBuffer),
-                    });
-                }
+                const conversions = await Promise.all(assetsWithBlob.map(asset => this.blobAssetToExportAsset(asset)));
+                result.push(...conversions);
 
                 if (result.length > 0) {
                     console.log(`[BrowserAssetProvider] Converted ${result.length} assets for export`);
@@ -260,30 +223,7 @@ export class BrowserAssetProvider implements AssetProvider {
 
                             for (const asset of filteredAssets) {
                                 if (asset.blob) {
-                                    const arrayBuffer = await asset.blob.arrayBuffer();
-                                    const assetId = String(asset.id);
-                                    const filename = !isUnknownFilename(asset.filename)
-                                        ? asset.filename!
-                                        : deriveFilenameFromMime(assetId, asset.mime);
-
-                                    // Same folderPath logic as above
-                                    let originalPath: string;
-                                    if (asset.folderPath) {
-                                        originalPath = `${asset.folderPath}/${filename}`;
-                                    } else if (asset.originalPath?.includes(assetId)) {
-                                        originalPath = asset.originalPath;
-                                    } else {
-                                        originalPath = `${assetId}/${filename}`;
-                                    }
-
-                                    result.push({
-                                        id: assetId,
-                                        filename,
-                                        originalPath,
-                                        folderPath: asset.folderPath || '',
-                                        mime: asset.mime || 'application/octet-stream',
-                                        data: new Uint8Array(arrayBuffer),
-                                    });
+                                    result.push(await this.blobAssetToExportAsset(asset));
                                 }
                             }
                             if (result.length > 0) {
@@ -311,6 +251,128 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async getProjectAssets(): Promise<ExportAsset[]> {
         return this.getAllAssets();
+    }
+
+    /**
+     * Process assets one at a time via callback.
+     * Converts each blob to ArrayBuffer sequentially, so only one asset's
+     * binary data is in memory at a time (previous iterations are GC-eligible).
+     *
+     * @returns Number of assets processed
+     */
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
+        if (!this.assetManager) return 0;
+
+        let count = 0;
+
+        try {
+            const assets = await this.assetManager.getProjectAssets();
+            const assetsWithBlob = assets.filter(a => a.blob);
+
+            for (const asset of assetsWithBlob) {
+                await callback(await this.blobAssetToExportAsset(asset));
+                count++;
+            }
+
+            // Fallback: if getProjectAssets returned 0, try getAllAssetsRaw
+            if (count === 0 && this.assetManager.getAllAssetsRaw) {
+                const projectId = (this.assetManager as unknown as { projectId?: string }).projectId;
+                const allAssets = await this.assetManager.getAllAssetsRaw();
+                const filteredAssets = allAssets.filter(a => a.projectId === projectId && a.blob);
+
+                for (const asset of filteredAssets) {
+                    await callback(await this.blobAssetToExportAsset(asset));
+                    count++;
+                }
+            }
+        } catch (error) {
+            console.warn('[BrowserAssetProvider] Failed in forEachAsset:', error);
+        }
+
+        return count;
+    }
+
+    /**
+     * List asset metadata without loading binary data.
+     * Uses getProjectAssets() which returns blob references (not loaded data),
+     * but only extracts id/filename/folderPath/mime from the metadata.
+     *
+     * @returns Lightweight metadata array
+     */
+    async listAssetMetadata(): Promise<Array<{ id: string; filename: string; folderPath?: string; mime: string }>> {
+        if (!this.assetManager) return [];
+
+        try {
+            const assets = await this.assetManager.getProjectAssets();
+            const assetsWithBlob = assets.filter(a => a.blob);
+
+            const toMetadata = (asset: { id: string; mime: string; filename?: string; folderPath?: string }) => {
+                const assetId = String(asset.id);
+                const filename = !isUnknownFilename(asset.filename)
+                    ? asset.filename!
+                    : deriveFilenameFromMime(assetId, asset.mime);
+                return {
+                    id: assetId,
+                    filename,
+                    folderPath: asset.folderPath || '',
+                    mime: asset.mime || 'application/octet-stream',
+                };
+            };
+
+            if (assetsWithBlob.length > 0) {
+                return assetsWithBlob.map(toMetadata);
+            }
+
+            // Fallback: if getProjectAssets returned 0, try getAllAssetsRaw
+            if (this.assetManager.getAllAssetsRaw) {
+                const projectId = (this.assetManager as unknown as { projectId?: string }).projectId;
+                const allAssets = await this.assetManager.getAllAssetsRaw();
+                const filteredAssets = allAssets.filter(a => a.projectId === projectId && a.blob);
+                return filteredAssets.map(toMetadata);
+            }
+
+            return [];
+        } catch (error) {
+            console.warn('[BrowserAssetProvider] Failed to list asset metadata:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Convert a raw blob-bearing asset from AssetManager into an ExportAsset.
+     * Shared by getAllAssets() and forEachAsset() to avoid duplicated logic.
+     */
+    private async blobAssetToExportAsset(asset: {
+        id: string;
+        blob: Blob;
+        mime: string;
+        filename?: string;
+        originalPath?: string;
+        folderPath?: string;
+    }): Promise<ExportAsset> {
+        const arrayBuffer = await asset.blob.arrayBuffer();
+        const assetId = String(asset.id);
+        const filename = !isUnknownFilename(asset.filename)
+            ? asset.filename!
+            : deriveFilenameFromMime(assetId, asset.mime);
+
+        let originalPath: string;
+        if (asset.folderPath) {
+            originalPath = `${asset.folderPath}/${filename}`;
+        } else if (asset.originalPath?.includes(assetId)) {
+            originalPath = asset.originalPath;
+        } else {
+            originalPath = `${assetId}/${filename}`;
+        }
+
+        return {
+            id: assetId,
+            filename,
+            originalPath,
+            folderPath: asset.folderPath || '',
+            mime: asset.mime || 'application/octet-stream',
+            data: new Uint8Array(arrayBuffer),
+        };
     }
 
     /**

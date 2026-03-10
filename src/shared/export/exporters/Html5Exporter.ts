@@ -113,8 +113,10 @@ export class Html5Exporter extends BaseExporter {
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en');
 
-            // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
-            const pageHtmlMap = new Map<string, string>();
+            // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and add directly to ZIP
+            // Pages are added to ZIP immediately to avoid storing all HTML in memory
+            // Manifest script tags are injected inline (they reference the file, not its content)
+            const pageFilenames: string[] = [];
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
@@ -194,10 +196,19 @@ export class Html5Exporter extends BaseExporter {
                     }
                 }
 
-                // First page is index.html, others go in html/ directory using unique filenames
-                const filename = pageFilenameMap.get(page.id) || 'page.html';
-                const pageFilename = i === 0 ? 'index.html' : `html/${filename}`;
-                pageHtmlMap.set(pageFilename, html);
+                // Inject ELPX manifest script tag for pages that have download-source-file
+                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
+                    const basePath = i === 0 ? '' : '../';
+                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
+                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
+                }
+
+                // Add page directly to ZIP (no intermediate Map storage)
+                const pageUniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = i === 0 ? 'index.html' : `html/${pageUniqueFilename}`;
+                this.zip.addFile(filename, html);
+                if (fileList) fileList.push(filename);
+                pageFilenames.push(filename);
             }
 
             // 2. Add search_index.js if search box is enabled
@@ -337,38 +348,15 @@ export class Html5Exporter extends BaseExporter {
             await this.addAssetsToZipWithResourcePath(fileList);
 
             // 11. Generate ELPX manifest file if download-source-file is used
+            // (HTML pages were already added to ZIP in step 1 with script tags injected)
             if (needsElpxDownload && fileList) {
-                // Add HTML pages to file list
-                for (const [htmlFile] of pageHtmlMap) {
-                    if (!fileList.includes(htmlFile)) {
-                        fileList.push(htmlFile);
-                    }
-                }
                 // Include the manifest file itself in the file list (self-reference)
                 fileList.push('libs/elpx-manifest.js');
                 const manifestJs = this.generateElpxManifestFile(fileList);
                 this.zip.addFile('libs/elpx-manifest.js', manifestJs);
             }
 
-            // 12. Add all HTML pages to ZIP (with manifest script only on pages with download-source-file)
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                const pageFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const filename = i === 0 ? 'index.html' : `html/${pageFilename}`;
-                let html = pageHtmlMap.get(filename) || '';
-
-                // Only add manifest script to pages that have download-source-file iDevice or exe-package:elp link
-                // Note: pageHasDownloadSourceFile works correctly because exe-package:elp is not transformed
-                // in the pages data (transformation happens in PageRenderer during HTML rendering)
-                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
-                    const basePath = i === 0 ? '' : '../';
-                    const manifestScriptTag = `<script src="${basePath}libs/elpx-manifest.js"> </script>`;
-                    html = html.replace(/<\/body>/i, `${manifestScriptTag}\n</body>`);
-                }
-                this.zip.addFile(filename, html);
-            }
-
-            // 13. Generate ZIP buffer
+            // 12. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
@@ -606,8 +594,9 @@ export class Html5Exporter extends BaseExporter {
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en');
 
-            // 1. Generate HTML pages (with optional LaTeX and Mermaid pre-rendering)
-            const pageHtmlMap = new Map<string, string>();
+            // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and collect for later addition
+            // We buffer page HTML because ELPX download scripts need libraries to be loaded first
+            const pageEntries: Array<{ filename: string; html: string; page: ExportPage; index: number }> = [];
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
@@ -671,8 +660,8 @@ export class Html5Exporter extends BaseExporter {
 
                 // Use unique filenames from the map (handles collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const pageFilename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
-                pageHtmlMap.set(pageFilename, html);
+                const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
+                pageEntries.push({ filename, html, page, index: i });
             }
 
             // 2. Add search_index.js if search box is enabled
@@ -801,9 +790,9 @@ export class Html5Exporter extends BaseExporter {
 
             // 11. Generate ELPX manifest file and ensure required libraries if download-source-file is used
             if (needsElpxDownload && fileList) {
-                for (const [htmlFile] of pageHtmlMap) {
-                    if (!fileList.includes(htmlFile)) {
-                        fileList.push(htmlFile);
+                for (const entry of pageEntries) {
+                    if (!fileList.includes(entry.filename)) {
+                        fileList.push(entry.filename);
                     }
                 }
                 // Include the manifest file itself in the file list (self-reference)
@@ -826,16 +815,14 @@ export class Html5Exporter extends BaseExporter {
                 }
             }
 
-            // 12. Add all HTML pages
-            for (let i = 0; i < pages.length; i++) {
-                const page = pages[i];
-                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
-                const filename = i === 0 ? 'index.html' : `html/${uniqueFilename}`;
-                let html = pageHtmlMap.get(filename) || '';
+            // 12. Add all HTML pages to files map
+            const encoder = new TextEncoder();
+            for (const entry of pageEntries) {
+                let { html } = entry;
 
                 // Only add ELPX download scripts to pages that have download-source-file iDevice or exe-package:elp links
-                if (needsElpxDownload && this.pageHasDownloadSourceFile(page)) {
-                    const basePath = i === 0 ? '' : '../';
+                if (needsElpxDownload && this.pageHasDownloadSourceFile(entry.page)) {
+                    const basePath = entry.index === 0 ? '' : '../';
                     // Library scripts must be loaded before the manifest script
                     const fflateScript = `<script src="${basePath}libs/fflate/fflate.umd.js"> </script>`;
                     const elpxDownloadScript = `<script src="${basePath}libs/exe_elpx_download/exe_elpx_download.js"> </script>`;
@@ -845,8 +832,7 @@ export class Html5Exporter extends BaseExporter {
                         `${fflateScript}\n${elpxDownloadScript}\n${manifestScriptTag}\n</body>`,
                     );
                 }
-                const encoder = new TextEncoder();
-                files.set(filename, encoder.encode(html));
+                files.set(entry.filename, encoder.encode(html));
             }
 
             return files;
@@ -866,17 +852,25 @@ export class Html5Exporter extends BaseExporter {
         let assetsAdded = 0;
 
         try {
-            const assets = await this.assets.getAllAssets();
             const exportPathMap = await this.buildAssetExportPathMap();
 
-            for (const asset of assets) {
+            const processAsset = async (asset: { id: string; data: Uint8Array | Blob }) => {
                 const exportPath = exportPathMap.get(asset.id);
-                if (!exportPath) continue;
+                if (!exportPath) return;
 
                 const filePath = `content/resources/${exportPath}`;
                 files.set(filePath, asset.data);
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
+            };
+
+            if (this.assets.forEachAsset) {
+                await this.assets.forEachAsset(async asset => processAsset(asset));
+            } else {
+                const assets = await this.assets.getAllAssets();
+                for (const asset of assets) {
+                    await processAsset(asset);
+                }
             }
         } catch (e) {
             console.warn('[Html5Exporter] Failed to add assets to preview files:', e);
