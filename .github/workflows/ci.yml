@@ -126,7 +126,7 @@ jobs:
 
       - name: Build and push
         if: github.repository == 'exelearning/exelearning' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tikismaker' || startsWith(github.ref, 'refs/tags/'))
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true
