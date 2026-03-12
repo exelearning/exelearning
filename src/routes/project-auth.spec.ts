@@ -154,6 +154,31 @@ function createTestProjectApp(db: Kysely<Database>) {
 
                 return { responseMessage: 'OK' };
             })
+            // Delete project by UUID
+            .delete('/api/projects/uuid/:uuid', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
+                const uuid = params.uuid;
+                const project = await db.selectFrom('projects').selectAll().where('uuid', '=', uuid).executeTakeFirst();
+
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                // Only the project owner can delete it
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can delete this project' };
+                }
+
+                await db.deleteFrom('projects').where('id', '=', project.id).execute();
+
+                return { success: true, message: 'Project deleted' };
+            })
             // Update visibility
             .patch('/api/projects/:projectId/visibility', async ({ params, body, set, currentUser }) => {
                 const projectId = parseInt(params.projectId, 10);
@@ -552,5 +577,193 @@ describe('Project Sharing Authorization', () => {
         expect(res.status).toBe(200);
         const data = await res.json();
         expect(data.responseMessage).toBe('OK');
+    });
+});
+
+describe('Project Deletion Authorization', () => {
+    let app: ReturnType<typeof createTestProjectApp>;
+
+    beforeAll(async () => {
+        testDb = new Kysely<Database>({
+            dialect: new BunSqliteDialect({ url: ':memory:' }),
+        });
+
+        await up(testDb);
+
+        const timestamp = now();
+        const hashedPassword = await Bun.password.hash('test123', 'bcrypt');
+
+        user1 = await testDb
+            .insertInto('users')
+            .values({
+                email: 'delete-owner@test.com',
+                user_id: 'user-del-owner-001',
+                password: hashedPassword,
+                roles: JSON.stringify(['ROLE_USER']),
+                is_active: 1,
+                created_at: timestamp,
+                updated_at: timestamp,
+            })
+            .returningAll()
+            .executeTakeFirstOrThrow();
+
+        user2 = await testDb
+            .insertInto('users')
+            .values({
+                email: 'delete-collab@test.com',
+                user_id: 'user-del-collab-002',
+                password: hashedPassword,
+                roles: JSON.stringify(['ROLE_USER']),
+                is_active: 1,
+                created_at: timestamp,
+                updated_at: timestamp,
+            })
+            .returningAll()
+            .executeTakeFirstOrThrow();
+
+        app = createTestProjectApp(testDb);
+    });
+
+    afterAll(async () => {
+        await testDb.destroy();
+    });
+
+    beforeEach(async () => {
+        await testDb.deleteFrom('project_collaborators').execute();
+        await testDb.deleteFrom('projects').execute();
+
+        const timestamp = now();
+        testProject = await testDb
+            .insertInto('projects')
+            .values({
+                uuid: uuidv4(),
+                title: 'Deletable Project',
+                owner_id: user1.id,
+                saved_once: 1,
+                status: 'active',
+                visibility: 'private',
+                created_at: timestamp,
+                updated_at: timestamp,
+            })
+            .returningAll()
+            .executeTakeFirstOrThrow();
+
+        // Add user2 as collaborator
+        await insertIgnore(testDb, 'project_collaborators', {
+            project_id: testProject.id,
+            user_id: user2.id,
+        });
+    });
+
+    async function getToken(userId: number): Promise<string> {
+        const tempApp = new Elysia()
+            .use(jwt({ name: 'jwt', secret: 'test-secret-key-for-testing-only', exp: '7d' }))
+            .get('/token/:userId', async ({ jwt, params }) => {
+                return jwt.sign({ sub: parseInt(params.userId, 10) });
+            });
+
+        const res = await tempApp.handle(new Request(`http://localhost/token/${userId}`));
+        return await res.text();
+    }
+
+    it('should allow owner to delete their own project', async () => {
+        const token = await getToken(user1.id);
+
+        const res = await app.handle(
+            new Request(`http://localhost/api/projects/uuid/${testProject.uuid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            }),
+        );
+
+        expect(res.status).toBe(200);
+        const data = await res.json();
+        expect(data.success).toBe(true);
+
+        // Verify project is actually deleted
+        const project = await testDb
+            .selectFrom('projects')
+            .selectAll()
+            .where('id', '=', testProject.id)
+            .executeTakeFirst();
+        expect(project).toBeUndefined();
+    });
+
+    it('should reject delete by collaborator (non-owner)', async () => {
+        const token = await getToken(user2.id);
+
+        const res = await app.handle(
+            new Request(`http://localhost/api/projects/uuid/${testProject.uuid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            }),
+        );
+
+        expect(res.status).toBe(403);
+        const data = await res.json();
+        expect(data.responseMessage).toBe('FORBIDDEN');
+    });
+
+    it('should preserve project after rejected collaborator delete attempt', async () => {
+        const token = await getToken(user2.id);
+
+        await app.handle(
+            new Request(`http://localhost/api/projects/uuid/${testProject.uuid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            }),
+        );
+
+        // Project must still exist
+        const project = await testDb
+            .selectFrom('projects')
+            .selectAll()
+            .where('id', '=', testProject.id)
+            .executeTakeFirst();
+        expect(project).toBeDefined();
+        expect(project!.title).toBe('Deletable Project');
+    });
+
+    it('should preserve collaborator relationship after rejected delete attempt', async () => {
+        const token = await getToken(user2.id);
+
+        await app.handle(
+            new Request(`http://localhost/api/projects/uuid/${testProject.uuid}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            }),
+        );
+
+        // Collaborator relationship must still exist
+        const collab = await testDb
+            .selectFrom('project_collaborators')
+            .selectAll()
+            .where('project_id', '=', testProject.id)
+            .where('user_id', '=', user2.id)
+            .executeTakeFirst();
+        expect(collab).toBeDefined();
+    });
+
+    it('should reject delete by unauthenticated user', async () => {
+        const res = await app.handle(
+            new Request(`http://localhost/api/projects/uuid/${testProject.uuid}`, {
+                method: 'DELETE',
+            }),
+        );
+
+        expect(res.status).toBe(401);
+    });
+
+    it('should return 404 for non-existent project', async () => {
+        const token = await getToken(user1.id);
+
+        const res = await app.handle(
+            new Request(`http://localhost/api/projects/uuid/non-existent-uuid`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            }),
+        );
+
+        expect(res.status).toBe(404);
     });
 });
