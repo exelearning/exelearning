@@ -375,6 +375,34 @@ describe('IdevicesEngine', () => {
             expect(engine.mode).toBe('edition');
             expect(engine.nodeContentElement.getAttribute('mode')).toBe('edition');
         });
+
+        it('calls executeDeferredPageReload on bridge when transitioning to view (#1532)', () => {
+            const mockExecuteDeferred = vi.fn();
+            engine.project._yjsBridge = {
+                executeDeferredPageReload: mockExecuteDeferred,
+            };
+            engine.components.idevices = []; // no editor → view mode
+            engine.updateMode();
+            expect(engine.mode).toBe('view');
+            expect(mockExecuteDeferred).toHaveBeenCalledOnce();
+        });
+
+        it('does NOT call executeDeferredPageReload while in edition mode (#1532)', () => {
+            const mockExecuteDeferred = vi.fn();
+            engine.project._yjsBridge = {
+                executeDeferredPageReload: mockExecuteDeferred,
+            };
+            engine.components.idevices = [{ mode: 'edition' }];
+            engine.updateMode();
+            expect(engine.mode).toBe('edition');
+            expect(mockExecuteDeferred).not.toHaveBeenCalled();
+        });
+
+        it('handles missing _yjsBridge gracefully (#1532)', () => {
+            engine.project._yjsBridge = null;
+            engine.components.idevices = [];
+            expect(() => engine.updateMode()).not.toThrow();
+        });
     });
 
     describe('isIdeviceInEdition', () => {

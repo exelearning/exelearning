@@ -564,6 +564,17 @@ class YjsProjectBridge {
         continue;
       }
 
+      // Component-level additions (path like [pageIdx, 'blocks', blockIdx, 'components'])
+      // are already rendered incrementally by handleRemoteStructureChanges →
+      // renderRemoteComponent, so they must NOT trigger a destructive page reload (#1532).
+      // We only skip pure additions; deletions and mixed events still need a reload.
+      if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        const isComponentLevel = path.length >= 4 && path[3] === 'components';
+        if (isComponentLevel) {
+          continue;
+        }
+      }
+
       const pageMap = navigation.get(pageIndex);
       const pageId = pageMap?.get?.('id') || pageMap?.get?.('pageId');
       if (pageId) {
@@ -838,8 +849,15 @@ class YjsProjectBridge {
   }
 
   /**
-   * Schedule a page reload if the affected page is the one currently being viewed
-   * Uses debouncing to avoid multiple reloads for batched changes
+   * Schedule a page reload if the affected page is the one currently being viewed.
+   * Uses debouncing to avoid multiple reloads for batched changes.
+   *
+   * When an iDevice editor is active the reload is deferred so that the
+   * user's in-progress editing state is not destroyed (#1532).  Remote
+   * additions are already rendered incrementally by
+   * handleRemoteStructureChanges → renderRemoteComponent, so skipping the
+   * full reload does not lose structural updates.
+   *
    * @param {string} pageId - The page ID that was affected
    */
   schedulePageReloadIfCurrent(pageId) {
@@ -847,12 +865,29 @@ class YjsProjectBridge {
     const currentPageId = this.app?.project?.structure?.menuStructureBehaviour?.nodeSelected?.getAttribute('nav-id');
 
     if (currentPageId === pageId) {
+      // If an iDevice editor is currently open, defer the destructive
+      // reload to prevent data loss (#1532).
+      const hasActiveEditor = document.querySelector('#node-content div.idevice_node[mode="edition"]');
+      if (hasActiveEditor) {
+        Logger.log('[YjsProjectBridge] Deferring page reload — active editor detected. Remote changes handled incrementally.');
+        this._deferredPageReload = pageId;
+        return;
+      }
+
       // Debounce to avoid multiple reloads
       if (this._pageReloadTimer) {
         clearTimeout(this._pageReloadTimer);
       }
 
       this._pageReloadTimer = setTimeout(async () => {
+        // Re-check: an editor may have opened during the debounce window
+        const editorStillActive = document.querySelector('#node-content div.idevice_node[mode="edition"]');
+        if (editorStillActive) {
+          Logger.log('[YjsProjectBridge] Deferring page reload — editor became active during debounce window.');
+          this._deferredPageReload = pageId;
+          return;
+        }
+
         Logger.log('[YjsProjectBridge] Reloading current page due to remote block/component changes');
         const pageElement = this.app?.project?.structure?.menuStructureBehaviour?.menuNav?.querySelector(
           `.nav-element[nav-id="${pageId}"]`
@@ -863,6 +898,19 @@ class YjsProjectBridge {
           this.app?.menus?.menuStructure?.menuStructureBehaviour?.checkIfEmptyNode();
         }
       }, 100); // Small debounce
+    }
+  }
+
+  /**
+   * Execute a deferred page reload that was postponed because an editor was active.
+   * Called by IdevicesEngine.updateMode() when the engine exits edition mode.
+   */
+  executeDeferredPageReload() {
+    if (this._deferredPageReload) {
+      const pageId = this._deferredPageReload;
+      this._deferredPageReload = null;
+      Logger.log('[YjsProjectBridge] Executing deferred page reload for page:', pageId);
+      this.schedulePageReloadIfCurrent(pageId);
     }
   }
 

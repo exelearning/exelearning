@@ -621,6 +621,125 @@ describe('YjsProjectBridge', () => {
 
       expect(scheduleSpy).toHaveBeenCalledWith('page-1');
     });
+
+    it('excludes component-level additions from affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component addition event: path ends with 'components', has added items
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      // Component additions are handled incrementally by renderRemoteComponent,
+      // so they must NOT trigger a destructive page reload.
+      expect(Array.from(affected)).toEqual([]);
+    });
+
+    it('still includes component deletions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A component deletion event
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 1 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('still includes block-level additions in affected pages (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // A block addition event: path is [pageIndex, 'blocks'], NOT component-level
+      const events = [
+        {
+          path: [0, 'blocks'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('does not skip component additions during undo/redo (#1532)', () => {
+      bridge.isUndoRedoInProgress = true;
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      // Component addition during undo/redo should still trigger reload
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual(['page-1']);
+    });
+
+    it('does not schedule reload for remote component addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('syncCurrentPageBlocksIfNeeded', () => {
@@ -1715,6 +1834,51 @@ describe('YjsProjectBridge', () => {
       // Wait for potential debounce
       await new Promise(resolve => setTimeout(resolve, 150));
 
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+    });
+
+    it('defers reload when an iDevice editor is active on the page (#1532)', async () => {
+      // Mock document.querySelector to simulate an active editor
+      const origQuerySelector = global.document.querySelector;
+      global.document.querySelector = mock((selector) => {
+        if (selector === '#node-content div.idevice_node[mode="edition"]') {
+          return { id: 'active-editor' }; // truthy → editor is open
+        }
+        return origQuerySelector?.(selector) ?? null;
+      });
+
+      try {
+        bridge.schedulePageReloadIfCurrent('current-page');
+
+        // Wait for debounce to fire (if it did)
+        await new Promise(resolve => setTimeout(resolve, 150));
+
+        // The destructive full-page reload must NOT fire
+        expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
+        // The deferred reload flag must be set
+        expect(bridge._deferredPageReload).toBe('current-page');
+      } finally {
+        global.document.querySelector = origQuerySelector;
+      }
+    });
+
+    it('executeDeferredPageReload triggers the pending reload (#1532)', async () => {
+      // Pre-set a deferred reload
+      bridge._deferredPageReload = 'current-page';
+
+      // No active editor this time → reload should proceed
+      bridge.executeDeferredPageReload();
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
+      expect(bridge._deferredPageReload).toBeNull();
+    });
+
+    it('executeDeferredPageReload is a no-op when nothing is deferred', () => {
+      bridge._deferredPageReload = null;
+      bridge.executeDeferredPageReload();
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
   });
