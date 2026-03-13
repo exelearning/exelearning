@@ -20,8 +20,9 @@
 - Clean Yjs IndexedDB on tab close
 - Known Issues documentation file
 - Admin panel customization options: app title, favicon, head HTML, and assets
+- Add `make translations-cleanup` command to remove obsolete translation strings
 - Strings revision
-- Complete translations: Italian (IT), Spanish (ES), Romanian (RO), and Valencian (VA)
+- Complete translations: Galician (GL), Italian (IT), Spanish (ES), Romanian (RO) and Valencian (VA)
 
 ### Fixed
 
@@ -56,12 +57,13 @@
 - Race condition causing Image Optimizer to get stuck in "Queued"
 - Traversal vulnerability (Zip Slip) in the ZIP extraction logic
 - Assets exported with unknown/unknown_N filenames
+- `make translations` command not extracting some strings
 - `make run-app` workflow: install missing Electron libraries to fix runtime errors
 - Optimize asset check to use a single bulk database query
 - Constraint error in PostgreSQL when syncing builtin themes
 - MySQL/MariaDB syntax error in theme upsert
 - Browser versions: use full reloads for online project transitions to avoid state collisions
-- Desktop versions: make Save always prompt in Electron and remove remembered-path overwrites
+- Desktop versions: make Save always prompt in Electron and reuse the last chosen filename
 - Typo in Windows build package
 - Homebrew push on release
 - CI/CD pipelines for forks: skip signing and external publishing when secrets are unavailable

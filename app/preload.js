@@ -5,9 +5,14 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // URL-based save (legacy REST API exports) — always prompts
   save: (downloadUrl, projectKey, suggestedName) => ipcRenderer.invoke('app:save', { downloadUrl, projectKey, suggestedName }),
+  // URL-based save-as (REST API fallback exports) — always prompts
+  saveAs: (downloadUrl, projectKey, suggestedName) => ipcRenderer.invoke('app:saveAs', { downloadUrl, projectKey, suggestedName }),
   // Binary save (Yjs exports that generate data client-side) — always prompts
   saveBuffer: (base64Data, projectKey, suggestedName) =>
     ipcRenderer.invoke('app:saveBuffer', { base64Data, projectKey, suggestedName }),
+  // Binary save-as (Yjs exports fallback) — always prompts
+  saveBufferAs: (base64Data, projectKey, suggestedName) =>
+    ipcRenderer.invoke('app:saveBufferAs', { base64Data, projectKey, suggestedName }),
   exportToFolder: (downloadUrl, projectKey, suggestedDirName) =>
     ipcRenderer.invoke('app:exportToFolder', { downloadUrl, projectKey, suggestedDirName }),
   exportBufferToFolder: (base64Data, suggestedDirName) =>
