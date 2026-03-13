@@ -380,7 +380,9 @@ export class OpenProjectModalPage {
      * Check whether a project exposes the row delete action.
      */
     async projectHasDeleteAction(odeId: string): Promise<boolean> {
-        const deleteBtn = this.projectList.locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-delete`).first();
+        const deleteBtn = this.projectList
+            .locator(`.ode-row[ode-id="${odeId}"] .open-user-ode-file-action-delete`)
+            .first();
         return (await deleteBtn.count()) > 0;
     }
 

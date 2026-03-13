@@ -17,9 +17,7 @@ async function loginAsUser(browser: Browser, baseURL: string, email: string, pas
     await page.waitForURL(/\/workarea/, { timeout: 30000 });
     await page.waitForFunction(
         () => {
-            return (
-                typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined
-            );
+            return typeof (window as any).eXeLearning !== 'undefined' && (window as any).eXeLearning.app !== undefined;
         },
         undefined,
         { timeout: 30000 },
@@ -111,7 +109,10 @@ test.describe('Shared Project Delete Protection', () => {
             await ownerSession.page.waitForURL(new RegExp(`/workarea\\?project=${projectUuid}`), { timeout: 30000 });
             await waitForLoadingScreenHidden(ownerSession.page);
 
-            await ownerSession.page.locator('#head-top-share-button, .btn-share-pill, [data-action="share"]').first().click();
+            await ownerSession.page
+                .locator('#head-top-share-button, .btn-share-pill, [data-action="share"]')
+                .first()
+                .click();
             await shareModal.waitForOpen();
             await shareModal.inviteCollaborator(collaboratorEmail);
             await ownerSession.page.waitForTimeout(1000);
@@ -129,9 +130,12 @@ test.describe('Shared Project Delete Protection', () => {
             expect(await collaboratorModal.hasFooterDeleteButton()).toBe(false);
             expect(await collaboratorModal.projectHasOwnerInfo(projectUuid)).toBe(true);
 
-            const forcedDeleteResponse = await collaboratorSession.page.request.fetch(`/api/projects/uuid/${projectUuid}`, {
-                method: 'DELETE',
-            });
+            const forcedDeleteResponse = await collaboratorSession.page.request.fetch(
+                `/api/projects/uuid/${projectUuid}`,
+                {
+                    method: 'DELETE',
+                },
+            );
             expect(forcedDeleteResponse.status()).toBe(403);
             const forcedDeleteBody = await forcedDeleteResponse.json();
             expect(forcedDeleteBody.responseMessage).toBe('FORBIDDEN');
