@@ -567,16 +567,28 @@ class YjsProjectBridge {
       const hasDeleted = event.changes?.deleted?.size > 0;
 
       let hasBlockOrderChange = false;
+      let changedKeys = [];
       if (path.length === 3 && path[1] === 'blocks' && event.changes?.keys) {
         try {
-          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          changedKeys = Array.from(event.changes.keys.keys?.() || []);
           hasBlockOrderChange = changedKeys.includes('order');
         } catch {
+          changedKeys = [];
           hasBlockOrderChange = false;
         }
       }
 
       if (!includeAnyBlockTouch && !hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        continue;
+      }
+
+      const isBlockOrderOnlyChange =
+        path.length === 3 &&
+        path[1] === 'blocks' &&
+        hasBlockOrderChange &&
+        changedKeys.length === 1 &&
+        changedKeys[0] === 'order';
+      if (!includeAnyBlockTouch && isBlockOrderOnlyChange && pagesWithComponentAdditions.has(pageIndex)) {
         continue;
       }
 

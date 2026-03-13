@@ -722,6 +722,36 @@ describe('YjsProjectBridge', () => {
       expect(Array.from(affected)).toEqual([]);
     });
 
+    it('excludes block order changes paired with component additions on the same page (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+        {
+          path: [0, 'blocks', 1, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      const affected = bridge.getAffectedPageIdsForBlockStructureChanges(events);
+      expect(Array.from(affected)).toEqual([]);
+    });
+
     it('does not skip component additions during undo/redo (#1532)', () => {
       bridge.isUndoRedoInProgress = true;
       const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
@@ -790,6 +820,38 @@ describe('YjsProjectBridge', () => {
         },
         {
           path: [0, 'blocks', 0, 'components'],
+          changes: {
+            added: { size: 1 },
+            deleted: { size: 0 },
+          },
+        },
+      ];
+
+      bridge.scheduleReloadForBlockStructureChanges(events, { local: false });
+      expect(scheduleSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not schedule reload for remote block order change paired with component addition (#1532)', () => {
+      const pageMap = { get: mock((key) => (key === 'id' ? 'page-1' : undefined)) };
+      bridge.documentManager = {
+        getNavigation: mock(() => ({
+          get: mock((idx) => (idx === 0 ? pageMap : null)),
+        })),
+      };
+
+      const scheduleSpy = spyOn(bridge, 'schedulePageReloadIfCurrent').mockImplementation(() => {});
+
+      const events = [
+        {
+          path: [0, 'blocks', 1],
+          changes: {
+            added: { size: 0 },
+            deleted: { size: 0 },
+            keys: new Map([['order', { action: 'update' }]]),
+          },
+        },
+        {
+          path: [0, 'blocks', 1, 'components'],
           changes: {
             added: { size: 1 },
             deleted: { size: 0 },
