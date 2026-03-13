@@ -13260,11 +13260,6 @@
         <source>Failed to start impersonation</source>
         <target>Error al iniciar la suplantación</target>
       </trans-unit>
-      <!-- Maintenance mode translations -->
-      <trans-unit id="maintenance.message" resname="maintenance.message">
-        <source>The platform is temporarily in maintenance mode.</source>
-        <target>La plataforma se encuentra temporalmente en modo de mantenimiento.</target>
-      </trans-unit>
     </body>
   </file>
 </xliff>
