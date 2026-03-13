@@ -286,7 +286,11 @@ describe('Themes Routes', () => {
                             return false;
                         },
                         readFileSync: (p: string, encoding?: BufferEncoding) => {
-                            if (typeof p === 'string' && p.includes('non-downloadable-theme') && p.includes('config.xml')) {
+                            if (
+                                typeof p === 'string' &&
+                                p.includes('non-downloadable-theme') &&
+                                p.includes('config.xml')
+                            ) {
                                 return '<theme><name>Non Downloadable Theme</name><downloadable>0</downloadable></theme>';
                             }
                             return fs.readFileSync(p, encoding);
