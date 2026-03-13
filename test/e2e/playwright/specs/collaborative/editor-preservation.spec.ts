@@ -89,6 +89,16 @@ async function waitForRemoteIdeviceInsertion(page: Page): Promise<void> {
     );
 }
 
+async function getFirstTextIdeviceId(page: Page): Promise<string> {
+    const ideviceId = await page.locator('#node-content article .idevice_node.text').first().getAttribute('id');
+
+    if (!ideviceId) {
+        throw new Error('Could not resolve text iDevice id');
+    }
+
+    return ideviceId;
+}
+
 test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)', () => {
     test.setTimeout(90000);
 
@@ -122,6 +132,7 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
 
         // Verify saved content is visible in export view
         await expect(pageA.locator('#node-content')).toContainText(seedText, { timeout: 10000 });
+        const originalIdeviceId = await getFirstTextIdeviceId(pageA);
 
         // ── Step 3: Client A shares the project and Client B joins ──
         const shareUrl = await getShareUrl(pageA);
@@ -167,16 +178,14 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         // ── ASSERTIONS: Client A's editor must survive ──
 
         // A1: The editor DOM must still be in edition mode
-        const modeAfter = await pageA.evaluate(() => {
-            const idevice = document.querySelector('#node-content article .idevice_node.text');
+        const modeAfter = await pageA.evaluate(ideviceId => {
+            const idevice = document.getElementById(ideviceId);
             return idevice?.getAttribute('mode');
-        });
+        }, originalIdeviceId);
         expect(modeAfter).toBe('edition');
 
         // A2: The TinyMCE iframe must still be visible
-        const tinyMceIframe = pageA
-            .locator('#node-content article .idevice_node.text iframe.tox-edit-area__iframe')
-            .first();
+        const tinyMceIframe = pageA.locator(`#${originalIdeviceId} iframe.tox-edit-area__iframe`).first();
         await expect(tinyMceIframe).toBeVisible({ timeout: 5000 });
 
         // A3: The unsaved content must still be present
