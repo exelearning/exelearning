@@ -438,6 +438,9 @@ jobs:
             CASK="exelearning"
           fi
 
+          # Force-tap homebrew/cask as a git repo (required by bump-cask-pr to fork & create PR)
+          brew tap homebrew/cask --force
+
           brew bump-cask-pr "$CASK" \
             --version "$VERSION" \
             --no-audit \
