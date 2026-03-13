@@ -39,7 +39,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ github.repository }}
@@ -126,7 +126,7 @@ jobs:
 
       - name: Build and push
         if: github.repository == 'exelearning/exelearning' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/tikismaker' || startsWith(github.ref, 'refs/tags/'))
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true

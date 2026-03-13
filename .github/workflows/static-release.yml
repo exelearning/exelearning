@@ -85,7 +85,7 @@ jobs:
 
       - name: Docker meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ github.repository }}
@@ -99,7 +99,7 @@ jobs:
 
       - name: Build and push Docker image
         if: github.repository == 'exelearning/exelearning'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.static
