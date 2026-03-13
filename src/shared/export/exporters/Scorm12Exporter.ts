@@ -55,6 +55,16 @@ export class Scorm12Exporter extends Html5Exporter {
             // Build unique filename map for all pages (handles collisions)
             const pageFilenameMap = this.buildPageFilenameMap(pages);
 
+            // Check for ELPX download support (looks for exe-package:elp in content)
+            const needsElpxDownload = this.needsElpxDownloadSupport(pages);
+
+            // File tracking for ELPX manifest (only when download-source-file is used)
+            const fileList: string[] | null = needsElpxDownload ? [] : null;
+            const addFile = (path: string, content: Uint8Array | string) => {
+                this.zip.addFile(path, content);
+                if (fileList) fileList.push(path);
+            };
+
             // Initialize generators
             this.manifestGenerator = new Scorm12ManifestGenerator(projectId, pages, {
                 identifier: projectId,
@@ -86,6 +96,7 @@ export class Scorm12Exporter extends Html5Exporter {
             this.ideviceRenderer.setThemeIconFiles(themeFilesMap);
 
             // 1. Generate HTML pages (with SCORM support, optional LaTeX and Mermaid pre-rendering)
+            const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
             let mermaidWasRendered = false;
 
@@ -161,7 +172,7 @@ export class Scorm12Exporter extends Html5Exporter {
                 // Use unique filename from the map (handles title collisions)
                 const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
                 const pageFilename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
-                this.zip.addFile(pageFilename, html);
+                pageHtmlMap.set(pageFilename, html);
 
                 pageFiles[page.id] = {
                     fileUrl: pageFilename,
@@ -190,18 +201,18 @@ export class Scorm12Exporter extends Html5Exporter {
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
             }
-            this.zip.addFile('content/css/base.css', baseCss);
+            addFile('content/css/base.css', baseCss);
             commonFiles.push('content/css/base.css');
 
             // 3. Add theme files (already pre-fetched in step 0)
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
-                    this.zip.addFile(`theme/${filePath}`, content);
+                    addFile(`theme/${filePath}`, content);
                     commonFiles.push(`theme/${filePath}`);
                 }
             } else {
-                this.zip.addFile('theme/style.css', this.getFallbackThemeCss());
-                this.zip.addFile('theme/style.js', this.getFallbackThemeJs());
+                addFile('theme/style.css', this.getFallbackThemeCss());
+                addFile('theme/style.js', this.getFallbackThemeJs());
                 commonFiles.push('theme/style.css', 'theme/style.js');
             }
 
@@ -210,7 +221,7 @@ export class Scorm12Exporter extends Html5Exporter {
                 try {
                     const logoData = await this.resources.fetchExeLogo();
                     if (logoData) {
-                        this.zip.addFile('content/img/exe_powered_logo.png', logoData);
+                        addFile('content/img/exe_powered_logo.png', logoData);
                         commonFiles.push('content/img/exe_powered_logo.png');
                     }
                 } catch {
@@ -222,7 +233,7 @@ export class Scorm12Exporter extends Html5Exporter {
             try {
                 const baseLibs = await this.resources.fetchBaseLibraries();
                 for (const [path, content] of baseLibs) {
-                    this.zip.addFile(`libs/${path}`, content);
+                    addFile(`libs/${path}`, content);
                     commonFiles.push(`libs/${path}`);
                 }
             } catch {
@@ -231,7 +242,7 @@ export class Scorm12Exporter extends Html5Exporter {
 
             // 4.5. Generate localized i18n file
             const i18nContent = await this.generateI18nContent(meta.language || 'en');
-            this.zip.addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
+            addFile('libs/common_i18n.js', new TextEncoder().encode(i18nContent));
             commonFiles.push('libs/common_i18n.js');
 
             // 5. Detect and fetch additional required libraries based on content
@@ -251,7 +262,7 @@ export class Scorm12Exporter extends Html5Exporter {
                     // Only add if not already added by base libraries
                     const zipPath = `libs/${libPath}`;
                     if (!this.zip.hasFile(zipPath)) {
-                        this.zip.addFile(zipPath, content);
+                        addFile(zipPath, content);
                         commonFiles.push(zipPath);
                     }
                 }
@@ -259,17 +270,22 @@ export class Scorm12Exporter extends Html5Exporter {
                 // Additional libraries not available - continue anyway
             }
 
+            // 5b. Ensure ELPX download libraries are present
+            if (needsElpxDownload) {
+                await this.ensureElpxDownloadLibraries(addFile, commonFiles);
+            }
+
             // 6. Fetch SCORM API wrapper files
             try {
                 const scormFiles = await this.resources.fetchScormFiles('1.2');
                 for (const [filePath, content] of scormFiles) {
-                    this.zip.addFile(`libs/${filePath}`, content);
+                    addFile(`libs/${filePath}`, content);
                     commonFiles.push(`libs/${filePath}`);
                 }
             } catch {
                 // Add fallback SCORM files
-                this.zip.addFile('libs/SCORM_API_wrapper.js', this.getScormApiWrapper());
-                this.zip.addFile('libs/SCOFunctions.js', this.getScoFunctions());
+                addFile('libs/SCORM_API_wrapper.js', this.getScormApiWrapper());
+                addFile('libs/SCOFunctions.js', this.getScoFunctions());
                 commonFiles.push('libs/SCORM_API_wrapper.js', 'libs/SCOFunctions.js');
             }
 
@@ -277,9 +293,9 @@ export class Scorm12Exporter extends Html5Exporter {
             try {
                 const contentXml = await this.getContentXml();
                 if (contentXml) {
-                    this.zip.addFile('content.xml', contentXml);
+                    addFile('content.xml', contentXml);
                     commonFiles.push('content.xml');
-                    this.zip.addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
+                    addFile(ODE_DTD_FILENAME, ODE_DTD_CONTENT);
                     commonFiles.push(ODE_DTD_FILENAME);
                 }
             } catch {
@@ -293,7 +309,7 @@ export class Scorm12Exporter extends Html5Exporter {
                     const normalizedType = this.resources.normalizeIdeviceType(idevice);
                     const ideviceFiles = await this.resources.fetchIdeviceResources(idevice);
                     for (const [path, content] of ideviceFiles) {
-                        this.zip.addFile(`idevices/${normalizedType}/${path}`, content);
+                        addFile(`idevices/${normalizedType}/${path}`, content);
                         commonFiles.push(`idevices/${normalizedType}/${path}`);
                     }
                 } catch {
@@ -307,7 +323,7 @@ export class Scorm12Exporter extends Html5Exporter {
                     const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
                     if (fontFiles) {
                         for (const [filePath, content] of fontFiles) {
-                            this.zip.addFile(filePath, content);
+                            addFile(filePath, content);
                             commonFiles.push(filePath);
                         }
                     }
@@ -316,14 +332,33 @@ export class Scorm12Exporter extends Html5Exporter {
                 }
             }
 
-            // 9. Add project assets
-            await this.addAssetsToZipWithResourcePath();
+            // 9. Add project assets (with tracking for ELPX manifest)
+            await this.addAssetsToZipWithResourcePath(fileList);
 
-            // 10. Generate imslrm.xml (LOM metadata) - must be before manifest
+            // 10. Generate ELPX manifest file if download-source-file is used
+            if (needsElpxDownload && fileList) {
+                const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);
+                this.addElpxManifestToZip(fileList, pageUrls, commonFiles);
+            }
+
+            // 11. Add all HTML pages to ZIP (with ELPX script injection on pages with download-source-file)
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const isIndex = i === 0;
+                const uniqueFilename = pageFilenameMap.get(page.id) || 'page.html';
+                const filename = isIndex ? 'index.html' : `html/${uniqueFilename}`;
+                let html = pageHtmlMap.get(filename) || '';
+                if (needsElpxDownload) {
+                    html = this.injectElpxScripts(html, page, isIndex);
+                }
+                this.zip.addFile(filename, html);
+            }
+
+            // 12. Generate imslrm.xml (LOM metadata) - must be before manifest
             const lomXml = this.lomGenerator.generate();
             this.zip.addFile('imslrm.xml', lomXml);
 
-            // 11. Generate imsmanifest.xml with complete file list
+            // 13. Generate imsmanifest.xml with complete file list
             // Get all files from the ZIP to ensure the manifest lists ALL resources
             const allZipFiles = this.zip.getFilePaths();
             const manifestXml = this.manifestGenerator.generate({
@@ -333,7 +368,7 @@ export class Scorm12Exporter extends Html5Exporter {
             });
             this.zip.addFile('imsmanifest.xml', manifestXml);
 
-            // 12. Generate ZIP buffer
+            // 14. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
             return {
