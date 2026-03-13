@@ -2310,9 +2310,6 @@ export default class IdevicesEngine {
             this.mode = 'edition';
         } else {
             this.mode = 'view';
-            // When leaving edition mode, execute any page reload that was
-            // deferred to avoid destroying the active editor (#1532).
-            this.project._yjsBridge?.executeDeferredPageReload?.();
         }
         this.nodeContentElement.setAttribute('mode', this.mode);
     }

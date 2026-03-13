@@ -1837,50 +1837,6 @@ describe('YjsProjectBridge', () => {
       expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
 
-    it('defers reload when an iDevice editor is active on the page (#1532)', async () => {
-      // Mock document.querySelector to simulate an active editor
-      const origQuerySelector = global.document.querySelector;
-      global.document.querySelector = mock((selector) => {
-        if (selector === '#node-content div.idevice_node[mode="edition"]') {
-          return { id: 'active-editor' }; // truthy → editor is open
-        }
-        return origQuerySelector?.(selector) ?? null;
-      });
-
-      try {
-        bridge.schedulePageReloadIfCurrent('current-page');
-
-        // Wait for debounce to fire (if it did)
-        await new Promise(resolve => setTimeout(resolve, 150));
-
-        // The destructive full-page reload must NOT fire
-        expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
-        // The deferred reload flag must be set
-        expect(bridge._deferredPageReload).toBe('current-page');
-      } finally {
-        global.document.querySelector = origQuerySelector;
-      }
-    });
-
-    it('executeDeferredPageReload triggers the pending reload (#1532)', async () => {
-      // Pre-set a deferred reload
-      bridge._deferredPageReload = 'current-page';
-
-      // No active editor this time → reload should proceed
-      bridge.executeDeferredPageReload();
-
-      // Wait for debounce
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      expect(bridge.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
-      expect(bridge._deferredPageReload).toBeNull();
-    });
-
-    it('executeDeferredPageReload is a no-op when nothing is deferred', () => {
-      bridge._deferredPageReload = null;
-      bridge.executeDeferredPageReload();
-      expect(bridge.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
-    });
   });
 
   describe('asset refresh on late asset arrival', () => {

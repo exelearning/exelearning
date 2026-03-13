@@ -1,6 +1,11 @@
 import { test, expect, skipInStaticMode } from '../../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../../helpers/sync-helpers';
-import { waitForLoadingScreen, waitForAppReady, addTextIdevice } from '../../helpers/workarea-helpers';
+import {
+    waitForLoadingScreen,
+    waitForAppReady,
+    addTextIdevice,
+    navigateToPageByTitle,
+} from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -76,6 +81,14 @@ async function getTinyMCEContent(page: Page): Promise<string> {
     });
 }
 
+async function waitForRemoteIdeviceInsertion(page: Page): Promise<void> {
+    await page.waitForFunction(
+        () => document.querySelectorAll('#node-content article .idevice_node.text').length >= 2,
+        undefined,
+        { timeout: 20000 },
+    );
+}
+
 test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)', () => {
     test.setTimeout(90000);
 
@@ -117,13 +130,10 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         await waitForYjsSync(pageA);
 
         // ── Step 4: Navigate Client B to the same page ──
-        const pageNode = pageB
-            .locator('.nav-element-text')
-            .filter({ hasText: /New page|Nueva página/i })
-            .first();
-        if ((await pageNode.count()) > 0) {
-            await pageNode.click({ force: true });
-            await pageB.waitForTimeout(500);
+        try {
+            await navigateToPageByTitle(pageB, 'New page');
+        } catch {
+            await navigateToPageByTitle(pageB, 'Nueva página');
         }
 
         // Client B must see the existing iDevice
@@ -151,8 +161,8 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         // This should NOT close Client A's editor.
         await addTextIdevice(pageB);
 
-        // Wait for the Yjs event to propagate via WebSocket to Client A
-        await pageA.waitForTimeout(2000);
+        // Wait for the remote insertion to be reflected on Client A.
+        await waitForRemoteIdeviceInsertion(pageA);
 
         // ── ASSERTIONS: Client A's editor must survive ──
 
@@ -172,5 +182,12 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         // A3: The unsaved content must still be present
         const contentAfter = await getTinyMCEContent(pageA);
         expect(contentAfter).toContain(unsavedContent);
+
+        // A4: The editor must remain interactable after the remote insertion.
+        const appendedContent = ' ++';
+        await typeInTinyMCE(pageA, appendedContent);
+        const contentAfterMoreTyping = await getTinyMCEContent(pageA);
+        expect(contentAfterMoreTyping).toContain(unsavedContent);
+        expect(contentAfterMoreTyping.length).toBeGreaterThan(contentAfter.length);
     });
 });
