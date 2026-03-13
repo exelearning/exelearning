@@ -38,6 +38,7 @@ describe('complete iDevice export', () => {
 
   beforeEach(() => {
     global.$eXeCompleta = undefined;
+    global.$exeDevices.iDevice.gamification.helpers.shuffleAds = (arr) => [...arr];
 
     const filePath = join(__dirname, 'complete.js');
     const code = readFileSync(filePath, 'utf-8');
@@ -197,6 +198,13 @@ describe('complete iDevice export', () => {
         const instance = createInstance({ estrictCheck: false, caseSensitive: false });
         expect($eXeCompleta.checkWord(' cat | dog | bird ', 'dog', instance)).toBe(true);
       });
+
+      it('accepts symbol answers stored as HTML entities', () => {
+        const instance = createInstance({ estrictCheck: false, caseSensitive: false });
+        expect($eXeCompleta.checkWord('&lt;|=|&gt;', '<', instance)).toBe(true);
+        expect($eXeCompleta.checkWord('&lt;|=|&gt;', '=', instance)).toBe(true);
+        expect($eXeCompleta.checkWord('&lt;|=|&gt;', '>', instance)).toBe(true);
+      });
     });
 
     describe('fuzzy matching mode (estrictCheck)', () => {
@@ -228,6 +236,75 @@ describe('complete iDevice export', () => {
         });
         expect($eXeCompleta.checkWord('hello', 'hello', instance)).toBe(true);
       });
+    });
+  });
+
+  describe('checkWordLimit', () => {
+    it('accepts first option when symbols are encoded as HTML entities', () => {
+      expect($eXeCompleta.checkWordLimit('&lt;|=|&gt;', '<')).toBe(true);
+      expect($eXeCompleta.checkWordLimit('&lt;|=|&gt;', '=')).toBe(false);
+    });
+  });
+
+  describe('escapeOptionText', () => {
+    it('renders encoded symbol entities as real symbols in option HTML', () => {
+      expect($eXeCompleta.escapeOptionText('&gt;')).toBe('&gt;');
+      expect($eXeCompleta.escapeOptionText('&lt;')).toBe('&lt;');
+    });
+
+    it('escapes raw symbols safely for option HTML', () => {
+      expect($eXeCompleta.escapeOptionText('>')).toBe('&gt;');
+      expect($eXeCompleta.escapeOptionText('<')).toBe('&lt;');
+    });
+  });
+
+  describe('createSelect', () => {
+    it('includes all pipe-separated symbol alternatives in dropdown options', () => {
+      const instanceId = 'symbols-select';
+      $eXeCompleta.options[instanceId] = {
+        words: ['&lt;|=|&gt;'],
+        wordsErrors: '',
+      };
+
+      const html = $eXeCompleta.createSelect(0, instanceId);
+      expect(html).toContain('&lt;');
+      expect(html).toContain('=');
+      expect(html).toContain('&gt;');
+    });
+  });
+
+  describe('getWordArrayJson', () => {
+    it('keeps word counters correct when shuffle changes order', () => {
+      const instanceId = 'shuffle-invariant';
+      const originalShuffle = global.$exeDevices.iDevice.gamification.helpers.shuffleAds;
+      const originalCreateButtons = $eXeCompleta.createButtons;
+      global.$exeDevices.iDevice.gamification.helpers.shuffleAds = (arr) => [...arr].reverse();
+      $eXeCompleta.createButtons = vi.fn();
+
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.id = `cmptButonsDiv-${instanceId}`;
+      document.body.appendChild(buttonsDiv);
+
+      $eXeCompleta.options[instanceId] = {
+        words: ['Alpha|A', 'beta'],
+        wordsErrors: 'ALPHA|gamma',
+        caseSensitive: false,
+      };
+
+      try {
+        $eXeCompleta.getWordArrayJson(instanceId);
+        expect($eXeCompleta.options[instanceId].oWords).toEqual({
+          alpha: 2,
+          beta: 1,
+          gamma: 1,
+        });
+      } finally {
+        global.$exeDevices.iDevice.gamification.helpers.shuffleAds = originalShuffle;
+        $eXeCompleta.createButtons = originalCreateButtons;
+        if (buttonsDiv.parentNode) {
+          buttonsDiv.parentNode.removeChild(buttonsDiv);
+        }
+      }
     });
   });
 
