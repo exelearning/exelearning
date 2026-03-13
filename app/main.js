@@ -225,32 +225,30 @@ let customEnv;
 let env;
 
 // ──────────────  Save/Export helpers  ──────────────
-const KNOWN_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 const DEFAULT_EXTENSION = '.elpx';
 
 /**
- * Extract a known extension from a file path or suggested name.
- * Returns the lowercase extension (including the leading dot) if known, null otherwise.
+ * Extract a file extension from a file path or suggested name.
+ * Returns the lowercase extension (including the leading dot) if present, null otherwise.
  * @param {string} filePathOrName - File path or suggested filename
- * @returns {string|null} Known extension (e.g., '.elpx') or null
+ * @returns {string|null} Extension (e.g., '.elpx', '.csv') or null
  */
-function getKnownExt(filePathOrName) {
+function getExt(filePathOrName) {
     try {
         const ext = path.extname(filePathOrName || '') || '';
         if (!ext) return null;
-        const lower = ext.toLowerCase();
-        return KNOWN_EXTENSIONS.has(lower) ? lower : null;
+        return ext.toLowerCase();
     } catch (_e) {
         return null;
     }
 }
 
-// Ensures the filePath has an extension; if missing or unknown, appends one inferred from suggestedName.
+// Ensures the filePath has an extension; if missing, appends one inferred from suggestedName.
 function ensureExt(filePath, suggestedName) {
     if (!filePath) return filePath;
-    const known = getKnownExt(filePath);
-    if (known) return filePath;
-    const inferred = getKnownExt(suggestedName);
+    const currentExt = getExt(filePath);
+    if (currentExt) return filePath;
+    const inferred = getExt(suggestedName);
     return inferred ? filePath + inferred : filePath;
 }
 
@@ -264,14 +262,23 @@ function getDialogFilterForExt(ext) {
             return { name: 'EPUB', extensions: ['epub'] };
         case '.xml':
             return { name: 'XML document', extensions: ['xml'] };
-        default:
-            return null;
+        case '.csv':
+            return { name: 'CSV file', extensions: ['csv'] };
+        case '.idevice':
+            return { name: 'eXeLearning iDevice', extensions: ['idevice'] };
+        case '.block':
+            return { name: 'eXeLearning block', extensions: ['block'] };
+        default: {
+            if (!ext) return null;
+            const clean = ext.replace(/^\./, '');
+            return { name: `${clean.toUpperCase()} file`, extensions: [clean] };
+        }
     }
 }
 
 function proposeSavePath(lastDir, effectiveName = null) {
     try {
-        const ext = getKnownExt(effectiveName) || DEFAULT_EXTENSION;
+        const ext = getExt(effectiveName) || DEFAULT_EXTENSION;
         const dir = lastDir || app.getPath('documents');
         const base = effectiveName
             ? path.basename(effectiveName, path.extname(effectiveName))
@@ -284,10 +291,13 @@ function proposeSavePath(lastDir, effectiveName = null) {
 
 async function promptSave(owner, suggestedName = null, lastDir = null, storedName = null) {
     const effectiveName = storedName || suggestedName;
-    const inferredExt = getKnownExt(effectiveName) || DEFAULT_EXTENSION;
+    const inferredExt = getExt(effectiveName) || DEFAULT_EXTENSION;
     const filter = getDialogFilterForExt(inferredExt);
+    const isProject = inferredExt === '.elpx';
     const { filePath, canceled } = await dialog.showSaveDialog(owner, {
-        title: tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project'),
+        title: isProject
+            ? tOrDefault('save.dialogTitle', defaultLocale === 'es' ? 'Guardar proyecto' : 'Save project')
+            : tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
         defaultPath: proposeSavePath(lastDir, effectiveName),
         buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
         ...(filter ? { filters: [filter] } : {}),
