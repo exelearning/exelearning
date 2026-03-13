@@ -13260,6 +13260,11 @@
         <source>Failed to start impersonation</source>
         <target></target>
       </trans-unit>
+      <!-- Maintenance mode translations -->
+      <trans-unit id="maintenance.message" resname="maintenance.message">
+        <source>The platform is temporarily in maintenance mode.</source>
+        <target>The platform is temporarily in maintenance mode.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
