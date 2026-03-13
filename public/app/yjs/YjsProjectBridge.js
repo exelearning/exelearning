@@ -529,8 +529,24 @@ class YjsProjectBridge {
     const affectedPageIds = new Set();
     const navigation = this.documentManager?.getNavigation?.();
     const includeAnyBlockTouch = this.isUndoRedoInProgress === true;
+    const pagesWithComponentAdditions = new Set();
     if (!navigation || !events || !Array.isArray(events)) {
       return affectedPageIds;
+    }
+
+    for (const event of events) {
+      if (!event || !Array.isArray(event.path)) continue;
+      const path = event.path;
+      const pageIndex = path[0];
+      if (typeof pageIndex !== 'number') continue;
+
+      const hasAdded = event.changes?.added?.size > 0;
+      const hasDeleted = event.changes?.deleted?.size > 0;
+      const isComponentLevel = path.length >= 4 && path[1] === 'blocks' && path[3] === 'components';
+
+      if (isComponentLevel && hasAdded && !hasDeleted) {
+        pagesWithComponentAdditions.add(pageIndex);
+      }
     }
 
     for (const event of events) {
@@ -571,6 +587,11 @@ class YjsProjectBridge {
       if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
         const isComponentLevel = path.length >= 4 && path[3] === 'components';
         if (isComponentLevel) {
+          continue;
+        }
+
+        const isBlockLevelAddition = path.length === 2 && path[1] === 'blocks';
+        if (isBlockLevelAddition && pagesWithComponentAdditions.has(pageIndex)) {
           continue;
         }
       }
@@ -646,8 +667,6 @@ class YjsProjectBridge {
             if (pageMap) {
               const pageId = pageMap.get('id') || pageMap.get('pageId');
               Logger.log('[YjsProjectBridge] Remote block added to page:', pageId);
-              // If we're currently viewing this page, reload it
-              this.schedulePageReloadIfCurrent(pageId);
             }
           }
         }

@@ -24,8 +24,10 @@ async function waitForYjsBridge(page: Page): Promise<void> {
 /**
  * Type content into TinyMCE editor without saving.
  */
-async function typeInTinyMCE(page: Page, content: string): Promise<void> {
-    const textIdeviceNode = page.locator('#node-content article .idevice_node.text').first();
+async function typeInTinyMCE(page: Page, content: string, ideviceId?: string): Promise<void> {
+    const textIdeviceNode = ideviceId
+        ? page.locator(`#${ideviceId}`)
+        : page.locator('#node-content article .idevice_node.text').first();
     const tinyMceFrame = textIdeviceNode.locator('iframe.tox-edit-area__iframe').first();
     await tinyMceFrame.waitFor({ timeout: 15000 });
 
@@ -43,19 +45,23 @@ async function typeInTinyMCE(page: Page, content: string): Promise<void> {
 /**
  * Save text iDevice (exit edition mode).
  */
-async function saveTextIdevice(page: Page): Promise<void> {
-    const textIdeviceNode = page.locator('#node-content article .idevice_node.text').first();
+async function saveTextIdevice(page: Page, ideviceId?: string): Promise<void> {
+    const textIdeviceNode = ideviceId
+        ? page.locator(`#${ideviceId}`)
+        : page.locator('#node-content article .idevice_node.text').first();
     const saveBtn = textIdeviceNode.locator('.btn-save-idevice');
     if ((await saveBtn.count()) > 0) {
         await saveBtn.click();
     }
 
     await page.waitForFunction(
-        () => {
-            const idevice = document.querySelector('#node-content article .idevice_node.text');
+        targetIdeviceId => {
+            const idevice = targetIdeviceId
+                ? document.getElementById(targetIdeviceId)
+                : document.querySelector('#node-content article .idevice_node.text');
             return idevice && idevice.getAttribute('mode') !== 'edition';
         },
-        undefined,
+        ideviceId,
         { timeout: 15000 },
     );
 }
@@ -63,12 +69,24 @@ async function saveTextIdevice(page: Page): Promise<void> {
 /**
  * Open the first text iDevice in edition mode and wait for TinyMCE.
  */
-async function openTextIdeviceEditor(page: Page): Promise<void> {
-    const textIdeviceNode = page.locator('#node-content article .idevice_node.text').first();
+async function openTextIdeviceEditor(page: Page, ideviceId?: string): Promise<void> {
+    const textIdeviceNode = ideviceId
+        ? page.locator(`#${ideviceId}`)
+        : page.locator('#node-content article .idevice_node.text').first();
     const editBtn = textIdeviceNode.locator('.btn-edit-idevice');
     await expect(editBtn).toBeVisible({ timeout: 10000 });
     await editBtn.click();
     await textIdeviceNode.locator('iframe.tox-edit-area__iframe').first().waitFor({ timeout: 15000 });
+    await page.waitForFunction(
+        targetIdeviceId => {
+            const idevice = targetIdeviceId
+                ? document.getElementById(targetIdeviceId)
+                : document.querySelector('#node-content article .idevice_node.text');
+            return idevice?.getAttribute('mode') === 'edition';
+        },
+        ideviceId,
+        { timeout: 15000 },
+    );
 }
 
 /**
@@ -99,6 +117,13 @@ async function getFirstTextIdeviceId(page: Page): Promise<string> {
     return ideviceId;
 }
 
+async function getIdeviceMode(page: Page, ideviceId: string): Promise<string | undefined> {
+    return page.evaluate(targetIdeviceId => {
+        const idevice = document.getElementById(targetIdeviceId);
+        return idevice?.getAttribute('mode') ?? undefined;
+    }, ideviceId);
+}
+
 test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)', () => {
     test.setTimeout(90000);
 
@@ -125,14 +150,14 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         // ── Step 2: Client A adds a text iDevice and saves it ──
         await addTextIdevice(pageA);
         await pageA.waitForSelector('.tox-menubar', { timeout: 15000 });
+        const originalIdeviceId = await getFirstTextIdeviceId(pageA);
 
         const seedText = `Seed content ${Date.now()}`;
-        await typeInTinyMCE(pageA, seedText);
-        await saveTextIdevice(pageA);
+        await typeInTinyMCE(pageA, seedText, originalIdeviceId);
+        await saveTextIdevice(pageA, originalIdeviceId);
 
         // Verify saved content is visible in export view
         await expect(pageA.locator('#node-content')).toContainText(seedText, { timeout: 10000 });
-        const originalIdeviceId = await getFirstTextIdeviceId(pageA);
 
         // ── Step 3: Client A shares the project and Client B joins ──
         const shareUrl = await getShareUrl(pageA);
@@ -152,17 +177,14 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         await expect(textIdeviceOnB).toBeVisible({ timeout: 15000 });
 
         // ── Step 5: Client A opens the iDevice editor ──
-        await openTextIdeviceEditor(pageA);
+        await openTextIdeviceEditor(pageA, originalIdeviceId);
 
         // ── Step 6: Client A types UNSAVED content ──
         const unsavedContent = `UNSAVED_EDIT_${Date.now()}`;
-        await typeInTinyMCE(pageA, unsavedContent);
+        await typeInTinyMCE(pageA, unsavedContent, originalIdeviceId);
 
         // Verify editor is open and contains the content
-        const modeBefore = await pageA.evaluate(() => {
-            const idevice = document.querySelector('#node-content article .idevice_node.text');
-            return idevice?.getAttribute('mode');
-        });
+        const modeBefore = await getIdeviceMode(pageA, originalIdeviceId);
         expect(modeBefore).toBe('edition');
 
         const contentBefore = await getTinyMCEContent(pageA);
@@ -178,10 +200,7 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
         // ── ASSERTIONS: Client A's editor must survive ──
 
         // A1: The editor DOM must still be in edition mode
-        const modeAfter = await pageA.evaluate(ideviceId => {
-            const idevice = document.getElementById(ideviceId);
-            return idevice?.getAttribute('mode');
-        }, originalIdeviceId);
+        const modeAfter = await getIdeviceMode(pageA, originalIdeviceId);
         expect(modeAfter).toBe('edition');
 
         // A2: The TinyMCE iframe must still be visible
@@ -194,7 +213,7 @@ test.describe('Editor Preservation During Collaborative iDevice Creation (#1532)
 
         // A4: The editor must remain interactable after the remote insertion.
         const appendedContent = ' ++';
-        await typeInTinyMCE(pageA, appendedContent);
+        await typeInTinyMCE(pageA, appendedContent, originalIdeviceId);
         const contentAfterMoreTyping = await getTinyMCEContent(pageA);
         expect(contentAfterMoreTyping).toContain(unsavedContent);
         expect(contentAfterMoreTyping.length).toBeGreaterThan(contentAfter.length);
