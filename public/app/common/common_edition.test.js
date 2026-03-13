@@ -1347,6 +1347,102 @@ describe('common_edition.js', () => {
     });
   });
 
+  describe('voiceRecorder', () => {
+    afterEach(() => {
+      delete globalThis.MediaRecorder;
+      delete globalThis.navigator.mediaDevices;
+    });
+
+    it('sanitizeFileNameBase generates default and removes invalid chars', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+
+      expect(recorder.sanitizeFileNameBase('')).toMatch(/^grabacion-\d{8}-\d{6}$/);
+      expect(recorder.sanitizeFileNameBase('casa.mp3')).toBe('casa');
+      expect(recorder.sanitizeFileNameBase(' Audio prueba: 1 / test ')).toBe('Audio-prueba-1-test');
+    });
+
+    it('does not initialize when browser does not support recording', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      delete globalThis.navigator.mediaDevices;
+      delete globalThis.MediaRecorder;
+
+      document.body.innerHTML = `
+        <div data-voice-recorder data-voice-input="#audioInput">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body);
+
+      expect(document.querySelector('.exe-voice-recorder-toggle')).toBeNull();
+    });
+
+    it('records and saves audio with AssetManager.insertImage', async () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const stopTrackMock = vi.fn();
+      const insertImageMock = vi.fn().mockResolvedValue('asset://mock-id.webm');
+      const stream = { getTracks: () => [{ stop: stopTrackMock }] };
+
+      globalThis.navigator.mediaDevices = {
+        getUserMedia: vi.fn().mockResolvedValue(stream),
+      };
+
+      globalThis.MediaRecorder = class {
+        static isTypeSupported(type) {
+          return type.indexOf('audio/webm') === 0;
+        }
+        constructor(s, options) {
+          this.stream = s;
+          this.options = options;
+          this.mimeType = options?.mimeType || 'audio/webm';
+          this.state = 'inactive';
+          this.ondataavailable = null;
+          this.onstop = null;
+        }
+        start() {
+          this.state = 'recording';
+        }
+        stop() {
+          this.state = 'inactive';
+          if (this.ondataavailable) {
+            this.ondataavailable({ data: new Blob(['audio'], { type: this.mimeType }), size: 5 });
+          }
+          if (this.onstop) {
+            this.onstop();
+          }
+        }
+      };
+
+      document.body.innerHTML = `
+        <div data-voice-recorder data-voice-input="#audioInput" data-voice-preview="#audioPreview">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+          <audio id="audioPreview" class="d-none"></audio>
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body, { insertImage: insertImageMock });
+
+      const toggle = document.querySelector('.exe-voice-recorder-toggle');
+      expect(toggle).toBeTruthy();
+
+      toggle.click();
+      await Promise.resolve();
+
+      const stopBtn = document.querySelector('.exe-voice-recorder-stop');
+      stopBtn.click();
+
+      const saveBtn = document.querySelector('.exe-voice-recorder-save');
+      saveBtn.click();
+      await Promise.resolve();
+
+      expect(insertImageMock).toHaveBeenCalledTimes(1);
+      expect($('#audioInput').val()).toBe('asset://mock-id.webm');
+      expect(stopTrackMock).toHaveBeenCalled();
+    });
+  });
+
   describe('iDevice.save', () => {
     it('saves when $exeDevice is properly defined', () => {
       document.body.innerHTML = `
