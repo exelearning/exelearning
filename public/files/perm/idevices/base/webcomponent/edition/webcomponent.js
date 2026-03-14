@@ -77,6 +77,10 @@ var $exeDevice = {
                                 <label for="wcHTML" class="sr-av">${_('HTML code')}:</label>
                                 <textarea id="wcHTML" class="exe-html-editor form-control exe-instructions-textarea" rows="4"></textarea>
                             </p>
+                            <p>
+                                <label for="wcJS">${_('JavaScript code')}:</label>
+                                <textarea id="wcJS" class="form-control" rows="10" spellcheck="false" placeholder="${_('Write your web component JavaScript code here...')}"></textarea>
+                            </p>
                             <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                                 <span class="toggle-item mb-0" data-target="wcEEvaluationIDWrapper" role="switch" aria-checked="false">
                                     <span class="toggle-control">
@@ -97,10 +101,6 @@ var $exeDevice = {
                             </div>
                             <p id="wcEEvaluationHelp" class="WCE-TypeGameHelp exe-block-info">
                                 ${_('You must indicate the ID. It can be a word, a phrase or a number of more than four characters. You will use this ID to mark the activities covered by this progress report. It must be the same in all iDevices of a report and different in each report.')}
-                            </p>
-                            <p>
-                                <label for="wcJS">${_('JavaScript code')}:</label>
-                                <textarea id="wcJS" class="form-control" rows="10" spellcheck="false" placeholder="${_('Write your web component JavaScript code here...')}"></textarea>
                             </p>
                         </div>
                     </fieldset>
