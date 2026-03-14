@@ -88,6 +88,10 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
     }
+
+    setLibraryFiles(files: Map<string, Buffer>): void {
+        this.libraryFiles = files;
+    }
 }
 
 // Mock asset provider
@@ -181,6 +185,21 @@ class TestExporter extends BaseExporter {
 
     testPreprocessPagesForExport(pages: ExportPage[]): Promise<ExportPage[]> {
         return this.preprocessPagesForExport(pages);
+    }
+
+    testEnsureElpxDownloadLibraries(
+        addFile: (path: string, content: Uint8Array | string) => void,
+        commonFiles?: string[],
+    ): Promise<void> {
+        return this.ensureElpxDownloadLibraries(addFile, commonFiles);
+    }
+
+    testAddElpxManifestToZip(fileList: string[], pageFileUrls: string[], commonFiles?: string[]): void {
+        this.addElpxManifestToZip(fileList, pageFileUrls, commonFiles);
+    }
+
+    testInjectElpxScripts(html: string, page: ExportPage, isIndex: boolean): string {
+        return this.injectElpxScripts(html, page, isIndex);
     }
 }
 
@@ -1015,6 +1034,134 @@ describe('BaseExporter', () => {
                 expect(result).toContain('\n');
                 // Should have 2-space indentation
                 expect(result).toMatch(/"files": \[/);
+            });
+        });
+
+        describe('ensureElpxDownloadLibraries', () => {
+            it('should fetch missing ELPX libraries and call addFile', async () => {
+                const addedFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {
+                    addedFiles.push(path);
+                };
+                resources.setLibraryFiles(
+                    new Map([
+                        ['fflate/fflate.umd.js', Buffer.from('fflate')],
+                        ['exe_elpx_download/exe_elpx_download.js', Buffer.from('elpx')],
+                    ]),
+                );
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile);
+                expect(addedFiles).toContain('libs/fflate/fflate.umd.js');
+                expect(addedFiles).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+            });
+
+            it('should update commonFiles when provided', async () => {
+                const commonFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {};
+                resources.setLibraryFiles(
+                    new Map([
+                        ['fflate/fflate.umd.js', Buffer.from('fflate')],
+                        ['exe_elpx_download/exe_elpx_download.js', Buffer.from('elpx')],
+                    ]),
+                );
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile, commonFiles);
+                expect(commonFiles).toContain('libs/fflate/fflate.umd.js');
+                expect(commonFiles).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+            });
+
+            it('should skip libraries already in the ZIP', async () => {
+                zip.addFile('libs/fflate/fflate.umd.js', Buffer.from('already'));
+                zip.addFile('libs/exe_elpx_download/exe_elpx_download.js', Buffer.from('already'));
+                const addedFiles: string[] = [];
+                const addFile = (path: string, _content: Uint8Array | string) => {
+                    addedFiles.push(path);
+                };
+
+                await exporter.testEnsureElpxDownloadLibraries(addFile);
+                expect(addedFiles).toEqual([]);
+            });
+        });
+
+        describe('addElpxManifestToZip', () => {
+            it('should generate manifest and add to ZIP', () => {
+                const fileList = ['content/css/base.css', 'theme/style.css'];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html', 'html/page.html']);
+
+                expect(zip.hasFile('libs/elpx-manifest.js')).toBe(true);
+                expect(fileList).toContain('index.html');
+                expect(fileList).toContain('html/page.html');
+                expect(fileList).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should update commonFiles when provided', () => {
+                const fileList = ['content/css/base.css'];
+                const commonFiles: string[] = [];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html'], commonFiles);
+                expect(commonFiles).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should not duplicate page URLs already in fileList', () => {
+                const fileList = ['index.html', 'content/css/base.css'];
+                exporter.testAddElpxManifestToZip(fileList, ['index.html']);
+                const count = fileList.filter(f => f === 'index.html').length;
+                expect(count).toBe(1);
+            });
+        });
+
+        describe('injectElpxScripts', () => {
+            const pageWithDownload: ExportPage = {
+                id: 'p1',
+                title: 'Page',
+                blocks: [
+                    {
+                        id: 'b1',
+                        name: 'Block',
+                        order: 0,
+                        components: [
+                            {
+                                id: 'c1',
+                                type: 'download-source-file',
+                                order: 0,
+                                content: '<a href="exe-package:elp">Download</a>',
+                            },
+                        ],
+                    },
+                ],
+            };
+
+            const pageWithoutDownload: ExportPage = {
+                id: 'p2',
+                title: 'Normal',
+                blocks: [
+                    {
+                        id: 'b2',
+                        name: 'Block',
+                        order: 0,
+                        components: [{ id: 'c2', type: 'text', order: 0, content: '<p>Hello</p>' }],
+                    },
+                ],
+            };
+
+            it('should inject scripts for pages with download-source-file', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithDownload, true);
+                expect(result).toContain('libs/fflate/fflate.umd.js');
+                expect(result).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+                expect(result).toContain('libs/elpx-manifest.js');
+            });
+
+            it('should use relative paths for non-index pages', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithDownload, false);
+                expect(result).toContain('../libs/fflate/fflate.umd.js');
+                expect(result).toContain('../libs/elpx-manifest.js');
+            });
+
+            it('should return HTML unchanged for pages without download-source-file', () => {
+                const html = '<html><body><p>Content</p></body></html>';
+                const result = exporter.testInjectElpxScripts(html, pageWithoutDownload, true);
+                expect(result).toBe(html);
             });
         });
     });

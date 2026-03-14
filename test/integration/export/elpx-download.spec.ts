@@ -10,6 +10,9 @@
 
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { Html5Exporter } from '../../../src/shared/export/exporters/Html5Exporter';
+import { Scorm12Exporter } from '../../../src/shared/export/exporters/Scorm12Exporter';
+import { Scorm2004Exporter } from '../../../src/shared/export/exporters/Scorm2004Exporter';
+import { ImsExporter } from '../../../src/shared/export/exporters/ImsExporter';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -198,6 +201,10 @@ class CapturingZipProvider implements ZipProvider {
 
     getFileContent(path: string): string | Buffer | undefined {
         return this.files.get(path);
+    }
+
+    getFilePaths(): string[] {
+        return Array.from(this.files.keys());
     }
 
     getFileAsString(path: string): string | undefined {
@@ -470,3 +477,92 @@ describe('ELPX Download with Manual Link (no download-source-file iDevice)', () 
         });
     });
 });
+
+// Helper to run ELPX download tests for SCORM/IMS exporters (exports once per exporter type)
+function describeElpxDownloadForExporter(
+    exporterName: string,
+    createExporter: (
+        doc: ExportDocument,
+        res: ResourceProvider,
+        assets: AssetProvider,
+        zip: ZipProvider,
+    ) => Html5Exporter,
+) {
+    describe(`${exporterName} Export with download-source-file iDevice`, () => {
+        let zip: CapturingZipProvider;
+        let exportResult: { success: boolean; error?: string };
+
+        beforeAll(async () => {
+            zip = new CapturingZipProvider();
+            const exporter = createExporter(
+                new MockDocument(),
+                new FileResourceProvider(),
+                new MockAssetProvider(),
+                zip,
+            );
+            exportResult = await exporter.export();
+        });
+
+        it('should export successfully with ELPX download support', () => {
+            expect(exportResult.success).toBe(true);
+        });
+
+        it('should include libs/elpx-manifest.js', () => {
+            expect(zip.hasFile('libs/elpx-manifest.js')).toBe(true);
+        });
+
+        it('should include fflate.umd.js in libs/', () => {
+            expect(zip.hasFile('libs/fflate/fflate.umd.js')).toBe(true);
+        });
+
+        it('should include exe_elpx_download.js in libs/', () => {
+            expect(zip.hasFile('libs/exe_elpx_download/exe_elpx_download.js')).toBe(true);
+        });
+
+        it('should inject ELPX script tags into HTML pages with download-source-file', () => {
+            const indexHtml = zip.getFileAsString('index.html');
+            expect(indexHtml).toBeDefined();
+            expect(indexHtml).toContain('libs/fflate/fflate.umd.js');
+            expect(indexHtml).toContain('libs/exe_elpx_download/exe_elpx_download.js');
+            expect(indexHtml).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should replace exe-package:elp with onclick handler', () => {
+            const indexHtml = zip.getFileAsString('index.html');
+            expect(indexHtml).toBeDefined();
+            expect(indexHtml).toContain('onclick=');
+            expect(indexHtml).toContain('downloadElpx');
+            expect(indexHtml).not.toContain('href="exe-package:elp"');
+        });
+
+        it('should have manifest with all content files', () => {
+            const manifest = zip.getFileAsString('libs/elpx-manifest.js');
+            expect(manifest).toBeDefined();
+            expect(manifest).toContain('__ELPX_MANIFEST__');
+
+            const manifestMatch = manifest!.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+            const parsed = JSON.parse(manifestMatch![1]);
+
+            expect(parsed.files).toContain('content/css/base.css');
+            expect(parsed.files).toContain('index.html');
+            expect(parsed.files).toContain('libs/elpx-manifest.js');
+        });
+
+        it('should NOT include imsmanifest.xml in ELPX manifest file list', () => {
+            const manifest = zip.getFileAsString('libs/elpx-manifest.js');
+            expect(manifest).toBeDefined();
+
+            const manifestMatch = manifest!.match(/window\.__ELPX_MANIFEST__=(\{[\s\S]*?\});/);
+            expect(manifestMatch).toBeTruthy();
+            const parsed = JSON.parse(manifestMatch![1]);
+
+            expect(parsed.files).not.toContain('imsmanifest.xml');
+            expect(parsed.files).not.toContain('imslrm.xml');
+        });
+    });
+}
+
+describeElpxDownloadForExporter('SCORM 1.2', (doc, res, assets, zip) => new Scorm12Exporter(doc, res, assets, zip));
+describeElpxDownloadForExporter('SCORM 2004', (doc, res, assets, zip) => new Scorm2004Exporter(doc, res, assets, zip));
+describeElpxDownloadForExporter('IMS CP', (doc, res, assets, zip) => new ImsExporter(doc, res, assets, zip));
