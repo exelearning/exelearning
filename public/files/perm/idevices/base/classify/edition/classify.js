@@ -54,6 +54,9 @@ var $exeDevice = {
         ); // Avoid invalid HTML
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('clasificaQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -490,9 +493,6 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initQuestions();
-
-        const root = document.getElementById('clasificaQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
