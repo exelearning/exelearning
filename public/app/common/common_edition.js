@@ -1462,16 +1462,16 @@ var $exeDevicesEdition = {
                         aspect-ratio: 1 / 1;
                         flex-shrink: 0;
                         line-height: 1;
-                        color: #137575;
-                        border-color: #137575;
+                        color: var(--brand-primary, #0BA1A1);
+                        border-color: var(--brand-primary, #0BA1A1);
                         background: #fff;
                     }
                     .exe-voice-recorder-toggle:hover,
                     .exe-voice-recorder-toggle:focus,
                     .exe-voice-recorder-toggle:active {
-                        color: #0f5f5f;
-                        border-color: #0f5f5f;
-                        background: #e9f5f5;
+                        color: #087d7d;
+                        border-color: #087d7d;
+                        background: #e6f6f6;
                     }
                     .exe-voice-recorder-toggle svg {
                         width: 1rem;
@@ -1568,7 +1568,7 @@ var $exeDevicesEdition = {
                 var hh = String(date.getHours()).padStart(2, '0');
                 var min = String(date.getMinutes()).padStart(2, '0');
                 var ss = String(date.getSeconds()).padStart(2, '0');
-                return 'grabacion-' + yyyy + mm + dd + '-' + hh + min + ss;
+                return 'audio-rec-' + yyyy + mm + dd + '-' + hh + min + ss;
             },
             stripAudioExtension: function (name) {
                 var value = (name || '').toString().trim();

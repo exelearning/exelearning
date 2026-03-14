@@ -1353,10 +1353,56 @@ describe('common_edition.js', () => {
       delete globalThis.navigator.mediaDevices;
     });
 
+    it('getPreferredMimeType falls back to mp4 or webm based on support', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+
+      globalThis.MediaRecorder = {
+        isTypeSupported: vi.fn((type) => type === 'audio/mp4'),
+      };
+      expect(recorder.getPreferredMimeType()).toBe('audio/mp4');
+
+      globalThis.MediaRecorder = {
+        isTypeSupported: vi.fn((type) => type === 'audio/webm'),
+      };
+      expect(recorder.getPreferredMimeType()).toBe('audio/webm');
+    });
+
+    it('resolveAssetManager prioritizes explicit manager and falls back to Yjs manager', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const explicitManager = { insertImage: vi.fn() };
+      const fallbackManager = { insertImage: vi.fn() };
+      const previousExeLearning = globalThis.window.eXeLearning;
+
+      globalThis.window.eXeLearning = {
+        app: {
+          project: {
+            _yjsBridge: {
+              assetManager: fallbackManager,
+            },
+          },
+        },
+      };
+
+      expect(recorder.resolveAssetManager(explicitManager)).toBe(explicitManager);
+      expect(recorder.resolveAssetManager(null)).toBe(fallbackManager);
+
+      globalThis.window.eXeLearning = previousExeLearning;
+    });
+
+    it('resolveAssetManager returns null when no manager is available', () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const previousExeLearning = globalThis.window.eXeLearning;
+
+      delete globalThis.window.eXeLearning;
+      expect(recorder.resolveAssetManager(null)).toBeNull();
+
+      globalThis.window.eXeLearning = previousExeLearning;
+    });
+
     it('sanitizeFileNameBase generates default and removes invalid chars', () => {
       const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
 
-      expect(recorder.sanitizeFileNameBase('')).toMatch(/^grabacion-\d{8}-\d{6}$/);
+      expect(recorder.sanitizeFileNameBase('')).toMatch(/^audio-rec-\d{8}-\d{6}$/);
       expect(recorder.sanitizeFileNameBase('casa.mp3')).toBe('casa');
       expect(recorder.sanitizeFileNameBase(' Audio prueba: 1 / test ')).toBe('Audio-prueba-1-test');
     });
