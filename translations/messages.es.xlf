@@ -3631,7 +3631,7 @@
       </trans-unit>
       <trans-unit id="GVu.XTz" resname="No .json files found in the \'docs\' folder.">
         <source>No .json files found in the \'docs\' folder.</source>
-        <target>No se encuentra ningún fichero .json en la carpeta \'docs\'.</target>
+        <target>No se encuentra ningún archivo .json en la carpeta \'docs\'.</target>
       </trans-unit>
       <trans-unit id="3U32W5O" resname="No .json files found in the 'docs' folder.">
         <source>No .json files found in the 'docs' folder.</source>
@@ -4047,7 +4047,7 @@
       </trans-unit>
       <trans-unit id="qOmQIdj" resname="An error occurred while generating the file.">
         <source>An error occurred while generating the file.</source>
-        <target>Se ha producido un error al generar el fichero.</target>
+        <target>Se ha producido un error al generar el archivo.</target>
       </trans-unit>
       <trans-unit id="swQ_hb0" resname="Save as">
         <source>Save as</source>
@@ -4427,7 +4427,7 @@
       </trans-unit>
       <trans-unit id="COSKxUW" resname="An error occurred while saving the file: ${response.responseMessage}">
         <source>An error occurred while saving the file: ${response.responseMessage}</source>
-        <target>Se ha producido un error al guardar el fichero: ${response.responseMessage}</target>
+        <target>Se ha producido un error al guardar el archivo: ${response.responseMessage}</target>
       </trans-unit>
       <trans-unit id="Dpz4_Qq" resname="Error saving">
         <source>Error saving</source>
@@ -8903,7 +8903,7 @@
       </trans-unit>
       <trans-unit id="ojpSm9R" resname="Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)">
         <source>Use a YouTube URL or select a file (mp4, ogg, webm, mp3, wav)</source>
-        <target>Usa una URL de YouTube o selecciona un fichero (mp4, ogg, webm, mp3, wav)</target>
+        <target>Usa una URL de YouTube o selecciona un archivo (mp4, ogg, webm, mp3, wav)</target>
       </trans-unit>
       <trans-unit id="v5lFr7s" resname="Create activities consisting on a video with interactive questions.">
         <source>Create activities consisting on a video with interactive questions.</source>
@@ -11391,7 +11391,7 @@
       </trans-unit>
       <trans-unit id="6uaf2P2" resname="Unable to extract zip file">
         <source>Unable to extract zip file</source>
-        <target>No se puede extraer el contenido del fichero zip</target>
+        <target>No se puede extraer el contenido del archivo zip</target>
       </trans-unit>
       <trans-unit id="1ycWOfa" resname="The iDevice is not valid">
         <source>The iDevice is not valid</source>
@@ -13073,7 +13073,7 @@
       </trans-unit>
       <trans-unit id="q1mfi1a" resname="eXeLearning content (.elpx)">
         <source>eXeLearning content (.elpx)</source>
-        <target>Fichero de eXeLearning (.elpx)</target>
+        <target>Archivo de eXeLearning (.elpx)</target>
       </trans-unit>
       <trans-unit id="l0zhbcx" resname="Project Properties">
         <source>Project Properties</source>
