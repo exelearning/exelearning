@@ -1284,6 +1284,33 @@ describe('BaseExporter', () => {
 
                 expect(result).toBe('<a href="html/about.html">About</a>');
             });
+
+            it('should preserve anchor fragment from index page', () => {
+                const pageUrlMap = new Map([['page-2', { url: 'html/about.html', urlFromSubpage: 'about.html' }]]);
+
+                const content = '<a href="exe-node:page-2#section1">About Section 1</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+                expect(result).toBe('<a href="html/about.html#section1">About Section 1</a>');
+            });
+
+            it('should preserve anchor fragment from subpage', () => {
+                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
+
+                const content = '<a href="exe-node:page-1#intro">Go to Intro</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, false);
+
+                expect(result).toBe('<a href="../index.html#intro">Go to Intro</a>');
+            });
+
+            it('should leave anchor fragment link unchanged when page not found', () => {
+                const pageUrlMap = new Map([['page-1', { url: 'index.html', urlFromSubpage: '../index.html' }]]);
+
+                const content = '<a href="exe-node:unknown-page#section">Unknown</a>';
+                const result = (exporter as any).replaceInternalLinks(content, pageUrlMap, true);
+
+                expect(result).toBe('<a href="exe-node:unknown-page#section">Unknown</a>');
+            });
         });
     });
 

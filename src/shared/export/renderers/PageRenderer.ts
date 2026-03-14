@@ -995,7 +995,7 @@ ${userFooterHtml}</div></footer>`;
             allContentParts.push(this.collectPageContent(page));
 
             // Single-page sections use main-header > page-header structure for CSS compatibility
-            contentHtml += `<section>
+            contentHtml += `<section id="section-${page.id}">
 <header class="main-header">
 <div class="page-header">
 <h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1>
