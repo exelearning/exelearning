@@ -2274,6 +2274,93 @@ class YjsProjectBridge {
   }
 
   /**
+   * Extract anchor IDs from all components in a Yjs page map.
+   * Finds <a id="..."> and <a name="..."> elements (without href, i.e. anchor bookmarks).
+   *
+   * @param {Y.Map} pageMap - Yjs page map
+   * @param {HTMLElement} tempDiv - Reusable temporary div for HTML parsing
+   * @returns {string[]} - Array of unique anchor IDs found on the page
+   */
+  _extractAnchorsFromPageMap(pageMap, tempDiv) {
+    const anchors = [];
+    const blocks = pageMap.get('blocks');
+    if (!blocks) return anchors;
+
+    for (let j = 0; j < blocks.length; j++) {
+      const blockMap = blocks.get(j);
+      const components = blockMap.get('components');
+      if (!components) continue;
+
+      for (let k = 0; k < components.length; k++) {
+        const compMap = components.get(k);
+        const htmlContent = compMap.get('htmlContent');
+        if (!htmlContent) continue;
+
+        const html = typeof htmlContent === 'string' ? htmlContent : (htmlContent.toString?.() || '');
+        if (!html || !html.includes('<a')) continue;
+
+        tempDiv.innerHTML = html;
+        tempDiv.querySelectorAll('a[id], a[name]').forEach((a) => {
+          const id = a.id || a.getAttribute('name');
+          if (id && !a.hasAttribute('href') && !anchors.includes(id)) anchors.push(id);
+        });
+      }
+    }
+
+    return anchors;
+  }
+
+  /**
+   * Get all named anchors from a single page's Yjs content.
+   * Used by the exelink dialog to find same-page anchors in other components.
+   *
+   * @param {string} pageId - The page to scan
+   * @returns {string[]} - Array of anchor IDs found on the page
+   */
+  getPageAnchors(pageId) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation || !pageId) return [];
+
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const id = pageMap.get('id') || pageMap.get('pageId');
+      if (id === pageId) return this._extractAnchorsFromPageMap(pageMap, tempDiv);
+    }
+
+    return [];
+  }
+
+  /**
+   * Get all named anchors from all pages except an optional excluded page.
+   * Used by the exelink dialog to populate cross-page anchor links (exe-node:pageId#anchorName).
+   *
+   * @param {string} [excludePageId] - Page ID to exclude (typically the currently edited page)
+   * @returns {Array<{pageId: string, pageName: string, anchors: string[]}>}
+   */
+  getAllPageAnchors(excludePageId = null) {
+    const navigation = this.documentManager?.getNavigation?.();
+    if (!navigation) return [];
+
+    const result = [];
+    const tempDiv = document.createElement('div');
+
+    for (let i = 0; i < navigation.length; i++) {
+      const pageMap = navigation.get(i);
+      const pageId = pageMap.get('id') || pageMap.get('pageId');
+      const pageName = pageMap.get('pageName') || '';
+
+      if (!pageId || pageId === 'root' || pageId === excludePageId) continue;
+
+      const anchors = this._extractAnchorsFromPageMap(pageMap, tempDiv);
+      if (anchors.length > 0) result.push({ pageId, pageName, anchors });
+    }
+
+    return result;
+  }
+
+  /**
    * Update page properties
    * @param {string} pageId - Page ID
    * @param {Object} props - Properties to update
