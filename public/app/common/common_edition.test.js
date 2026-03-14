@@ -1424,6 +1424,54 @@ describe('common_edition.js', () => {
       expect(document.querySelector('.exe-voice-recorder-toggle')).toBeNull();
     });
 
+    it('starts recording after modal is shown (deferred start)', async () => {
+      const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
+      const stream = { getTracks: () => [{ stop: vi.fn() }] };
+      const startMock = vi.fn();
+
+      globalThis.navigator.mediaDevices = {
+        getUserMedia: vi.fn().mockResolvedValue(stream),
+      };
+
+      globalThis.MediaRecorder = class {
+        static isTypeSupported(type) {
+          return type.indexOf('audio/webm') === 0;
+        }
+        constructor() {
+          this.mimeType = 'audio/webm';
+          this.state = 'inactive';
+        }
+        start() {
+          this.state = 'recording';
+          startMock();
+        }
+        stop() {
+          this.state = 'inactive';
+        }
+      };
+
+      document.body.innerHTML = `
+        <div id="voice-container" data-voice-recorder data-voice-input="#audioInput">
+          <input id="audioInput" type="text" class="exe-file-picker" />
+          <input type="button" class="exe-pick-any-file" value="Select a file" />
+        </div>
+      `;
+
+      recorder.initVoiceRecorders(document.body, { insertImage: vi.fn() });
+
+      const toggle = document.querySelector('.exe-voice-recorder-toggle');
+      toggle.click();
+
+      await Promise.resolve();
+      expect(startMock).not.toHaveBeenCalled();
+
+      await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
+      expect(startMock).toHaveBeenCalledTimes(1);
+
+      const cleanup = $('#voice-container').data('voiceRecorderCleanup');
+      if (typeof cleanup === 'function') cleanup();
+    });
+
     it('records and saves audio with AssetManager.insertImage', async () => {
       const recorder = globalThis.$exeDevicesEdition.iDevice.voiceRecorder;
       const stopTrackMock = vi.fn();
@@ -1475,6 +1523,7 @@ describe('common_edition.js', () => {
 
       toggle.click();
       await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, recorder.startDelayMs + 25));
 
       const stopBtn = document.querySelector('.exe-voice-recorder-stop');
       stopBtn.click();

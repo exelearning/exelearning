@@ -1344,6 +1344,7 @@ var $exeDevicesEdition = {
         },
         voiceRecorder: {
             maxDurationMs: 120000,
+            startDelayMs: 80,
             styleId: 'exe-voice-recorder-styles',
             instances: [],
             _cleanupBound: false,
@@ -1700,11 +1701,13 @@ var $exeDevicesEdition = {
                     blobUrl: '',
                     timerId: null,
                     maxTimerId: null,
+                    startTimerId: null,
                     seconds: 0,
                     uploaded: false,
                     lastFocused: null,
                     mimeType: this.getPreferredMimeType(),
                     modalOpen: false,
+                    recordingStarted: false,
                     suggestedName: '',
                 };
 
@@ -1787,8 +1790,10 @@ var $exeDevicesEdition = {
                 function clearTimers() {
                     if (state.timerId) clearInterval(state.timerId);
                     if (state.maxTimerId) clearTimeout(state.maxTimerId);
+                    if (state.startTimerId) clearTimeout(state.startTimerId);
                     state.timerId = null;
                     state.maxTimerId = null;
+                    state.startTimerId = null;
                 }
 
                 function showError(message, forModal) {
@@ -1807,6 +1812,7 @@ var $exeDevicesEdition = {
 
                 function setIdleState() {
                     clearTimers();
+                    state.recordingStarted = false;
                     state.seconds = 0;
                     updateModalTime();
                     $toggle.removeClass('recording').prop('disabled', false);
@@ -1823,6 +1829,43 @@ var $exeDevicesEdition = {
                     openModal();
                     updateModalTime();
                     showError('', false);
+                }
+
+                function beginRecording() {
+                    if (!state.recorder || state.recordingStarted) return;
+                    if (!state.modalOpen) return;
+
+                    state.recordingStarted = true;
+                    state.seconds = 0;
+                    updateModalTime();
+
+                    state.timerId = setInterval(function () {
+                        state.seconds += 1;
+                        updateModalTime();
+                    }, 1000);
+
+                    state.maxTimerId = setTimeout(function () {
+                        stopRecording();
+                    }, self.maxDurationMs);
+
+                    state.recorder.start(200);
+                }
+
+                function scheduleRecordingStart() {
+                    if (state.startTimerId) {
+                        clearTimeout(state.startTimerId);
+                        state.startTimerId = null;
+                    }
+
+                    if (modalApi) {
+                        $modal.one('shown.bs.modal', function () {
+                            beginRecording();
+                        });
+                    }
+
+                    state.startTimerId = setTimeout(function () {
+                        beginRecording();
+                    }, self.startDelayMs);
                 }
 
                 function setUploadingState(uploading) {
@@ -1868,24 +1911,15 @@ var $exeDevicesEdition = {
                         state.recorder.onstop = function () {
                             clearTimers();
                             stopStream();
+                            state.recordingStarted = false;
                             var outputType = state.recorder.mimeType || state.mimeType || 'audio/webm';
                             state.blob = new Blob(state.chunks, { type: outputType });
                             state.blobUrl = URL.createObjectURL(state.blob);
                             openConfirmationModal();
                         };
 
-                        state.seconds = 0;
-                        updateModalTime();
-                        state.timerId = setInterval(function () {
-                            state.seconds += 1;
-                            updateModalTime();
-                        }, 1000);
-                        state.maxTimerId = setTimeout(function () {
-                            stopRecording();
-                        }, self.maxDurationMs);
-
                         setRecordingState();
-                        state.recorder.start(200);
+                        scheduleRecordingStart();
                     } catch (error) {
                         stopStream();
                         setIdleState();
@@ -1897,6 +1931,8 @@ var $exeDevicesEdition = {
                     if (!state.recorder) return;
                     if (state.recorder.state === 'recording') {
                         state.recorder.stop();
+                    } else if (!state.recordingStarted && state.modalOpen) {
+                        discardRecording(true);
                     }
                 }
 
