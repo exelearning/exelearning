@@ -410,6 +410,9 @@ export class ElpxImporter {
             idRemap.size,
         );
 
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, idRemap);
+
         // Phase 3: Importing structure (50-80%)
         this.reportProgress('structure', 50, 'Importing structure...');
 
@@ -629,6 +632,9 @@ export class ElpxImporter {
 
             pageStructures.push(pageData);
         }
+
+        // Remap exe-node: internal links to new page IDs
+        this.remapInternalPageLinks(pageStructures, pageIdRemap);
 
         return pageStructures;
     }
@@ -1283,6 +1289,37 @@ export class ElpxImporter {
 
         this.logger.warn('[ElpxImporter] No odeNavStructure elements found');
         return [];
+    }
+
+    /**
+     * Remap exe-node: internal links in all component htmlView fields after page IDs have been reassigned.
+     *
+     * When importing an ELP/ELPX, every page receives a new unique ID. Any existing
+     * href="exe-node:oldPageId[#anchor]" links inside iDevice HTML content still reference
+     * the old IDs, so they must be updated using the idRemap built during import.
+     *
+     * @param pageStructures - Flat list of imported pages (with new IDs already set)
+     * @param idRemap - Map of originalPageId → newPageId
+     */
+    private remapInternalPageLinks(pageStructures: PageData[], idRemap: Map<string, string>): void {
+        if (idRemap.size === 0) return;
+
+        // Build regex that matches any of the old page IDs
+        const escapedIds = Array.from(idRemap.keys()).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const pattern = new RegExp(`(exe-node:)(${escapedIds.join('|')})(#[^"'\\s]*)?`, 'g');
+
+        for (const page of pageStructures) {
+            for (const block of page.blocks) {
+                for (const comp of block.components) {
+                    if (comp.htmlView?.includes('exe-node:')) {
+                        comp.htmlView = comp.htmlView.replace(pattern, (_m, prefix, oldId, fragment) => {
+                            const newId = idRemap.get(oldId) ?? oldId;
+                            return `${prefix}${newId}${fragment ?? ''}`;
+                        });
+                    }
+                }
+            }
+        }
     }
 
     /**

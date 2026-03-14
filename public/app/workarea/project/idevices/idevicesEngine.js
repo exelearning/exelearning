@@ -2589,39 +2589,43 @@ export default class IdevicesEngine {
      *
      */
     enableInternalLinks() {
-        let eXeNodeLinks = document.querySelectorAll("a[href^='exe-node']");
-        if (eXeNodeLinks.length > 0) {
-            let pages = eXeLearning.app.project.structure.data;
-            let buttonsPages = document.querySelectorAll('.nav-element-text');
+        const eXeNodeLinks = document.querySelectorAll("a[href^='exe-node:']");
+        if (eXeNodeLinks.length === 0) return;
 
-            eXeNodeLinks.forEach((link) => {
-                let pageElement = null;
-                let pageName = 'nopage';
-                let pageId = link.href.replace('exe-node:', '');
+        const self = this;
+        eXeNodeLinks.forEach((link) => {
+            // Use getAttribute for reliable custom-protocol handling
+            const href = link.getAttribute('href') || '';
+            const withoutProtocol = href.replace(/^exe-node:/, '');
+            const hashIdx = withoutProtocol.indexOf('#');
+            const pageId = hashIdx !== -1 ? withoutProtocol.substring(0, hashIdx) : withoutProtocol;
+            const anchorId = hashIdx !== -1 ? withoutProtocol.substring(hashIdx + 1) : null;
 
-                pages.forEach((page) => {
-                    if (page.pageId === pageId) {
-                        pageName = page.pageName;
+            // Navigate directly by nav-id (reliable, no pageName matching needed)
+            const navElement = document.querySelector(`.nav-element[nav-id="${pageId}"]`);
+            if (navElement) {
+                link.onclick = async function (event) {
+                    event.preventDefault();
+                    // Navigate to target page via selectNode and wait for content to load
+                    const behaviour = self.project.app.project.structure.menuStructureBehaviour;
+                    if (behaviour) {
+                        await behaviour.selectNode(navElement);
                     }
-                });
-
-                buttonsPages.forEach((button) => {
-                    if (
-                        button.className == 'nav-element-text' &&
-                        button.innerText == pageName
-                    ) {
-                        pageElement = button;
+                    if (anchorId) {
+                        // Content is fully loaded after selectNode resolves.
+                        // Use requestAnimationFrame to ensure the DOM is painted
+                        // before scrolling to the anchor.
+                        requestAnimationFrame(() => {
+                            const target = document.getElementById(anchorId)
+                                || document.querySelector(`[name="${anchorId}"]`);
+                            if (target) {
+                                target.scrollIntoView({ behavior: 'smooth' });
+                            }
+                        });
                     }
-                });
-
-                if (pageElement) {
-                    link.onclick = function (event) {
-                        event.preventDefault();
-                        pageElement.click();
-                    };
-                }
-            });
-        }
+                };
+            }
+        });
     }
 
     /**

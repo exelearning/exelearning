@@ -452,6 +452,116 @@ describe('ElpxImporter', () => {
 
             ydoc.destroy();
         });
+
+        it('should remap exe-node: internal links in legacy import htmlView', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-1',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-2#section1">Link to page 2</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-2',
+                    title: 'Second',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            // The new page-2 ID should not be 'page-2'
+            const newPage2Id = pageStructures[1].id;
+            expect(newPage2Id).not.toBe('page-2');
+
+            // The link in page-1's component should reference the new ID
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage2Id}#section1`);
+            expect(htmlView).not.toContain('exe-node:page-2');
+
+            ydoc.destroy();
+        });
+
+        it('should remap exe-node: links without anchor fragment in legacy import', () => {
+            const ydoc = new Y.Doc();
+            const importer = new ElpxImporter(ydoc, null, silentLogger);
+
+            const legacyPages = [
+                {
+                    id: 'page-10',
+                    title: 'Home',
+                    parent_id: null,
+                    position: 0,
+                    blocks: [
+                        {
+                            id: 'block-1',
+                            name: 'Main',
+                            iconName: 'text',
+                            position: 0,
+                            blockProperties: {},
+                            idevices: [
+                                {
+                                    id: 'idevice-1',
+                                    type: 'text',
+                                    title: 'Text',
+                                    icon: 'text',
+                                    position: 0,
+                                    htmlView: '<p><a href="exe-node:page-20">Link to page 20</a></p>',
+                                    feedbackHtml: '',
+                                    feedbackButton: '',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+                {
+                    id: 'page-20',
+                    title: 'Target',
+                    parent_id: null,
+                    position: 1,
+                    blocks: [],
+                },
+            ] as any;
+
+            const pageStructures = (importer as any).convertLegacyPagesToPageData(legacyPages, null, 0);
+
+            const newPage20Id = pageStructures[1].id;
+            expect(newPage20Id).not.toBe('page-20');
+
+            const htmlView = pageStructures[0].blocks[0].components[0].htmlView;
+            expect(htmlView).toContain(`exe-node:${newPage20Id}`);
+            expect(htmlView).not.toContain('exe-node:page-20');
+
+            ydoc.destroy();
+        });
     });
 });
 
@@ -1589,5 +1699,148 @@ describe('FileSystemAssetHandler', () => {
 
             expect(result).toBe(html);
         });
+    });
+});
+
+describe('ElpxImporter - exe-node link remapping on import', () => {
+    let testDir: string;
+
+    beforeEach(() => {
+        testDir = path.join('/tmp', `elp-anchor-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+        if (!existsSync(testDir)) {
+            mkdirSync(testDir, { recursive: true });
+        }
+    });
+
+    afterEach(() => {
+        if (existsSync(testDir)) {
+            rmSync(testDir, { recursive: true, force: true });
+        }
+    });
+
+    it('should remap exe-node: cross-page anchor links when importing anchors.zip', async () => {
+        const elpPath = path.join(process.cwd(), 'test/fixtures/anchors.zip');
+        const elpBuffer = await fs.readFile(elpPath);
+
+        const ydoc = new Y.Doc();
+        const assetHandler = new FileSystemAssetHandler(testDir);
+        const importer = new ElpxImporter(ydoc, assetHandler, silentLogger);
+
+        await importer.importFromBuffer(new Uint8Array(elpBuffer));
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(3); // aaa, bbb, ccc
+
+        // Collect new page IDs and the HTML content of components
+        const newPageIds: string[] = [];
+        const allHtmlContent: string[] = [];
+
+        for (let i = 0; i < navigation.length; i++) {
+            const page = navigation.get(i) as Y.Map<unknown>;
+            newPageIds.push((page.get('id') as string) || (page.get('pageId') as string));
+
+            const blocks = page.get('blocks') as Y.Array<unknown>;
+            for (let j = 0; j < (blocks?.length ?? 0); j++) {
+                const block = blocks.get(j) as Y.Map<unknown>;
+                const components = block.get('components') as Y.Array<unknown>;
+                for (let k = 0; k < (components?.length ?? 0); k++) {
+                    const comp = components.get(k) as Y.Map<unknown>;
+                    const html = comp.get('htmlView') as string;
+                    if (html) allHtmlContent.push(html);
+                }
+            }
+        }
+
+        // The original IDs from anchors.zip should NOT appear in any content
+        const originalIds = [
+            '4576a60f-11d1-4414-88f7-6df2d6aaece0',
+            'page-1771919082417-f0hpww2cx',
+            'page-1771919084984-kxe6oqn9a',
+        ];
+
+        const combinedHtml = allHtmlContent.join('\n');
+
+        for (const origId of originalIds) {
+            expect(combinedHtml).not.toContain(`exe-node:${origId}`);
+        }
+
+        // At least one of the new page IDs should be referenced in the HTML
+        const hasRemappedLink = newPageIds.some(id => combinedHtml.includes(`exe-node:${id}`));
+        expect(hasRemappedLink).toBe(true);
+
+        ydoc.destroy();
+    });
+
+    it('should preserve anchor fragments when remapping exe-node: links', async () => {
+        const fflate = await import('fflate');
+        const encoder = new TextEncoder();
+
+        // Build a minimal ELP with two pages where page 1 links to page 2 with an anchor
+        const contentXml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE ode SYSTEM "content.dtd">
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeProperties>
+  <odeProperty><key>pp_title</key><value>Anchor Test</value></odeProperty>
+  <odeProperty><key>pp_lang</key><value>en</value></odeProperty>
+  <odeProperty><key>pp_theme</key><value>base</value></odeProperty>
+</odeProperties>
+<odeNavStructures>
+<odeNavStructure>
+  <odePageId>original-page-aaa</odePageId>
+  <pageName>Page A</pageName>
+  <odeNavStructureOrder>0</odeNavStructureOrder>
+  <odePagStructures>
+    <odePagStructure>
+      <odeBlockId>block-aaa-1</odeBlockId>
+      <blockName>Text</blockName>
+      <odeBlockOrder>0</odeBlockOrder>
+      <odeComponents>
+        <odeComponent>
+          <odeIdeviceId>comp-aaa-1</odeIdeviceId>
+          <odeIdeviceTypeName>text</odeIdeviceTypeName>
+          <odeComponentOrder>0</odeComponentOrder>
+          <htmlView><![CDATA[<p><a href="exe-node:original-page-bbb#my-anchor">Link with anchor</a></p>]]></htmlView>
+        </odeComponent>
+      </odeComponents>
+    </odePagStructure>
+  </odePagStructures>
+</odeNavStructure>
+<odeNavStructure>
+  <odePageId>original-page-bbb</odePageId>
+  <odeParentPageId>original-page-aaa</odeParentPageId>
+  <pageName>Page B</pageName>
+  <odeNavStructureOrder>1</odeNavStructureOrder>
+</odeNavStructure>
+</odeNavStructures>
+</ode>`;
+
+        const zipData = fflate.zipSync({
+            'content.xml': encoder.encode(contentXml),
+        });
+
+        const ydoc = new Y.Doc();
+        const importer = new ElpxImporter(ydoc, null, silentLogger);
+        await importer.importFromBuffer(zipData);
+
+        const navigation = ydoc.getArray('navigation');
+        expect(navigation.length).toBe(2);
+
+        const pageB = navigation.get(1) as Y.Map<unknown>;
+        const newPageBId = (pageB.get('id') ?? pageB.get('pageId')) as string;
+        expect(newPageBId).not.toBe('original-page-bbb');
+
+        // Get the component HTML from page A
+        const pageA = navigation.get(0) as Y.Map<unknown>;
+        const blocks = pageA.get('blocks') as Y.Array<unknown>;
+        const block = blocks.get(0) as Y.Map<unknown>;
+        const components = block.get('components') as Y.Array<unknown>;
+        const comp = components.get(0) as Y.Map<unknown>;
+        const html = comp.get('htmlView') as string;
+
+        // Link must use new page ID and preserve the fragment
+        expect(html).toContain(`exe-node:${newPageBId}#my-anchor`);
+        expect(html).not.toContain('exe-node:original-page-bbb');
+
+        ydoc.destroy();
     });
 });

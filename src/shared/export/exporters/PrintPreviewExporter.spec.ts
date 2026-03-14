@@ -145,9 +145,9 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('exe-export');
         });
 
-        it('should render page sections', async () => {
+        it('should render page sections with id attributes', async () => {
             const result = await exporter.generatePreview();
-            expect(result.html).toContain('<section>');
+            expect(result.html).toContain('<section id="section-');
         });
 
         it('should include all page content visible at once', async () => {

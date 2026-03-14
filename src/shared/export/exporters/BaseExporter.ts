@@ -729,13 +729,18 @@ export abstract class BaseExporter {
             return content;
         }
 
-        // Replace href="exe-node:pageId" with actual page URLs
-        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageId) => {
+        // Replace href="exe-node:pageId" or href="exe-node:pageId#anchor" with actual page URLs
+        return content.replace(/href=["']exe-node:([^"']+)["']/gi, (match, pageIdWithAnchor) => {
+            // Split pageId from optional anchor fragment (e.g. "pageId#section1")
+            const hashIdx = pageIdWithAnchor.indexOf('#');
+            const pageId = hashIdx !== -1 ? pageIdWithAnchor.substring(0, hashIdx) : pageIdWithAnchor;
+            const anchorFragment = hashIdx !== -1 ? pageIdWithAnchor.substring(hashIdx) : '';
+
             const pageUrls = pageUrlMap.get(pageId);
             if (pageUrls) {
                 // Use the appropriate URL based on whether we're on index or subpage
                 const url = isFromIndex ? pageUrls.url : pageUrls.urlFromSubpage;
-                return `href="${url}"`;
+                return `href="${url}${anchorFragment}"`;
             }
             // If page not found, leave the link unchanged (might be an external link or error)
             console.warn(`[BaseExporter] Internal link target not found: ${pageId}`);

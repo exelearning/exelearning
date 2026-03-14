@@ -6245,4 +6245,311 @@ describe('YjsProjectBridge', () => {
       expect(() => bridge.clearMetadataForNewProject()).not.toThrow();
     });
   });
+
+  describe('_extractAnchorsFromPageMap', () => {
+    let tempDiv;
+
+    beforeEach(() => {
+      // Use the real DOM (originalDocument) because the outer beforeEach mocks global.document
+      // with a stub whose querySelectorAll always returns [].
+      tempDiv = originalDocument.createElement('div');
+    });
+
+    it('returns empty array when blocks is missing', () => {
+      const pageMap = { get: () => null };
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('returns empty array when no anchor elements found', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>No anchors here</p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('extracts anchor id from <a id="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<p>Text <a id="myanchor">link</a></p>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['myanchor']);
+    });
+
+    it('extracts anchor name from <a name="..."> without href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a name="section1"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['section1']);
+    });
+
+    it('ignores <a> elements that have href', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="linked" href="#target">link</a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('deduplicates anchors with same id', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="dup"></a>' : null };
+      const block = {
+        get: (key) => key === 'components' ? {
+          length: 2,
+          get: (i) => i === 0 ? compMap1 : compMap2,
+        } : null,
+      };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['dup']);
+    });
+
+    it('skips components without htmlContent', () => {
+      const compMap = { get: () => null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('skips blocks without components', () => {
+      const block = { get: () => null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual([]);
+    });
+
+    it('handles htmlContent as object with toString', () => {
+      const htmlObj = { toString: () => '<a id="anchor1"></a>' };
+      const compMap = { get: (key) => key === 'htmlContent' ? htmlObj : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = { get: (key) => key === 'blocks' ? { length: 1, get: () => block } : null };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['anchor1']);
+    });
+
+    it('collects anchors from multiple blocks and components', () => {
+      const compMap1 = { get: (key) => key === 'htmlContent' ? '<a id="first"></a>' : null };
+      const compMap2 = { get: (key) => key === 'htmlContent' ? '<a id="second"></a>' : null };
+      const block1 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap1 } : null };
+      const block2 = { get: (key) => key === 'components' ? { length: 1, get: () => compMap2 } : null };
+      const pageMap = {
+        get: (key) => key === 'blocks' ? {
+          length: 2,
+          get: (i) => i === 0 ? block1 : block2,
+        } : null,
+      };
+
+      expect(bridge._extractAnchorsFromPageMap(pageMap, tempDiv)).toEqual(['first', 'second']);
+    });
+  });
+
+  describe('getPageAnchors', () => {
+    beforeEach(() => {
+      // getPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns empty array when pageId is empty', () => {
+      bridge.documentManager = { getNavigation: () => ({ length: 0 }) };
+      expect(bridge.getPageAnchors('')).toEqual([]);
+    });
+
+    it('returns empty array when page is not found', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'other-page' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns anchors from matching page', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="top"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-1')).toEqual(['top']);
+    });
+
+    it('uses pageId as fallback key', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="section"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return undefined;
+          if (key === 'pageId') return 'page-2';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getPageAnchors('page-2')).toEqual(['section']);
+    });
+  });
+
+  describe('getAllPageAnchors', () => {
+    beforeEach(() => {
+      // getAllPageAnchors calls document.createElement('div') internally; override the mock
+      // to return a real DOM element so querySelectorAll works correctly.
+      global.document = { ...global.document, createElement: mock(() => originalDocument.createElement('div')) };
+    });
+
+    it('returns empty array when documentManager is missing', () => {
+      bridge.documentManager = null;
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('returns empty array when navigation is null', () => {
+      bridge.documentManager = { getNavigation: () => null };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips pages with no id', () => {
+      const pageMap = { get: () => null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips root page', () => {
+      const pageMap = { get: (key) => key === 'id' ? 'root' : null };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+      expect(bridge.getAllPageAnchors()).toEqual([]);
+    });
+
+    it('skips excludePageId', () => {
+      const compMap = { get: (key) => key === 'htmlContent' ? '<a id="anch"></a>' : null };
+      const block = { get: (key) => key === 'components' ? { length: 1, get: () => compMap } : null };
+      const pageMap = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page 1';
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      };
+      bridge.documentManager = {
+        getNavigation: () => ({ length: 1, get: () => pageMap }),
+      };
+
+      expect(bridge.getAllPageAnchors('page-1')).toEqual([]);
+    });
+
+    it('returns pages with anchors, excluding those with no anchors', () => {
+      const compMapWithAnchor = { get: (key) => key === 'htmlContent' ? '<a id="sec1"></a>' : null };
+      const compMapNoAnchor = { get: (key) => key === 'htmlContent' ? '<p>no anchor</p>' : null };
+      const blockWithAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapWithAnchor } : null };
+      const blockNoAnchor = { get: (key) => key === 'components' ? { length: 1, get: () => compMapNoAnchor } : null };
+
+      const page1 = {
+        get: (key) => {
+          if (key === 'id') return 'page-1';
+          if (key === 'pageName') return 'Page One';
+          if (key === 'blocks') return { length: 1, get: () => blockWithAnchor };
+          return null;
+        },
+      };
+      const page2 = {
+        get: (key) => {
+          if (key === 'id') return 'page-2';
+          if (key === 'pageName') return 'Page Two';
+          if (key === 'blocks') return { length: 1, get: () => blockNoAnchor };
+          return null;
+        },
+      };
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toEqual([{ pageId: 'page-1', pageName: 'Page One', anchors: ['sec1'] }]);
+    });
+
+    it('collects anchors from multiple pages', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors();
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ pageId: 'p1', pageName: 'Page 1', anchors: ['a1'] });
+      expect(result[1]).toEqual({ pageId: 'p2', pageName: 'Page 2', anchors: ['a2'] });
+    });
+
+    it('excludes a specific page while including others', () => {
+      const makeComp = (html) => ({ get: (key) => key === 'htmlContent' ? html : null });
+      const makeBlock = (comp) => ({ get: (key) => key === 'components' ? { length: 1, get: () => comp } : null });
+      const makePage = (id, name, block) => ({
+        get: (key) => {
+          if (key === 'id') return id;
+          if (key === 'pageName') return name;
+          if (key === 'blocks') return { length: 1, get: () => block };
+          return null;
+        },
+      });
+
+      const page1 = makePage('p1', 'Page 1', makeBlock(makeComp('<a id="a1"></a>')));
+      const page2 = makePage('p2', 'Page 2', makeBlock(makeComp('<a id="a2"></a>')));
+
+      bridge.documentManager = {
+        getNavigation: () => ({
+          length: 2,
+          get: (i) => i === 0 ? page1 : page2,
+        }),
+      };
+
+      const result = bridge.getAllPageAnchors('p1');
+      expect(result).toHaveLength(1);
+      expect(result[0].pageId).toBe('p2');
+    });
+  });
 });
