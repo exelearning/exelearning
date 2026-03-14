@@ -301,6 +301,7 @@ var $eXeOrdena = {
 
         let $cards = $ordenaMultimedia.find('.ODNP-NewCard');
         $cards.css('cursor', 'default');
+        $cards.removeClass('ODNP-HeaderCard');
         let $activeCard = $cards;
 
         if (mOptions.orderedColumns) {
@@ -318,7 +319,7 @@ var $eXeOrdena = {
                     parseInt(child.data('order'), 10) < mOptions.gameColumns
                 );
             });
-            $header.css({ border: '2px solid #555555' });
+            $header.addClass('ODNP-HeaderCard');
         }
         $activeCard.css('cursor', 'pointer');
         if (num > 0) {
@@ -1159,7 +1160,7 @@ var $eXeOrdena = {
                 response = $eXeOrdena.checkPhraseText(instance);
             } else {
                 response =
-                    mOptions.columns > 1 && mOptions.orderedColumns
+                    mOptions.gameColumns > 1 && mOptions.orderedColumns
                         ? $eXeOrdena.checkPhraseColumns(instance)
                         : $eXeOrdena.checkPhrase(instance);
             }
