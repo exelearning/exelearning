@@ -5161,6 +5161,49 @@ describe('window.simplifyMediaElements global function', () => {
     // Audio with direct src and no source children should not be modified by simplify
     expect(result).toContain('src="asset://uuid/audio.mp3"');
   });
+
+  it('simplifies video without mediaelement class but with source child', () => {
+    if (!simplifyMediaElementsFunc) return;
+    // This tests the new exe-video-with-source path (replaces :has(source) selector)
+    const input = '<video><source src="asset://uuid/video.mp4" type="video/mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('src="asset://uuid/video.mp4"');
+    expect(result).toContain('controls');
+    expect(result).not.toContain('<source');
+  });
+
+  it('does not include exe-video-with-source class in output', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement"><source src="asset://uuid/video.mp4" type="video/mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).not.toContain('exe-video-with-source');
+  });
+
+  it('does not include exe-audio-with-source class in output', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<audio><source src="asset://uuid/audio.mp3" type="audio/mpeg"></audio>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).not.toContain('exe-audio-with-source');
+  });
+
+  it('preserves extra custom class on video after simplification', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video class="mediaelement my-custom-class"><source src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    expect(result).toContain('my-custom-class');
+    expect(result).not.toContain('mediaelement');
+    expect(result).not.toContain('exe-video-with-source');
+  });
+
+  it('does not modify video with no source child and no mediaelement class', () => {
+    if (!simplifyMediaElementsFunc) return;
+    const input = '<video src="asset://uuid/video.mp4"></video>';
+    const result = simplifyMediaElementsFunc(input);
+    // Should pass through unchanged (no source child, no mediaelement class)
+    expect(result).toContain('src="asset://uuid/video.mp4"');
+    // Should not add controls (not processed by simplify)
+    expect(result).not.toContain('controls');
+  });
 });
 
 // =========================================================================
