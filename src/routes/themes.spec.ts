@@ -248,6 +248,168 @@ describe('Themes Routes', () => {
                 resetDependencies();
             }
         });
+
+        it('should respect downloadable=0 in config.xml for site themes', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
+
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'non-downloadable-theme',
+                        display_name: 'Non Downloadable Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (typeof p === 'string' && p.includes('non-downloadable-theme')) return true;
+                            return false;
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (
+                                typeof p === 'string' &&
+                                p.includes('non-downloadable-theme') &&
+                                p.includes('config.xml')
+                            ) {
+                                return '<theme><name>Non Downloadable Theme</name><downloadable>0</downloadable></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('non-downloadable-theme')) {
+                                return [] as fs.Dirent[];
+                            }
+                            return [] as fs.Dirent[];
+                        },
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
+
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'non-downloadable-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.downloadable).toBe('0');
+            } finally {
+                await resetClientCacheForTesting();
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
+        });
+
+        it('should default downloadable to 1 when not specified in config.xml for site themes', async () => {
+            const savedEnv = {
+                DB_DRIVER: process.env.DB_DRIVER,
+                DB_PATH: process.env.DB_PATH,
+                ELYSIA_FILES_DIR: process.env.ELYSIA_FILES_DIR,
+            };
+
+            try {
+                process.env.DB_DRIVER = 'pdo_sqlite';
+                process.env.DB_PATH = ':memory:';
+                process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
+
+                await resetClientCacheForTesting();
+                const dbInstance = getDb();
+                await migrateToLatest(dbInstance);
+
+                await dbInstance
+                    .insertInto('themes')
+                    .values({
+                        dir_name: 'no-flag-theme',
+                        display_name: 'No Flag Theme',
+                        is_builtin: 0,
+                        is_enabled: 1,
+                        is_default: 0,
+                        sort_order: 0,
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    })
+                    .execute();
+
+                configure({
+                    fs: {
+                        existsSync: (p: string) => {
+                            if (typeof p === 'string' && p.includes('no-flag-theme')) return true;
+                            return false;
+                        },
+                        readFileSync: (p: string, encoding?: BufferEncoding) => {
+                            if (typeof p === 'string' && p.includes('no-flag-theme') && p.includes('config.xml')) {
+                                return '<theme><name>No Flag Theme</name></theme>';
+                            }
+                            return fs.readFileSync(p, encoding);
+                        },
+                        readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
+                            if (typeof dirPath === 'string' && dirPath.includes('no-flag-theme')) {
+                                return [] as fs.Dirent[];
+                            }
+                            return [] as fs.Dirent[];
+                        },
+                    },
+                });
+                app = new Elysia().use(themesRoutes);
+
+                const res = await app.handle(new Request('http://localhost/api/themes/installed'));
+                const body = await res.json();
+
+                const siteTheme = body.themes.find((t: { dirName: string }) => t.dirName === 'no-flag-theme');
+                expect(siteTheme).toBeDefined();
+                expect(siteTheme.downloadable).toBe('1');
+            } finally {
+                await resetClientCacheForTesting();
+                if (savedEnv.DB_DRIVER !== undefined) {
+                    process.env.DB_DRIVER = savedEnv.DB_DRIVER;
+                } else {
+                    delete process.env.DB_DRIVER;
+                }
+                if (savedEnv.DB_PATH !== undefined) {
+                    process.env.DB_PATH = savedEnv.DB_PATH;
+                } else {
+                    delete process.env.DB_PATH;
+                }
+                if (savedEnv.ELYSIA_FILES_DIR !== undefined) {
+                    process.env.ELYSIA_FILES_DIR = savedEnv.ELYSIA_FILES_DIR;
+                } else {
+                    delete process.env.ELYSIA_FILES_DIR;
+                }
+                resetDependencies();
+            }
+        });
     });
 
     describe('GET /api/themes/installed/:themeId', () => {

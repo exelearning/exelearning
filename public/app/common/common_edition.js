@@ -823,13 +823,13 @@ var $exeDevicesEdition = {
                         $tabQuestions.trigger('click');
                         let prompt = $textPrompt.val();
                         if (!prompt || !prompt.trim()) {
-                            alert(_('There is no query to send to the assistant.'));
+                            eXe.app.alert(_('There is no query to send to the assistant.'));
                             return;
                         }
                         const encodedPrompt = encodeURIComponent(prompt.trim());
                         const baseUrl = $iaSelect.val();
                         if (!baseUrl) {
-                            alert(_('Please select an AI assistant.'));
+                            eXe.app.alert(_('Please select an AI assistant.'));
                             return;
                         }
                         const url = `${baseUrl}${encodedPrompt}`;
@@ -839,23 +839,23 @@ var $exeDevicesEdition = {
                     $saveButton.on('click', function () {
                         const content = $textQuestionsArea.val().trim();
                         if (!content) {
-                            alert(_("Please enter at least one question."));
+                            eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
                         const questions = $exeDevicesEdition.iDevice.gamification.share.validateAndSave(type, $textQuestionsArea);
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
+                            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert(_('The questions have been added successfully'));
+                            eXe.app.alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').trigger("click")
                         }
                     });
                     $iaButton.on('click', function () {
                         const content = $textAreaIa.val().trim();
                         if (!content) {
-                            alert(_("Please enter at least one question."));
+                            eXe.app.alert(_("Please enter at least one question."));
                             return;
                         }
 
@@ -863,9 +863,9 @@ var $exeDevicesEdition = {
 
                         saveQuestions(questions.validLines);
                         if (questions.invalidLines.length > 0) {
-                            alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
+                            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + questions.invalidLines.join('\n'));
                         } else {
-                            alert(_('The questions have been added successfully'));
+                            eXe.app.alert(_('The questions have been added successfully'));
                             //$('.exe-form-tabs li:first-child a').click();
                         }
                     });

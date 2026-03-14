@@ -381,6 +381,23 @@ describe('IdeviceNode', () => {
             expect(node.getAttribute('drag')).toBe('idevice');
         });
 
+        it('shows visibility indicator when visibility is false in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'false';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).not.toBeNull();
+            expect(indicator.querySelector('.exe-visibility-off-green-icon')).not.toBeNull();
+        });
+
+        it('does not show visibility indicator when visibility is true in edition mode', () => {
+            idevice.mode = 'edition';
+            idevice.properties.visibility.value = 'true';
+            const node = idevice.makeIdeviceContentNode(true);
+            const indicator = node.querySelector('.visibility-off-indicator');
+            expect(indicator).toBeNull();
+        });
+
         it('reuses existing element when newNode is false', () => {
             idevice.ideviceContent = document.createElement('div');
             idevice.ideviceContent.classList.add('old-class');

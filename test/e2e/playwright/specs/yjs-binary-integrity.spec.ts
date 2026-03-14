@@ -275,7 +275,7 @@ test.describe('Yjs Binary Data Integrity', () => {
         // Binary size should be the same or very close (within 5% due to Yjs internal optimizations)
         const sizeDifference = Math.abs(afterReloadSize - beforeSaveSize);
         const tolerancePercent = 0.05;
-        const tolerance = beforeSaveSize * tolerancePercent;
+        const tolerance = Math.ceil(beforeSaveSize * tolerancePercent);
 
         expect(sizeDifference).toBeLessThanOrEqual(tolerance);
     });

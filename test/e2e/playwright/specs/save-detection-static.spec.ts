@@ -57,15 +57,21 @@ test.describe('Save Detection - Static', () => {
         );
 
         await page.dispatchEvent('body', 'pointerdown');
-        await page.waitForFunction(() => typeof window.onbeforeunload === 'function', undefined, { timeout: 5000 });
+        // Wait for UnsavedChangesHelper to install its beforeunload listener
+        await page.waitForFunction(
+            () => (window as any).UnsavedChangesHelper?._beforeUnloadHandler != null,
+            undefined,
+            { timeout: 5000 },
+        );
 
+        // When clean, the listener should NOT set returnValue to ''
         const cleanResult = await page.evaluate(() => {
-            const evt = { preventDefault: () => {}, returnValue: undefined };
-            const handler = window.onbeforeunload;
-            const ret = handler ? handler(evt) : undefined;
-            return { ret, returnValue: evt.returnValue };
+            const evt = new Event('beforeunload', { cancelable: true }) as any;
+            window.dispatchEvent(evt);
+            return { returnValue: evt.returnValue, defaultPrevented: evt.defaultPrevented };
         });
-        expect(cleanResult.returnValue).toBeUndefined();
+        expect(cleanResult.returnValue).not.toBe('');
+        expect(cleanResult.defaultPrevented).toBe(false);
 
         await page.evaluate(() => {
             const bridge = (window as any).eXeLearning.app.project._yjsBridge;
@@ -74,13 +80,13 @@ test.describe('Save Detection - Static', () => {
         });
         await page.waitForTimeout(300);
 
+        // When dirty, the listener SHOULD prevent default (trigger "Leave site?" dialog)
         const dirtyResult = await page.evaluate(() => {
-            const evt = { preventDefault: () => {}, returnValue: undefined };
-            const handler = window.onbeforeunload;
-            const ret = handler ? handler(evt) : undefined;
-            return { ret, returnValue: evt.returnValue };
+            const evt = new Event('beforeunload', { cancelable: true }) as any;
+            window.dispatchEvent(evt);
+            return { defaultPrevented: evt.defaultPrevented };
         });
-        expect(dirtyResult.returnValue).toBe('');
+        expect(dirtyResult.defaultPrevented).toBe(true);
     });
 
     test('static opening ELPX starts clean and becomes dirty after changes', async ({ staticPage }) => {
