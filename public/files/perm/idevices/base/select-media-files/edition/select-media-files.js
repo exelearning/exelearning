@@ -437,11 +437,18 @@ var $exeDevice = {
         return Math.floor(Math.random() * Date.now());
     },
 
+    initVoiceRecorders: function (target) {
+        const recorder = $exeDevicesEdition?.iDevice?.voiceRecorder;
+        if (typeof recorder?.initVoiceRecorders === 'function') {
+            recorder.initVoiceRecorders(target);
+        }
+    },
+
     enableForm: function (field) {
         $exeDevice.initPhrases();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeDevice.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues(field);
         $exeDevice.addEvents();
@@ -576,7 +583,7 @@ var $exeDevice = {
         }
         const $card = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').last();
         $exeDevice.addEventCard($exeDevice.activeID);
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($card);
+        $exeDevice.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         return $card;
     },
@@ -585,7 +592,7 @@ var $exeDevice = {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
 
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($container);
+        $exeDevice.initVoiceRecorders($container);
 
         const filemanager = window.eXeLearning?.app?.modals?.filemanager;
 
