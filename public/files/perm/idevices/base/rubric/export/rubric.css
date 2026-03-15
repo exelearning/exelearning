@@ -8,6 +8,9 @@
   font-size: 0.9em;
   margin-bottom: 2em;
 }
+.exe-rubrics-text-after {
+  margin-top: 1.5em;
+}
 .exe-rubrics-strings {
   display: none !important;
 }

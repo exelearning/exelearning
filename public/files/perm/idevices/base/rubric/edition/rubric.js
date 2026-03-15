@@ -115,111 +115,141 @@ var $exeDevice = {
     ],
 
     init: function (element, previousData, path) {
-        //** eXeLearning idevice engine data ***************************
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
-        //**************************************************************
-        // Create the edition form (#ri_RubricsEditor)
-        // All the form will be created each time a default rubric is loaded or when editing an existing rubric
-        // The editable table and the "Rubric information" fieldset will be in #ri_RubricsEditor
-        // TODO: lightbox. target="_blank" at the moment.
-        var html =
-            '\
-      <div class="exe-info">' +
-            _(
-                'Complete the table to define a scoring guide. Define the score or value of each descriptor.'
-            ) +
-            ' <a href="https://youtu.be/T_QtGkH68EY?t=92" target="_blank" hreflang="es" rel="lightbox">' +
-            _('Learn how to apply a rubric') +
-            '</a>.</div>\
-      <div id="ri_RubricsEditor"></div>\
-      <div id="ri_PreviousContent"></div>\
-    ';
+        this.createForm();
+    },
+
+    createForm: function () {
+        const html = `
+            <div id="ri_IdeviceForm">
+                <p class="exe-block-info exe-block-dismissible">
+                    ${_('Complete the table to define a scoring guide. Define the score or value of each descriptor.')}
+                    <a href="https://youtu.be/T_QtGkH68EY?t=92" target="_blank" hreflang="es" rel="lightbox">${_('Learn how to apply a rubric')}</a>.
+                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
+                </p>
+                <div class="exe-form-tab" title="${_('General settings')}">
+                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the table to define a scoring guide. Define the score or value of each descriptor.'))}
+                    <fieldset class="exe-fieldset ">
+                        <legend><a href="#">${_('Rubric')}</a></legend>
+                        <div>
+                            <div id="ri_RubricsEditor"></div>
+                            <div id="ri_TableEditor"></div>
+                            <div id="ri_PreviousContent"></div>
+                        </div>
+                    </fieldset>
+                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                </div>
+                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, false)}
+            </div>
+        `;
         this.ideviceBody.innerHTML = html;
+        $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
+        this.resetForm();
+        this.loadPreviousValues();
+    },
 
-        // Get original data (the iDevice content) and put it in #ri_PreviousContent
+    loadPreviousValues: function () {
         var originalHTML = this.idevicePreviousData;
+        if (!originalHTML) return;
+
         $('#ri_PreviousContent').html(originalHTML);
-
-        // Save the content in a JSON object (the Rubric information won't be in it yet)
         var data = this.tableToJSON('ri_PreviousContent');
+        if (!data) return;
 
-        this.resetForm(true);
+        var block, tmp;
+        var div = $('#ri_PreviousContent');
 
-        if (data) {
-            var block, tmp;
+        // Rubric instructions
+        block = $('.exe-rubrics-instructions', div);
+        if (block.length == 1) data.instructions = block.html();
 
-            // Rubric instructions
-            block = $('.exe-rubrics-instructions', div);
-            if (block.length == 1) {
-                data.instructions = block.text();
+        // Text after
+        block = $('.exe-rubrics-text-after', div);
+        if (block.length == 1) data.textAfter = block.html();
+
+        // New format (preferred): hidden escaped HTML payload for robust recovery
+        block = $('.exe-rubrics-richtext-data', div);
+        if (block.length == 1) {
+            var instructionsData = $('.exe-rubrics-instructions-data', block)
+                .first()
+                .text();
+            if (instructionsData !== '') {
+                data.instructions = this.decodeEscapedHTML(instructionsData);
             }
 
-            // Rubric information
-            var div = $('#ri_PreviousContent');
-            var author = '';
-            var authorURL = '';
-            var license = '';
-            var visibleInfo = true;
-
-            block = $('.exe-rubrics-authorship', div);
-            if (block.length == 1) {
-                // Visibility
-                if (block.hasClass('sr-av')) var visibleInfo = false;
-                // Author
-                tmp = $('span.author', block);
-                if (tmp.length == 1) {
-                    tmp = tmp.eq(0);
-                    author = tmp.text();
-                } else {
-                    tmp = $('a.author', block);
-                    if (tmp.length == 1) {
-                        tmp = tmp.eq(0);
-                        authorURL = tmp.attr('href');
-                        author = tmp.text();
-                    }
-                }
-                // License
-                tmp = $('span.license a', block);
-                if (tmp.length == 1) {
-                    tmp = tmp.eq(0);
-                    tmp = tmp.text();
-                    if (tmp.indexOf('CC ') == 0) {
-                        license = tmp.replace('CC ', 'CC-');
-                    }
-                } else {
-                    tmp = $('span.license', block);
-                    if (tmp.length == 1) {
-                        tmp = tmp.eq(0);
-                        tmp = tmp.text();
-                        if (tmp == 'GNU/GPL') license = 'gnu-gpl';
-                        else if (tmp == _('All Rights Reserved'))
-                            license = 'copyright';
-                        else if (tmp == _('Public Domain')) license = 'pd';
-                    }
-                }
+            var textAfterData = $('.exe-rubrics-text-after-data', block)
+                .first()
+                .text();
+            if (textAfterData !== '') {
+                data.textAfter = this.decodeEscapedHTML(textAfterData);
             }
-            data.author = author;
-            data['author-url'] = authorURL;
-            data.license = license;
-            data['visible-info'] = visibleInfo;
-
-            // Custom texts
-            block = $('.exe-rubrics-strings', div);
-            if (block.length == 1) {
-                data.i18n = {};
-                $('li', block).each(function () {
-                    var e = $(this);
-                    var c = e.attr('class');
-                    var t = e.text();
-                    data.i18n[c] = t;
-                });
-            }
-
-            this.jsonToTable(data, 'edition');
-            this.originalData = data;
         }
+
+        // Rubric information
+        var author = '', authorURL = '', license = '', visibleInfo = true;
+        block = $('.exe-rubrics-authorship', div);
+        if (block.length == 1) {
+            if (block.hasClass('sr-av')) visibleInfo = false;
+            // Author
+            tmp = $('span.author', block);
+            if (tmp.length == 1) {
+                author = tmp.eq(0).text();
+            } else {
+                tmp = $('a.author', block);
+                if (tmp.length == 1) {
+                    tmp = tmp.eq(0);
+                    authorURL = tmp.attr('href');
+                    author = tmp.text();
+                }
+            }
+            // License
+            tmp = $('span.license a', block);
+            if (tmp.length == 1) {
+                tmp = tmp.eq(0).text();
+                if (tmp.indexOf('CC ') == 0) license = tmp.replace('CC ', 'CC-');
+            } else {
+                tmp = $('span.license', block);
+                if (tmp.length == 1) {
+                    tmp = tmp.eq(0).text();
+                    if (tmp == 'GNU/GPL') license = 'gnu-gpl';
+                    else if (tmp == _('All Rights Reserved')) license = 'copyright';
+                    else if (tmp == _('Public Domain')) license = 'pd';
+                }
+            }
+        }
+        data.author = author;
+        data['author-url'] = authorURL;
+        data.license = license;
+        data['visible-info'] = visibleInfo;
+
+        // Custom texts
+        block = $('.exe-rubrics-strings', div);
+        if (block.length == 1) {
+            data.i18n = {};
+            $('li', block).each(function () {
+                var e = $(this);
+                data.i18n[e.attr('class')] = e.text();
+            });
+        }
+
+        this.jsonToTable(data, 'edition');
+
+        // Load instructions and text-after into the editors defined in createForm()
+        if (data.instructions) {
+            var instrEd = tinyMCE.get('eXeGameInstructions');
+            if (instrEd) instrEd.setContent(data.instructions);
+            else $('#eXeGameInstructions').val(data.instructions);
+        }
+        if (data.textAfter) {
+            var afterEd = tinyMCE.get('eXeIdeviceTextAfter');
+            if (afterEd) afterEd.setContent(data.textAfter);
+            else $('#eXeIdeviceTextAfter').val(data.textAfter);
+        }
+
+        this.originalData = data;
     },
 
     // Translate the default rubrics (CECED's won't be translated)
@@ -233,20 +263,16 @@ var $exeDevice = {
         return data;
     },
 
-    // Enable the FIELDSETs Toggler (see authoring.js)
+    // Re-attach fieldset toggle handlers after a dynamic rebuild of #ri_TableEditor
     enableFieldsetToggle: function () {
-        $('#ri_RubricInformation legend a').click(function () {
-            $('#ri_RubricInformation').toggleClass('exe-fieldset-closed');
-            return false;
-        });
-        $('#ri_RubricIntro legend a').click(function () {
-            $('#ri_RubricIntro').toggleClass('exe-fieldset-closed');
+        $('#ri_TableEditor .exe-fieldset legend a').off('click.rubric').on('click.rubric', function () {
+            $(this).closest('fieldset').toggleClass('exe-fieldset-closed');
             return false;
         });
     },
 
-    // Create the form to edit the rubric (each time a rubric is selected or when editing an existing one)
-    resetForm: function (createEditor) {
+    // Rebuild the top controls in #ri_RubricsEditor (called on init and after loading CEDEC rubrics)
+    resetForm: function () {
         // Get the available rubrics (a list)
         if (typeof $exeDevice.options == 'undefined')
             $exeDevice.options = $exeDevice.getRubricModels();
@@ -355,8 +381,6 @@ var $exeDevice = {
                 .show();
         }
 
-        // The first time the form is created, we add the table editor right after it
-        if (createEditor == true) ed.after('<div id="ri_TableEditor"></div>');
     },
 
     // Use eXe's alert messages
@@ -383,6 +407,20 @@ var $exeDevice = {
             return _(strings[key]);
         }
         return key;
+    },
+
+    encodeEscapedHTML: function (html) {
+        if (typeof html !== 'string') return '';
+        return escape(html);
+    },
+
+    decodeEscapedHTML: function (encoded) {
+        if (typeof encoded !== 'string' || encoded === '') return '';
+        try {
+            return unescape(encoded);
+        } catch (e) {
+            return encoded;
+        }
     },
 
     // Get a list of the available rubrics (only one for the moment, that's why there's just a "New rubric" button)
@@ -547,12 +585,10 @@ var $exeDevice = {
         // Create the iDevice content
         if (mode == 'normal') {
             var intro = '';
-            var instructions = $('#ri_RubricInstructions').val();
-            if (instructions != '')
-                intro =
-                    '<p class="exe-rubrics-instructions">' +
-                    instructions +
-                    '</p>';
+            var instrEditor = tinyMCE.get('eXeGameInstructions');
+            var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
+            if (instructions.trim() !== '')
+                intro = '<div class="exe-rubrics-instructions">' + instructions + '</div>';
 
             var info = '';
             var author = $('#ri_RubricAuthor').val();
@@ -629,57 +665,54 @@ var $exeDevice = {
             }
             lang += '</ul>';
 
-            return intro + table + info + lang;
+            var textAfterEditor = tinyMCE.get('eXeIdeviceTextAfter');
+            var textAfter = textAfterEditor ? textAfterEditor.getContent() : ($('#eXeIdeviceTextAfter').val() || '');
+            var textAfterHTML = textAfter.trim() !== ''
+                ? '<div class="exe-rubrics-text-after">' + textAfter + '</div>'
+                : '';
+
+            // New format: keep escaped copies for backward/forward-compatible recovery
+            var richTextData =
+                '<div class="exe-rubrics-richtext-data sr-av">' +
+                '<span class="exe-rubrics-instructions-data">' +
+                $exeDevice.encodeEscapedHTML(instructions) +
+                '</span>' +
+                '<span class="exe-rubrics-text-after-data">' +
+                $exeDevice.encodeEscapedHTML(textAfter) +
+                '</span>' +
+                '</div>';
+
+            return intro + table + info + lang + textAfterHTML + richTextData;
         }
 
         var html = '';
 
-        html +=
-            '<div class="exe-form-tab" title="' + _('General settings') + '">';
-
-        // Rubric use instructions
-        var instructions = '';
-        if (data.instructions) instructions = data.instructions;
-        html +=
-            '\
-        <fieldset id="ri_RubricIntro" class="exe-fieldset exe-feedback-fieldset exe-fieldset-closed">\
-          <legend><a href="#">' +
-            _('Instructions') +
-            '</a></legend>\
-          <div>\
-            <p class="exe-text-field">\
-              <label for="ri_RubricInstructions">' +
-            _('Rubric use instructions (optional)') +
-            ': </label>\
-              <input type="text" id="ri_RubricInstructions" value="' +
-            instructions +
-            '" />\
-            </p>\
-          </div>\
-        </fieldset>';
-
         html += table;
 
         // Max score + Buttons (reset, add row, add column)
-        html +=
-            '<p>\
-        <label for="ri_MaxScore">' +
-            _('Maximum score:') +
-            '</label> <input type="text" id="ri_MaxScore" readonly="readonly" value="" /> <span id="ri_MaxScoreInstructions">' +
-            _('The result of adding the scores of the first level.') +
-            '</span>\
-        <input type="button" id="ri_AppendCol" value="' +
-            _('New column') +
-            '" />\
-        <input type="button" id="ri_AppendRow" value="' +
-            _('New row') +
-            '" />\
-        <input type="button" id="ri_Reset" value="' +
-            _('Reset') +
-            '" />\
-      </p>';
+                html +=
+                        '<div id="ri_TableControls">\
+                <div class="ri-table-controls-left">\
+                    <label for="ri_MaxScore">' +
+                        _('Maximum score:') +
+                        '</label> <input type="text" id="ri_MaxScore" readonly="readonly" value="" /> <span id="ri_MaxScoreInstructions">' +
+                        _('The result of adding the scores of the first level.') +
+                        '</span>\
+                </div>\
+                <div class="ri-table-controls-right">\
+                    <input type="button" id="ri_AppendCol" class="btn btn-primary" value="' +
+                        _('New column') +
+                        '" />\
+                    <input type="button" id="ri_AppendRow" class="btn btn-primary" value="' +
+                        _('New row') +
+                        '" />\
+                    <input type="button" id="ri_Reset" class="btn btn-primary" value="' +
+                        _('Reset') +
+                        '" />\
+                </div>\
+            </div>';
 
-        // Rubric information
+                // Rubric information
         var author = '';
         var authorLink = '';
         var license = '';
@@ -687,15 +720,18 @@ var $exeDevice = {
         if (data['author-url']) authorLink = data['author-url'];
         if (data.license) license = data.license;
         html +=
-            '\
-        <fieldset id="ri_RubricInformation" class="exe-fieldset exe-feedback-fieldset exe-fieldset-closed">\
-          <legend><a href="#">' +
-            _('Rubric information') +
-            '</a></legend>\
-          <div>\
-            <p><label for="ri_ShowRubricInfo"><input type="checkbox" id="ri_ShowRubricInfo" /> ' +
+                        '\
+                <div id="ri_RubricInformation" class="exe-rubric-information">\
+                    <div class="toggle-item ri-toggle-item" idevice-id="ri_ShowRubricInfo">\
+                        <div class="toggle-control">\
+                            <input type="checkbox" id="ri_ShowRubricInfo" class="toggle-input" />\
+                            <span class="toggle-visual"></span>\
+                        </div>\
+                        <label class="toggle-label" for="ri_ShowRubricInfo">' +
             _('Show rubric information') +
-            '</label></p>\
+                        '</label>\
+                    </div>\
+                    <div id="ri_RubricInfoFields">\
             <p>\
               <label for="ri_RubricAuthor">' +
             _('Source/Author') +
@@ -731,19 +767,16 @@ var $exeDevice = {
             ')</option>\
               </select>\
             </p>\
-          </div>\
-        </fieldset>';
-
-        html += '</div>'; // / .exe-form-tab (General settings)
-
-        // Language tab (i18n)
-        html += $exeDevicesEdition.iDevice.gamification.common.getLanguageTab(
-            this.ci18n
-        );
+                    </div>\
+                </div>';
 
         var ed = $('#ri_TableEditor');
         this.editor = ed;
+
         ed.html(html);
+
+        // Init (or reinit) TinyMCE on the new editors inside #ri_TableEditor
+        $exeTinyMCE.init('multiple-visible', '.exe-html-editor');
 
         // Set the custom strings
         if (data.i18n) {
@@ -752,9 +785,6 @@ var $exeDevice = {
                 $('#ci18n_' + z).val(strings[z]);
             }
         }
-
-        // Enable the tabs
-        $exeDevicesEdition.iDevice.tabs.init('ri_TableEditor');
 
         // Buttons (events)
         $('#ri_Reset').click(function () {
@@ -781,10 +811,25 @@ var $exeDevice = {
             $exeDevice.dom.addCol();
         });
 
-        // Should the rubric information be visible?
-        var showRubricInfo = true;
-        if (data['visible-info'] == false) showRubricInfo = false;
+        // Default is hidden unless explicitly enabled in saved data
+        var showRubricInfo = false;
+        if (data['visible-info'] == true) showRubricInfo = true;
         $('#ri_ShowRubricInfo').prop('checked', showRubricInfo);
+        this.updateRubricInfoFieldsVisibility();
+        $('#ri_ShowRubricInfo').off('change.rubric').on('change.rubric', function () {
+            $exeDevice.updateRubricInfoFieldsVisibility();
+        });
+
+        $('#ri_RubricInformation')
+            .off('click.rubricToggle', '.ri-toggle-item')
+            .on('click.rubricToggle', '.ri-toggle-item', function (e) {
+                if ($(e.target).is('input, label, a, button')) return;
+                var id = $(this).attr('idevice-id');
+                if (!id) return;
+                var input = $('#' + id);
+                if (!input.length) return;
+                input.prop('checked', !input.is(':checked')).trigger('change');
+            });
 
         // Select the right license
         $('#ri_RubricLicense').val(license);
@@ -839,6 +884,11 @@ var $exeDevice = {
         field.addClass('exe-rubrics-required').focus(function () {
             $(this).removeClass('exe-rubrics-required');
         });
+    },
+
+    updateRubricInfoFieldsVisibility: function () {
+        var isVisible = $('#ri_ShowRubricInfo').prop('checked');
+        $('#ri_RubricInfoFields').toggle(isVisible);
     },
 
     save: function () {
@@ -915,9 +965,10 @@ var $exeDevice = {
 
         var data = this.tableToJSON('ri_TableEditor');
 
-        // Get the rubic instructions and add the to the data
-        var instructions = $('#ri_RubricInstructions').val();
-        if (instructions != '') data.instructions = instructions;
+        // Get the rubric instructions and add them to the data
+        var instrEditor = tinyMCE.get('eXeGameInstructions');
+        var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
+        if (instructions.trim() !== '') data.instructions = instructions;
 
         // Get the rubric information and add it to data
         data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
@@ -976,24 +1027,40 @@ var $exeDevice = {
                     '" title="' +
                     _('Score (include a number)') +
                     '" /></span>';
+
+                this.innerHTML +=
+                    '<a href="#" class="ri_EditTD" title="' +
+                    _('Edit') +
+                    '" aria-label="' +
+                    _('Edit') +
+                    '"><span class="ri_EditTDIcon" aria-hidden="true">&#9998;</span><span class="sr-av">' +
+                    _('Edit') +
+                    '</span></a>';
             }
         });
 
-        // Add row buttons (move up, mode down, delete row)
+        this.ensureCellEditModal();
+
+        // Add row buttons (move up, move down, edit row, delete row)
         var trActions =
-            '<span class="ri_Actions">\
+            '<span class="ri_Actions ri_RowActions">\
         <a href="#" class="ri_MoveTRUp" title="' +
             _('Up') +
             '"><span class="sr-av">&#8593;</span></a> \
         <a href="#" class="ri_MoveTRDown" title="' +
             _('Down') +
             '"><span class="sr-av">&#8595;</span></a> \
+        <a href="#" class="ri_EditTR" title="' +
+            _('Edit') +
+            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            _('Edit') +
+            '</span></a> \
         <a href="#" class="ri_DeleteTR" title="' +
             _('Delete') +
             '"><span class="sr-av">&#120;</span></a> \
       </span>';
         $('tbody tr', this.editor).each(function () {
-            $(this.firstChild).prepend(trActions);
+            $(this.firstChild).append(trActions);
         });
         // Events:
         // Move up or down
@@ -1015,15 +1082,34 @@ var $exeDevice = {
             return false;
         });
 
-        // Add column buttons (move left, move right, delete)
+        // Edit row via modal (save all row changes on accept)
+        $('.ri_EditTR').click(function () {
+            var row = $(this).parents('tr:first');
+            $exeDevice.openRowEditModal(row);
+            return false;
+        });
+
+        // Edit cell via modal
+        $('.ri_EditTD').click(function () {
+            var td = $(this).closest('td');
+            $exeDevice.openCellEditModal(td);
+            return false;
+        });
+
+        // Add column buttons (move left, move right, edit, delete)
         var thActions =
-            '<span class="ri_Actions">\
+            '<span class="ri_Actions ri_ColActions">\
         <a href="#" class="ri_MoveTRToTheLeft" title="' +
             _('Left') +
             '"><span class="sr-av">&#8592;</span></a> \
         <a href="#" class="ri_MoveTRToTheRight" title="' +
             _('Right') +
             '"><span class="sr-av">&#8594;</span></a> \
+        <a href="#" class="ri_EditColumn d-none" title="' +
+            _('Edit') +
+            '"><span aria-hidden="true">&#9998;</span><span class="sr-av">' +
+            _('Edit') +
+            '</span></a> \
         <a href="#" class="ri_DeleteColumn" title="' +
             _('Delete') +
             '"><span class="sr-av">&#120;</span></a> \
@@ -1052,6 +1138,12 @@ var $exeDevice = {
             });
             return false;
         });
+        // Edit column via modal (save all column changes on accept)
+        $('.ri_EditColumn').click(function () {
+            var th = $(this).closest('th');
+            $exeDevice.openColumnEditModal(th);
+            return false;
+        });
         // Delete column
         $('.ri_DeleteColumn').click(function () {
             if ($('#ri_Table thead th').length == 2) {
@@ -1078,6 +1170,621 @@ var $exeDevice = {
                 $exeDevice.setMaxScore();
             });
         $exeDevice.setMaxScore();
+    },
+
+    ensureCellEditModal: function () {
+        var modal = $('#ri_CellEditModal');
+        if (modal.length === 1) return;
+
+        var html =
+            '<div id="ri_CellEditModal" class="modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 id="ri_CellEditModalTitle" class="modal-title">' +
+            _('Edit cell') +
+            '</h5>' +
+            '<button type="button" id="ri_CellEditClose" class="btn-close" aria-label="' +
+            _('Close') +
+            '"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+            '<div class="mb-3">' +
+            '<label for="ri_CellEditContent" class="form-label">' +
+            _('Descriptor') +
+            ':</label>' +
+            '<textarea id="ri_CellEditContent" rows="3" class="form-control"></textarea>' +
+            '</div>' +
+            '<div class="mb-3">' +
+            '<label for="ri_CellEditScore" class="form-label">' +
+            _('Score') +
+            ':</label>' +
+            '<input type="text" id="ri_CellEditScore" class="form-control" />' +
+            '</div>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" id="ri_CellEditAccept" class="btn btn-primary">' +
+            _('Accept') +
+            '</button>' +
+            '<button type="button" id="ri_CellEditCancel" class="btn btn-secondary">' +
+            _('Cancel') +
+            '</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+        $('#ri_TableEditor').append(html);
+
+        $('#ri_CellEditAccept').off('click').on('click', function () {
+            $exeDevice.applyCellEditModal();
+            return false;
+        });
+        $('#ri_CellEditCancel').off('click').on('click', function () {
+            $exeDevice.closeCellEditModal();
+            return false;
+        });
+        $('#ri_CellEditClose').off('click').on('click', function () {
+            $exeDevice.closeCellEditModal();
+            return false;
+        });
+    },
+
+    openCellEditModal: function (td) {
+        if (!td || td.length !== 1) return;
+
+        this.cellEditTarget = td;
+        var contentInput = td.find('input[type="text"]').not('.ri_Weight').first();
+        var scoreInput = td.find('input.ri_Weight').first();
+
+        $('#ri_CellEditContent').val(contentInput.val() || '');
+        $('#ri_CellEditScore').val(scoreInput.val() || '');
+
+        $('#ri_CellEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
+        $('body').addClass('modal-open');
+        if ($('#ri_CellEditModalBackdrop').length === 0) {
+            $('body').append('<div id="ri_CellEditModalBackdrop" class="modal-backdrop fade show"></div>');
+        }
+        $('#ri_CellEditContent').focus();
+    },
+
+    closeCellEditModal: function () {
+        $('#ri_CellEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
+        $('body').removeClass('modal-open');
+        $('#ri_CellEditModalBackdrop').remove();
+        this.cellEditTarget = null;
+    },
+
+    applyCellEditModal: function () {
+        if (!this.cellEditTarget || this.cellEditTarget.length !== 1) {
+            this.closeCellEditModal();
+            return;
+        }
+
+        var contentValue = $('#ri_CellEditContent').val();
+        var scoreValue = $('#ri_CellEditScore').val();
+        var contentInput = this.cellEditTarget
+            .find('input[type="text"]')
+            .not('.ri_Weight')
+            .first();
+        var scoreInput = this.cellEditTarget.find('input.ri_Weight').first();
+
+        contentInput.val(contentValue);
+        scoreInput.val(scoreValue);
+        this.setMaxScore();
+        this.closeCellEditModal();
+    },
+
+    ensureRowEditModal: function () {
+        var modal = $('#ri_RowEditModal');
+        if (modal.length === 1) return;
+
+        var html =
+            '<div id="ri_RowEditModal" class="modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 id="ri_RowEditModalTitle" class="modal-title"></h5>' +
+            '<button type="button" id="ri_RowEditClose" class="btn-close" aria-label="' +
+            _('Close') +
+            '"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+            '<p id="ri_RowEditFirstCellInfo" class="form-text"></p>' +
+            '<div class="ri-row-edit-layout">' +
+            '<div class="ri-row-edit-fields">' +
+            '<div class="ri-row-edit-topbar">' +
+            '<button type="button" id="ri_RowEditPrev" class="btn btn-outline-secondary btn-sm ri-row-nav-btn" title="' +
+            _('Previous') +
+            '" aria-label="' +
+            _('Previous') +
+            '"><span aria-hidden="true">&#8592;</span><span class="sr-av">' +
+            _('Previous') +
+            '</span></button>' +
+            '<p class="ri-row-edit-position-wrap"><span id="ri_RowEditPosition" class="ri-row-edit-position"></span></p>' +
+            '<button type="button" id="ri_RowEditNext" class="btn btn-outline-secondary btn-sm ri-row-nav-btn" title="' +
+            _('Next') +
+            '" aria-label="' +
+            _('Next') +
+            '"><span aria-hidden="true">&#8594;</span><span class="sr-av">' +
+            _('Next') +
+            '</span></button>' +
+            '</div>' +
+            '<div class="mb-3">' +
+            '<label for="ri_RowEditContent" class="form-label">' +
+            _('Descriptor') +
+            ':</label>' +
+            '<textarea id="ri_RowEditContent" rows="3" class="form-control"></textarea>' +
+            '</div>' +
+            '<div class="mb-3">' +
+            '<label for="ri_RowEditScore" class="form-label">' +
+            _('Score') +
+            ':</label>' +
+            '<input type="text" id="ri_RowEditScore" class="form-control" />' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" id="ri_RowEditAccept" class="btn btn-primary">' +
+            _('Save') +
+            '</button>' +
+            '<button type="button" id="ri_RowEditCancel" class="btn btn-secondary">' +
+            _('Close') +
+            '</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+        $('#ri_TableEditor').append(html);
+
+        $('#ri_RowEditAccept').off('click').on('click', function () {
+            $exeDevice.applyRowEditModal();
+            return false;
+        });
+        $('#ri_RowEditCancel').off('click').on('click', function () {
+            $exeDevice.requestCloseRowEditModal();
+            return false;
+        });
+        $('#ri_RowEditClose').off('click').on('click', function () {
+            $exeDevice.requestCloseRowEditModal();
+            return false;
+        });
+        $('#ri_RowEditPrev').off('click').on('click', function () {
+            $exeDevice.navigateRowEditModal(-1);
+            return false;
+        });
+        $('#ri_RowEditNext').off('click').on('click', function () {
+            $exeDevice.navigateRowEditModal(1);
+            return false;
+        });
+        $('#ri_RowEditContent,#ri_RowEditScore')
+            .off('input')
+            .on('input', function () {
+                $exeDevice.syncActiveRowEditDraft();
+            });
+    },
+
+    openRowEditModal: function (row) {
+        if (!row || row.length !== 1) return;
+
+        this.ensureRowEditModal();
+
+        var titleInput = row.find('th input[type="text"]').first();
+        var cells = row.find('td');
+        if (cells.length === 0) return;
+
+        var columnTitles = [];
+        $('#ri_Table thead th').each(function (i) {
+            if (i === 0) return;
+            var input = $('input[type="text"]', this).first();
+            columnTitles.push(input.val() || '');
+        });
+
+        var drafts = [];
+        cells.each(function () {
+            var td = $(this);
+            drafts.push({
+                td: td,
+                content: td.find('input[type="text"]').not('.ri_Weight').first().val() || '',
+                score: td.find('input.ri_Weight').first().val() || '',
+            });
+        });
+
+        this.rowEditState = {
+            row: row,
+            title: titleInput.val() || '',
+            drafts: drafts,
+            columnTitles: columnTitles,
+            originals: drafts.map(function (item) {
+                return {
+                    content: item.content,
+                    score: item.score,
+                };
+            }),
+            activeIndex: 0,
+        };
+
+        var criterionTitle = this.rowEditState.title || '';
+        $('#ri_RowEditModalTitle').text(_('Assessment criteria') + (criterionTitle ? ': ' + criterionTitle : ''));
+        this.renderRowEditModalFields();
+
+        $('#ri_RowEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
+        $('body').addClass('modal-open');
+        if ($('#ri_RowEditModalBackdrop').length === 0) {
+            $('body').append('<div id="ri_RowEditModalBackdrop" class="modal-backdrop fade show"></div>');
+        }
+        $('#ri_RowEditContent').focus();
+    },
+
+    renderRowEditModalFields: function () {
+        if (!this.rowEditState || !this.rowEditState.drafts || this.rowEditState.drafts.length === 0) return;
+
+        var index = this.rowEditState.activeIndex;
+        var total = this.rowEditState.drafts.length;
+        var active = this.rowEditState.drafts[index];
+        var activeColumnTitle =
+            (this.rowEditState.columnTitles && this.rowEditState.columnTitles[index]) ||
+            _('Column') +
+                ' ' +
+                (index + 1);
+        $('#ri_RowEditContent').val(active.content || '');
+        $('#ri_RowEditScore').val(active.score || '');
+
+        $('#ri_RowEditFirstCellInfo').text(
+            _('Performance level') +
+                ': ' +
+                activeColumnTitle
+        );
+        $('#ri_RowEditPosition').text(index + 1 + ' / ' + total);
+        $('#ri_RowEditPrev').prop('disabled', index === 0);
+        $('#ri_RowEditNext').prop('disabled', index === total - 1);
+    },
+
+    syncActiveRowEditDraft: function () {
+        if (!this.rowEditState || !this.rowEditState.drafts || this.rowEditState.drafts.length === 0) return;
+
+        var index = this.rowEditState.activeIndex;
+        this.rowEditState.drafts[index].content = $('#ri_RowEditContent').val() || '';
+        this.rowEditState.drafts[index].score = $('#ri_RowEditScore').val() || '';
+
+        // Keep first-column summary in sync if editing first cell
+        this.renderRowEditModalFields();
+    },
+
+    navigateRowEditModal: function (delta) {
+        if (!this.rowEditState || !this.rowEditState.drafts || this.rowEditState.drafts.length === 0) return;
+
+        this.syncActiveRowEditDraft();
+
+        var nextIndex = this.rowEditState.activeIndex + delta;
+        if (nextIndex < 0 || nextIndex >= this.rowEditState.drafts.length) return;
+
+        this.rowEditState.activeIndex = nextIndex;
+        this.renderRowEditModalFields();
+    },
+
+    closeRowEditModal: function () {
+        $('#ri_RowEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
+        $('body').removeClass('modal-open');
+        $('#ri_RowEditModalBackdrop').remove();
+        this.rowEditState = null;
+    },
+
+    hasUnsavedRowEditChanges: function () {
+        if (!this.rowEditState || !this.rowEditState.drafts || !this.rowEditState.originals) return false;
+
+        var drafts = this.rowEditState.drafts;
+        var originals = this.rowEditState.originals;
+        if (drafts.length !== originals.length) return true;
+
+        for (var i = 0; i < drafts.length; i++) {
+            if (drafts[i].content !== originals[i].content || drafts[i].score !== originals[i].score) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+    requestCloseRowEditModal: function () {
+        if (!this.rowEditState) {
+            this.closeRowEditModal();
+            return;
+        }
+
+        this.syncActiveRowEditDraft();
+
+        if (!this.hasUnsavedRowEditChanges()) {
+            this.closeRowEditModal();
+            return;
+        }
+
+        eXe.app.confirm(
+            _('Attention'),
+            _('There are unsaved changes in this row. Close and lose them?'),
+            function () {
+                $exeDevice.closeRowEditModal();
+            }
+        );
+    },
+
+    applyRowEditModal: function () {
+        if (!this.rowEditState || !this.rowEditState.drafts || this.rowEditState.drafts.length === 0) {
+            this.closeRowEditModal();
+            return;
+        }
+
+        this.syncActiveRowEditDraft();
+
+        for (var i = 0; i < this.rowEditState.drafts.length; i++) {
+            var draft = this.rowEditState.drafts[i];
+            draft.td.find('input[type="text"]').not('.ri_Weight').first().val(draft.content);
+            draft.td.find('input.ri_Weight').first().val(draft.score);
+        }
+
+        // Mark current drafts as saved baseline so close won't warn unless new edits are made.
+        this.rowEditState.originals = this.rowEditState.drafts.map(function (item) {
+            return {
+                content: item.content,
+                score: item.score,
+            };
+        });
+
+        this.setMaxScore();
+    },
+
+    ensureColumnEditModal: function () {
+        var modal = $('#ri_ColumnEditModal');
+        if (modal.length === 1) return;
+
+        var html =
+            '<div id="ri_ColumnEditModal" class="modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 id="ri_ColumnEditModalTitle" class="modal-title"></h5>' +
+            '<button type="button" id="ri_ColumnEditClose" class="btn-close" aria-label="' +
+            _('Close') +
+            '"></button>' +
+            '</div>' +
+            '<div class="modal-body">' +
+            '<p id="ri_ColumnEditFirstCellInfo" class="form-text"></p>' +
+            '<div class="ri-column-edit-layout">' +
+            '<div class="ri-column-edit-fields">' +
+            '<p class="ri-column-edit-position-wrap"><span id="ri_ColumnEditPosition" class="ri-column-edit-position"></span></p>' +
+            '<div class="mb-3">' +
+            '<label for="ri_ColumnEditContent" class="form-label">' +
+            _('Descriptor') +
+            ':</label>' +
+            '<textarea id="ri_ColumnEditContent" rows="3" class="form-control"></textarea>' +
+            '</div>' +
+            '<div class="mb-3">' +
+            '<label for="ri_ColumnEditScore" class="form-label">' +
+            _('Score') +
+            ':</label>' +
+            '<input type="text" id="ri_ColumnEditScore" class="form-control" />' +
+            '</div>' +
+            '</div>' +
+            '<div class="ri-column-edit-nav">' +
+            '<button type="button" id="ri_ColumnEditUp" class="btn btn-outline-secondary btn-sm ri-column-nav-btn" title="' +
+            _('Up') +
+            '" aria-label="' +
+            _('Up') +
+            '"><span aria-hidden="true">&#8593;</span><span class="sr-av">' +
+            _('Up') +
+            '</span></button>' +
+            '<button type="button" id="ri_ColumnEditDown" class="btn btn-outline-secondary btn-sm ri-column-nav-btn" title="' +
+            _('Down') +
+            '" aria-label="' +
+            _('Down') +
+            '"><span aria-hidden="true">&#8595;</span><span class="sr-av">' +
+            _('Down') +
+            '</span></button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" id="ri_ColumnEditAccept" class="btn btn-primary">' +
+            _('Save') +
+            '</button>' +
+            '<button type="button" id="ri_ColumnEditCancel" class="btn btn-secondary">' +
+            _('Close') +
+            '</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+        $('#ri_TableEditor').append(html);
+
+        $('#ri_ColumnEditAccept').off('click').on('click', function () {
+            $exeDevice.applyColumnEditModal();
+            return false;
+        });
+        $('#ri_ColumnEditCancel').off('click').on('click', function () {
+            $exeDevice.requestCloseColumnEditModal();
+            return false;
+        });
+        $('#ri_ColumnEditClose').off('click').on('click', function () {
+            $exeDevice.requestCloseColumnEditModal();
+            return false;
+        });
+        $('#ri_ColumnEditUp').off('click').on('click', function () {
+            $exeDevice.navigateColumnEditModal(-1);
+            return false;
+        });
+        $('#ri_ColumnEditDown').off('click').on('click', function () {
+            $exeDevice.navigateColumnEditModal(1);
+            return false;
+        });
+        $('#ri_ColumnEditContent,#ri_ColumnEditScore')
+            .off('input')
+            .on('input', function () {
+                $exeDevice.syncActiveColumnEditDraft();
+            });
+    },
+
+    openColumnEditModal: function (th) {
+        if (!th || th.length !== 1) return;
+
+        var colIndex = th.prevAll('th').length;
+        if (colIndex === 0) return;
+
+        this.ensureColumnEditModal();
+
+        var titleInput = th.find('input[type="text"]').first();
+        var drafts = [];
+        $('#ri_Table tbody tr').each(function () {
+            var td = $(this).find('td').eq(colIndex - 1);
+            if (td.length !== 1) return;
+            drafts.push({
+                td: td,
+                content: td.find('input[type="text"]').not('.ri_Weight').first().val() || '',
+                score: td.find('input.ri_Weight').first().val() || '',
+            });
+        });
+        if (drafts.length === 0) return;
+
+        this.columnEditState = {
+            th: th,
+            colIndex: colIndex,
+            title: titleInput.val() || '',
+            drafts: drafts,
+            originals: drafts.map(function (item) {
+                return {
+                    content: item.content,
+                    score: item.score,
+                };
+            }),
+            activeIndex: 0,
+        };
+
+        $('#ri_ColumnEditModalTitle').text(this.columnEditState.title || _('Edit'));
+        this.renderColumnEditModalFields();
+
+        $('#ri_ColumnEditModal').addClass('show').attr('aria-hidden', 'false').css('display', 'block');
+        $('body').addClass('modal-open');
+        if ($('#ri_ColumnEditModalBackdrop').length === 0) {
+            $('body').append('<div id="ri_ColumnEditModalBackdrop" class="modal-backdrop fade show"></div>');
+        }
+        $('#ri_ColumnEditContent').focus();
+    },
+
+    renderColumnEditModalFields: function () {
+        if (!this.columnEditState || !this.columnEditState.drafts || this.columnEditState.drafts.length === 0) return;
+
+        var index = this.columnEditState.activeIndex;
+        var total = this.columnEditState.drafts.length;
+        var active = this.columnEditState.drafts[index];
+        var first = this.columnEditState.drafts[0];
+
+        $('#ri_ColumnEditContent').val(active.content || '');
+        $('#ri_ColumnEditScore').val(active.score || '');
+
+        $('#ri_ColumnEditFirstCellInfo').text(
+            _('First row') +
+                ': ' +
+                (first.content || '-') +
+                ' (' +
+                (first.score || '-') +
+                ')'
+        );
+        $('#ri_ColumnEditPosition').text(index + 1 + ' / ' + total);
+        $('#ri_ColumnEditUp').prop('disabled', index === 0);
+        $('#ri_ColumnEditDown').prop('disabled', index === total - 1);
+    },
+
+    syncActiveColumnEditDraft: function () {
+        if (!this.columnEditState || !this.columnEditState.drafts || this.columnEditState.drafts.length === 0) return;
+
+        var index = this.columnEditState.activeIndex;
+        this.columnEditState.drafts[index].content = $('#ri_ColumnEditContent').val() || '';
+        this.columnEditState.drafts[index].score = $('#ri_ColumnEditScore').val() || '';
+
+        this.renderColumnEditModalFields();
+    },
+
+    navigateColumnEditModal: function (delta) {
+        if (!this.columnEditState || !this.columnEditState.drafts || this.columnEditState.drafts.length === 0) return;
+
+        this.syncActiveColumnEditDraft();
+
+        var nextIndex = this.columnEditState.activeIndex + delta;
+        if (nextIndex < 0 || nextIndex >= this.columnEditState.drafts.length) return;
+
+        this.columnEditState.activeIndex = nextIndex;
+        this.renderColumnEditModalFields();
+    },
+
+    closeColumnEditModal: function () {
+        $('#ri_ColumnEditModal').removeClass('show').attr('aria-hidden', 'true').css('display', 'none');
+        $('body').removeClass('modal-open');
+        $('#ri_ColumnEditModalBackdrop').remove();
+        this.columnEditState = null;
+    },
+
+    hasUnsavedColumnEditChanges: function () {
+        if (!this.columnEditState || !this.columnEditState.drafts || !this.columnEditState.originals) return false;
+
+        var drafts = this.columnEditState.drafts;
+        var originals = this.columnEditState.originals;
+        if (drafts.length !== originals.length) return true;
+
+        for (var i = 0; i < drafts.length; i++) {
+            if (drafts[i].content !== originals[i].content || drafts[i].score !== originals[i].score) {
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+    requestCloseColumnEditModal: function () {
+        if (!this.columnEditState) {
+            this.closeColumnEditModal();
+            return;
+        }
+
+        this.syncActiveColumnEditDraft();
+
+        if (!this.hasUnsavedColumnEditChanges()) {
+            this.closeColumnEditModal();
+            return;
+        }
+
+        eXe.app.confirm(
+            _('Attention'),
+            _('There are unsaved changes in this column. Close and lose them?'),
+            function () {
+                $exeDevice.closeColumnEditModal();
+            }
+        );
+    },
+
+    applyColumnEditModal: function () {
+        if (!this.columnEditState || !this.columnEditState.drafts || this.columnEditState.drafts.length === 0) {
+            this.closeColumnEditModal();
+            return;
+        }
+
+        this.syncActiveColumnEditDraft();
+
+        for (var i = 0; i < this.columnEditState.drafts.length; i++) {
+            var draft = this.columnEditState.drafts[i];
+            draft.td.find('input[type="text"]').not('.ri_Weight').first().val(draft.content);
+            draft.td.find('input.ri_Weight').first().val(draft.score);
+        }
+
+        this.columnEditState.originals = this.columnEditState.drafts.map(function (item) {
+            return {
+                content: item.content,
+                score: item.score,
+            };
+        });
+
+        this.setMaxScore();
     },
 
     // Remove any HTML tags
