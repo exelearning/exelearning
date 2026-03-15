@@ -59,6 +59,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initQuestions();
 
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
@@ -1251,7 +1254,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="quextETitleAudio">${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="quextEInputAudio">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="quextEInputAudio" data-voice-recorder data-voice-input="#quextEURLAudio">
                                         <label class="sr-av" for="quextEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker w-100 form-control  me-0" id="quextEURLAudio"/>
                                         <a href="#" id="quextEPlayAudio" class="QXTE-ENavigationButton " title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="QXTE-ENavigationButton " /></a>

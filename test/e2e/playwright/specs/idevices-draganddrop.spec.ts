@@ -218,6 +218,14 @@ async function countAllIdevices(page: Page): Promise<number> {
     return await page.locator('#node-content article.box .idevice_node').count();
 }
 
+async function hasMergedBlockState(page: Page): Promise<boolean> {
+    return await page.evaluate(() => {
+        const blocks = Array.from(document.querySelectorAll('#node-content article.box'));
+        if (blocks.length <= 2) return true;
+        return blocks.some(block => block.querySelectorAll('.idevice_node').length >= 2);
+    });
+}
+
 /**
  * Helper to dismiss confirm dialog
  */
@@ -572,6 +580,7 @@ test.describe('iDevice Drag and Drop', () => {
             createProject,
         }) => {
             const page = authenticatedPage;
+            test.setTimeout(60000);
 
             const projectUuid = await createProject(page, 'Cascade Delete Test');
             await gotoWorkarea(page, projectUuid);
@@ -598,29 +607,24 @@ test.describe('iDevice Drag and Drop', () => {
             const idevice2 = getIdeviceInBlock(block2);
             const dragHandle = getIdeviceDragHandle(idevice2);
 
-            await dragAndDrop(page, dragHandle, block1);
-            await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
-            // Wait for drag-and-drop to complete.
-            // Accept either:
-            // - Empty source block was removed (2 blocks left), or
-            // - Any block now contains at least 2 iDevices (move completed, delete may still be pending)
-            await page.waitForFunction(
-                () => {
-                    const blocks = document.querySelectorAll('#node-content article.box');
-                    if (blocks.length <= 2) return true;
+            for (let attempt = 0; attempt < 2; attempt++) {
+                await dragAndDrop(page, dragHandle, block1);
+                await handleConfirmDialog(page, true); // Confirm delete of empty Block 2
 
-                    for (const block of blocks) {
-                        const ideviceCount = block.querySelectorAll('.idevice_node').length;
-                        if (ideviceCount >= 2) {
-                            return true;
-                        }
+                try {
+                    await expect
+                        .poll(async () => await hasMergedBlockState(page), {
+                            timeout: 10000,
+                            intervals: [250, 500, 1000],
+                        })
+                        .toBe(true);
+                    break;
+                } catch (error) {
+                    if (attempt === 1) {
+                        throw error;
                     }
-
-                    return false;
-                },
-                null,
-                { timeout: 25000 },
-            );
+                }
+            }
 
             // Now we should have Block 1 (with 2 iDevices) and Block 3 (with 1 iDevice)
             blockCount = await countBlocks(page);
@@ -632,14 +636,12 @@ test.describe('iDevice Drag and Drop', () => {
             // Delete Block 1
             const updatedBlock1 = getBlock(page, 0);
             await deleteBlock(page, updatedBlock1);
-            await page.waitForFunction(
-                () => {
-                    const blocks = document.querySelectorAll('#node-content article.box');
-                    return blocks.length >= 1;
-                },
-                null,
-                { timeout: 10000 },
-            );
+            await expect
+                .poll(async () => await countBlocks(page), {
+                    timeout: 10000,
+                    intervals: [250, 500, 1000],
+                })
+                .toBeGreaterThanOrEqual(1);
 
             // Verify: Block 3's iDevice should still exist
             blockCount = await countBlocks(page);

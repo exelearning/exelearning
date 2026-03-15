@@ -41,6 +41,9 @@ var $exeDevice = {
 
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('sopaQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -476,7 +479,7 @@ var $exeDevice = {
                                     </div>
                                 </div>
                                 <span id="sopaETitleAudio">${_('Audio')}</span>
-                                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputAudio">
+                                <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="sopaEInputAudio" data-voice-recorder data-voice-input="#sopaEURLAudio">
                                     <label class="sr-av" for="sopaEURLAudio">${_('URL')}</label>
                                     <input type="text" class="exe-file-picker SPE-EURLAudio form-control me-0 w-100" id="sopaEURLAudio" />
                                     <a href="#" id="sopaEPlayAudio" class="SPE-ENavigationButton SPE-EPlayVideo" title="${_('Play audio')}">
