@@ -84,6 +84,9 @@ var $exeDevicesEdition = {
 
             // Enable file uploaders
             $exeDevicesEdition.iDevice.filePicker.init();
+
+            // Enable shared voice recorder controls in marked audio fields
+            $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
         },
         // Common
         common: {
@@ -1323,6 +1326,9 @@ var $exeDevicesEdition = {
                         }
                     });
                 });
+
+                // Initialize recorder controls for fields marked with data-voice-recorder.
+                $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
             },
             openFilePicker: function (e) {
                 // Legacy fallback - should not be called anymore
@@ -1335,6 +1341,746 @@ var $exeDevicesEdition = {
                     eXe.app.alert(e);
                 }
             }
+        },
+        voiceRecorder: {
+            maxDurationMs: 120000,
+            startDelayMs: 80,
+            styleId: 'exe-voice-recorder-styles',
+            instances: [],
+            _cleanupBound: false,
+            _detachObserver: null,
+            isSupported: function () {
+                return !!(
+                    navigator?.mediaDevices?.getUserMedia &&
+                    typeof window.MediaRecorder !== 'undefined'
+                );
+            },
+            bindCleanupHandlers: function () {
+                if (this._cleanupBound) return;
+                this._cleanupBound = true;
+
+                var self = this;
+
+                window.addEventListener('beforeunload', function () {
+                    self.cleanupAll();
+                });
+
+                window.addEventListener('pagehide', function () {
+                    self.cleanupAll();
+                });
+
+                if (typeof MutationObserver !== 'undefined' && document.body) {
+                    this._detachObserver = new MutationObserver(function () {
+                        self.cleanupDetachedInstances();
+                    });
+                    this._detachObserver.observe(document.body, {
+                        childList: true,
+                        subtree: true,
+                    });
+                }
+            },
+            registerInstance: function (entry) {
+                this.instances.push(entry);
+            },
+            unregisterInstance: function (entry) {
+                this.instances = this.instances.filter(function (current) {
+                    return current !== entry;
+                });
+            },
+            cleanupDetachedInstances: function () {
+                var self = this;
+                this.instances.slice().forEach(function (entry) {
+                    var el = entry?.containerEl;
+                    if (!el || !document.body.contains(el)) {
+                        try {
+                            entry.cleanup();
+                        } catch (error) {
+                            self.unregisterInstance(entry);
+                        }
+                    }
+                });
+            },
+            cleanupAll: function () {
+                this.instances.slice().forEach(function (entry) {
+                    try {
+                        entry.cleanup();
+                    } catch (error) {
+                        // Ignore cleanup errors during global shutdown.
+                    }
+                });
+                this.instances = [];
+            },
+            getStrings: function () {
+                return {
+                    startRecording: _('Start voice recording'),
+                    stopRecording: _('Stop'),
+                    saveRecording: _('Save'),
+                    discardRecording: _('Delete'),
+                    fileName: _('File name'),
+                    recordingTime: _('Recording time'),
+                    reviewRecording: _('Review recording'),
+                    recordingInProgress: _('Recording in progress'),
+                    uploading: _('Uploading...'),
+                    microphoneError: _('Microphone access was denied or unavailable.'),
+                    uploadError: _('Failed to save recording.'),
+                };
+            },
+            initVoiceRecorders: function (rootElement, assetManager) {
+                if (!this.isSupported()) return;
+
+                var $root = $(rootElement || document);
+                if (!$root.length) return;
+
+                this.ensureStyles();
+                this.bindCleanupHandlers();
+
+                var self = this;
+                $root.find('[data-voice-recorder]').each(function () {
+                    self.initRecorder($(this), assetManager);
+                });
+            },
+            ensureStyles: function () {
+                if (document.getElementById(this.styleId)) return;
+
+                var style = document.createElement('style');
+                style.id = this.styleId;
+                style.textContent = `
+                    .exe-voice-recorder-toggle.recording {
+                        color: #fff;
+                        background-color: #d9534f;
+                        border-color: #d9534f;
+                        animation: exeVoicePulse 1.2s infinite;
+                    }
+                    .exe-voice-recorder-toggle {
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 2.25rem !important;
+                        height: 2.25rem !important;
+                        min-width: 2.25rem !important;
+                        min-height: 2.25rem !important;
+                        padding: 0 !important;
+                        aspect-ratio: 1 / 1;
+                        flex-shrink: 0;
+                        line-height: 1;
+                        color: var(--brand-primary, #0BA1A1);
+                        border-color: var(--brand-primary, #0BA1A1);
+                        background: #fff;
+                    }
+                    .exe-voice-recorder-toggle:hover,
+                    .exe-voice-recorder-toggle:focus,
+                    .exe-voice-recorder-toggle:active {
+                        color: #087d7d;
+                        border-color: #087d7d;
+                        background: #e6f6f6;
+                    }
+                    .exe-voice-recorder-toggle svg {
+                        width: 1rem;
+                        height: 1rem;
+                        fill: currentColor;
+                    }
+                    @keyframes exeVoicePulse {
+                        0% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0.45); }
+                        70% { box-shadow: 0 0 0 8px rgba(217, 83, 79, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(217, 83, 79, 0); }
+                    }
+                    .exe-voice-recorder-panel {
+                        border: 1px solid #ced4da;
+                        border-radius: 0.375rem;
+                        padding: 0.75rem;
+                        margin-top: 0.5rem;
+                        background: #fff;
+                    }
+                    .exe-voice-recorder-status {
+                        font-size: 0.875rem;
+                        color: #495057;
+                    }
+                    .exe-voice-recorder-error {
+                        color: #b3092f;
+                        font-size: 0.875rem;
+                        margin-top: 0.5rem;
+                    }
+                    .exe-voice-recorder-fallback-modal {
+                        position: fixed;
+                        inset: 0;
+                        background: rgba(0, 0, 0, 0.45);
+                        z-index: 1070;
+                        display: none;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 1rem;
+                    }
+                    .exe-voice-recorder-fallback-modal.show {
+                        display: flex;
+                    }
+                    .exe-voice-recorder-fallback-dialog {
+                        background: #fff;
+                        border-radius: 0.5rem;
+                        width: 560px !important;
+                        max-width: 92vw !important;
+                        box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.2);
+                    }
+                    .exe-voice-recorder-modal-dialog {
+                        width: 560px !important;
+                        max-width: 92vw !important;
+                    }
+                    .exe-voice-recorder-modal-dialog .modal-content,
+                    .exe-voice-recorder-fallback-dialog {
+                        width: 100%;
+                    }
+                    .exe-voice-recorder-stop,
+                    .exe-voice-recorder-save,
+                    .exe-voice-recorder-cancel {
+                        min-width: 8rem;
+                        min-height: 2.5rem;
+                        padding: 0.5rem 0.9rem;
+                        font-size: 0.95rem;
+                        font-weight: 500;
+                    }
+                `;
+                document.head.appendChild(style);
+            },
+            getPreferredMimeType: function () {
+                if (typeof window.MediaRecorder === 'undefined' || typeof window.MediaRecorder.isTypeSupported !== 'function') {
+                    return '';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    return 'audio/webm;codecs=opus';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/mp4')) {
+                    return 'audio/mp4';
+                }
+                if (window.MediaRecorder.isTypeSupported('audio/webm')) {
+                    return 'audio/webm';
+                }
+                return '';
+            },
+            getExtensionForMimeType: function (mimeType) {
+                var normalized = (mimeType || '').toLowerCase();
+                if (normalized.indexOf('audio/mp4') === 0) return 'mp4';
+                if (normalized.indexOf('audio/webm') === 0) return 'webm';
+                return 'webm';
+            },
+            getDefaultRecordingName: function () {
+                var date = new Date();
+                var yyyy = String(date.getFullYear());
+                var mm = String(date.getMonth() + 1).padStart(2, '0');
+                var dd = String(date.getDate()).padStart(2, '0');
+                var hh = String(date.getHours()).padStart(2, '0');
+                var min = String(date.getMinutes()).padStart(2, '0');
+                var ss = String(date.getSeconds()).padStart(2, '0');
+                return 'audio-rec-' + yyyy + mm + dd + '-' + hh + min + ss;
+            },
+            stripAudioExtension: function (name) {
+                var value = (name || '').toString().trim();
+                return value.replace(/\.(mp3|wav|ogg|m4a|aac|flac|webm|mp4)$/i, '');
+            },
+            sanitizeFileNameBase: function (name) {
+                var value = this.stripAudioExtension(name);
+                if (!value) {
+                    return this.getDefaultRecordingName();
+                }
+                value = value
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '');
+                return value || this.getDefaultRecordingName();
+            },
+            formatTime: function (seconds) {
+                var mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+                var ss = String(seconds % 60).padStart(2, '0');
+                return mm + ':' + ss;
+            },
+            resolveAssetManager: function (assetManager) {
+                return (
+                    assetManager ||
+                    window.eXeLearning?.app?.project?._yjsBridge?.assetManager ||
+                    null
+                );
+            },
+            initRecorder: function ($container, assetManager) {
+                if ($container.data('voiceRecorderInit')) return;
+
+                var inputSelector = $container.attr('data-voice-input') || '';
+                var previewSelector = $container.attr('data-voice-preview') || '';
+                var $input = inputSelector
+                    ? $(inputSelector).first()
+                    : $container.find('input[type="text"]').first();
+                if (!$input.length) return;
+
+                var $preview = previewSelector ? $(previewSelector).first() : $();
+                var strings = this.getStrings();
+
+                var $anchor = $container
+                    .find('.exe-pick-any-file, .exe-pick-image, input[type="button"], button')
+                    .not('.exe-voice-recorder-toggle')
+                    .first();
+                if (!$anchor.length) {
+                    $anchor = $input;
+                }
+
+                var $toggle = $('<button>', {
+                    type: 'button',
+                    class: 'btn btn-outline-secondary exe-voice-recorder-toggle',
+                    'aria-label': strings.startRecording,
+                    title: strings.startRecording,
+                    html: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.92V21h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-3.08A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 1 0 10 0z"></path></svg><span class="sr-av">' + strings.startRecording + '</span>',
+                });
+                var $inlineError = $('<div class="exe-voice-recorder-error d-none" aria-live="polite"></div>');
+
+                var modalId = 'exe-voice-recorder-modal-' + Date.now() + '-' + Math.round(Math.random() * 10000);
+                var inputId = 'exe-voice-recorder-name-' + Date.now() + '-' + Math.round(Math.random() * 10000);
+
+                var $modal = $(
+                    '<div class="modal fade" id="' + modalId + '" tabindex="-1" aria-hidden="true">' +
+                    '<div class="modal-dialog modal-dialog-centered exe-voice-recorder-modal-dialog">' +
+                    '<div class="modal-content">' +
+                    '<div class="modal-header">' +
+                    '<h5 class="modal-title">' + strings.reviewRecording + '</h5>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                    '<div class="exe-voice-recorder-recording-view">' +
+                    '<div class="exe-voice-recorder-status mb-3"><strong>' + _('Recording') + ':</strong> <span class="exe-voice-recorder-time">00:00</span></div>' +
+                    '<div class="d-flex justify-content-end"><button type="button" class="btn btn-primary exe-voice-recorder-stop" aria-label="' + strings.stopRecording + '">' + strings.stopRecording + '</button></div>' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-confirmation-view d-none">' +
+                    '<audio class="exe-voice-recorder-audio w-100 mb-2" controls></audio>' +
+                    '<label class="mb-1" for="' + inputId + '">' + strings.fileName + '</label>' +
+                    '<input type="text" class="form-control exe-voice-recorder-name" id="' + inputId + '" />' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-error d-none mt-2" aria-live="polite"></div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                    '<button type="button" class="btn btn-primary exe-voice-recorder-save" aria-label="' + strings.saveRecording + '">' + strings.saveRecording + '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary exe-voice-recorder-cancel" aria-label="' + _('Cancel') + '">' + _('Cancel') + '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>'
+                );
+
+                var $fallbackModal = $(
+                    '<div class="exe-voice-recorder-fallback-modal" id="' + modalId + '-fallback" aria-hidden="true">' +
+                    '<div class="exe-voice-recorder-fallback-dialog">' +
+                    '<div class="modal-header">' +
+                    '<h5 class="modal-title">' + strings.reviewRecording + '</h5>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                    '<div class="exe-voice-recorder-recording-view">' +
+                    '<div class="exe-voice-recorder-status mb-3"><strong>' + _('Recording') + ':</strong> <span class="exe-voice-recorder-time">00:00</span></div>' +
+                    '<div class="d-flex justify-content-end"><button type="button" class="btn btn-primary exe-voice-recorder-stop" aria-label="' + strings.stopRecording + '">' + strings.stopRecording + '</button></div>' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-confirmation-view d-none">' +
+                    '<audio class="exe-voice-recorder-audio w-100 mb-2" controls></audio>' +
+                    '<label class="mb-1" for="' + inputId + '-fallback">' + strings.fileName + '</label>' +
+                    '<input type="text" class="form-control exe-voice-recorder-name" id="' + inputId + '-fallback" />' +
+                    '</div>' +
+                    '<div class="exe-voice-recorder-error d-none mt-2" aria-live="polite"></div>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                    '<button type="button" class="btn btn-primary exe-voice-recorder-save" aria-label="' + strings.saveRecording + '">' + strings.saveRecording + '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary exe-voice-recorder-cancel" aria-label="' + _('Cancel') + '">' + _('Cancel') + '</button>' +
+                    '</div>' +
+                    '</div>' +
+                    '</div>'
+                );
+
+                $('body').append($modal);
+                $('body').append($fallbackModal);
+
+                $anchor.after($toggle);
+                $toggle.after($inlineError);
+
+                var state = {
+                    recorder: null,
+                    stream: null,
+                    chunks: [],
+                    blob: null,
+                    blobUrl: '',
+                    timerId: null,
+                    maxTimerId: null,
+                    startTimerId: null,
+                    seconds: 0,
+                    uploaded: false,
+                    lastFocused: null,
+                    mimeType: this.getPreferredMimeType(),
+                    modalOpen: false,
+                    recordingStarted: false,
+                    suggestedName: '',
+                };
+
+                var self = this;
+                var modalApi = null;
+                if (window.bootstrap && window.bootstrap.Modal) {
+                    modalApi = new window.bootstrap.Modal($modal[0], {
+                        backdrop: 'static',
+                        keyboard: false,
+                    });
+                }
+
+                function getActiveModal() {
+                    return modalApi ? $modal : $fallbackModal;
+                }
+
+                function updateModalTime() {
+                    getActiveModal().find('.exe-voice-recorder-time').text(self.formatTime(state.seconds));
+                }
+
+                function showRecordingView() {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-recording-view').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-confirmation-view').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-save').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-cancel').addClass('d-none');
+                }
+
+                function showConfirmationView() {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-recording-view').addClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-confirmation-view').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-save').removeClass('d-none');
+                    $activeModal.find('.exe-voice-recorder-cancel').removeClass('d-none');
+                }
+
+                function openModal() {
+                    if (modalApi) {
+                        modalApi.show();
+                    } else {
+                        $fallbackModal.addClass('show').attr('aria-hidden', 'false');
+                    }
+                    state.modalOpen = true;
+                }
+
+                function openConfirmationModal() {
+                    var $activeModal = getActiveModal();
+                    state.suggestedName = self.getDefaultRecordingName();
+                    $activeModal.find('.exe-voice-recorder-audio').attr('src', state.blobUrl);
+                    $activeModal.find('.exe-voice-recorder-name').val('');
+                    $activeModal
+                        .find('.exe-voice-recorder-name')
+                        .attr('placeholder', state.suggestedName);
+                    showConfirmationView();
+                    showError('', true);
+
+                    openModal();
+                    setTimeout(function () {
+                        $activeModal.find('.exe-voice-recorder-name').trigger('focus');
+                    }, 0);
+                }
+
+                function closeConfirmationModal() {
+                    if (modalApi) {
+                        modalApi.hide();
+                    } else {
+                        $fallbackModal.removeClass('show').attr('aria-hidden', 'true');
+                    }
+                    state.modalOpen = false;
+                }
+
+                function stopStream() {
+                    if (!state.stream) return;
+                    state.stream.getTracks().forEach(function (track) {
+                        if (track && typeof track.stop === 'function') track.stop();
+                    });
+                    state.stream = null;
+                }
+
+                function clearTimers() {
+                    if (state.timerId) clearInterval(state.timerId);
+                    if (state.maxTimerId) clearTimeout(state.maxTimerId);
+                    if (state.startTimerId) clearTimeout(state.startTimerId);
+                    state.timerId = null;
+                    state.maxTimerId = null;
+                    state.startTimerId = null;
+                }
+
+                function showError(message, forModal) {
+                    var $error;
+                    if (forModal) {
+                        $error = getActiveModal().find('.exe-voice-recorder-error');
+                    } else {
+                        $error = $inlineError;
+                    }
+                    if (!message) {
+                        $error.addClass('d-none').text('');
+                        return;
+                    }
+                    $error.removeClass('d-none').text(message);
+                }
+
+                function setIdleState() {
+                    clearTimers();
+                    state.recordingStarted = false;
+                    state.seconds = 0;
+                    updateModalTime();
+                    $toggle.removeClass('recording').prop('disabled', false);
+                    showError('', false);
+                    if (state.lastFocused && typeof state.lastFocused.focus === 'function') {
+                        state.lastFocused.focus();
+                        state.lastFocused = null;
+                    }
+                }
+
+                function setRecordingState() {
+                    $toggle.addClass('recording').prop('disabled', false);
+                    showRecordingView();
+                    openModal();
+                    updateModalTime();
+                    showError('', false);
+                }
+
+                function beginRecording() {
+                    if (!state.recorder || state.recordingStarted) return;
+                    if (!state.modalOpen) return;
+
+                    state.recordingStarted = true;
+                    state.seconds = 0;
+                    updateModalTime();
+
+                    state.timerId = setInterval(function () {
+                        state.seconds += 1;
+                        updateModalTime();
+                    }, 1000);
+
+                    state.maxTimerId = setTimeout(function () {
+                        stopRecording();
+                    }, self.maxDurationMs);
+
+                    state.recorder.start(200);
+                }
+
+                function scheduleRecordingStart() {
+                    if (state.startTimerId) {
+                        clearTimeout(state.startTimerId);
+                        state.startTimerId = null;
+                    }
+
+                    if (modalApi) {
+                        $modal.one('shown.bs.modal', function () {
+                            beginRecording();
+                        });
+                    }
+
+                    state.startTimerId = setTimeout(function () {
+                        beginRecording();
+                    }, self.startDelayMs);
+                }
+
+                function setUploadingState(uploading) {
+                    var $activeModal = getActiveModal();
+                    $activeModal.find('.exe-voice-recorder-save, .exe-voice-recorder-cancel').prop('disabled', uploading);
+                    if (uploading) {
+                        $activeModal.find('.exe-voice-recorder-save').text(strings.uploading);
+                    } else {
+                        $activeModal.find('.exe-voice-recorder-save').text(strings.saveRecording);
+                    }
+                }
+
+                function resetBlob() {
+                    if (state.blobUrl) {
+                        URL.revokeObjectURL(state.blobUrl);
+                    }
+                    state.blob = null;
+                    state.blobUrl = '';
+                    state.uploaded = false;
+                    $modal.find('.exe-voice-recorder-audio').attr('src', '');
+                    $fallbackModal.find('.exe-voice-recorder-audio').attr('src', '');
+                }
+
+                async function startRecording() {
+                    try {
+                        resetBlob();
+                        showError('', false);
+                        state.lastFocused = document.activeElement;
+                        state.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        state.chunks = [];
+
+                        var options = state.mimeType ? { mimeType: state.mimeType } : undefined;
+                        state.recorder = options
+                            ? new MediaRecorder(state.stream, options)
+                            : new MediaRecorder(state.stream);
+
+                        state.recorder.ondataavailable = function (event) {
+                            if (event.data && event.data.size > 0) {
+                                state.chunks.push(event.data);
+                            }
+                        };
+
+                        state.recorder.onstop = function () {
+                            clearTimers();
+                            stopStream();
+                            state.recordingStarted = false;
+                            var outputType = state.recorder.mimeType || state.mimeType || 'audio/webm';
+                            state.blob = new Blob(state.chunks, { type: outputType });
+                            state.blobUrl = URL.createObjectURL(state.blob);
+                            openConfirmationModal();
+                        };
+
+                        setRecordingState();
+                        scheduleRecordingStart();
+                    } catch (error) {
+                        stopStream();
+                        setIdleState();
+                        showError(strings.microphoneError, false);
+                    }
+                }
+
+                function stopRecording() {
+                    if (!state.recorder) return;
+                    if (state.recorder.state === 'recording') {
+                        state.recorder.stop();
+                    } else if (!state.recordingStarted && state.modalOpen) {
+                        discardRecording(true);
+                    }
+                }
+
+                function discardRecording(skipStop) {
+                    if (!skipStop) {
+                        stopRecording();
+                    }
+                    stopStream();
+                    clearTimers();
+                    closeConfirmationModal();
+                    resetBlob();
+                    setIdleState();
+                }
+
+                async function saveRecording() {
+                    if (!state.blob) return;
+                    var manager = self.resolveAssetManager(assetManager);
+                    if (!manager || typeof manager.insertImage !== 'function') {
+                        showError(strings.uploadError, true);
+                        return;
+                    }
+
+                    try {
+                        setUploadingState(true);
+                        showError('', true);
+                        var mimeType = state.blob.type || state.mimeType || 'audio/webm';
+                        var extension = self.getExtensionForMimeType(mimeType);
+                        var userName = getActiveModal().find('.exe-voice-recorder-name').val();
+                        var baseCandidate = userName;
+                        if (!baseCandidate || !baseCandidate.toString().trim()) {
+                            baseCandidate = state.suggestedName;
+                        }
+                        var fileNameBase = self.sanitizeFileNameBase(baseCandidate);
+                        var file = new File(
+                            [state.blob],
+                            fileNameBase + '.' + extension,
+                            { type: mimeType }
+                        );
+
+                        var assetUrl = await manager.insertImage(file);
+                        $input.val(assetUrl).trigger('change');
+
+                        if ($preview.length && $preview.is('audio')) {
+                            $preview.attr('src', state.blobUrl).removeClass('d-none').show();
+                        }
+
+                        state.uploaded = true;
+                        discardRecording(true);
+                    } catch (error) {
+                        showError(strings.uploadError, true);
+                    } finally {
+                        setUploadingState(false);
+                    }
+                }
+
+                var registryEntry = {
+                    containerEl: $container.get(0),
+                    cleanup: function () {
+                        if ($container.data('voiceRecorderDestroyed')) return;
+                        $container.data('voiceRecorderDestroyed', true);
+
+                        try {
+                            if (state.recorder && state.recorder.state === 'recording') {
+                                state.recorder.stop();
+                            }
+                        } catch (error) {
+                            // Ignore recorder stop errors during forced cleanup.
+                        }
+
+                        stopStream();
+                        clearTimers();
+
+                        if (state.blobUrl) {
+                            try {
+                                URL.revokeObjectURL(state.blobUrl);
+                            } catch (error) {
+                                // Ignore revoke errors.
+                            }
+                        }
+                        state.blob = null;
+                        state.blobUrl = '';
+
+                        closeConfirmationModal();
+
+                        $toggle.off();
+                        $inlineError.remove();
+
+                        if (modalApi) {
+                            try {
+                                modalApi.dispose();
+                            } catch (error) {
+                                // Ignore dispose errors.
+                            }
+                        }
+                        $modal.remove();
+                        $fallbackModal.remove();
+
+                        self.unregisterInstance(registryEntry);
+                    },
+                };
+
+                this.registerInstance(registryEntry);
+
+                $toggle.on('click', function (event) {
+                    event.preventDefault();
+                    if (state.modalOpen) return;
+                    if ($toggle.hasClass('recording')) {
+                        stopRecording();
+                    } else {
+                        startRecording();
+                    }
+                });
+
+                $modal.find('.exe-voice-recorder-stop').on('click', function (event) {
+                    event.preventDefault();
+                    stopRecording();
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-stop').on('click', function (event) {
+                    event.preventDefault();
+                    stopRecording();
+                });
+
+                $modal.find('.exe-voice-recorder-cancel').on('click', function (event) {
+                    event.preventDefault();
+                    discardRecording(true);
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-cancel').on('click', function (event) {
+                    event.preventDefault();
+                    discardRecording(true);
+                });
+
+                $modal.find('.exe-voice-recorder-save').on('click', function (event) {
+                    event.preventDefault();
+                    saveRecording();
+                });
+
+                $fallbackModal.find('.exe-voice-recorder-save').on('click', function (event) {
+                    event.preventDefault();
+                    saveRecording();
+                });
+
+                $container.data('voiceRecorderInit', true);
+                $container.data('voiceRecorderCleanup', function () {
+                    registryEntry.cleanup();
+                });
+            },
         },
         // Save the iDevice
         save: function () {

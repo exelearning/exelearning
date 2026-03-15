@@ -106,4 +106,128 @@ describe('hidden-image iDevice export', () => {
       expect($eXeHiddenImage.initialScore).toBe('');
     });
   });
+
+  describe('getRevealDelayMs', () => {
+    it('converts seconds to milliseconds', () => {
+      expect($eXeHiddenImage.getRevealDelayMs(2)).toBe(2000);
+      expect($eXeHiddenImage.getRevealDelayMs('10')).toBe(10000);
+    });
+
+    it('returns infinite delay when value is zero', () => {
+      expect($eXeHiddenImage.getRevealDelayMs(0)).toBe(Number.POSITIVE_INFINITY);
+      expect($eXeHiddenImage.getRevealDelayMs('0')).toBe(Number.POSITIVE_INFINITY);
+    });
+
+    it('falls back to one second on invalid values', () => {
+      expect($eXeHiddenImage.getRevealDelayMs(-1)).toBe(1000);
+      expect($eXeHiddenImage.getRevealDelayMs('abc')).toBe(1000);
+      expect($eXeHiddenImage.getRevealDelayMs(undefined)).toBe(1000);
+    });
+  });
+
+  describe('hideSquareAfterElapsedTime', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('reveals square only after configured elapsed time', () => {
+      const fadeIn = vi.fn();
+      const square = {
+        length: 1,
+        _dataStore: {},
+        data(key, value) {
+          if (typeof value === 'undefined') {
+            return this._dataStore[key];
+          }
+          this._dataStore[key] = value;
+          return this._dataStore[key];
+        },
+        removeData(key) {
+          delete this._dataStore[key];
+        },
+        stop() {
+          return {
+            fadeIn,
+          };
+        },
+      };
+
+      $eXeHiddenImage.hideSquareAfterElapsedTime(square, 2000);
+
+      vi.advanceTimersByTime(1900);
+      expect(fadeIn).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(100);
+      expect(fadeIn).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not schedule reveal when delay is infinite', () => {
+      const fadeIn = vi.fn();
+      const square = {
+        length: 1,
+        _dataStore: {},
+        data(key, value) {
+          if (typeof value === 'undefined') {
+            return this._dataStore[key];
+          }
+          this._dataStore[key] = value;
+          return this._dataStore[key];
+        },
+        removeData(key) {
+          delete this._dataStore[key];
+        },
+        stop() {
+          return {
+            fadeIn,
+          };
+        },
+      };
+
+      $eXeHiddenImage.hideSquareAfterElapsedTime(
+        square,
+        Number.POSITIVE_INFINITY
+      );
+
+      vi.advanceTimersByTime(60000);
+      expect(fadeIn).not.toHaveBeenCalled();
+    });
+
+    it('clears previous pending timer before scheduling a new one', () => {
+      const previousTimer = setTimeout(() => {}, 99999);
+      const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+      const fadeIn = vi.fn();
+      const square = {
+        length: 1,
+        _dataStore: {
+          hiRevealTimerId: previousTimer,
+        },
+        data(key, value) {
+          if (typeof value === 'undefined') {
+            return this._dataStore[key];
+          }
+          this._dataStore[key] = value;
+          return this._dataStore[key];
+        },
+        removeData(key) {
+          delete this._dataStore[key];
+        },
+        stop() {
+          return {
+            fadeIn,
+          };
+        },
+      };
+
+      $eXeHiddenImage.hideSquareAfterElapsedTime(square, 1000);
+
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(previousTimer);
+      vi.advanceTimersByTime(1000);
+      expect(fadeIn).toHaveBeenCalledTimes(1);
+    });
+  });
 });
