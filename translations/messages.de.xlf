@@ -12282,43 +12282,43 @@
         <target>~Fügt dem Haupttitel zusätzliche Informationen hinzu.</target>
       </trans-unit>
       <!-- Error page translations -->
-      <trans-unit id="error.page_not_found" resname="error.page_not_found">
+      <trans-unit id="error.page_not_found" resname="Page not found">
         <source>Page not found</source>
         <target>Page not found</target>
       </trans-unit>
-      <trans-unit id="error.page_cannot_be_displayed" resname="error.page_cannot_be_displayed">
+      <trans-unit id="error.page_cannot_be_displayed" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
         <target>Sorry, but the page cannot be displayed.</target>
       </trans-unit>
-      <trans-unit id="error.server_error_try_again" resname="error.server_error_try_again">
+      <trans-unit id="error.server_error_try_again" resname="The server encountered an error and could not complete your request. Please try again later.">
         <source>The server encountered an error and could not complete your request. Please try again later.</source>
         <target>The server encountered an error and could not complete your request. Please try again later.</target>
       </trans-unit>
-      <trans-unit id="error.return_to_workarea" resname="error.return_to_workarea">
+      <trans-unit id="error.return_to_workarea" resname="Return to work area">
         <source>Return to work area</source>
         <target>Return to work area</target>
       </trans-unit>
-      <trans-unit id="error.return_to_login" resname="error.return_to_login">
+      <trans-unit id="error.return_to_login" resname="Return to login">
         <source>Return to login</source>
         <target>Return to login</target>
       </trans-unit>
-      <trans-unit id="error.create_new_project" resname="error.create_new_project">
-        <source>Create New Project</source>
+      <trans-unit id="error.create_new_project" resname="Create new project">
+        <source>Create new project</source>
         <target>Create New Project</target>
       </trans-unit>
-      <trans-unit id="error.back_to_login" resname="error.back_to_login">
-        <source>Back to Login</source>
+      <trans-unit id="error.back_to_login" resname="Back to login">
+        <source>Back to login</source>
         <target>Back to Login</target>
       </trans-unit>
-      <trans-unit id="error.access_denied" resname="error.access_denied">
+      <trans-unit id="error.access_denied" resname="Access denied">
         <source>Access denied</source>
         <target>Access denied</target>
       </trans-unit>
-      <trans-unit id="error.access_denied_message" resname="error.access_denied_message">
+      <trans-unit id="error.access_denied_message" resname="You don't have permission to access this project.">
         <source>You don't have permission to access this project.</source>
         <target>You don't have permission to access this project.</target>
       </trans-unit>
-      <trans-unit id="error.server_error" resname="error.server_error">
+      <trans-unit id="error.server_error" resname="Server error">
         <source>Server error</source>
         <target>Server error</target>
       </trans-unit>
