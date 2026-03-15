@@ -56,6 +56,10 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.trivialID = $exeDevice.getId();
         $exeDevice.initQuestions();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
@@ -1244,7 +1248,7 @@ var $exeDevice = {
                                             <input id="trivialEAlt" type="text" class="form-control w-100" />
                                         </div>
                                     </div>                                    
-                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio">
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="trivialEInputAudio" data-voice-recorder data-voice-input="#trivialEURLAudio">
                                         <span id="trivialETitleAudio">${_('Audio')}:</span>
                                         <label class="sr-av" for="trivialEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker TRVLE-EURLAudio form-control w-100 me-0" id="trivialEURLAudio"/>
