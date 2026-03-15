@@ -59,6 +59,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initQuestions();
 
+        const root = document.getElementById('quickMultipleQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.loadYoutubeApi();
@@ -1591,7 +1594,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="seleccionaETitleAudio">${_('Audio')}:</span>
-                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEInputAudio">
+                                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="seleccionaEInputAudio" data-voice-recorder data-voice-input="#seleccionaEURLAudio">
                                         <label class="sr-av" for="seleccionaEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker w-100 form-control me-0" id="seleccionaEURLAudio"/>
                                         <a href="#" id="seleccionaEPlayAudio" class="SLCNE-ENavigationButton" title="${_('Play audio')}">

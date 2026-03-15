@@ -310,7 +310,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-voice-recorder data-voice-input="#flipcardsEURLAudio">
                                         <label for="flipcardsEURLAudio" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLAudio" class="exe-file-picker FLCRDS-EURLAudio form-control me-0" />
                                         <a href="#" id="flipcardsEPlayAudio" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
@@ -366,7 +366,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" data-voice-recorder data-voice-input="#flipcardsEURLAudioBack">
                                         <label form="flipcardsEURLAudioBack" class="sr-av">URL</label>
                                         <input type="text" id="flipcardsEURLAudioBack" class="exe-file-picker FLCRDS-EURLAudio form-control  me-0" />
                                         <a href="#" id="flipcardsEPlayAudioBack" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
@@ -677,6 +677,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initCards();
+
+        const root = document.getElementById('flipcardsQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

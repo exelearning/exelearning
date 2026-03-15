@@ -32,6 +32,9 @@ var $exeDevice = {
         this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('hiQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     enableForm: function () {
@@ -515,7 +518,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span id="hiETitleAudio">${_('Audio')}</span>
-                                    <div class="justify-content-start  d-flex flex-nowrap align-items-center gap-1 mb-3" id="hiEInputAudio">
+                                    <div class="justify-content-start  d-flex flex-nowrap align-items-center gap-1 mb-3" id="hiEInputAudio" data-voice-recorder data-voice-input="#hiEURLAudio">
                                         <label class="sr-av" for="hiEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker HIE-URLAudio form-control me-0" id="hiEURLAudio" />
                                         <a href="#" id="hiEPlayAudio" class="HIE-NavigationButton HIE-PlayVideo" title="${_('Play audio')}"><img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="HIE-ButtonImage " /></a>
