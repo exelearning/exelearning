@@ -33,10 +33,6 @@
         <source>Mark all the options in the correct order and click on the "Reply" button.</source>
         <target>~Marku ĉiujn opciojn en la ĝusta ordo kaj alklaku "Respondi".</target>
       </trans-unit>
-      <trans-unit id="gcfIi2i" resname="Write the correct word or phrase and click on the &quot;Reply&quot; button.">
-        <source>Write the correct word or phrase and click on the "Reply" button.</source>
-        <target>~Skribu la ĝustan vorton aŭ frazon kaj alklaku "Respondi".</target>
-      </trans-unit>
       <trans-unit id=".gszbqv" resname="Click on">
         <source>Click on</source>
         <target>~Alklaku</target>
@@ -3857,10 +3853,6 @@
         <source>Advanced</source>
         <target>~Pli progresinta</target>
       </trans-unit>
-      <trans-unit id="CzxzXbj" resname="Mode:">
-        <source>Mode:</source>
-        <target>~Modo:</target>
-      </trans-unit>
       <trans-unit id="NxYTQRJ" resname="Untitled document">
         <source>Untitled document</source>
         <target>~Sen titolo dokumento</target>
@@ -3869,21 +3861,9 @@
         <source>Project properties</source>
         <target>~Projekto-eco</target>
       </trans-unit>
-      <trans-unit id="76AHLsl" resname="Project properties saved.">
-        <source>Project properties saved.</source>
-        <target>~Projekto-eco konservita.</target>
-      </trans-unit>
       <trans-unit id="W7h4Kea" resname="Share link">
         <source>Share link</source>
         <target>~Kopii ligilon</target>
-      </trans-unit>
-      <trans-unit id="wAHWdeY" resname="The share link is:">
-        <source>The share link is:</source>
-        <target>~La ligilo por kunhavigi estas:</target>
-      </trans-unit>
-      <trans-unit id="umPqmsm" resname="Copy to clipboard">
-        <source>Copy to clipboard</source>
-        <target>~Kopii al tondujo</target>
       </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
@@ -3972,10 +3952,6 @@
       <trans-unit id="NTWmm7D" resname="An error occurred while generating the preview.">
         <source>An error occurred while generating the preview.</source>
         <target>~Eraro okazis dum generi la antaŭrigardon.</target>
-      </trans-unit>
-      <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
-        <source>An error occurred while generating the print preview.</source>
-        <target>~Okazis eraro dum la generado de la presanta antaŭvido.</target>
       </trans-unit>
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
@@ -4133,18 +4109,6 @@
         <source>Remove image</source>
         <target>~Forigi bildon</target>
       </trans-unit>
-      <trans-unit id="vOnFuyb" resname="Are you sure you want to delete the style: ${themeId}?">
-        <source>Are you sure you want to delete the style: ${themeId}?</source>
-        <target>~Ĉu vi certas, ke vi volas forigi la temon: ${themeId}?</target>
-      </trans-unit>
-      <trans-unit id="TG2suIV" resname="Link validation tool">
-        <source>Link validation tool</source>
-        <target>~Ligila validiga ilo</target>
-      </trans-unit>
-      <trans-unit id="HFY5meK" resname="Looking for broken links...">
-        <source>Looking for broken links...</source>
-        <target>~Serĉas difektitajn ligojn...</target>
-      </trans-unit>
       <trans-unit id="xfCwLyo" resname="No broken links found.">
         <source>No broken links found.</source>
         <target>~Neniuj difektitaj ligoj trovitaj.</target>
@@ -4164,10 +4128,6 @@
       <trans-unit id="6.AJt1z" resname="The preview has been generated.">
         <source>The preview has been generated.</source>
         <target>~La antaŭrigardo estis generita.</target>
-      </trans-unit>
-      <trans-unit id="OhU0H.1" resname="multiple users on page">
-        <source>multiple users on page</source>
-        <target>~multaj uzantoj en paĝo</target>
       </trans-unit>
       <trans-unit id="jb.15_T" resname="Upload iDevice file">
         <source>Upload iDevice file</source>
@@ -4192,10 +4152,6 @@
       <trans-unit id="g.UhRlz" resname="Delete page">
         <source>Delete page</source>
         <target>~Forigi paĝon</target>
-      </trans-unit>
-      <trans-unit id="j6SIwcG" resname="Do you want to delete the page? This cannot be undone.">
-        <source>Do you want to delete the page? This cannot be undone.</source>
-        <target>~Ĉu vi volas forigi la paĝon? Tio ne povas esti malkonfirmitaj.</target>
       </trans-unit>
       <trans-unit id="pRCwpOT" resname="Yes">
         <source>Yes</source>
@@ -4252,10 +4208,6 @@
       <trans-unit id="h5EmhVn" resname="Assistant">
         <source>Assistant</source>
         <target>~Asistanto</target>
-      </trans-unit>
-      <trans-unit id="VQ9mySy" resname="File Manager">
-        <source>File Manager</source>
-        <target>~Dosieradministranto</target>
       </trans-unit>
       <trans-unit id=".QFPbFe" resname="Back">
         <source>Back</source>
@@ -4317,14 +4269,6 @@
         <source>Block name</source>
         <target>~Bloka nomo</target>
       </trans-unit>
-      <trans-unit id="9vmiJ3a" resname="Block position">
-        <source>Block position</source>
-        <target>~Bloka pozicio</target>
-      </trans-unit>
-      <trans-unit id="_b3MDW9" resname="Broken Links">
-        <source>Broken Links</source>
-        <target>~Malfunkciaj ligoj</target>
-      </trans-unit>
       <trans-unit id="rYHQpCH" resname="Path">
         <source>Path</source>
         <target>~Vojo</target>
@@ -4360,14 +4304,6 @@
       <trans-unit id="UoWaP0Y" resname="Show other versions">
         <source>Show other versions</source>
         <target>~Montri aliajn versiojn</target>
-      </trans-unit>
-      <trans-unit id="vKtCm.n" resname="Delete project">
-        <source>Delete project</source>
-        <target>~Forviŝu projekton</target>
-      </trans-unit>
-      <trans-unit id="4YXoX88" resname="Do you want to delete the project (elp)? This cannot be undone.">
-        <source>Do you want to delete the project (elp)? This cannot be undone.</source>
-        <target>~Ĉu vi volas forigi la projekton (elp)? Tio ne povas esti malkonata.</target>
       </trans-unit>
       <trans-unit id="OZeulWK" resname="Search...">
         <source>Search...</source>
@@ -4425,10 +4361,6 @@
         <source>Exit without saving</source>
         <target>~Eliri sen konservi</target>
       </trans-unit>
-      <trans-unit id="COSKxUW" resname="An error occurred while saving the file: ${response.responseMessage}">
-        <source>An error occurred while saving the file: ${response.responseMessage}</source>
-        <target>~Eraro okazis dum konservi la dosieron: ${response.responseMessage}</target>
-      </trans-unit>
       <trans-unit id="Dpz4_Qq" resname="Error saving">
         <source>Error saving</source>
         <target>~Eraro dum konservado</target>
@@ -4464,10 +4396,6 @@
       <trans-unit id="RFZSvQG" resname="Style">
         <source>Style</source>
         <target>~Stilo</target>
-      </trans-unit>
-      <trans-unit id="NnZxYgo" resname="Are you sure you want to delete the style: ${theme.id}?">
-        <source>Are you sure you want to delete the style: ${theme.id}?</source>
-        <target>~Ĉu vi certas ke vi volas forigi la temon: ${theme.id}?</target>
       </trans-unit>
       <trans-unit id="4oyaNcE" resname="Upload">
         <source>Upload</source>
@@ -4513,33 +4441,13 @@
         <source>Move down</source>
         <target>~Movi malsupren</target>
       </trans-unit>
-      <trans-unit id="gloizQK" resname="Clone">
-        <source>Clone</source>
-        <target>~Klonu</target>
-      </trans-unit>
-      <trans-unit id="soQ_C.." resname="Move to">
-        <source>Move to</source>
-        <target>~Movi al</target>
-      </trans-unit>
       <trans-unit id="Oe.K104" resname="Delete box">
         <source>Delete box</source>
         <target>~Forviŝu skatolon</target>
       </trans-unit>
-      <trans-unit id="pVLSTZ6" resname="Check links">
-        <source>Check links</source>
-        <target>~Kontrolu ligojn</target>
-      </trans-unit>
-      <trans-unit id="Jxrmbyu" resname="Delete the box and all its iDevices? This cannot be undone.">
-        <source>Delete the box and all its iDevices? This cannot be undone.</source>
-        <target>~Ĉu forigi la keston kaj ĉiujn ĝiajn iDevice-ojn? Tio ne povas esti malkonata.</target>
-      </trans-unit>
       <trans-unit id="_YseMvk" resname="Box properties">
         <source>Box properties</source>
         <target>~Skatolaj propraĵoj</target>
-      </trans-unit>
-      <trans-unit id="pOLfvIx" resname="Move Block to page">
-        <source>Move Block to page</source>
-        <target>~Movi Blokon al paĝo</target>
       </trans-unit>
       <trans-unit id="KSVt3cc" resname="Download error">
         <source>Download error</source>
@@ -4568,14 +4476,6 @@
       <trans-unit id="fEHzCCc" resname="An error occurred while update component in database">
         <source>An error occurred while update component in database</source>
         <target>~Eraro okazis dum ĝisdatigo de la komponanto en la datumbazo</target>
-      </trans-unit>
-      <trans-unit id="wiM7f0K" resname="Identical contents in the same page might cause errors. Edit the new one or move it to another page.">
-        <source>Identical contents in the same page might cause errors. Edit the new one or move it to another page.</source>
-        <target>~Identaj enhavoj en la sama paĝo eble kaŭzos erarojn. Redaktu la novan aŭ movu ĝin al alia paĝo.</target>
-      </trans-unit>
-      <trans-unit id="3.j2frP" resname="An error occurred while clone component in database">
-        <source>An error occurred while clone component in database</source>
-        <target>~Eraro okazis dum kloni de la komponanto en la datumbazo</target>
       </trans-unit>
       <trans-unit id="ECdlxze" resname="An error occurred while removing the component from the database">
         <source>An error occurred while removing the component from the database</source>
@@ -4701,18 +4601,6 @@
         <source>Your style has changed. Reload the page to apply changes?</source>
         <target>~Via stilo ŝanĝiĝis. Ŝarĝu la paĝon denove por apliki ŝanĝojn?</target>
       </trans-unit>
-      <trans-unit id="PlBZGgy" resname="Undo the last action?">
-        <source>Undo the last action?</source>
-        <target>~Ĉu vi volas malfari la lastan agon?</target>
-      </trans-unit>
-      <trans-unit id="JI04syi" resname="Unable to undo the last action.">
-        <source>Unable to undo the last action.</source>
-        <target>~Ne eblas malfari la lastan agon.</target>
-      </trans-unit>
-      <trans-unit id="gysLwdg" resname="An error occurred while saving the component.">
-        <source>An error occurred while saving the component.</source>
-        <target>~Eraro okazis dum konservado de la komponanto.</target>
-      </trans-unit>
       <trans-unit id="A3_STN3" resname="Unsaved changes detected. Save your iDevice before continuing.">
         <source>Unsaved changes detected. Save your iDevice before continuing.</source>
         <target>~Vi redaktas iDevice-on. Bonvolu fermi ĝin antaŭ ol daŭrigi.</target>
@@ -4720,22 +4608,6 @@
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>
         <target>~Postulata</target>
-      </trans-unit>
-      <trans-unit id="eCtKVk0" resname="Please fill in all required fields.">
-        <source>Please fill in all required fields.</source>
-        <target>~Bonvolu plenigi ĉiujn postulatajn kampojn.</target>
-      </trans-unit>
-      <trans-unit id="Hrss0sI" resname="Save metadata and properties">
-        <source>Save metadata and properties</source>
-        <target>~Konservu metadatumojn kaj ecojn</target>
-      </trans-unit>
-      <trans-unit id="Nxwp61M" resname="Properties error">
-        <source>Properties error</source>
-        <target>~Eraro pri ecoj</target>
-      </trans-unit>
-      <trans-unit id="jiaDQDT" resname="An error occurred while saving properties">
-        <source>An error occurred while saving properties</source>
-        <target>~Eraro okazis dum konservado de ecoj</target>
       </trans-unit>
       <trans-unit id="Ww.bpx3" resname="An error occurred while saving node's properties in database">
         <source>An error occurred while saving node's properties in database</source>
@@ -5036,10 +4908,6 @@
       <trans-unit id="xutW92D" resname="Accessibility warning">
         <source>Accessibility warning</source>
         <target>~Aksesebleca averto</target>
-      </trans-unit>
-      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
-        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
-        <target>~Provizu vorton kaj ĝian difinon. Ŝanĝi inter: "Vorto komenciĝas per" aŭ "Vorto enhavas", alklakante %s</target>
       </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
@@ -7057,10 +6925,6 @@
         <source>Link Title</source>
         <target>~Ligila Titolo</target>
       </trans-unit>
-      <trans-unit id="2dUkgir" resname="Link Author">
-        <source>Link Author</source>
-        <target>~Ligila Aŭtoro</target>
-      </trans-unit>
       <trans-unit id="Xt7hurv" resname="Choose a license...">
         <source>Choose a license...</source>
         <target>~Elektu licencon...</target>
@@ -7325,10 +7189,6 @@
         <source>Important</source>
         <target>~Grave</target>
       </trans-unit>
-      <trans-unit id="cIWhj7d" resname="Your changes won't be saved until you click on \&quot;Save\&quot;.">
-        <source>Your changes won't be saved until you click on \"Save\".</source>
-        <target>~Viaj ŝanĝoj ne estos konservitaj ĝis vi klakas sur \"Konservi\".  </target>
-      </trans-unit>
       <trans-unit id="dEPpFWQ" resname="Do not show this message again">
         <source>Do not show this message again</source>
         <target>~Ne montri ĉi tiun mesaĝon denove</target>
@@ -7369,10 +7229,6 @@
         <source>Saved!</source>
         <target>~Savigita!</target>
       </trans-unit>
-      <trans-unit id="719B6M_" resname="Click on \&quot;Exit\&quot; to finish.">
-        <source>Click on \"Exit\" to finish.</source>
-        <target>~Klaku sur \"Eliri\" por fini.  </target>
-      </trans-unit>
       <trans-unit id="yLx_WEs" resname="Stop the playing video">
         <source>Stop the playing video</source>
         <target>~Ĉesigu la ludantan videon</target>
@@ -7408,14 +7264,6 @@
       <trans-unit id="20aVC9W" resname="Please check the start/end time.">
         <source>Please check the start/end time.</source>
         <target>~Bonvolu kontroli la komencan/finaĵan tempon.</target>
-      </trans-unit>
-      <trans-unit id="RLB6gEc" resname="Please check the \&quot;Start\&quot; time">
-        <source>Please check the \"Start\" time</source>
-        <target>~Bonvolu kontroli la \"Komenco\"-tempon  </target>
-      </trans-unit>
-      <trans-unit id="FSmyc.T" resname="Please check the \&quot;End\&quot; time">
-        <source>Please check the \"End\" time</source>
-        <target>~Bonvolu kontroli la \"Fino\"-tempon  </target>
       </trans-unit>
       <trans-unit id="DmOBCiE" resname="Set the time for the slide to be shown">
         <source>Set the time for the slide to be shown</source>
@@ -7497,17 +7345,9 @@
         <source>Open the editor and start adding interaction...</source>
         <target>~Malfermu la redaktanton kaj komencu aldoni interagadon...</target>
       </trans-unit>
-      <trans-unit id="TENLofx" resname="Please save your iDevice now (click on %s now) and edit it to add interaction.">
-        <source>Please save your iDevice now (click on %s now) and edit it to add interaction.</source>
-        <target>~Bonvolu konservi vian iDevice nun (klaku sur %s nun) kaj redaktu ĝin por aldoni interagan funkcion.</target>
-      </trans-unit>
       <trans-unit id="9tb70cZ" resname="Format">
         <source>Format</source>
         <target>~Formato</target>
-      </trans-unit>
-      <trans-unit id="lIU._xu" resname="Recommended type">
-        <source>Recommended type</source>
-        <target>~Rekomendita tipo</target>
       </trans-unit>
       <trans-unit id="tIpKalw" resname="Please select a file or provide a valid video URL.">
         <source>Please select a file or provide a valid video URL.</source>
@@ -9697,49 +9537,13 @@
         <source>Inverse</source>
         <target>~Inverse</target>
       </trans-unit>
-      <trans-unit id="1RFEUr3" resname="Selected: {0} of {1}">
-        <source>Selected: {0} of {1}</source>
-        <target>~Elektita: {0} de {1}</target>
-      </trans-unit>
-      <trans-unit id="jhabtrD" resname="Uploading {0}% of {1}">
-        <source>Uploading {0}% of {1}</source>
-        <target>~Alŝutas {0}% de {1}</target>
-      </trans-unit>
-      <trans-unit id="Nq1CAoe" resname="{0} is too large, please upload files less than {1}">
-        <source>{0} is too large, please upload files less than {1}</source>
-        <target>~{0} estas tro granda, bonvolu alŝuti dosierojn malpli ol {1}</target>
-      </trans-unit>
-      <trans-unit id="u3Lgp9d" resname="{0} failed to upload">
-        <source>{0} failed to upload</source>
-        <target>~Maltrafis alŝuti {0}</target>
-      </trans-unit>
-      <trans-unit id="eCTXUiT" resname="{0} Per Page">
-        <source>{0} Per Page</source>
-        <target>~{0} Ĉiuj paĝoj</target>
-      </trans-unit>
       <trans-unit id="xM2rg3U" resname="Folder">
         <source>Folder</source>
         <target>~Dosierujo</target>
       </trans-unit>
-      <trans-unit id="lNnbOxU" resname="Not Found">
-        <source>Not Found</source>
-        <target>~Ne trovita</target>
-      </trans-unit>
-      <trans-unit id="qqQY1rt" resname="Not Allowed">
-        <source>Not Allowed</source>
-        <target>~Ne permesita</target>
-      </trans-unit>
-      <trans-unit id="BfXv0G_" resname="Unknown error">
-        <source>Unknown error</source>
-        <target>~Nekonata eraro</target>
-      </trans-unit>
       <trans-unit id="vW4PrEl" resname="Add files">
         <source>Add files</source>
         <target>~Aldoni dosierojn</target>
-      </trans-unit>
-      <trans-unit id="OKwLQ.A" resname="No pagination">
-        <source>No pagination</source>
-        <target>~Sen paĝigo</target>
       </trans-unit>
       <trans-unit id="ExFLJqx" resname="Home">
         <source>Home</source>
@@ -9749,121 +9553,13 @@
         <source>Rename</source>
         <target>~Renomi</target>
       </trans-unit>
-      <trans-unit id="SOf5.ap" resname="Please fill out this field">
-        <source>Please fill out this field</source>
-        <target>~Bonvolu plenigi ĉi tiun kampon</target>
-      </trans-unit>
-      <trans-unit id="6A2UfPi" resname="Zip">
-        <source>Zip</source>
-        <target>~Kodo</target>
-      </trans-unit>
-      <trans-unit id="fAdtaUZ" resname="Batch Download">
-        <source>Batch Download</source>
-        <target>~Kolekta Elŝuto</target>
-      </trans-unit>
-      <trans-unit id="uASP3Z9" resname="Unzip">
-        <source>Unzip</source>
-        <target>~Malzipi</target>
-      </trans-unit>
       <trans-unit id="2OBCGbu" resname="Copy link">
         <source>Copy link</source>
         <target>~Kopiu ligilon</target>
       </trans-unit>
-      <trans-unit id="tLFxco7" resname="Drop files to upload">
-        <source>Drop files to upload</source>
-        <target>~Ĝetu dosierojn por alŝuti</target>
-      </trans-unit>
-      <trans-unit id="R4ejw1a" resname="Select Folder">
-        <source>Select Folder</source>
-        <target>~Elektu Folderon</target>
-      </trans-unit>
-      <trans-unit id="tooLhd2" resname="Files">
-        <source>Files</source>
-        <target>~Dosieroj</target>
-      </trans-unit>
-      <trans-unit id="t_hjNeq" resname="Paused">
-        <source>Paused</source>
-        <target>~ Pausigita</target>
-      </trans-unit>
-      <trans-unit id="HaWmb6s" resname="Home Folder">
-        <source>Home Folder</source>
-        <target>~Hejma Dosiero</target>
-      </trans-unit>
-      <trans-unit id="3wtDbCp" resname="Leave blank for no change">
-        <source>Leave blank for no change</source>
-        <target>~Lasu malplena por nenio ŝanĝi</target>
-      </trans-unit>
-      <trans-unit id="cH5dmrY" resname="Are you sure you want to do this?">
-        <source>Are you sure you want to do this?</source>
-        <target>~Ĉu vi certas ke vi volas fari tion?</target>
-      </trans-unit>
-      <trans-unit id="OczhMQg" resname="Are you sure you want to allow access to everyone?">
-        <source>Are you sure you want to allow access to everyone?</source>
-        <target>~Ĉu vi certas ke vi volas permesi al ĉiuj aliron?</target>
-      </trans-unit>
-      <trans-unit id="sa3Py1X" resname="Are you sure you want to stop all uploads?">
-        <source>Are you sure you want to stop all uploads?</source>
-        <target>~Ĉu vi certas ke vi volas ĉesigi ĉiujn alŝutojn?</target>
-      </trans-unit>
-      <trans-unit id="0yVywJH" resname="Something went wrong">
-        <source>Something went wrong</source>
-        <target>~ Io misis</target>
-      </trans-unit>
-      <trans-unit id="6Bvb_3V" resname="Invalid directory">
-        <source>Invalid directory</source>
-        <target>~Nevalida dosierujo</target>
-      </trans-unit>
-      <trans-unit id="LR30_Bm" resname="This field is required">
-        <source>This field is required</source>
-        <target>~Ĉi tiu kampo estas deviga</target>
-      </trans-unit>
-      <trans-unit id="YBDJnwa" resname="Updated">
-        <source>Updated</source>
-        <target>~Ĝisdatigita</target>
-      </trans-unit>
-      <trans-unit id="l9KZflr" resname="Deleted">
-        <source>Deleted</source>
-        <target>~Forigita</target>
-      </trans-unit>
-      <trans-unit id="mZXDU4R" resname="Your file is ready">
-        <source>Your file is ready</source>
-        <target>~Via dosiero estas preta</target>
-      </trans-unit>
       <trans-unit id=".EmYZIu" resname="View">
         <source>View</source>
         <target>~Vidi</target>
-      </trans-unit>
-      <trans-unit id="V6IIhvU" resname="Show hidden">
-        <source>Show hidden</source>
-        <target>~Montri kaŝitan</target>
-      </trans-unit>
-      <trans-unit id="rvsQbge" resname="Do you want to unzip the file?">
-        <source>Do you want to unzip the file?</source>
-        <target>~Ĉu vi volas malzipi la dosieron?</target>
-      </trans-unit>
-      <trans-unit id="6edviCT" resname="Upload without unzip">
-        <source>Upload without unzip</source>
-        <target>~Alŝuti sen malzipi</target>
-      </trans-unit>
-      <trans-unit id="JkzYTYq" resname="Unzip here">
-        <source>Unzip here</source>
-        <target>~Malzipu ĉi tie</target>
-      </trans-unit>
-      <trans-unit id="vtDPEYM" resname="Unzip in subfolder ...">
-        <source>Unzip in subfolder ...</source>
-        <target>~Malzipu en subdosiero ...</target>
-      </trans-unit>
-      <trans-unit id="J1nmXNj" resname="Unzip in subfolder">
-        <source>Unzip in subfolder</source>
-        <target>~Malzipu en subdosiero</target>
-      </trans-unit>
-      <trans-unit id="SYe8ltT" resname="There was a problem creating the archive">
-        <source>There was a problem creating the archive</source>
-        <target>~Estis problemo dum kreado de la arkivo</target>
-      </trans-unit>
-      <trans-unit id="ZI2xkAH" resname="File type not allowed or size over limit">
-        <source>File type not allowed or size over limit</source>
-        <target>~Tipo de dosiero ne estas permesita aŭ grandeco superas la limon</target>
       </trans-unit>
       <trans-unit id="4cXccyZ" resname="Effects (accordion, tabs, pagination...)">
         <source>Effects (accordion, tabs, pagination...)</source>
@@ -11021,10 +10717,6 @@
         <source>Title and Attribution</source>
         <target>~Titolo kaj Atribuo</target>
       </trans-unit>
-      <trans-unit id="_EidU37" resname="Use JavaScript player">
-        <source>Use JavaScript player</source>
-        <target>~Uzu JavaScript-ludilon</target>
-      </trans-unit>
       <trans-unit id="dgh2RmC" resname="Use Controls">
         <source>Use Controls</source>
         <target>~Uzu Kontrolojn</target>
@@ -11181,22 +10873,6 @@
         <source>Cannot get source of a broadcasted event</source>
         <target>~Ne povas akiri la fonton de elsendo</target>
       </trans-unit>
-      <trans-unit id="qWFQXx." resname="Other user is saving changes right now">
-        <source>Other user is saving changes right now</source>
-        <target>~Alia uzanto konservas ŝanĝojn nuntempe</target>
-      </trans-unit>
-      <trans-unit id="YKtys6v" resname="An iDevice is open">
-        <source>An iDevice is open</source>
-        <target>~I- aparato estas malfermita</target>
-      </trans-unit>
-      <trans-unit id="Uq1NiSp" resname="The file content is wrong">
-        <source>The file content is wrong</source>
-        <target>~La enhavo de la dosiero estas malĝusta</target>
-      </trans-unit>
-      <trans-unit id="9qBsVsM" resname="Failed to upload file">
-        <source>Failed to upload file</source>
-        <target>~Malsukcesis alŝuti dosieron</target>
-      </trans-unit>
       <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
         <source>You can choose a different language for the current project.</source>
         <target>~Vi povas elekti alian lingvon por la nuna projekto.</target>
@@ -11213,10 +10889,6 @@
         <source>Version control</source>
         <target>~Versio-registaro</target>
       </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>~Tekstoj kaj Ligiloj</target>
-      </trans-unit>
       <trans-unit id="sn6ELnZ" resname="Version">
         <source>Version</source>
         <target>~Versio</target>
@@ -11229,29 +10901,9 @@
         <source>License URL</source>
         <target>~URL de la licenco</target>
       </trans-unit>
-      <trans-unit id="4bgAmj2" resname="Links color">
-        <source>Links color</source>
-        <target>~Koloro de ligoj</target>
-      </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>~Kapo bildo</target>
-      </trans-unit>
-      <trans-unit id="Ulft.2T" resname="Logo image">
-        <source>Logo image</source>
-        <target>~Logo bildo</target>
-      </trans-unit>
       <trans-unit id="QkjXw6z" resname="Visible in export">
         <source>Visible in export</source>
         <target>~Videbla en eksportado</target>
-      </trans-unit>
-      <trans-unit id="fE2HH6r" resname="Visibility type">
-        <source>Visibility type</source>
-        <target>~Vido tipo</target>
-      </trans-unit>
-      <trans-unit id="RWxaLMk" resname="Visible to all">
-        <source>Visible to all</source>
-        <target>~Videra al ĉiuj</target>
       </trans-unit>
       <trans-unit id="ZT.NQle" resname="Teacher only">
         <source>Teacher only</source>
@@ -11325,14 +10977,6 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Helpu nin disvastigi eXeLearning. Se vi markos ĉi tiun opcion, "Farita kun eXeLearning" ligilo aperos en viaj paĝoj.</target>
       </trans-unit>
-      <trans-unit id="UcqsRJ2" resname="Include a copy of the source file">
-        <source>Include a copy of the source file</source>
-        <target>~Inkluzivi kopion de la fonta dosiero</target>
-      </trans-unit>
-      <trans-unit id="JDiMBVc" resname="A copy of the eXeLearning file will be included when exporting the content.">
-        <source>A copy of the eXeLearning file will be included when exporting the content.</source>
-        <target>~Kopio de la eXeLearning-dosiero estos inkludita kiam vi eksportas la enhavon.</target>
-      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Paĝa kalkulilo</target>
@@ -11365,10 +11009,6 @@
         <source>HEAD</source>
         <target>HEAD</target>
       </trans-unit>
-      <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
-        <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>
-        <target>~HTML por inkludi fine de la KAPO-tago: LIGO, META, SCRIPT, STILO...</target>
-      </trans-unit>
       <trans-unit id="2Cud8eD" resname="Page footer">
         <source>Page footer</source>
         <target>~Paĝa piedo</target>
@@ -11376,150 +11016,6 @@
       <trans-unit id="XGqioqo" resname="Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.">
         <source>Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.</source>
         <target>~Tajpu ajnan HTML. Ĝi estos metita post ĉiu paĝa enhavo. Neniu JavaScript-kodo estos efektivigita ene de eXe.</target>
-      </trans-unit>
-      <trans-unit id="6uaf2P2" resname="Unable to extract zip file">
-        <source>Unable to extract zip file</source>
-        <target>~Ne eblas elpreni zip-dosieron</target>
-      </trans-unit>
-      <trans-unit id="1ycWOfa" resname="The iDevice is not valid">
-        <source>The iDevice is not valid</source>
-        <target>~La iDevice ne estas valida</target>
-      </trans-unit>
-      <trans-unit id="ZAmBg4s" resname="Write permissions error in %s">
-        <source>Write permissions error in %s</source>
-        <target>~Eraro pri skribaj permesoj en %s</target>
-      </trans-unit>
-      <trans-unit id="u1U.li5" resname="Could not load iDevice">
-        <source>Could not load iDevice</source>
-        <target>~Ne povis ŝarĝi iDevice</target>
-      </trans-unit>
-      <trans-unit id="d5tPGIP" resname="Invalid iDevice name">
-        <source>Invalid iDevice name</source>
-        <target>~Nevalida iDevice-nomo</target>
-      </trans-unit>
-      <trans-unit id="mEHbYTr" resname="The iDevice [%s] already exists">
-        <source>The iDevice [%s] already exists</source>
-        <target>~La iDevice [%s] jam ekzistas</target>
-      </trans-unit>
-      <trans-unit id="0sc1irx" resname="Could not extract style">
-        <source>Could not extract style</source>
-        <target>~Ne eblis eltiri la temon</target>
-      </trans-unit>
-      <trans-unit id="S3v5Oal" resname="Could not load style">
-        <source>Could not load style</source>
-        <target>~Ne povis ŝarĝi stilon</target>
-      </trans-unit>
-      <trans-unit id="qEE0Zw." resname="The style is not installable">
-        <source>The style is not installable</source>
-        <target>~La stilo ne povas esti instalita</target>
-      </trans-unit>
-      <trans-unit id="NvChAor" resname="Invalid style name">
-        <source>Invalid style name</source>
-        <target>~Nevalida stila nomo</target>
-      </trans-unit>
-      <trans-unit id="C1aYN_g" resname="The style [%s] already exists">
-        <source>The style [%s] already exists</source>
-        <target>~La stilo [%s] jam ekzistas</target>
-      </trans-unit>
-      <trans-unit id="D6K4nc6" resname="Could not install style">
-        <source>Could not install style</source>
-        <target>~Ne eblis instali la temon</target>
-      </trans-unit>
-      <trans-unit id="0k.oH2K" resname="Please create at least one page before exporting.">
-        <source>Please create at least one page before exporting.</source>
-        <target>~Bonvolu krei almenaŭ unu paĝon antaŭ eksporti.</target>
-      </trans-unit>
-      <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
-        <source>Please wait until the changes are completely saved.</source>
-        <target>~Bonvolu atendi ĝis la ŝanĝoj estas tute konservitaj.</target>
-      </trans-unit>
-      <trans-unit id="n1oCjz0" resname="An error has occurred that prevents the project from being exported">
-        <source>An error has occurred that prevents the project from being exported</source>
-        <target>~Okazis eraro kiu malebligas la eksportadon de la projekto</target>
-      </trans-unit>
-      <trans-unit id="mCgBAGZ" resname="Export generation error">
-        <source>Export generation error</source>
-        <target>~Eraro dum generado de eksportado</target>
-      </trans-unit>
-      <trans-unit id="C6JX376" resname="Export folder could not be created">
-        <source>Export folder could not be created</source>
-        <target>~Ne povis krei eksportan dosierujon</target>
-      </trans-unit>
-      <trans-unit id="ZFX1b2Z" resname="Failed to generate export content">
-        <source>Failed to generate export content</source>
-        <target>~Malsukcesis generi eksportan enhavon</target>
-      </trans-unit>
-      <trans-unit id="Cv2toRD" resname="Unable to undo last change">
-        <source>Unable to undo last change</source>
-        <target>~Ne eblas malfari la lastan ŝanĝon</target>
-      </trans-unit>
-      <trans-unit id="gcY9TLe" resname="Last change is from another user">
-        <source>Last change is from another user</source>
-        <target>~La lasta ŝanĝo estas de alia uzanto</target>
-      </trans-unit>
-      <trans-unit id="H7_JNy0" resname="There are no changes that can be undone">
-        <source>There are no changes that can be undone</source>
-        <target>~Ne estas ŝanĝoj kiuj povas esti malfariĝaj</target>
-      </trans-unit>
-      <trans-unit id="ykJJV2M" resname="There aren't operations to undo">
-        <source>There aren't operations to undo</source>
-        <target>~Ne estas operacioj por malsekviĝi</target>
-      </trans-unit>
-      <trans-unit id="gkp2z0C" resname="There was a problem opening the file">
-        <source>There was a problem opening the file</source>
-        <target>~Estis problemo malfermi la dosieron</target>
-      </trans-unit>
-      <trans-unit id="8r_.dNb" resname="the zip does not have the necessary files to be uploaded as a package">
-        <source>the zip does not have the necessary files to be uploaded as a package</source>
-        <target>~La zipo ne havas la necesajn dosierojn por esti alŝutita kiel pakaĵo</target>
-      </trans-unit>
-      <trans-unit id="Q23Y7dN" resname="Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.">
-        <source>Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.</source>
-        <target>~Malsukcesis legi la XML-enhavon, bonvolu malfermi la dosieron en eXeLearning 2.9, konservi kaj provi malfermi ĝin denove ĉi tie. Bonvolu raporti se ĝi malsukcesas. Dankon.</target>
-      </trans-unit>
-      <trans-unit id="qhJ89vm" resname="There was a problem retrieving the data of the file">
-        <source>There was a problem retrieving the data of the file</source>
-        <target>~Estis problemo akiri la datumojn de la dosiero</target>
-      </trans-unit>
-      <trans-unit id="XWQ75wL" resname="File extension incorrect">
-        <source>File extension incorrect</source>
-        <target>~Dosieraldono malĝusta</target>
-      </trans-unit>
-      <trans-unit id="EVKxznK" resname="There was a problem opening file">
-        <source>There was a problem opening file</source>
-        <target>~Estis problemo malfermi la dosieron</target>
-      </trans-unit>
-      <trans-unit id="1LKHhts" resname="There was a problem opening the elp file">
-        <source>There was a problem opening the elp file</source>
-        <target>~Estis problemo malfermi la elp-dosieron</target>
-      </trans-unit>
-      <trans-unit id="4N_3GhJ" resname="Cannot load the content of this component">
-        <source>Cannot load the content of this component</source>
-        <target>~Ne povas ŝarĝi la enhavon de ĉi tiu komponanto</target>
-      </trans-unit>
-      <trans-unit id="XBaXAKs" resname="FILES_DIR directory structure generated">
-        <source>FILES_DIR directory structure generated</source>
-        <target>~Dosierujo FILES_DIR strukturo generita</target>
-      </trans-unit>
-      <trans-unit id="uo1oXRt" resname="Failed to generate FILES_DIR structure in %s.">
-        <source>Failed to generate FILES_DIR structure in %s.</source>
-        <target>~Malsukcesis generi FILES_DIR strukturo en %s.</target>
-      </trans-unit>
-      <trans-unit id="bNdDU0M" resname="- Check that both the directory and the subdirectories inside it have the correct permissions.">
-        <source>- Check that both the directory and the subdirectories inside it have the correct permissions.</source>
-        <target>~- Kontrolu ke ambaŭ la dosierujo kaj ĝiaj subdosieroj havas ĝustajn permesojn.</target>
-      </trans-unit>
-      <trans-unit id="uHnTwgS" resname="- Check that the symfony/public/files/ directory exists in your project and has the correct permissions.">
-        <source>- Check that the symfony/public/files/ directory exists in your project and has the correct permissions.</source>
-        <target>~- Kontrolu ke la dosierujo symfony/public/files/ ekzistas en via projekto kaj havas ĝustajn permesojn.</target>
-      </trans-unit>
-      <trans-unit id="TfkqqXW" resname="The FILES_DIR directory does not have write permissions">
-        <source>The FILES_DIR directory does not have write permissions</source>
-        <target>~La dosierujo FILES_DIR ne havas skribajn permesojn</target>
-      </trans-unit>
-      <trans-unit id="HCT_PEJ" resname="The FILES_DIR directory does not exists">
-        <source>The FILES_DIR directory does not exists</source>
-        <target>~La dosierujo FILES_DIR ne ekzistas</target>
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
@@ -11533,34 +11029,6 @@
         <source>Menu</source>
         <target>~Menuo</target>
       </trans-unit>
-      <trans-unit id="uPK90IF" resname="Your score is">
-        <source>Your score is</source>
-        <target>~Via poentaro estas</target>
-      </trans-unit>
-      <trans-unit id="b6hmtD_" resname="Error retrieving data">
-        <source>Error retrieving data</source>
-        <target>~Eraro dum akiro de datumoj</target>
-      </trans-unit>
-      <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
-        <source>This might not work in this ePub reader.</source>
-        <target>~Ĉi tio eble ne funkcios en ĉi tiu ePub-legilo.</target>
-      </trans-unit>
-      <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
-        <source>This activity does not work in ePub format.</source>
-        <target>~Ĉi tiu aktiveco ne funkcias en ePub-formato.</target>
-      </trans-unit>
-      <trans-unit id="MA7trt8" resname="Search all pages">
-        <source>Search all pages</source>
-        <target>~Serĉi en ĉiuj paĝoj</target>
-      </trans-unit>
-      <trans-unit id="l1Hcq.m" resname="No results found for %">
-        <source>No results found for %</source>
-        <target>~Neniuj rezultoj trovitaj por %</target>
-      </trans-unit>
-      <trans-unit id="s_Ykup3" resname="Search results for %">
-        <source>Search results for %</source>
-        <target>~Serĉrezultoj por %</target>
-      </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
         <target>~Kaŝi rezultojn</target>
@@ -11572,10 +11040,6 @@
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
         <target>~Alirebilecaj iloj</target>
-      </trans-unit>
-      <trans-unit id=".LN5KpH" resname="Default typography">
-        <source>Default typography</source>
-        <target>~Defaŭlta tiparo</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
@@ -11593,10 +11057,6 @@
         <source>Translate</source>
         <target>~Traduki</target>
       </trans-unit>
-      <trans-unit id="h_JJhAn" resname="Light/dark mode">
-        <source>Light/dark mode</source>
-        <target>~Luma/malhela reĝimo</target>
-      </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
         <target>~Instrustila reĝimo</target>
@@ -11604,10 +11064,6 @@
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
         <target>~Ŝnuro-ludilo</target>
-      </trans-unit>
-      <trans-unit id="Qmo7OQW" resname="Stat">
-        <source>Stat</source>
-        <target>~Statistiko</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
@@ -11617,38 +11073,6 @@
         <source>Other word</source>
         <target>~Alia vorto</target>
       </trans-unit>
-      <trans-unit id="QCsa0JO" resname="Game Over">
-        <source>Game Over</source>
-        <target>~Ludo finiĝis</target>
-      </trans-unit>
-      <trans-unit id="rXfx2XN" resname="Reload the game?">
-        <source>Reload the game?</source>
-        <target>~Ĉu reŝargi la ludon?</target>
-      </trans-unit>
-      <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
-        <source>Click "Play" to start a new game.</source>
-        <target>~Alklaku "Ludi" por komenci novan ludon.</target>
-      </trans-unit>
-      <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
-        <source>Click "Another word" to continue.</source>
-        <target>~Alklaku "Alia vorto" por daŭrigi.</target>
-      </trans-unit>
-      <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
-        <source>abcdefghijklmnñopqrstuvwxyz</source>
-        <target>~abcdefghijklmnñopqrstuvwxyz</target>
-      </trans-unit>
-      <trans-unit id="buoozPS" resname="Metadata creation date">
-        <source>Metadata creation date</source>
-        <target>~Dato de kreado de metadatenoj</target>
-      </trans-unit>
-      <trans-unit id="80CZaVs" resname="Block %e">
-        <source>Block %e</source>
-        <target>~Bloko %e</target>
-      </trans-unit>
-      <trans-unit id="yAoGEET" resname="No results.">
-        <source>No results.</source>
-        <target>~Neniuj rezultoj.</target>
-      </trans-unit>
       <trans-unit id="Xcvfje6" resname="Page">
         <source>Page</source>
         <target>~Paĝo</target>
@@ -11656,34 +11080,6 @@
       <trans-unit id="FN1Dycp" resname="Toggle content">
         <source>Toggle content</source>
         <target>~ŝalti enhavon</target>
-      </trans-unit>
-      <trans-unit id="mxoH_RC" resname="Made with eXeLearning">
-        <source>Made with eXeLearning</source>
-        <target>~Farita kun eXeLearning</target>
-      </trans-unit>
-      <trans-unit id="TVh5JiD" resname="(new window)">
-        <source>(new window)</source>
-        <target>~( nova fenestro)</target>
-      </trans-unit>
-      <trans-unit id="_9u.dBq" resname="Page not found">
-        <source>Page not found</source>
-        <target>~Paĝo ne trovita</target>
-      </trans-unit>
-      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
-        <source>Sorry, but the page cannot be displayed.</source>
-        <target>~Pardonu, sed la paĝo ne povas esti montrita.</target>
-      </trans-unit>
-      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
-        <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target>~La servilo renkontis eraron kaj ne povis plenumi vian peton. Bonvolu provi denove poste.</target>
-      </trans-unit>
-      <trans-unit id="uV6B6g_" resname="Return to work area">
-        <source>Return to work area</source>
-        <target>~Reiri al laborareo</target>
-      </trans-unit>
-      <trans-unit id="aYZKGkc" resname="Return to login">
-        <source>Return to login</source>
-        <target>~Reiri al ensaluti</target>
       </trans-unit>
       <trans-unit id="btdi.Hi" resname="Version:">
         <source>Version:</source>
@@ -11733,10 +11129,6 @@
         <source>iDevices panel</source>
         <target>~iDevices panelo</target>
       </trans-unit>
-      <trans-unit id="VXFwlwn" resname="Settings">
-        <source>Settings</source>
-        <target>~Agordoj</target>
-      </trans-unit>
       <trans-unit id="9G8Nzdp" resname="User menu">
         <source>User menu</source>
         <target>~Uzanta menuo</target>
@@ -11757,10 +11149,6 @@
         <source>Download as...</source>
         <target>~Elŝuti kiel...</target>
       </trans-unit>
-      <trans-unit id="6GeU93S" resname="eXeLearning content">
-        <source>eXeLearning content</source>
-        <target>~eXeLearning enhavo</target>
-      </trans-unit>
       <trans-unit id="fFRCfz_" resname="Website">
         <source>Website</source>
         <target>~Retpaĝo</target>
@@ -11769,22 +11157,6 @@
         <source>Single page</source>
         <target>~Ununura paĝo</target>
       </trans-unit>
-      <trans-unit id="QurEGQa" resname="SCORM 1.2">
-        <source>SCORM 1.2</source>
-        <target>~SCORM 1.2</target>
-      </trans-unit>
-      <trans-unit id="gbB5BPt" resname="SCORM 2004">
-        <source>SCORM 2004</source>
-        <target>~SCORM 2004</target>
-      </trans-unit>
-      <trans-unit id="AI9NTLq" resname="IMS CP">
-        <source>IMS CP</source>
-        <target>~IMS CP</target>
-      </trans-unit>
-      <trans-unit id="Dg_AwyF" resname="ePub3">
-        <source>ePub3</source>
-        <target>~ePub3</target>
-      </trans-unit>
       <trans-unit id="bBHJSiQ" resname="Export as...">
         <source>Export as...</source>
         <target>~Eksporti kiel...</target>
@@ -11792,10 +11164,6 @@
       <trans-unit id="hoh2x39" resname="Export to Folder (Unzipped Website)">
         <source>Export to Folder (Unzipped Website)</source>
         <target>~Eksporti al dosierujo (malzipita retejo)</target>
-      </trans-unit>
-      <trans-unit id="pkPMDRH" resname="Metadata (XML)">
-        <source>Metadata (XML)</source>
-        <target>~Metadatumoj (XML)</target>
       </trans-unit>
       <trans-unit id="b0UHAqn" resname="Upload to">
         <source>Upload to</source>
@@ -11841,10 +11209,6 @@
         <source>Move right (down in hierarchy)</source>
         <target>~Movi dekstren (malsupre en la hierarkio)</target>
       </trans-unit>
-      <trans-unit id="PTY.ZKR" resname="Import iDevices">
-        <source>Import iDevices</source>
-        <target>~Importi iDevice-ojn</target>
-      </trans-unit>
       <trans-unit id="EJDvYR8" resname="Save and exit">
         <source>Save and exit</source>
         <target>~Konservi kaj eliri</target>
@@ -11860,10 +11224,6 @@
       <trans-unit id="6tS5SiP" resname="eXeLearning is a free software tool under the GNU Affero GPL that can be used to create educational interactive web contents. eXeLearning can generate interactive contents in different formats and it allows you to create easily navigable web pages. All the educational materials generated with eXeLearning can be exported in different digital formats, to be used independently or to integrate them into a LMS (Learning Management System) like Moodle.">
         <source>eXeLearning is a free software tool under the GNU Affero GPL that can be used to create educational interactive web contents. eXeLearning can generate interactive contents in different formats and it allows you to create easily navigable web pages. All the educational materials generated with eXeLearning can be exported in different digital formats, to be used independently or to integrate them into a LMS (Learning Management System) like Moodle.</source>
         <target>~eXeLearning estas libera programilo sub GNU Affero GPL, kiu povas esti uzata por krei edukajn interagajn reteajn enhavojn. eXeLearning povas generi interagajn enhavojn en diversaj formatoj kaj permesas vin facile krei navigeblajn retpaĝojn. Ĉiuj edukaj materialoj generitaj kun eXeLearning povas esti eksportitaj en diversaj ciferecaj formatoj, por esti uzataj sendepende aŭ por integri ilin en LMS (Lernadministrada Sistemo) kiel Moodle.</target>
-      </trans-unit>
-      <trans-unit id="SyPr.kb" resname="Attendee">
-        <source>Attendee</source>
-        <target>~Partoprenanto</target>
       </trans-unit>
       <trans-unit id="MPi7uDh" resname="1. What is eXeLearning">
         <source>1. What is eXeLearning</source>
@@ -11893,10 +11253,6 @@
         <source>Credits</source>
         <target>~Kreditoj</target>
       </trans-unit>
-      <trans-unit id="oCG7Pav" resname="Third Libraries">
-        <source>Third Libraries</source>
-        <target>~Triaj Bibliotekoj</target>
-      </trans-unit>
       <trans-unit id="YccaVK2" resname="Licenses">
         <source>Licenses</source>
         <target>~Liceoj</target>
@@ -11904,10 +11260,6 @@
       <trans-unit id="yNtSaQf" resname="Previous versions">
         <source>Previous versions</source>
         <target>~Antaŭaj versioj</target>
-      </trans-unit>
-      <trans-unit id="8nwAt6k" resname="eXeLearning. Third Libraries">
-        <source>eXeLearning. Third Libraries</source>
-        <target>~eXeLearning. Triaj Bibliotekoj</target>
       </trans-unit>
       <trans-unit id="sw53iv3" resname="Privacy and Terms">
         <source>Privacy and Terms</source>
@@ -11924,10 +11276,6 @@
       <trans-unit id="rFqGW9s" resname="Upload to Drive">
         <source>Upload to Drive</source>
         <target>~Alŝuti al Drive</target>
-      </trans-unit>
-      <trans-unit id="7sUNuje" resname="Change title">
-        <source>Change title</source>
-        <target>~Ŝanĝi titolon</target>
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
@@ -12012,10 +11360,6 @@
       <trans-unit id="NT8emLb" resname="Point">
         <source>Point</source>
         <target>~Punkto</target>
-      </trans-unit>
-      <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target><![CDATA[~Vi devas revizii %s&percnt;  de la enhavo de la aktiveco antaŭ ol kompletigi la demandaron.]]></target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12232,10 +11576,6 @@
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
         <target>~Vi devas provizi la tempon por vidi la solvon</target>
-      </trans-unit>
-      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
-        <source>Import (.elpx…)</source>
-        <target>~Importi (.elpx…)</target>
       </trans-unit>
       <trans-unit id="I0XyrRF" resname="Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.">
         <source>Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.</source>
@@ -12741,38 +12081,6 @@
         <source>Please write the Content</source>
         <target>~Bonvolu verki la Enhavon</target>
       </trans-unit>
-      <trans-unit id="k9fD7sJ" resname="Drop image here or $browse...$">
-        <source>Drop image here or $browse...$</source>
-        <target>~Ĵetu bildon ĉi tie aŭ $brov...$</target>
-      </trans-unit>
-      <trans-unit id="TLhu5aI" resname="Max width">
-        <source>Max width</source>
-        <target>~Maksimuma larĝo</target>
-      </trans-unit>
-      <trans-unit id="LrP1fL3" resname="Max height">
-        <source>Max height</source>
-        <target>~Maksimuma alteco</target>
-      </trans-unit>
-      <trans-unit id="yy8vDP3" resname="Quality">
-        <source>Quality</source>
-        <target>~Kvalito</target>
-      </trans-unit>
-      <trans-unit id="EYbFWLc" resname="You just added that image. Save the iDevice or select the image again to update it.">
-        <source>You just added that image. Save the iDevice or select the image again to update it.</source>
-        <target>~Vi ĵus aldonis tiun bildon. Konservu la iDevice aŭ denove elektu la bildon por ĝisdatigi ĝin.</target>
-      </trans-unit>
-      <trans-unit id="c1GMB53" resname="$Save the current image$ before overwriting it.">
-        <source>$Save the current image$ before overwriting it.</source>
-        <target>~$Konservu la nuna bildo$ antaŭ superskribi ĝin.</target>
-      </trans-unit>
-      <trans-unit id="315H6gn" resname="Error uploading image">
-        <source>Error uploading image</source>
-        <target>~Eraro dum alŝuto de la bildo</target>
-      </trans-unit>
-      <trans-unit id="EIlrJpG" resname="Clear Image">
-        <source>Clear Image</source>
-        <target>~Forigi Bildon</target>
-      </trans-unit>
       <trans-unit id="JZshxFL" resname="Baseline">
         <source>Baseline</source>
         <target>~Baza linio</target>
@@ -12836,10 +12144,6 @@
       <trans-unit id="IQ79uoq" resname="Show caption">
         <source>Show caption</source>
         <target>~Montri priskribon</target>
-      </trans-unit>
-      <trans-unit id="mD8meNC" resname="Custom File Picker">
-        <source>Custom File Picker</source>
-        <target>~ Propra Dosierelektisto</target>
       </trans-unit>
       <trans-unit id="IK9jqUK" resname="Feed URL">
         <source>Feed URL</source>
@@ -12961,26 +12265,6 @@
         <source>Quick edit</source>
         <target>~Rapida redaktado</target>
       </trans-unit>
-      <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
-        <source>Another user is editing an iDevice on this block.</source>
-        <target>~Alia uzanto redaktas iDevice en ĉi tiu bloko.</target>
-      </trans-unit>
-      <trans-unit id="qSRqFDl" resname="Missing file name or path">
-        <source>Missing file name or path</source>
-        <target>~Mankas dosiernomo aŭ vojo</target>
-      </trans-unit>
-      <trans-unit id="T7Qvhcc" resname="Invalid request data">
-        <source>Invalid request data</source>
-        <target>~Nevalidaj petodatumoj</target>
-      </trans-unit>
-      <trans-unit id="dsSqvHh" resname="Uploaded file not found">
-        <source>Uploaded file not found</source>
-        <target>~Alŝutita dosiero ne trovita</target>
-      </trans-unit>
-      <trans-unit id="ORp5XHR" resname="Invalid file type">
-        <source>Invalid file type</source>
-        <target>~Nevalida dosiertipo</target>
-      </trans-unit>
       <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
         <source>Highlight this page in the website navigation menu</source>
         <target>~Ekranigu ĉi tiun paĝon en la reteja naviga menuo</target>
@@ -13025,146 +12309,10 @@
         <source>Page options</source>
         <target>~Paĝaj opcioj</target>
       </trans-unit>
-      <trans-unit id="t6gx1zg" resname="Admin Panel">
-        <source>Admin Panel</source>
-        <target>~Administrado-panelo</target>
-      </trans-unit>
-      <trans-unit id="97v8o0o" resname="Dashboard">
-        <source>Dashboard</source>
-        <target>~Kontrola panelo</target>
-      </trans-unit>
-      <trans-unit id="rg4ghhn" resname="Users">
-        <source>Users</source>
-        <target>~Uzantoj</target>
-      </trans-unit>
-      <trans-unit id="9n8g103" resname="Extensions">
-        <source>Extensions</source>
-        <target>~Etendaĵoj</target>
-      </trans-unit>
-      <trans-unit id="is2c65e" resname="Back to Workarea">
-        <source>Back to Workarea</source>
-        <target>~Reen al laborareo</target>
-      </trans-unit>
-      <trans-unit id="ido9zkb" resname="Total Users">
-        <source>Total Users</source>
-        <target>~Totalaj uzantoj</target>
-      </trans-unit>
-      <trans-unit id="97zb4ob" resname="Active Users">
-        <source>Active Users</source>
-        <target>~Aktivaj uzantoj</target>
-      </trans-unit>
-      <trans-unit id="qsnxt4j" resname="Total Projects">
-        <source>Total Projects</source>
-        <target>~Totalaj projektoj</target>
-      </trans-unit>
-      <trans-unit id="62o4xbm" resname="Active Projects">
-        <source>Active Projects</source>
-        <target>~Aktivaj projektoj</target>
-      </trans-unit>
-      <trans-unit id="thx7n6r" resname="User Management">
-        <source>User Management</source>
-        <target>~Uzant-administrado</target>
-      </trans-unit>
-      <trans-unit id="7fgea8i" resname="Create User">
-        <source>Create User</source>
-        <target>~Krei uzanton</target>
-      </trans-unit>
-      <trans-unit id="e6y5yhc" resname="Roles">
-        <source>Roles</source>
-        <target>~Roloj</target>
-      </trans-unit>
       <trans-unit id="me3hgwd" resname="Status">
         <source>Status</source>
         <target>~Stato</target>
       </trans-unit>
-      <trans-unit id="riwysa5" resname="Active">
-        <source>Active</source>
-        <target>~Aktiva</target>
-      </trans-unit>
-      <trans-unit id="rpczs42" resname="Inactive">
-        <source>Inactive</source>
-        <target>~Neaktiva</target>
-      </trans-unit>
-      <trans-unit id="scb0g0f" resname="Are you sure you want to delete this user?">
-        <source>Are you sure you want to delete this user?</source>
-        <target>~Ĉu vi certas, ke vi volas forigi ĉi tiun uzanton?</target>
-      </trans-unit>
-      <trans-unit id="206lr7c" resname="Installed">
-        <source>Installed</source>
-        <target>~Instalita</target>
-      </trans-unit>
-      <trans-unit id="kheuv6b" resname="Available">
-        <source>Available</source>
-        <target>~Havebla</target>
-      </trans-unit>
-      <trans-unit id="780lvnb" resname="Install">
-        <source>Install</source>
-        <target>~Instali</target>
-      </trans-unit>
-      <trans-unit id="jbuazkh" resname="Uninstall">
-        <source>Uninstall</source>
-        <target>~Malinstali</target>
-      </trans-unit>
-      <trans-unit id="8q7x8kf" resname="Deactivate">
-        <source>Deactivate</source>
-        <target>~Malaktivigi</target>
-      </trans-unit>
-      <trans-unit id="gzolll2" resname="Download File">
-        <source>Download File</source>
-        <target>~Elŝuti dosieron</target>
-      </trans-unit>
-      <trans-unit id="3o5e6xn" resname="Play/Pause">
-        <source>Play/Pause</source>
-        <target>~Ludi/Paŭzi</target>
-      </trans-unit>
-      <trans-unit id="zwn29lg" resname="Mute Toggle">
-        <source>Mute Toggle</source>
-        <target>~Ŝalti/Malŝalti silenton</target>
-      </trans-unit>
-      <trans-unit id="0q5vhca" resname="Captions/Subtitles">
-        <source>Captions/Subtitles</source>
-        <target>~Subtekstoj</target>
-      </trans-unit>
-      <trans-unit id="vhzfvis" resname="Turn off Fullscreen">
-        <source>Turn off Fullscreen</source>
-        <target>~Malŝalti plenekranon</target>
-      </trans-unit>
-      <trans-unit id="hj9pm4k" resname="Go Fullscreen">
-        <source>Go Fullscreen</source>
-        <target>~Plenekrano</target>
-      </trans-unit>
-      <trans-unit id="axjjt28" resname="Unmute">
-        <source>Unmute</source>
-        <target>~Malŝalti silenton</target>
-      </trans-unit>
-      <trans-unit id="0nqn4fr" resname="Mute">
-        <source>Mute</source>
-        <target>~Silenti</target>
-      </trans-unit>
-      <trans-unit id="yiopv0y" resname="Download Video">
-        <source>Download Video</source>
-        <target>~Elŝuti filmon</target>
-      </trans-unit>
-      <trans-unit id="5n9bns6" resname="Log in as">
-        <source>Log in as</source>
-        <target>~Ensaluti kiel</target>
-      </trans-unit>
-      <trans-unit id="l55bjjo" resname="Cannot impersonate administrator users">
-        <source>Cannot impersonate administrator users</source>
-        <target>~Ne eblas simuli administrilojn</target>
-      </trans-unit>
-      <trans-unit id="78h80i4" resname="Cannot impersonate your own account">
-        <source>Cannot impersonate your own account</source>
-        <target>~Ne eblas simuli vian propran konton</target>
-      </trans-unit>
-      <trans-unit id="ue0rlxs" resname="Start impersonation as {email}?">
-        <source>Start impersonation as {email}?</source>
-        <target>~Komenci simuli kiel {email}?</target>
-      </trans-unit>
-      <trans-unit id="825axxn" resname="Failed to start impersonation">
-        <source>Failed to start impersonation</source>
-        <target>~Malsukcesis komenci simulado</target>
-      </trans-unit>
-    </body>
+      </body>
   </file>
 </xliff>

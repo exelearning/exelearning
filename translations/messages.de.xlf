@@ -33,10 +33,6 @@
         <source>Mark all the options in the correct order and click on the "Reply" button.</source>
         <target>~Markieren Sie alle Optionen in der richtigen Reihenfolge und klicken Sie auf die Schaltfläche „Antworten“.</target>
       </trans-unit>
-      <trans-unit id="gcfIi2i" resname="Write the correct word or phrase and click on the &quot;Reply&quot; button.">
-        <source>Write the correct word or phrase and click on the "Reply" button.</source>
-        <target>~Schreiben Sie das richtige Wort oder die richtige Phrase und klicken Sie auf die Schaltfläche „Antworten“.</target>
-      </trans-unit>
       <trans-unit id=".gszbqv" resname="Click on">
         <source>Click on</source>
         <target>~Klicken Sie auf</target>
@@ -3857,10 +3853,6 @@
         <source>Advanced</source>
         <target>~Erweitert</target>
       </trans-unit>
-      <trans-unit id="CzxzXbj" resname="Mode:">
-        <source>Mode:</source>
-        <target>~Modus:</target>
-      </trans-unit>
       <trans-unit id="NxYTQRJ" resname="Untitled document">
         <source>Untitled document</source>
         <target>~Unbenannte Datei</target>
@@ -3869,21 +3861,9 @@
         <source>Project properties</source>
         <target>~Projekteinstellungen</target>
       </trans-unit>
-      <trans-unit id="76AHLsl" resname="Project properties saved.">
-        <source>Project properties saved.</source>
-        <target>~Projekteinstellungen gespeichert.</target>
-      </trans-unit>
       <trans-unit id="W7h4Kea" resname="Share link">
         <source>Share link</source>
         <target>~Freigabelink</target>
-      </trans-unit>
-      <trans-unit id="wAHWdeY" resname="The share link is:">
-        <source>The share link is:</source>
-        <target>~Der Freigabelink ist:</target>
-      </trans-unit>
-      <trans-unit id="umPqmsm" resname="Copy to clipboard">
-        <source>Copy to clipboard</source>
-        <target>~In Zwischenablage kopieren</target>
       </trans-unit>
       <trans-unit id="Uom6tJO" resname="Information and presentation">
         <source>Information and presentation</source>
@@ -3972,10 +3952,6 @@
       <trans-unit id="NTWmm7D" resname="An error occurred while generating the preview.">
         <source>An error occurred while generating the preview.</source>
         <target>~Beim Erstellen der Vorschau ist ein Fehler aufgetreten.</target>
-      </trans-unit>
-      <trans-unit id="6q_rouK" resname="An error occurred while generating the print preview.">
-        <source>An error occurred while generating the print preview.</source>
-        <target>~Beim Erstellen der Druckvorschau ist ein Fehler aufgetreten.</target>
       </trans-unit>
       <trans-unit id=".2bNgXe" resname="New file">
         <source>New file</source>
@@ -4133,18 +4109,6 @@
         <source>Remove image</source>
         <target>~Bild entfernen</target>
       </trans-unit>
-      <trans-unit id="vOnFuyb" resname="Are you sure you want to delete the style: ${themeId}?">
-        <source>Are you sure you want to delete the style: ${themeId}?</source>
-        <target>~Möchten Sie den Stil ${themeId} wirklich löschen?</target>
-      </trans-unit>
-      <trans-unit id="TG2suIV" resname="Link validation tool">
-        <source>Link validation tool</source>
-        <target>~Link-Validierungstool</target>
-      </trans-unit>
-      <trans-unit id="HFY5meK" resname="Looking for broken links...">
-        <source>Looking for broken links...</source>
-        <target>~Suche nach defekten Links...</target>
-      </trans-unit>
       <trans-unit id="xfCwLyo" resname="No broken links found.">
         <source>No broken links found.</source>
         <target>~Keine defekten Links gefunden.</target>
@@ -4164,10 +4128,6 @@
       <trans-unit id="6.AJt1z" resname="The preview has been generated.">
         <source>The preview has been generated.</source>
         <target>~Die Vorschau wurde erstellt.</target>
-      </trans-unit>
-      <trans-unit id="OhU0H.1" resname="multiple users on page">
-        <source>multiple users on page</source>
-        <target>~Mehrere Benutzer auf der Seite</target>
       </trans-unit>
       <trans-unit id="jb.15_T" resname="Upload iDevice file">
         <source>Upload iDevice file</source>
@@ -4192,10 +4152,6 @@
       <trans-unit id="g.UhRlz" resname="Delete page">
         <source>Delete page</source>
         <target>~Seite löschen</target>
-      </trans-unit>
-      <trans-unit id="j6SIwcG" resname="Do you want to delete the page? This cannot be undone.">
-        <source>Do you want to delete the page? This cannot be undone.</source>
-        <target>~Möchten Sie die Seite löschen? Dies kann nicht rückgängig gemacht werden.</target>
       </trans-unit>
       <trans-unit id="pRCwpOT" resname="Yes">
         <source>Yes</source>
@@ -4252,10 +4208,6 @@
       <trans-unit id="h5EmhVn" resname="Assistant">
         <source>Assistant</source>
         <target>~Assistent  </target>
-      </trans-unit>
-      <trans-unit id="VQ9mySy" resname="File Manager">
-        <source>File Manager</source>
-        <target>~Dateimanager  </target>
       </trans-unit>
       <trans-unit id=".QFPbFe" resname="Back">
         <source>Back</source>
@@ -4317,14 +4269,6 @@
         <source>Block name</source>
         <target>~Blockname</target>
       </trans-unit>
-      <trans-unit id="9vmiJ3a" resname="Block position">
-        <source>Block position</source>
-        <target>~Blockposition</target>
-      </trans-unit>
-      <trans-unit id="_b3MDW9" resname="Broken Links">
-        <source>Broken Links</source>
-        <target>~Defekte Links</target>
-      </trans-unit>
       <trans-unit id="rYHQpCH" resname="Path">
         <source>Path</source>
         <target>~Pfad</target>
@@ -4360,14 +4304,6 @@
       <trans-unit id="UoWaP0Y" resname="Show other versions">
         <source>Show other versions</source>
         <target>~Andere Versionen anzeigen</target>
-      </trans-unit>
-      <trans-unit id="vKtCm.n" resname="Delete project">
-        <source>Delete project</source>
-        <target>~Projekt löschen</target>
-      </trans-unit>
-      <trans-unit id="4YXoX88" resname="Do you want to delete the project (elp)? This cannot be undone.">
-        <source>Do you want to delete the project (elp)? This cannot be undone.</source>
-        <target>~Möchten Sie das Projekt (elp) löschen? Dies kann nicht rückgängig gemacht werden.  </target>
       </trans-unit>
       <trans-unit id="OZeulWK" resname="Search...">
         <source>Search...</source>
@@ -4425,10 +4361,6 @@
         <source>Exit without saving</source>
         <target>~Ohne Speichern beenden</target>
       </trans-unit>
-      <trans-unit id="COSKxUW" resname="An error occurred while saving the file: ${response.responseMessage}">
-        <source>An error occurred while saving the file: ${response.responseMessage}</source>
-        <target>~Beim Speichern der Datei ist ein Fehler aufgetreten: ${response.responseMessage}</target>
-      </trans-unit>
       <trans-unit id="Dpz4_Qq" resname="Error saving">
         <source>Error saving</source>
         <target>~Fehler beim Speichern</target>
@@ -4464,10 +4396,6 @@
       <trans-unit id="RFZSvQG" resname="Style">
         <source>Style</source>
         <target>~Stil</target>
-      </trans-unit>
-      <trans-unit id="NnZxYgo" resname="Are you sure you want to delete the style: ${theme.id}?">
-        <source>Are you sure you want to delete the style: ${theme.id}?</source>
-        <target>~Möchten Sie den Stil "${theme.id}" wirklich löschen?</target>
       </trans-unit>
       <trans-unit id="4oyaNcE" resname="Upload">
         <source>Upload</source>
@@ -4513,33 +4441,13 @@
         <source>Move down</source>
         <target>~Nach unten verschieben</target>
       </trans-unit>
-      <trans-unit id="gloizQK" resname="Clone">
-        <source>Clone</source>
-        <target>~Klone erstellen</target>
-      </trans-unit>
-      <trans-unit id="soQ_C.." resname="Move to">
-        <source>Move to</source>
-        <target>~Verschieben nach</target>
-      </trans-unit>
       <trans-unit id="Oe.K104" resname="Delete box">
         <source>Delete box</source>
         <target>~Box löschen</target>
       </trans-unit>
-      <trans-unit id="pVLSTZ6" resname="Check links">
-        <source>Check links</source>
-        <target>~Links überprüfen</target>
-      </trans-unit>
-      <trans-unit id="Jxrmbyu" resname="Delete the box and all its iDevices? This cannot be undone.">
-        <source>Delete the box and all its iDevices? This cannot be undone.</source>
-        <target>~Das Feld und alle seine iGeräte löschen? Dies kann nicht rückgängig gemacht werden.</target>
-      </trans-unit>
       <trans-unit id="_YseMvk" resname="Box properties">
         <source>Box properties</source>
         <target>~Feldeigenschaften</target>
-      </trans-unit>
-      <trans-unit id="pOLfvIx" resname="Move Block to page">
-        <source>Move Block to page</source>
-        <target>~Block auf Seite verschieben</target>
       </trans-unit>
       <trans-unit id="KSVt3cc" resname="Download error">
         <source>Download error</source>
@@ -4568,14 +4476,6 @@
       <trans-unit id="fEHzCCc" resname="An error occurred while update component in database">
         <source>An error occurred while update component in database</source>
         <target>~Beim Aktualisieren der Komponente in der Datenbank ist ein Fehler aufgetreten</target>
-      </trans-unit>
-      <trans-unit id="wiM7f0K" resname="Identical contents in the same page might cause errors. Edit the new one or move it to another page.">
-        <source>Identical contents in the same page might cause errors. Edit the new one or move it to another page.</source>
-        <target>~Identischer Inhalt auf derselben Seite könnte Fehler verursachen. Bearbeiten Sie die neue oder verschieben Sie sie auf eine andere Seite.</target>
-      </trans-unit>
-      <trans-unit id="3.j2frP" resname="An error occurred while clone component in database">
-        <source>An error occurred while clone component in database</source>
-        <target>~Beim Klonen der Komponente in der Datenbank ist ein Fehler aufgetreten</target>
       </trans-unit>
       <trans-unit id="ECdlxze" resname="An error occurred while removing the component from the database">
         <source>An error occurred while removing the component from the database</source>
@@ -4620,10 +4520,6 @@
       <trans-unit id="FileSizeExceedsLimit" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
         <target>~Die Dateigröße ({fileSize}) überschreitet die erlaubte Maximalgröße ({maxSize}).</target>
-      </trans-unit>
-      <trans-unit id="InsufficientStorageSpace" resname="Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.">
-        <source>Insufficient storage space. You are using {usedSpace} of {maxSpace}. The file requires {requiredSpace}, but you only have {availableSpace} available. Please delete some files to free up space.</source>
-        <target>~Nicht genügend Speicherplatz. Sie verwenden {usedSpace} von {maxSpace}. Die Datei benötigt {requiredSpace}, aber Ihnen stehen nur {availableSpace} zur Verfügung. Bitte löschen Sie einige Dateien, um Speicherplatz freizugeben.</target>
       </trans-unit>
       <trans-unit id="LmWdpVc" resname="Error saving the iDevice">
         <source>Error saving the iDevice</source>
@@ -4709,18 +4605,6 @@
         <source>Your style has changed. Reload the page to apply changes?</source>
         <target>~Ihr Stil hat sich geändert. Seite neu laden, um die Änderungen zu übernehmen?</target>
       </trans-unit>
-      <trans-unit id="PlBZGgy" resname="Undo the last action?">
-        <source>Undo the last action?</source>
-        <target>~Letzte Aktion rückgängig machen?</target>
-      </trans-unit>
-      <trans-unit id="JI04syi" resname="Unable to undo the last action.">
-        <source>Unable to undo the last action.</source>
-        <target>~Die letzte Aktion konnte nicht rückgängig gemacht werden.</target>
-      </trans-unit>
-      <trans-unit id="gysLwdg" resname="An error occurred while saving the component.">
-        <source>An error occurred while saving the component.</source>
-        <target>~Beim Speichern der Komponente ist ein Fehler aufgetreten.</target>
-      </trans-unit>
       <trans-unit id="A3_STN3" resname="Unsaved changes detected. Save your iDevice before continuing.">
         <source>Unsaved changes detected. Save your iDevice before continuing.</source>
         <target>~Ungespeicherte Änderungen erkannt. Speichern Sie Ihr iDevice, bevor Sie fortfahren.</target>
@@ -4728,22 +4612,6 @@
       <trans-unit id="_t85EMU" resname="Required">
         <source>Required</source>
         <target>~Erforderlich</target>
-      </trans-unit>
-      <trans-unit id="eCtKVk0" resname="Please fill in all required fields.">
-        <source>Please fill in all required fields.</source>
-        <target>~Bitte füllen Sie alle Pflichtfelder aus.</target>
-      </trans-unit>
-      <trans-unit id="Hrss0sI" resname="Save metadata and properties">
-        <source>Save metadata and properties</source>
-        <target>~Metadaten und Eigenschaften speichern</target>
-      </trans-unit>
-      <trans-unit id="Nxwp61M" resname="Properties error">
-        <source>Properties error</source>
-        <target>~Eigenschaftenfehler</target>
-      </trans-unit>
-      <trans-unit id="jiaDQDT" resname="An error occurred while saving properties">
-        <source>An error occurred while saving properties</source>
-        <target>~Beim Speichern der Eigenschaften ist ein Fehler aufgetreten</target>
       </trans-unit>
       <trans-unit id="Ww.bpx3" resname="An error occurred while saving node's properties in database">
         <source>An error occurred while saving node's properties in database</source>
@@ -5044,10 +4912,6 @@
       <trans-unit id="xutW92D" resname="Accessibility warning">
         <source>Accessibility warning</source>
         <target>~Barrierefreiheitswarnung</target>
-      </trans-unit>
-      <trans-unit id=".gar845" resname="Provide a word and its definition. May toggle between: &quot;Word starts&quot; or &quot;Word contains&quot;, by clicking on %s">
-        <source>Provide a word and its definition. May toggle between: "Word starts" or "Word contains", by clicking on %s</source>
-        <target>~Geben Sie ein Wort und seine Definition ein. Sie können zwischen „Wort beginnt mit“ oder „Wort enthält“ umschalten, indem Sie auf %s klicken  </target>
       </trans-unit>
       <trans-unit id="gsp4x4D" resname="Starts with/Contains">
         <source>Starts with/Contains</source>
@@ -7065,10 +6929,6 @@
         <source>Link Title</source>
         <target>~Linktitel</target>
       </trans-unit>
-      <trans-unit id="2dUkgir" resname="Link Author">
-        <source>Link Author</source>
-        <target>~Linkautor</target>
-      </trans-unit>
       <trans-unit id="Xt7hurv" resname="Choose a license...">
         <source>Choose a license...</source>
         <target>~Wählen Sie eine Lizenz...</target>
@@ -7333,10 +7193,6 @@
         <source>Important</source>
         <target>~Wichtig  </target>
       </trans-unit>
-      <trans-unit id="cIWhj7d" resname="Your changes won't be saved until you click on \&quot;Save\&quot;.">
-        <source>Your changes won't be saved until you click on \"Save\".</source>
-        <target>~Ihre Änderungen werden erst gespeichert, wenn Sie auf „Speichern“ klicken.</target>
-      </trans-unit>
       <trans-unit id="dEPpFWQ" resname="Do not show this message again">
         <source>Do not show this message again</source>
         <target>~Diese Nachricht nicht erneut anzeigen</target>
@@ -7377,10 +7233,6 @@
         <source>Saved!</source>
         <target>~Gespeichert!</target>
       </trans-unit>
-      <trans-unit id="719B6M_" resname="Click on \&quot;Exit\&quot; to finish.">
-        <source>Click on \"Exit\" to finish.</source>
-        <target>~Klicken Sie auf „Beenden“, um zu fertigstellen.</target>
-      </trans-unit>
       <trans-unit id="yLx_WEs" resname="Stop the playing video">
         <source>Stop the playing video</source>
         <target>~Stoppen Sie das abgespielte Video</target>
@@ -7416,14 +7268,6 @@
       <trans-unit id="20aVC9W" resname="Please check the start/end time.">
         <source>Please check the start/end time.</source>
         <target>~Bitte überprüfen Sie die Start-/Endzeit.</target>
-      </trans-unit>
-      <trans-unit id="RLB6gEc" resname="Please check the \&quot;Start\&quot; time">
-        <source>Please check the \"Start\" time</source>
-        <target>~Bitte überprüfen Sie die \"Start\"-Zeit  </target>
-      </trans-unit>
-      <trans-unit id="FSmyc.T" resname="Please check the \&quot;End\&quot; time">
-        <source>Please check the \"End\" time</source>
-        <target>~Bitte überprüfen Sie die \"Ende\"-Zeit  </target>
       </trans-unit>
       <trans-unit id="DmOBCiE" resname="Set the time for the slide to be shown">
         <source>Set the time for the slide to be shown</source>
@@ -7505,17 +7349,9 @@
         <source>Open the editor and start adding interaction...</source>
         <target>~Öffnen Sie den Editor und beginnen Sie mit der Hinzufügung von Interaktionen...</target>
       </trans-unit>
-      <trans-unit id="TENLofx" resname="Please save your iDevice now (click on %s now) and edit it to add interaction.">
-        <source>Please save your iDevice now (click on %s now) and edit it to add interaction.</source>
-        <target>~Bitte speichern Sie Ihr iDevice jetzt (klicken Sie jetzt auf %s) und bearbeiten Sie es, um Interaktionen hinzuzufügen.</target>
-      </trans-unit>
       <trans-unit id="9tb70cZ" resname="Format">
         <source>Format</source>
         <target>~Format</target>
-      </trans-unit>
-      <trans-unit id="lIU._xu" resname="Recommended type">
-        <source>Recommended type</source>
-        <target>~Empfohlener Typ</target>
       </trans-unit>
       <trans-unit id="tIpKalw" resname="Please select a file or provide a valid video URL.">
         <source>Please select a file or provide a valid video URL.</source>
@@ -9705,49 +9541,13 @@
         <source>Inverse</source>
         <target>~Inverse</target>
       </trans-unit>
-      <trans-unit id="1RFEUr3" resname="Selected: {0} of {1}">
-        <source>Selected: {0} of {1}</source>
-        <target>~Ausgewählt: {0} von {1}</target>
-      </trans-unit>
-      <trans-unit id="jhabtrD" resname="Uploading {0}% of {1}">
-        <source>Uploading {0}% of {1}</source>
-        <target>~Hochladen {0}% von {1}</target>
-      </trans-unit>
-      <trans-unit id="Nq1CAoe" resname="{0} is too large, please upload files less than {1}">
-        <source>{0} is too large, please upload files less than {1}</source>
-        <target>~{0} ist zu groß, bitte laden Sie Dateien kleiner als {1} hoch</target>
-      </trans-unit>
-      <trans-unit id="u3Lgp9d" resname="{0} failed to upload">
-        <source>{0} failed to upload</source>
-        <target>~{0} konnte nicht hochgeladen werden</target>
-      </trans-unit>
-      <trans-unit id="eCTXUiT" resname="{0} Per Page">
-        <source>{0} Per Page</source>
-        <target>~{0} pro Seite</target>
-      </trans-unit>
       <trans-unit id="xM2rg3U" resname="Folder">
         <source>Folder</source>
         <target>~Ordner</target>
       </trans-unit>
-      <trans-unit id="lNnbOxU" resname="Not Found">
-        <source>Not Found</source>
-        <target>~Nicht gefunden</target>
-      </trans-unit>
-      <trans-unit id="qqQY1rt" resname="Not Allowed">
-        <source>Not Allowed</source>
-        <target>~Nicht erlaubt</target>
-      </trans-unit>
-      <trans-unit id="BfXv0G_" resname="Unknown error">
-        <source>Unknown error</source>
-        <target>~Unbekannter Fehler</target>
-      </trans-unit>
       <trans-unit id="vW4PrEl" resname="Add files">
         <source>Add files</source>
         <target>~Dateien hinzufügen</target>
-      </trans-unit>
-      <trans-unit id="OKwLQ.A" resname="No pagination">
-        <source>No pagination</source>
-        <target>~Keine Paginierung</target>
       </trans-unit>
       <trans-unit id="ExFLJqx" resname="Home">
         <source>Home</source>
@@ -9757,121 +9557,13 @@
         <source>Rename</source>
         <target>~Umbenennen</target>
       </trans-unit>
-      <trans-unit id="SOf5.ap" resname="Please fill out this field">
-        <source>Please fill out this field</source>
-        <target>~Bitte dieses Feld ausfüllen</target>
-      </trans-unit>
-      <trans-unit id="6A2UfPi" resname="Zip">
-        <source>Zip</source>
-        <target>~Zip</target>
-      </trans-unit>
-      <trans-unit id="fAdtaUZ" resname="Batch Download">
-        <source>Batch Download</source>
-        <target>~Batch-Download</target>
-      </trans-unit>
-      <trans-unit id="uASP3Z9" resname="Unzip">
-        <source>Unzip</source>
-        <target>~Entpacken</target>
-      </trans-unit>
       <trans-unit id="2OBCGbu" resname="Copy link">
         <source>Copy link</source>
         <target>~Link kopieren</target>
       </trans-unit>
-      <trans-unit id="tLFxco7" resname="Drop files to upload">
-        <source>Drop files to upload</source>
-        <target>~Dateien zum Hochladen ablegen</target>
-      </trans-unit>
-      <trans-unit id="R4ejw1a" resname="Select Folder">
-        <source>Select Folder</source>
-        <target>~Ordner auswählen</target>
-      </trans-unit>
-      <trans-unit id="tooLhd2" resname="Files">
-        <source>Files</source>
-        <target>~Dateien</target>
-      </trans-unit>
-      <trans-unit id="t_hjNeq" resname="Paused">
-        <source>Paused</source>
-        <target>~Pausiert</target>
-      </trans-unit>
-      <trans-unit id="HaWmb6s" resname="Home Folder">
-        <source>Home Folder</source>
-        <target>~Startordner</target>
-      </trans-unit>
-      <trans-unit id="3wtDbCp" resname="Leave blank for no change">
-        <source>Leave blank for no change</source>
-        <target>~Für keine Änderung leer lassen</target>
-      </trans-unit>
-      <trans-unit id="cH5dmrY" resname="Are you sure you want to do this?">
-        <source>Are you sure you want to do this?</source>
-        <target>~Sind Sie sicher, dass Sie dies tun möchten?</target>
-      </trans-unit>
-      <trans-unit id="OczhMQg" resname="Are you sure you want to allow access to everyone?">
-        <source>Are you sure you want to allow access to everyone?</source>
-        <target>~Sind Sie sicher, dass Sie den Zugriff für alle erlauben möchten?</target>
-      </trans-unit>
-      <trans-unit id="sa3Py1X" resname="Are you sure you want to stop all uploads?">
-        <source>Are you sure you want to stop all uploads?</source>
-        <target>~Sind Sie sicher, dass Sie alle Uploads stoppen möchten?</target>
-      </trans-unit>
-      <trans-unit id="0yVywJH" resname="Something went wrong">
-        <source>Something went wrong</source>
-        <target>~Etwas ist schiefgelaufen</target>
-      </trans-unit>
-      <trans-unit id="6Bvb_3V" resname="Invalid directory">
-        <source>Invalid directory</source>
-        <target>~Ungültiges Verzeichnis</target>
-      </trans-unit>
-      <trans-unit id="LR30_Bm" resname="This field is required">
-        <source>This field is required</source>
-        <target>~Dieses Feld ist erforderlich</target>
-      </trans-unit>
-      <trans-unit id="YBDJnwa" resname="Updated">
-        <source>Updated</source>
-        <target>~Aktualisiert</target>
-      </trans-unit>
-      <trans-unit id="l9KZflr" resname="Deleted">
-        <source>Deleted</source>
-        <target>~Gelöscht</target>
-      </trans-unit>
-      <trans-unit id="mZXDU4R" resname="Your file is ready">
-        <source>Your file is ready</source>
-        <target>~Ihre Datei ist bereit</target>
-      </trans-unit>
       <trans-unit id=".EmYZIu" resname="View">
         <source>View</source>
         <target>~Ansehen</target>
-      </trans-unit>
-      <trans-unit id="V6IIhvU" resname="Show hidden">
-        <source>Show hidden</source>
-        <target>~Versteckte anzeigen</target>
-      </trans-unit>
-      <trans-unit id="rvsQbge" resname="Do you want to unzip the file?">
-        <source>Do you want to unzip the file?</source>
-        <target>~Möchten Sie die Datei entpacken?</target>
-      </trans-unit>
-      <trans-unit id="6edviCT" resname="Upload without unzip">
-        <source>Upload without unzip</source>
-        <target>~Hochladen ohne Entpacken</target>
-      </trans-unit>
-      <trans-unit id="JkzYTYq" resname="Unzip here">
-        <source>Unzip here</source>
-        <target>~Hier entpacken</target>
-      </trans-unit>
-      <trans-unit id="vtDPEYM" resname="Unzip in subfolder ...">
-        <source>Unzip in subfolder ...</source>
-        <target>~In Unterordner entpacken ...</target>
-      </trans-unit>
-      <trans-unit id="J1nmXNj" resname="Unzip in subfolder">
-        <source>Unzip in subfolder</source>
-        <target>~Entpacken im Unterordner</target>
-      </trans-unit>
-      <trans-unit id="SYe8ltT" resname="There was a problem creating the archive">
-        <source>There was a problem creating the archive</source>
-        <target>~Beim Erstellen des Archivs ist ein Problem aufgetreten</target>
-      </trans-unit>
-      <trans-unit id="ZI2xkAH" resname="File type not allowed or size over limit">
-        <source>File type not allowed or size over limit</source>
-        <target>~Dateityp nicht erlaubt oder Größe überschreitet das Limit</target>
       </trans-unit>
       <trans-unit id="4cXccyZ" resname="Effects (accordion, tabs, pagination...)">
         <source>Effects (accordion, tabs, pagination...)</source>
@@ -11029,10 +10721,6 @@
         <source>Title and Attribution</source>
         <target>~Titel und Attribution</target>
       </trans-unit>
-      <trans-unit id="_EidU37" resname="Use JavaScript player">
-        <source>Use JavaScript player</source>
-        <target>~JavaScript-Player verwenden</target>
-      </trans-unit>
       <trans-unit id="dgh2RmC" resname="Use Controls">
         <source>Use Controls</source>
         <target>~Steuerelemente verwenden</target>
@@ -11189,22 +10877,6 @@
         <source>Cannot get source of a broadcasted event</source>
         <target>~Quelle eines übertragenen Ereignisses kann nicht abgerufen werden</target>
       </trans-unit>
-      <trans-unit id="qWFQXx." resname="Other user is saving changes right now">
-        <source>Other user is saving changes right now</source>
-        <target>~Ein anderer Benutzer speichert gerade Änderungen</target>
-      </trans-unit>
-      <trans-unit id="YKtys6v" resname="An iDevice is open">
-        <source>An iDevice is open</source>
-        <target>~Ein iDevice ist geöffnet</target>
-      </trans-unit>
-      <trans-unit id="Uq1NiSp" resname="The file content is wrong">
-        <source>The file content is wrong</source>
-        <target>~Der Dateinhalt ist falsch</target>
-      </trans-unit>
-      <trans-unit id="9qBsVsM" resname="Failed to upload file">
-        <source>Failed to upload file</source>
-        <target>~Datei-Upload fehlgeschlagen</target>
-      </trans-unit>
       <trans-unit id="MeiJzK." resname="You can choose a different language for the current project.">
         <source>You can choose a different language for the current project.</source>
         <target>~Sie können eine andere Sprache für das aktuelle Projekt wählen.</target>
@@ -11221,10 +10893,6 @@
         <source>Version control</source>
         <target>~Versionskontrolle</target>
       </trans-unit>
-      <trans-unit id="madT9LT" resname="Texts and Links">
-        <source>Texts and Links</source>
-        <target>~Texte und Links</target>
-      </trans-unit>
       <trans-unit id="sn6ELnZ" resname="Version">
         <source>Version</source>
         <target>~Version</target>
@@ -11237,29 +10905,9 @@
         <source>License URL</source>
         <target>~Lizenz-URL</target>
       </trans-unit>
-      <trans-unit id="4bgAmj2" resname="Links color">
-        <source>Links color</source>
-        <target>~Link-Farbe</target>
-      </trans-unit>
-      <trans-unit id="22GeuW5" resname="Header image">
-        <source>Header image</source>
-        <target>~Header-Bild</target>
-      </trans-unit>
-      <trans-unit id="Ulft.2T" resname="Logo image">
-        <source>Logo image</source>
-        <target>~Logo-Bild</target>
-      </trans-unit>
       <trans-unit id="QkjXw6z" resname="Visible in export">
         <source>Visible in export</source>
         <target>~Beim Export sichtbar</target>
-      </trans-unit>
-      <trans-unit id="fE2HH6r" resname="Visibility type">
-        <source>Visibility type</source>
-        <target>~Sichtbarkeitstyp</target>
-      </trans-unit>
-      <trans-unit id="RWxaLMk" resname="Visible to all">
-        <source>Visible to all</source>
-        <target>~Für alle sichtbar</target>
       </trans-unit>
       <trans-unit id="ZT.NQle" resname="Teacher only">
         <source>Teacher only</source>
@@ -11333,14 +10981,6 @@
         <source>Help us spreading eXeLearning. Checking this option, a "Made with eXeLearning" link will be displayed in your pages.</source>
         <target>~Helfen Sie uns, eXeLearning zu verbreiten. Wenn Sie diese Option aktivieren, wird in Ihren Seiten ein Link "Mit eXeLearning erstellt" angezeigt.</target>
       </trans-unit>
-      <trans-unit id="UcqsRJ2" resname="Include a copy of the source file">
-        <source>Include a copy of the source file</source>
-        <target>~Eine Kopie der Quelldatei einschließen</target>
-      </trans-unit>
-      <trans-unit id="JDiMBVc" resname="A copy of the eXeLearning file will be included when exporting the content.">
-        <source>A copy of the eXeLearning file will be included when exporting the content.</source>
-        <target>~Beim Exportieren des Inhalts wird eine Kopie der eXeLearning-Datei beigefügt.</target>
-      </trans-unit>
       <trans-unit id="AK7eXCi" resname="Page counter">
         <source>Page counter</source>
         <target>~Seitenzähler</target>
@@ -11373,10 +11013,6 @@
         <source>HEAD</source>
         <target>~HEAD</target>
       </trans-unit>
-      <trans-unit id="cYFfQgT" resname="HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...">
-        <source>HTML to be included at the end of the HEAD tag: LINK, META, SCRIPT, STYLE...</source>
-        <target>~HTML, das am Ende des HEAD-Tags eingefügt werden soll: LINK, META, SCRIPT, STYLE...</target>
-      </trans-unit>
       <trans-unit id="2Cud8eD" resname="Page footer">
         <source>Page footer</source>
         <target>~Seitenfuß</target>
@@ -11384,150 +11020,6 @@
       <trans-unit id="XGqioqo" resname="Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.">
         <source>Type any HTML. It will be placed after every page content. No JavaScript code will be executed inside eXe.</source>
         <target>~Geben Sie beliebigen HTML-Code ein. Er wird nach jedem Seiteninhalt eingefügt. Kein JavaScript-Code wird innerhalb von eXe ausgeführt.</target>
-      </trans-unit>
-      <trans-unit id="6uaf2P2" resname="Unable to extract zip file">
-        <source>Unable to extract zip file</source>
-        <target>~Zip-Datei konnte nicht extrahiert werden</target>
-      </trans-unit>
-      <trans-unit id="1ycWOfa" resname="The iDevice is not valid">
-        <source>The iDevice is not valid</source>
-        <target>~Das iDevice ist ungültig</target>
-      </trans-unit>
-      <trans-unit id="ZAmBg4s" resname="Write permissions error in %s">
-        <source>Write permissions error in %s</source>
-        <target>~Schreibberechtigungsfehler in %s</target>
-      </trans-unit>
-      <trans-unit id="u1U.li5" resname="Could not load iDevice">
-        <source>Could not load iDevice</source>
-        <target>~iDevice konnte nicht geladen werden</target>
-      </trans-unit>
-      <trans-unit id="d5tPGIP" resname="Invalid iDevice name">
-        <source>Invalid iDevice name</source>
-        <target>~Ungültiger iDevice-Name</target>
-      </trans-unit>
-      <trans-unit id="mEHbYTr" resname="The iDevice [%s] already exists">
-        <source>The iDevice [%s] already exists</source>
-        <target>~Das iDevice [%s] existiert bereits</target>
-      </trans-unit>
-      <trans-unit id="0sc1irx" resname="Could not extract style">
-        <source>Could not extract style</source>
-        <target>~Stil konnte nicht extrahiert werden</target>
-      </trans-unit>
-      <trans-unit id="S3v5Oal" resname="Could not load style">
-        <source>Could not load style</source>
-        <target>~Stil konnte nicht geladen werden</target>
-      </trans-unit>
-      <trans-unit id="qEE0Zw." resname="The style is not installable">
-        <source>The style is not installable</source>
-        <target>~Der Stil ist nicht installierbar</target>
-      </trans-unit>
-      <trans-unit id="NvChAor" resname="Invalid style name">
-        <source>Invalid style name</source>
-        <target>~Ungültiger Stilname  </target>
-      </trans-unit>
-      <trans-unit id="C1aYN_g" resname="The style [%s] already exists">
-        <source>The style [%s] already exists</source>
-        <target>~Der Stil [%s] existiert bereits  </target>
-      </trans-unit>
-      <trans-unit id="D6K4nc6" resname="Could not install style">
-        <source>Could not install style</source>
-        <target>~Stil konnte nicht installiert werden  </target>
-      </trans-unit>
-      <trans-unit id="0k.oH2K" resname="Please create at least one page before exporting.">
-        <source>Please create at least one page before exporting.</source>
-        <target>~Bitte erstellen Sie mindestens eine Seite, bevor Sie exportieren.  </target>
-      </trans-unit>
-      <trans-unit id="UvqYVFn" resname="Please wait until the changes are completely saved.">
-        <source>Please wait until the changes are completely saved.</source>
-        <target>~Bitte warten Sie, bis die Änderungen vollständig gespeichert sind.  </target>
-      </trans-unit>
-      <trans-unit id="n1oCjz0" resname="An error has occurred that prevents the project from being exported">
-        <source>An error has occurred that prevents the project from being exported</source>
-        <target>~Ein Fehler ist aufgetreten, der den Export des Projekts verhindert  </target>
-      </trans-unit>
-      <trans-unit id="mCgBAGZ" resname="Export generation error">
-        <source>Export generation error</source>
-        <target>~Fehler beim Exportvorgang  </target>
-      </trans-unit>
-      <trans-unit id="C6JX376" resname="Export folder could not be created">
-        <source>Export folder could not be created</source>
-        <target>~Exportordner konnte nicht erstellt werden  </target>
-      </trans-unit>
-      <trans-unit id="ZFX1b2Z" resname="Failed to generate export content">
-        <source>Failed to generate export content</source>
-        <target>~Exportinhalt konnte nicht generiert werden  </target>
-      </trans-unit>
-      <trans-unit id="Cv2toRD" resname="Unable to undo last change">
-        <source>Unable to undo last change</source>
-        <target>~Letzte Änderung konnte nicht rückgängig gemacht werden</target>
-      </trans-unit>
-      <trans-unit id="gcY9TLe" resname="Last change is from another user">
-        <source>Last change is from another user</source>
-        <target>~Letzte Änderung stammt von einem anderen Benutzer  </target>
-      </trans-unit>
-      <trans-unit id="H7_JNy0" resname="There are no changes that can be undone">
-        <source>There are no changes that can be undone</source>
-        <target>~Es gibt keine Änderungen, die rückgängig gemacht werden können  </target>
-      </trans-unit>
-      <trans-unit id="ykJJV2M" resname="There aren't operations to undo">
-        <source>There aren't operations to undo</source>
-        <target>~Es gibt keine Operationen zum Rückgängig machen  </target>
-      </trans-unit>
-      <trans-unit id="gkp2z0C" resname="There was a problem opening the file">
-        <source>There was a problem opening the file</source>
-        <target>~Beim Öffnen der Datei ist ein Problem aufgetreten  </target>
-      </trans-unit>
-      <trans-unit id="8r_.dNb" resname="the zip does not have the necessary files to be uploaded as a package">
-        <source>the zip does not have the necessary files to be uploaded as a package</source>
-        <target>~Das ZIP enthält nicht die erforderlichen Dateien, um als Paket hochgeladen zu werden  </target>
-      </trans-unit>
-      <trans-unit id="Q23Y7dN" resname="Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.">
-        <source>Failed to read the XML content, please open the file in eXeLearning 2.9, save and try to open it here again. Please report if it fails. Thank you.</source>
-        <target>~Das Lesen des XML-Inhalts ist fehlgeschlagen, bitte öffnen Sie die Datei in eXeLearning 2.9, speichern Sie sie und versuchen Sie, sie hier erneut zu öffnen. Bitte melden Sie, falls es fehlschlägt. Danke.  </target>
-      </trans-unit>
-      <trans-unit id="qhJ89vm" resname="There was a problem retrieving the data of the file">
-        <source>There was a problem retrieving the data of the file</source>
-        <target>~Beim Abrufen der Dateidaten ist ein Problem aufgetreten  </target>
-      </trans-unit>
-      <trans-unit id="XWQ75wL" resname="File extension incorrect">
-        <source>File extension incorrect</source>
-        <target>~Dateierweiterung ist inkorrekt  </target>
-      </trans-unit>
-      <trans-unit id="EVKxznK" resname="There was a problem opening file">
-        <source>There was a problem opening file</source>
-        <target>~Beim Öffnen der Datei ist ein Problem aufgetreten  </target>
-      </trans-unit>
-      <trans-unit id="1LKHhts" resname="There was a problem opening the elp file">
-        <source>There was a problem opening the elp file</source>
-        <target>~Beim Öffnen der ELP-Datei ist ein Problem aufgetreten</target>
-      </trans-unit>
-      <trans-unit id="4N_3GhJ" resname="Cannot load the content of this component">
-        <source>Cannot load the content of this component</source>
-        <target>~Kann den Inhalt dieser Komponente nicht laden</target>
-      </trans-unit>
-      <trans-unit id="XBaXAKs" resname="FILES_DIR directory structure generated">
-        <source>FILES_DIR directory structure generated</source>
-        <target>~Verzeichnisstruktur von FILES_DIR erstellt</target>
-      </trans-unit>
-      <trans-unit id="uo1oXRt" resname="Failed to generate FILES_DIR structure in %s.">
-        <source>Failed to generate FILES_DIR structure in %s.</source>
-        <target>~Fehler beim Generieren der FILES_DIR-Struktur in %s.</target>
-      </trans-unit>
-      <trans-unit id="bNdDU0M" resname="- Check that both the directory and the subdirectories inside it have the correct permissions.">
-        <source>- Check that both the directory and the subdirectories inside it have the correct permissions.</source>
-        <target>~- Überprüfen Sie, ob sowohl das Verzeichnis als auch die darin enthaltenen Unterverzeichnisse die richtigen Berechtigungen haben.</target>
-      </trans-unit>
-      <trans-unit id="uHnTwgS" resname="- Check that the symfony/public/files/ directory exists in your project and has the correct permissions.">
-        <source>- Check that the symfony/public/files/ directory exists in your project and has the correct permissions.</source>
-        <target>~- Überprüfen Sie, ob das Verzeichnis symfony/public/files/ in Ihrem Projekt existiert und die richtigen Berechtigungen hat.</target>
-      </trans-unit>
-      <trans-unit id="TfkqqXW" resname="The FILES_DIR directory does not have write permissions">
-        <source>The FILES_DIR directory does not have write permissions</source>
-        <target>~Das Verzeichnis FILES_DIR hat keine Schreibberechtigung</target>
-      </trans-unit>
-      <trans-unit id="HCT_PEJ" resname="The FILES_DIR directory does not exists">
-        <source>The FILES_DIR directory does not exists</source>
-        <target>~Das Verzeichnis FILES_DIR existiert nicht</target>
       </trans-unit>
       <trans-unit id="ldQmgCC" resname="Show feedback">
         <source>Show feedback</source>
@@ -11541,34 +11033,6 @@
         <source>Menu</source>
         <target>~Menü</target>
       </trans-unit>
-      <trans-unit id="uPK90IF" resname="Your score is">
-        <source>Your score is</source>
-        <target>~Ihr Punktestand ist</target>
-      </trans-unit>
-      <trans-unit id="b6hmtD_" resname="Error retrieving data">
-        <source>Error retrieving data</source>
-        <target>~Fehler beim Abrufen der Daten</target>
-      </trans-unit>
-      <trans-unit id="iM.0BJl" resname="This might not work in this ePub reader.">
-        <source>This might not work in this ePub reader.</source>
-        <target>~Dies funktioniert möglicherweise nicht in diesem ePub-Reader.</target>
-      </trans-unit>
-      <trans-unit id="oORf9iD" resname="This activity does not work in ePub format.">
-        <source>This activity does not work in ePub format.</source>
-        <target>~Diese Aktivität funktioniert nicht im ePub-Format.</target>
-      </trans-unit>
-      <trans-unit id="MA7trt8" resname="Search all pages">
-        <source>Search all pages</source>
-        <target>~Alle Seiten durchsuchen</target>
-      </trans-unit>
-      <trans-unit id="l1Hcq.m" resname="No results found for %">
-        <source>No results found for %</source>
-        <target>~Keine Ergebnisse für %</target>
-      </trans-unit>
-      <trans-unit id="s_Ykup3" resname="Search results for %">
-        <source>Search results for %</source>
-        <target>~Suchergebnisse für %</target>
-      </trans-unit>
       <trans-unit id="QJSMbTz" resname="Hide results">
         <source>Hide results</source>
         <target>~Ergebnisse ausblenden</target>
@@ -11580,10 +11044,6 @@
       <trans-unit id="Y.SUx2B" resname="Accessibility tools">
         <source>Accessibility tools</source>
         <target>~Barrierefreiheitstools</target>
-      </trans-unit>
-      <trans-unit id=".LN5KpH" resname="Default typography">
-        <source>Default typography</source>
-        <target>~Standard-Typografie</target>
       </trans-unit>
       <trans-unit id="Y_lcdMn" resname="Increase text size">
         <source>Increase text size</source>
@@ -11601,10 +11061,6 @@
         <source>Translate</source>
         <target>~Übersetzen</target>
       </trans-unit>
-      <trans-unit id="h_JJhAn" resname="Light/dark mode">
-        <source>Light/dark mode</source>
-        <target>~Hell/Dunkel-Modus</target>
-      </trans-unit>
       <trans-unit id="WA9z9oQ" resname="Teacher mode">
         <source>Teacher mode</source>
         <target>~Lehrer-Modus</target>
@@ -11612,10 +11068,6 @@
       <trans-unit id="zp1nkll" resname="Hangman Game">
         <source>Hangman Game</source>
         <target>~Galgenmännchen-Spiel</target>
-      </trans-unit>
-      <trans-unit id="Qmo7OQW" resname="Stat">
-        <source>Stat</source>
-        <target>~Statistik</target>
       </trans-unit>
       <trans-unit id="RiWn7g_" resname="Selected letters">
         <source>Selected letters</source>
@@ -11625,38 +11077,6 @@
         <source>Other word</source>
         <target>~Anderes Wort</target>
       </trans-unit>
-      <trans-unit id="QCsa0JO" resname="Game Over">
-        <source>Game Over</source>
-        <target>~Spiel vorbei</target>
-      </trans-unit>
-      <trans-unit id="rXfx2XN" resname="Reload the game?">
-        <source>Reload the game?</source>
-        <target>~Das Spiel neu laden?</target>
-      </trans-unit>
-      <trans-unit id="84o0Zr9" resname="Click &quot;Play&quot; to start a new game.">
-        <source>Click "Play" to start a new game.</source>
-        <target>~Klicken Sie auf "Spielen", um ein neues Spiel zu starten.</target>
-      </trans-unit>
-      <trans-unit id="JP_t.5h" resname="Click &quot;Another word&quot; to continue.">
-        <source>Click "Another word" to continue.</source>
-        <target>~Klicken Sie auf "Anderes Wort", um fortzufahren.</target>
-      </trans-unit>
-      <trans-unit id="dVTYTrX" resname="abcdefghijklmnñopqrstuvwxyz">
-        <source>abcdefghijklmnñopqrstuvwxyz</source>
-        <target>~abcdefghijklmnñopqrstuvwxyz</target>
-      </trans-unit>
-      <trans-unit id="buoozPS" resname="Metadata creation date">
-        <source>Metadata creation date</source>
-        <target>~Erstellungsdatum der Metadaten</target>
-      </trans-unit>
-      <trans-unit id="80CZaVs" resname="Block %e">
-        <source>Block %e</source>
-        <target>~Block %e</target>
-      </trans-unit>
-      <trans-unit id="yAoGEET" resname="No results.">
-        <source>No results.</source>
-        <target>~Keine Ergebnisse.</target>
-      </trans-unit>
       <trans-unit id="Xcvfje6" resname="Page">
         <source>Page</source>
         <target>~Seite</target>
@@ -11664,34 +11084,6 @@
       <trans-unit id="FN1Dycp" resname="Toggle content">
         <source>Toggle content</source>
         <target>~Inhalt umschalten</target>
-      </trans-unit>
-      <trans-unit id="mxoH_RC" resname="Made with eXeLearning">
-        <source>Made with eXeLearning</source>
-        <target>~Mit eXeLearning erstellt</target>
-      </trans-unit>
-      <trans-unit id="TVh5JiD" resname="(new window)">
-        <source>(new window)</source>
-        <target>~(neues Fenster)</target>
-      </trans-unit>
-      <trans-unit id="_9u.dBq" resname="Page not found">
-        <source>Page not found</source>
-        <target>~Seite nicht gefunden</target>
-      </trans-unit>
-      <trans-unit id="2heQoGd" resname="Sorry, but the page cannot be displayed.">
-        <source>Sorry, but the page cannot be displayed.</source>
-        <target>~Entschuldigung, die Seite kann nicht angezeigt werden.</target>
-      </trans-unit>
-      <trans-unit id="11nL.4x" resname="The server encountered an error and could not complete your request. Please try again later.">
-        <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target>~Der Server hat einen Fehler festgestellt und konnte Ihre Anfrage nicht abschließen. Bitte versuchen Sie es später erneut.</target>
-      </trans-unit>
-      <trans-unit id="uV6B6g_" resname="Return to work area">
-        <source>Return to work area</source>
-        <target>~Zur Arbeitsbereich zurückkehren</target>
-      </trans-unit>
-      <trans-unit id="aYZKGkc" resname="Return to login">
-        <source>Return to login</source>
-        <target>~Zur Anmeldung zurückkehren</target>
       </trans-unit>
       <trans-unit id="btdi.Hi" resname="Version:">
         <source>Version:</source>
@@ -11741,10 +11133,6 @@
         <source>iDevices panel</source>
         <target>~iDevices-Panel</target>
       </trans-unit>
-      <trans-unit id="VXFwlwn" resname="Settings">
-        <source>Settings</source>
-        <target>~Einstellungen</target>
-      </trans-unit>
       <trans-unit id="9G8Nzdp" resname="User menu">
         <source>User menu</source>
         <target>~Benutzermenü</target>
@@ -11765,10 +11153,6 @@
         <source>Download as...</source>
         <target>~Herunterladen als...</target>
       </trans-unit>
-      <trans-unit id="6GeU93S" resname="eXeLearning content">
-        <source>eXeLearning content</source>
-        <target>~eXeLearning-Inhalt</target>
-      </trans-unit>
       <trans-unit id="fFRCfz_" resname="Website">
         <source>Website</source>
         <target>~Webseite</target>
@@ -11777,22 +11161,6 @@
         <source>Single page</source>
         <target>~Einzelseite</target>
       </trans-unit>
-      <trans-unit id="QurEGQa" resname="SCORM 1.2">
-        <source>SCORM 1.2</source>
-        <target>~SCORM 1.2</target>
-      </trans-unit>
-      <trans-unit id="gbB5BPt" resname="SCORM 2004">
-        <source>SCORM 2004</source>
-        <target>~SCORM 2004</target>
-      </trans-unit>
-      <trans-unit id="AI9NTLq" resname="IMS CP">
-        <source>IMS CP</source>
-        <target>~IMS CP</target>
-      </trans-unit>
-      <trans-unit id="Dg_AwyF" resname="ePub3">
-        <source>ePub3</source>
-        <target>~ePub3</target>
-      </trans-unit>
       <trans-unit id="bBHJSiQ" resname="Export as...">
         <source>Export as...</source>
         <target>~Exportieren als...</target>
@@ -11800,10 +11168,6 @@
       <trans-unit id="hoh2x39" resname="Export to Folder (Unzipped Website)">
         <source>Export to Folder (Unzipped Website)</source>
         <target>~In Ordner exportieren (Entpackte Website)</target>
-      </trans-unit>
-      <trans-unit id="pkPMDRH" resname="Metadata (XML)">
-        <source>Metadata (XML)</source>
-        <target>~Metadaten (XML)</target>
       </trans-unit>
       <trans-unit id="b0UHAqn" resname="Upload to">
         <source>Upload to</source>
@@ -11849,10 +11213,6 @@
         <source>Move right (down in hierarchy)</source>
         <target>~Nach rechts verschieben (unten in der Hierarchie)</target>
       </trans-unit>
-      <trans-unit id="PTY.ZKR" resname="Import iDevices">
-        <source>Import iDevices</source>
-        <target>~iDevices importieren</target>
-      </trans-unit>
       <trans-unit id="EJDvYR8" resname="Save and exit">
         <source>Save and exit</source>
         <target>~Speichern und beenden</target>
@@ -11868,10 +11228,6 @@
       <trans-unit id="6tS5SiP" resname="eXeLearning is a free software tool under the GNU Affero GPL that can be used to create educational interactive web contents. eXeLearning can generate interactive contents in different formats and it allows you to create easily navigable web pages. All the educational materials generated with eXeLearning can be exported in different digital formats, to be used independently or to integrate them into a LMS (Learning Management System) like Moodle.">
         <source>eXeLearning is a free software tool under the GNU Affero GPL that can be used to create educational interactive web contents. eXeLearning can generate interactive contents in different formats and it allows you to create easily navigable web pages. All the educational materials generated with eXeLearning can be exported in different digital formats, to be used independently or to integrate them into a LMS (Learning Management System) like Moodle.</source>
         <target>~eXeLearning ist ein kostenloses Software-Tool unter der GNU Affero GPL, das zur Erstellung interaktiver Bildungsinhalte im Web verwendet werden kann. eXeLearning kann interaktive Inhalte in verschiedenen Formaten erzeugen und ermöglicht es Ihnen, leicht navigierbare Webseiten zu erstellen. Alle mit eXeLearning erstellten Bildungsmaterialien können in verschiedenen digitalen Formaten exportiert werden, um sie unabhängig zu verwenden oder in ein LMS (Lernmanagementsystem) wie Moodle zu integrieren.  </target>
-      </trans-unit>
-      <trans-unit id="SyPr.kb" resname="Attendee">
-        <source>Attendee</source>
-        <target>~Teilnehmer  </target>
       </trans-unit>
       <trans-unit id="MPi7uDh" resname="1. What is eXeLearning">
         <source>1. What is eXeLearning</source>
@@ -11901,10 +11257,6 @@
         <source>Credits</source>
         <target>~Danksagungen</target>
       </trans-unit>
-      <trans-unit id="oCG7Pav" resname="Third Libraries">
-        <source>Third Libraries</source>
-        <target>~Dritte Bibliotheken</target>
-      </trans-unit>
       <trans-unit id="YccaVK2" resname="Licenses">
         <source>Licenses</source>
         <target>~Lizenzen</target>
@@ -11912,10 +11264,6 @@
       <trans-unit id="yNtSaQf" resname="Previous versions">
         <source>Previous versions</source>
         <target>~Vorherige Versionen</target>
-      </trans-unit>
-      <trans-unit id="8nwAt6k" resname="eXeLearning. Third Libraries">
-        <source>eXeLearning. Third Libraries</source>
-        <target>~eXeLearning. Dritte Bibliotheken</target>
       </trans-unit>
       <trans-unit id="sw53iv3" resname="Privacy and Terms">
         <source>Privacy and Terms</source>
@@ -11932,10 +11280,6 @@
       <trans-unit id="rFqGW9s" resname="Upload to Drive">
         <source>Upload to Drive</source>
         <target>~In Drive hochladen</target>
-      </trans-unit>
-      <trans-unit id="7sUNuje" resname="Change title">
-        <source>Change title</source>
-        <target>~Titel ändern</target>
       </trans-unit>
       <trans-unit id="6C92oaM" resname="System">
         <source>System</source>
@@ -12020,10 +11364,6 @@
       <trans-unit id="NT8emLb" resname="Point">
         <source>Point</source>
         <target>~Punkt</target>
-      </trans-unit>
-      <trans-unit id="lgtXQPh" resname="You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.">
-        <source>You must review %s&amp;percnt;  of the contents of the activity before completing the questionnaire.</source>
-        <target>~Sie müssen %s&percnt; des Inhalts der Aktivität überprüfen, bevor Sie den Fragebogen ausfüllen.  </target>
       </trans-unit>
       <trans-unit id="UA9ZXk3" resname="You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?">
         <source>You have not passed this test. You should review its contents and try again. Do you want to repeat this activity?</source>
@@ -12240,10 +11580,6 @@
       <trans-unit id="HNvXfDK" resname="You must provide the time to view the solution">
         <source>You must provide the time to view the solution</source>
         <target>~Sie müssen die Zeit angeben, um die Lösung anzuzeigen</target>
-      </trans-unit>
-      <trans-unit id="shDAvQ3" resname="Import (.elpx…)">
-        <source>Import (.elpx…)</source>
-        <target>~Importieren (.elpx…)</target>
       </trans-unit>
       <trans-unit id="I0XyrRF" resname="Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.">
         <source>Import .elpx, .elp, or editable .zip or .epub files. The imported content will be added after the last page of the current project.</source>
@@ -12749,38 +12085,6 @@
         <source>Please write the Content</source>
         <target>~Bitte schreiben Sie den Inhalt</target>
       </trans-unit>
-      <trans-unit id="k9fD7sJ" resname="Drop image here or $browse...$">
-        <source>Drop image here or $browse...$</source>
-        <target>~Bild hier ablegen oder $durchsuchen...$</target>
-      </trans-unit>
-      <trans-unit id="TLhu5aI" resname="Max width">
-        <source>Max width</source>
-        <target>~Maximale Breite</target>
-      </trans-unit>
-      <trans-unit id="LrP1fL3" resname="Max height">
-        <source>Max height</source>
-        <target>~Maximale Höhe</target>
-      </trans-unit>
-      <trans-unit id="yy8vDP3" resname="Quality">
-        <source>Quality</source>
-        <target>~Qualität</target>
-      </trans-unit>
-      <trans-unit id="EYbFWLc" resname="You just added that image. Save the iDevice or select the image again to update it.">
-        <source>You just added that image. Save the iDevice or select the image again to update it.</source>
-        <target>~Sie haben gerade dieses Bild hinzugefügt. Speichern Sie das iDevice oder wählen Sie das Bild erneut aus, um es zu aktualisieren.</target>
-      </trans-unit>
-      <trans-unit id="c1GMB53" resname="$Save the current image$ before overwriting it.">
-        <source>$Save the current image$ before overwriting it.</source>
-        <target>~$Speichern Sie das aktuelle Bild$, bevor Sie es überschreiben.</target>
-      </trans-unit>
-      <trans-unit id="315H6gn" resname="Error uploading image">
-        <source>Error uploading image</source>
-        <target>~Fehler beim Hochladen des Bildes</target>
-      </trans-unit>
-      <trans-unit id="EIlrJpG" resname="Clear Image">
-        <source>Clear Image</source>
-        <target>~Bild löschen</target>
-      </trans-unit>
       <trans-unit id="JZshxFL" resname="Baseline">
         <source>Baseline</source>
         <target>~Grundlinie</target>
@@ -12844,10 +12148,6 @@
       <trans-unit id="IQ79uoq" resname="Show caption">
         <source>Show caption</source>
         <target>~Bildunterschrift anzeigen</target>
-      </trans-unit>
-      <trans-unit id="mD8meNC" resname="Custom File Picker">
-        <source>Custom File Picker</source>
-        <target>~Benutzerdefinierter Dateiauswahldialog</target>
       </trans-unit>
       <trans-unit id="IK9jqUK" resname="Feed URL">
         <source>Feed URL</source>
@@ -12969,26 +12269,6 @@
         <source>Quick edit</source>
         <target>~Schnellbearbeitung</target>
       </trans-unit>
-      <trans-unit id="VLYpTCb" resname="Another user is editing an iDevice on this block.">
-        <source>Another user is editing an iDevice on this block.</source>
-        <target>~Ein anderer Benutzer bearbeitet gerade ein iDevice in diesem Block.</target>
-      </trans-unit>
-      <trans-unit id="qSRqFDl" resname="Missing file name or path">
-        <source>Missing file name or path</source>
-        <target>~Dateiname oder Pfad fehlt</target>
-      </trans-unit>
-      <trans-unit id="T7Qvhcc" resname="Invalid request data">
-        <source>Invalid request data</source>
-        <target>~Ungültige Anfragedaten</target>
-      </trans-unit>
-      <trans-unit id="dsSqvHh" resname="Uploaded file not found">
-        <source>Uploaded file not found</source>
-        <target>~Hochgeladene Datei nicht gefunden</target>
-      </trans-unit>
-      <trans-unit id="ORp5XHR" resname="Invalid file type">
-        <source>Invalid file type</source>
-        <target>~Ungültiger Dateityp</target>
-      </trans-unit>
       <trans-unit id="Jyiz9H6" resname="Highlight this page in the website navigation menu">
         <source>Highlight this page in the website navigation menu</source>
         <target>~Diese Seite im Navigationsmenü der Website hervorheben</target>
@@ -13043,26 +12323,6 @@
         <target>Server error</target>
       </trans-unit>
       <!-- Logical exception translations -->
-      <trans-unit id="error.autosave_recent_save" resname="error.autosave_recent_save">
-        <source>Autosave not needed - recent save exists</source>
-        <target>Autosave not needed - recent save exists</target>
-      </trans-unit>
-      <trans-unit id="error.insufficient_space" resname="error.insufficient_space">
-        <source>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</source>
-        <target>Insufficient storage space. Used: %usedSpace%, Maximum: %maxSpace%</target>
-      </trans-unit>
-      <trans-unit id="error.session_already_open" resname="error.session_already_open">
-        <source>User already has an open session</source>
-        <target>User already has an open session</target>
-      </trans-unit>
-      <trans-unit id="error.extension_not_installed" resname="error.extension_not_installed">
-        <source>Required extension %extension% is not installed</source>
-        <target>Required extension %extension% is not installed</target>
-      </trans-unit>
-      <trans-unit id="nVwXz9k" resname="This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.">
-        <source>This file was created with a newer version of eXeLearning. Some features may not work correctly. Please update your application.</source>
-        <target>~Diese Datei wurde mit einer neueren Version von eXeLearning erstellt. Einige Funktionen funktionieren möglicherweise nicht richtig. Bitte aktualisieren Sie Ihre Anwendung.</target>
-      </trans-unit>
       <trans-unit id="project_props_001" resname="Project Properties">
         <source>Project Properties</source>
         <target>Project Properties</target>
@@ -13095,125 +12355,9 @@
         <source>Page options</source>
         <target>~Seitenoptionen</target>
       </trans-unit>
-      <trans-unit id="zvk8pjb" resname="Admin Panel">
-        <source>Admin Panel</source>
-        <target>~Admin-Panel</target>
-      </trans-unit>
-      <trans-unit id="h3ssahq" resname="Dashboard">
-        <source>Dashboard</source>
-        <target>~Übersicht</target>
-      </trans-unit>
-      <trans-unit id="44mwfl3" resname="Users">
-        <source>Users</source>
-        <target>~Benutzer</target>
-      </trans-unit>
-      <trans-unit id="fq2n7js" resname="Extensions">
-        <source>Extensions</source>
-        <target>~Erweiterungen</target>
-      </trans-unit>
-      <trans-unit id="rtfgdte" resname="Back to Workarea">
-        <source>Back to Workarea</source>
-        <target>~Zurück zum Arbeitsbereich</target>
-      </trans-unit>
-      <trans-unit id="qncs2cr" resname="Total Users">
-        <source>Total Users</source>
-        <target>~Gesamtbenutzer</target>
-      </trans-unit>
-      <trans-unit id="jy28gzb" resname="Active Users">
-        <source>Active Users</source>
-        <target>~Aktive Benutzer</target>
-      </trans-unit>
-      <trans-unit id="deg1yek" resname="Total Projects">
-        <source>Total Projects</source>
-        <target>~Gesamtprojekte</target>
-      </trans-unit>
-      <trans-unit id="k64iihe" resname="Active Projects">
-        <source>Active Projects</source>
-        <target>~Aktive Projekte</target>
-      </trans-unit>
-      <trans-unit id="xn6rb25" resname="User Management">
-        <source>User Management</source>
-        <target>~Benutzerverwaltung</target>
-      </trans-unit>
-      <trans-unit id="r5vi5bs" resname="Create User">
-        <source>Create User</source>
-        <target>~Benutzer erstellen</target>
-      </trans-unit>
-      <trans-unit id="iqijjtg" resname="Roles">
-        <source>Roles</source>
-        <target>~Rollen</target>
-      </trans-unit>
       <trans-unit id="j5zdlk5" resname="Status">
         <source>Status</source>
         <target>~Status</target>
-      </trans-unit>
-      <trans-unit id="z7gkvzj" resname="Active">
-        <source>Active</source>
-        <target>~Aktiv</target>
-      </trans-unit>
-      <trans-unit id="pq5yujn" resname="Inactive">
-        <source>Inactive</source>
-        <target>~Inaktiv</target>
-      </trans-unit>
-      <trans-unit id="lfxd0sb" resname="Are you sure you want to delete this user?">
-        <source>Are you sure you want to delete this user?</source>
-        <target>~Möchten Sie diesen Benutzer wirklich löschen?</target>
-      </trans-unit>
-      <trans-unit id="6vzr5yx" resname="Installed">
-        <source>Installed</source>
-        <target>~Installiert</target>
-      </trans-unit>
-      <trans-unit id="gxqwrug" resname="Available">
-        <source>Available</source>
-        <target>~Verfügbar</target>
-      </trans-unit>
-      <trans-unit id="wf6nxc4" resname="Install">
-        <source>Install</source>
-        <target>~Installieren</target>
-      </trans-unit>
-      <trans-unit id="r32qmdp" resname="Uninstall">
-        <source>Uninstall</source>
-        <target>~Deinstallieren</target>
-      </trans-unit>
-      <trans-unit id="ro1b5dv" resname="Deactivate">
-        <source>Deactivate</source>
-        <target>~Deaktivieren</target>
-      </trans-unit>
-      <trans-unit id="w4r0ozg" resname="Download File">
-        <source>Download File</source>
-        <target>~Datei herunterladen</target>
-      </trans-unit>
-      <trans-unit id="898azpm" resname="Play/Pause">
-        <source>Play/Pause</source>
-        <target>~Wiedergabe/Pause</target>
-      </trans-unit>
-      <trans-unit id="22p1c2n" resname="Mute Toggle">
-        <source>Mute Toggle</source>
-        <target>~Stummschaltung umschalten</target>
-      </trans-unit>
-      <trans-unit id="888i2el" resname="Captions/Subtitles">
-        <source>Captions/Subtitles</source>
-        <target>~Untertitel/Untertitel</target>
-      </trans-unit>
-      <trans-unit id="3os67yi" resname="Turn off Fullscreen">
-        <source>Turn off Fullscreen</source>
-        <target>~Vollbild ausschalten</target>
-      </trans-unit>
-      <trans-unit id="k0io8gn" resname="Go Fullscreen">
-        <source>Go Fullscreen</source>
-        <target>~Vollbild aktivieren</target>
-      </trans-unit>
-      <trans-unit id="23b7n7x" resname="Unmute">
-        <source>Unmute</source>
-        <target>~Stummschaltung aufheben</target>
-      </trans-unit>
-      <trans-unit id="uhfpzlh" resname="Mute">
-        <source>Mute</source>
-        <target>~Stummschaltung</target>
-      </trans-unit>
-      <trans-unit id="rfuatga" resname="Download Video">
-        <source>Download Video</source>
-        <target>~Video herunterladen</target>
       </trans-unit>
       <!-- Global Search Modal translations -->
       <trans-unit id="gs_001" resname="Search pages and content...">
@@ -13228,38 +12372,10 @@
         <source>No results found</source>
         <target>~Keine Ergebnisse gefunden</target>
       </trans-unit>
-      <trans-unit id="gs_004" resname="navigate">
-        <source>navigate</source>
-        <target>~navigieren</target>
-      </trans-unit>
-      <trans-unit id="gs_005" resname="select">
-        <source>select</source>
-        <target>~auswählen</target>
-      </trans-unit>
       <trans-unit id="gs_006" resname="in">
         <source>in</source>
         <target>~in</target>
       </trans-unit>
-          <trans-unit id="elqpz8j" resname="Log in as">
-        <source>Log in as</source>
-        <target>~Anmelden als</target>
-      </trans-unit>
-      <trans-unit id="0xmnyz5" resname="Cannot impersonate administrator users">
-        <source>Cannot impersonate administrator users</source>
-        <target>~Kann Administratorbenutzer nicht imitieren</target>
-      </trans-unit>
-      <trans-unit id="9fx8u45" resname="Cannot impersonate your own account">
-        <source>Cannot impersonate your own account</source>
-        <target>~Kann dein eigenes Konto nicht imitieren</target>
-      </trans-unit>
-      <trans-unit id="s6w5via" resname="Start impersonation as {email}?">
-        <source>Start impersonation as {email}?</source>
-        <target>~Impersonation als {email} starten?  </target>
-      </trans-unit>
-      <trans-unit id="ss4fawg" resname="Failed to start impersonation">
-        <source>Failed to start impersonation</source>
-        <target>~Impersonation konnte nicht gestartet werden</target>
-      </trans-unit>
-    </body>
+          </body>
   </file>
 </xliff>
