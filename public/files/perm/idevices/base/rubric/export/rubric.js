@@ -14,6 +14,7 @@ var $rubric = {
         name: 'Name',
         date: 'Date',
         score: 'Score',
+        calculateScore: 'Calculate score',
         notes: 'Notes',
         reset: 'Reset',
         print: 'Print',
@@ -58,53 +59,17 @@ var $rubric = {
             if (window.location.host == 'localhost:41309') {
                 $('#print-' + id).css('cursor', 'not-allowed');
             }
+
+            $rubric.prepareInteractiveTable(table, id || 'rubric-' + i);
         });
 
         // Print version
-        if (!$('body').hasClass('exe-rubrics')) return;
-
-        // Add checkboxes
-        $('tbody tr').each(function (i) {
-            $('td', this).each(function (z) {
-                var val = '';
-                var span = $('span', this);
-                if (span.length == 1) {
-                    try {
-                        val = span.text().match(/\(([^)]+)\)/)[1];
-                    } catch (e) {
-                        val = '';
-                    }
-                    if (val != '') {
-                        val = val.replace(/[^0-9.,]/g, '');
-                        val = val.replace(/,/g, '.');
-                        var isNumeric = true;
-                        if (isNaN(val)) isNumeric = false;
-                        if (!isNumeric) val = '';
-                    }
-                }
-                this.innerHTML +=
-                    ' <input type="checkbox" name="criteria-' +
-                    i +
-                    '" id="criteria-' +
-                    i +
-                    '-' +
-                    z +
-                    '" value="' +
-                    val +
-                    '" />';
-            });
-            // Make those checkboxes work as radio inputs
-            $('input', this).change(function () {
-                if (this.checked) {
-                    var name = this.name;
-                    $("input[name='" + this.name + "']").prop('checked', false);
-                    $(this).prop('checked', true);
-                }
-                $rubric.checkScore();
-            });
-        });
-
-        $rubric.getMaxScore();
+        if ($('body').hasClass('exe-rubrics')) {
+            var printTable = $('table').first();
+            if (printTable.length === 1) {
+                $rubric.prepareInteractiveTable(printTable, 'print');
+            }
+        }
 
         // Clear form button
         $('#clear').click(function () {
@@ -123,42 +88,151 @@ var $rubric = {
         });
     },
 
-    // Add the scores of the first level and show the result in #ri_MaxScore
-    getMaxScore: function () {
-        var trs = $('table tbody tr');
-        var nums = [];
-        trs.each(function () {
-            var val = $('td input', this).eq(0).val();
-            val = val.replace(/[^0-9.,]/g, '');
-            val = val.replace(/,/g, '.');
-            var isNumeric = true;
-            if (val == '' || isNaN(val)) isNumeric = false;
-            if (isNumeric) nums.push(val);
+    prepareInteractiveTable: function (table, tableId) {
+        var $table = $(table);
+        if ($table.length !== 1) return;
+
+        var scopeId = tableId || 'rubric';
+
+        $table.find('tbody tr').each(function (rowIndex) {
+            $(this)
+                .find('td')
+                .each(function (colIndex) {
+                    if ($(this).find('input[type="checkbox"]').length > 0) return;
+
+                    var val = '';
+                    var span = $('span', this);
+                    if (span.length === 1) {
+                        try {
+                            val = span.text().match(/\(([^)]+)\)/)[1];
+                        } catch (e) {
+                            val = '';
+                        }
+                        if (val !== '') {
+                            val = val.replace(/[^0-9.,]/g, '');
+                            val = val.replace(/,/g, '.');
+                            if (isNaN(val)) val = '';
+                        }
+                    }
+
+                    this.innerHTML +=
+                        ' <input type="checkbox" name="criteria-' +
+                        scopeId +
+                        '-' +
+                        rowIndex +
+                        '" id="criteria-' +
+                        scopeId +
+                        '-' +
+                        rowIndex +
+                        '-' +
+                        colIndex +
+                        '" data-col-index="' +
+                        colIndex +
+                        '" value="' +
+                        val +
+                        '" />';
+                });
         });
-        var res = 0;
-        for (var i = 0; i < nums.length; i++) {
-            res += parseFloat(nums[i]);
+
+        $table.find('tbody input[type="checkbox"]').off('change.rubric').on('change.rubric', function () {
+            if (this.checked) {
+                $("input[name='" + this.name + "']").prop('checked', false);
+                $(this).prop('checked', true);
+            }
+        });
+
+        var calcBlock = $table.next('.exe-rubrics-calc, #exe-rubrics-calc');
+        if (calcBlock.length === 0) {
+            calcBlock = $(
+                '<p class="exe-rubrics-calc"><input type="button" class="calculate-score" value="' +
+                    this.ci18n.calculateScore +
+                    '" /> <span class="exe-rubrics-score-result"></span></p>'
+            );
+            $table.after(calcBlock);
+        } else if (calcBlock.find('.exe-rubrics-score-result').length === 0) {
+            calcBlock.append(' <span class="exe-rubrics-score-result"></span>');
         }
-        res = Math.round(res * 10) / 10;
-        this.maxScore = res;
+
+        var self = this;
+        calcBlock
+            .find('#calculate-score, .calculate-score')
+            .off('click.rubric')
+            .on('click.rubric', function () {
+                var result = self.calculateTableScore($table);
+                self.renderTableScore($table, result, calcBlock);
+            });
     },
 
-    // Check the score (just add the numeric values of the checked inputs)
-    checkScore: function () {
+    calculateTableScore: function (table) {
         var res = 0;
-        $('tbody input:checked').each(function () {
-            res += parseFloat(this.value);
-        });
-        if (isNaN(res)) res = '';
-        else {
-            // Show score out of 10
-            if (!isNaN(this.maxScore) && this.maxScore != 10) {
-                var dec = (res * 10) / this.maxScore;
-                dec = Math.round(dec * 10) / 10;
-                res = dec + ' (' + res + '/' + this.maxScore + ')';
-            }
+        $(table)
+            .find('tbody input:checked')
+            .each(function () {
+                res += $rubric.getCheckboxScore(table, this);
+            });
+        if (isNaN(res)) return 0;
+        return Math.round(res * 100) / 100;
+    },
+
+    renderTableScore: function (table, score, calcBlock) {
+        var scoreField = $(table).closest('.exe-rubrics-content').find('#score').first();
+        if (scoreField.length === 1) {
+            scoreField.val(score);
+            return;
         }
-        $('#score').val(res);
+
+        calcBlock
+            .find('.exe-rubrics-score-result')
+            .text(this.ci18n.score + ': ' + score);
+    },
+
+    // Backward-compatible wrapper
+    checkScore: function () {
+        var table = $('table').first();
+        if (table.length !== 1) return;
+        var calcBlock = table.next('.exe-rubrics-calc, #exe-rubrics-calc');
+        var result = this.calculateTableScore(table);
+        this.renderTableScore(table, result, calcBlock);
+    },
+
+    parseScoreText: function (text) {
+        if (typeof text !== 'string' || text === '') return null;
+
+        var normalized = text.replace(/,/g, '.');
+        var insideParens = normalized.match(/\(([^)]+)\)/);
+        var candidate = insideParens && insideParens[1] ? insideParens[1] : '';
+
+        if (!candidate) {
+            var anyNumber = normalized.match(/-?\d+(?:\.\d+)?/);
+            candidate = anyNumber && anyNumber[0] ? anyNumber[0] : '';
+        }
+
+        if (!candidate) return null;
+
+        candidate = candidate.replace(/[^0-9.-]/g, '');
+        if (candidate === '' || isNaN(candidate)) return null;
+
+        return parseFloat(candidate);
+    },
+
+    getColumnScore: function (table, colIndex) {
+        var headerCell = $(table).find('thead th').eq(colIndex + 1);
+        if (headerCell.length !== 1) return 0;
+
+        var parsed = this.parseScoreText(headerCell.text());
+        if (parsed === null || isNaN(parsed)) return 0;
+
+        return parsed;
+    },
+
+    getCheckboxScore: function (table, checkbox) {
+        var cellScore = this.parseScoreText($(checkbox).val());
+        if (cellScore !== null && !isNaN(cellScore)) return cellScore;
+
+        var colIndex = parseInt(checkbox.getAttribute('data-col-index'), 10);
+        if (isNaN(colIndex)) return 0;
+
+        return this.getColumnScore(table, colIndex);
     },
 
     printRubric: function (tit, html) {
@@ -248,6 +322,11 @@ var $rubric = {
         a.document.write('</p>');
         a.document.write('</div>');
         a.document.write('<table class="exe-table">' + html + '</table>');
+        a.document.write(
+            '<p id="exe-rubrics-calc"><input type="button" value="' +
+                i18n.calculateScore +
+                '" id="calculate-score" /></p>'
+        );
         a.document.write('<div id="exe-rubrics-footer">');
         a.document.write('<p>');
         a.document.write(
