@@ -11717,42 +11717,6 @@
         <source>The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts</source>
         <target>Numărul de încercări trebuie să fie mai mare sau egal cu numărul de perechi din joc. Vă rugăm să selectați 0 pentru un număr infinit și nelimitat de încercări</target>
       </trans-unit>
-      <trans-unit id="9_TZOpH" resname="opera">
-        <source>opera</source>
-        <target>opera</target>
-      </trans-unit>
-      <trans-unit id="AIsJtCT" resname="firefox">
-        <source>firefox</source>
-        <target>firefox</target>
-      </trans-unit>
-      <trans-unit id="9q5exJ3" resname="win">
-        <source>win</source>
-        <target>win</target>
-      </trans-unit>
-      <trans-unit id="6mtIDms" resname="android">
-        <source>android</source>
-        <target>android</target>
-      </trans-unit>
-      <trans-unit id="KAY_bU7" resname="mac os x">
-        <source>mac os x</source>
-        <target>mac os x</target>
-      </trans-unit>
-      <trans-unit id="vWSuY4T" resname="linux">
-        <source>linux</source>
-        <target>linux</target>
-      </trans-unit>
-      <trans-unit id="raddJ8A" resname="sunos">
-        <source>sunos</source>
-        <target>sunos</target>
-      </trans-unit>
-      <trans-unit id="EuDnhPB" resname="freebsd">
-        <source>freebsd</source>
-        <target>freebsd</target>
-      </trans-unit>
-      <trans-unit id="1d66.S6" resname="cros">
-        <source>cros</source>
-        <target>cros</target>
-      </trans-unit>
       <trans-unit id="h_oV9Jy" resname="Format HTML Code">
         <source>Format HTML Code</source>
         <target>Format Cod HTML</target>
@@ -13879,30 +13843,6 @@
       </trans-unit>
       <trans-unit id="dk6i195" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ryytlsw" resname="d">
-        <source>d</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="mpanctd" resname="o">
-        <source>o</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="e6d7dlz" resname="m">
-        <source>m</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="almafeu" resname="y">
-        <source>y</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="l8n9mri" resname="@">
-        <source>@</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="bzmmzw1" resname="!">
-        <source>!</source>
         <target></target>
       </trans-unit>
       <trans-unit id="vs2jt0b" resname="Task information">

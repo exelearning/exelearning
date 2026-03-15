@@ -11717,42 +11717,6 @@
         <source>The number of attempts has to be bigger or equal to the number of pairs in the game. Please select 0 for infinite an unlimited number of attempts</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="9_TZOpH" resname="opera">
-        <source>opera</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="AIsJtCT" resname="firefox">
-        <source>firefox</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="9q5exJ3" resname="win">
-        <source>win</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="6mtIDms" resname="android">
-        <source>android</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="KAY_bU7" resname="mac os x">
-        <source>mac os x</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="vWSuY4T" resname="linux">
-        <source>linux</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="raddJ8A" resname="sunos">
-        <source>sunos</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="EuDnhPB" resname="freebsd">
-        <source>freebsd</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1d66.S6" resname="cros">
-        <source>cros</source>
-        <target></target>
-      </trans-unit>
       <trans-unit id="h_oV9Jy" resname="Format HTML Code">
         <source>Format HTML Code</source>
         <target></target>
@@ -13879,30 +13843,6 @@
       </trans-unit>
       <trans-unit id="l300xz0" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="ziw3is1" resname="d">
-        <source>d</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="wt98tb9" resname="o">
-        <source>o</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="n8jr729" resname="m">
-        <source>m</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="1otnckz" resname="y">
-        <source>y</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="go24ije" resname="@">
-        <source>@</source>
-        <target></target>
-      </trans-unit>
-      <trans-unit id="3xyphah" resname="!">
-        <source>!</source>
         <target></target>
       </trans-unit>
       <trans-unit id="q02vzdp" resname="Task information">
