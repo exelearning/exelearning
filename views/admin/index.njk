@@ -707,6 +707,59 @@
             font-size: 0.75rem;
         }
 
+        /* Maintenance banner */
+        .maintenance-banner {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            background: #fff7e6;
+            border: 1px solid #f6d28b;
+            border-radius: var(--admin-radius);
+            color: #7a5400;
+            font-size: 0.9rem;
+        }
+
+        /* Maintenance status card */
+        .maintenance-status-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: var(--admin-radius);
+            border: 1px solid;
+        }
+
+        .maintenance-status-inactive {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+            color: #166534;
+        }
+
+        .maintenance-status-active {
+            background: #fff7e6;
+            border-color: #f6d28b;
+            color: #7a5400;
+        }
+
+        .maintenance-status-icon .mi {
+            font-size: 32px;
+        }
+
+        .maintenance-status-info strong {
+            display: block;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .maintenance-status-info p {
+            margin: 0;
+            font-size: 0.85rem;
+            opacity: 0.85;
+        }
+
         /* Section visibility */
         .admin-section {
             display: none;
@@ -1110,6 +1163,10 @@
                 <span class="mi">tune</span>
                 {{ t.customization or 'Customization' }}
             </a>
+            <a href="#maintenance" class="admin-nav-link" data-section="maintenance">
+                <span class="mi">engineering</span>
+                {{ t.maintenance or 'Maintenance' }}
+            </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
             <a href="{{ basePath }}/workarea" class="admin-nav-link">
@@ -1141,6 +1198,13 @@
 
         <!-- Content -->
         <div class="admin-content">
+            {% if adminSettings.maintenance.maintenance_mode %}
+            <div class="maintenance-banner" id="maintenanceBanner">
+                <span class="mi mi-sm">engineering</span>
+                <strong>{{ t.maintenance_mode_active or 'Maintenance mode is active' }}</strong> &mdash;
+                {{ t.maintenance_mode_active_desc or 'Non-administrator users cannot access the platform.' }}
+            </div>
+            {% endif %}
             <!-- Dashboard Section -->
             <section id="dashboard" class="admin-section active">
                 <div class="stats-grid">
@@ -1486,6 +1550,19 @@
                             <span id="settingsSaveStatus" class="admin-settings-status"></span>
                         </div>
                         <div class="admin-settings-group">
+                            <h6>{{ t.maintenance or 'Maintenance' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>MAINTENANCE_MODE</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" data-setting-key="MAINTENANCE_MODE" data-setting-type="boolean" {% if adminSettings.maintenance.maintenance_mode %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.maintenance_mode_desc or 'When enabled, non-administrator users will see a maintenance page. Administrators retain full access.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="admin-settings-group">
                             <h6>{{ t.platform_and_collaboration or 'Platform and collaboration' }}</h6>
                             <div class="admin-settings-grid">
                                 <div class="admin-field">
@@ -1815,6 +1892,51 @@ window.$eXeLearningCustom = {
                     </div>
                 </div>
             </section>
+
+            <!-- Maintenance Section -->
+            <section id="maintenance" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">engineering</span>
+                            {{ t.maintenance or 'Maintenance' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="maintenanceSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="maintenanceSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="maintenance-status-card {% if adminSettings.maintenance.maintenance_mode %}maintenance-status-active{% else %}maintenance-status-inactive{% endif %}" id="maintenanceStatusCard">
+                            <div class="maintenance-status-icon">
+                                <span class="mi" id="maintenanceStatusIcon">{% if adminSettings.maintenance.maintenance_mode %}engineering{% else %}check_circle{% endif %}</span>
+                            </div>
+                            <div class="maintenance-status-info">
+                                <strong id="maintenanceStatusTitle">{% if adminSettings.maintenance.maintenance_mode %}{{ t.maintenance_mode_active or 'Maintenance mode is active' }}{% else %}{{ t.maintenance_mode_inactive or 'Platform is online' }}{% endif %}</strong>
+                                <p id="maintenanceStatusDesc">{% if adminSettings.maintenance.maintenance_mode %}{{ t.maintenance_mode_active_desc or 'Non-administrator users cannot access the platform.' }}{% else %}{{ t.maintenance_mode_inactive_desc or 'All users can access the platform normally.' }}{% endif %}</p>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.maintenance_mode_setting or 'Maintenance mode' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label>MAINTENANCE_MODE</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" id="maintenanceModeToggle" data-setting-key="MAINTENANCE_MODE" data-setting-type="boolean" {% if adminSettings.maintenance.maintenance_mode %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.maintenance_mode_desc or 'When enabled, non-administrator users will see a maintenance page. Administrators retain full access.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -1971,7 +2093,8 @@ window.$eXeLearningCustom = {
             cannot_impersonate_self: '{{ t.cannot_impersonate_self or "Cannot impersonate your own account" }}',
             confirm_impersonate: '{{ t.confirm_impersonate or "Start impersonation as {email}?" }}',
             impersonation_failed: '{{ t.impersonation_failed or "Failed to start impersonation" }}',
-            presentation: '{{ t.customization or "Customization" }}'
+            presentation: '{{ t.customization or "Customization" }}',
+            maintenance: '{{ t.maintenance or "Maintenance" }}'
         };
 
         // State
@@ -2015,7 +2138,8 @@ window.$eXeLearningCustom = {
                 projects: T.projects,
                 extensions: T.extensions,
                 settings: T.settings,
-                presentation: T.customization
+                presentation: T.customization,
+                maintenance: T.maintenance
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
@@ -2119,6 +2243,81 @@ window.$eXeLearningCustom = {
                     }
                 } finally {
                     presentationSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Maintenance save
+        const maintenanceSaveBtn = document.getElementById('maintenanceSaveBtn');
+        const maintenanceSaveStatus = document.getElementById('maintenanceSaveStatus');
+
+        if (maintenanceSaveBtn) {
+            maintenanceSaveBtn.addEventListener('click', async () => {
+                maintenanceSaveBtn.setAttribute('disabled', 'disabled');
+                if (maintenanceSaveStatus) {
+                    maintenanceSaveStatus.textContent = 'Guardando...';
+                    maintenanceSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const toggle = document.getElementById('maintenanceModeToggle');
+                    const settings = [
+                        { key: 'MAINTENANCE_MODE', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
+                    ];
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!res.ok) throw new Error('Failed to save');
+
+                    // Update status card UI
+                    const isActive = toggle && toggle.checked;
+                    const statusCard = document.getElementById('maintenanceStatusCard');
+                    const statusIcon = document.getElementById('maintenanceStatusIcon');
+                    const statusTitle = document.getElementById('maintenanceStatusTitle');
+                    const statusDesc = document.getElementById('maintenanceStatusDesc');
+                    const banner = document.getElementById('maintenanceBanner');
+
+                    if (statusCard) {
+                        statusCard.classList.toggle('maintenance-status-active', isActive);
+                        statusCard.classList.toggle('maintenance-status-inactive', !isActive);
+                    }
+                    if (statusIcon) statusIcon.textContent = isActive ? 'engineering' : 'check_circle';
+                    if (statusTitle) statusTitle.textContent = isActive ? '{{ t.maintenance_mode_active or "Maintenance mode is active" }}' : '{{ t.maintenance_mode_inactive or "Platform is online" }}';
+                    if (statusDesc) statusDesc.textContent = isActive ? '{{ t.maintenance_mode_active_desc or "Non-administrator users cannot access the platform." }}' : '{{ t.maintenance_mode_inactive_desc or "All users can access the platform normally." }}';
+
+                    // Show/hide global banner
+                    if (banner) {
+                        banner.classList.toggle('d-none', !isActive);
+                    } else if (isActive) {
+                        // Create banner dynamically if it doesn't exist yet
+                        const content = document.querySelector('.admin-content');
+                        if (content) {
+                            const newBanner = document.createElement('div');
+                            newBanner.className = 'maintenance-banner';
+                            newBanner.id = 'maintenanceBanner';
+                            newBanner.innerHTML = '<span class="mi mi-sm">engineering</span><strong>{{ t.maintenance_mode_active or "Maintenance mode is active" }}</strong> &mdash; {{ t.maintenance_mode_active_desc or "Non-administrator users cannot access the platform." }}';
+                            content.insertBefore(newBanner, content.firstChild);
+                        }
+                    }
+
+                    if (maintenanceSaveStatus) {
+                        maintenanceSaveStatus.textContent = 'Guardado';
+                        maintenanceSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            maintenanceSaveStatus.textContent = '';
+                            maintenanceSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                } catch (err) {
+                    if (maintenanceSaveStatus) {
+                        maintenanceSaveStatus.textContent = 'Error';
+                        maintenanceSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    maintenanceSaveBtn.removeAttribute('disabled');
                 }
             });
         }

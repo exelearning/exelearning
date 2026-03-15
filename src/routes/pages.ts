@@ -1175,6 +1175,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         app_name: '',
                         app_favicon_path: '',
                     },
+                    maintenance: {
+                        maintenance_mode: false,
+                    },
                 };
 
                 const adminSettingsMap: Record<
@@ -1230,6 +1233,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     CUSTOM_HEAD_HTML: { path: ['presentation', 'custom_head_html'], type: 'string' },
                     APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
                     APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
+                    MAINTENANCE_MODE: { path: ['maintenance', 'maintenance_mode'], type: 'boolean' },
                 };
 
                 try {
