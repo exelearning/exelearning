@@ -1431,13 +1431,24 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // DELETE /api/projects/uuid/:uuid - Delete project by UUID
-            .delete('/api/projects/uuid/:uuid', async ({ params, set }) => {
+            .delete('/api/projects/uuid/:uuid', async ({ params, set, currentUser }) => {
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+
                 const uuid = params.uuid;
 
                 const project = await findProjectByUuid(db, uuid);
                 if (!project) {
                     set.status = 404;
                     return { error: 'Not Found', message: 'Project not found' };
+                }
+
+                // Only the project owner can delete it
+                if (project.owner_id !== currentUser.id) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can delete this project' };
                 }
 
                 // Delete project (cascades to assets, yjs_documents, etc.)
