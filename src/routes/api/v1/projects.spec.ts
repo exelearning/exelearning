@@ -56,8 +56,10 @@ describe('Projects API v1', () => {
     let app: ReturnType<typeof createTestApp>;
     let userToken: string;
     let adminToken: string;
+    let collaboratorToken: string;
     let userId: number;
     let adminId: number;
+    let collaboratorId: number;
 
     // Mock Y.Doc for testing
     let mockYDoc: Y.Doc;
@@ -177,9 +179,25 @@ describe('Projects API v1', () => {
             .executeTakeFirst();
         adminId = Number(adminResult.insertId);
 
+        const collaboratorResult = await db
+            .insertInto('users')
+            .values({
+                email: 'collaborator@test.com',
+                user_id: 'test-collaborator',
+                password: hashedPw,
+                roles: '["ROLE_USER"]',
+                is_lopd_accepted: 1,
+                is_active: 1,
+                created_at: now(),
+                updated_at: now(),
+            })
+            .executeTakeFirst();
+        collaboratorId = Number(collaboratorResult.insertId);
+
         // Get tokens
         userToken = await getAuthToken(app, 'user@test.com', 'password');
         adminToken = await getAuthToken(app, 'admin@test.com', 'password');
+        collaboratorToken = await getAuthToken(app, 'collaborator@test.com', 'password');
     });
 
     afterAll(async () => {
@@ -203,6 +221,7 @@ describe('Projects API v1', () => {
 
     beforeEach(async () => {
         // Clean up projects before each test
+        await db.deleteFrom('project_collaborators').execute();
         await db.deleteFrom('projects').execute();
     });
 
@@ -607,6 +626,56 @@ describe('Projects API v1', () => {
             );
 
             expect(response.status).toBe(403);
+        });
+
+        it('should return 403 for collaborator who is not the owner and preserve project access', async () => {
+            const insertResult = await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'shared-delete-uuid',
+                    title: 'Shared Delete Attempt',
+                    owner_id: userId,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .executeTakeFirst();
+
+            const projectId = Number(insertResult.insertId);
+
+            await db
+                .insertInto('project_collaborators')
+                .values({
+                    project_id: projectId,
+                    user_id: collaboratorId,
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/shared-delete-uuid', {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${collaboratorToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(403);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.success).toBe(false);
+            expect(data.error.code).toBe('FORBIDDEN');
+
+            const project = await db
+                .selectFrom('projects')
+                .where('uuid', '=', 'shared-delete-uuid')
+                .selectAll()
+                .executeTakeFirst();
+            expect(project).toBeDefined();
+
+            const collaboratorLink = await db
+                .selectFrom('project_collaborators')
+                .where('project_id', '=', projectId)
+                .where('user_id', '=', collaboratorId)
+                .selectAll()
+                .executeTakeFirst();
+            expect(collaboratorLink).toBeDefined();
         });
 
         it('should allow admin to delete any project', async () => {

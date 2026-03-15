@@ -1663,12 +1663,29 @@ describe('Project Routes', () => {
             return project;
         }
 
-        it('should delete project by UUID', async () => {
+        async function createAuthToken(userId: number = 1) {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+            const tempApp = new Elysia().use(jwtInstance);
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: mockUsers.get(userId)?.email || 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        it('should delete project by UUID when owner', async () => {
             createTestProject(950, 'uuid-950', 1);
+            const token = await createAuthToken(1);
 
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/uuid-950', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 
@@ -1678,10 +1695,41 @@ describe('Project Routes', () => {
             expect(mockProjectsByUuid.has('uuid-950')).toBe(false);
         });
 
+        it('should reject delete by non-owner', async () => {
+            createTestProject(951, 'uuid-951', 1);
+            const token = await createAuthToken(2); // user 2 is not owner
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-951', {
+                    method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            expect(mockProjectsByUuid.has('uuid-951')).toBe(true); // project still exists
+        });
+
+        it('should reject delete by unauthenticated user', async () => {
+            createTestProject(952, 'uuid-952', 1);
+
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-952', {
+                    method: 'DELETE',
+                }),
+            );
+
+            expect(res.status).toBe(401);
+            expect(mockProjectsByUuid.has('uuid-952')).toBe(true); // project still exists
+        });
+
         it('should return 404 for non-existent project', async () => {
+            const token = await createAuthToken(1);
+
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/non-existent', {
                     method: 'DELETE',
+                    headers: { Cookie: `auth=${token}` },
                 }),
             );
 

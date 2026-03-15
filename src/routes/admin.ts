@@ -8,6 +8,7 @@ import { cookie } from '@elysiajs/cookie';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
+import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
@@ -570,6 +571,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     CUSTOM_HEAD_HTML: { value: '', type: 'string' },
     APP_NAME: { value: '', type: 'string' },
     APP_FAVICON_PATH: { value: '', type: 'string' },
+    MAINTENANCE_MODE: { value: process.env.MAINTENANCE_MODE ?? 'false', type: 'boolean' },
 };
 
 // ============================================================================
@@ -726,6 +728,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                 message: `Failed to save ${setting.key}: ${errorMessage}`,
                             };
                         }
+                    }
+
+                    // Invalidate maintenance cache if MAINTENANCE_MODE was changed
+                    if (data.settings.some(s => s.key === 'MAINTENANCE_MODE')) {
+                        invalidateMaintenanceCache();
                     }
 
                     return { success: true, sanitizedValues };

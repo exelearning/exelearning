@@ -40,6 +40,7 @@ import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getSettingNumber } from './services/app-settings';
+import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
 import { HttpException, TranslatableException, getStatusText } from './exceptions';
 import { MIME_TYPES } from './utils/mime-types';
@@ -508,6 +509,56 @@ const app = new Elysia()
                 'Vary': 'Accept-Encoding',
                 'Access-Control-Allow-Origin': '*',
                 'Service-Worker-Allowed': '/',
+            },
+        });
+    })
+    // Maintenance mode check — runs after static file serving
+    .onRequest(async ({ request }) => {
+        if (!(await isMaintenanceMode(db))) return;
+
+        const url = new URL(request.url);
+        let pathname = url.pathname;
+
+        // Strip BASE_PATH prefix if present
+        const basePath = getBasePath();
+        if (basePath && pathname.startsWith(basePath)) {
+            pathname = pathname.slice(basePath.length) || '/';
+        }
+
+        // Whitelist: static assets, health, login, admin
+        if (shouldBypassMaintenance(pathname)) return;
+
+        // Admin bypass: verify JWT from cookie
+        if (await isAdminRequest(request)) return;
+
+        // Block: return maintenance response
+        const isApi = pathname.startsWith('/api/') || request.headers.get('accept')?.includes('application/json');
+        if (isApi) {
+            return new Response(
+                JSON.stringify({
+                    statusCode: 503,
+                    error: 'Service Unavailable',
+                    message: 'Maintenance mode',
+                }),
+                {
+                    status: 503,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Retry-After': '300',
+                    },
+                },
+            );
+        }
+
+        // HTML: render maintenance template
+        const locale = (request.headers.get('accept-language') || 'en').split(',')[0].split('-')[0];
+        setRenderLocale(locale);
+        const html = renderTemplate('security/maintenance', { basePath, locale });
+        return new Response(html, {
+            status: 503,
+            headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Retry-After': '300',
             },
         });
     })

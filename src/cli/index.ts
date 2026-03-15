@@ -21,6 +21,7 @@ import * as checkQuota from './commands/check-quota';
 import * as projectsPurge from './commands/projects-purge';
 import * as projectsCleanup from './commands/projects-cleanup';
 import * as updateLicenses from './commands/update-licenses';
+import * as maintenance from './commands/maintenance';
 
 // Command registry
 interface CommandModule {
@@ -44,6 +45,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'projects:purge': projectsPurge,
     'projects:cleanup': projectsCleanup,
     'update-licenses': updateLicenses,
+    maintenance: maintenance,
 };
 
 // Command aliases
@@ -139,6 +141,27 @@ const ALIASES: Record<string, { command: string; transform?: (args: ParsedArgs) 
             flags: { ...parsed.flags, format: 'elpx' },
         }),
     },
+    'maintenance:on': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['on', ...parsed.positional],
+        }),
+    },
+    'maintenance:off': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['off', ...parsed.positional],
+        }),
+    },
+    'maintenance:status': {
+        command: 'maintenance',
+        transform: parsed => ({
+            ...parsed,
+            positional: ['status', ...parsed.positional],
+        }),
+    },
 };
 
 function printHelp(): void {
@@ -163,6 +186,7 @@ ${colors.cyan('Database:')}
   migrate [up|down|status]                   Run database migrations
 
 ${colors.cyan('Maintenance:')}
+  maintenance [on|off|status]                Toggle or check maintenance mode
   tmp:cleanup [--max-age=86400]              Clean temporary files
   translations [--locale=en]                  Extract/clean translations
   projects:purge --yes                        Delete all projects and assets
