@@ -392,32 +392,38 @@ export default class modalOpenUserOdeFiles extends Modal {
         row.setAttribute('version-name', ode.versionName || '0');
         row.setAttribute('ode-id', ode.odeId);
 
+        const isOwner = ode.role === 'owner';
+
         const checkWrap = document.createElement('div');
         checkWrap.classList.add('ode-check-wrap');
-        const check = document.createElement('input');
-        check.type = 'checkbox';
-        check.id = 'check-' + ode.odeId;
-        check.setAttribute('name', check.id);
-        check.classList.add('ode-check');
-        check.addEventListener('change', () => {
-            // Use odeId (UUID) for delete operations
-            const projectUuid = ode.odeId;
-            if (check.checked) {
-                if (!this.odeFiles.includes(projectUuid)) this.odeFiles.push(projectUuid);
-            } else {
-                this.odeFiles = this.odeFiles.filter((id) => id !== projectUuid);
-            }
-            // Update button state based on selection
-            this.updateDeleteButtonState();
-            // Update the Select All checkbox state
-            this.updateSelectAllCheckbox();
-        });
 
-        let label = document.createElement('label');
-        label.setAttribute('for', check.id);
-        label.classList.add('visually-hidden');
-        label.textContent = _('Upload iDevice file');
-        checkWrap.append(label, check);
+        // Only render checkboxes for owned projects - shared projects must not have multi-select/delete
+        if (isOwner) {
+            const check = document.createElement('input');
+            check.type = 'checkbox';
+            check.id = 'check-' + ode.odeId;
+            check.setAttribute('name', check.id);
+            check.classList.add('ode-check');
+            check.addEventListener('change', () => {
+                // Use odeId (UUID) for delete operations
+                const projectUuid = ode.odeId;
+                if (check.checked) {
+                    if (!this.odeFiles.includes(projectUuid)) this.odeFiles.push(projectUuid);
+                } else {
+                    this.odeFiles = this.odeFiles.filter((id) => id !== projectUuid);
+                }
+                // Update button state based on selection
+                this.updateDeleteButtonState();
+                // Update the Select All checkbox state
+                this.updateSelectAllCheckbox();
+            });
+
+            let label = document.createElement('label');
+            label.setAttribute('for', check.id);
+            label.classList.add('visually-hidden');
+            label.textContent = _('Upload iDevice file');
+            checkWrap.append(label, check);
+        }
 
         const icon = document.createElement('span');
         icon.className = 'exe-logo content';
@@ -477,7 +483,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         `;
 
         // Show owner email for shared projects
-        if (ode.role && ode.role !== 'owner' && ode.ownerEmail) {
+        if (!isOwner && ode.ownerEmail) {
             metaContent += `
                 <span class="dot">•</span>
                 <span class="ode-owner-info" title="${_('Shared by')} ${ode.ownerEmail}">
@@ -513,14 +519,11 @@ export default class modalOpenUserOdeFiles extends Modal {
             row.classList.add('ode-row--indented');
         }
 
-        // Check if this is a shared project (user is not owner)
-        const isSharedProject = ode.role && ode.role !== 'owner';
-
         // Copy/Duplicate button - shown for all projects
         const copyBtn = document.createElement('button');
         copyBtn.className =
             'exe-icon open-user-ode-file-action open-user-ode-file-action-copy';
-        copyBtn.title = isSharedProject ? _('Clone to my projects') : _('Duplicate');
+        copyBtn.title = isOwner ? _('Duplicate') : _('Clone to my projects');
         copyBtn.innerHTML =
             '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">\n' +
             '  <path d="M5.33333 5.33333V3.46667C5.33333 2.71993 5.33333 2.34656 5.47866 2.06135C5.60649 1.81047 5.81047 1.60649 6.06135 1.47866C6.34656 1.33333 6.71993 1.33333 7.46667 1.33333H12.5333C13.2801 1.33333 13.6534 1.33333 13.9387 1.47866C14.1895 1.60649 14.3935 1.81047 14.5213 2.06135C14.6667 2.34656 14.6667 2.71993 14.6667 3.46667V8.53333C14.6667 9.28007 14.6667 9.65344 14.5213 9.93865C14.3935 10.1895 14.1895 10.3935 13.9387 10.5213C13.6534 10.6667 13.2801 10.6667 12.5333 10.6667H10.6667M3.46667 14.6667H8.53333C9.28007 14.6667 9.65344 14.6667 9.93865 14.5213C10.1895 14.3935 10.3935 14.1895 10.5213 13.9387C10.6667 13.6534 10.6667 13.2801 10.6667 12.5333V7.46667C10.6667 6.71993 10.6667 6.34656 10.5213 6.06135C10.3935 5.81047 10.1895 5.60649 9.93865 5.47866C9.65344 5.33333 9.28007 5.33333 8.53333 5.33333H3.46667C2.71993 5.33333 2.34656 5.33333 2.06135 5.47866C1.81047 5.60649 1.60649 5.81047 1.47866 6.06135C1.33333 6.34656 1.33333 6.71993 1.33333 7.46667V12.5333C1.33333 13.2801 1.33333 13.6534 1.47866 13.9387C1.60649 14.1895 1.81047 14.3935 2.06135 14.5213C2.34656 14.6667 2.71993 14.6667 3.46667 14.6667Z" stroke="#1D1D1D" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>\n' +
@@ -532,7 +535,7 @@ export default class modalOpenUserOdeFiles extends Modal {
         actions.append(copyBtn);
 
         // Delete button - only shown for owned projects
-        if (!isSharedProject) {
+        if (isOwner) {
             const deleteBtn = document.createElement('button');
             deleteBtn.className =
                 'exe-icon open-user-ode-file-action open-user-ode-file-action-delete';
@@ -879,6 +882,12 @@ export default class modalOpenUserOdeFiles extends Modal {
      * This ensures the button always reflects the current odeFiles array
      */
     updateDeleteButtonState() {
+        // Never show bulk delete on the shared-with-me tab
+        if (this.currentTab === 'shared-with-me') {
+            this.odeFiles = [];
+            this.removeDeleteButtonFooter(this.odeFiles);
+            return;
+        }
         if (this.odeFiles.length > 0) {
             this.makeDeleteButtonFooter([...this.odeFiles]); // Pass a copy to avoid reference issues
         } else {
