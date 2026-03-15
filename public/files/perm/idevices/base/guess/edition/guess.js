@@ -477,7 +477,7 @@ var $exeDevice = {
                                             </div>
                                     </div>
                                     <span id="adivinaETitleInputAudio">${_('Audio')}</span>
-                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="adivinaEInputAudio">
+                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="adivinaEInputAudio" data-voice-recorder data-voice-input="#adivinaEURLAudio">
                                         <label class="sr-av" for="adivinaEURLAudio">${_('URL')}</label>
                                         <input type="text" class="exe-file-picker ADVNE-EURLAudio form-control  me-0" id="adivinaEURLAudio"/>
                                         <a href="#" id="adivinaEPlayAudio" class="ADVNE-ENavigationButton ADVNE-EPlayVideo" title="${_('Play audio')}">
@@ -627,6 +627,9 @@ var $exeDevice = {
 
     enableForm: function () {
         this.initQuestions();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         this.loadPreviousValues();
         this.addEvents();

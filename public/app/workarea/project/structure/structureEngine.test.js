@@ -736,7 +736,8 @@ describe('StructureEngine', () => {
     it('handles remote structure changes and reloads page content', async () => {
       engine.project._yjsEnabled = true;
       engine.project._yjsBridge = {
-        onStructureChange: vi.fn()
+        onStructureChange: vi.fn(),
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set(['page-1']))
       };
       engine.menuStructureCompose = { compose: vi.fn() };
       engine.menuStructureBehaviour = {
@@ -766,6 +767,53 @@ describe('StructureEngine', () => {
       expect(selectSpy).toHaveBeenCalledWith('page-1');
       expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
       expect(mockProject.app.project.idevices.loadApiIdevicesInPage).toHaveBeenCalled();
+    });
+
+    it('does not reload page content for remote changes handled incrementally', async () => {
+      engine.project._yjsEnabled = true;
+      engine.project._yjsBridge = {
+        onStructureChange: vi.fn(),
+        getAffectedPageIdsForBlockStructureChanges: vi.fn(() => new Set())
+      };
+      engine.menuStructureCompose = { compose: vi.fn() };
+      engine.menuStructureBehaviour = {
+        behaviour: vi.fn(),
+        selectFirst: vi.fn(),
+        menuNav: document.querySelector('#main'),
+        nodeSelected: (() => {
+          const el = document.createElement('div');
+          el.className = 'nav-element';
+          el.setAttribute('nav-id', 'page-1');
+          return el;
+        })()
+      };
+      document.querySelector('#main').appendChild(engine.menuStructureBehaviour.nodeSelected);
+      vi.spyOn(engine, 'getStructureFromYjs').mockReturnValue([
+        { id: 'page-1', pageName: 'Page 1', parent: 'root', order: 1, odePagStructureSyncs: [] }
+      ]);
+      vi.spyOn(engine, 'processStructureData').mockImplementation(() => {
+        engine.data = [{ id: 'page-1', parent: 'root', children: [] }];
+      });
+      const selectSpy = vi.spyOn(engine, 'selectNode').mockResolvedValue();
+
+      engine.subscribeToYjsChanges();
+      const callback = engine.project._yjsBridge.onStructureChange.mock.calls[0][0];
+      await callback(
+        [
+          {
+            path: [0, 'blocks', 0, 'components'],
+            changes: {
+              added: { size: 1 },
+              deleted: { size: 0 },
+            },
+          },
+        ],
+        { local: false },
+      );
+
+      expect(selectSpy).toHaveBeenCalledWith('page-1');
+      expect(engine.menuStructureCompose.compose).toHaveBeenCalled();
+      expect(mockProject.app.project.idevices.loadApiIdevicesInPage).not.toHaveBeenCalled();
     });
   });
 

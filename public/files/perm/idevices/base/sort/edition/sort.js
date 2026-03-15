@@ -351,21 +351,21 @@ var $exeDevice = {
                     <div class="d-none flex-wrap align-items-center justify-content-center gap-2 mb-3" id="ordenaActivityNumberDiv">${_('Activity')} 
                         <span id="ordenaActivityNumber">1</span>
                     </div>
-                    <div class="ODNE-ECustomMessageDef d-none flex-nowrap align-items-center gap-2 mb-3" id="ordenaEDefinitionDiv">
+                    <div class="ODNE-ECustomMessageDef d-none flex-nowrap align-items-center gap-2 mb-3" id="ordenaEDefinitionDiv" data-voice-recorder data-voice-input="#ordenaEURLAudioDefinition">
                         <label for="ordenaEDefinition">${_('Statement')}:</label>
                         <input type="text" id="ordenaEDefinition" class="form-control w-100 me-0"/>
                         <label >${_('Audio')}</label>
                         <input type="text" id="ordenaEURLAudioDefinition" class="exe-file-picker form-control me-0 w-100" />
                         <a href="#" id="ordenaEPlayAudioDefinition" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="ODNE-ENavigationButton" /></a>
                     </div>
-                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3"">
+                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#ordenaEURLAudioOK">
                         <label for="ordenaEMessageOK" >${_('Success')}:</label>
                         <input type="text" id="ordenaEMessageOK" class="form-control w-100 me-0"/>
                         <label >${_('Audio')}</label>
                         <input type="text" id="ordenaEURLAudioOK" class="exe-file-picker form-control me-0 w-100" />
                         <a href="#" id="ordenaEPlayAudioOK" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="${_('Audio')}" class="ODNE-ENavigationButton" /></a>
                     </div>
-                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                    <div class="ODNE-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#ordenaEURLAudioKO" >
                         <label for="ordenaEMessageKO" >${_('Error')}:</label>
                         <input type="text" id="ordenaEMessageKO" class="form-control w-100 me-0"/>
                         <label >${_('Audio')}</label>
@@ -555,6 +555,9 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initPhrases();
 
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
     },
@@ -688,7 +691,7 @@ var $exeDevice = {
                    </div>
                </div>
                <span>${_('Audio')}</span>
-               <div class="ODNE-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-2">
+               <div class="ODNE-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-2" data-voice-recorder data-voice-input="#ordenaEURLAudio-${$exeDevice.activeID}">
                    <label class="sr-av">URL</label>
                    <input type="text" id="ordenaEURLAudio-${$exeDevice.activeID}" class="ODNE-EURLAudio exe-file-picker form-control me-0 w-100" />
                    <a href="#" id="ordenaEPlayAudio-${$exeDevice.activeID}" class="ODNE-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="ODNE-ENavigationButton" /></a>
@@ -702,6 +705,7 @@ var $exeDevice = {
         const $card = $('#ordenaEPhrase').find('div.ODNE-EDatosCarta').last();
 
         $exeDevice.addEventCard($exeDevice.activeID);
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         $('#ordenaETextDiv-' + $exeDevice.activeID).hide();
         return $card;
@@ -710,6 +714,8 @@ var $exeDevice = {
     addPickerButton: function (cardId) {
         const $container = $('#ordenaEDatosCarta-' + cardId);
         if (!$container.length) return;
+
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders($container);
 
         const filemanager = window.eXeLearning?.app?.modals?.filemanager;
 

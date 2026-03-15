@@ -491,7 +491,13 @@ class YjsProjectBridge {
       return;
     }
 
-    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events);
+    // For undo/redo transactions, include ALL block touches (even pure additions)
+    // because we need to restore the exact state. For remote changes, skip pure
+    // additions since they're handled incrementally by renderRemoteComponent.
+    const undoManager = this.documentManager?.undoManager;
+    const isUndoRedo = this.isUndoRedoInProgress ||
+      (undoManager != null && transaction?.origin === undoManager);
+    const affectedPageIds = this.getAffectedPageIdsForBlockStructureChanges(events, isUndoRedo);
     if (affectedPageIds.size === 0) return;
 
     affectedPageIds.forEach((pageId) => this.schedulePageReloadIfCurrent(pageId));
@@ -525,10 +531,10 @@ class YjsProjectBridge {
    * @param {Array} events - Yjs deep observe events
    * @returns {Set<string>}
    */
-  getAffectedPageIdsForBlockStructureChanges(events) {
+  getAffectedPageIdsForBlockStructureChanges(events, includeAllBlockTouches) {
     const affectedPageIds = new Set();
     const navigation = this.documentManager?.getNavigation?.();
-    const includeAnyBlockTouch = this.isUndoRedoInProgress === true;
+    const includeAnyBlockTouch = includeAllBlockTouches === true || this.isUndoRedoInProgress === true;
     if (!navigation || !events || !Array.isArray(events)) {
       return affectedPageIds;
     }
@@ -562,6 +568,30 @@ class YjsProjectBridge {
 
       if (!includeAnyBlockTouch && !hasAdded && !hasDeleted && !hasBlockOrderChange) {
         continue;
+      }
+
+      // Pure additions (no deletions, no reorder) are handled incrementally by
+      // handleRemoteStructureChanges → renderRemoteComponent (#1532).
+      // Block and component additions may arrive in separate Yjs transaction
+      // batches (separate WebSocket messages), so we must skip BOTH independently
+      // rather than requiring them in the same event batch.
+      // Deletions and mixed events (moves) still need a full page reload.
+      if (!includeAnyBlockTouch && hasAdded && !hasDeleted && !hasBlockOrderChange) {
+        const isComponentLevel = path.length >= 4 && path[3] === 'components';
+        const isBlockLevelAddition = path.length === 2 && path[1] === 'blocks';
+        if (isComponentLevel || isBlockLevelAddition) {
+          continue;
+        }
+      }
+
+      // Block order-only changes that accompany additions are also incremental
+      if (!includeAnyBlockTouch && hasBlockOrderChange && !hasAdded && !hasDeleted) {
+        if (path.length === 3 && path[1] === 'blocks') {
+          const changedKeys = Array.from(event.changes.keys.keys?.() || []);
+          if (changedKeys.length === 1 && changedKeys[0] === 'order') {
+            continue;
+          }
+        }
       }
 
       const pageMap = navigation.get(pageIndex);
@@ -635,8 +665,6 @@ class YjsProjectBridge {
             if (pageMap) {
               const pageId = pageMap.get('id') || pageMap.get('pageId');
               Logger.log('[YjsProjectBridge] Remote block added to page:', pageId);
-              // If we're currently viewing this page, reload it
-              this.schedulePageReloadIfCurrent(pageId);
             }
           }
         }
