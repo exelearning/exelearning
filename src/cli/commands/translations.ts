@@ -43,6 +43,8 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+app[\\/]+admin[\\/]+/, // Admin-only frontend JS
     /[\\/]+routes[\\/]+admin/, // Admin-only backend routes
     /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
+    /[\\/]+tinymce_5[\\/]+js[\\/]+tinymce[\\/]+plugins[\\/]+lists[\\/]+plugin\.min\.js$/, // TinyMCE lists plugin (minified, not translatable)
+    /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
 ];
 
 /**
