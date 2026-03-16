@@ -2097,7 +2097,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         responseMessage: 'OK',
                         usedFiles: [
                             {
-                                usedFiles: 'No files found',
+                                usedFiles: _('No results found'),
                                 usedFilesPath: '',
                                 usedFilesSize: '',
                                 pageNamesUsedFiles: '',
