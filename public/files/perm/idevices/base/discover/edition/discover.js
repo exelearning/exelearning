@@ -442,7 +442,7 @@ var $exeDevice = {
                    </div>
                </div>
                <span id="descubreETitleAudio-${i}">${_('Audio')}</span>
-               <div class="Descubre-EInputAudio gap-2" id="descubreEInputAudio-${i}">
+               <div class="Descubre-EInputAudio gap-2" id="descubreEInputAudio-${i}" data-voice-recorder data-voice-input="#descubreEURLAudio-${i}">
                    <label class="sr-av" for="descubreEURLAudio-${i}">URL</label>
                        <input type="text" class="exe-file-picker Descubre-EURLAudio form-control me-0" id="descubreEURLAudio-${i}" />
                    <a href="#" id="descubreEPlayAudio-${i}" class="Descubre-ENavigationButton Descubre-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="Descubre-EButtonImage " /></a>
@@ -455,6 +455,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initQuestions();
+
+        const root = document.getElementById('descubreQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

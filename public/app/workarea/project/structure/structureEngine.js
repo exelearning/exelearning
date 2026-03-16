@@ -278,8 +278,12 @@ export default class structureEngine {
                 }
                 // If no node was selected before, don't auto-select
 
-                // FORCE RELOAD page content for remote changes (boxes/iDevices moved in/out)
-                if (pageToReload) {
+                const affectedPageIds =
+                    this.project._yjsBridge?.getAffectedPageIdsForBlockStructureChanges?.(events) || new Set();
+
+                // Only force a content reload when the selected page itself is structurally affected
+                // and the change cannot already be handled incrementally by the Yjs bridge.
+                if (pageToReload && pageToReload === selectedNavId && affectedPageIds.has(pageToReload)) {
                     const pageElement = this.menuStructureBehaviour?.menuNav?.querySelector(
                         `.nav-element[nav-id="${pageToReload}"]`
                     );

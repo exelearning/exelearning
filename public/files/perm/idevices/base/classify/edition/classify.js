@@ -54,6 +54,9 @@ var $exeDevice = {
         ); // Avoid invalid HTML
         this.setMessagesInfo();
         this.createForm();
+
+        const root = document.getElementById('clasificaQEIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -477,7 +480,7 @@ var $exeDevice = {
                </div>
            </div>
            <span id="clasificaETitleAudio">${_('Audio')}</span>
-           <div class="CQE-EInputAudio d-flex align-items-center flex-nowrap gap-2" id="clasificaEInputAudio">
+           <div class="CQE-EInputAudio d-flex align-items-center flex-nowrap gap-2" id="clasificaEInputAudio" data-voice-recorder data-voice-input="#clasificaEURLAudio">
                <label class="sr-av" for="clasificaEURLAudio">URL</label>
                <input type="text" class="exe-file-picker CQE-EURLAudio form-control me-0" id="clasificaEURLAudio"/>
                <a href="#" id="clasificaEPlayAudio" class="CQE-ENavigationButton CQE-EPlayVideo" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play" class="CQE-EButtonImage " /></a>

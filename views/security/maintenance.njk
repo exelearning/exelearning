@@ -1,0 +1,30 @@
+{% extends 'base.njk' %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/libs/bootstrap/bootstrap.min.css' | asset }}">
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/login.css' | asset }}">
+    <style>.error-page-logo{top: -7%;}</style>
+{% endblock %}
+
+{% block title %}{{ appName or 'eXeLearning' }}{% endblock %}
+
+{% block body %}
+<section class="error-page bg-white vh-100 d-flex justify-content-center align-items-center flex-column" id="maintenance-tpl">
+    <div class="error-page-logo position-relative">
+        <img src="{{ '/images/logo.svg' | asset }}" width="100" height="92" alt="eXeLearning">
+    </div>
+    <h1 class="mb-5">{{ 'maintenance.title' | trans }}</h1>
+    <h2 class="visually-hidden">{{ 'Error' | trans }}</h2>
+    <div class="show mb-5 bg-light py-3 px-4 rounded-3" role="alert">
+        {{ 'maintenance.message' | trans }}
+    </div>
+</section>
+
+<script>
+  if (window.location.hash && window.location.hash === "#_=_") {
+      history.replaceState("", document.title, window.location.pathname + window.location.search);
+  }
+</script>
+
+<script class="exe" src="{{ '/libs/bootstrap/bootstrap.bundle.min.js' | asset }}" defer></script>
+{% endblock %}

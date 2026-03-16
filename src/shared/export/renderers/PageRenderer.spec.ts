@@ -683,8 +683,9 @@ describe('PageRenderer', () => {
 
             expect(html).toContain('<!DOCTYPE html>');
             expect(html).toContain('exe-single-page');
-            // Sections don't have IDs in single-page export (matches legacy PHP)
-            expect(html).toContain('<section>');
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-page-1"');
+            expect(html).toContain('id="section-page-2"');
             expect(html).toContain('First');
             expect(html).toContain('Second');
         });
@@ -712,9 +713,22 @@ describe('PageRenderer', () => {
 
             // No nav tree with nested structure
             expect(html).not.toContain('class="other-section"');
-            // Sections exist without IDs (matches legacy PHP)
-            expect(html).toContain('<section>');
+            // Sections have id="section-{pageId}" for anchor navigation
+            expect(html).toContain('id="section-parent"');
+            expect(html).toContain('id="section-child"');
             expect(html).toContain('class="page-title">Child</h1>');
+        });
+
+        it('should add id="section-{pageId}" to each section for anchor navigation', () => {
+            const pages: ExportPage[] = [
+                createTestPage({ id: 'abc-123', title: 'First' }),
+                createTestPage({ id: 'def-456', title: 'Second' }),
+            ];
+
+            const html = renderer.renderSinglePage(pages, {});
+
+            expect(html).toContain('<section id="section-abc-123">');
+            expect(html).toContain('<section id="section-def-456">');
         });
 
         it('should include favicon reference', () => {

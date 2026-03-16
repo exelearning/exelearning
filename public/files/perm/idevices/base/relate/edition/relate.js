@@ -266,7 +266,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap">
+                                    <div class="d-flex align-items-center gap-2 mb-2 flex-nowrap" data-voice-recorder data-voice-input="#rclEURLAudio">
                                         <label class="sr-av" for="rclEURLAudio">URL</label>
                                         <input type="text" id="rclEURLAudio" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudio" class="RLC-ENavigationButton" title="${_('Audio')}">
@@ -320,7 +320,7 @@ var $exeDevice = {
                                         </div>
                                     </div>
                                     <span>${_('Audio')}</span>
-                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb-2">
+                                    <div class="RLC-EInputAudio d-flex align-items-center flex-nowrap gap-2 mb-2" data-voice-recorder data-voice-input="#rclEURLAudioBack">
                                         <label class="sr-av" for="rclEURLAudioBack">URL</label>
                                         <input type="text" id="rclEURLAudioBack" class="exe-file-picker form-control me-0 w-100" />
                                         <a href="#" id="rclEPlayAudioBack" class="RLC-ENavigationButton" title="${_('Audio')}">
@@ -691,6 +691,9 @@ var $exeDevice = {
 
     enableForm: function () {
         $exeDevice.initCards();
+
+        const root = document.getElementById('relacionaIdeviceForm') || document;
+        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();

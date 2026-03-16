@@ -337,6 +337,7 @@ test.describe('Collaborative File Manager', () => {
 
             const newFilename = `live-sync-rename-${Date.now()}.jpg`;
             const renameBtn = pageA.locator('#modalFileManager .media-library-rename-btn');
+            await expect(renameBtn).toBeEnabled({ timeout: 5000 });
             await renameBtn.click();
             const renameInputA2 = pageA.locator('#modalFileManager .rename-dialog-input');
             await renameInputA2.waitFor({ state: 'visible', timeout: 5000 });

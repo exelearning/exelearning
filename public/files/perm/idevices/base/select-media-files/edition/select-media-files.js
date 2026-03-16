@@ -286,19 +286,19 @@ var $exeDevice = {
                                     </div>
                                 </div>
                             </div>
-                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioDefinition">
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3">
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioOK">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
-                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" >
+                            <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioKO" >
                                 <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
                                 <input type="text" id="slcmEMessageKO" class="form-control" />
                                 <label class="mb-0">${_('Audio')}:</label>
@@ -437,8 +437,18 @@ var $exeDevice = {
         return Math.floor(Math.random() * Date.now());
     },
 
+    initVoiceRecorders: function (target) {
+        const recorder = $exeDevicesEdition?.iDevice?.voiceRecorder;
+        if (typeof recorder?.initVoiceRecorders === 'function') {
+            recorder.initVoiceRecorders(target);
+        }
+    },
+
     enableForm: function (field) {
         $exeDevice.initPhrases();
+
+        const root = document.getElementById('gameQEIdeviceForm') || document;
+        $exeDevice.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues(field);
         $exeDevice.addEvents();
@@ -552,7 +562,7 @@ var $exeDevice = {
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
-                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3">
+                <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudio-${$exeDevice.activeID}">
                     <label class="sr-av">URL</label>
                     <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
@@ -573,6 +583,7 @@ var $exeDevice = {
         }
         const $card = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').last();
         $exeDevice.addEventCard($exeDevice.activeID);
+        $exeDevice.initVoiceRecorders($card);
         $exeDevice.showImage($exeDevice.activeID);
         return $card;
     },
@@ -580,6 +591,8 @@ var $exeDevice = {
     addPickerButton: function (cardId) {
         const $container = $('#slcmEDatosCarta-' + cardId);
         if (!$container.length) return;
+
+        $exeDevice.initVoiceRecorders($container);
 
         const filemanager = window.eXeLearning?.app?.modals?.filemanager;
 
