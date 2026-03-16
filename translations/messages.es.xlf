@@ -11609,10 +11609,6 @@
         <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)</source>
         <target>Selecciona un archivo de texto (.txt), un archivo JSON (.json) o un archivo XML de Moodle (.xml)</target>
       </trans-unit>
-      <trans-unit id="ekwfxIh" resname="Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) ">
-        <source>Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) </source>
-        <target>Selecciona un archivo de texto (.txt), un archivo JSON (.json) o un archivo XML de Moodle (.xml)</target>
-      </trans-unit>
       <trans-unit id="L41w01C" resname="The question text and the formula should have the same variables">
         <source>The question text and the formula should have the same variables</source>
         <target>El texto de la pregunta y la fórmula deben tener las mismas variables</target>
@@ -11640,10 +11636,6 @@
       <trans-unit id="aGuMwTn" resname="You must select at least one group of elements">
         <source>You must select at least one group of elements</source>
         <target>Debes seleccionar al menos un grupo de elementos</target>
-      </trans-unit>
-      <trans-unit id="_N0MKqb" resname="Please select a text file (.txt), or an XML(Moodle) file (.xml) ">
-        <source>Please select a text file (.txt), or an XML(Moodle) file (.xml) </source>
-        <target>Selecciona un archivo de texto (.txt) o un archivo XML de Moodle (.xml)</target>
       </trans-unit>
       <trans-unit id="JTuD2Zp" resname="Your changes won\'t be saved until you click on &quot;Save&quot;.">
         <source>Your changes won\'t be saved until you click on "Save".</source>

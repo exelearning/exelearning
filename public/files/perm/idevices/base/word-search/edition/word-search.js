@@ -1093,7 +1093,7 @@ var $exeDevice = {
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt), or an XML(Moodle) file (.xml) '
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
                         )
                     );
                     return;

@@ -1349,7 +1349,7 @@ var $exeDevice = {
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml) '
+                            'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)'
                         )
                     );
                     return;
