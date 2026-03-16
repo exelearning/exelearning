@@ -1,6 +1,6 @@
 /* Rubrics iDevice */
 .exe-rubrics-instructions {
-  margin: 1.5em 0 -0.5em 0;
+  margin: 0.5em 0 2em 0;
 }
 .exe-rubrics-authorship {
   margin-top: -1.5em;
@@ -39,6 +39,79 @@
 .rubric .exe-rubrics-score-result {
   margin-left: 0.5em;
   font-weight: bold;
+}
+.rubric .exe-rubrics-actions {
+  margin: 0.5em 0 0.25em;
+  text-align: right;
+}
+.rubric .exe-rubrics-actions button {
+  margin-left: 0.4em;
+}
+.rubric #exe-rubrics-header {
+  margin-top: 1em;
+  margin-bottom: 0.2em;
+}
+.rubric #exe-rubrics-header p {
+  line-height: 1.8em;
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin-top: 0.4em;
+}
+.rubric #exe-rubrics-header label {
+  font-weight: bold;
+}
+.rubric #exe-rubrics-header input.form-control {
+  display: inline-block;
+  padding: 0.2rem 0.45rem;
+}
+.rubric input[data-rubric-field="name"] {
+  width: auto;
+  flex: 1 1 18em;
+}
+.rubric input[data-rubric-field="activity"] {
+  width: auto;
+  flex: 1 1 16em;
+}
+.rubric input[data-rubric-field="score"] {
+  width: 6em;
+  flex: 0 0 6em;
+}
+.rubric input[data-rubric-field="date"] {
+  width: 8em;
+  flex: 0 0 8em;
+}
+.rubric #exe-rubrics-header p label:last-of-type {
+  margin-left: auto;
+}
+.rubric table {
+  margin-top: 0.2em;
+}
+.rubric #exe-rubrics-footer {
+  margin-top: 0.9em;
+}
+.rubric textarea[data-rubric-field="notes"] {
+  width: 100%;
+  min-height: 7em;
+  box-sizing: border-box;
+}
+
+.exe-rubrics-capture {
+  background: #fff !important;
+}
+
+.exe-rubrics-capture .exe-rubrics-actions,
+.exe-rubrics-capture .exe-rubrics-print {
+  display: none !important;
+}
+
+.exe-rubrics-capture .btn,
+.exe-rubrics-capture .form-control {
+  background: #fff !important;
+  color: #212529 !important;
+  border-color: #ced4da !important;
 }
 /* Print version */
 body.exe-rubrics {
@@ -84,15 +157,28 @@ body.exe-rubrics a {
 
 body.exe-rubrics #exe-rubrics-header p {
   line-height: 2.5em;
+  display: flex;
+  align-items: center;
+  gap: 0.35cm;
+  flex-wrap: nowrap;
+  width: 100%;
+  margin-top: 0.2cm;
+}
+body.exe-rubrics #exe-rubrics-header p label:last-of-type {
+  margin-left: auto;
 }
 body.exe-rubrics label {
   font-weight: bold;
 }
 body.exe-rubrics #exe-rubrics-header label {
   display: inline-block;
-  width: 10em;
-  text-align: right;
-  padding-right: 0.1cm;
+  width: auto;
+  text-align: left;
+  padding-right: 0;
+}
+body.exe-rubrics #exe-rubrics-header input.form-control {
+  display: inline-block;
+  padding: 0.15rem 0.35rem;
 }
 body.exe-rubrics input[type="text"] {
   border: none;
@@ -102,11 +188,18 @@ body.exe-rubrics input[type="text"] {
 }
 body.exe-rubrics #activity,
 body.exe-rubrics #name {
-  width: 12.5cm;
+  width: 8.8cm;
+}
+body.exe-rubrics #score {
+  width: 2.6cm;
+}
+body.exe-rubrics #date {
+  width: 3cm;
 }
 
 body.exe-rubrics #exe-rubrics-header {
-  margin-top: 0.5cm;
+  margin-top: 0.9cm;
+  margin-bottom: 0.1cm;
 }
 body.exe-rubrics caption {
   font-weight: bold;
@@ -119,7 +212,7 @@ body.exe-rubrics .exe-rubrics-content {
 }
 body.exe-rubrics table {
   width: 100%;
-  margin-top: 1cm;
+  margin-top: 0.2cm;
 }
 body.exe-rubrics table,
 body.exe-rubrics th,
@@ -155,6 +248,13 @@ body.exe-rubrics #calculate-score {
 body.exe-rubrics #exe-rubrics-footer {
   margin-top: 1cm;
 }
+body.exe-rubrics .exe-rubrics-actions {
+  margin: 0.35cm 0 0.1cm;
+  text-align: right;
+}
+body.exe-rubrics .exe-rubrics-actions button {
+  margin-left: 0.15cm;
+}
 body.exe-rubrics #notes {
   width: 99%;
   height: 5cm;
@@ -167,9 +267,7 @@ body.exe-rubrics #notes {
   max-width: 100%;
 }
 body.exe-rubrics #commands {
-  position: absolute;
-  top: 0.2cm;
-  left: 0.3cm;
+  display: none;
 }
 body.exe-rubrics #commands input {
   margin-right: 0.15cm;
