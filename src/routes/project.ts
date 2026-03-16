@@ -2091,22 +2091,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // If no files found, return empty message
+                // If no files found, return empty array
                 if (allUsedFiles.length === 0) {
-                    return {
-                        responseMessage: 'OK',
-                        usedFiles: [
-                            {
-                                usedFiles: 'No results found',
-                                usedFilesPath: '',
-                                usedFilesSize: '',
-                                pageNamesUsedFiles: '',
-                                blockNamesUsedFiles: '',
-                                typeComponentSyncUsedFiles: '',
-                                orderComponentSyncUsedFiles: '',
-                            },
-                        ],
-                    };
+                    return { responseMessage: 'OK', usedFiles: [] };
                 }
 
                 return {
