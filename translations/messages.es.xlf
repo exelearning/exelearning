@@ -11893,8 +11893,8 @@
         <source>Popup</source>
         <target>Ventana emergente</target>
       </trans-unit>
-      <trans-unit id="xu2Xqx3" resname="Link to the elp file (it will be exported)">
-        <source>Link to the elp file (it will be exported)</source>
+      <trans-unit id="xu2Xqx3" resname="Link to the .elpx file">
+        <source>Link to the .elpx file</source>
         <target>~Enlace al archivo .elpx</target>
       </trans-unit>
       <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
@@ -12352,8 +12352,8 @@
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
         <target>Aplica una tipografía a todo el contenido. Útil para accesibilidad y lectoescritura inicial.</target>
       </trans-unit>
-      <trans-unit id="dx72emv" resname="Theme default">
-        <source>Theme default</source>
+      <trans-unit id="dx72emv" resname="Style default">
+        <source>Style default</source>
         <target>Predeterminada del estilo</target>
       </trans-unit>
       <trans-unit id="hgg8ecq" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
@@ -12768,8 +12768,8 @@
         <source>An error occurred while cloning the block</source>
         <target>Error al clonar la caja</target>
       </trans-unit>
-      <trans-unit id="seescvf" resname="Editing by">
-        <source>Editing by</source>
+      <trans-unit id="seescvf" resname="Being edited by">
+        <source>Being edited by</source>
         <target>~Editado por</target>
       </trans-unit>
       <trans-unit id="2cu3jlq" resname="An error occurred while creating the page">
@@ -13288,8 +13288,8 @@
         <source>Failed to copy link</source>
         <target>Error al copiar el enlace</target>
       </trans-unit>
-      <trans-unit id="0xjpw0x" resname="Print preview requires Yjs mode">
-        <source>Print preview requires Yjs mode</source>
+      <trans-unit id="0xjpw0x" resname="Print preview requires server mode">
+        <source>Print preview requires server mode</source>
         <target>~La vista previa de impresión requiere el modo Yjs</target>
       </trans-unit>
       <trans-unit id="wnmdnlw" resname="Document manager not available">
@@ -13448,8 +13448,8 @@
         <source>Export functionality not available. Please reload the page.</source>
         <target>Funcionalidad de exportación no disponible. Por favor, recarga la página.</target>
       </trans-unit>
-      <trans-unit id="3qacewq" resname="Yjs bridge not initialized">
-        <source>Yjs bridge not initialized</source>
+      <trans-unit id="3qacewq" resname="Collaboration service not ready">
+        <source>Collaboration service not ready</source>
         <target>~Puente Yjs no inicializado</target>
       </trans-unit>
       <trans-unit id="uhczjka" resname="Export failed">
@@ -13512,8 +13512,8 @@
         <source>You have unsaved changes. Are you sure you want to leave?</source>
         <target>Tienes cambios sin guardar. ¿Seguro que quieres salir?</target>
       </trans-unit>
-      <trans-unit id="o6322ku" resname="Project not loaded or Yjs not enabled">
-        <source>Project not loaded or Yjs not enabled</source>
+      <trans-unit id="o6322ku" resname="Project not ready for collaboration">
+        <source>Project not ready for collaboration</source>
         <target>~Proyecto no cargado o Yjs no habilitado</target>
       </trans-unit>
       <trans-unit id="mot7k8p" resname="Generating ELPX file...">

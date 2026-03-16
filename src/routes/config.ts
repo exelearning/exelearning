@@ -394,7 +394,7 @@ const ODE_PROJECT_SYNC_PROPERTIES_CONFIG = {
             value: 'default',
             type: 'select',
             options: {
-                default: `${TRANS_PREFIX}Theme default`,
+                default: `${TRANS_PREFIX}Style default`,
                 opendyslexic: 'OpenDyslexic',
                 andika: 'Andika',
                 'atkinson-hyperlegible-next': 'Atkinson Hyperlegible Next',

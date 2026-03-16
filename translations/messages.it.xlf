@@ -11893,8 +11893,8 @@
         <source>Popup</source>
         <target>Popup</target>
       </trans-unit>
-      <trans-unit id="xu2Xqx3" resname="Link to the elp file (it will be exported)">
-        <source>Link to the elp file (it will be exported)</source>
+      <trans-unit id="xu2Xqx3" resname="Link to the .elpx file">
+        <source>Link to the .elpx file</source>
         <target>Link al file elp (verrà esportato)</target>
       </trans-unit>
       <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
@@ -12352,8 +12352,8 @@
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="pyvh9g6" resname="Theme default">
-        <source>Theme default</source>
+      <trans-unit id="pyvh9g6" resname="Style default">
+        <source>Style default</source>
         <target></target>
       </trans-unit>
       <trans-unit id="d97c35m" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
@@ -12768,8 +12768,8 @@
         <source>An error occurred while cloning the block</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="xdoy968" resname="Editing by">
-        <source>Editing by</source>
+      <trans-unit id="xdoy968" resname="Being edited by">
+        <source>Being edited by</source>
         <target></target>
       </trans-unit>
       <trans-unit id="3uu010j" resname="An error occurred while creating the page">
@@ -13288,8 +13288,8 @@
         <source>Failed to copy link</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="psf6fce" resname="Print preview requires Yjs mode">
-        <source>Print preview requires Yjs mode</source>
+      <trans-unit id="psf6fce" resname="Print preview requires server mode">
+        <source>Print preview requires server mode</source>
         <target></target>
       </trans-unit>
       <trans-unit id="qhffg45" resname="Document manager not available">
@@ -13448,8 +13448,8 @@
         <source>Export functionality not available. Please reload the page.</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="yeaiwlf" resname="Yjs bridge not initialized">
-        <source>Yjs bridge not initialized</source>
+      <trans-unit id="yeaiwlf" resname="Collaboration service not ready">
+        <source>Collaboration service not ready</source>
         <target></target>
       </trans-unit>
       <trans-unit id="1wzkqrr" resname="Export failed">
@@ -13512,8 +13512,8 @@
         <source>You have unsaved changes. Are you sure you want to leave?</source>
         <target></target>
       </trans-unit>
-      <trans-unit id="qtl6e5j" resname="Project not loaded or Yjs not enabled">
-        <source>Project not loaded or Yjs not enabled</source>
+      <trans-unit id="qtl6e5j" resname="Project not ready for collaboration">
+        <source>Project not ready for collaboration</source>
         <target></target>
       </trans-unit>
       <trans-unit id="mztcur7" resname="Generating ELPX file...">
