@@ -46,6 +46,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
     /[\\/]+tinymce_5[\\/]+js[\\/]+tinymce[\\/]+plugins[\\/]+lists[\\/]+plugin\.min\.js$/, // TinyMCE lists plugin (minified, not translatable)
     /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
+    /[\\/]+app\.bundle\.js$/, // Compiled bundle (stale; sources are scanned directly)
 ];
 
 /**
@@ -209,7 +210,8 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
         return { content: xlfContent, added: 0 };
     }
 
-    const newContent = xlfContent.slice(0, bodyCloseIndex).trimEnd() + '\n' + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
+    const newContent =
+        xlfContent.slice(0, bodyCloseIndex).trimEnd() + '\n' + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
 
     return { content: newContent, added: keysToAdd.length };
 }
@@ -295,7 +297,7 @@ function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { co
     const transUnitPattern = /<trans-unit\b[^>]*>[\s\S]*?<\/trans-unit>\s*/g;
     const resnamePattern = /resname="([^"]+)"/;
 
-    const result = content.replace(transUnitPattern, match => {
+    let result = content.replace(transUnitPattern, match => {
         const resnameMatch = match.match(resnamePattern);
         if (resnameMatch) {
             const resname = resnameMatch[1];
@@ -355,6 +357,9 @@ async function processLocale(
             }
         }
     }
+
+    // Normalize </body> indentation (any operation can leave wrong leading whitespace)
+    content = content.replace(/^[ \t]*<\/body>/m, '    </body>');
 
     // Write back
     fs.writeFileSync(xlfPath, content, 'utf-8');
