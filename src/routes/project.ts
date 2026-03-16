@@ -8,6 +8,7 @@ import { Elysia } from 'elysia';
 import * as fsDefault from 'fs-extra';
 import * as pathDefault from 'path';
 
+import { trans, detectLocaleFromHeader } from '../services/translation';
 import {
     createSession as createSessionDefault,
     getSession as getSessionDefault,
@@ -1940,7 +1941,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             // =====================================================
 
             // POST /api/ode-management/odes/session/usedfiles - Get used files report
-            .post('/api/ode-management/odes/session/usedfiles', async ({ body }) => {
+            .post('/api/ode-management/odes/session/usedfiles', async ({ body, request }) => {
+                const locale = detectLocaleFromHeader(request.headers.get('Accept-Language') || '');
                 const data = body as UsedFilesRequest;
                 const idevices = data.idevices || [];
                 const assetMetadata = data.assetMetadata || {};
@@ -2091,22 +2093,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     }
                 }
 
-                // If no files found, return empty message
+                // If no files found, return empty array — frontend renders the translated message
                 if (allUsedFiles.length === 0) {
-                    return {
-                        responseMessage: 'OK',
-                        usedFiles: [
-                            {
-                                usedFiles: _('No results found'),
-                                usedFilesPath: '',
-                                usedFilesSize: '',
-                                pageNamesUsedFiles: '',
-                                blockNamesUsedFiles: '',
-                                typeComponentSyncUsedFiles: '',
-                                orderComponentSyncUsedFiles: '',
-                            },
-                        ],
-                    };
+                    return { responseMessage: 'OK', usedFiles: [] };
                 }
 
                 return {
