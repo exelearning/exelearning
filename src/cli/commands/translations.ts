@@ -209,7 +209,7 @@ function addKeysToXlf(xlfContent: string, newKeys: Set<string>): { content: stri
         return { content: xlfContent, added: 0 };
     }
 
-    const newContent = xlfContent.slice(0, bodyCloseIndex) + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
+    const newContent = xlfContent.slice(0, bodyCloseIndex).trimEnd() + '\n' + newUnits + '\n    ' + xlfContent.slice(bodyCloseIndex);
 
     return { content: newContent, added: keysToAdd.length };
 }
