@@ -745,18 +745,15 @@ describe('text iDevice', () => {
       $exeDevice.init(mockElement, {});
 
       // Legacy eXe 2.9 FreeTextIdevice: uses "feedbackbutton" instead of "feedbacktooglebutton"
-      // and wraps main content in <div class="exe-text">
-      const html = `<div class="exe-text">
-<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
-<ol>
-<li>Repasar nuestro porfolio.</li>
-<li>Hacer una reflexión personal.</li>
-</ol>
-</div>
-<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
-<div class="feedback js-feedback js-hidden">
-<p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
-</div>`;
+      const html = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <ol>
+    <li>Repasar nuestro porfolio.</li>
+    <li>Hacer una reflexión personal.</li>
+    </ol>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
 
       const result = $exeDevice.extractTaskInfoFromHtml(html);
 
@@ -921,13 +918,11 @@ describe('text iDevice', () => {
     it('extracts feedback from legacy eXe 2.9 format when loading previousData', () => {
       // Reproduces the bug: eXe 2.9 ELPs use "feedbackbutton" class; previously the
       // feedback content appeared in the main text box and the feedback field was empty.
-      const legacyHtml = `<div class="exe-text">
-<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
-</div>
-<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
-<div class="feedback js-feedback js-hidden">
-<p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
-</div>`;
+      const legacyHtml = `<p>A lo largo del proyecto, cada vez que terminemos una tarea...</p>
+    <div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbackbutton" value="Evaluación" /></div>
+    <div class="feedback js-feedback js-hidden">
+    <p>Esta tarea se valorará con las siguientes escalas de evaluación.</p>
+    </div>`;
 
       const previousData = { textTextarea: legacyHtml };
 
