@@ -297,7 +297,7 @@ function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { co
     const transUnitPattern = /<trans-unit\b[^>]*>[\s\S]*?<\/trans-unit>\s*/g;
     const resnamePattern = /resname="([^"]+)"/;
 
-    let result = content.replace(transUnitPattern, match => {
+    const result = content.replace(transUnitPattern, match => {
         const resnameMatch = match.match(resnamePattern);
         if (resnameMatch) {
             const resname = resnameMatch[1];

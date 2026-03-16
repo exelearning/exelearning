@@ -13290,7 +13290,7 @@
       </trans-unit>
       <trans-unit id="0xjpw0x" resname="Print preview requires server mode">
         <source>Print preview requires server mode</source>
-        <target>~La vista previa de impresión requiere el modo Yjs</target>
+        <target>La vista previa de impresión requiere el modo servidor</target>
       </trans-unit>
       <trans-unit id="wnmdnlw" resname="Document manager not available">
         <source>Document manager not available</source>
@@ -13450,7 +13450,7 @@
       </trans-unit>
       <trans-unit id="3qacewq" resname="Collaboration service not ready">
         <source>Collaboration service not ready</source>
-        <target>~Puente Yjs no inicializado</target>
+        <target>El servicio de edición colaborativa no está disponible</target>
       </trans-unit>
       <trans-unit id="uhczjka" resname="Export failed">
         <source>Export failed</source>
@@ -13514,7 +13514,7 @@
       </trans-unit>
       <trans-unit id="o6322ku" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target>~Proyecto no cargado o Yjs no habilitado</target>
+        <target>El proyecto no está preparado para la edición colaborativa</target>
       </trans-unit>
       <trans-unit id="mot7k8p" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
