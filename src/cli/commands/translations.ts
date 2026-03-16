@@ -39,6 +39,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
     /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
+    // Comment the following 3 lines to scan the admin panel
     /[\\/]+views[\\/]+admin[\\/]+/, // Admin-only Nunjucks templates
     /[\\/]+app[\\/]+admin[\\/]+/, // Admin-only frontend JS
     /[\\/]+routes[\\/]+admin/, // Admin-only backend routes
