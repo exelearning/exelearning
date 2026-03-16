@@ -2881,10 +2881,6 @@
         <source>Bernoulli\'s equation</source>
         <target>~Bernoulli ekuazioa</target>
       </trans-unit>
-      <trans-unit id="rhuOmDb" resname="P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}">
-        <source>P + \\tfrac12 \\rho v^2 + \\rho g h = \\text{constant}</source>
-        <target>~P + \\tfrac12 \\rho v^2 + \\rho g h = \\constant</target>
-      </trans-unit>
       <trans-unit id="CUfw.JS" resname="Thermodynamics">
         <source>Thermodynamics</source>
         <target>~Termo-dinamika</target>

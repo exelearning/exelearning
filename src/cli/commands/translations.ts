@@ -48,6 +48,13 @@ const EXCLUDE_FILE_PATTERNS = [
 ];
 
 /**
+ * Exact keys to exclude from extraction (strings that are not UI translations)
+ */
+const EXCLUDE_EXACT_KEYS = new Set([
+    'P + \\\\tfrac12 \\\\rho v^2 + \\\\rho g h = \\\\text{constant}', // Bernoulli equation example in edicuatex lang file
+]);
+
+/**
  * Keys that look like test patterns (not real translations)
  */
 const INVALID_KEY_PATTERNS = [
@@ -67,10 +74,10 @@ function shouldExcludeFile(filePath: string): boolean {
 }
 
 /**
- * Check if a key looks like a test pattern and should be excluded
+ * Check if a key looks like a test pattern or is explicitly excluded
  */
 function isInvalidKey(key: string): boolean {
-    return INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
+    return EXCLUDE_EXACT_KEYS.has(key) || INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
 }
 
 /**
