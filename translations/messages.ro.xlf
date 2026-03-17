@@ -12263,1795 +12263,1795 @@
       </trans-unit>
             <trans-unit id="r54j2rq" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
-        <target></target>
+        <target>~Asistent AI implicit</target>
       </trans-unit>
       <trans-unit id="bgxohh4" resname="Select the AI that will be selected by default when editing iDevices.">
         <source>Select the AI that will be selected by default when editing iDevices.</source>
-        <target></target>
+        <target>~Selectați AI-ul care va fi utilizat implicit la editarea iDevices.</target>
       </trans-unit>
       <trans-unit id="ig3flxn" resname="Hide page title">
         <source>Hide page title</source>
-        <target></target>
+        <target>~Ascunde titlul paginii</target>
       </trans-unit>
       <trans-unit id="qt5kkdn" resname="Include MathJax (advanced features)">
         <source>Include MathJax (advanced features)</source>
-        <target></target>
+        <target>~Include MathJax (funcții avansate)</target>
       </trans-unit>
       <trans-unit id="tmbdv5a" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target></target>
+        <target>~ Formulele sunt reprezentate chiar dacă această opțiune este dezactivată. Activați această opțiune pentru a include biblioteca completă MathJax în exporturi (aproximativ 8 MB) pentru funcții avansate precum instrumente de accesibilitate și meniuri contextuale.</target>
       </trans-unit>
       <trans-unit id="sy6l8ko" resname="Global font">
         <source>Global font</source>
-        <target></target>
+        <target>~Tipografie globală</target>
       </trans-unit>
       <trans-unit id="zf7xebt" resname="Apply a global font to all content. Useful for accessibility and early literacy.">
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
-        <target></target>
+        <target>~Aplică o tipografie pentru tot conținutul. Util pentru accesibilitate și citire inițială.</target>
       </trans-unit>
       <trans-unit id="xb45puc" resname="Style default">
         <source>Style default</source>
-        <target></target>
+        <target>~Stil implicit</target>
       </trans-unit>
       <trans-unit id="b63k6zv" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...</source>
-        <target></target>
+        <target>~HTML de inclus la sfârșitul HEAD: LINK, META, SCRIPT, STYLE...</target>
       </trans-unit>
       <trans-unit id="2r53dsq" resname="Access denied">
         <source>Access denied</source>
-        <target></target>
+        <target>~Acces refuzat</target>
       </trans-unit>
       <trans-unit id="flscpzd" resname="Create new project">
         <source>Create new project</source>
-        <target></target>
+        <target>~Crează un proiect nou</target>
       </trans-unit>
       <trans-unit id="5dp54w5" resname="Back to login">
         <source>Back to login</source>
-        <target></target>
+        <target>~Întoarce-te la autentificare</target>
       </trans-unit>
       <trans-unit id="9cxvqwv" resname="You don&apos;t have permission to access this project.">
         <source>You don't have permission to access this project.</source>
-        <target></target>
+        <target>~Nu ai permisiunea de a accesa acest proiect.</target>
       </trans-unit>
       <trans-unit id="4452zyh" resname="Page not found">
         <source>Page not found</source>
-        <target></target>
+        <target>~Pagină negăsită</target>
       </trans-unit>
       <trans-unit id="p1s4rt1" resname="Server error">
         <source>Server error</source>
-        <target></target>
+        <target>~Eroare de server</target>
       </trans-unit>
       <trans-unit id="ffticpm" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
-        <target></target>
+        <target>~Ne pare rău, pagina nu poate fi afișată.</target>
       </trans-unit>
       <trans-unit id="xod3lv0" resname="The server encountered an error and could not complete your request. Please try again later.">
         <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target></target>
+        <target>~Serverul a întâmpinat o eroare și nu a putut finaliza solicitarea ta. Te rugăm să încerci din nou mai târziu.</target>
       </trans-unit>
       <trans-unit id="4g415y4" resname="Search files...">
         <source>Search files...</source>
-        <target></target>
+        <target>~Caută fișiere...</target>
       </trans-unit>
       <trans-unit id="zpd1w9p" resname="New folder">
         <source>New folder</source>
-        <target></target>
+        <target>~Folder nou</target>
       </trans-unit>
       <trans-unit id="hzezt9n" resname="Grid view">
         <source>Grid view</source>
-        <target></target>
+        <target>~Vizualizare în grilă</target>
       </trans-unit>
       <trans-unit id="9zo2pm8" resname="List view">
         <source>List view</source>
-        <target></target>
+        <target>~Vezi lista</target>
       </trans-unit>
       <trans-unit id="4ryg91b" resname="Name A-Z">
         <source>Name A-Z</source>
-        <target></target>
+        <target>~Nume A-Z</target>
       </trans-unit>
       <trans-unit id="7gzme4j" resname="Name Z-A">
         <source>Name Z-A</source>
-        <target></target>
+        <target>~Nume Z-A</target>
       </trans-unit>
       <trans-unit id="jgy12ed" resname="Newest first">
         <source>Newest first</source>
-        <target></target>
+        <target>~Cele mai recente întâi</target>
       </trans-unit>
       <trans-unit id="bxoq9ki" resname="Oldest first">
         <source>Oldest first</source>
-        <target></target>
+        <target>~Cele mai vechi întâi</target>
       </trans-unit>
       <trans-unit id="nzlhv7q" resname="Largest first">
         <source>Largest first</source>
-        <target></target>
+        <target>~Cele mai mari întâi</target>
       </trans-unit>
       <trans-unit id="zhm0ha6" resname="Smallest first">
         <source>Smallest first</source>
-        <target></target>
+        <target>~Cele mai mici întâi</target>
       </trans-unit>
       <trans-unit id="oflp0ef" resname="Type A-Z">
         <source>Type A-Z</source>
-        <target></target>
+        <target>~Tip A-Z</target>
       </trans-unit>
       <trans-unit id="iz70g5q" resname="Type Z-A">
         <source>Type Z-A</source>
-        <target></target>
+        <target>~Tip Z-A</target>
       </trans-unit>
       <trans-unit id="hlz2wds" resname="Show references">
         <source>Show references</source>
-        <target></target>
+        <target>~Afișează referințe</target>
       </trans-unit>
       <trans-unit id="z1r5ics" resname="files">
         <source>files</source>
-        <target></target>
+        <target>~fișiere</target>
       </trans-unit>
       <trans-unit id="hgviitr" resname="Go to root">
         <source>Go to root</source>
-        <target></target>
+        <target>~Directorul rădăcină</target>
       </trans-unit>
       <trans-unit id="o9pitk8" resname="Search results for">
         <source>Search results for</source>
-        <target></target>
+        <target>~Rezultate de căutare pentru</target>
       </trans-unit>
       <trans-unit id="n5ibx17" resname="No media files yet">
         <source>No media files yet</source>
-        <target></target>
+        <target>~Încă nu există fișiere multimedia</target>
       </trans-unit>
       <trans-unit id="fti50vt" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target></target>
+        <target>~Faceți clic pe "Adăugați fișiere" sau trageți fișiere aici pentru a încărca</target>
       </trans-unit>
       <trans-unit id="18i8msg" resname="Loading assets...">
         <source>Loading assets...</source>
-        <target></target>
+        <target>~Se încarcă resurse...</target>
       </trans-unit>
       <trans-unit id="eahpb4c" resname="Location">
         <source>Location</source>
-        <target></target>
+        <target>~Locație</target>
       </trans-unit>
       <trans-unit id="hxrufuh" resname="Select an item to view details">
         <source>Select an item to view details</source>
-        <target></target>
+        <target>~Selectați un element pentru a vedea detaliile</target>
       </trans-unit>
       <trans-unit id="s8u0ymz" resname="Size:">
         <source>Size:</source>
-        <target></target>
+        <target>~Dimensiune:</target>
       </trans-unit>
       <trans-unit id="r9tk37k" resname="Dimensions:">
         <source>Dimensions:</source>
-        <target></target>
+        <target>~Dimensiuni:</target>
       </trans-unit>
       <trans-unit id="cnor1de" resname="Date:">
         <source>Date:</source>
-        <target></target>
+        <target>~Data:</target>
       </trans-unit>
       <trans-unit id="9c8yzcj" resname="Usage:">
         <source>Usage:</source>
-        <target></target>
+        <target>~Utilizare:</target>
       </trans-unit>
       <trans-unit id="p94c8hs" resname="Location:">
         <source>Location:</source>
-        <target></target>
+        <target>~Locație:</target>
       </trans-unit>
       <trans-unit id="tp5pm2n" resname="Open containing folder">
         <source>Open containing folder</source>
-        <target></target>
+        <target>~Deschide folderul conținut</target>
       </trans-unit>
       <trans-unit id="vk5kzt2" resname="Copy URL">
         <source>Copy URL</source>
-        <target></target>
+        <target>~Copiază URL-ul</target>
       </trans-unit>
       <trans-unit id="2zjw0fv" resname="Duplicate">
         <source>Duplicate</source>
-        <target></target>
+        <target>~Duplică</target>
       </trans-unit>
       <trans-unit id="1xzjsp2" resname="Extract ZIP">
         <source>Extract ZIP</source>
-        <target></target>
+        <target>~Extrage ZIP</target>
       </trans-unit>
       <trans-unit id="z361926" resname="View full size">
         <source>View full size</source>
-        <target></target>
+        <target>~Vezi dimensiunea completă</target>
       </trans-unit>
       <trans-unit id="dutf5uw" resname="Move to folder">
         <source>Move to folder</source>
-        <target></target>
+        <target>~Mută în folder</target>
       </trans-unit>
       <trans-unit id="6si3j9i" resname="Move here">
         <source>Move here</source>
-        <target></target>
+        <target>~Mută aici</target>
       </trans-unit>
       <trans-unit id="p7du02l" resname="Search pages and content...">
         <source>Search pages and content...</source>
-        <target></target>
+        <target>~Căutare pagini și conținut...</target>
       </trans-unit>
       <trans-unit id="6t7g20w" resname="Search results">
         <source>Search results</source>
-        <target></target>
+        <target>~Rezultate ale căutării</target>
       </trans-unit>
       <trans-unit id="322ubgh" resname="No results found">
         <source>No results found</source>
-        <target></target>
+        <target>~Nu s-au găsit rezultate</target>
       </trans-unit>
       <trans-unit id="kaqtwjp" resname="Navigate">
         <source>Navigate</source>
-        <target></target>
+        <target>~Navigare</target>
       </trans-unit>
       <trans-unit id="jmmd25p" resname="Loading project images...">
         <source>Loading project images...</source>
-        <target></target>
+        <target>~Se încarcă imaginile proiectului...</target>
       </trans-unit>
       <trans-unit id="9tmh0kc" resname="No PNG or JPEG images found in this project.">
         <source>No PNG or JPEG images found in this project.</source>
-        <target></target>
+        <target>~Nu s-au găsit imagini PNG sau JPEG în acest proiect.</target>
       </trans-unit>
       <trans-unit id="uo6bnun" resname="Preset">
         <source>Preset</source>
-        <target></target>
+        <target>~Predefinit</target>
       </trans-unit>
       <trans-unit id="e7aoebz" resname="Strong">
         <source>Strong</source>
-        <target></target>
+        <target>~Puternic</target>
       </trans-unit>
       <trans-unit id="thb2o67" resname="JPEG Quality">
         <source>JPEG Quality</source>
-        <target></target>
+        <target>~Calitate JPEG</target>
       </trans-unit>
       <trans-unit id="jfjov9a" resname="Deselect All">
         <source>Deselect All</source>
-        <target></target>
+        <target>~Deselectează tot</target>
       </trans-unit>
       <trans-unit id="x83qygv" resname="Select/Deselect All">
         <source>Select/Deselect All</source>
-        <target></target>
+        <target>~Selectați/Deselectați tot</target>
       </trans-unit>
       <trans-unit id="s8qa1fj" resname="Filename">
         <source>Filename</source>
-        <target></target>
+        <target>~Numele fișierului</target>
       </trans-unit>
       <trans-unit id="ywymuaa" resname="Original">
         <source>Original</source>
-        <target></target>
+        <target>~Original</target>
       </trans-unit>
       <trans-unit id="h03z70c" resname="Estimated">
         <source>Estimated</source>
-        <target></target>
+        <target>~Estimado</target>
       </trans-unit>
       <trans-unit id="1x1tl8i" resname="Savings">
         <source>Savings</source>
-        <target></target>
+        <target>~Economisire</target>
       </trans-unit>
       <trans-unit id="d36krtp" resname="Selected">
         <source>Selected</source>
-        <target></target>
+        <target>~Selectat</target>
       </trans-unit>
       <trans-unit id="3nhvxo3" resname="Warning:">
         <source>Warning:</source>
-        <target></target>
+        <target>~Avertisment:</target>
       </trans-unit>
       <trans-unit id="wgk4oi2" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target></target>
+        <target>~Optimizarea imaginilor poate reduce calitatea. Această acțiune nu poate fi anulată.</target>
       </trans-unit>
       <trans-unit id="a8chyey" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target></target>
+        <target>~Doriți să optimizați imaginile selectate?</target>
       </trans-unit>
       <trans-unit id="2u736q5" resname="Optimizing...">
         <source>Optimizing...</source>
-        <target></target>
+        <target>~Se optimizează...</target>
       </trans-unit>
       <trans-unit id="0or4as5" resname="Optimize">
         <source>Optimize</source>
-        <target></target>
+        <target>~Optimizare</target>
       </trans-unit>
       <trans-unit id="ygrllyy" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Biblioteci terțe</target>
       </trans-unit>
       <trans-unit id="gp166ez" resname="Opens in new window">
         <source>Opens in new window</source>
-        <target></target>
+        <target>~Se deschide într-o fereastră nouă</target>
       </trans-unit>
       <trans-unit id="s46fuv1" resname="Send email">
         <source>Send email</source>
-        <target></target>
+        <target>~Trimite email</target>
       </trans-unit>
       <trans-unit id="h0dovnr" resname="Add people by email">
         <source>Add people by email</source>
-        <target></target>
+        <target>~Adaugă utilizatori prin email</target>
       </trans-unit>
       <trans-unit id="1c65dwl" resname="Invite">
         <source>Invite</source>
-        <target></target>
+        <target>~Invită</target>
       </trans-unit>
       <trans-unit id="qz2jhtk" resname="People with access">
         <source>People with access</source>
-        <target></target>
+        <target>~Persoane cu acces</target>
       </trans-unit>
       <trans-unit id="bwjbmyv" resname="General access">
         <source>General access</source>
-        <target></target>
+        <target>~Acces general</target>
       </trans-unit>
       <trans-unit id="fbntbt0" resname="Restricted (Private)">
         <source>Restricted (Private)</source>
-        <target></target>
+        <target>~Restricționat (Privat)</target>
       </trans-unit>
       <trans-unit id="naa6hjq" resname="Anyone with the link (Public)">
         <source>Anyone with the link (Public)</source>
-        <target></target>
+        <target>~Oricine are linkul (Public)</target>
       </trans-unit>
       <trans-unit id="0btjzxc" resname="Anyone who has the link can view and edit in real time">
         <source>Anyone who has the link can view and edit in real time</source>
-        <target></target>
+        <target>~Oricine cu link-ul poate vizualiza și edita în timp real</target>
       </trans-unit>
       <trans-unit id="ngzh1y7" resname="Print preview">
         <source>Print preview</source>
-        <target></target>
+        <target>~Previzualizare de imprimare</target>
       </trans-unit>
       <trans-unit id="ql8ooyg" resname="Return to work area">
         <source>Return to work area</source>
-        <target></target>
+        <target>~Întoarcere la zona de lucru</target>
       </trans-unit>
       <trans-unit id="0zkh3kj" resname="Return to login">
         <source>Return to login</source>
-        <target></target>
+        <target>~Întoarcere la autentificare</target>
       </trans-unit>
       <trans-unit id="ue6q84x" resname="Under maintenance">
         <source>Under maintenance</source>
-        <target></target>
+        <target>~În mentenanță</target>
       </trans-unit>
       <trans-unit id="hcwr8ud" resname="This application is currently under maintenance. Please try again later.">
         <source>This application is currently under maintenance. Please try again later.</source>
-        <target></target>
+        <target>~Această aplicație este în prezent în mentenanță. Te rugăm să încerci din nou mai târziu.</target>
       </trans-unit>
       <trans-unit id="iot2q4p" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Numele folderului nu este valid. Evită caractere speciale precum / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="0xzyfnk" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target></target>
+        <target>~Sigur vrei să ștergi folderul "%1" și toate cele %2 fișiere pe care le conține?</target>
       </trans-unit>
       <trans-unit id="7gywcdk" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target></target>
+        <target>~Sigur vrei să ștergi folderul gol "%1"?</target>
       </trans-unit>
       <trans-unit id="vbnrrkt" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target></target>
+        <target>~Ștergi "%1"?</target>
       </trans-unit>
       <trans-unit id="pitu10s" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Numele fișierului nu este valid. Evită caracterele speciale precum / \ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="4zpbjjn" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
-        <target></target>
+        <target>~Distribuie "{title}"</target>
       </trans-unit>
       <trans-unit id="7e98it6" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target></target>
+        <target>~Scrie cuvântul sau fraza corectă și fă clic pe butonul "Răspunde".</target>
       </trans-unit>
       <trans-unit id="ne0i1et" resname="Timeout">
         <source>Timeout</source>
-        <target></target>
+        <target>~Timpul de așteptare a expirat</target>
       </trans-unit>
       <trans-unit id="b5rft7j" resname="Network error">
         <source>Network error</source>
-        <target></target>
+        <target>~Eroare de rețea</target>
       </trans-unit>
       <trans-unit id="u0g7lr6" resname="Invalid URL">
         <source>Invalid URL</source>
-        <target></target>
+        <target>~URL invalid</target>
       </trans-unit>
       <trans-unit id="8m7zds5" resname="Session Expired">
         <source>Session Expired</source>
-        <target></target>
+        <target>~Sesiunea a expirat</target>
       </trans-unit>
       <trans-unit id="zlcgxko" resname="Your session has expired. Please log in again.">
         <source>Your session has expired. Please log in again.</source>
-        <target></target>
+        <target>~Sesiunea ta a fost încheiată. Te rugăm să te autentifici din nou.</target>
       </trans-unit>
       <trans-unit id="4hkgio5" resname="Access Denied">
         <source>Access Denied</source>
-        <target></target>
+        <target>~Acces refuzat</target>
       </trans-unit>
       <trans-unit id="d6ybz90" resname="You no longer have access to this project.">
         <source>You no longer have access to this project.</source>
-        <target></target>
+        <target>~Nu mai ai acces la acest proiect.</target>
       </trans-unit>
       <trans-unit id="zis62sm" resname="Changelog not available">
         <source>Changelog not available</source>
-        <target></target>
+        <target>~Istoric modificări indisponibil</target>
       </trans-unit>
       <trans-unit id="0n08or7" resname="Information not available">
         <source>Information not available</source>
-        <target></target>
+        <target>~Informații indisponibile</target>
       </trans-unit>
       <trans-unit id="u4e0sjp" resname="Hidden from export">
         <source>Hidden from export</source>
-        <target></target>
+        <target>~Ascuns în export</target>
       </trans-unit>
       <trans-unit id="1saa9ve" resname="Another user">
         <source>Another user</source>
-        <target></target>
+        <target>~Alt utilizator</target>
       </trans-unit>
       <trans-unit id="ritvp8h" resname="Clone iDevice">
         <source>Clone iDevice</source>
-        <target></target>
+        <target>~Clonare iDevice</target>
       </trans-unit>
       <trans-unit id="8h54062" resname="Move to page">
         <source>Move to page</source>
-        <target></target>
+        <target>~Mutare pe pagină</target>
       </trans-unit>
       <trans-unit id="cgphc10" resname="Export iDevice">
         <source>Export iDevice</source>
-        <target></target>
+        <target>~Exportare iDevice</target>
       </trans-unit>
       <trans-unit id="yglt14e" resname="iDevice locked">
         <source>iDevice locked</source>
-        <target></target>
+        <target>~iDevice blocat</target>
       </trans-unit>
       <trans-unit id="tnnocmy" resname="This iDevice is being edited by">
         <source>This iDevice is being edited by</source>
-        <target></target>
+        <target>~Acest iDevice este în curs de editare de către</target>
       </trans-unit>
       <trans-unit id="vz2jmri" resname="Also delete associated box">
         <source>Also delete associated box</source>
-        <target></target>
+        <target>~Ștergeți și blocul asociat</target>
       </trans-unit>
       <trans-unit id="oqep5qo" resname="Failed to export iDevice">
         <source>Failed to export iDevice</source>
-        <target></target>
+        <target>~Eroare la exportare iDevice</target>
       </trans-unit>
       <trans-unit id="wekuocl" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editat de</target>
       </trans-unit>
       <trans-unit id="3ci6qx3" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
-        <target></target>
+        <target>~El conținutul va apărea când se va salva</target>
       </trans-unit>
       <trans-unit id="cbxrnvl" resname="An error occurred while removing the component">
         <source>An error occurred while removing the component</source>
-        <target></target>
+        <target>~Eroare la ștergerea componentului</target>
       </trans-unit>
       <trans-unit id="83htdyo" resname="An error occurred while cloning the component">
         <source>An error occurred while cloning the component</source>
-        <target></target>
+        <target>~Eroare la clonarea componentului</target>
       </trans-unit>
       <trans-unit id="oh372do" resname="Clone box">
         <source>Clone box</source>
-        <target></target>
+        <target>~Clonare cutie</target>
       </trans-unit>
       <trans-unit id="xn1x895" resname="Export box">
         <source>Export box</source>
-        <target></target>
+        <target>~Exportare cutie</target>
       </trans-unit>
       <trans-unit id="3d87g66" resname="An iDevice in this box is being edited by another user">
         <source>An iDevice in this box is being edited by another user</source>
-        <target></target>
+        <target>~Există un alt utilizator editând un iDevice din această cutie</target>
       </trans-unit>
       <trans-unit id="5l8sdqp" resname="iDevices in this box are being edited by other users">
         <source>iDevices in this box are being edited by other users</source>
-        <target></target>
+        <target>~Există alți utilizatori editând un iDevice din această cutie</target>
       </trans-unit>
       <trans-unit id="e9ns54v" resname="Their changes may be lost if you delete this box.">
         <source>Their changes may be lost if you delete this box.</source>
-        <target></target>
+        <target>~Modificările tale pot fi pierdute dacă ștergi această cutie.</target>
       </trans-unit>
       <trans-unit id="y7r69rx" resname="Do you want to delete this box?">
         <source>Do you want to delete this box?</source>
-        <target></target>
+        <target>~Vrei să ștergi această cutie?</target>
       </trans-unit>
       <trans-unit id="mgwvfde" resname="Move box to page">
         <source>Move box to page</source>
-        <target></target>
+        <target>~Mută cutia pe pagină</target>
       </trans-unit>
       <trans-unit id="ryclrix" resname="Failed to export box">
         <source>Failed to export box</source>
-        <target></target>
+        <target>~Eroare la exportarea cutiei</target>
       </trans-unit>
       <trans-unit id="0dk7xj5" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
-        <target></target>
+        <target>~Eroare la clonarea cutiei</target>
       </trans-unit>
       <trans-unit id="feo2sap" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editat de</target>
       </trans-unit>
       <trans-unit id="0pf40k4" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
-        <target></target>
+        <target>~Eroare la crearea paginii</target>
       </trans-unit>
       <trans-unit id="ie6rsag" resname="An error occurred while cloning the page">
         <source>An error occurred while cloning the page</source>
-        <target></target>
+        <target>~Eroare la clonarea paginii</target>
       </trans-unit>
       <trans-unit id="73mk0mk" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target></target>
+        <target>~Eroare la redenumirea paginii</target>
       </trans-unit>
       <trans-unit id="ycl4wsl" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
-        <target></target>
+        <target>~Eroare la ștergerea paginii</target>
       </trans-unit>
       <trans-unit id="t6y0zi4" resname="An error occurred while reordering the page. Please try again.">
         <source>An error occurred while reordering the page. Please try again.</source>
-        <target></target>
+        <target>~Eroare la reordonarea paginii. Te rugăm să încerci din nou.</target>
       </trans-unit>
       <trans-unit id="pd5xu7r" resname="An error occurred while saving page properties">
         <source>An error occurred while saving page properties</source>
-        <target></target>
+        <target>~Eroare la salvare a proprietăților paginii</target>
       </trans-unit>
       <trans-unit id="wpjlhmo" resname="Importing...">
         <source>Importing...</source>
-        <target></target>
+        <target>~Se importează...</target>
       </trans-unit>
       <trans-unit id="y1mo1f5" resname="Importing project...">
         <source>Importing project...</source>
-        <target></target>
+        <target>~Se importă proiectul...</target>
       </trans-unit>
       <trans-unit id="tvkwgr3" resname="Import Error">
         <source>Import Error</source>
-        <target></target>
+        <target>~Eroare de import</target>
       </trans-unit>
       <trans-unit id="h22cs0e" resname="Failed to import the project: ">
         <source>Failed to import the project: </source>
-        <target></target>
+        <target>~Eroare la importarea proiectului: </target>
       </trans-unit>
       <trans-unit id="z51duo3" resname="Untitled">
         <source>Untitled</source>
-        <target></target>
+        <target>~Fără titlu</target>
       </trans-unit>
       <trans-unit id="epjc53f" resname="Media library not available">
         <source>Media library not available</source>
-        <target></target>
+        <target>~Biblioteca media indisponibilă</target>
       </trans-unit>
       <trans-unit id="y8fxvnr" resname="Failed to load assets">
         <source>Failed to load assets</source>
-        <target></target>
+        <target>~Eroare la încărcarea resurselor</target>
       </trans-unit>
       <trans-unit id="2bucm36" resname="Enter folder name:">
         <source>Enter folder name:</source>
-        <target></target>
+        <target>~Introduceți numele folderului:</target>
       </trans-unit>
       <trans-unit id="2pej3h4" resname="A folder with this name already exists.">
         <source>A folder with this name already exists.</source>
-        <target></target>
+        <target>~Există deja un folder cu acest nume.</target>
       </trans-unit>
       <trans-unit id="c42nker" resname="items">
         <source>items</source>
-        <target></target>
+        <target>~elemente</target>
       </trans-unit>
       <trans-unit id="d9amo9w" resname="Videos">
         <source>Videos</source>
-        <target></target>
+        <target>~Videoclipuri</target>
       </trans-unit>
       <trans-unit id="bnnd7nz" resname="PDF">
         <source>PDF</source>
-        <target></target>
+        <target>~PDF</target>
       </trans-unit>
       <trans-unit id="zatyvzv" resname="Other">
         <source>Other</source>
-        <target></target>
+        <target>~Altele</target>
       </trans-unit>
       <trans-unit id="nlhu22a" resname="%1 files selected">
         <source>%1 files selected</source>
-        <target></target>
+        <target>~%1 fișiere selectate</target>
       </trans-unit>
       <trans-unit id="lry0v1e" resname="Multiple files">
         <source>Multiple files</source>
-        <target></target>
+        <target>~Mai multe fișiere</target>
       </trans-unit>
       <trans-unit id="lbih0ik" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target></target>
+        <target>~Eroare la ștergerea folderului</target>
       </trans-unit>
       <trans-unit id="8113y67" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
-        <target></target>
+        <target>~Acest resurs este referențiat în %1 iDevices.</target>
       </trans-unit>
       <trans-unit id="ji78b98" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target></target>
+        <target>~Ștergeți %1 fișiere selectate?</target>
       </trans-unit>
       <trans-unit id="vr5t8rv" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target></target>
+        <target>~Eroare la ștergerea fișierului</target>
       </trans-unit>
       <trans-unit id="nop398k" resname="Rename folder">
         <source>Rename folder</source>
-        <target></target>
+        <target>~Redenumiți folderul</target>
       </trans-unit>
       <trans-unit id="0f3fqgr" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
-        <target></target>
+        <target>~Introduceți noul nume al folderului:</target>
       </trans-unit>
       <trans-unit id="lj5r2f0" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target></target>
+        <target>~Eroare la redenumirea folderului</target>
       </trans-unit>
       <trans-unit id="xdxsu2t" resname="Rename file">
         <source>Rename file</source>
-        <target></target>
+        <target>~Redenumiți fișierul</target>
       </trans-unit>
       <trans-unit id="ar8phdj" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target></target>
+        <target>~Introduceți noul nume al fișierului:</target>
       </trans-unit>
       <trans-unit id="rbxyzk3" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target></target>
+        <target>~Eroare la redenumirea fișierului</target>
       </trans-unit>
       <trans-unit id="selsp0v" resname="copy">
         <source>copy</source>
-        <target></target>
+        <target>~copie</target>
       </trans-unit>
       <trans-unit id="t7zoz37" resname="Could not read file">
         <source>Could not read file</source>
-        <target></target>
+        <target>~Nu s-a putut citi fișierul</target>
       </trans-unit>
       <trans-unit id="dubgcmc" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target></target>
+        <target>~Duplicare fișier</target>
       </trans-unit>
       <trans-unit id="bvvx378" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
-        <target></target>
+        <target>~Introduceți numele pentru duplicat:</target>
       </trans-unit>
       <trans-unit id="6mnumpc" resname="Please enter a valid filename">
         <source>Please enter a valid filename</source>
-        <target></target>
+        <target>~Introduce un nume de fișier valid</target>
       </trans-unit>
       <trans-unit id="sbo3t26" resname="A file with this name already exists in this folder">
         <source>A file with this name already exists in this folder</source>
-        <target></target>
+        <target>~Folderul are deja un fișier cu acest nume</target>
       </trans-unit>
       <trans-unit id="6q1z70u" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target></target>
+        <target>~Eroare la duplicarea fișierului</target>
       </trans-unit>
       <trans-unit id="0h8kn2u" resname="current">
         <source>current</source>
-        <target></target>
+        <target>~actual</target>
       </trans-unit>
       <trans-unit id="yupyfzz" resname="Please select a destination folder">
         <source>Please select a destination folder</source>
-        <target></target>
+        <target>~Selectează un folder de destinație</target>
       </trans-unit>
       <trans-unit id="o6rhdxn" resname="Folder is already in this location">
         <source>Folder is already in this location</source>
-        <target></target>
+        <target>~Folderul este deja în acea locație</target>
       </trans-unit>
       <trans-unit id="vignj87" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target></target>
+        <target>~Există deja un folder cu acest nume în destinație.</target>
       </trans-unit>
       <trans-unit id="v6hz7ct" resname="Failed to move folder">
         <source>Failed to move folder</source>
-        <target></target>
+        <target>~Eroare la mutarea folderului</target>
       </trans-unit>
       <trans-unit id="8c9iqcv" resname="Selected files are already in this folder">
         <source>Selected files are already in this folder</source>
-        <target></target>
+        <target>~Fișierele selectate sunt deja în acest folder</target>
       </trans-unit>
       <trans-unit id="sbxfcxb" resname="File is already in this folder">
         <source>File is already in this folder</source>
-        <target></target>
+        <target>~Fișierul este deja în acest folder</target>
       </trans-unit>
       <trans-unit id="xrdi8lx" resname="Failed to move file">
         <source>Failed to move file</source>
-        <target></target>
+        <target>~Eroare la mutarea fișierului</target>
       </trans-unit>
       <trans-unit id="nrpxg5q" resname="Asset URL copied to clipboard">
         <source>Asset URL copied to clipboard</source>
-        <target></target>
+        <target>~URL copiat în clipboard</target>
       </trans-unit>
       <trans-unit id="9nqca24" resname="Extract to folder (the internal folder structure of the ZIP will be preserved):">
         <source>Extract to folder (the internal folder structure of the ZIP will be preserved):</source>
-        <target></target>
+        <target>~Extrage în folder (structura internă a ZIP-ului va fi păstrată):</target>
       </trans-unit>
       <trans-unit id="2owdts3" resname="Extract">
         <source>Extract</source>
-        <target></target>
+        <target>~Extrage</target>
       </trans-unit>
       <trans-unit id="r6cupc8" resname="Could not read ZIP file">
         <source>Could not read ZIP file</source>
-        <target></target>
+        <target>~Nu s-a putut citi fișierul ZIP</target>
       </trans-unit>
       <trans-unit id="q8iozwr" resname="ZIP extraction is not available">
         <source>ZIP extraction is not available</source>
-        <target></target>
+        <target>~Dezarhivarea ZIP nu este disponibilă</target>
       </trans-unit>
       <trans-unit id="dvtqcxc" resname="Extraction complete">
         <source>Extraction complete</source>
-        <target></target>
+        <target>~Dezarhivare finalizată</target>
       </trans-unit>
       <trans-unit id="hgdbuuu" resname="Extracted %1 files. %2 files were skipped.">
         <source>Extracted %1 files. %2 files were skipped.</source>
-        <target></target>
+        <target>~Au fost extrase %1 fișiere. %2 fișiere au fost omise.</target>
       </trans-unit>
       <trans-unit id="cifpbos" resname="Extracted %1 files successfully.">
         <source>Extracted %1 files successfully.</source>
-        <target></target>
+        <target>~Au fost extrase cu succes %1 fișiere.</target>
       </trans-unit>
       <trans-unit id="3znt2vu" resname="No files were extracted from the ZIP.">
         <source>No files were extracted from the ZIP.</source>
-        <target></target>
+        <target>~Nu au fost extrase fișiere din ZIP.</target>
       </trans-unit>
       <trans-unit id="b6h8ubx" resname="Failed to extract ZIP file">
         <source>Failed to extract ZIP file</source>
-        <target></target>
+        <target>~Eroare la extragerea conținutului ZIP</target>
       </trans-unit>
       <trans-unit id="mxyruj7" resname="Drop files here to upload">
         <source>Drop files here to upload</source>
-        <target></target>
+        <target>~Trage fișiere aici pentru a le încărca</target>
       </trans-unit>
       <trans-unit id="ps5b13i" resname="Validating">
         <source>Validating</source>
-        <target></target>
+        <target>~Se validează</target>
       </trans-unit>
       <trans-unit id="igo42hq" resname="Valid">
         <source>Valid</source>
-        <target></target>
+        <target>~Valabil</target>
       </trans-unit>
       <trans-unit id="56iiuid" resname="Validating links...">
         <source>Validating links...</source>
-        <target></target>
+        <target>~Se validează linkurile...</target>
       </trans-unit>
       <trans-unit id="4gwboot" resname="broken">
         <source>broken</source>
-        <target></target>
+        <target>~stricat</target>
       </trans-unit>
       <trans-unit id="xal3xik" resname="No broken links">
         <source>No broken links</source>
-        <target></target>
+        <target>~Fără linkuri rupte</target>
       </trans-unit>
       <trans-unit id="h4bepyp" resname="No links found in content">
         <source>No links found in content</source>
-        <target></target>
+        <target>~Nu au fost găsite linkuri în conținut</target>
       </trans-unit>
       <trans-unit id="zve4v8w" resname="Link Validation">
         <source>Link Validation</source>
-        <target></target>
+        <target>~Validarea linkurilor</target>
       </trans-unit>
       <trans-unit id="dj148zj" resname="Error validating links">
         <source>Error validating links</source>
-        <target></target>
+        <target>~Eroare la validarea linkurilor</target>
       </trans-unit>
       <trans-unit id="d4j1h8g" resname="No broken links to export">
         <source>No broken links to export</source>
-        <target></target>
+        <target>~Fără linkuri rupte pentru export</target>
       </trans-unit>
       <trans-unit id="2ih36gk" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
-        <target></target>
+        <target>~Click pentru a deschide resursa într-o filă nouă</target>
       </trans-unit>
       <trans-unit id="hwe17xu" resname="Cannot open resource: Asset manager not available">
         <source>Cannot open resource: Asset manager not available</source>
-        <target></target>
+        <target>~Nu se poate deschide resursa: gestionarul de resurse nu este disponibil</target>
       </trans-unit>
       <trans-unit id="s0mc9a8" resname="Cannot open resource: Asset not found">
         <source>Cannot open resource: Asset not found</source>
-        <target></target>
+        <target>~Nu se poate deschide resursa: resursa nu a fost găsită</target>
       </trans-unit>
       <trans-unit id="sa49i52" resname="Error opening resource">
         <source>Error opening resource</source>
-        <target></target>
+        <target>~Eroare la deschiderea resursei</target>
       </trans-unit>
       <trans-unit id="wibwjxs" resname="No resources to export">
         <source>No resources to export</source>
-        <target></target>
+        <target>~Fără resurse pentru export</target>
       </trans-unit>
       <trans-unit id="l8vgsu9" resname="Failed to download the style">
         <source>Failed to download the style</source>
-        <target></target>
+        <target>~Eroare la descărcarea stilului</target>
       </trans-unit>
       <trans-unit id="g5zyqx8" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
+        <target>~Dimensiunea fișierului ({fileSize}) depășește dimensiunea maximă permisă ({maxSize}).</target>
       </trans-unit>
       <trans-unit id="64hmbwt" resname="File too large">
         <source>File too large</source>
-        <target></target>
+        <target>~Fișierul este prea mare</target>
       </trans-unit>
       <trans-unit id="uh59yo9" resname="My Projects">
         <source>My Projects</source>
-        <target></target>
+        <target>~Proiectele mele</target>
       </trans-unit>
       <trans-unit id="vbr3g0t" resname="Shared with me">
         <source>Shared with me</source>
-        <target></target>
+        <target>~Partajat cu mine</target>
       </trans-unit>
       <trans-unit id="dlsiy1p" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target></target>
+        <target>~Încă nu au fost partajate proiecte cu tine.</target>
       </trans-unit>
       <trans-unit id="dnva1sb" resname="Shared by">
         <source>Shared by</source>
-        <target></target>
+        <target>~Partajat de</target>
       </trans-unit>
       <trans-unit id="zqlyc0m" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target></target>
+        <target>~Salvează o copie în proiectele mele</target>
       </trans-unit>
       <trans-unit id="adhzwbn" resname="Select all">
         <source>Select all</source>
-        <target></target>
+        <target>~Selectează tot</target>
       </trans-unit>
       <trans-unit id="g1msqtc" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target></target>
+        <target>~Vrei să ștergi acest proiect?</target>
       </trans-unit>
       <trans-unit id="kskrmqd" resname="Deleting...">
         <source>Deleting...</source>
-        <target></target>
+        <target>~Se șterge...</target>
       </trans-unit>
       <trans-unit id="543omq0" resname="An error occurred while duplicating the project.">
         <source>An error occurred while duplicating the project.</source>
-        <target></target>
+        <target>~Eroare la duplicarea proiectului.</target>
       </trans-unit>
       <trans-unit id="mitya08" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target></target>
+        <target>~Eroare la deschiderea fișierului.</target>
       </trans-unit>
       <trans-unit id="4k5pz8m" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target></target>
+        <target>~Sigur vrei să ștergi acest proiect?</target>
       </trans-unit>
       <trans-unit id="xxj22wd" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target></target>
+        <target>~Sigur doriți să ștergeți %s proiecte?</target>
       </trans-unit>
       <trans-unit id="fgo7xbp" resname="Delete projects">
         <source>Delete projects</source>
-        <target></target>
+        <target>~Șterge proiecte</target>
       </trans-unit>
       <trans-unit id="olnzg92" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target></target>
+        <target>~Această acțiune nu poate fi anulată.</target>
       </trans-unit>
       <trans-unit id="e97apaj" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
-        <target></target>
+        <target>~Eroare la importarea componentului.</target>
       </trans-unit>
       <trans-unit id="fvfroy3" resname="An error occurred while importing properties.">
         <source>An error occurred while importing properties.</source>
-        <target></target>
+        <target>~Eroare la importarea proprietăților.</target>
       </trans-unit>
       <trans-unit id="hc8k9k7" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target></target>
+        <target>~Eroare la importarea fișierului.</target>
       </trans-unit>
       <trans-unit id="0gd137x" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
-        <target></target>
+        <target>~Se va folosi stilul implicit în loc.</target>
       </trans-unit>
       <trans-unit id="izehcub" resname="Style not available">
         <source>Style not available</source>
-        <target></target>
+        <target>~Stil indisponibil</target>
       </trans-unit>
       <trans-unit id="lab48e2" resname="An error occurred while saving the project">
         <source>An error occurred while saving the project</source>
-        <target></target>
+        <target>~Eroare la salvarea proiectului</target>
       </trans-unit>
       <trans-unit id="7l5w1vb" resname="Saving project...">
         <source>Saving project...</source>
-        <target></target>
+        <target>~Se salvează proiectul...</target>
       </trans-unit>
       <trans-unit id="42rc521" resname="Saving document structure to server...">
         <source>Saving document structure to server...</source>
-        <target></target>
+        <target>~Salvând structura documentului pe server...</target>
       </trans-unit>
       <trans-unit id="3fm71t9" resname="Uploading assets...">
         <source>Uploading assets...</source>
-        <target></target>
+        <target>~Încărcarea resurselor...</target>
       </trans-unit>
       <trans-unit id="2z5zsom" resname="Uploading images and files to server...">
         <source>Uploading images and files to server...</source>
-        <target></target>
+        <target>~Încărcarea imaginilor și fișierelor pe server...</target>
       </trans-unit>
       <trans-unit id="bn4zlv2" resname="Save complete!">
         <source>Save complete!</source>
-        <target></target>
+        <target>~Salvare completă!</target>
       </trans-unit>
       <trans-unit id="1cpoosc" resname="All changes have been saved successfully.">
         <source>All changes have been saved successfully.</source>
-        <target></target>
+        <target>~Toate modificările au fost salvate cu succes.</target>
       </trans-unit>
       <trans-unit id="1mifxlc" resname="Uploading asset">
         <source>Uploading asset</source>
-        <target></target>
+        <target>~Încărcarea resurselor</target>
       </trans-unit>
       <trans-unit id="oc7gk18" resname="Saving project">
         <source>Saving project</source>
-        <target></target>
+        <target>~Salvarea proiectului</target>
       </trans-unit>
       <trans-unit id="natqvri" resname="Preparing...">
         <source>Preparing...</source>
-        <target></target>
+        <target>~Se pregătește...</target>
       </trans-unit>
       <trans-unit id="d0kocra" resname="Preparing to save your project...">
         <source>Preparing to save your project...</source>
-        <target></target>
+        <target>~Se pregătește pentru a salva proiectul tău...</target>
       </trans-unit>
       <trans-unit id="kufuwe4" resname="No project available to share">
         <source>No project available to share</source>
-        <target></target>
+        <target>~Nu există un proiect disponibil pentru partajare</target>
       </trans-unit>
       <trans-unit id="469czbs" resname="Failed to load project data">
         <source>Failed to load project data</source>
-        <target></target>
+        <target>~Eroare la încărcarea datelor proiectului</target>
       </trans-unit>
       <trans-unit id="tsuqvaw" resname="Owner">
         <source>Owner</source>
-        <target></target>
+        <target>~Proprietar</target>
       </trans-unit>
       <trans-unit id="5wrtwoc" resname="you">
         <source>you</source>
-        <target></target>
+        <target>~tu</target>
       </trans-unit>
       <trans-unit id="ki7zc7n" resname="More actions">
         <source>More actions</source>
-        <target></target>
+        <target>~Mai multe acțiuni</target>
       </trans-unit>
       <trans-unit id="3wgqqma" resname="Make owner">
         <source>Make owner</source>
-        <target></target>
+        <target>~Acordă drepturi de proprietar</target>
       </trans-unit>
       <trans-unit id="bufdk61" resname="Remove access">
         <source>Remove access</source>
-        <target></target>
+        <target>~Elimină accesul</target>
       </trans-unit>
       <trans-unit id="ahgl1ar" resname="Please enter an email address">
         <source>Please enter an email address</source>
-        <target></target>
+        <target>~Introduceți o adresă de email</target>
       </trans-unit>
       <trans-unit id="wk6mahn" resname="Please enter a valid email address">
         <source>Please enter a valid email address</source>
-        <target></target>
+        <target>~Introduceți o adresă de email validă</target>
       </trans-unit>
       <trans-unit id="3c0hiwx" resname="Inviting...">
         <source>Inviting...</source>
-        <target></target>
+        <target>~Se trimite invitația...</target>
       </trans-unit>
       <trans-unit id="qi1sotr" resname="Invited {email}">
         <source>Invited {email}</source>
-        <target></target>
+        <target>~Invitat {email}</target>
       </trans-unit>
       <trans-unit id="4zakupe" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
-        <target></target>
+        <target>~Acest utilizator este deja colaborator</target>
       </trans-unit>
       <trans-unit id="jhsudis" resname="User not found">
         <source>User not found</source>
-        <target></target>
+        <target>~Utilizator nerecunoscut</target>
       </trans-unit>
       <trans-unit id="it6lcc7" resname="Failed to invite user">
         <source>Failed to invite user</source>
-        <target></target>
+        <target>~Eroare la invitarea utilizatorului</target>
       </trans-unit>
       <trans-unit id="bgab6ll" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target></target>
+        <target>~¿Ștergeți autorizarea de acces la {email}?</target>
       </trans-unit>
       <trans-unit id="927tsi3" resname="Removed {email}">
         <source>Removed {email}</source>
-        <target></target>
+        <target>~Accesul la {email} a fost șters</target>
       </trans-unit>
       <trans-unit id="saxa8hj" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target></target>
+        <target>~Eroare la ștergerea colaboratorului</target>
       </trans-unit>
       <trans-unit id="acn47w9" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target></target>
+        <target>~¿Transferați proprietatea către {email}? Veți deveni editor.</target>
       </trans-unit>
       <trans-unit id="rn72gnk" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
-        <target></target>
+        <target>~Proprietate transferată către {email}</target>
       </trans-unit>
       <trans-unit id="dvzo4ho" resname="Failed to transfer ownership">
         <source>Failed to transfer ownership</source>
-        <target></target>
+        <target>~Eroare la transferul proprietății</target>
       </trans-unit>
       <trans-unit id="c6d7v7c" resname="Project data not loaded. Please try again.">
         <source>Project data not loaded. Please try again.</source>
-        <target></target>
+        <target>~Datele proiectului nu au fost încărcate. Vă rugăm să încercați din nou.</target>
       </trans-unit>
       <trans-unit id="blc7oky" resname="Project is now public">
         <source>Project is now public</source>
-        <target></target>
+        <target>~Acum proiectul este public</target>
       </trans-unit>
       <trans-unit id="g20wtyn" resname="Project is now private">
         <source>Project is now private</source>
-        <target></target>
+        <target>~Acum proiectul este privat</target>
       </trans-unit>
       <trans-unit id="v13i761" resname="Failed to update visibility">
         <source>Failed to update visibility</source>
-        <target></target>
+        <target>~Eroare la actualizarea vizibilității</target>
       </trans-unit>
       <trans-unit id="1rgatix" resname="Link copied to clipboard">
         <source>Link copied to clipboard</source>
-        <target></target>
+        <target>~Link copiat în clipboard</target>
       </trans-unit>
       <trans-unit id="n9j2f59" resname="Failed to copy link">
         <source>Failed to copy link</source>
-        <target></target>
+        <target>~Eroare la copierea linkului</target>
       </trans-unit>
       <trans-unit id="fklfv29" resname="Print preview requires server mode">
         <source>Print preview requires server mode</source>
-        <target></target>
+        <target>~Previzualizarea de imprimare necesită modul server</target>
       </trans-unit>
       <trans-unit id="mkyd032" resname="Document manager not available">
         <source>Document manager not available</source>
-        <target></target>
+        <target>~Manager de documente indisponibil</target>
       </trans-unit>
       <trans-unit id="b3esbx9" resname="Print preview not available">
         <source>Print preview not available</source>
-        <target></target>
+        <target>~Previzualizarea de imprimare indisponibilă</target>
       </trans-unit>
       <trans-unit id="4r6oerh" resname="Failed to generate preview">
         <source>Failed to generate preview</source>
-        <target></target>
+        <target>~Eroare la generarea previzualizării</target>
       </trans-unit>
       <trans-unit id="bj5d6mh" resname="Queued">
         <source>Queued</source>
-        <target></target>
+        <target>~În coadă</target>
       </trans-unit>
       <trans-unit id="camzwa2" resname="Estimating...">
         <source>Estimating...</source>
-        <target></target>
+        <target>~Estimând...</target>
       </trans-unit>
       <trans-unit id="yszrpqg" resname="Ready">
         <source>Ready</source>
-        <target></target>
+        <target>~Gata</target>
       </trans-unit>
       <trans-unit id="zat7ydq" resname="Failed">
         <source>Failed</source>
-        <target></target>
+        <target>~Eroare</target>
       </trans-unit>
       <trans-unit id="5wkpkmy" resname="Image Optimizer">
         <source>Image Optimizer</source>
-        <target></target>
+        <target>~Optimizator de imagini</target>
       </trans-unit>
       <trans-unit id="09j0uc6" resname="N/A">
         <source>N/A</source>
-        <target></target>
+        <target>~N/D</target>
       </trans-unit>
       <trans-unit id="mmisrb5" resname="Already optimized">
         <source>Already optimized</source>
-        <target></target>
+        <target>~Deja optimizat</target>
       </trans-unit>
       <trans-unit id="289wwlq" resname="Processing">
         <source>Processing</source>
-        <target></target>
+        <target>~Procesare</target>
       </trans-unit>
       <trans-unit id="7efo7v5" resname="Saving changes...">
         <source>Saving changes...</source>
-        <target></target>
+        <target>~Salvare modificări...</target>
       </trans-unit>
       <trans-unit id="q2kpgrj" resname="Images optimized successfully">
         <source>Images optimized successfully</source>
-        <target></target>
+        <target>~Imagini optimizate cu succes</target>
       </trans-unit>
       <trans-unit id="2xe3cpj" resname="Error optimizing images">
         <source>Error optimizing images</source>
-        <target></target>
+        <target>~Eroare la optimizarea imaginilor</target>
       </trans-unit>
       <trans-unit id="yttabhk" resname="in">
         <source>in</source>
-        <target></target>
+        <target>~en</target>
       </trans-unit>
       <trans-unit id="dzdgt9u" resname="User">
         <source>User</source>
-        <target></target>
+        <target>~Utilizator</target>
       </trans-unit>
       <trans-unit id="chui2lm" resname="Viewing page">
         <source>Viewing page</source>
-        <target></target>
+        <target>~Vizualizare pagină</target>
       </trans-unit>
       <trans-unit id="4caqmyz" resname="You">
         <source>You</source>
-        <target></target>
+        <target>~Tu</target>
       </trans-unit>
       <trans-unit id="fiscigh" resname="Offline mode">
         <source>Offline mode</source>
-        <target></target>
+        <target>~Mod offline</target>
       </trans-unit>
       <trans-unit id="7e76tlk" resname="Shared">
         <source>Shared</source>
-        <target></target>
+        <target>~Partajat</target>
       </trans-unit>
       <trans-unit id="ethhxac" resname="ELPX export not available. Please save your project first.">
         <source>ELPX export not available. Please save your project first.</source>
-        <target></target>
+        <target>~Exportul ELPX nu este disponibil. Salvează mai întâi proiectul tău.</target>
       </trans-unit>
       <trans-unit id="wnebbpb" resname="Error generating ELPX file:">
         <source>Error generating ELPX file:</source>
-        <target></target>
+        <target>~Eroare la generarea fișierului ELPX:</target>
       </trans-unit>
       <trans-unit id="6kgejbq" resname="Print preview is not available.">
         <source>Print preview is not available.</source>
-        <target></target>
+        <target>~Previzualizarea de imprimare nu este disponibilă.</target>
       </trans-unit>
       <trans-unit id="cczi469" resname="Preview opened in new window.">
         <source>Preview opened in new window.</source>
-        <target></target>
+        <target>~Previzualizarea a fost deschisă într-o fereastră nouă.</target>
       </trans-unit>
       <trans-unit id="phian3s" resname="pages">
         <source>pages</source>
-        <target></target>
+        <target>~páginas</target>
       </trans-unit>
       <trans-unit id="n7b5giq" resname="Generating file from collaborative document...">
         <source>Generating file from collaborative document...</source>
-        <target></target>
+        <target>~Generând fișierul din documentul colaborativ...</target>
       </trans-unit>
       <trans-unit id="7yw84eg" resname="File saved.">
         <source>File saved.</source>
-        <target></target>
+        <target>~Fișier salvat.</target>
       </trans-unit>
       <trans-unit id="rdzs06r" resname="An error occurred while saving the file.">
         <source>An error occurred while saving the file.</source>
-        <target></target>
+        <target>~Eroare la salvarea fișierului.</target>
       </trans-unit>
       <trans-unit id="bz0f18f" resname="Preview is not available. Please reload the page.">
         <source>Preview is not available. Please reload the page.</source>
-        <target></target>
+        <target>~Previzualizarea nu este disponibilă. Vă rugăm să reîncărcați pagina.</target>
       </trans-unit>
       <trans-unit id="bc0uqnn" resname="Storage not available">
         <source>Storage not available</source>
-        <target></target>
+        <target>~Stocare indisponibilă</target>
       </trans-unit>
       <trans-unit id="a8tka3m" resname="Invalid style package">
         <source>Invalid style package</source>
-        <target></target>
+        <target>~Stil invalid</target>
       </trans-unit>
       <trans-unit id="tm8ltut" resname="config.xml not found in ZIP">
         <source>config.xml not found in ZIP</source>
-        <target></target>
+        <target>~config.xml nu a fost găsit în ZIP</target>
       </trans-unit>
       <trans-unit id="cu49yos" resname="This style cannot be downloaded">
         <source>This style cannot be downloaded</source>
-        <target></target>
+        <target>~Acest stil nu poate fi descărcat</target>
       </trans-unit>
       <trans-unit id="x7kouct" resname="Style already exists">
         <source>Style already exists</source>
-        <target></target>
+        <target>~Stilul deja există</target>
       </trans-unit>
       <trans-unit id="xbvg6pl" resname="A style with this name already exists">
         <source>A style with this name already exists</source>
-        <target></target>
+        <target>~Există deja un stil cu acest nume</target>
       </trans-unit>
       <trans-unit id="6qxq9am" resname="Style files not found">
         <source>Style files not found</source>
-        <target></target>
+        <target>~Fișiere de stiluri nerecunoscute</target>
       </trans-unit>
       <trans-unit id="s53iy7o" resname="Add page">
         <source>Add page</source>
-        <target></target>
+        <target>~Adaugă pagină</target>
       </trans-unit>
       <trans-unit id="c4p2qk8" resname="Export page">
         <source>Export page</source>
-        <target></target>
+        <target>~Exportă pagină</target>
       </trans-unit>
       <trans-unit id="fp95ryc" resname="Table of contents">
         <source>Table of contents</source>
-        <target></target>
+        <target>~Cuprins</target>
       </trans-unit>
       <trans-unit id="y4asxs0" resname="Export functionality not available. Please reload the page.">
         <source>Export functionality not available. Please reload the page.</source>
-        <target></target>
+        <target>~Funcționalitatea de export nu este disponibilă. Te rugăm să reîncarci pagina.</target>
       </trans-unit>
       <trans-unit id="uwij2mn" resname="Collaboration service not ready">
         <source>Collaboration service not ready</source>
-        <target></target>
+        <target>~Serviciul de editare colaborativă nu este disponibil</target>
       </trans-unit>
       <trans-unit id="py1s5qt" resname="Export failed">
         <source>Export failed</source>
-        <target></target>
+        <target>~Eroare la export</target>
       </trans-unit>
       <trans-unit id="13uudde" resname="Please wait for the project to fully load before importing.">
         <source>Please wait for the project to fully load before importing.</source>
-        <target></target>
+        <target>~Așteaptă ca proiectul să se încarce complet înainte de a importa.</target>
       </trans-unit>
       <trans-unit id="3jyssnt" resname="this page">
         <source>this page</source>
-        <target></target>
+        <target>~această pagină</target>
       </trans-unit>
       <trans-unit id="e0lqdhv" resname="Unknown user">
         <source>Unknown user</source>
-        <target></target>
+        <target>~Utilizator necunoscut</target>
       </trans-unit>
       <trans-unit id="5c16n9e" resname="Do you want to delete">
         <source>Do you want to delete</source>
-        <target></target>
+        <target>~Vrei să ștergi</target>
       </trans-unit>
       <trans-unit id="5m1p152" resname="selected pages">
         <source>selected pages</source>
-        <target></target>
+        <target>~paginile selectate</target>
       </trans-unit>
       <trans-unit id="l8m8evn" resname="and their children">
         <source>and their children</source>
-        <target></target>
+        <target>~și subpaginile lor</target>
       </trans-unit>
       <trans-unit id="en3cw6z" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target></target>
+        <target>~Poți anula această acțiune.</target>
       </trans-unit>
       <trans-unit id="k3dtn31" resname="and all its children">
         <source>and all its children</source>
-        <target></target>
+        <target>~și toate subpaginile lor</target>
       </trans-unit>
       <trans-unit id="0qgj8ei" resname="Another user is viewing this page or its children">
         <source>Another user is viewing this page or its children</source>
-        <target></target>
+        <target>~Există alt utilizator vizualizând această pagină sau subpaginile sale</target>
       </trans-unit>
       <trans-unit id="7md4ssm" resname="Other users are viewing this page or its children">
         <source>Other users are viewing this page or its children</source>
-        <target></target>
+        <target>~Există alți utilizatori vizualizând această pagină sau subpaginile sale</target>
       </trans-unit>
       <trans-unit id="ujy8vwh" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
-        <target></target>
+        <target>~Vor fi redirecționați automat către pagina de nivel superior.</target>
       </trans-unit>
       <trans-unit id="vtiv805" resname="Preferences will be applied after refreshing the page.">
         <source>Preferences will be applied after refreshing the page.</source>
-        <target></target>
+        <target>~Preferințele vor fi aplicate după reîmprospătarea paginii.</target>
       </trans-unit>
       <trans-unit id="rbvvztp" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
         <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target></target>
+        <target>~Este este necesar să reîncarci pagina pentru a aplica modificările. Descarcă mai întâi proiectul tău pentru a nu pierde munca. Apoi reîncarcă pagina.</target>
       </trans-unit>
       <trans-unit id="ho5a2tz" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target></target>
+        <target>~Ai modificări nesalvate. Sigur vrei să ieși?</target>
       </trans-unit>
       <trans-unit id="l946aa3" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target></target>
+        <target>~Proiectul nu este pregătit pentru editare colaborativă</target>
       </trans-unit>
       <trans-unit id="94mxwre" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
-        <target></target>
+        <target>~Se generează fișierul ELPX...</target>
       </trans-unit>
       <trans-unit id="4ot4tnq" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target></target>
+        <target>~Fișier generat și descărcat.</target>
       </trans-unit>
       <trans-unit id="10cko3p" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target></target>
+        <target>~Eroare la generarea fișierului ELPX.</target>
       </trans-unit>
       <trans-unit id="h1nl8vc" resname="Saving document...">
         <source>Saving document...</source>
-        <target></target>
+        <target>~Se salvează documentul...</target>
       </trans-unit>
       <trans-unit id="ravubxs" resname="Saving...">
         <source>Saving...</source>
-        <target></target>
+        <target>~Se salvează...</target>
       </trans-unit>
       <trans-unit id="j9woi08" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target></target>
+        <target>~Mod offline</target>
       </trans-unit>
       <trans-unit id="luw7yzl" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target></target>
+        <target>~Proiectul tău se salvează automat în browserul tău. Folosește Fișier - Exportă pentru a descărca o copie.</target>
       </trans-unit>
       <trans-unit id="3qgukwr" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
-        <target></target>
+        <target>~Nu se poate salva proiectul pe server deoarece a fost depășită quota ta de stocare. Poți descărca proiectul pe echipamentul tău.</target>
       </trans-unit>
       <trans-unit id="rvwyz6s" resname="Quota exceeded">
         <source>Quota exceeded</source>
-        <target></target>
+        <target>~Quota de stocare depășită</target>
       </trans-unit>
       <trans-unit id="1q6830e" resname="Project saved successfully">
         <source>Project saved successfully</source>
-        <target></target>
+        <target>~Proiectul a fost salvat cu succes</target>
       </trans-unit>
       <trans-unit id="ndoxq7g" resname="Failed to save project">
         <source>Failed to save project</source>
-        <target></target>
+        <target>~Eroare la salvarea proiectului</target>
       </trans-unit>
       <trans-unit id="m0nl5f5" resname="Project saved">
         <source>Project saved</source>
-        <target></target>
+        <target>~Proiect salvat</target>
       </trans-unit>
       <trans-unit id="z16u3j9" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target></target>
+        <target>~Eroare la importarea stilului</target>
       </trans-unit>
       <trans-unit id="sb924hb" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
-        <target></target>
+        <target>~Licența proiectului necesită revizuire</target>
       </trans-unit>
       <trans-unit id="q0b5o2k" resname="Add child page">
         <source>Add child page</source>
-        <target></target>
+        <target>~Adaugă subpagină</target>
       </trans-unit>
       <trans-unit id="3ukqyrr" resname="New Page">
         <source>New Page</source>
-        <target></target>
+        <target>~Pagină nouă</target>
       </trans-unit>
       <trans-unit id="ozqocvd" resname="Error storing image">
         <source>Error storing image</source>
-        <target></target>
+        <target>~Eroare la stocarea imaginii</target>
       </trans-unit>
       <trans-unit id="kis711t" resname="Could not load YouTube API">
         <source>Could not load YouTube API</source>
-        <target></target>
+        <target>~Nu s-a putut încărca API-ul YouTube</target>
       </trans-unit>
       <trans-unit id="1h3zrkm" resname="Please select an AI assistant.">
         <source>Please select an AI assistant.</source>
-        <target></target>
+        <target>~Selectează un asistent AI.</target>
       </trans-unit>
       <trans-unit id="y0o9z9n" resname="The following lines are invalid:">
         <source>The following lines are invalid:</source>
-        <target></target>
+        <target>~Următoarele linii nu sunt valide:</target>
       </trans-unit>
       <trans-unit id="lblf8kf" resname="The questions have been added successfully">
         <source>The questions have been added successfully</source>
-        <target></target>
+        <target>~Întrebările au fost adăugate cu succes</target>
       </trans-unit>
       <trans-unit id="kq1cqkc" resname="Start voice recording">
         <source>Start voice recording</source>
-        <target></target>
+        <target>~Începe înregistrarea vocală</target>
       </trans-unit>
       <trans-unit id="uu5suph" resname="File name">
         <source>File name</source>
-        <target></target>
+        <target>~Numele fișierului</target>
       </trans-unit>
       <trans-unit id="2iasjpx" resname="Recording time">
         <source>Recording time</source>
-        <target></target>
+        <target>~Timpul de înregistrare</target>
       </trans-unit>
       <trans-unit id="py4ttqu" resname="Review recording">
         <source>Review recording</source>
-        <target></target>
+        <target>~Revizuiește înregistrarea</target>
       </trans-unit>
       <trans-unit id="ao1nnmv" resname="Recording in progress">
         <source>Recording in progress</source>
-        <target></target>
+        <target>~Înregistrare în curs</target>
       </trans-unit>
       <trans-unit id="gw707ef" resname="Uploading...">
         <source>Uploading...</source>
-        <target></target>
+        <target>~Se încărca...</target>
       </trans-unit>
       <trans-unit id="qkrubjn" resname="Microphone access was denied or unavailable.">
         <source>Microphone access was denied or unavailable.</source>
-        <target></target>
+        <target>~Accesul la microfon a fost refuzat sau microfonul nu este disponibil.</target>
       </trans-unit>
       <trans-unit id="ccu9hcs" resname="Failed to save recording.">
         <source>Failed to save recording.</source>
-        <target></target>
+        <target>~Eroare la salvarea înregistrării.</target>
       </trans-unit>
       <trans-unit id="godqwqv" resname="Recording">
         <source>Recording</source>
-        <target></target>
+        <target>~Înregistrare</target>
       </trans-unit>
       <trans-unit id="tr82ib0" resname="Data error">
         <source>Data error</source>
-        <target></target>
+        <target>~Eroare de date</target>
       </trans-unit>
       <trans-unit id="xo46ur2" resname="This might not work in this ePub reader">
         <source>This might not work in this ePub reader</source>
-        <target></target>
+        <target>~Acest lucru s-ar putea să nu funcționeze în acest cititor ePub</target>
       </trans-unit>
       <trans-unit id="qv4yufg" resname="This activity does not work in ePub format">
         <source>This activity does not work in ePub format</source>
-        <target></target>
+        <target>~Această activitate nu funcționează în format ePub</target>
       </trans-unit>
       <trans-unit id="yl26h1p" resname="Full search">
         <source>Full search</source>
-        <target></target>
+        <target>~Căutare completă</target>
       </trans-unit>
       <trans-unit id="gunbhm6" resname="No search results">
         <source>No search results</source>
-        <target></target>
+        <target>~Niciun rezultat</target>
       </trans-unit>
       <trans-unit id="njpi0mp" resname="block">
         <source>block</source>
-        <target></target>
+        <target>~bloc</target>
       </trans-unit>
       <trans-unit id="07219ln" resname="Default font">
         <source>Default font</source>
-        <target></target>
+        <target>~Tipografie implicită</target>
       </trans-unit>
       <trans-unit id="ul4kr7y" resname="Uppercase">
         <source>Uppercase</source>
-        <target></target>
+        <target>~Mayúsculas</target>
       </trans-unit>
       <trans-unit id="l1q5jnr" resname="Light/Dark mode">
         <source>Light/Dark mode</source>
-        <target></target>
+        <target>~Modo claro/oscuro</target>
       </trans-unit>
       <trans-unit id="wbta4jy" resname="Generating...">
         <source>Generating...</source>
-        <target></target>
+        <target>~Generando...</target>
       </trans-unit>
       <trans-unit id="39qi9he" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target></target>
+        <target>~El selector de carpetas no respondió. Esto puede ocurrir al abrir archivos exportados directamente desde tu equipo (protocolo file://). Intenta abrir el archivo a través de un servidor.</target>
       </trans-unit>
       <trans-unit id="ff207mn" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target></target>
+        <target>~El selector de carpetas no encontró archivos. Esta es una limitación conocida al abrir archivos exportados con el protocolo file:// en algunos navegadores. Intenta usar otro navegador o abre el archivo a través de un servidor web.</target>
       </trans-unit>
       <trans-unit id="luqpe88" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target></target>
+        <target>~Modo local: debido a la política de seguridad del navegador, tendrás que seleccionar la carpeta desde la que abriste este archivo. En un servidor web esto no será necesario.</target>
       </trans-unit>
       <trans-unit id="jdac5lm" resname="Hangman game">
         <source>Hangman game</source>
-        <target></target>
+        <target>~Juego del ahorcado</target>
       </trans-unit>
       <trans-unit id="yj2fp0j" resname="Game over">
         <source>Game over</source>
-        <target></target>
+        <target>~Fin del juego</target>
       </trans-unit>
       <trans-unit id="z39p3j3" resname="Reload game?">
         <source>Reload game?</source>
-        <target></target>
+        <target>~¿Reiniciar el juego?</target>
       </trans-unit>
       <trans-unit id="clcod4d" resname="Click Play to start">
         <source>Click Play to start</source>
-        <target></target>
+        <target>~Haz clic en "Jugar" para empezar</target>
       </trans-unit>
       <trans-unit id="c0je7wj" resname="Click Other word to continue">
         <source>Click Other word to continue</source>
-        <target></target>
+        <target>~Haz clic en "Otra palabra" pentru a continua</target>
       </trans-unit>
       <trans-unit id="pn538ot" resname="Attempting to reconnect...">
         <source>Attempting to reconnect...</source>
-        <target></target>
+        <target>~Încercăm să reconectăm...</target>
       </trans-unit>
       <trans-unit id="pmk20cs" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
-        <target></target>
+        <target>~Accesul tău la acest proiect a fost revocat.</target>
       </trans-unit>
       <trans-unit id="qmyd880" resname="Mind map saved">
         <source>Mind map saved</source>
-        <target></target>
+        <target>~Hartă mentală salvată</target>
       </trans-unit>
       <trans-unit id="ogtaqry" resname="source">
         <source>source</source>
-        <target></target>
+        <target>~origine</target>
       </trans-unit>
       <trans-unit id="ggim3m6" resname="target">
         <source>target</source>
-        <target></target>
+        <target>~destinație</target>
       </trans-unit>
       <trans-unit id="fclnnoo" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
-        <target></target>
+        <target>~Creați o bară de formule nouă</target>
       </trans-unit>
       <trans-unit id="yr21uju" resname="Add Category">
         <source>Add Category</source>
-        <target></target>
+        <target>~Adaugă categorie</target>
       </trans-unit>
       <trans-unit id="32o7ia5" resname="Quick start">
         <source>Quick start</source>
-        <target></target>
+        <target>~Pornire rapidă</target>
       </trans-unit>
       <trans-unit id="9g9j15k" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target></target>
+        <target>~Începe de la zero</target>
       </trans-unit>
       <trans-unit id="zfuibq3" resname="Start with minimal example">
         <source>Start with minimal example</source>
-        <target></target>
+        <target>~Începe cu un exemplu minim</target>
       </trans-unit>
       <trans-unit id="fi5aovm" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target></target>
+        <target>~Creeți un nou set fără a încărca fișiere externe.</target>
       </trans-unit>
       <trans-unit id="e42ei0g" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
-        <target></target>
+        <target>~Setul dvs. este gol. Folosiți butonul "+ Adaugă categorie" de mai sus pentru a crea prima categorie.</target>
       </trans-unit>
       <trans-unit id="asrg3yl" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target></target>
+        <target>~Dublu clic pentru redenumire</target>
       </trans-unit>
       <trans-unit id="4gaimj3" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target></target>
+        <target>~Închideți fără a salva?</target>
       </trans-unit>
       <trans-unit id="3jytx0q" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target></target>
+        <target>~Acest set are modificări nesalvate. Închideți oricum?</target>
       </trans-unit>
       <trans-unit id="nlepqam" resname="Rename set">
         <source>Rename set</source>
-        <target></target>
+        <target>~Redenumește setul</target>
       </trans-unit>
       <trans-unit id="pz8mai7" resname="Set name">
         <source>Set name</source>
-        <target></target>
+        <target>~Numele setului</target>
       </trans-unit>
       <trans-unit id="ewq3yud" resname="Starter example">
         <source>Starter example</source>
-        <target></target>
+        <target>~Exemplu inițial</target>
       </trans-unit>
       <trans-unit id="lb0n3lq" resname="Error processing JSON:">
         <source>Error processing JSON:</source>
-        <target></target>
+        <target>~Eroare la procesarea JSON:</target>
       </trans-unit>
       <trans-unit id="4cyn5hy" resname="Code license:">
         <source>Code license:</source>
-        <target></target>
+        <target>~Licență de cod:</target>
       </trans-unit>
       <trans-unit id="4oas7xc" resname="Content:">
         <source>Content:</source>
-        <target></target>
+        <target>~Conținut:</target>
       </trans-unit>
       <trans-unit id="pzv4p6e" resname="Send to host">
         <source>Send to host</source>
-        <target></target>
+        <target>~Trimite</target>
       </trans-unit>
       <trans-unit id="lwr01u7" resname="Sent!">
         <source>Sent!</source>
-        <target></target>
+        <target>~Trimis!</target>
       </trans-unit>
       <trans-unit id="h6dkoca" resname="Missing or invalid origin.">
         <source>Missing or invalid origin.</source>
-        <target></target>
+        <target>~Lipsește originea sau originea nu este validă.</target>
       </trans-unit>
       <trans-unit id="fuc1ort" resname="No host window available.">
         <source>No host window available.</source>
-        <target></target>
+        <target>~Nu se găsește fereastra de destinație.</target>
       </trans-unit>
       <trans-unit id="ukh5b57" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target></target>
+        <target>~Setul tău este gol. Începe prin a adăuga o categorie.</target>
       </trans-unit>
       <trans-unit id="lk7kv3z" resname="Add first category">
         <source>Add first category</source>
-        <target></target>
+        <target>~Adaugă prima categorie</target>
       </trans-unit>
       <trans-unit id="fw02j23" resname="Mermaid code">
         <source>Mermaid code</source>
-        <target></target>
+        <target>~Cod Mermaid</target>
       </trans-unit>
       <trans-unit id="2993bnh" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target></target>
+        <target>~Ai nevoie de ajutor? Vizitează %s</target>
       </trans-unit>
       <trans-unit id="ne1m8b7" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
-        <target></target>
+        <target>~Diagrama Mermaid</target>
       </trans-unit>
       <trans-unit id="dk6i195" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
+        <target>~Reproducer compatibil cu subtitrări SRT. Marcați această opțiune doar dacă utilizați subtitrări SRT.</target>
       </trans-unit>
       <trans-unit id="vs2jt0b" resname="Task information">
         <source>Task information</source>
-        <target></target>
+        <target>~Informații despre sarcină</target>
       </trans-unit>
       <trans-unit id="xogdw5c" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target></target>
+        <target>~Ați comis %s erori. Încă mai aveți %s încercări. Doriți să încercați din nou?</target>
       </trans-unit>
       <trans-unit id="i9sk9pe" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
-        <target></target>
+        <target>~Trebuie să închideți chestionarul editat înainte de a salva activitatea.</target>
       </trans-unit>
       <trans-unit id="i88gktt" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target></target>
+        <target>~Videoclipurile YouTube nu pot fi încorporate în previzualizare.</target>
       </trans-unit>
       <trans-unit id="96fca3u" resname="Invalid file content">
         <source>Invalid file content</source>
-        <target></target>
+        <target>~Conținut de fișier invalid</target>
       </trans-unit>
       <trans-unit id="klz5u2o" resname="Answer type: Single">
         <source>Answer type: Single</source>
-        <target></target>
+        <target>~Tip de răspuns: Unic</target>
       </trans-unit>
       <trans-unit id="qms1qq3" resname="Answer type: Multiple">
         <source>Answer type: Multiple</source>
-        <target></target>
+        <target>~Tip de răspuns: Multiple</target>
       </trans-unit>
       <trans-unit id="tgfudcl" resname="Suggestion or hint (optional)">
         <source>Suggestion or hint (optional)</source>
-        <target></target>
+        <target>~Sugestie sau indiciu (opțional)</target>
       </trans-unit>
       <trans-unit id="q7abutt" resname="Hint or suggestion for the student">
         <source>Hint or suggestion for the student</source>
-        <target></target>
+        <target>~Indicii sau sugestii pentru student  </target>
       </trans-unit>
       <trans-unit id="d8nl9tl" resname="Feedback for correct answer (optional)">
         <source>Feedback for correct answer (optional)</source>
-        <target></target>
+        <target>~Feedback pentru răspunsul corect (opțional)  </target>
       </trans-unit>
       <trans-unit id="r6juuec" resname="Message shown when answer is correct">
         <source>Message shown when answer is correct</source>
-        <target></target>
+        <target>~Mesaj afișat când răspunsul este corect  </target>
       </trans-unit>
       <trans-unit id="19cw2h1" resname="Feedback for wrong answer (optional)">
         <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+        <target>~Feedback pentru răspunsul greșit (opțional)  </target>
       </trans-unit>
       <trans-unit id="1v5qgjq" resname="Message shown when answer is wrong">
         <source>Message shown when answer is wrong</source>
-        <target></target>
+        <target>~Mesaj afișat când răspunsul este greșit  </target>
       </trans-unit>
       <trans-unit id="agt6qmj" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target></target>
+        <target>~Nu au fost selectați indicatori pentru această activitate.  </target>
       </trans-unit>
       <trans-unit id="oy4cnug" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
-        <target></target>
+        <target>~Rezumat DigCompEdu  </target>
       </trans-unit>
       <trans-unit id="1ob5k0v" resname="Selected indicators: ">
         <source>Selected indicators: </source>
-        <target></target>
+        <target>~Indicatori selectați:  </target>
       </trans-unit>
       <trans-unit id="m5m3kql" resname="DigCompEdu: Digital Competence Manager">
         <source>DigCompEdu: Digital Competence Manager</source>
-        <target></target>
+        <target>~DigCompEdu: Gestionar de Competență Digitală  </target>
       </trans-unit>
       <trans-unit id="koc7ls7" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target></target>
+        <target>~Nu s-au putut încărca datele cadrului. Verificați dacă fișierul de date este disponibil.</target>
       </trans-unit>
       <trans-unit id="jq4ws78" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>
-        <target></target>
+        <target>~Se încarcă încă datele cadrului. Te rugăm să aștepți...</target>
       </trans-unit>
       <trans-unit id="4wehkbz" resname="DigCompEdu framework viewer">
         <source>DigCompEdu framework viewer</source>
-        <target></target>
+        <target>~Vizualizatorul cadrului DigCompEdu</target>
       </trans-unit>
       <trans-unit id="bjpkub7" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target></target>
+        <target>~Cadrul DigCompEdu</target>
       </trans-unit>
       <trans-unit id="qo1n6t5" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
-        <target></target>
+        <target>~Folosește filtre, căutare sau ecran complet pentru a explora cadrul. Indicatorii rămân selectați atunci când filtrezi.</target>
       </trans-unit>
       <trans-unit id="zicille" resname="Area">
         <source>Area</source>
-        <target></target>
+        <target>~ Zonă</target>
       </trans-unit>
       <trans-unit id="x9z0pkb" resname="Competence">
         <source>Competence</source>
-        <target></target>
+        <target>~Competență</target>
       </trans-unit>
       <trans-unit id="x553gyq" resname="Stage">
         <source>Stage</source>
-        <target></target>
+        <target>~Etapă</target>
       </trans-unit>
       <trans-unit id="zonsoky" resname="Indicator">
         <source>Indicator</source>
-        <target></target>
+        <target>~Indicator</target>
       </trans-unit>
       <trans-unit id="x22axbi" resname="Performance and examples">
         <source>Performance and examples</source>
-        <target></target>
+        <target>~Performanță și exemple</target>
       </trans-unit>
       <trans-unit id="5d1r8n2" resname="DigCompEdu settings">
         <source>DigCompEdu settings</source>
-        <target></target>
+        <target>~Setări DigCompEdu</target>
       </trans-unit>
       <trans-unit id="m3mw3of" resname="Español (MRCDD detallado)">
         <source>Español (MRCDD detallado)</source>
-        <target></target>
+        <target>~Spanol (MRCDD detaliat)</target>
       </trans-unit>
       <trans-unit id="cz6j15x" resname="Galego (MRCDD completo)">
         <source>Galego (MRCDD completo)</source>
-        <target></target>
+        <target>~Galleg (MRCDD complet)</target>
       </trans-unit>
       <trans-unit id="8o6iq83" resname="English (DigCompEdu core)">
         <source>English (DigCompEdu core)</source>
-        <target></target>
+        <target>~Engleză (DigCompEdu de bază)</target>
       </trans-unit>
       <trans-unit id="ofprtdy" resname="Display options">
         <source>Display options</source>
-        <target></target>
+        <target>~Opțiuni de vizualizare</target>
       </trans-unit>
       <trans-unit id="e9b2i76" resname="Table only">
         <source>Table only</source>
-        <target></target>
+        <target>~Doar tabel</target>
       </trans-unit>
       <trans-unit id="0wy33l3" resname="Table + textual summary">
         <source>Table + textual summary</source>
-        <target></target>
+        <target>~Tabel + rezumat textual</target>
       </trans-unit>
       <trans-unit id="lsvg7lv" resname="Competency framework">
         <source>Competency framework</source>
-        <target></target>
+        <target>~Cadru competențe</target>
       </trans-unit>
       <trans-unit id="a11a34g" resname="Selection granularity">
         <source>Selection granularity</source>
-        <target></target>
+        <target>~Granularitatea selecției</target>
       </trans-unit>
       <trans-unit id="cwpwa8x" resname="Competences">
         <source>Competences</source>
-        <target></target>
+        <target>~Competențe</target>
       </trans-unit>
       <trans-unit id="tj4fg72" resname="Levels">
         <source>Levels</source>
-        <target></target>
+        <target>~Niveluri</target>
       </trans-unit>
       <trans-unit id="f7wzdul" resname="Indicators">
         <source>Indicators</source>
-        <target></target>
+        <target>~Indicatori</target>
       </trans-unit>
       <trans-unit id="6p4a53d" resname="Search indicators">
         <source>Search indicators</source>
-        <target></target>
+        <target>~Căutați indicatori</target>
       </trans-unit>
       <trans-unit id="89yq3lo" resname="Search by area, competence, indicator...">
         <source>Search by area, competence, indicator...</source>
-        <target></target>
+        <target>~Căutați după domeniu, competență, indicator...</target>
       </trans-unit>
       <trans-unit id="gsi4grh" resname="Filter by level">
         <source>Filter by level</source>
-        <target></target>
+        <target>~Filtrați după nivel</target>
       </trans-unit>
       <trans-unit id="ilao510" resname="Toggle fullscreen">
         <source>Toggle fullscreen</source>
-        <target></target>
+        <target>~Comutați ecranul complet</target>
       </trans-unit>
       <trans-unit id="tiz54bk" resname="Reset selection">
         <source>Reset selection</source>
-        <target></target>
+        <target>~Resetați selecția</target>
       </trans-unit>
       <trans-unit id="lq2c5df" resname="Preview summary">
         <source>Preview summary</source>
-        <target></target>
+        <target>~Previzualizare rezumat</target>
       </trans-unit>
       <trans-unit id="3cxwuub" resname="DigCompEdu framework (fullscreen)">
         <source>DigCompEdu framework (fullscreen)</source>
-        <target></target>
+        <target>~Cadru DigCompEdu (ecran complet)</target>
       </trans-unit>
       <trans-unit id="ilecrs1" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target></target>
+        <target>~Previzualizare rezumat selecție</target>
       </trans-unit>
       <trans-unit id="17ba7sl" resname="Examples:">
         <source>Examples:</source>
-        <target></target>
+        <target>~Exemple:</target>
       </trans-unit>
       <trans-unit id="zhbjp86" resname="No items selected.">
         <source>No items selected.</source>
-        <target></target>
+        <target>~Nu sunt elemente selectate.</target>
       </trans-unit>
       <trans-unit id="co9rxgd" resname="Selected items: ">
         <source>Selected items: </source>
-        <target></target>
+        <target>~Elemente selectate: </target>
       </trans-unit>
       <trans-unit id="j3b8h65" resname="Area of">
         <source>Area of</source>
-        <target></target>
+        <target>~Zona de</target>
       </trans-unit>
       <trans-unit id="4o8p43b" resname="and ">
         <source>and </source>
-        <target></target>
+        <target>~și </target>
       </trans-unit>
       <trans-unit id="aiu3ued" resname="indicator">
         <source>indicator</source>
-        <target></target>
+        <target>~indicator</target>
       </trans-unit>
       <trans-unit id="7cwzmki" resname="level">
         <source>level</source>
-        <target></target>
+        <target>~nivel</target>
       </trans-unit>
       <trans-unit id="db9s99x" resname="Unable to change framework. The previous data will remain loaded.">
         <source>Unable to change framework. The previous data will remain loaded.</source>
-        <target></target>
+        <target>~Imposibil de schimbat cadrul. Datele anterioare vor fi păstrate.</target>
       </trans-unit>
       <trans-unit id="7i56r4e" resname="Font color">
         <source>Font color</source>
-        <target></target>
+        <target>~Culoarea textului</target>
       </trans-unit>
     </body>
   </file>
