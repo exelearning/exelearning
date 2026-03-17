@@ -1279,7 +1279,7 @@
       </trans-unit>
       <trans-unit id="NMoOWkS" resname="Grouping">
         <source>Grouping</source>
-        <target></target>
+        <target>~Agrupamento</target>
       </trans-unit>
       <trans-unit id="UNA_0kC" resname="Box">
         <source>Box</source>
@@ -6079,7 +6079,7 @@
       </trans-unit>
       <trans-unit id="eBiTSqv" resname="You finished the game. Your score is %s.">
         <source>You finished the game. Your score is %s.</source>
-        <target></target>
+        <target>~Você completou o jogo. Sua pontuação é %s.</target>
       </trans-unit>
       <trans-unit id="13_eLOl" resname="Please create at least one activity">
         <source>Please create at least one activity</source>
@@ -8851,7 +8851,7 @@
       </trans-unit>
       <trans-unit id="HymDl3i" resname="New column">
         <source>New column</source>
-        <target></target>
+        <target>~Nova coluna</target>
       </trans-unit>
       <trans-unit id="EXqwPw9" resname="New row">
         <source>New row</source>
@@ -12263,1795 +12263,1795 @@
       </trans-unit>
             <trans-unit id="ywu5th0" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
-        <target></target>
+        <target>~Assistente de IA padrão</target>
       </trans-unit>
       <trans-unit id="3fsntsq" resname="Select the AI that will be selected by default when editing iDevices.">
         <source>Select the AI that will be selected by default when editing iDevices.</source>
-        <target></target>
+        <target>~Selecione a IA que será usada por padrão ao editar iDevices.</target>
       </trans-unit>
       <trans-unit id="k38kk65" resname="Hide page title">
         <source>Hide page title</source>
-        <target></target>
+        <target>~Ocultar título da página</target>
       </trans-unit>
       <trans-unit id="018me0e" resname="Include MathJax (advanced features)">
         <source>Include MathJax (advanced features)</source>
-        <target></target>
+        <target>~Incluir MathJax (funções avançadas)</target>
       </trans-unit>
       <trans-unit id="jebusom" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target></target>
+        <target>~As fórmulas são exibidas mesmo que esta opção esteja desativada. Ative esta opção para incluir a biblioteca completa do MathJax nas exportações (cerca de 8 MB) para funções avançadas como ferramentas de acessibilidade e menus contextuais.</target>
       </trans-unit>
       <trans-unit id="gg9g0mb" resname="Global font">
         <source>Global font</source>
-        <target></target>
+        <target>~Tipografia global</target>
       </trans-unit>
       <trans-unit id="qv7hmg4" resname="Apply a global font to all content. Useful for accessibility and early literacy.">
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
-        <target></target>
+        <target>~Aplica uma tipografia a todo o conteúdo. Útil para acessibilidade e leitura inicial.</target>
       </trans-unit>
       <trans-unit id="uyzravf" resname="Style default">
         <source>Style default</source>
-        <target></target>
+        <target>~Estilo predefinido</target>
       </trans-unit>
       <trans-unit id="8q4rkii" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...</source>
-        <target></target>
+        <target>~HTML a incluir ao final do HEAD: LINK, META, SCRIPT, STYLE...</target>
       </trans-unit>
       <trans-unit id="xdyq09c" resname="Access denied">
         <source>Access denied</source>
-        <target></target>
+        <target>~Acesso negado</target>
       </trans-unit>
       <trans-unit id="q21l6k8" resname="Create new project">
         <source>Create new project</source>
-        <target></target>
+        <target>~Criar novo projeto</target>
       </trans-unit>
       <trans-unit id="29jbtiw" resname="Back to login">
         <source>Back to login</source>
-        <target></target>
+        <target>~Voltar ao login</target>
       </trans-unit>
       <trans-unit id="dwwpv2a" resname="You don&apos;t have permission to access this project.">
         <source>You don't have permission to access this project.</source>
-        <target></target>
+        <target>~Você não tem permissão para acessar este projeto.</target>
       </trans-unit>
       <trans-unit id="hz9xfz1" resname="Page not found">
         <source>Page not found</source>
-        <target></target>
+        <target>~Página não encontrada</target>
       </trans-unit>
       <trans-unit id="rdx73u1" resname="Server error">
         <source>Server error</source>
-        <target></target>
+        <target>~Erro do servidor</target>
       </trans-unit>
       <trans-unit id="puy3pwy" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
-        <target></target>
+        <target>~Desculpe, a página não pode ser exibida.</target>
       </trans-unit>
       <trans-unit id="qvepkpj" resname="The server encountered an error and could not complete your request. Please try again later.">
         <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target></target>
+        <target>~O servidor encontrou um erro e não conseguiu completar sua solicitação. Por favor, tente novamente mais tarde.</target>
       </trans-unit>
       <trans-unit id="wu6uu4g" resname="Search files...">
         <source>Search files...</source>
-        <target></target>
+        <target>~Procurar arquivos...</target>
       </trans-unit>
       <trans-unit id="hphnn1b" resname="New folder">
         <source>New folder</source>
-        <target></target>
+        <target>~Nova pasta</target>
       </trans-unit>
       <trans-unit id="suv3lwa" resname="Grid view">
         <source>Grid view</source>
-        <target></target>
+        <target>~Ver em grade</target>
       </trans-unit>
       <trans-unit id="axsik2k" resname="List view">
         <source>List view</source>
-        <target></target>
+        <target>~Ver em lista</target>
       </trans-unit>
       <trans-unit id="no7tdig" resname="Name A-Z">
         <source>Name A-Z</source>
-        <target></target>
+        <target>~Nome A-Z</target>
       </trans-unit>
       <trans-unit id="331dcph" resname="Name Z-A">
         <source>Name Z-A</source>
-        <target></target>
+        <target>~Nome Z-A</target>
       </trans-unit>
       <trans-unit id="70sw9t5" resname="Newest first">
         <source>Newest first</source>
-        <target></target>
+        <target>~Mais recentes primeiro</target>
       </trans-unit>
       <trans-unit id="vkbsjh9" resname="Oldest first">
         <source>Oldest first</source>
-        <target></target>
+        <target>~Mais antigos primeiro</target>
       </trans-unit>
       <trans-unit id="gfyubv1" resname="Largest first">
         <source>Largest first</source>
-        <target></target>
+        <target>~Mais grandes primeiro</target>
       </trans-unit>
       <trans-unit id="15777r0" resname="Smallest first">
         <source>Smallest first</source>
-        <target></target>
+        <target>~Mais pequenos primeiro</target>
       </trans-unit>
       <trans-unit id="gvhah0a" resname="Type A-Z">
         <source>Type A-Z</source>
-        <target></target>
+        <target>~Tipo A-Z</target>
       </trans-unit>
       <trans-unit id="cnkw477" resname="Type Z-A">
         <source>Type Z-A</source>
-        <target></target>
+        <target>~Tipo Z-A</target>
       </trans-unit>
       <trans-unit id="dtuv43v" resname="Show references">
         <source>Show references</source>
-        <target></target>
+        <target>~Mostrar referências</target>
       </trans-unit>
       <trans-unit id="6ma6510" resname="files">
         <source>files</source>
-        <target></target>
+        <target>~arquivos</target>
       </trans-unit>
       <trans-unit id="wdzqg20" resname="Go to root">
         <source>Go to root</source>
-        <target></target>
+        <target>~Diretório raiz</target>
       </trans-unit>
       <trans-unit id="rdkumbh" resname="Search results for">
         <source>Search results for</source>
-        <target></target>
+        <target>~Resultados da busca para</target>
       </trans-unit>
       <trans-unit id="gbtt17o" resname="No media files yet">
         <source>No media files yet</source>
-        <target></target>
+        <target>~Ainda não há arquivos multimídia</target>
       </trans-unit>
       <trans-unit id="t2ozmp8" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target></target>
+        <target>~Clique em "Adicionar arquivos" ou arraste arquivos aqui para fazer upload</target>
       </trans-unit>
       <trans-unit id="9zz9tip" resname="Loading assets...">
         <source>Loading assets...</source>
-        <target></target>
+        <target>~Carregando recursos...</target>
       </trans-unit>
       <trans-unit id="plm26jl" resname="Location">
         <source>Location</source>
-        <target></target>
+        <target>~Localização</target>
       </trans-unit>
       <trans-unit id="q89dkw0" resname="Select an item to view details">
         <source>Select an item to view details</source>
-        <target></target>
+        <target>~Selecione um elemento para ver os detalhes</target>
       </trans-unit>
       <trans-unit id="b9v93vp" resname="Size:">
         <source>Size:</source>
-        <target></target>
+        <target>~Tamanho:</target>
       </trans-unit>
       <trans-unit id="6l7qt17" resname="Dimensions:">
         <source>Dimensions:</source>
-        <target></target>
+        <target>~Dimensões:</target>
       </trans-unit>
       <trans-unit id="28c193f" resname="Date:">
         <source>Date:</source>
-        <target></target>
+        <target>~Data:</target>
       </trans-unit>
       <trans-unit id="6xzz9d2" resname="Usage:">
         <source>Usage:</source>
-        <target></target>
+        <target>~Uso:</target>
       </trans-unit>
       <trans-unit id="zgpds78" resname="Location:">
         <source>Location:</source>
-        <target></target>
+        <target>~Localização:</target>
       </trans-unit>
       <trans-unit id="p6odsi9" resname="Open containing folder">
         <source>Open containing folder</source>
-        <target></target>
+        <target>~Abrir pasta contendo</target>
       </trans-unit>
       <trans-unit id="nkadxcx" resname="Copy URL">
         <source>Copy URL</source>
-        <target></target>
+        <target>~Copiar URL</target>
       </trans-unit>
       <trans-unit id="bv77sb2" resname="Duplicate">
         <source>Duplicate</source>
-        <target></target>
+        <target>~Duplicar</target>
       </trans-unit>
       <trans-unit id="ypy4jlp" resname="Extract ZIP">
         <source>Extract ZIP</source>
-        <target></target>
+        <target>~Extrair ZIP</target>
       </trans-unit>
       <trans-unit id="11b081i" resname="View full size">
         <source>View full size</source>
-        <target></target>
+        <target>~Ver tamaño completo</target>
       </trans-unit>
       <trans-unit id="tteuj02" resname="Move to folder">
         <source>Move to folder</source>
-        <target></target>
+        <target>~Mover para pasta</target>
       </trans-unit>
       <trans-unit id="99xm1ui" resname="Move here">
         <source>Move here</source>
-        <target></target>
+        <target>~Mover aqui</target>
       </trans-unit>
       <trans-unit id="09shfue" resname="Search pages and content...">
         <source>Search pages and content...</source>
-        <target></target>
+        <target>~Buscar páginas e conteúdo...</target>
       </trans-unit>
       <trans-unit id="5et4byr" resname="Search results">
         <source>Search results</source>
-        <target></target>
+        <target>~Resultados da pesquisa</target>
       </trans-unit>
       <trans-unit id="9152biy" resname="No results found">
         <source>No results found</source>
-        <target></target>
+        <target>~Nenhum resultado encontrado</target>
       </trans-unit>
       <trans-unit id="842lzxu" resname="Navigate">
         <source>Navigate</source>
-        <target></target>
+        <target>~Navegar</target>
       </trans-unit>
       <trans-unit id="9snio2u" resname="Loading project images...">
         <source>Loading project images...</source>
-        <target></target>
+        <target>~Carregando imagens do projeto...</target>
       </trans-unit>
       <trans-unit id="6vxzt85" resname="No PNG or JPEG images found in this project.">
         <source>No PNG or JPEG images found in this project.</source>
-        <target></target>
+        <target>~Nenhuma imagem PNG ou JPEG encontrada neste projeto.</target>
       </trans-unit>
       <trans-unit id="vn1rorz" resname="Preset">
         <source>Preset</source>
-        <target></target>
+        <target>~Predefinido</target>
       </trans-unit>
       <trans-unit id="rmixphp" resname="Strong">
         <source>Strong</source>
-        <target></target>
+        <target>~Forte</target>
       </trans-unit>
       <trans-unit id="austg68" resname="JPEG Quality">
         <source>JPEG Quality</source>
-        <target></target>
+        <target>~Qualidade JPEG</target>
       </trans-unit>
       <trans-unit id="i1d8vqd" resname="Deselect All">
         <source>Deselect All</source>
-        <target></target>
+        <target>~Desmarcar tudo</target>
       </trans-unit>
       <trans-unit id="7e8ck7a" resname="Select/Deselect All">
         <source>Select/Deselect All</source>
-        <target></target>
+        <target>~Selecionar/Desmarcar tudo</target>
       </trans-unit>
       <trans-unit id="uk3nmkh" resname="Filename">
         <source>Filename</source>
-        <target></target>
+        <target>~Nome do arquivo</target>
       </trans-unit>
       <trans-unit id="nj8cl5t" resname="Original">
         <source>Original</source>
-        <target></target>
+        <target>~Original</target>
       </trans-unit>
       <trans-unit id="q6z4l96" resname="Estimated">
         <source>Estimated</source>
-        <target></target>
+        <target>~Estimado</target>
       </trans-unit>
       <trans-unit id="xnml5de" resname="Savings">
         <source>Savings</source>
-        <target></target>
+        <target>~Economia</target>
       </trans-unit>
       <trans-unit id="wlznhk2" resname="Selected">
         <source>Selected</source>
-        <target></target>
+        <target>~Selecionado</target>
       </trans-unit>
       <trans-unit id="em4w19o" resname="Warning:">
         <source>Warning:</source>
-        <target></target>
+        <target>~Aviso:</target>
       </trans-unit>
       <trans-unit id="62mqu12" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target></target>
+        <target>~A otimização de imagens pode reduzir a qualidade. Esta ação não pode ser desfeita.</target>
       </trans-unit>
       <trans-unit id="ok9ll1u" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target></target>
+        <target>~Deseja otimizar as imagens selecionadas?</target>
       </trans-unit>
       <trans-unit id="sf3e2zt" resname="Optimizing...">
         <source>Optimizing...</source>
-        <target></target>
+        <target>~Otimizando...</target>
       </trans-unit>
       <trans-unit id="z5tbkmv" resname="Optimize">
         <source>Optimize</source>
-        <target></target>
+        <target>~Otimizar</target>
       </trans-unit>
       <trans-unit id="71qshrf" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Bibliotecas de terceiros</target>
       </trans-unit>
       <trans-unit id="qoyac35" resname="Opens in new window">
         <source>Opens in new window</source>
-        <target></target>
+        <target>~Abre em uma nova janela</target>
       </trans-unit>
       <trans-unit id="hrqf5si" resname="Send email">
         <source>Send email</source>
-        <target></target>
+        <target>~Enviar e-mail</target>
       </trans-unit>
       <trans-unit id="fji4omk" resname="Add people by email">
         <source>Add people by email</source>
-        <target></target>
+        <target>~Adicionar usuários por e-mail</target>
       </trans-unit>
       <trans-unit id="1dy9z2g" resname="Invite">
         <source>Invite</source>
-        <target></target>
+        <target>~Convidar</target>
       </trans-unit>
       <trans-unit id="guzlm50" resname="People with access">
         <source>People with access</source>
-        <target></target>
+        <target>~Pessoas com acesso</target>
       </trans-unit>
       <trans-unit id="ppa0b17" resname="General access">
         <source>General access</source>
-        <target></target>
+        <target>~Acesso geral</target>
       </trans-unit>
       <trans-unit id="t9ghyxq" resname="Restricted (Private)">
         <source>Restricted (Private)</source>
-        <target></target>
+        <target>~Restrito (Privado)</target>
       </trans-unit>
       <trans-unit id="78ybi3p" resname="Anyone with the link (Public)">
         <source>Anyone with the link (Public)</source>
-        <target></target>
+        <target>~Qualquer pessoa com o link (Público)</target>
       </trans-unit>
       <trans-unit id="pwy88oi" resname="Anyone who has the link can view and edit in real time">
         <source>Anyone who has the link can view and edit in real time</source>
-        <target></target>
+        <target>~Qualquer pessoa com o link pode visualizar e editar em tempo real</target>
       </trans-unit>
       <trans-unit id="kpmbfyl" resname="Print preview">
         <source>Print preview</source>
-        <target></target>
+        <target>~Visualização de impressão</target>
       </trans-unit>
       <trans-unit id="get0f94" resname="Return to work area">
         <source>Return to work area</source>
-        <target></target>
+        <target>~Voltar para a área de trabalho</target>
       </trans-unit>
       <trans-unit id="4l1ftwq" resname="Return to login">
         <source>Return to login</source>
-        <target></target>
+        <target>~Voltar ao login</target>
       </trans-unit>
       <trans-unit id="anypxbs" resname="Under maintenance">
         <source>Under maintenance</source>
-        <target></target>
+        <target>~Em manutenção</target>
       </trans-unit>
       <trans-unit id="3ruzob0" resname="This application is currently under maintenance. Please try again later.">
         <source>This application is currently under maintenance. Please try again later.</source>
-        <target></target>
+        <target>~Este aplicativo está atualmente em manutenção. Por favor, tente novamente mais tarde.</target>
       </trans-unit>
       <trans-unit id="6jsjpzi" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Nome da pasta inválido. Evite caracteres especiais como / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="6oau7im" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target></target>
+        <target>~Tem certeza de que deseja excluir a pasta "%1" e todos os %2 arquivos que ela contém?</target>
       </trans-unit>
       <trans-unit id="82dz143" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target></target>
+        <target>~Tem certeza de que deseja excluir a pasta vazia "%1"?</target>
       </trans-unit>
       <trans-unit id="szhpkpz" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target></target>
+        <target>~Excluir "%1"?</target>
       </trans-unit>
       <trans-unit id="513eb0z" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Nome de arquivo inválido. Evite caracteres especiais como / \ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="p2d8hsk" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
-        <target></target>
+        <target>~Compartilhar "{title}"</target>
       </trans-unit>
       <trans-unit id="kxswyux" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target></target>
+        <target>~Digite a palavra ou frase correta e clique no botão "Responder".</target>
       </trans-unit>
       <trans-unit id="c5q9k13" resname="Timeout">
         <source>Timeout</source>
-        <target></target>
+        <target>~Tempo de espera esgotado</target>
       </trans-unit>
       <trans-unit id="booza39" resname="Network error">
         <source>Network error</source>
-        <target></target>
+        <target>~Erro de rede</target>
       </trans-unit>
       <trans-unit id="jutg4e2" resname="Invalid URL">
         <source>Invalid URL</source>
-        <target></target>
+        <target>~URL inválida</target>
       </trans-unit>
       <trans-unit id="eq8z1sb" resname="Session Expired">
         <source>Session Expired</source>
-        <target></target>
+        <target>~Sessão expirada</target>
       </trans-unit>
       <trans-unit id="m29p9tj" resname="Your session has expired. Please log in again.">
         <source>Your session has expired. Please log in again.</source>
-        <target></target>
+        <target>~Sua sessão expirou. Por favor, faça login novamente.</target>
       </trans-unit>
       <trans-unit id="1n5r2re" resname="Access Denied">
         <source>Access Denied</source>
-        <target></target>
+        <target>~Acesso negado</target>
       </trans-unit>
       <trans-unit id="061bqvv" resname="You no longer have access to this project.">
         <source>You no longer have access to this project.</source>
-        <target></target>
+        <target>~Você não tem mais acesso a este projeto.</target>
       </trans-unit>
       <trans-unit id="ytuc8yn" resname="Changelog not available">
         <source>Changelog not available</source>
-        <target></target>
+        <target>~Registro de alterações não disponível</target>
       </trans-unit>
       <trans-unit id="cipkgep" resname="Information not available">
         <source>Information not available</source>
-        <target></target>
+        <target>~Informação não disponível</target>
       </trans-unit>
       <trans-unit id="roisygf" resname="Hidden from export">
         <source>Hidden from export</source>
-        <target></target>
+        <target>~Oculto na exportação</target>
       </trans-unit>
       <trans-unit id="onwqpyd" resname="Another user">
         <source>Another user</source>
-        <target></target>
+        <target>~Outro usuário</target>
       </trans-unit>
       <trans-unit id="hi8n2w7" resname="Clone iDevice">
         <source>Clone iDevice</source>
-        <target></target>
+        <target>~Clonar iDevice</target>
       </trans-unit>
       <trans-unit id="mhoedi2" resname="Move to page">
         <source>Move to page</source>
-        <target></target>
+        <target>~Mover para página</target>
       </trans-unit>
       <trans-unit id="x9io4g0" resname="Export iDevice">
         <source>Export iDevice</source>
-        <target></target>
+        <target>~Exportar iDevice</target>
       </trans-unit>
       <trans-unit id="gwfro78" resname="iDevice locked">
         <source>iDevice locked</source>
-        <target></target>
+        <target>~iDevice bloqueado</target>
       </trans-unit>
       <trans-unit id="5s98vrx" resname="This iDevice is being edited by">
         <source>This iDevice is being edited by</source>
-        <target></target>
+        <target>~Este iDevice está sendo editado por</target>
       </trans-unit>
       <trans-unit id="6vfmxey" resname="Also delete associated box">
         <source>Also delete associated box</source>
-        <target></target>
+        <target>~Excluir também o bloqueio associado</target>
       </trans-unit>
       <trans-unit id="2fmdxpy" resname="Failed to export iDevice">
         <source>Failed to export iDevice</source>
-        <target></target>
+        <target>~Erro ao exportar iDevice</target>
       </trans-unit>
       <trans-unit id="0nvfb8g" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editado por</target>
       </trans-unit>
       <trans-unit id="8ngtxv1" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
-        <target></target>
+        <target>~O conteúdo aparecerá quando for salvo</target>
       </trans-unit>
       <trans-unit id="49opz3g" resname="An error occurred while removing the component">
         <source>An error occurred while removing the component</source>
-        <target></target>
+        <target>~Erro ao excluir o componente</target>
       </trans-unit>
       <trans-unit id="jpvjw1n" resname="An error occurred while cloning the component">
         <source>An error occurred while cloning the component</source>
-        <target></target>
+        <target>~Erro ao clonar o componente</target>
       </trans-unit>
       <trans-unit id="513xrxd" resname="Clone box">
         <source>Clone box</source>
-        <target></target>
+        <target>~Clonar caixa</target>
       </trans-unit>
       <trans-unit id="bc3h0gk" resname="Export box">
         <source>Export box</source>
-        <target></target>
+        <target>~Exportar caixa</target>
       </trans-unit>
       <trans-unit id="c8e2h3q" resname="An iDevice in this box is being edited by another user">
         <source>An iDevice in this box is being edited by another user</source>
-        <target></target>
+        <target>~Há outro usuário editando um iDevice desta caixa</target>
       </trans-unit>
       <trans-unit id="x23mti2" resname="iDevices in this box are being edited by other users">
         <source>iDevices in this box are being edited by other users</source>
-        <target></target>
+        <target>~Há outros usuários editando um iDevice desta caixa</target>
       </trans-unit>
       <trans-unit id="z8w8on0" resname="Their changes may be lost if you delete this box.">
         <source>Their changes may be lost if you delete this box.</source>
-        <target></target>
+        <target>~Suas alterações podem ser perdidas se você excluir esta caixa.</target>
       </trans-unit>
       <trans-unit id="y02ua00" resname="Do you want to delete this box?">
         <source>Do you want to delete this box?</source>
-        <target></target>
+        <target>~Deseja excluir esta caixa?</target>
       </trans-unit>
       <trans-unit id="he3rp3y" resname="Move box to page">
         <source>Move box to page</source>
-        <target></target>
+        <target>~Mover caixa para página</target>
       </trans-unit>
       <trans-unit id="i8aynvu" resname="Failed to export box">
         <source>Failed to export box</source>
-        <target></target>
+        <target>~Erro ao exportar a caixa</target>
       </trans-unit>
       <trans-unit id="i4upoxn" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
-        <target></target>
+        <target>~Erro ao clonar a caixa</target>
       </trans-unit>
       <trans-unit id="dh4e22u" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editado por</target>
       </trans-unit>
       <trans-unit id="w70sdrg" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
-        <target></target>
+        <target>~Erro ao criar a página</target>
       </trans-unit>
       <trans-unit id="s3w5ooh" resname="An error occurred while cloning the page">
         <source>An error occurred while cloning the page</source>
-        <target></target>
+        <target>~Erro ao clonar a página</target>
       </trans-unit>
       <trans-unit id="snyb8b7" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target></target>
+        <target>~Erro ao renomear a página</target>
       </trans-unit>
       <trans-unit id="xx2aw5o" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
-        <target></target>
+        <target>~Erro ao excluir a página</target>
       </trans-unit>
       <trans-unit id="5la1kiv" resname="An error occurred while reordering the page. Please try again.">
         <source>An error occurred while reordering the page. Please try again.</source>
-        <target></target>
+        <target>~Erro ao reordenar a página. Por favor, tente novamente.</target>
       </trans-unit>
       <trans-unit id="8xvv38w" resname="An error occurred while saving page properties">
         <source>An error occurred while saving page properties</source>
-        <target></target>
+        <target>~Erro ao salvar as propriedades da página</target>
       </trans-unit>
       <trans-unit id="t6ddv9v" resname="Importing...">
         <source>Importing...</source>
-        <target></target>
+        <target>~Importando...</target>
       </trans-unit>
       <trans-unit id="jcn7znz" resname="Importing project...">
         <source>Importing project...</source>
-        <target></target>
+        <target>~Importando projeto...</target>
       </trans-unit>
       <trans-unit id="6mjf59f" resname="Import Error">
         <source>Import Error</source>
-        <target></target>
+        <target>~Erro de importação</target>
       </trans-unit>
       <trans-unit id="y5o4xri" resname="Failed to import the project: ">
         <source>Failed to import the project: </source>
-        <target></target>
+        <target>~Erro ao importar o projeto:</target>
       </trans-unit>
       <trans-unit id="ftpcll0" resname="Untitled">
         <source>Untitled</source>
-        <target></target>
+        <target>~Sem título</target>
       </trans-unit>
       <trans-unit id="13melap" resname="Media library not available">
         <source>Media library not available</source>
-        <target></target>
+        <target>~Biblioteca de mídia não disponível</target>
       </trans-unit>
       <trans-unit id="b00s5tn" resname="Failed to load assets">
         <source>Failed to load assets</source>
-        <target></target>
+        <target>~Erro ao carregar os recursos</target>
       </trans-unit>
       <trans-unit id="e3ohjfl" resname="Enter folder name:">
         <source>Enter folder name:</source>
-        <target></target>
+        <target>~Insira o nome da pasta:</target>
       </trans-unit>
       <trans-unit id="0v9knkp" resname="A folder with this name already exists.">
         <source>A folder with this name already exists.</source>
-        <target></target>
+        <target>~Já existe uma pasta com esse nome.</target>
       </trans-unit>
       <trans-unit id="e5ru07q" resname="items">
         <source>items</source>
-        <target></target>
+        <target>~elementos</target>
       </trans-unit>
       <trans-unit id="29pkm64" resname="Videos">
         <source>Videos</source>
-        <target></target>
+        <target>~Vídeos</target>
       </trans-unit>
       <trans-unit id="dvp9jb5" resname="PDF">
         <source>PDF</source>
-        <target></target>
+        <target>~PDF</target>
       </trans-unit>
       <trans-unit id="gxx00tn" resname="Other">
         <source>Other</source>
-        <target></target>
+        <target>~Outros</target>
       </trans-unit>
       <trans-unit id="gx8xaze" resname="%1 files selected">
         <source>%1 files selected</source>
-        <target></target>
+        <target>~%1 arquivos selecionados</target>
       </trans-unit>
       <trans-unit id="jiaavbi" resname="Multiple files">
         <source>Multiple files</source>
-        <target></target>
+        <target>~Múltiplos arquivos</target>
       </trans-unit>
       <trans-unit id="ttifxpr" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target></target>
+        <target>~Erro ao excluir a pasta</target>
       </trans-unit>
       <trans-unit id="dlgr0uw" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
-        <target></target>
+        <target>~Este recurso está referenciado en %1 iDevices.</target>
       </trans-unit>
       <trans-unit id="rul0uo8" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target></target>
+        <target>~¿Eliminar %1 archivos seleccionados?</target>
       </trans-unit>
       <trans-unit id="5y5mfh6" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target></target>
+        <target>~Error al eliminar el archivo</target>
       </trans-unit>
       <trans-unit id="jyx65gs" resname="Rename folder">
         <source>Rename folder</source>
-        <target></target>
+        <target>~Renomear pasta</target>
       </trans-unit>
       <trans-unit id="k1mfwbz" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
-        <target></target>
+        <target>~Insira o novo nome da pasta:</target>
       </trans-unit>
       <trans-unit id="pfqu4ls" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target></target>
+        <target>~Erro ao renomear a pasta</target>
       </trans-unit>
       <trans-unit id="jvme7s8" resname="Rename file">
         <source>Rename file</source>
-        <target></target>
+        <target>~Renomear arquivo</target>
       </trans-unit>
       <trans-unit id="6uyvs9h" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target></target>
+        <target>~Insira o novo nome do arquivo:</target>
       </trans-unit>
       <trans-unit id="iwrmk30" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target></target>
+        <target>~Erro ao renomear o arquivo</target>
       </trans-unit>
       <trans-unit id="cs5cqjr" resname="copy">
         <source>copy</source>
-        <target></target>
+        <target>~cópia</target>
       </trans-unit>
       <trans-unit id="bcy9pc0" resname="Could not read file">
         <source>Could not read file</source>
-        <target></target>
+        <target>~Não foi possível ler o arquivo  </target>
       </trans-unit>
       <trans-unit id="tqboika" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target></target>
+        <target>~Duplicar arquivo  </target>
       </trans-unit>
       <trans-unit id="cb49t4q" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
-        <target></target>
+        <target>~Insira o nome para a duplicação:  </target>
       </trans-unit>
       <trans-unit id="mhzofbw" resname="Please enter a valid filename">
         <source>Please enter a valid filename</source>
-        <target></target>
+        <target>~Insira um nome de arquivo válido  </target>
       </trans-unit>
       <trans-unit id="ug0w4hk" resname="A file with this name already exists in this folder">
         <source>A file with this name already exists in this folder</source>
-        <target></target>
+        <target>~A pasta já contém um arquivo com esse nome  </target>
       </trans-unit>
       <trans-unit id="ejjkv3z" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target></target>
+        <target>~Erro ao duplicar o arquivo  </target>
       </trans-unit>
       <trans-unit id="dxhuf2p" resname="current">
         <source>current</source>
-        <target></target>
+        <target>~atual  </target>
       </trans-unit>
       <trans-unit id="15um5md" resname="Please select a destination folder">
         <source>Please select a destination folder</source>
-        <target></target>
+        <target>~Selecione uma pasta de destino  </target>
       </trans-unit>
       <trans-unit id="r6uujcd" resname="Folder is already in this location">
         <source>Folder is already in this location</source>
-        <target></target>
+        <target>~A pasta já está nesse local  </target>
       </trans-unit>
       <trans-unit id="b9urk59" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target></target>
+        <target>~Já existe uma pasta com esse nome no destino.</target>
       </trans-unit>
       <trans-unit id="3oz5eey" resname="Failed to move folder">
         <source>Failed to move folder</source>
-        <target></target>
+        <target>~Erro ao mover a pasta  </target>
       </trans-unit>
       <trans-unit id="8jeh3tm" resname="Selected files are already in this folder">
         <source>Selected files are already in this folder</source>
-        <target></target>
+        <target>~Os arquivos selecionados já estão nesta pasta  </target>
       </trans-unit>
       <trans-unit id="01wxlnl" resname="File is already in this folder">
         <source>File is already in this folder</source>
-        <target></target>
+        <target>~O arquivo já está nesta pasta  </target>
       </trans-unit>
       <trans-unit id="xxzcsvt" resname="Failed to move file">
         <source>Failed to move file</source>
-        <target></target>
+        <target>~Erro ao mover o arquivo  </target>
       </trans-unit>
       <trans-unit id="xmh38ho" resname="Asset URL copied to clipboard">
         <source>Asset URL copied to clipboard</source>
-        <target></target>
+        <target>~URL copiada para a área de transferência  </target>
       </trans-unit>
       <trans-unit id="1djtj9h" resname="Extract to folder (the internal folder structure of the ZIP will be preserved):">
         <source>Extract to folder (the internal folder structure of the ZIP will be preserved):</source>
-        <target></target>
+        <target>~Extrair para pasta (a estrutura interna do ZIP será mantida):  </target>
       </trans-unit>
       <trans-unit id="uxmgfho" resname="Extract">
         <source>Extract</source>
-        <target></target>
+        <target>~Extrair  </target>
       </trans-unit>
       <trans-unit id="d0io101" resname="Could not read ZIP file">
         <source>Could not read ZIP file</source>
-        <target></target>
+        <target>~Não foi possível ler o arquivo ZIP  </target>
       </trans-unit>
       <trans-unit id="kza478u" resname="ZIP extraction is not available">
         <source>ZIP extraction is not available</source>
-        <target></target>
+        <target>~A extração de ZIP não está disponível  </target>
       </trans-unit>
       <trans-unit id="6qrv9o6" resname="Extraction complete">
         <source>Extraction complete</source>
-        <target></target>
+        <target>~Extração concluída</target>
       </trans-unit>
       <trans-unit id="kfo6z5h" resname="Extracted %1 files. %2 files were skipped.">
         <source>Extracted %1 files. %2 files were skipped.</source>
-        <target></target>
+        <target>~Foram extraidos %1 arquivos. Foram omitidos %2 arquivos.</target>
       </trans-unit>
       <trans-unit id="e9cn6kk" resname="Extracted %1 files successfully.">
         <source>Extracted %1 files successfully.</source>
-        <target></target>
+        <target>~Foram extraidos %1 arquivos com sucesso.</target>
       </trans-unit>
       <trans-unit id="fhz6xd8" resname="No files were extracted from the ZIP.">
         <source>No files were extracted from the ZIP.</source>
-        <target></target>
+        <target>~Nenhum arquivo do ZIP foi extraído.</target>
       </trans-unit>
       <trans-unit id="0sia1ie" resname="Failed to extract ZIP file">
         <source>Failed to extract ZIP file</source>
-        <target></target>
+        <target>~Erro ao extrair o conteúdo do ZIP</target>
       </trans-unit>
       <trans-unit id="79por4j" resname="Drop files here to upload">
         <source>Drop files here to upload</source>
-        <target></target>
+        <target>~Arraste arquivos aqui para fazer upload</target>
       </trans-unit>
       <trans-unit id="glm2483" resname="Validating">
         <source>Validating</source>
-        <target></target>
+        <target>~Validando</target>
       </trans-unit>
       <trans-unit id="6k90k3u" resname="Valid">
         <source>Valid</source>
-        <target></target>
+        <target>~Válido</target>
       </trans-unit>
       <trans-unit id="28kylql" resname="Validating links...">
         <source>Validating links...</source>
-        <target></target>
+        <target>~Validando links...</target>
       </trans-unit>
       <trans-unit id="r7t6ivb" resname="broken">
         <source>broken</source>
-        <target></target>
+        <target>~quebrado</target>
       </trans-unit>
       <trans-unit id="5bj1e1v" resname="No broken links">
         <source>No broken links</source>
-        <target></target>
+        <target>~Sem links quebrados</target>
       </trans-unit>
       <trans-unit id="x1ub3fx" resname="No links found in content">
         <source>No links found in content</source>
-        <target></target>
+        <target>~Nenhum link encontrado no conteúdo</target>
       </trans-unit>
       <trans-unit id="w6ollvw" resname="Link Validation">
         <source>Link Validation</source>
-        <target></target>
+        <target>~Validação de links</target>
       </trans-unit>
       <trans-unit id="dhi5obf" resname="Error validating links">
         <source>Error validating links</source>
-        <target></target>
+        <target>~Erro ao validar os links</target>
       </trans-unit>
       <trans-unit id="32t0nzo" resname="No broken links to export">
         <source>No broken links to export</source>
-        <target></target>
+        <target>~Sem links quebrados para exportar</target>
       </trans-unit>
       <trans-unit id="pqohfy8" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
-        <target></target>
+        <target>~Clique para abrir o recurso em uma nova janela</target>
       </trans-unit>
       <trans-unit id="2posmua" resname="Cannot open resource: Asset manager not available">
         <source>Cannot open resource: Asset manager not available</source>
-        <target></target>
+        <target>~Não é possível abrir o recurso: gerenciador de recursos indisponível</target>
       </trans-unit>
       <trans-unit id="sns4wwl" resname="Cannot open resource: Asset not found">
         <source>Cannot open resource: Asset not found</source>
-        <target></target>
+        <target>~Não é possível abrir o recurso: recurso não encontrado</target>
       </trans-unit>
       <trans-unit id="h8tftwn" resname="Error opening resource">
         <source>Error opening resource</source>
-        <target></target>
+        <target>~Erro ao abrir o recurso</target>
       </trans-unit>
       <trans-unit id="10o7vas" resname="No resources to export">
         <source>No resources to export</source>
-        <target></target>
+        <target>~Sem recursos para exportar</target>
       </trans-unit>
       <trans-unit id="q9vvbqt" resname="Failed to download the style">
         <source>Failed to download the style</source>
-        <target></target>
+        <target>~Erro ao baixar o estilo</target>
       </trans-unit>
       <trans-unit id="zjxfpol" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
+        <target>~O tamanho do arquivo ({fileSize}) excede o tamanho máximo permitido ({maxSize}).</target>
       </trans-unit>
       <trans-unit id="r9wpd7y" resname="File too large">
         <source>File too large</source>
-        <target></target>
+        <target>~O arquivo é grande demais</target>
       </trans-unit>
       <trans-unit id="t1hdh2w" resname="My Projects">
         <source>My Projects</source>
-        <target></target>
+        <target>~Meus projetos</target>
       </trans-unit>
       <trans-unit id="4nw3b6n" resname="Shared with me">
         <source>Shared with me</source>
-        <target></target>
+        <target>~Compartilhados comigo</target>
       </trans-unit>
       <trans-unit id="r7tioof" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target></target>
+        <target>~Ainda não há projetos compartilhados com você.</target>
       </trans-unit>
       <trans-unit id="547p29o" resname="Shared by">
         <source>Shared by</source>
-        <target></target>
+        <target>~Compartilhado por</target>
       </trans-unit>
       <trans-unit id="36eh2hc" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target></target>
+        <target>~Salvar uma cópia nos meus projetos</target>
       </trans-unit>
       <trans-unit id="1w8yy7g" resname="Select all">
         <source>Select all</source>
-        <target></target>
+        <target>~Selecionar tudo</target>
       </trans-unit>
       <trans-unit id="mh0eiid" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target></target>
+        <target>~¿Excluir este projeto?</target>
       </trans-unit>
       <trans-unit id="m4g907e" resname="Deleting...">
         <source>Deleting...</source>
-        <target></target>
+        <target>~Excluindo...</target>
       </trans-unit>
       <trans-unit id="z1gej4f" resname="An error occurred while duplicating the project.">
         <source>An error occurred while duplicating the project.</source>
-        <target></target>
+        <target>~Erro ao duplicar o projeto.</target>
       </trans-unit>
       <trans-unit id="vqe6frj" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target></target>
+        <target>~Erro ao abrir o arquivo.</target>
       </trans-unit>
       <trans-unit id="j97b90f" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target></target>
+        <target>~Tem certeza de que deseja excluir este projeto?</target>
       </trans-unit>
       <trans-unit id="ifl5s6u" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target></target>
+        <target>~Tem certeza de que deseja excluir %s projetos?</target>
       </trans-unit>
       <trans-unit id="3kn1h1w" resname="Delete projects">
         <source>Delete projects</source>
-        <target></target>
+        <target>~Excluir projetos</target>
       </trans-unit>
       <trans-unit id="layqkw2" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target></target>
+        <target>~Esta ação não pode ser desfeita.</target>
       </trans-unit>
       <trans-unit id="fj3c7zu" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
-        <target></target>
+        <target>~Erro ao importar o componente.</target>
       </trans-unit>
       <trans-unit id="b8mjy9f" resname="An error occurred while importing properties.">
         <source>An error occurred while importing properties.</source>
-        <target></target>
+        <target>~Erro ao importar as propriedades.</target>
       </trans-unit>
       <trans-unit id="00ljvq2" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target></target>
+        <target>~Erro ao importar o arquivo.</target>
       </trans-unit>
       <trans-unit id="7bef9eg" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
-        <target></target>
+        <target>~Será usado o estilo padrão no lugar.</target>
       </trans-unit>
       <trans-unit id="8jopraq" resname="Style not available">
         <source>Style not available</source>
-        <target></target>
+        <target>~Estilo não disponível</target>
       </trans-unit>
       <trans-unit id="b7docbq" resname="An error occurred while saving the project">
         <source>An error occurred while saving the project</source>
-        <target></target>
+        <target>~Erro ao salvar o projeto</target>
       </trans-unit>
       <trans-unit id="0of68rr" resname="Saving project...">
         <source>Saving project...</source>
-        <target></target>
+        <target>~Salvando projeto...</target>
       </trans-unit>
       <trans-unit id="96f2f0p" resname="Saving document structure to server...">
         <source>Saving document structure to server...</source>
-        <target></target>
+        <target>~Salvando a estrutura do documento no servidor...</target>
       </trans-unit>
       <trans-unit id="z6oz8hy" resname="Uploading assets...">
         <source>Uploading assets...</source>
-        <target></target>
+        <target>~Carregando recursos...</target>
       </trans-unit>
       <trans-unit id="jdxh51h" resname="Uploading images and files to server...">
         <source>Uploading images and files to server...</source>
-        <target></target>
+        <target>~Carregando imagens e arquivos para o servidor...</target>
       </trans-unit>
       <trans-unit id="6lolror" resname="Save complete!">
         <source>Save complete!</source>
-        <target></target>
+        <target>~Salvo completo!</target>
       </trans-unit>
       <trans-unit id="xl0xldi" resname="All changes have been saved successfully.">
         <source>All changes have been saved successfully.</source>
-        <target></target>
+        <target>~Todas as alterações foram salvas com sucesso.</target>
       </trans-unit>
       <trans-unit id="bxq1yqc" resname="Uploading asset">
         <source>Uploading asset</source>
-        <target></target>
+        <target>~Carregando recurso</target>
       </trans-unit>
       <trans-unit id="15tl1ou" resname="Saving project">
         <source>Saving project</source>
-        <target></target>
+        <target>~Salvando projeto</target>
       </trans-unit>
       <trans-unit id="tvn8wt8" resname="Preparing...">
         <source>Preparing...</source>
-        <target></target>
+        <target>~Preparando...</target>
       </trans-unit>
       <trans-unit id="8mlqhqg" resname="Preparing to save your project...">
         <source>Preparing to save your project...</source>
-        <target></target>
+        <target>~Preparando para salvar seu projeto...</target>
       </trans-unit>
       <trans-unit id="depw0qs" resname="No project available to share">
         <source>No project available to share</source>
-        <target></target>
+        <target>~Não há um projeto disponível para compartilhar</target>
       </trans-unit>
       <trans-unit id="zwtr5a9" resname="Failed to load project data">
         <source>Failed to load project data</source>
-        <target></target>
+        <target>~Erro ao carregar os dados do projeto</target>
       </trans-unit>
       <trans-unit id="io6hoo0" resname="Owner">
         <source>Owner</source>
-        <target></target>
+        <target>~Proprietário</target>
       </trans-unit>
       <trans-unit id="l8ie8bx" resname="you">
         <source>you</source>
-        <target></target>
+        <target>~você</target>
       </trans-unit>
       <trans-unit id="alw4qnu" resname="More actions">
         <source>More actions</source>
-        <target></target>
+        <target>~Mais ações</target>
       </trans-unit>
       <trans-unit id="2vkvdac" resname="Make owner">
         <source>Make owner</source>
-        <target></target>
+        <target>~ Tornar proprietário</target>
       </trans-unit>
       <trans-unit id="g0oroz9" resname="Remove access">
         <source>Remove access</source>
-        <target></target>
+        <target>~Remover acesso</target>
       </trans-unit>
       <trans-unit id="f6klcdu" resname="Please enter an email address">
         <source>Please enter an email address</source>
-        <target></target>
+        <target>~Insira um endereço de e-mail</target>
       </trans-unit>
       <trans-unit id="boosocz" resname="Please enter a valid email address">
         <source>Please enter a valid email address</source>
-        <target></target>
+        <target>~Insira um endereço de e-mail válido</target>
       </trans-unit>
       <trans-unit id="xchyx3z" resname="Inviting...">
         <source>Inviting...</source>
-        <target></target>
+        <target>~Convidando...</target>
       </trans-unit>
       <trans-unit id="qxk8hvk" resname="Invited {email}">
         <source>Invited {email}</source>
-        <target></target>
+        <target>~Convidado {email}</target>
       </trans-unit>
       <trans-unit id="8joxcty" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
-        <target></target>
+        <target>~Este usuário já é colaborador</target>
       </trans-unit>
       <trans-unit id="p7wo1dh" resname="User not found">
         <source>User not found</source>
-        <target></target>
+        <target>~Usuário não encontrado</target>
       </trans-unit>
       <trans-unit id="fbsxmvi" resname="Failed to invite user">
         <source>Failed to invite user</source>
-        <target></target>
+        <target>~Erro ao convidar o usuário</target>
       </trans-unit>
       <trans-unit id="umasb2d" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target></target>
+        <target>~¿Excluir a autorização de acesso a {email}?</target>
       </trans-unit>
       <trans-unit id="6dxvn0j" resname="Removed {email}">
         <source>Removed {email}</source>
-        <target></target>
+        <target>~O acesso a {email} foi removido</target>
       </trans-unit>
       <trans-unit id="jvsk8x9" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target></target>
+        <target>~Erro ao remover o colaborador</target>
       </trans-unit>
       <trans-unit id="io13p73" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target></target>
+        <target>~¿Transferir a propriedade para {email}? Você passará a ser editor.</target>
       </trans-unit>
       <trans-unit id="8l4fq2m" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
-        <target></target>
+        <target>~Propriedade transferida para {email}</target>
       </trans-unit>
       <trans-unit id="l2oe3mj" resname="Failed to transfer ownership">
         <source>Failed to transfer ownership</source>
-        <target></target>
+        <target>~Erro ao transferir a propriedade</target>
       </trans-unit>
       <trans-unit id="zv3ob4s" resname="Project data not loaded. Please try again.">
         <source>Project data not loaded. Please try again.</source>
-        <target></target>
+        <target>~Dados do projeto não carregados. Por favor, tente novamente.</target>
       </trans-unit>
       <trans-unit id="tnalf8q" resname="Project is now public">
         <source>Project is now public</source>
-        <target></target>
+        <target>~Agora o projeto é público</target>
       </trans-unit>
       <trans-unit id="occgkd8" resname="Project is now private">
         <source>Project is now private</source>
-        <target></target>
+        <target>~Agora o projeto é privado</target>
       </trans-unit>
       <trans-unit id="k7oc7s6" resname="Failed to update visibility">
         <source>Failed to update visibility</source>
-        <target></target>
+        <target>~Erro ao atualizar a visibilidade</target>
       </trans-unit>
       <trans-unit id="th2xfur" resname="Link copied to clipboard">
         <source>Link copied to clipboard</source>
-        <target></target>
+        <target>~Link copiado para a área de transferência</target>
       </trans-unit>
       <trans-unit id="yz71ifc" resname="Failed to copy link">
         <source>Failed to copy link</source>
-        <target></target>
+        <target>~Erro ao copiar o link</target>
       </trans-unit>
       <trans-unit id="2dxgkrc" resname="Print preview requires server mode">
         <source>Print preview requires server mode</source>
-        <target></target>
+        <target>~A visualização de impressão requer o modo servidor</target>
       </trans-unit>
       <trans-unit id="f9wszbd" resname="Document manager not available">
         <source>Document manager not available</source>
-        <target></target>
+        <target>~Gerenciador de documentos indisponível</target>
       </trans-unit>
       <trans-unit id="7um9d7t" resname="Print preview not available">
         <source>Print preview not available</source>
-        <target></target>
+        <target>~Pré-visualização de impressão indisponível</target>
       </trans-unit>
       <trans-unit id="maogsb9" resname="Failed to generate preview">
         <source>Failed to generate preview</source>
-        <target></target>
+        <target>~Erro ao gerar a pré-visualização</target>
       </trans-unit>
       <trans-unit id="n6e7jek" resname="Queued">
         <source>Queued</source>
-        <target></target>
+        <target>~Na fila</target>
       </trans-unit>
       <trans-unit id="bh7v96y" resname="Estimating...">
         <source>Estimating...</source>
-        <target></target>
+        <target>~Estimando...</target>
       </trans-unit>
       <trans-unit id="1d5nlu0" resname="Ready">
         <source>Ready</source>
-        <target></target>
+        <target>~Pronto</target>
       </trans-unit>
       <trans-unit id="ydo8e4x" resname="Failed">
         <source>Failed</source>
-        <target></target>
+        <target>~Erro</target>
       </trans-unit>
       <trans-unit id="480slaz" resname="Image Optimizer">
         <source>Image Optimizer</source>
-        <target></target>
+        <target>~Otimizador de imagens</target>
       </trans-unit>
       <trans-unit id="wkuheq1" resname="N/A">
         <source>N/A</source>
-        <target></target>
+        <target>~N/D</target>
       </trans-unit>
       <trans-unit id="pmwfb83" resname="Already optimized">
         <source>Already optimized</source>
-        <target></target>
+        <target>~Já otimizado</target>
       </trans-unit>
       <trans-unit id="x95gjd4" resname="Processing">
         <source>Processing</source>
-        <target></target>
+        <target>~Processando</target>
       </trans-unit>
       <trans-unit id="qqno6xe" resname="Saving changes...">
         <source>Saving changes...</source>
-        <target></target>
+        <target>~Salvando alterações...</target>
       </trans-unit>
       <trans-unit id="6hh2jw4" resname="Images optimized successfully">
         <source>Images optimized successfully</source>
-        <target></target>
+        <target>~Imagens otimizadas corretamente</target>
       </trans-unit>
       <trans-unit id="ovtd543" resname="Error optimizing images">
         <source>Error optimizing images</source>
-        <target></target>
+        <target>~Erro ao otimizar as imagens</target>
       </trans-unit>
       <trans-unit id="vdrdhdj" resname="in">
         <source>in</source>
-        <target></target>
+        <target>~em</target>
       </trans-unit>
       <trans-unit id="oq7hga8" resname="User">
         <source>User</source>
-        <target></target>
+        <target>~Usuário</target>
       </trans-unit>
       <trans-unit id="xn7don6" resname="Viewing page">
         <source>Viewing page</source>
-        <target></target>
+        <target>~Visualizando página</target>
       </trans-unit>
       <trans-unit id="31m928n" resname="You">
         <source>You</source>
-        <target></target>
+        <target>~Você</target>
       </trans-unit>
       <trans-unit id="arrmvdp" resname="Offline mode">
         <source>Offline mode</source>
-        <target></target>
+        <target>~Modo offline</target>
       </trans-unit>
       <trans-unit id="x26byg7" resname="Shared">
         <source>Shared</source>
-        <target></target>
+        <target>~Compartilhado</target>
       </trans-unit>
       <trans-unit id="66l8ygb" resname="ELPX export not available. Please save your project first.">
         <source>ELPX export not available. Please save your project first.</source>
-        <target></target>
+        <target>~Exportação ELPX não disponível. Salve seu projeto primeiro.</target>
       </trans-unit>
       <trans-unit id="ejyn6hp" resname="Error generating ELPX file:">
         <source>Error generating ELPX file:</source>
-        <target></target>
+        <target>~Erro ao gerar o arquivo ELPX:</target>
       </trans-unit>
       <trans-unit id="57ced5b" resname="Print preview is not available.">
         <source>Print preview is not available.</source>
-        <target></target>
+        <target>~A visualização de impressão não está disponível.</target>
       </trans-unit>
       <trans-unit id="6hkendz" resname="Preview opened in new window.">
         <source>Preview opened in new window.</source>
-        <target></target>
+        <target>~Visualização aberta em uma nova janela.</target>
       </trans-unit>
       <trans-unit id="t6uf4zj" resname="pages">
         <source>pages</source>
-        <target></target>
+        <target>~páginas</target>
       </trans-unit>
       <trans-unit id="snuhyke" resname="Generating file from collaborative document...">
         <source>Generating file from collaborative document...</source>
-        <target></target>
+        <target>~Gerando arquivo a partir do documento colaborativo...</target>
       </trans-unit>
       <trans-unit id="fmgf0rf" resname="File saved.">
         <source>File saved.</source>
-        <target></target>
+        <target>~Arquivo salvo.</target>
       </trans-unit>
       <trans-unit id="8dschda" resname="An error occurred while saving the file.">
         <source>An error occurred while saving the file.</source>
-        <target></target>
+        <target>~Erro ao salvar o arquivo.</target>
       </trans-unit>
       <trans-unit id="za8a2oy" resname="Preview is not available. Please reload the page.">
         <source>Preview is not available. Please reload the page.</source>
-        <target></target>
+        <target>~A visualização não está disponível. Por favor, recarregue a página.</target>
       </trans-unit>
       <trans-unit id="zw022i5" resname="Storage not available">
         <source>Storage not available</source>
-        <target></target>
+        <target>~Armazenamento não disponível</target>
       </trans-unit>
       <trans-unit id="amkez0h" resname="Invalid style package">
         <source>Invalid style package</source>
-        <target></target>
+        <target>~Estilo inválido</target>
       </trans-unit>
       <trans-unit id="mfowk9e" resname="config.xml not found in ZIP">
         <source>config.xml not found in ZIP</source>
-        <target></target>
+        <target>~config.xml não encontrado no ZIP</target>
       </trans-unit>
       <trans-unit id="8zfh28y" resname="This style cannot be downloaded">
         <source>This style cannot be downloaded</source>
-        <target></target>
+        <target>~Este estilo não pode ser baixado</target>
       </trans-unit>
       <trans-unit id="fdelgf0" resname="Style already exists">
         <source>Style already exists</source>
-        <target></target>
+        <target>~O estilo já existe</target>
       </trans-unit>
       <trans-unit id="p7a26ec" resname="A style with this name already exists">
         <source>A style with this name already exists</source>
-        <target></target>
+        <target>~Já existe um estilo com este nome</target>
       </trans-unit>
       <trans-unit id="ubd3fbn" resname="Style files not found">
         <source>Style files not found</source>
-        <target></target>
+        <target>~Arquivos de estilo não encontrados</target>
       </trans-unit>
       <trans-unit id="1g0q3v4" resname="Add page">
         <source>Add page</source>
-        <target></target>
+        <target>~Adicionar página</target>
       </trans-unit>
       <trans-unit id="gd1j80q" resname="Export page">
         <source>Export page</source>
-        <target></target>
+        <target>~Exportar página</target>
       </trans-unit>
       <trans-unit id="zyz6pj3" resname="Table of contents">
         <source>Table of contents</source>
-        <target></target>
+        <target>~Índice de conteúdos</target>
       </trans-unit>
       <trans-unit id="iw3w02g" resname="Export functionality not available. Please reload the page.">
         <source>Export functionality not available. Please reload the page.</source>
-        <target></target>
+        <target>~Funcionalidade de exportação não disponível. Por favor, recarregue a página.</target>
       </trans-unit>
       <trans-unit id="k9g5wfr" resname="Collaboration service not ready">
         <source>Collaboration service not ready</source>
-        <target></target>
+        <target>~O serviço de edição colaborativa não está disponível</target>
       </trans-unit>
       <trans-unit id="t9a1d3f" resname="Export failed">
         <source>Export failed</source>
-        <target></target>
+        <target>~Erro ao exportar</target>
       </trans-unit>
       <trans-unit id="5gxbmno" resname="Please wait for the project to fully load before importing.">
         <source>Please wait for the project to fully load before importing.</source>
-        <target></target>
+        <target>~Aguarde até que o projeto carregue completamente antes de importar.</target>
       </trans-unit>
       <trans-unit id="4ixrz1f" resname="this page">
         <source>this page</source>
-        <target></target>
+        <target>~esta página</target>
       </trans-unit>
       <trans-unit id="tu0li2k" resname="Unknown user">
         <source>Unknown user</source>
-        <target></target>
+        <target>~Usuário desconhecido</target>
       </trans-unit>
       <trans-unit id="pzkei0y" resname="Do you want to delete">
         <source>Do you want to delete</source>
-        <target></target>
+        <target>~Deseja excluir</target>
       </trans-unit>
       <trans-unit id="jz55bl9" resname="selected pages">
         <source>selected pages</source>
-        <target></target>
+        <target>~páginas selecionadas</target>
       </trans-unit>
       <trans-unit id="41tfjpf" resname="and their children">
         <source>and their children</source>
-        <target></target>
+        <target>~e suas subpáginas</target>
       </trans-unit>
       <trans-unit id="z125iy3" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target></target>
+        <target>~Você pode desfazer esta ação.</target>
       </trans-unit>
       <trans-unit id="wlcbcsx" resname="and all its children">
         <source>and all its children</source>
-        <target></target>
+        <target>~e todas as suas subpáginas</target>
       </trans-unit>
       <trans-unit id="xpot45c" resname="Another user is viewing this page or its children">
         <source>Another user is viewing this page or its children</source>
-        <target></target>
+        <target>~Há outro usuário visualizando esta página ou suas subpáginas</target>
       </trans-unit>
       <trans-unit id="sv2lw0p" resname="Other users are viewing this page or its children">
         <source>Other users are viewing this page or its children</source>
-        <target></target>
+        <target>~Há outros usuários visualizando esta página ou suas subpáginas</target>
       </trans-unit>
       <trans-unit id="knzdhud" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
-        <target></target>
+        <target>~Serão redirecionados automaticamente para a página de nível superior.</target>
       </trans-unit>
       <trans-unit id="16hnzx6" resname="Preferences will be applied after refreshing the page.">
         <source>Preferences will be applied after refreshing the page.</source>
-        <target></target>
+        <target>~As preferências serão aplicadas após atualizar a página.</target>
       </trans-unit>
       <trans-unit id="jcl2ose" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
         <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target></target>
+        <target>~É necessário recarregar a página para aplicar as alterações. Faça o download do seu projeto primeiro para não perder o trabalho. Depois, recarregue a página.</target>
       </trans-unit>
       <trans-unit id="2f34kj6" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target></target>
+        <target>~Você tem alterações não salvas. Tem certeza de que deseja sair?</target>
       </trans-unit>
       <trans-unit id="xrxy025" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target></target>
+        <target>~O projeto não está preparado para edição colaborativa</target>
       </trans-unit>
       <trans-unit id="ifzvgtw" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
-        <target></target>
+        <target>~Gerando arquivo ELPX...</target>
       </trans-unit>
       <trans-unit id="fzjtujt" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target></target>
+        <target>~Arquivo gerado e baixado.</target>
       </trans-unit>
       <trans-unit id="dmm5iku" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target></target>
+        <target>~Erro ao gerar o arquivo ELPX.</target>
       </trans-unit>
       <trans-unit id="6ogup98" resname="Saving document...">
         <source>Saving document...</source>
-        <target></target>
+        <target>~Salvando documento...</target>
       </trans-unit>
       <trans-unit id="lec843z" resname="Saving...">
         <source>Saving...</source>
-        <target></target>
+        <target>~Salvando...</target>
       </trans-unit>
       <trans-unit id="ero781y" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target></target>
+        <target>~Modo offline</target>
       </trans-unit>
       <trans-unit id="9qpqq89" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target></target>
+        <target>~Seu projeto é salvo automaticamente no seu navegador. Use Arquivo - Exportar para baixar uma cópia.</target>
       </trans-unit>
       <trans-unit id="jthqlbv" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
-        <target></target>
+        <target>~Não foi possível salvar o projeto no servidor porque você excedeu sua cota de armazenamento. Você pode baixar o projeto para o seu computador.</target>
       </trans-unit>
       <trans-unit id="xe1cv9q" resname="Quota exceeded">
         <source>Quota exceeded</source>
-        <target></target>
+        <target>~Cota de armazenamento excedida</target>
       </trans-unit>
       <trans-unit id="o35z0io" resname="Project saved successfully">
         <source>Project saved successfully</source>
-        <target></target>
+        <target>~O projeto foi salvo com sucesso</target>
       </trans-unit>
       <trans-unit id="y7hop41" resname="Failed to save project">
         <source>Failed to save project</source>
-        <target></target>
+        <target>~Erro ao salvar o projeto</target>
       </trans-unit>
       <trans-unit id="jwb4wyw" resname="Project saved">
         <source>Project saved</source>
-        <target></target>
+        <target>~Projeto salvo</target>
       </trans-unit>
       <trans-unit id="sl96ass" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target></target>
+        <target>~Erro ao importar o estilo</target>
       </trans-unit>
       <trans-unit id="kukbw59" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
-        <target></target>
+        <target>~A licença do projeto requer revisão</target>
       </trans-unit>
       <trans-unit id="rk8ooyh" resname="Add child page">
         <source>Add child page</source>
-        <target></target>
+        <target>~Adicionar subpágina</target>
       </trans-unit>
       <trans-unit id="cwmz8f7" resname="New Page">
         <source>New Page</source>
-        <target></target>
+        <target>~Nova página</target>
       </trans-unit>
       <trans-unit id="4sf5u7p" resname="Error storing image">
         <source>Error storing image</source>
-        <target></target>
+        <target>~Erro ao armazenar a imagem</target>
       </trans-unit>
       <trans-unit id="h0j2bdv" resname="Could not load YouTube API">
         <source>Could not load YouTube API</source>
-        <target></target>
+        <target>~Não foi possível carregar a API do YouTube</target>
       </trans-unit>
       <trans-unit id="dhxwwgl" resname="Please select an AI assistant.">
         <source>Please select an AI assistant.</source>
-        <target></target>
+        <target>~Selecione um assistente de IA.</target>
       </trans-unit>
       <trans-unit id="33i8g6o" resname="The following lines are invalid:">
         <source>The following lines are invalid:</source>
-        <target></target>
+        <target>~As seguintes linhas não são válidas:</target>
       </trans-unit>
       <trans-unit id="jdhcel0" resname="The questions have been added successfully">
         <source>The questions have been added successfully</source>
-        <target></target>
+        <target>~As perguntas foram adicionadas com sucesso</target>
       </trans-unit>
       <trans-unit id="qhql3wy" resname="Start voice recording">
         <source>Start voice recording</source>
-        <target></target>
+        <target>~Iniciar gravação de voz</target>
       </trans-unit>
       <trans-unit id="b8dkq0v" resname="File name">
         <source>File name</source>
-        <target></target>
+        <target>~Nome do arquivo</target>
       </trans-unit>
       <trans-unit id="kkyb05h" resname="Recording time">
         <source>Recording time</source>
-        <target></target>
+        <target>~Tempo de gravação</target>
       </trans-unit>
       <trans-unit id="6urp0ro" resname="Review recording">
         <source>Review recording</source>
-        <target></target>
+        <target>~Revisar gravação</target>
       </trans-unit>
       <trans-unit id="tnc5q6j" resname="Recording in progress">
         <source>Recording in progress</source>
-        <target></target>
+        <target>~Gravação em andamento</target>
       </trans-unit>
       <trans-unit id="6v7izra" resname="Uploading...">
         <source>Uploading...</source>
-        <target></target>
+        <target>~Carregando...</target>
       </trans-unit>
       <trans-unit id="5hjmgh3" resname="Microphone access was denied or unavailable.">
         <source>Microphone access was denied or unavailable.</source>
-        <target></target>
+        <target>~Acesso ao microfone negado ou microfone indisponível.</target>
       </trans-unit>
       <trans-unit id="4til3yb" resname="Failed to save recording.">
         <source>Failed to save recording.</source>
-        <target></target>
+        <target>~Erro ao salvar a gravação.</target>
       </trans-unit>
       <trans-unit id="hcgbh77" resname="Recording">
         <source>Recording</source>
-        <target></target>
+        <target>~Gravação</target>
       </trans-unit>
       <trans-unit id="z83p5pd" resname="Data error">
         <source>Data error</source>
-        <target></target>
+        <target>~Erro de dados</target>
       </trans-unit>
       <trans-unit id="xwwig2e" resname="This might not work in this ePub reader">
         <source>This might not work in this ePub reader</source>
-        <target></target>
+        <target>~Isso pode não funcionar neste leitor de ePub</target>
       </trans-unit>
       <trans-unit id="5p46nz9" resname="This activity does not work in ePub format">
         <source>This activity does not work in ePub format</source>
-        <target></target>
+        <target>~Esta atividade não funciona em formato ePub</target>
       </trans-unit>
       <trans-unit id="2m516s2" resname="Full search">
         <source>Full search</source>
-        <target></target>
+        <target>~Busca completa</target>
       </trans-unit>
       <trans-unit id="2de8g0u" resname="No search results">
         <source>No search results</source>
-        <target></target>
+        <target>~Sem resultados</target>
       </trans-unit>
       <trans-unit id="yb8gt1o" resname="block">
         <source>block</source>
-        <target></target>
+        <target>~bloco</target>
       </trans-unit>
       <trans-unit id="r5qb4p2" resname="Default font">
         <source>Default font</source>
-        <target></target>
+        <target>~Tipografia padrão</target>
       </trans-unit>
       <trans-unit id="nmyiss5" resname="Uppercase">
         <source>Uppercase</source>
-        <target></target>
+        <target>~Maiúsculas</target>
       </trans-unit>
       <trans-unit id="p8cup2m" resname="Light/Dark mode">
         <source>Light/Dark mode</source>
-        <target></target>
+        <target>~Modo claro/escuro</target>
       </trans-unit>
       <trans-unit id="mp1x0hm" resname="Generating...">
         <source>Generating...</source>
-        <target></target>
+        <target>~Gerando...</target>
       </trans-unit>
       <trans-unit id="jzebydx" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target></target>
+        <target>~O seletor de pastas não respondeu. Isso pode acontecer ao abrir arquivos exportados diretamente do seu computador (protocolo file://). Tente abrir o arquivo através de um servidor.</target>
       </trans-unit>
       <trans-unit id="fy5gjfd" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target></target>
+        <target>~O seletor de pastas não encontrou arquivos. Esta é uma limitação conhecida ao abrir arquivos exportados com o protocolo file:// em alguns navegadores. Tente usar outro navegador ou abra o arquivo através de um servidor web.</target>
       </trans-unit>
       <trans-unit id="tapumot" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target></target>
+        <target>~Modo local: devido à política de segurança do navegador, você precisará selecionar a pasta de onde abriu este arquivo. Em um servidor web, isso não será necessário.</target>
       </trans-unit>
       <trans-unit id="tcixb6c" resname="Hangman game">
         <source>Hangman game</source>
-        <target></target>
+        <target>~Jogo da forca</target>
       </trans-unit>
       <trans-unit id="jafdoj5" resname="Game over">
         <source>Game over</source>
-        <target></target>
+        <target>~Fim do jogo</target>
       </trans-unit>
       <trans-unit id="ztdirvd" resname="Reload game?">
         <source>Reload game?</source>
-        <target></target>
+        <target>~Reiniciar o jogo?</target>
       </trans-unit>
       <trans-unit id="des2vul" resname="Click Play to start">
         <source>Click Play to start</source>
-        <target></target>
+        <target>~Clique em "Jogar" para começar</target>
       </trans-unit>
       <trans-unit id="2lhdehq" resname="Click Other word to continue">
         <source>Click Other word to continue</source>
-        <target></target>
+        <target>~Clique em "Outra palavra" para continuar</target>
       </trans-unit>
       <trans-unit id="s7kkwbs" resname="Attempting to reconnect...">
         <source>Attempting to reconnect...</source>
-        <target></target>
+        <target>~Tentando reconectar...</target>
       </trans-unit>
       <trans-unit id="fkrzczu" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
-        <target></target>
+        <target>~Seu acesso a este projeto foi revogado.</target>
       </trans-unit>
       <trans-unit id="m6xwvf6" resname="Mind map saved">
         <source>Mind map saved</source>
-        <target></target>
+        <target>~Mapa mental salvo</target>
       </trans-unit>
       <trans-unit id="ycney3x" resname="source">
         <source>source</source>
-        <target></target>
+        <target>~origem</target>
       </trans-unit>
       <trans-unit id="a4r98pb" resname="target">
         <source>target</source>
-        <target></target>
+        <target>~destino</target>
       </trans-unit>
       <trans-unit id="r484zme" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
-        <target></target>
+        <target>~Criar nova barra de fórmulas</target>
       </trans-unit>
       <trans-unit id="m8jfscy" resname="Add Category">
         <source>Add Category</source>
-        <target></target>
+        <target>~Adicionar categoria</target>
       </trans-unit>
       <trans-unit id="1vvi8f7" resname="Quick start">
         <source>Quick start</source>
-        <target></target>
+        <target>~Início rápido</target>
       </trans-unit>
       <trans-unit id="8evxxe8" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target></target>
+        <target>~Começar do zero</target>
       </trans-unit>
       <trans-unit id="50budd5" resname="Start with minimal example">
         <source>Start with minimal example</source>
-        <target></target>
+        <target>~Começar com um exemplo mínimo</target>
       </trans-unit>
       <trans-unit id="yihy5k0" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target></target>
+        <target>~Crie um novo conjunto sem carregar arquivos externos.</target>
       </trans-unit>
       <trans-unit id="qsn0w4p" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
-        <target></target>
+        <target>~Seu conjunto está vazio. Use o botão "+ Adicionar categoria" acima para criar a primeira categoria.</target>
       </trans-unit>
       <trans-unit id="hayopxq" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target></target>
+        <target>~Clique duas vezes para renomear</target>
       </trans-unit>
       <trans-unit id="i3klcib" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target></target>
+        <target>~Fechar sem salvar?</target>
       </trans-unit>
       <trans-unit id="fknnwku" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target></target>
+        <target>~Este conjunto possui alterações não salvas. Deseja fechar mesmo assim?</target>
       </trans-unit>
       <trans-unit id="bm9pquh" resname="Rename set">
         <source>Rename set</source>
-        <target></target>
+        <target>~Renomear conjunto</target>
       </trans-unit>
       <trans-unit id="8yj6420" resname="Set name">
         <source>Set name</source>
-        <target></target>
+        <target>~Nome do conjunto  </target>
       </trans-unit>
       <trans-unit id="ofr2pl3" resname="Starter example">
         <source>Starter example</source>
-        <target></target>
+        <target>~Exemplo inicial  </target>
       </trans-unit>
       <trans-unit id="s4b3cqw" resname="Error processing JSON:">
         <source>Error processing JSON:</source>
-        <target></target>
+        <target>~Erro ao processar JSON:  </target>
       </trans-unit>
       <trans-unit id="ufmktuh" resname="Code license:">
         <source>Code license:</source>
-        <target></target>
+        <target>~Licença de código:  </target>
       </trans-unit>
       <trans-unit id="9myndkw" resname="Content:">
         <source>Content:</source>
-        <target></target>
+        <target>~Conteúdo:  </target>
       </trans-unit>
       <trans-unit id="rzxtiyl" resname="Send to host">
         <source>Send to host</source>
-        <target></target>
+        <target>~Enviar  </target>
       </trans-unit>
       <trans-unit id="bue9cfr" resname="Sent!">
         <source>Sent!</source>
-        <target></target>
+        <target>~Enviado!  </target>
       </trans-unit>
       <trans-unit id="mholwx0" resname="Missing or invalid origin.">
         <source>Missing or invalid origin.</source>
-        <target></target>
+        <target>~Falta a origem ou origem inválida.  </target>
       </trans-unit>
       <trans-unit id="p1zun3u" resname="No host window available.">
         <source>No host window available.</source>
-        <target></target>
+        <target>~Janela de destino não encontrada.  </target>
       </trans-unit>
       <trans-unit id="yamzmv2" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target></target>
+        <target>~Seu conjunto está vazio. Comece adicionando uma categoria.</target>
       </trans-unit>
       <trans-unit id="5m7yfvc" resname="Add first category">
         <source>Add first category</source>
-        <target></target>
+        <target>~Adicionar a primeira categoria</target>
       </trans-unit>
       <trans-unit id="zc6lmr4" resname="Mermaid code">
         <source>Mermaid code</source>
-        <target></target>
+        <target>~Código Mermaid</target>
       </trans-unit>
       <trans-unit id="kth9b5s" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target></target>
+        <target>~Precisa de ajuda? Visite %s</target>
       </trans-unit>
       <trans-unit id="bogqjdd" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
-        <target></target>
+        <target>~Diagrama Mermaid</target>
       </trans-unit>
       <trans-unit id="mi9wmgc" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
+        <target>~Reprodutor compatível com legendas SRT. Marque esta opção apenas se usar legendas SRT.</target>
       </trans-unit>
       <trans-unit id="26dc9uh" resname="Task information">
         <source>Task information</source>
-        <target></target>
+        <target>~Informações da tarefa</target>
       </trans-unit>
       <trans-unit id="vi87owg" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target></target>
+        <target>~Você cometeu %s erros. Restam %s tentativas. Deseja tentar novamente?</target>
       </trans-unit>
       <trans-unit id="85ptb0k" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
-        <target></target>
+        <target>~Você deve fechar o questionário editado antes de salvar a atividade.</target>
       </trans-unit>
       <trans-unit id="36hzcxo" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target></target>
+        <target>~Os vídeos do YouTube não podem ser incorporados na visualização prévia.</target>
       </trans-unit>
       <trans-unit id="sxuncln" resname="Invalid file content">
         <source>Invalid file content</source>
-        <target></target>
+        <target>~Conteúdo de arquivo inválido</target>
       </trans-unit>
       <trans-unit id="n1lnikk" resname="Answer type: Single">
         <source>Answer type: Single</source>
-        <target></target>
+        <target>~Tipo de respuesta: Única</target>
       </trans-unit>
       <trans-unit id="2ju7q91" resname="Answer type: Multiple">
         <source>Answer type: Multiple</source>
-        <target></target>
+        <target>~Tipo de respuesta: Múltiple</target>
       </trans-unit>
       <trans-unit id="q6mukwe" resname="Suggestion or hint (optional)">
         <source>Suggestion or hint (optional)</source>
-        <target></target>
+        <target>~Sugerencia ou pista (opcional)</target>
       </trans-unit>
       <trans-unit id="sojvdbc" resname="Hint or suggestion for the student">
         <source>Hint or suggestion for the student</source>
-        <target></target>
+        <target>~Pista ou sugestão para o estudante</target>
       </trans-unit>
       <trans-unit id="kw6w7co" resname="Feedback for correct answer (optional)">
         <source>Feedback for correct answer (optional)</source>
-        <target></target>
+        <target>~Retroalimentação para resposta correta (opcional)</target>
       </trans-unit>
       <trans-unit id="k2b56o1" resname="Message shown when answer is correct">
         <source>Message shown when answer is correct</source>
-        <target></target>
+        <target>~Mensagem exibida quando a resposta está correta</target>
       </trans-unit>
       <trans-unit id="k3fyp4i" resname="Feedback for wrong answer (optional)">
         <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+        <target>~Retroalimentação para resposta incorreta (opcional)</target>
       </trans-unit>
       <trans-unit id="629wja9" resname="Message shown when answer is wrong">
         <source>Message shown when answer is wrong</source>
-        <target></target>
+        <target>~Mensagem exibida quando a resposta está incorreta</target>
       </trans-unit>
       <trans-unit id="76au6m7" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target></target>
+        <target>~Nenhum indicador foi selecionado para esta atividade.</target>
       </trans-unit>
       <trans-unit id="n8elomo" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
-        <target></target>
+        <target>~Resumo DigCompEdu</target>
       </trans-unit>
       <trans-unit id="tcbsf3p" resname="Selected indicators: ">
         <source>Selected indicators: </source>
-        <target></target>
+        <target>~Indicadores selecionados:  </target>
       </trans-unit>
       <trans-unit id="m400c86" resname="DigCompEdu: Digital Competence Manager">
         <source>DigCompEdu: Digital Competence Manager</source>
-        <target></target>
+        <target>~DigCompEdu: Gestor de Competência Digital  </target>
       </trans-unit>
       <trans-unit id="2xx13ac" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target></target>
+        <target>~Não foi possível carregar os dados do quadro. Verifique se o arquivo de dados está disponível.  </target>
       </trans-unit>
       <trans-unit id="kf7zm0d" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>
-        <target></target>
+        <target>~Ainda estão carregando os dados do quadro. Por favor, aguarde...  </target>
       </trans-unit>
       <trans-unit id="dv4mukx" resname="DigCompEdu framework viewer">
         <source>DigCompEdu framework viewer</source>
-        <target></target>
+        <target>~Visualizador do quadro DigCompEdu  </target>
       </trans-unit>
       <trans-unit id="a9fic2x" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target></target>
+        <target>~Quadro DigCompEdu  </target>
       </trans-unit>
       <trans-unit id="5q78uqr" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
-        <target></target>
+        <target>~Use filtros, busca ou tela cheia para explorar o quadro. Os indicadores permanecem selecionados ao filtrar.  </target>
       </trans-unit>
       <trans-unit id="hbiv6nx" resname="Area">
         <source>Area</source>
-        <target></target>
+        <target>~Área  </target>
       </trans-unit>
       <trans-unit id="3vci61p" resname="Competence">
         <source>Competence</source>
-        <target></target>
+        <target>~Competência  </target>
       </trans-unit>
       <trans-unit id="k86f1vy" resname="Stage">
         <source>Stage</source>
-        <target></target>
+        <target>~Etapa</target>
       </trans-unit>
       <trans-unit id="20i6u16" resname="Indicator">
         <source>Indicator</source>
-        <target></target>
+        <target>~Indicador</target>
       </trans-unit>
       <trans-unit id="9z1m8qz" resname="Performance and examples">
         <source>Performance and examples</source>
-        <target></target>
+        <target>~Desempenho e exemplos</target>
       </trans-unit>
       <trans-unit id="hfsnu1w" resname="DigCompEdu settings">
         <source>DigCompEdu settings</source>
-        <target></target>
+        <target>~Configuração do DigCompEdu</target>
       </trans-unit>
       <trans-unit id="24yz9kq" resname="Español (MRCDD detallado)">
         <source>Español (MRCDD detallado)</source>
-        <target></target>
+        <target>~Espanhol (MRCDD detalhado)</target>
       </trans-unit>
       <trans-unit id="hramw37" resname="Galego (MRCDD completo)">
         <source>Galego (MRCDD completo)</source>
-        <target></target>
+        <target>~Galego (MRCDD completo)</target>
       </trans-unit>
       <trans-unit id="p7vliej" resname="English (DigCompEdu core)">
         <source>English (DigCompEdu core)</source>
-        <target></target>
+        <target>~Inglês (DigCompEdu núcleo)</target>
       </trans-unit>
       <trans-unit id="9y3xtd9" resname="Display options">
         <source>Display options</source>
-        <target></target>
+        <target>~Opções de visualização</target>
       </trans-unit>
       <trans-unit id="ue063f7" resname="Table only">
         <source>Table only</source>
-        <target></target>
+        <target>~Apenas tabela</target>
       </trans-unit>
       <trans-unit id="e9glg7b" resname="Table + textual summary">
         <source>Table + textual summary</source>
-        <target></target>
+        <target>~Tabela + resumo textual</target>
       </trans-unit>
       <trans-unit id="9jckl1p" resname="Competency framework">
         <source>Competency framework</source>
-        <target></target>
+        <target>~Estrutura de competências</target>
       </trans-unit>
       <trans-unit id="a51p68q" resname="Selection granularity">
         <source>Selection granularity</source>
-        <target></target>
+        <target>~Granularidade de seleção</target>
       </trans-unit>
       <trans-unit id="ie2e2go" resname="Competences">
         <source>Competences</source>
-        <target></target>
+        <target>~Competências</target>
       </trans-unit>
       <trans-unit id="44so0kw" resname="Levels">
         <source>Levels</source>
-        <target></target>
+        <target>~Níveis</target>
       </trans-unit>
       <trans-unit id="0i64f3y" resname="Indicators">
         <source>Indicators</source>
-        <target></target>
+        <target>~Indicadores</target>
       </trans-unit>
       <trans-unit id="8f0vudk" resname="Search indicators">
         <source>Search indicators</source>
-        <target></target>
+        <target>~Pesquisar indicadores</target>
       </trans-unit>
       <trans-unit id="eeqqxf4" resname="Search by area, competence, indicator...">
         <source>Search by area, competence, indicator...</source>
-        <target></target>
+        <target>~Pesquisar por área, competência, indicador...</target>
       </trans-unit>
       <trans-unit id="or6jzki" resname="Filter by level">
         <source>Filter by level</source>
-        <target></target>
+        <target>~Filtrar por nível</target>
       </trans-unit>
       <trans-unit id="kthy031" resname="Toggle fullscreen">
         <source>Toggle fullscreen</source>
-        <target></target>
+        <target>~Alternar tela cheia</target>
       </trans-unit>
       <trans-unit id="8ycwrvq" resname="Reset selection">
         <source>Reset selection</source>
-        <target></target>
+        <target>~Restabelecer seleção</target>
       </trans-unit>
       <trans-unit id="zbpdnwx" resname="Preview summary">
         <source>Preview summary</source>
-        <target></target>
+        <target>~Visualização prévia do resumo</target>
       </trans-unit>
       <trans-unit id="wmsxo8e" resname="DigCompEdu framework (fullscreen)">
         <source>DigCompEdu framework (fullscreen)</source>
-        <target></target>
+        <target>~Marco DigCompEdu (tela cheia)  </target>
       </trans-unit>
       <trans-unit id="sf4gv8b" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target></target>
+        <target>~Pré-visualização do resumo da seleção  </target>
       </trans-unit>
       <trans-unit id="9uioarr" resname="Examples:">
         <source>Examples:</source>
-        <target></target>
+        <target>~Exemplos:  </target>
       </trans-unit>
       <trans-unit id="fbjldba" resname="No items selected.">
         <source>No items selected.</source>
-        <target></target>
+        <target>~Não há elementos selecionados.  </target>
       </trans-unit>
       <trans-unit id="kxb5x2i" resname="Selected items: ">
         <source>Selected items: </source>
-        <target></target>
+        <target>~Elementos selecionados:  </target>
       </trans-unit>
       <trans-unit id="gkx9dmy" resname="Area of">
         <source>Area of</source>
-        <target></target>
+        <target>~Área de  </target>
       </trans-unit>
       <trans-unit id="a1srhhp" resname="and ">
         <source>and </source>
-        <target></target>
+        <target>~e  </target>
       </trans-unit>
       <trans-unit id="4v54a6e" resname="indicator">
         <source>indicator</source>
-        <target></target>
+        <target>~indicador  </target>
       </trans-unit>
       <trans-unit id="o4j5ivp" resname="level">
         <source>level</source>
-        <target></target>
+        <target>~nível  </target>
       </trans-unit>
       <trans-unit id="e6ikq11" resname="Unable to change framework. The previous data will remain loaded.">
         <source>Unable to change framework. The previous data will remain loaded.</source>
-        <target></target>
+        <target>~Não foi possível alterar o quadro. Os dados anteriores serão mantidos.</target>
       </trans-unit>
       <trans-unit id="l5c4fnj" resname="Font color">
         <source>Font color</source>
-        <target></target>
+        <target>~Cor do texto</target>
       </trans-unit>
     </body>
   </file>
