@@ -38,6 +38,10 @@
         // Format license
         var formattedLicense = license;
         if (license !== '-') {
+            // CC0 uses a publicdomain URL, not the standard licenses/ path
+            if (license.toLowerCase() === 'creative commons: cc0 1.0') {
+                formattedLicense = '<a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a>';
+            }
             var licenseMappings = [
                 ['creative commons: attribution 4.0', 'by/4.0'],
                 ['creative commons: attribution - non derived work 4.0', 'by-nd/4.0'],

@@ -222,6 +222,21 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('exe_atools/exe_atools.js');
         });
 
+        it('should include accessibility toolbar even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeAccessibilityToolbar: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_atools')).toBeDefined();
+            expect(result.files).toContain('exe_atools/exe_atools.js');
+            expect(result.files).toContain('exe_atools/exe_atools.css');
+        });
+
+        it('should include MathJax even when html is empty (no iDevices)', () => {
+            const result = detector.detectLibraries('', { includeMathJax: true });
+
+            expect(result.libraries.find(l => l.name === 'exe_math')).toBeDefined();
+            expect(result.files).toContain('exe_math');
+        });
+
         it('should mark exe_lightbox with isDirectory=true for full directory export', () => {
             const html = '<a href="image.jpg" rel="lightbox">Image</a>';
             const result = detector.detectLibraries(html);
