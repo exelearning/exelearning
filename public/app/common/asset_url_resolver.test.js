@@ -869,18 +869,16 @@ describe('AssetUrlResolver', () => {
 
     it('sets download attribute for non-image file anchors (e.g. .docx)', async () => {
       mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/doc-resolved');
-      mockAssetManager.getAssetMetadata.mockReturnValue({
-        filename: 'report.docx',
-        mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      });
 
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', 'asset://doc-uuid-123/report.docx');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456789/report.docx');
       document.body.appendChild(anchor);
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/doc-resolved');
+      // getAttribute('href') returns asset:// for persistence (intercepted by asset_url_resolver)
+      // Verify resolution happened by checking data-asset-loading was removed
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
       expect(anchor.getAttribute('download')).toBe('report.docx');
 
       document.body.removeChild(anchor);
@@ -888,34 +886,29 @@ describe('AssetUrlResolver', () => {
 
     it('does NOT set download attribute for image file anchors', async () => {
       mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
-      mockAssetManager.getAssetMetadata.mockReturnValue({
-        filename: 'photo.jpg',
-        mime: 'image/jpeg',
-      });
 
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', 'asset://img-uuid-456/photo.jpg');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456780/photo.jpg');
       document.body.appendChild(anchor);
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/img-resolved');
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
       expect(anchor.hasAttribute('download')).toBe(false);
 
       document.body.removeChild(anchor);
     });
 
-    it('does NOT set download attribute when metadata is unavailable', async () => {
-      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/no-meta-resolved');
-      mockAssetManager.getAssetMetadata.mockReturnValue(null);
+    it('does NOT set download when URL has no filename path', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/no-path-resolved');
 
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', 'asset://no-meta-uuid/file.odt');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456781');
       document.body.appendChild(anchor);
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/no-meta-resolved');
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
       expect(anchor.hasAttribute('download')).toBe(false);
 
       document.body.removeChild(anchor);
@@ -923,18 +916,14 @@ describe('AssetUrlResolver', () => {
 
     it('sets download attribute for PDF file anchors', async () => {
       mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/pdf-resolved');
-      mockAssetManager.getAssetMetadata.mockReturnValue({
-        filename: 'document.pdf',
-        mime: 'application/pdf',
-      });
 
       const anchor = document.createElement('a');
-      anchor.setAttribute('href', 'asset://pdf-uuid-789/document.pdf');
+      anchor.setAttribute('href', 'asset://abcdef01-2345-6789-abcd-ef0123456782/document.pdf');
       document.body.appendChild(anchor);
 
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/pdf-resolved');
+      expect(anchor.hasAttribute('data-asset-loading')).toBe(false);
       expect(anchor.getAttribute('download')).toBe('document.pdf');
 
       document.body.removeChild(anchor);
@@ -2210,6 +2199,55 @@ describe('AssetUrlResolver', () => {
 
       expect(link.getAttribute('target')).toBe('_blank');
       expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+
+      document.body.removeChild(link);
+    });
+
+    it('adds download attribute on blob: URL click for non-image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/71cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'abc12345-def6-7890-abcd-ef1234567890';
+
+      // Set up assetManager with reverseBlobCache and getAssetMetadata
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'report.docx',
+        mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.getAttribute('download')).toBe('report.docx');
+      expect(link.getAttribute('target')).toBe('_blank');
+
+      document.body.removeChild(link);
+    });
+
+    it('does NOT add download attribute on blob: URL click for image assets', () => {
+      const blobUrl = 'blob:http://localhost:8080/99cf3174-a4ae-4c3b-9f2b-0972b94b8f03';
+      const assetId = 'img12345-def6-7890-abcd-ef1234567890';
+
+      const assetManager = window.eXeLearning.app.project._yjsBridge.assetManager;
+      assetManager.reverseBlobCache = new Map([[blobUrl, assetId]]);
+      assetManager.getAssetMetadata = vi.fn(() => ({
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+      }));
+
+      const link = document.createElement('a');
+      link.setAttribute('href', blobUrl);
+      document.body.appendChild(link);
+
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      link.dispatchEvent(event);
+
+      expect(link.hasAttribute('download')).toBe(false);
+      expect(link.getAttribute('target')).toBe('_blank');
 
       document.body.removeChild(link);
     });

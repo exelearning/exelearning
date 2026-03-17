@@ -73,23 +73,33 @@
         return match ? match[1] : null;
     }
 
+    /**
+     * Extract the filename from an asset:// URL path component.
+     * e.g. "asset://uuid/report.docx" → "report.docx"
+     * e.g. "asset://uuid.pdf" → null (no path separator, extension-only format)
+     *
+     * @param {string} assetUrl
+     * @returns {string|null}
+     */
+    function extractFilenameFromAssetUrl(assetUrl) {
+        if (!assetUrl) return null;
+        const match = assetUrl.match(/asset:\/\/(?:asset\/+)?[a-z0-9-]+(?:\.[a-z0-9]+)?\/(.+)/i);
+        if (!match) return null;
+        try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+    }
+
     const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
 
     /**
-     * Check whether an asset is an image based on MIME type or filename extension.
-     * Used to avoid setting `download` on image anchors (which would break lightbox).
+     * Check whether a filename has an image extension.
      *
-     * @param {string|undefined} mime
      * @param {string|undefined} filename
      * @returns {boolean}
      */
-    function isImageAsset(mime, filename) {
-        if (mime && mime.startsWith('image/')) return true;
-        if (filename) {
-            const ext = filename.toLowerCase().split('.').pop();
-            return IMAGE_EXTENSIONS.has(ext);
-        }
-        return false;
+    function isImageFilename(filename) {
+        if (!filename) return false;
+        const ext = filename.toLowerCase().split('.').pop();
+        return IMAGE_EXTENSIONS.has(ext);
     }
 
     /**
@@ -562,13 +572,12 @@
         }
 
         // Resolve each asset:// URL for anchor elements
-        const assetManager = getAssetManager();
         anchorElements.forEach((el) => {
             const assetUrl = el.getAttribute('href');
             if (!assetUrl) return;
 
             // Store the original asset URL as data attribute for reference
-            const assetId = trackElementAsset(el, assetUrl, { loading: true });
+            trackElementAsset(el, assetUrl, { loading: true });
 
             // Don't set a placeholder - keep the asset:// URL in href
             // SimpleLightbox and other libraries need a valid href when they initialize
@@ -583,11 +592,9 @@
                     // Set download attribute for non-image files so the browser
                     // uses the original filename instead of the blob UUID.
                     // Skip images to avoid breaking lightbox galleries.
-                    if (assetManager && assetId) {
-                        const metadata = assetManager.getAssetMetadata(assetId);
-                        if (metadata && metadata.filename && !isImageAsset(metadata.mime, metadata.filename)) {
-                            el.setAttribute('download', metadata.filename);
-                        }
+                    const filename = extractFilenameFromAssetUrl(assetUrl);
+                    if (filename && !isImageFilename(filename)) {
+                        el.setAttribute('download', filename);
                     }
                 }
             });
@@ -747,6 +754,21 @@
         // External links (http/https) and blob URLs (asset files like PDFs):
         // open in new tab to prevent overwriting the editor
         if (/^(https?:\/\/|blob:)/i.test(href)) {
+            // For blob URLs, add download attribute with original filename for non-image assets.
+            // This ensures the browser uses the original filename instead of the blob UUID.
+            if (href.startsWith('blob:') && !link.hasAttribute('download')) {
+                const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
+                if (assetManager) {
+                    const assetId = assetManager.reverseBlobCache?.get(href);
+                    if (assetId) {
+                        const metadata = assetManager.getAssetMetadata(assetId);
+                        if (metadata?.filename && !isImageFilename(metadata.filename)) {
+                            link.setAttribute('download', metadata.filename);
+                        }
+                    }
+                }
+            }
+
             link.setAttribute('target', '_blank');
             link.setAttribute('rel', 'noopener noreferrer');
             return;
