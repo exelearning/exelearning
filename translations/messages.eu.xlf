@@ -11871,39 +11871,39 @@
       </trans-unit>
       <trans-unit id="bHbHhew" resname="Please write the abbreviation and its meaning.">
         <source>Please write the abbreviation and its meaning.</source>
-        <target></target>
+        <target>~Esan laburdura eta haren esanahia</target>
       </trans-unit>
       <trans-unit id="ALh34kd" resname="The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?">
         <source>The ACRONYM tag is not supported in HTML5.\n\nUse the ABBR tag instead?</source>
-        <target></target>
+        <target>~HTML5rekin ez datorren ACRONYM etiketa</target>
       </trans-unit>
       <trans-unit id="qqHT8tz" resname="Node">
         <source>Node</source>
-        <target></target>
+        <target>~Beste aukera batean ABBR etiketa erabili nahi duzu?</target>
       </trans-unit>
       <trans-unit id="nwwNBDk" resname="Popup">
         <source>Popup</source>
-        <target></target>
+        <target>~Nodo</target>
       </trans-unit>
       <trans-unit id="xu2Xqx3" resname="Link to the .elpx file">
         <source>Link to the .elpx file</source>
-        <target></target>
+        <target>~Leiho txikia</target>
       </trans-unit>
       <trans-unit id="H65O8eQ" resname="Please enable JavaScript to play this game.">
         <source>Please enable JavaScript to play this game.</source>
-        <target></target>
+        <target>~Elpx fitxategiaren esteka</target>
       </trans-unit>
       <trans-unit id="d6JrxQ5" resname="Alphabet to Select From">
         <source>Alphabet to Select From</source>
-        <target></target>
+        <target>~Aktibatu JavaScript joko hau jateko</target>
       </trans-unit>
       <trans-unit id="Z9OfOtp" resname="These games require JavaScript.">
         <source>These games require JavaScript.</source>
-        <target></target>
+        <target>~Hautatzeko alphabet</target>
       </trans-unit>
       <trans-unit id="88.Te5l" resname="This is the message that the users with no JavaScript will see:">
         <source>This is the message that the users with no JavaScript will see:</source>
-        <target></target>
+        <target>~Joko hauek JavaScript behar dute</target>
       </trans-unit>
       <trans-unit id="8kQHtBn" resname="You can change it at any time.">
         <source>You can change it at any time.</source>
@@ -12263,1795 +12263,1795 @@
       </trans-unit>
             <trans-unit id="alsjwy8" resname="Default AI Assistant">
         <source>Default AI Assistant</source>
-        <target></target>
+        <target>~Asistente de IA predeterminado</target>
       </trans-unit>
       <trans-unit id="bdkckew" resname="Select the AI that will be selected by default when editing iDevices.">
         <source>Select the AI that will be selected by default when editing iDevices.</source>
-        <target></target>
+        <target>~Hautatu IA erabiltzailearen lehenetsia bezala editatzen denean.</target>
       </trans-unit>
       <trans-unit id="ym3r8bv" resname="Hide page title">
         <source>Hide page title</source>
-        <target></target>
+        <target>~Ocultar título de la página</target>
       </trans-unit>
       <trans-unit id="jpr5hr4" resname="Include MathJax (advanced features)">
         <source>Include MathJax (advanced features)</source>
-        <target></target>
+        <target>~Ezkutatu orrialdearen izena</target>
       </trans-unit>
       <trans-unit id="x22lyt6" resname="Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.">
         <source>Formulas are rendered even if this is disabled. Enable this option to include the full MathJax library in exports (about 8 MB) for advanced features such as accessibility tools and contextual menus.</source>
-        <target></target>
+        <target>~Incluir MathJax (funciones avanzadas)</target>
       </trans-unit>
       <trans-unit id="ibs15bt" resname="Global font">
         <source>Global font</source>
-        <target></target>
+        <target>~MathJax gehitzea (funtzio aurreratuak)</target>
       </trans-unit>
       <trans-unit id="kqlausw" resname="Apply a global font to all content. Useful for accessibility and early literacy.">
         <source>Apply a global font to all content. Useful for accessibility and early literacy.</source>
-        <target></target>
+        <target>~Las fórmulas se representan aunque esta opción esté desactivada. Activa esta opción para incluir la biblioteca completa de MathJax en las exportaciones (unos 8 MB) para funciones avanzadas como herramientas de accesibilidad y menús contextuales.</target>
       </trans-unit>
       <trans-unit id="oabo7em" resname="Style default">
         <source>Style default</source>
-        <target></target>
+        <target>~Formulaak irudikatzen dira aukera hau desgaituta egon arren. Aktibatu aukera hau MathJax liburutegia esportazioetan gehitzeko (hamaika MB inguru), funtzio aurreratuak, hala nola irisgarritasun tresnak eta menuko aukera zabalak.</target>
       </trans-unit>
       <trans-unit id="sxiampw" resname="HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...">
         <source>HTML to be included at the end of HEAD: LINK, META, SCRIPT, STYLE...</source>
-        <target></target>
+        <target>~Tipografía global</target>
       </trans-unit>
       <trans-unit id="z8gtbn0" resname="Access denied">
         <source>Access denied</source>
-        <target></target>
+        <target>~Tipografia globala</target>
       </trans-unit>
       <trans-unit id="2focz24" resname="Create new project">
         <source>Create new project</source>
-        <target></target>
+        <target>~Sortu proiektu berri bat</target>
       </trans-unit>
       <trans-unit id="8xfc0hm" resname="Back to login">
         <source>Back to login</source>
-        <target></target>
+        <target>~Itzuli saioa hasteko orrira</target>
       </trans-unit>
       <trans-unit id="re8hmda" resname="You don&apos;t have permission to access this project.">
         <source>You don't have permission to access this project.</source>
-        <target></target>
+        <target>~Ez duzu baimenik proiektu honetan sarbidea izateko.</target>
       </trans-unit>
       <trans-unit id="mhh8st3" resname="Page not found">
         <source>Page not found</source>
-        <target></target>
+        <target>~Orrialdea ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="22ovvv5" resname="Server error">
         <source>Server error</source>
-        <target></target>
+        <target>~Errorea zerbitzarian</target>
       </trans-unit>
       <trans-unit id="mwsy5zj" resname="Sorry, but the page cannot be displayed.">
         <source>Sorry, but the page cannot be displayed.</source>
-        <target></target>
+        <target>~Barkatu, orria ezin da erakutsi.</target>
       </trans-unit>
       <trans-unit id="3kbvtgy" resname="The server encountered an error and could not complete your request. Please try again later.">
         <source>The server encountered an error and could not complete your request. Please try again later.</source>
-        <target></target>
+        <target>~Zerbitzariak errore bat aurkitu du eta zure eskaera ezin izan du osatu. Mesedez, saiatu berriro geroago.</target>
       </trans-unit>
       <trans-unit id="1c51po6" resname="Search files...">
         <source>Search files...</source>
-        <target></target>
+        <target>~Bilatu fitxategiak...</target>
       </trans-unit>
       <trans-unit id="3y3mswm" resname="New folder">
         <source>New folder</source>
-        <target></target>
+        <target>~Karpetaren berria</target>
       </trans-unit>
       <trans-unit id="cpo8uph" resname="Grid view">
         <source>Grid view</source>
-        <target></target>
+        <target>~Ikusi errenkada-eredua</target>
       </trans-unit>
       <trans-unit id="nnjn6kv" resname="List view">
         <source>List view</source>
-        <target></target>
+        <target>~Ikusi zerrenda</target>
       </trans-unit>
       <trans-unit id="ksoselm" resname="Name A-Z">
         <source>Name A-Z</source>
-        <target></target>
+        <target>~Izena A-Z</target>
       </trans-unit>
       <trans-unit id="71y5qkv" resname="Name Z-A">
         <source>Name Z-A</source>
-        <target></target>
+        <target>~Izena Z-A</target>
       </trans-unit>
       <trans-unit id="hg3szi1" resname="Newest first">
         <source>Newest first</source>
-        <target></target>
+        <target>~Aurrekoak lehen</target>
       </trans-unit>
       <trans-unit id="lge7uyu" resname="Oldest first">
         <source>Oldest first</source>
-        <target></target>
+        <target>~Guztiak lehen</target>
       </trans-unit>
       <trans-unit id="h1ix6fk" resname="Largest first">
         <source>Largest first</source>
-        <target></target>
+        <target>~Handienak lehen</target>
       </trans-unit>
       <trans-unit id="nz1y9yl" resname="Smallest first">
         <source>Smallest first</source>
-        <target></target>
+        <target>~Txikienak lehen</target>
       </trans-unit>
       <trans-unit id="1zpyrfu" resname="Type A-Z">
         <source>Type A-Z</source>
-        <target></target>
+        <target>~Mota A-Z</target>
       </trans-unit>
       <trans-unit id="rhq7yke" resname="Type Z-A">
         <source>Type Z-A</source>
-        <target></target>
+        <target>~Mota Z-A</target>
       </trans-unit>
       <trans-unit id="kv4gw0k" resname="Show references">
         <source>Show references</source>
-        <target></target>
+        <target>~Erakutsi erreferentziak</target>
       </trans-unit>
       <trans-unit id="jwhglyd" resname="files">
         <source>files</source>
-        <target></target>
+        <target>~fitxategiak</target>
       </trans-unit>
       <trans-unit id="86ib7cv" resname="Go to root">
         <source>Go to root</source>
-        <target></target>
+        <target>~Directorio raíz</target>
       </trans-unit>
       <trans-unit id="5u9b5oj" resname="Search results for">
         <source>Search results for</source>
-        <target></target>
+        <target>~Emaitzak bilaketa egiteko</target>
       </trans-unit>
       <trans-unit id="hyv6z5d" resname="No media files yet">
         <source>No media files yet</source>
-        <target></target>
+        <target>~Oraindik ez dago fitxategi multimedia</target>
       </trans-unit>
       <trans-unit id="97v7ezm" resname="Click &quot;Add files&quot; or drop files here to upload">
         <source>Click "Add files" or drop files here to upload</source>
-        <target></target>
+        <target>~Egin klik "Gehitu fitxategiak" edo arrastatu fitxategiak hemen igotzeko</target>
       </trans-unit>
       <trans-unit id="lvg3sw9" resname="Loading assets...">
         <source>Loading assets...</source>
-        <target></target>
+        <target>~Kargatzen diren baliabideak...</target>
       </trans-unit>
       <trans-unit id="t0ih90n" resname="Location">
         <source>Location</source>
-        <target></target>
+        <target>~Kokapena</target>
       </trans-unit>
       <trans-unit id="1hnb4dc" resname="Select an item to view details">
         <source>Select an item to view details</source>
-        <target></target>
+        <target>~Hautatu elementu bat xehetasunak ikusteko</target>
       </trans-unit>
       <trans-unit id="im8xr25" resname="Size:">
         <source>Size:</source>
-        <target></target>
+        <target>~Tamaina:</target>
       </trans-unit>
       <trans-unit id="zx6qci2" resname="Dimensions:">
         <source>Dimensions:</source>
-        <target></target>
+        <target>~Dimenziokoak:</target>
       </trans-unit>
       <trans-unit id="bslxb2i" resname="Date:">
         <source>Date:</source>
-        <target></target>
+        <target>~Data:</target>
       </trans-unit>
       <trans-unit id="d5ipm8t" resname="Usage:">
         <source>Usage:</source>
-        <target></target>
+        <target>~Erabilera:</target>
       </trans-unit>
       <trans-unit id="thkpbzz" resname="Location:">
         <source>Location:</source>
-        <target></target>
+        <target>~Kokapena:</target>
       </trans-unit>
       <trans-unit id="95r0ejl" resname="Open containing folder">
         <source>Open containing folder</source>
-        <target></target>
+        <target>~Ireki karpeta edukitzailea</target>
       </trans-unit>
       <trans-unit id="fik3use" resname="Copy URL">
         <source>Copy URL</source>
-        <target></target>
+        <target>~Kopiatu URLa</target>
       </trans-unit>
       <trans-unit id="64o2fw4" resname="Duplicate">
         <source>Duplicate</source>
-        <target></target>
+        <target>~Bikoiztu</target>
       </trans-unit>
       <trans-unit id="px36zz6" resname="Extract ZIP">
         <source>Extract ZIP</source>
-        <target></target>
+        <target>~ZIP-a atera</target>
       </trans-unit>
       <trans-unit id="4s5s31v" resname="View full size">
         <source>View full size</source>
-        <target></target>
+        <target>~Ikusi tamaina osoa</target>
       </trans-unit>
       <trans-unit id="rmd3o04" resname="Move to folder">
         <source>Move to folder</source>
-        <target></target>
+        <target>~Mugitu karpeta batera</target>
       </trans-unit>
       <trans-unit id="fgluogj" resname="Move here">
         <source>Move here</source>
-        <target></target>
+        <target>~Mugitu hemen</target>
       </trans-unit>
       <trans-unit id="wc32xb1" resname="Search pages and content...">
         <source>Search pages and content...</source>
-        <target></target>
+        <target>~Bilatu orrialdeak eta edukiak...</target>
       </trans-unit>
       <trans-unit id="cwhnsxa" resname="Search results">
         <source>Search results</source>
-        <target></target>
+        <target>~Bilaketa emaitzak</target>
       </trans-unit>
       <trans-unit id="79ag56j" resname="No results found">
         <source>No results found</source>
-        <target></target>
+        <target>~Ez da emaitzarik aurkitu</target>
       </trans-unit>
       <trans-unit id="myzkc1o" resname="Navigate">
         <source>Navigate</source>
-        <target></target>
+        <target>~Nabigatu</target>
       </trans-unit>
       <trans-unit id="o1ic2b3" resname="Loading project images...">
         <source>Loading project images...</source>
-        <target></target>
+        <target>~Kargatzen ari dira proiektuaren irudiak...</target>
       </trans-unit>
       <trans-unit id="jrbjxp6" resname="No PNG or JPEG images found in this project.">
         <source>No PNG or JPEG images found in this project.</source>
-        <target></target>
+        <target>~Ez da PNG edo JPEG irudirik aurkitu proiektu honetan.</target>
       </trans-unit>
       <trans-unit id="94773ac" resname="Preset">
         <source>Preset</source>
-        <target></target>
+        <target>~Lehentasuna</target>
       </trans-unit>
       <trans-unit id="tfrled0" resname="Strong">
         <source>Strong</source>
-        <target></target>
+        <target>~Indartsua</target>
       </trans-unit>
       <trans-unit id="66a4tzk" resname="JPEG Quality">
         <source>JPEG Quality</source>
-        <target></target>
+        <target>~JPEG kalitatea</target>
       </trans-unit>
       <trans-unit id="0zgtcas" resname="Deselect All">
         <source>Deselect All</source>
-        <target></target>
+        <target>~Desmarkatu guztiak</target>
       </trans-unit>
       <trans-unit id="brl4023" resname="Select/Deselect All">
         <source>Select/Deselect All</source>
-        <target></target>
+        <target>~Hautatu/Deshautatu guztiak</target>
       </trans-unit>
       <trans-unit id="s94mxzp" resname="Filename">
         <source>Filename</source>
-        <target></target>
+        <target>~Fitxategiaren izena</target>
       </trans-unit>
       <trans-unit id="vpiyoit" resname="Original">
         <source>Original</source>
-        <target></target>
+        <target>~Jatorria</target>
       </trans-unit>
       <trans-unit id="z3su8em" resname="Estimated">
         <source>Estimated</source>
-        <target></target>
+        <target>~Prezioa</target>
       </trans-unit>
       <trans-unit id="nv8t9ha" resname="Savings">
         <source>Savings</source>
-        <target></target>
+        <target>~Aurrezkia</target>
       </trans-unit>
       <trans-unit id="6c74i5w" resname="Selected">
         <source>Selected</source>
-        <target></target>
+        <target>~Hautatua</target>
       </trans-unit>
       <trans-unit id="yps61qz" resname="Warning:">
         <source>Warning:</source>
-        <target></target>
+        <target>~Abisua:</target>
       </trans-unit>
       <trans-unit id="zk3h0bi" resname="Optimizing images may reduce quality. This action cannot be undone.">
         <source>Optimizing images may reduce quality. This action cannot be undone.</source>
-        <target></target>
+        <target>~Irudiak optimizatzeak kalitatea murriztu dezake. Ekintza hau ezin da desegin.</target>
       </trans-unit>
       <trans-unit id="066terb" resname="Do you want to optimize the selected images?">
         <source>Do you want to optimize the selected images?</source>
-        <target></target>
+        <target>~Irudi hautatuak optimizatu nahi dituzu?</target>
       </trans-unit>
       <trans-unit id="qijgukm" resname="Optimizing...">
         <source>Optimizing...</source>
-        <target></target>
+        <target>~Optimizing...</target>
       </trans-unit>
       <trans-unit id="b65e2f8" resname="Optimize">
         <source>Optimize</source>
-        <target></target>
+        <target>~Optimizatu</target>
       </trans-unit>
       <trans-unit id="z4f6fc8" resname="Third party libraries">
         <source>Third party libraries</source>
-        <target></target>
+        <target>~Hirugarren liburutegiak</target>
       </trans-unit>
       <trans-unit id="hqwmmyd" resname="Opens in new window">
         <source>Opens in new window</source>
-        <target></target>
+        <target>~Leiho berri batean irekiko da</target>
       </trans-unit>
       <trans-unit id="kkgt04g" resname="Send email">
         <source>Send email</source>
-        <target></target>
+        <target>~Bidali posta elektronikoa</target>
       </trans-unit>
       <trans-unit id="ox78ies" resname="Add people by email">
         <source>Add people by email</source>
-        <target></target>
+        <target>~Gehitu erabiltzaileak posta elektroniko bidez</target>
       </trans-unit>
       <trans-unit id="ase0v1l" resname="Invite">
         <source>Invite</source>
-        <target></target>
+        <target>~Gonbidatu</target>
       </trans-unit>
       <trans-unit id="ulfk9w9" resname="People with access">
         <source>People with access</source>
-        <target></target>
+        <target>~Sarbidearekin pertsonak</target>
       </trans-unit>
       <trans-unit id="9wre8vt" resname="General access">
         <source>General access</source>
-        <target></target>
+        <target>~Sarbide orokorra</target>
       </trans-unit>
       <trans-unit id="u8e79p9" resname="Restricted (Private)">
         <source>Restricted (Private)</source>
-        <target></target>
+        <target>~Murriztua (Pribatua)</target>
       </trans-unit>
       <trans-unit id="zw48xt3" resname="Anyone with the link (Public)">
         <source>Anyone with the link (Public)</source>
-        <target></target>
+        <target>~Edonork esteka bidez (Publikoa)</target>
       </trans-unit>
       <trans-unit id="icbijz2" resname="Anyone who has the link can view and edit in real time">
         <source>Anyone who has the link can view and edit in real time</source>
-        <target></target>
+        <target>~Edonoren esteka duenak ikusi eta editatu ahal izango du unean-unean</target>
       </trans-unit>
       <trans-unit id="gjfwita" resname="Print preview">
         <source>Print preview</source>
-        <target></target>
+        <target>~Inprimatzeko aurrebista</target>
       </trans-unit>
       <trans-unit id="6whd7ih" resname="Return to work area">
         <source>Return to work area</source>
-        <target></target>
+        <target>~Itzuli lan-eremura</target>
       </trans-unit>
       <trans-unit id="hpyxu5h" resname="Return to login">
         <source>Return to login</source>
-        <target></target>
+        <target>~Itzuli saioa hasteko orrira</target>
       </trans-unit>
       <trans-unit id="c3vrpde" resname="Under maintenance">
         <source>Under maintenance</source>
-        <target></target>
+        <target>~Mantentzean</target>
       </trans-unit>
       <trans-unit id="aie61kl" resname="This application is currently under maintenance. Please try again later.">
         <source>This application is currently under maintenance. Please try again later.</source>
-        <target></target>
+        <target>~Aplikazio hau une honetan mantentze-lanean dago. Mesedez, saiatu geroago.</target>
       </trans-unit>
       <trans-unit id="rlt1q2v" resname="Invalid folder name. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid folder name. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Folder izen baliogabea. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="wbepz91" resname="Are you sure you want to delete the folder &quot;%1&quot; and all %2 files inside?">
         <source>Are you sure you want to delete the folder "%1" and all %2 files inside?</source>
-        <target></target>
+        <target>~Ziur zaude "%1" karpetaren eta bertan dauden %2 fitxategien guztien ezabapena nahi duzula?</target>
       </trans-unit>
       <trans-unit id="uuuizmb" resname="Are you sure you want to delete the empty folder &quot;%1&quot;?">
         <source>Are you sure you want to delete the empty folder "%1"?</source>
-        <target></target>
+        <target>~Ziur zaude "%1" karpeta hutsia ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="zhxf5m6" resname="Delete &quot;%1&quot;?">
         <source>Delete "%1"?</source>
-        <target></target>
+        <target>~Ezabatu "%1"?</target>
       </trans-unit>
       <trans-unit id="z014ui6" resname="Invalid filename. Avoid special characters like / \\ : * ? &quot; &lt; &gt; |">
         <source>Invalid filename. Avoid special characters like / \\ : * ? " &lt; &gt; |</source>
-        <target></target>
+        <target>~Fitxategi izena ez da baliogarria. Saihestu karaktere bereziak hala nola / \\ : * ? " < > |</target>
       </trans-unit>
       <trans-unit id="6x9ovyt" resname="Share &quot;{title}&quot;">
         <source>Share "{title}"</source>
-        <target></target>
+        <target>~Partekatu "{title}"</target>
       </trans-unit>
       <trans-unit id="8notabp" resname="Write the correct word o phrase and click on the &quot;Reply&quot; button.">
         <source>Write the correct word o phrase and click on the "Reply" button.</source>
-        <target></target>
+        <target>~Idatzi hitza edo esaldia zuzena eta klik egin "Erantzun" botoian.</target>
       </trans-unit>
       <trans-unit id="gq6h75d" resname="Timeout">
         <source>Timeout</source>
-        <target></target>
+        <target>~Denbora agortuta</target>
       </trans-unit>
       <trans-unit id="w08twkp" resname="Network error">
         <source>Network error</source>
-        <target></target>
+        <target>~Errore sareko</target>
       </trans-unit>
       <trans-unit id="ak9atm4" resname="Invalid URL">
         <source>Invalid URL</source>
-        <target></target>
+        <target>~URL ez da baliogarria</target>
       </trans-unit>
       <trans-unit id="p52q932" resname="Session Expired">
         <source>Session Expired</source>
-        <target></target>
+        <target>~Saioa amaitu da</target>
       </trans-unit>
       <trans-unit id="lifip69" resname="Your session has expired. Please log in again.">
         <source>Your session has expired. Please log in again.</source>
-        <target></target>
+        <target>~Zure saioa bukatu da. Mesedez, saioa berriro hasi.</target>
       </trans-unit>
       <trans-unit id="bf83afk" resname="Access Denied">
         <source>Access Denied</source>
-        <target></target>
+        <target>~Sarbidea ukatu da</target>
       </trans-unit>
       <trans-unit id="4iaagiu" resname="You no longer have access to this project.">
         <source>You no longer have access to this project.</source>
-        <target></target>
+        <target>~Ez duzu jada sarbiderik proiektu honetan.</target>
       </trans-unit>
       <trans-unit id="uc2bcxp" resname="Changelog not available">
         <source>Changelog not available</source>
-        <target></target>
+        <target>~Eguneratze erregistroa ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="k1r3z5q" resname="Information not available">
         <source>Information not available</source>
-        <target></target>
+        <target>~Informazioa ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="er4tger" resname="Hidden from export">
         <source>Hidden from export</source>
-        <target></target>
+        <target>~Exportazioan ezkutatuta</target>
       </trans-unit>
       <trans-unit id="mopt4o1" resname="Another user">
         <source>Another user</source>
-        <target></target>
+        <target>~Beste erabiltzaile bat</target>
       </trans-unit>
       <trans-unit id="41vn10h" resname="Clone iDevice">
         <source>Clone iDevice</source>
-        <target></target>
+        <target>~Klonatu iDevice</target>
       </trans-unit>
       <trans-unit id="61gzi4x" resname="Move to page">
         <source>Move to page</source>
-        <target></target>
+        <target>~Mugitu orrialdera</target>
       </trans-unit>
       <trans-unit id="0wwr88n" resname="Export iDevice">
         <source>Export iDevice</source>
-        <target></target>
+        <target>~Exportatu iDevice</target>
       </trans-unit>
       <trans-unit id="rhbkc5v" resname="iDevice locked">
         <source>iDevice locked</source>
-        <target></target>
+        <target>~iDevice blokeatuta dago</target>
       </trans-unit>
       <trans-unit id="lxspxoa" resname="This iDevice is being edited by">
         <source>This iDevice is being edited by</source>
-        <target></target>
+        <target>~iDevice hau editatzen ari da</target>
       </trans-unit>
       <trans-unit id="rv065s3" resname="Also delete associated box">
         <source>Also delete associated box</source>
-        <target></target>
+        <target>~Ezabatu bloke erantsia ere</target>
       </trans-unit>
       <trans-unit id="gldqwym" resname="Failed to export iDevice">
         <source>Failed to export iDevice</source>
-        <target></target>
+        <target>~Errorea iDevice esportatzen</target>
       </trans-unit>
       <trans-unit id="hmppisr" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editatu du</target>
       </trans-unit>
       <trans-unit id="i7vkvbr" resname="Content will appear when saved">
         <source>Content will appear when saved</source>
-        <target></target>
+        <target>~Edukia agertuko da gorde ondoren</target>
       </trans-unit>
       <trans-unit id="9rsqwow" resname="An error occurred while removing the component">
         <source>An error occurred while removing the component</source>
-        <target></target>
+        <target>~Errorea osagaia ezabatzean</target>
       </trans-unit>
       <trans-unit id="jnp9uy0" resname="An error occurred while cloning the component">
         <source>An error occurred while cloning the component</source>
-        <target></target>
+        <target>~Errorea osagaia klonatzean</target>
       </trans-unit>
       <trans-unit id="wc0toag" resname="Clone box">
         <source>Clone box</source>
-        <target></target>
+        <target>~Kaxa klonatu</target>
       </trans-unit>
       <trans-unit id="azz0ke0" resname="Export box">
         <source>Export box</source>
-        <target></target>
+        <target>~Kaxa esportatu</target>
       </trans-unit>
       <trans-unit id="ci3j0x7" resname="An iDevice in this box is being edited by another user">
         <source>An iDevice in this box is being edited by another user</source>
-        <target></target>
+        <target>~Beste erabiltzaile batek editatzen du kaxa honetako iDevice bat</target>
       </trans-unit>
       <trans-unit id="bj90ydg" resname="iDevices in this box are being edited by other users">
         <source>iDevices in this box are being edited by other users</source>
-        <target></target>
+        <target>~Beste erabiltzaile batzuek editatzen dute kaxa honetako iDevice bat</target>
       </trans-unit>
       <trans-unit id="gn9ygj9" resname="Their changes may be lost if you delete this box.">
         <source>Their changes may be lost if you delete this box.</source>
-        <target></target>
+        <target>~Zure aldaketak gal ditzakezu kutxa hau ezabatzen baduzu.</target>
       </trans-unit>
       <trans-unit id="01qqljd" resname="Do you want to delete this box?">
         <source>Do you want to delete this box?</source>
-        <target></target>
+        <target>~¿Want to delete this box?</target>
       </trans-unit>
       <trans-unit id="4s6pap3" resname="Move box to page">
         <source>Move box to page</source>
-        <target></target>
+        <target>~Mover caja a página</target>
       </trans-unit>
       <trans-unit id="dreyl3b" resname="Failed to export box">
         <source>Failed to export box</source>
-        <target></target>
+        <target>~Errorea kutxa esportatzean</target>
       </trans-unit>
       <trans-unit id="7kuwsoc" resname="An error occurred while cloning the block">
         <source>An error occurred while cloning the block</source>
-        <target></target>
+        <target>~Errorea kutxa klonatzean</target>
       </trans-unit>
       <trans-unit id="pn7c0z6" resname="Being edited by">
         <source>Being edited by</source>
-        <target></target>
+        <target>~Editado por</target>
       </trans-unit>
       <trans-unit id="954797a" resname="An error occurred while creating the page">
         <source>An error occurred while creating the page</source>
-        <target></target>
+        <target>~Errorea orrialdia sortzean</target>
       </trans-unit>
       <trans-unit id="9wo1432" resname="An error occurred while cloning the page">
         <source>An error occurred while cloning the page</source>
-        <target></target>
+        <target>~Errorea orrialdia klonatzean</target>
       </trans-unit>
       <trans-unit id="nfyc6ns" resname="An error occurred while renaming the page">
         <source>An error occurred while renaming the page</source>
-        <target></target>
+        <target>~Errorea orrialdia berrizendatzean</target>
       </trans-unit>
       <trans-unit id="bejzjiu" resname="An error occurred while removing the page">
         <source>An error occurred while removing the page</source>
-        <target></target>
+        <target>~Errorea orrialdia ezabatzearenean</target>
       </trans-unit>
       <trans-unit id="9dzvy3m" resname="An error occurred while reordering the page. Please try again.">
         <source>An error occurred while reordering the page. Please try again.</source>
-        <target></target>
+        <target>~Errorea orrialdia berrantolatzeko. Mesedez, saiatu berriro.</target>
       </trans-unit>
       <trans-unit id="tg6ktvy" resname="An error occurred while saving page properties">
         <source>An error occurred while saving page properties</source>
-        <target></target>
+        <target>~Errorea orrialdearen propietateak gordetzean</target>
       </trans-unit>
       <trans-unit id="hmmvt8c" resname="Importing...">
         <source>Importing...</source>
-        <target></target>
+        <target>~Importatzen ari da...</target>
       </trans-unit>
       <trans-unit id="0psg868" resname="Importing project...">
         <source>Importing project...</source>
-        <target></target>
+        <target>~Proiektuaren importazioa...</target>
       </trans-unit>
       <trans-unit id="sl1hvkd" resname="Import Error">
         <source>Import Error</source>
-        <target></target>
+        <target>~Importazio errorea</target>
       </trans-unit>
       <trans-unit id="oeuz7jf" resname="Failed to import the project: ">
         <source>Failed to import the project: </source>
-        <target></target>
+        <target>~Errorea proiektua importatzean: </target>
       </trans-unit>
       <trans-unit id="dd6yrdj" resname="Untitled">
         <source>Untitled</source>
-        <target></target>
+        <target>~Izenbururik ez</target>
       </trans-unit>
       <trans-unit id="o87io9p" resname="Media library not available">
         <source>Media library not available</source>
-        <target></target>
+        <target>~Medien liburutegia ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="8n9dsj6" resname="Failed to load assets">
         <source>Failed to load assets</source>
-        <target></target>
+        <target>~Errorea baliabideak kargatzean</target>
       </trans-unit>
       <trans-unit id="bss3l29" resname="Enter folder name:">
         <source>Enter folder name:</source>
-        <target></target>
+        <target>~Sartu karpeta izena:</target>
       </trans-unit>
       <trans-unit id="a64v23q" resname="A folder with this name already exists.">
         <source>A folder with this name already exists.</source>
-        <target></target>
+        <target>~Karpeta horrekin dagoen beste bat existitzen da.</target>
       </trans-unit>
       <trans-unit id="104yc0g" resname="items">
         <source>items</source>
-        <target></target>
+        <target>~elementuak</target>
       </trans-unit>
       <trans-unit id="cfw1szb" resname="Videos">
         <source>Videos</source>
-        <target></target>
+        <target>~Bideoak</target>
       </trans-unit>
       <trans-unit id="0pdpegd" resname="PDF">
         <source>PDF</source>
-        <target></target>
+        <target>~PDF</target>
       </trans-unit>
       <trans-unit id="39zw2gk" resname="Other">
         <source>Other</source>
-        <target></target>
+        <target>~Besteak</target>
       </trans-unit>
       <trans-unit id="km8lzfu" resname="%1 files selected">
         <source>%1 files selected</source>
-        <target></target>
+        <target>~%1 fitxategi hautatu</target>
       </trans-unit>
       <trans-unit id="nwzlni8" resname="Multiple files">
         <source>Multiple files</source>
-        <target></target>
+        <target>~Fitxategi anitzak</target>
       </trans-unit>
       <trans-unit id="tda0mk5" resname="Failed to delete folder">
         <source>Failed to delete folder</source>
-        <target></target>
+        <target>~Errorea karpeta ezabitzerakoan</target>
       </trans-unit>
       <trans-unit id="1h1z5lb" resname="This asset is referenced in %1 iDevices.">
         <source>This asset is referenced in %1 iDevices.</source>
-        <target></target>
+        <target>~Gauza hau %1 iDevices-en erreferentziatua dago.</target>
       </trans-unit>
       <trans-unit id="cd83i7x" resname="Delete %1 selected files?">
         <source>Delete %1 selected files?</source>
-        <target></target>
+        <target>~Ezabatu %1 fitxategi hautatu?</target>
       </trans-unit>
       <trans-unit id="cmrtng5" resname="Failed to delete file">
         <source>Failed to delete file</source>
-        <target></target>
+        <target>~Errorea fitxategia ezabatzean</target>
       </trans-unit>
       <trans-unit id="j8xul3e" resname="Rename folder">
         <source>Rename folder</source>
-        <target></target>
+        <target>~Baldintza berria</target>
       </trans-unit>
       <trans-unit id="sj7o3jf" resname="Enter new folder name:">
         <source>Enter new folder name:</source>
-        <target></target>
+        <target>~Sartu karparen izen berria:</target>
       </trans-unit>
       <trans-unit id="urbx825" resname="Failed to rename folder">
         <source>Failed to rename folder</source>
-        <target></target>
+        <target>~Errorea karparen izena aldatzean</target>
       </trans-unit>
       <trans-unit id="11zfwhf" resname="Rename file">
         <source>Rename file</source>
-        <target></target>
+        <target>~Fitxategia berrizendatu</target>
       </trans-unit>
       <trans-unit id="7as82cn" resname="Enter new filename:">
         <source>Enter new filename:</source>
-        <target></target>
+        <target>~Sartu fitxategiaren izen berria:</target>
       </trans-unit>
       <trans-unit id="1rvu1of" resname="Failed to rename file">
         <source>Failed to rename file</source>
-        <target></target>
+        <target>~Errorea fitxategia berrizendatzean</target>
       </trans-unit>
       <trans-unit id="4bkqa2q" resname="copy">
         <source>copy</source>
-        <target></target>
+        <target>~kopia</target>
       </trans-unit>
       <trans-unit id="hin4p4w" resname="Could not read file">
         <source>Could not read file</source>
-        <target></target>
+        <target>~ ezin izan da fitxategia irakurri</target>
       </trans-unit>
       <trans-unit id="17rwzw3" resname="Duplicate file">
         <source>Duplicate file</source>
-        <target></target>
+        <target>~Fitxategia bikoiztu</target>
       </trans-unit>
       <trans-unit id="4pynkit" resname="Enter name for the duplicate:">
         <source>Enter name for the duplicate:</source>
-        <target></target>
+        <target>~Sartu bikoiztuaren izena:</target>
       </trans-unit>
       <trans-unit id="1y1kcum" resname="Please enter a valid filename">
         <source>Please enter a valid filename</source>
-        <target></target>
+        <target>~Sartu baliozko fitxategi-izena</target>
       </trans-unit>
       <trans-unit id="io6hzvk" resname="A file with this name already exists in this folder">
         <source>A file with this name already exists in this folder</source>
-        <target></target>
+        <target>~Karpeta honek badu izen bera duen fitxategi bat</target>
       </trans-unit>
       <trans-unit id="tmb0dd0" resname="Failed to duplicate file">
         <source>Failed to duplicate file</source>
-        <target></target>
+        <target>~Errorea fitxategia bikoiztean</target>
       </trans-unit>
       <trans-unit id="k41cmx3" resname="current">
         <source>current</source>
-        <target></target>
+        <target>~egungo</target>
       </trans-unit>
       <trans-unit id="zsaf7i3" resname="Please select a destination folder">
         <source>Please select a destination folder</source>
-        <target></target>
+        <target>~Aukeratu helmugako karpeta</target>
       </trans-unit>
       <trans-unit id="z263cae" resname="Folder is already in this location">
         <source>Folder is already in this location</source>
-        <target></target>
+        <target>~Karpeta hori dagoeneko kokatzen da</target>
       </trans-unit>
       <trans-unit id="mc93s58" resname="A folder with this name already exists in the destination.">
         <source>A folder with this name already exists in the destination.</source>
-        <target></target>
+        <target>~Helmugan karpeta batek badu izen hau jada</target>
       </trans-unit>
       <trans-unit id="fzmes9k" resname="Failed to move folder">
         <source>Failed to move folder</source>
-        <target></target>
+        <target>~Errorea karpeta mugitzean</target>
       </trans-unit>
       <trans-unit id="1dyj6x1" resname="Selected files are already in this folder">
         <source>Selected files are already in this folder</source>
-        <target></target>
+        <target>~Aukeratutako fitxategiak dagoeneko karpeta honetan daude</target>
       </trans-unit>
       <trans-unit id="mqasguj" resname="File is already in this folder">
         <source>File is already in this folder</source>
-        <target></target>
+        <target>~Fitxategia dagoeneko karpeta honetan dago</target>
       </trans-unit>
       <trans-unit id="9x8yrb8" resname="Failed to move file">
         <source>Failed to move file</source>
-        <target></target>
+        <target>~Errorea fitxategia mugitzeko</target>
       </trans-unit>
       <trans-unit id="u3jrwrh" resname="Asset URL copied to clipboard">
         <source>Asset URL copied to clipboard</source>
-        <target></target>
+        <target>~URLa kopiatu da aitzetara</target>
       </trans-unit>
       <trans-unit id="qcxvgiz" resname="Extract to folder (the internal folder structure of the ZIP will be preserved):">
         <source>Extract to folder (the internal folder structure of the ZIP will be preserved):</source>
-        <target></target>
+        <target>~Karpeta batean erauzi (ZIParen egitura barnekoa mantenduko da):</target>
       </trans-unit>
       <trans-unit id="4gpu9ul" resname="Extract">
         <source>Extract</source>
-        <target></target>
+        <target>~Erakutsi</target>
       </trans-unit>
       <trans-unit id="bo08ksq" resname="Could not read ZIP file">
         <source>Could not read ZIP file</source>
-        <target></target>
+        <target>~Ezin izan da ZIP fitxategia irakurri</target>
       </trans-unit>
       <trans-unit id="yclirjj" resname="ZIP extraction is not available">
         <source>ZIP extraction is not available</source>
-        <target></target>
+        <target>~ZIParen erauzketa ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="u97u31i" resname="Extraction complete">
         <source>Extraction complete</source>
-        <target></target>
+        <target>~Erauzketa amaituta</target>
       </trans-unit>
       <trans-unit id="lzbogcz" resname="Extracted %1 files. %2 files were skipped.">
         <source>Extracted %1 files. %2 files were skipped.</source>
-        <target></target>
+        <target>~%1 fitxategi erauzi dira. %2 fitxategi baztertu dira.</target>
       </trans-unit>
       <trans-unit id="87xf491" resname="Extracted %1 files successfully.">
         <source>Extracted %1 files successfully.</source>
-        <target></target>
+        <target>~%1 fitxategi ondo erauzi dira.</target>
       </trans-unit>
       <trans-unit id="dvrwkum" resname="No files were extracted from the ZIP.">
         <source>No files were extracted from the ZIP.</source>
-        <target></target>
+        <target>~Ez da ZIP-etik fitxategirik erauzi.</target>
       </trans-unit>
       <trans-unit id="euljfib" resname="Failed to extract ZIP file">
         <source>Failed to extract ZIP file</source>
-        <target></target>
+        <target>~Errorea ZIP fitxategiaren edukia ateratzean</target>
       </trans-unit>
       <trans-unit id="zu4x3ce" resname="Drop files here to upload">
         <source>Drop files here to upload</source>
-        <target></target>
+        <target>~Erroak artxiboak hemen arrastatu eta kargatzeko</target>
       </trans-unit>
       <trans-unit id="me2vwpz" resname="Validating">
         <source>Validating</source>
-        <target></target>
+        <target>~Egiaztatzen</target>
       </trans-unit>
       <trans-unit id="tcrcitd" resname="Valid">
         <source>Valid</source>
-        <target></target>
+        <target>~Baliogarria</target>
       </trans-unit>
       <trans-unit id="w1txzi6" resname="Validating links...">
         <source>Validating links...</source>
-        <target></target>
+        <target>~Egiaztatzen loturak...</target>
       </trans-unit>
       <trans-unit id="nqi2azq" resname="broken">
         <source>broken</source>
-        <target></target>
+        <target>~haustea</target>
       </trans-unit>
       <trans-unit id="r9kvdf9" resname="No broken links">
         <source>No broken links</source>
-        <target></target>
+        <target>~Ez dago lotura hausturik</target>
       </trans-unit>
       <trans-unit id="dpc3qz9" resname="No links found in content">
         <source>No links found in content</source>
-        <target></target>
+        <target>~Ez da loturarik aurkitu edukian</target>
       </trans-unit>
       <trans-unit id="gyww0tm" resname="Link Validation">
         <source>Link Validation</source>
-        <target></target>
+        <target>~Loturen egiaztapena</target>
       </trans-unit>
       <trans-unit id="ygr39q7" resname="Error validating links">
         <source>Error validating links</source>
-        <target></target>
+        <target>~Errorea loturak egiaztatzean</target>
       </trans-unit>
       <trans-unit id="bl20ry1" resname="No broken links to export">
         <source>No broken links to export</source>
-        <target></target>
+        <target>~Ez dago lotura haustenik esportatzeko</target>
       </trans-unit>
       <trans-unit id="hxmruro" resname="Click to open resource in new window">
         <source>Click to open resource in new window</source>
-        <target></target>
+        <target>~Klikatu ireki webgunean beste leiho batean</target>
       </trans-unit>
       <trans-unit id="expxt22" resname="Cannot open resource: Asset manager not available">
         <source>Cannot open resource: Asset manager not available</source>
-        <target></target>
+        <target>~Ezin da ireki webgunea: baliabide kudeatzailea ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="j0ohwan" resname="Cannot open resource: Asset not found">
         <source>Cannot open resource: Asset not found</source>
-        <target></target>
+        <target>~Ezin da ireki webgunea: baliabidea ez da aurkitu</target>
       </trans-unit>
       <trans-unit id="3b8hrc5" resname="Error opening resource">
         <source>Error opening resource</source>
-        <target></target>
+        <target>~Errorea webgunea irekitzean</target>
       </trans-unit>
       <trans-unit id="1c28t18" resname="No resources to export">
         <source>No resources to export</source>
-        <target></target>
+        <target>~Ez dago esportatzeko baliabiderik</target>
       </trans-unit>
       <trans-unit id="jocxbe6" resname="Failed to download the style">
         <source>Failed to download the style</source>
-        <target></target>
+        <target>~Errorea estiloa deskargatzean</target>
       </trans-unit>
       <trans-unit id="rhmb76z" resname="File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).">
         <source>File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).</source>
-        <target></target>
+        <target>~Fitxategiaren tamaina ({fileSize}) gehiegi da onartutako gehienezko tamaina ({maxSize}).</target>
       </trans-unit>
       <trans-unit id="nohmnvq" resname="File too large">
         <source>File too large</source>
-        <target></target>
+        <target>~Fitxategia handiegia da</target>
       </trans-unit>
       <trans-unit id="3ma643h" resname="My Projects">
         <source>My Projects</source>
-        <target></target>
+        <target>~Nire proiektuak</target>
       </trans-unit>
       <trans-unit id="3koug66" resname="Shared with me">
         <source>Shared with me</source>
-        <target></target>
+        <target>~Elkarrizketan nirekin partekatua</target>
       </trans-unit>
       <trans-unit id="dhjw6wu" resname="No projects have been shared with you yet.">
         <source>No projects have been shared with you yet.</source>
-        <target></target>
+        <target>~Oraindik ez dira zurekin proiektuak partekatu</target>
       </trans-unit>
       <trans-unit id="l85fqn6" resname="Shared by">
         <source>Shared by</source>
-        <target></target>
+        <target>~Nork partekatu du</target>
       </trans-unit>
       <trans-unit id="zh50ibo" resname="Clone to my projects">
         <source>Clone to my projects</source>
-        <target></target>
+        <target>~Nire proiektuetan kopia bat gorde</target>
       </trans-unit>
       <trans-unit id="6mgc7b4" resname="Select all">
         <source>Select all</source>
-        <target></target>
+        <target>~Denak hautatu</target>
       </trans-unit>
       <trans-unit id="6cqc538" resname="Delete this project?">
         <source>Delete this project?</source>
-        <target></target>
+        <target>~Proiektu hau ezabatu nahi duzu?</target>
       </trans-unit>
       <trans-unit id="qql8tax" resname="Deleting...">
         <source>Deleting...</source>
-        <target></target>
+        <target>~Ezabatzen...</target>
       </trans-unit>
       <trans-unit id="jyh6ixo" resname="An error occurred while duplicating the project.">
         <source>An error occurred while duplicating the project.</source>
-        <target></target>
+        <target>~Errorea proiektua bikoiztean.</target>
       </trans-unit>
       <trans-unit id="phl04ad" resname="An error occurred while opening the file.">
         <source>An error occurred while opening the file.</source>
-        <target></target>
+        <target>~Errorea fitxategia irekitzean.</target>
       </trans-unit>
       <trans-unit id="fjevjn6" resname="Are you sure you want to delete this project?">
         <source>Are you sure you want to delete this project?</source>
-        <target></target>
+        <target>~Ziur zaude proiektu hau ezabatu nahi duzula?</target>
       </trans-unit>
       <trans-unit id="aby2ghl" resname="Are you sure you want to delete %s projects?">
         <source>Are you sure you want to delete %s projects?</source>
-        <target></target>
+        <target>~Ziur zaude %s proiektu ezabatu nahi dituzula?</target>
       </trans-unit>
       <trans-unit id="jalbrvv" resname="Delete projects">
         <source>Delete projects</source>
-        <target></target>
+        <target>~Proiektuak ezabatu</target>
       </trans-unit>
       <trans-unit id="4jben5y" resname="This action cannot be undone.">
         <source>This action cannot be undone.</source>
-        <target></target>
+        <target>~Ekintza honek ezin du desegin.</target>
       </trans-unit>
       <trans-unit id="rbhlw5w" resname="An error occurred while importing the component.">
         <source>An error occurred while importing the component.</source>
-        <target></target>
+        <target>~Errorea osagaia inportatzean.</target>
       </trans-unit>
       <trans-unit id="1hzmrch" resname="An error occurred while importing properties.">
         <source>An error occurred while importing properties.</source>
-        <target></target>
+        <target>~Errorea propietateak inportatzean.</target>
       </trans-unit>
       <trans-unit id="sdz9nv5" resname="An error occurred while importing the file.">
         <source>An error occurred while importing the file.</source>
-        <target></target>
+        <target>~Errorea fitxategia inportatzean.</target>
       </trans-unit>
       <trans-unit id="zki0oqd" resname="The default style will be used instead.">
         <source>The default style will be used instead.</source>
-        <target></target>
+        <target>~Lehenetsitako estiloa erabiliko da horren ordez.</target>
       </trans-unit>
       <trans-unit id="43dn36l" resname="Style not available">
         <source>Style not available</source>
-        <target></target>
+        <target>~Estilo ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="ugbrxxx" resname="An error occurred while saving the project">
         <source>An error occurred while saving the project</source>
-        <target></target>
+        <target>~Errorea proiektua gordean</target>
       </trans-unit>
       <trans-unit id="675h1gv" resname="Saving project...">
         <source>Saving project...</source>
-        <target></target>
+        <target>~Proiektua gordetzen...</target>
       </trans-unit>
       <trans-unit id="dvkq4e7" resname="Saving document structure to server...">
         <source>Saving document structure to server...</source>
-        <target></target>
+        <target>~Gordetzen dokumentuaren egitura zerbitzarian...</target>
       </trans-unit>
       <trans-unit id="lws9t56" resname="Uploading assets...">
         <source>Uploading assets...</source>
-        <target></target>
+        <target>~Baliabideak igotzen...</target>
       </trans-unit>
       <trans-unit id="sslwky7" resname="Uploading images and files to server...">
         <source>Uploading images and files to server...</source>
-        <target></target>
+        <target>~Irudiak eta fitxategiak zerbitzarira igotzen...</target>
       </trans-unit>
       <trans-unit id="1gm5125" resname="Save complete!">
         <source>Save complete!</source>
-        <target></target>
+        <target>~Gordeta osoa!</target>
       </trans-unit>
       <trans-unit id="n828byj" resname="All changes have been saved successfully.">
         <source>All changes have been saved successfully.</source>
-        <target></target>
+        <target>~Guztiz ondo gorde dira aldaketak.</target>
       </trans-unit>
       <trans-unit id="6nq3r5x" resname="Uploading asset">
         <source>Uploading asset</source>
-        <target></target>
+        <target>~Baliabidea igotzen</target>
       </trans-unit>
       <trans-unit id="q13jezp" resname="Saving project">
         <source>Saving project</source>
-        <target></target>
+        <target>~Proiektua gorde</target>
       </trans-unit>
       <trans-unit id="9rz4d2j" resname="Preparing...">
         <source>Preparing...</source>
-        <target></target>
+        <target>~Preparatzen...</target>
       </trans-unit>
       <trans-unit id="wde91uu" resname="Preparing to save your project...">
         <source>Preparing to save your project...</source>
-        <target></target>
+        <target>~Preparatzen zure proiektua gorde ahal izateko...</target>
       </trans-unit>
       <trans-unit id="1fgv5fi" resname="No project available to share">
         <source>No project available to share</source>
-        <target></target>
+        <target>~Ez dago partekatzeko proiektu eskuragarri</target>
       </trans-unit>
       <trans-unit id="chn3rrk" resname="Failed to load project data">
         <source>Failed to load project data</source>
-        <target></target>
+        <target>~Errorea proiektuaren datuak kargatzean</target>
       </trans-unit>
       <trans-unit id="wpifm7h" resname="Owner">
         <source>Owner</source>
-        <target></target>
+        <target>~Jabea</target>
       </trans-unit>
       <trans-unit id="zsymdt3" resname="you">
         <source>you</source>
-        <target></target>
+        <target>~ zuk</target>
       </trans-unit>
       <trans-unit id="0miwflv" resname="More actions">
         <source>More actions</source>
-        <target></target>
+        <target>~Ekintza gehiago</target>
       </trans-unit>
       <trans-unit id="drhqw19" resname="Make owner">
         <source>Make owner</source>
-        <target></target>
+        <target>~Jabe egin</target>
       </trans-unit>
       <trans-unit id="nwes1mm" resname="Remove access">
         <source>Remove access</source>
-        <target></target>
+        <target>~Sartu sarbide ezabatu</target>
       </trans-unit>
       <trans-unit id="jj3m51p" resname="Please enter an email address">
         <source>Please enter an email address</source>
-        <target></target>
+        <target>~Sartu helbide elektroniko bat</target>
       </trans-unit>
       <trans-unit id="nvvyjhl" resname="Please enter a valid email address">
         <source>Please enter a valid email address</source>
-        <target></target>
+        <target>~Sartu baliozko helbide elektroniko bat</target>
       </trans-unit>
       <trans-unit id="3whcsdg" resname="Inviting...">
         <source>Inviting...</source>
-        <target></target>
+        <target>~Harpidzen...</target>
       </trans-unit>
       <trans-unit id="cgzlcp1" resname="Invited {email}">
         <source>Invited {email}</source>
-        <target></target>
+        <target>~Harpiduna {email}</target>
       </trans-unit>
       <trans-unit id="tpbcmbb" resname="This user is already a collaborator">
         <source>This user is already a collaborator</source>
-        <target></target>
+        <target>~Este usuario ya es colaborador</target>
       </trans-unit>
       <trans-unit id="6ouj3lw" resname="User not found">
         <source>User not found</source>
-        <target></target>
+        <target>~Usuario no encontrado</target>
       </trans-unit>
       <trans-unit id="vszr20s" resname="Failed to invite user">
         <source>Failed to invite user</source>
-        <target></target>
+        <target>~Error al invitar al usuario</target>
       </trans-unit>
       <trans-unit id="f25nsbi" resname="Remove {email}&apos;s access to this project?">
         <source>Remove {email}'s access to this project?</source>
-        <target></target>
+        <target>~¿Eliminar la autorización de acceso a {email}?</target>
       </trans-unit>
       <trans-unit id="gvoiuwr" resname="Removed {email}">
         <source>Removed {email}</source>
-        <target></target>
+        <target>~Se eliminó el acceso a {email}</target>
       </trans-unit>
       <trans-unit id="jrzmzv1" resname="Failed to remove collaborator">
         <source>Failed to remove collaborator</source>
-        <target></target>
+        <target>~Error al eliminar al colaborador</target>
       </trans-unit>
       <trans-unit id="6ldd14w" resname="Transfer ownership to {email}? You will become an editor.">
         <source>Transfer ownership to {email}? You will become an editor.</source>
-        <target></target>
+        <target>~¿Transferir la propiedad a {email}? Pasarás a ser editor.</target>
       </trans-unit>
       <trans-unit id="bikwwm9" resname="Ownership transferred to {email}">
         <source>Ownership transferred to {email}</source>
-        <target></target>
+        <target>~Propiedad transferida a {email}</target>
       </trans-unit>
       <trans-unit id="gv0gp7c" resname="Failed to transfer ownership">
         <source>Failed to transfer ownership</source>
-        <target></target>
+        <target>~Error al transferir la propiedad</target>
       </trans-unit>
       <trans-unit id="ndado78" resname="Project data not loaded. Please try again.">
         <source>Project data not loaded. Please try again.</source>
-        <target></target>
+        <target>~Datos del proyecto no cargados. Por favor, inténtalo de nuevo.</target>
       </trans-unit>
       <trans-unit id="8xww4x9" resname="Project is now public">
         <source>Project is now public</source>
-        <target></target>
+        <target>~Orain proiektua publiko da</target>
       </trans-unit>
       <trans-unit id="emasnq2" resname="Project is now private">
         <source>Project is now private</source>
-        <target></target>
+        <target>~Orain proiektua pribatua da</target>
       </trans-unit>
       <trans-unit id="7h3rtrb" resname="Failed to update visibility">
         <source>Failed to update visibility</source>
-        <target></target>
+        <target>~Errorea eguneratzean ikusgaitasuna</target>
       </trans-unit>
       <trans-unit id="3mhwx2i" resname="Link copied to clipboard">
         <source>Link copied to clipboard</source>
-        <target></target>
+        <target>~Esteka itsatsi da aitzipena</target>
       </trans-unit>
       <trans-unit id="q9263lv" resname="Failed to copy link">
         <source>Failed to copy link</source>
-        <target></target>
+        <target>~Errorea esteka itsastean</target>
       </trans-unit>
       <trans-unit id="g1xfx1n" resname="Print preview requires server mode">
         <source>Print preview requires server mode</source>
-        <target></target>
+        <target>~Inprimatzeko aurrebista modua zerbitzari modua behar du</target>
       </trans-unit>
       <trans-unit id="3qgnjua" resname="Document manager not available">
         <source>Document manager not available</source>
-        <target></target>
+        <target>~Dokumentuen kudeatzailea ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="hz6ysm0" resname="Print preview not available">
         <source>Print preview not available</source>
-        <target></target>
+        <target>~Inprimatzeko aurrebista ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="df55d51" resname="Failed to generate preview">
         <source>Failed to generate preview</source>
-        <target></target>
+        <target>~Errorea aurrebista sortzean</target>
       </trans-unit>
       <trans-unit id="rimz01h" resname="Queued">
         <source>Queued</source>
-        <target></target>
+        <target>~Zain dago</target>
       </trans-unit>
       <trans-unit id="5uavfgj" resname="Estimating...">
         <source>Estimating...</source>
-        <target></target>
+        <target>~Estimando...</target>
       </trans-unit>
       <trans-unit id="208mdh9" resname="Ready">
         <source>Ready</source>
-        <target></target>
+        <target>~Prest</target>
       </trans-unit>
       <trans-unit id="0tdl2h8" resname="Failed">
         <source>Failed</source>
-        <target></target>
+        <target>~Errorea</target>
       </trans-unit>
       <trans-unit id="vs6uhwr" resname="Image Optimizer">
         <source>Image Optimizer</source>
-        <target></target>
+        <target>~Irudiak optimizatzen</target>
       </trans-unit>
       <trans-unit id="z67tjkz" resname="N/A">
         <source>N/A</source>
-        <target></target>
+        <target>~Ez dago</target>
       </trans-unit>
       <trans-unit id="36fhds0" resname="Already optimized">
         <source>Already optimized</source>
-        <target></target>
+        <target>~Dagoeneko optimizatuta</target>
       </trans-unit>
       <trans-unit id="ripryzp" resname="Processing">
         <source>Processing</source>
-        <target></target>
+        <target>~Prozesatzen</target>
       </trans-unit>
       <trans-unit id="3tof07c" resname="Saving changes...">
         <source>Saving changes...</source>
-        <target></target>
+        <target>~Aldaketak gordetzen...</target>
       </trans-unit>
       <trans-unit id="j31mw6f" resname="Images optimized successfully">
         <source>Images optimized successfully</source>
-        <target></target>
+        <target>~Irudiak arrakastaz optimizatu dira</target>
       </trans-unit>
       <trans-unit id="gilkjh8" resname="Error optimizing images">
         <source>Error optimizing images</source>
-        <target></target>
+        <target>~Errorea irudiak optimizatzean</target>
       </trans-unit>
       <trans-unit id="rpyp95a" resname="in">
         <source>in</source>
-        <target></target>
+        <target>~en</target>
       </trans-unit>
       <trans-unit id="bgt52mk" resname="User">
         <source>User</source>
-        <target></target>
+        <target>~Erabiltzailea</target>
       </trans-unit>
       <trans-unit id="1gh3thm" resname="Viewing page">
         <source>Viewing page</source>
-        <target></target>
+        <target>~Orrialdea ikusten</target>
       </trans-unit>
       <trans-unit id="dd915rp" resname="You">
         <source>You</source>
-        <target></target>
+        <target>~Hi</target>
       </trans-unit>
       <trans-unit id="riy9fw7" resname="Offline mode">
         <source>Offline mode</source>
-        <target></target>
+        <target>~Offline modua</target>
       </trans-unit>
       <trans-unit id="w85kgkn" resname="Shared">
         <source>Shared</source>
-        <target></target>
+        <target>~Elkartutza</target>
       </trans-unit>
       <trans-unit id="b8j1fpp" resname="ELPX export not available. Please save your project first.">
         <source>ELPX export not available. Please save your project first.</source>
-        <target></target>
+        <target>~ELPX esportazioa ez dago erabilgarri. Gorde zure proiektua lehenengo.</target>
       </trans-unit>
       <trans-unit id="ipoykow" resname="Error generating ELPX file:">
         <source>Error generating ELPX file:</source>
-        <target></target>
+        <target>~Errorea ELPX fitxategia sortzean:</target>
       </trans-unit>
       <trans-unit id="kzsgvi6" resname="Print preview is not available.">
         <source>Print preview is not available.</source>
-        <target></target>
+        <target>~Inprimatzeko aurrebista ez dago erabilgarri.</target>
       </trans-unit>
       <trans-unit id="wp4mt80" resname="Preview opened in new window.">
         <source>Preview opened in new window.</source>
-        <target></target>
+        <target>~Aurrebista beste leiho batean zabaldu da.</target>
       </trans-unit>
       <trans-unit id="zl1iy30" resname="pages">
         <source>pages</source>
-        <target></target>
+        <target>~orrialdeak</target>
       </trans-unit>
       <trans-unit id="8d3nk4p" resname="Generating file from collaborative document...">
         <source>Generating file from collaborative document...</source>
-        <target></target>
+        <target>~Dokumentu lankidetzako fitxategia sortzen...</target>
       </trans-unit>
       <trans-unit id="685pkr4" resname="File saved.">
         <source>File saved.</source>
-        <target></target>
+        <target>~Fitxategia gorde da.</target>
       </trans-unit>
       <trans-unit id="9wxl4pc" resname="An error occurred while saving the file.">
         <source>An error occurred while saving the file.</source>
-        <target></target>
+        <target>~Errorea fitxategia gordetzean.</target>
       </trans-unit>
       <trans-unit id="p6d80ey" resname="Preview is not available. Please reload the page.">
         <source>Preview is not available. Please reload the page.</source>
-        <target></target>
+        <target>~Aurrebista ez dago erabilgarri. Mesedez, kargatu orria berriro.</target>
       </trans-unit>
       <trans-unit id="b5a716k" resname="Storage not available">
         <source>Storage not available</source>
-        <target></target>
+        <target>~Gordetzea ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="vbwhn7b" resname="Invalid style package">
         <source>Invalid style package</source>
-        <target></target>
+        <target>~Estilo baliogabea</target>
       </trans-unit>
       <trans-unit id="z7iz5wl" resname="config.xml not found in ZIP">
         <source>config.xml not found in ZIP</source>
-        <target></target>
+        <target>~config.xml ez da aurkitu ZIP-an</target>
       </trans-unit>
       <trans-unit id="vu1hlkx" resname="This style cannot be downloaded">
         <source>This style cannot be downloaded</source>
-        <target></target>
+        <target>~Estilo hau ezin da deskargatu</target>
       </trans-unit>
       <trans-unit id="010mtjt" resname="Style already exists">
         <source>Style already exists</source>
-        <target></target>
+        <target>~Estilo hori jada existitzen da</target>
       </trans-unit>
       <trans-unit id="4hwox3i" resname="A style with this name already exists">
         <source>A style with this name already exists</source>
-        <target></target>
+        <target>~Estilo honekin dagoen izena duen estilo bat existitzen da</target>
       </trans-unit>
       <trans-unit id="7fdngmu" resname="Style files not found">
         <source>Style files not found</source>
-        <target></target>
+        <target>~Ez da estilo fitxategiak aurkitu</target>
       </trans-unit>
       <trans-unit id="f5pk0ni" resname="Add page">
         <source>Add page</source>
-        <target></target>
+        <target>~Orria gehitu</target>
       </trans-unit>
       <trans-unit id="cy3wjyo" resname="Export page">
         <source>Export page</source>
-        <target></target>
+        <target>~Orria esportatu</target>
       </trans-unit>
       <trans-unit id="n7bia4y" resname="Table of contents">
         <source>Table of contents</source>
-        <target></target>
+        <target>~Edukien taula</target>
       </trans-unit>
       <trans-unit id="4aymczf" resname="Export functionality not available. Please reload the page.">
         <source>Export functionality not available. Please reload the page.</source>
-        <target></target>
+        <target>~Esportazio funtzionalitatea ez dago erabilgarri. Mesedez, kargatu orria berriro.</target>
       </trans-unit>
       <trans-unit id="d739dic" resname="Collaboration service not ready">
         <source>Collaboration service not ready</source>
-        <target></target>
+        <target>~Elkarrekin editatzeko zerbitzua ez dago erabilgarri</target>
       </trans-unit>
       <trans-unit id="htviazt" resname="Export failed">
         <source>Export failed</source>
-        <target></target>
+        <target>~Errorea esportazioan</target>
       </trans-unit>
       <trans-unit id="ir2kgc0" resname="Please wait for the project to fully load before importing.">
         <source>Please wait for the project to fully load before importing.</source>
-        <target></target>
+        <target>~Itxaron proiektua guztiz kargatu arte inportatu baino lehen.</target>
       </trans-unit>
       <trans-unit id="p43sp83" resname="this page">
         <source>this page</source>
-        <target></target>
+        <target>~oraingo orria</target>
       </trans-unit>
       <trans-unit id="dp2ytn5" resname="Unknown user">
         <source>Unknown user</source>
-        <target></target>
+        <target>~Erabiltzaile ezezaguna</target>
       </trans-unit>
       <trans-unit id="yt4ph56" resname="Do you want to delete">
         <source>Do you want to delete</source>
-        <target></target>
+        <target>~Ez duzu ezabatu nahi</target>
       </trans-unit>
       <trans-unit id="xm3nvkc" resname="selected pages">
         <source>selected pages</source>
-        <target></target>
+        <target>~hautatutako orriak</target>
       </trans-unit>
       <trans-unit id="5kck1ez" resname="and their children">
         <source>and their children</source>
-        <target></target>
+        <target>~eta bere azpiorriak</target>
       </trans-unit>
       <trans-unit id="errzy0k" resname="You can undo this action.">
         <source>You can undo this action.</source>
-        <target></target>
+        <target>~Ekintza hau desegin dezakezu.</target>
       </trans-unit>
       <trans-unit id="5hcfqg0" resname="and all its children">
         <source>and all its children</source>
-        <target></target>
+        <target>~eta bere azpiorriak</target>
       </trans-unit>
       <trans-unit id="vttccrc" resname="Another user is viewing this page or its children">
         <source>Another user is viewing this page or its children</source>
-        <target></target>
+        <target>~Beste erabiltzaile bat ikusten ari da orri hau edo bere azpiorriak</target>
       </trans-unit>
       <trans-unit id="58s0to3" resname="Other users are viewing this page or its children">
         <source>Other users are viewing this page or its children</source>
-        <target></target>
+        <target>~Beste erabiltzaile batzuk ikusten ari dira orri hau edo bere azpiorriak</target>
       </trans-unit>
       <trans-unit id="tct21y6" resname="They will be automatically redirected to the parent page.">
         <source>They will be automatically redirected to the parent page.</source>
-        <target></target>
+        <target>~Automatikoki goragoko mailako orriraino bideratuko dira.</target>
       </trans-unit>
       <trans-unit id="5c4y17c" resname="Preferences will be applied after refreshing the page.">
         <source>Preferences will be applied after refreshing the page.</source>
-        <target></target>
+        <target>~Lehentasunak orria eguneratu ondoren aplikatuko dira.</target>
       </trans-unit>
       <trans-unit id="wque1se" resname="Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.">
         <source>Changes require a page reload to take effect. Please download your project first to avoid losing your work, then reload the page.</source>
-        <target></target>
+        <target>~Es necesario recargar la página para aplicar los cambios. Descarga tu proyecto primero para no perder trabajo. Luego recarga la página.</target>
       </trans-unit>
       <trans-unit id="ntl25n3" resname="You have unsaved changes. Are you sure you want to leave?">
         <source>You have unsaved changes. Are you sure you want to leave?</source>
-        <target></target>
+        <target>~Beharrezkoa da aldaketak aplikatzeko orria berriro kargatzea. Lehenik eta behin zure proiektua deskargatu ezazu lanaren galera saihesteko. Ondoren, berriro kargatu orria.</target>
       </trans-unit>
       <trans-unit id="963g6wz" resname="Project not ready for collaboration">
         <source>Project not ready for collaboration</source>
-        <target></target>
+        <target>~Tienes cambios sin guardar. ¿Seguro que quieres salir?</target>
       </trans-unit>
       <trans-unit id="ldzeqsu" resname="Generating ELPX file...">
         <source>Generating ELPX file...</source>
-        <target></target>
+        <target>~Aldaketak gorde gabe dituzu. Ziur zaude irtengoa nahi duzula?</target>
       </trans-unit>
       <trans-unit id="qs4w93b" resname="File generated and downloaded.">
         <source>File generated and downloaded.</source>
-        <target></target>
+        <target>~El proyecto no está preparado para la edición colaborativa</target>
       </trans-unit>
       <trans-unit id="gh4sot4" resname="Error generating ELPX file.">
         <source>Error generating ELPX file.</source>
-        <target></target>
+        <target>~Proiektua lankidetzazko editorrerako prestatu gabe dago</target>
       </trans-unit>
       <trans-unit id="ggqvzq3" resname="Saving document...">
         <source>Saving document...</source>
-        <target></target>
+        <target>~Generando archivo ELPX...</target>
       </trans-unit>
       <trans-unit id="gmnbytq" resname="Saving...">
         <source>Saving...</source>
-        <target></target>
+        <target>~Sortzen ELPX fitxategia...</target>
       </trans-unit>
       <trans-unit id="so6owpb" resname="Offline Mode">
         <source>Offline Mode</source>
-        <target></target>
+        <target>~Archivo generado y descargado.</target>
       </trans-unit>
       <trans-unit id="xf9v7gy" resname="Your project is automatically saved in your browser. Use File &gt; Export to download a copy.">
         <source>Your project is automatically saved in your browser. Use File &gt; Export to download a copy.</source>
-        <target></target>
+        <target>~Fitxategia sortu eta deskargatu da.</target>
       </trans-unit>
       <trans-unit id="uoqjlbe" resname="Cannot save project to server because your storage quota has been exceeded. You can download the project locally.">
         <source>Cannot save project to server because your storage quota has been exceeded. You can download the project locally.</source>
-        <target></target>
+        <target>~Ezin da proiektua zerbitzarian gorde, zure biltegiratze kuota gainditu delako. Proiektua zure ordenagailura deskargatu dezakezu.</target>
       </trans-unit>
       <trans-unit id="npcx0kx" resname="Quota exceeded">
         <source>Quota exceeded</source>
-        <target></target>
+        <target>~Biltegiratze kuota gaindituta</target>
       </trans-unit>
       <trans-unit id="seerfis" resname="Project saved successfully">
         <source>Project saved successfully</source>
-        <target></target>
+        <target>~Proiektua behar bezala gorde da</target>
       </trans-unit>
       <trans-unit id="fms4ss9" resname="Failed to save project">
         <source>Failed to save project</source>
-        <target></target>
+        <target>~Errorea proiektua gordetzean</target>
       </trans-unit>
       <trans-unit id="wslrldh" resname="Project saved">
         <source>Project saved</source>
-        <target></target>
+        <target>~Proiektua gorde da</target>
       </trans-unit>
       <trans-unit id="taenxkt" resname="Failed to import style">
         <source>Failed to import style</source>
-        <target></target>
+        <target>~Errorea estiloa inportatzean</target>
       </trans-unit>
       <trans-unit id="6o9pzhf" resname="Legacy license, please review">
         <source>Legacy license, please review</source>
-        <target></target>
+        <target>~Proiektuaren lizentzia berrikuspenaren beharra du</target>
       </trans-unit>
       <trans-unit id="qicylyj" resname="Add child page">
         <source>Add child page</source>
-        <target></target>
+        <target>~Gehitu azalpagaia</target>
       </trans-unit>
       <trans-unit id="obev0o0" resname="New Page">
         <source>New Page</source>
-        <target></target>
+        <target>~Orrialdi berria</target>
       </trans-unit>
       <trans-unit id="3i0pv9l" resname="Error storing image">
         <source>Error storing image</source>
-        <target></target>
+        <target>~Errorea irudia gordetzean</target>
       </trans-unit>
       <trans-unit id="fgq5lqq" resname="Could not load YouTube API">
         <source>Could not load YouTube API</source>
-        <target></target>
+        <target>~Ezin izan da YouTube APIa kargatu</target>
       </trans-unit>
       <trans-unit id="mz0p7g9" resname="Please select an AI assistant.">
         <source>Please select an AI assistant.</source>
-        <target></target>
+        <target>~Aukeratu AI laguntzailea.</target>
       </trans-unit>
       <trans-unit id="b4fpnkt" resname="The following lines are invalid:">
         <source>The following lines are invalid:</source>
-        <target></target>
+        <target>~Hurrengo lerroak ez dira baliozkoak:</target>
       </trans-unit>
       <trans-unit id="e08jqdg" resname="The questions have been added successfully">
         <source>The questions have been added successfully</source>
-        <target></target>
+        <target>~Galderak ondo gehitu dira</target>
       </trans-unit>
       <trans-unit id="pt7oc9e" resname="Start voice recording">
         <source>Start voice recording</source>
-        <target></target>
+        <target>~Hizketaren grabazioa hasteko</target>
       </trans-unit>
       <trans-unit id="7cnfp5h" resname="File name">
         <source>File name</source>
-        <target></target>
+        <target>~Fitxategiaren izena</target>
       </trans-unit>
       <trans-unit id="f20djp8" resname="Recording time">
         <source>Recording time</source>
-        <target></target>
+        <target>~Grabazioaren iraupena</target>
       </trans-unit>
       <trans-unit id="i8zbybf" resname="Review recording">
         <source>Review recording</source>
-        <target></target>
+        <target>~Berrikusi grabazioa</target>
       </trans-unit>
       <trans-unit id="q1c7zr1" resname="Recording in progress">
         <source>Recording in progress</source>
-        <target></target>
+        <target>~Grabazioa martxan</target>
       </trans-unit>
       <trans-unit id="ldiy6kk" resname="Uploading...">
         <source>Uploading...</source>
-        <target></target>
+        <target>~Kargatzen...</target>
       </trans-unit>
       <trans-unit id="72c26j1" resname="Microphone access was denied or unavailable.">
         <source>Microphone access was denied or unavailable.</source>
-        <target></target>
+        <target>~Ezin da mikrofonoaren sarbidea onartu edo mikrofonoa ez dago erabilgarri.</target>
       </trans-unit>
       <trans-unit id="e2rt0e1" resname="Failed to save recording.">
         <source>Failed to save recording.</source>
-        <target></target>
+        <target>~Errorea grabazioa gordean.</target>
       </trans-unit>
       <trans-unit id="4ua897c" resname="Recording">
         <source>Recording</source>
-        <target></target>
+        <target>~Grabaketa</target>
       </trans-unit>
       <trans-unit id="0f8tnv5" resname="Data error">
         <source>Data error</source>
-        <target></target>
+        <target>~Datuen errorea</target>
       </trans-unit>
       <trans-unit id="e948k0z" resname="This might not work in this ePub reader">
         <source>This might not work in this ePub reader</source>
-        <target></target>
+        <target>~Honek ez du funtzionatuko ePub irakurgailu honetan</target>
       </trans-unit>
       <trans-unit id="84y49fx" resname="This activity does not work in ePub format">
         <source>This activity does not work in ePub format</source>
-        <target></target>
+        <target>~Aktibitatea ez da ePub formatuan funtzionatzen</target>
       </trans-unit>
       <trans-unit id="t6rzl3t" resname="Full search">
         <source>Full search</source>
-        <target></target>
+        <target>~Bilaketa osoa</target>
       </trans-unit>
       <trans-unit id="ugf9jpz" resname="No search results">
         <source>No search results</source>
-        <target></target>
+        <target>~Ez da emaitzarik</target>
       </trans-unit>
       <trans-unit id="xklj1vk" resname="block">
         <source>block</source>
-        <target></target>
+        <target>~blokea</target>
       </trans-unit>
       <trans-unit id="zk8tyyg" resname="Default font">
         <source>Default font</source>
-        <target></target>
+        <target>~Tipografia lehenetsia</target>
       </trans-unit>
       <trans-unit id="1f89ylf" resname="Uppercase">
         <source>Uppercase</source>
-        <target></target>
+        <target>~Mayúsculas</target>
       </trans-unit>
       <trans-unit id="1sj2iq6" resname="Light/Dark mode">
         <source>Light/Dark mode</source>
-        <target></target>
+        <target>~Modu argia/iluna</target>
       </trans-unit>
       <trans-unit id="nhi9tcr" resname="Generating...">
         <source>Generating...</source>
-        <target></target>
+        <target>~Sortzen</target>
       </trans-unit>
       <trans-unit id="mjaddx8" resname="The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.">
         <source>The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead.</source>
-        <target></target>
+        <target>~Ez da erantzun karpeta hautatzaileak. Hau gertatu daiteke zure ekipoan zuzenean esportatutako fitxategiak irekitzearen ondorioz (file:// protokoloa). Saihestu fitxategia web zerbitzariren bidez irekitzea.</target>
       </trans-unit>
       <trans-unit id="epv0opz" resname="No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.">
         <source>No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server.</source>
-        <target></target>
+        <target>~Ez da fitxategiak aurkitu karpeta hautatzaileak. Hau ezagutzen den muga bat da, file:// protokoloa erabiliz esportatutako fitxategiak irekitzean zenbait nabigatzaileetan. Saihestu beste nabigatzaile bat erabiltzea edo web zerbitzariren bidez ireki fitxategia.</target>
       </trans-unit>
       <trans-unit id="9k68ygy" resname="Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.">
         <source>Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.</source>
-        <target></target>
+        <target>~Modu lokala: nabigatzailearen segurtasun-politika dela eta, karpeta hautatu beharko duzu zeinetatik ireki duzun fitxategia. Web zerbitzari batean hau ez da beharrezkoa izango.</target>
       </trans-unit>
       <trans-unit id="7rzvxzo" resname="Hangman game">
         <source>Hangman game</source>
-        <target></target>
+        <target>~Hautaketa jokoa</target>
       </trans-unit>
       <trans-unit id="1mhy0jd" resname="Game over">
         <source>Game over</source>
-        <target></target>
+        <target>~Jokoaren amaiera</target>
       </trans-unit>
       <trans-unit id="ei840vi" resname="Reload game?">
         <source>Reload game?</source>
-        <target></target>
+        <target>~Jokoari berriro ekin nahi duzu?</target>
       </trans-unit>
       <trans-unit id="vr2btdb" resname="Click Play to start">
         <source>Click Play to start</source>
-        <target></target>
+        <target>~Klik egin "Jolastu" hasteko</target>
       </trans-unit>
       <trans-unit id="u4ht6w7" resname="Click Other word to continue">
         <source>Click Other word to continue</source>
-        <target></target>
+        <target>~Klikatu "Beste hitza" jarraitzeko</target>
       </trans-unit>
       <trans-unit id="vggp5o2" resname="Attempting to reconnect...">
         <source>Attempting to reconnect...</source>
-        <target></target>
+        <target>~Saiatzen ari da berriro konektatzen...</target>
       </trans-unit>
       <trans-unit id="98b0wam" resname="Your access to this project has been revoked.">
         <source>Your access to this project has been revoked.</source>
-        <target></target>
+        <target>~Zure sarbidea proiektu honetan bertan behera geratu da.</target>
       </trans-unit>
       <trans-unit id="db91cum" resname="Mind map saved">
         <source>Mind map saved</source>
-        <target></target>
+        <target>~Gai mentalaren mapa gorde da</target>
       </trans-unit>
       <trans-unit id="wdqlbi8" resname="source">
         <source>source</source>
-        <target></target>
+        <target>~jatorria</target>
       </trans-unit>
       <trans-unit id="ny3ki3k" resname="target">
         <source>target</source>
-        <target></target>
+        <target>~helmuga</target>
       </trans-unit>
       <trans-unit id="2lphe6l" resname="Create new formula toolbar">
         <source>Create new formula toolbar</source>
-        <target></target>
+        <target>~Sortu formula barra berria</target>
       </trans-unit>
       <trans-unit id="ohozk5u" resname="Add Category">
         <source>Add Category</source>
-        <target></target>
+        <target>~Gehitu kategoria</target>
       </trans-unit>
       <trans-unit id="pcm5ah2" resname="Quick start">
         <source>Quick start</source>
-        <target></target>
+        <target>~Hasiera azkarra</target>
       </trans-unit>
       <trans-unit id="uvus914" resname="Start from empty set">
         <source>Start from empty set</source>
-        <target></target>
+        <target>~Hasi zerotik</target>
       </trans-unit>
       <trans-unit id="n9a9yu6" resname="Start with minimal example">
         <source>Start with minimal example</source>
-        <target></target>
+        <target>~Hasi with a minimum example</target>
       </trans-unit>
       <trans-unit id="gl13xb4" resname="Create a new set without loading external files.">
         <source>Create a new set without loading external files.</source>
-        <target></target>
+        <target>~Sortu fitxategi kanpoko fitxategirik kargatu gabe</target>
       </trans-unit>
       <trans-unit id="jz2w7qn" resname="Your set is empty. Use the &quot;+ Add Category&quot; button above to create the first category.">
         <source>Your set is empty. Use the "+ Add Category" button above to create the first category.</source>
-        <target></target>
+        <target>~Zure multzoa hutsik dago. Erabili goiko "+ Gehitu kategoria" botoia lehenengo kategoria sortzeko.</target>
       </trans-unit>
       <trans-unit id="zkb3f5v" resname="Double-click to rename">
         <source>Double-click to rename</source>
-        <target></target>
+        <target>~Klik bikoitza izena aldatzeko</target>
       </trans-unit>
       <trans-unit id="0rs4967" resname="Close without saving?">
         <source>Close without saving?</source>
-        <target></target>
+        <target>~Itxi gabe utzi nahi duzu?</target>
       </trans-unit>
       <trans-unit id="9kmzal4" resname="This set has unsaved changes. Close anyway?">
         <source>This set has unsaved changes. Close anyway?</source>
-        <target></target>
+        <target>~Multzo honek aldaketak ditu gordeta ez direnak. Itxi nahi duzu oraindik ere?</target>
       </trans-unit>
       <trans-unit id="jkfggi5" resname="Rename set">
         <source>Rename set</source>
-        <target></target>
+        <target>~Multzoa berrizendatu</target>
       </trans-unit>
       <trans-unit id="nl0up59" resname="Set name">
         <source>Set name</source>
-        <target></target>
+        <target>~Multzoaren izena</target>
       </trans-unit>
       <trans-unit id="zs48d7g" resname="Starter example">
         <source>Starter example</source>
-        <target></target>
+        <target>~Hasierako adibidea</target>
       </trans-unit>
       <trans-unit id="23cp8d3" resname="Error processing JSON:">
         <source>Error processing JSON:</source>
-        <target></target>
+        <target>~Errorea JSON prozesatzean:</target>
       </trans-unit>
       <trans-unit id="hkiq09s" resname="Code license:">
         <source>Code license:</source>
-        <target></target>
+        <target>~Lizentzia kodea:</target>
       </trans-unit>
       <trans-unit id="zk0ti07" resname="Content:">
         <source>Content:</source>
-        <target></target>
+        <target>~Edukia:</target>
       </trans-unit>
       <trans-unit id="ask5ip8" resname="Send to host">
         <source>Send to host</source>
-        <target></target>
+        <target>~Bidali</target>
       </trans-unit>
       <trans-unit id="jgm75fl" resname="Sent!">
         <source>Sent!</source>
-        <target></target>
+        <target>~Bidalia!</target>
       </trans-unit>
       <trans-unit id="h24hs3t" resname="Missing or invalid origin.">
         <source>Missing or invalid origin.</source>
-        <target></target>
+        <target>~Jatorria edo ez-baliogabeko jatorria falta da.</target>
       </trans-unit>
       <trans-unit id="qgtx8w0" resname="No host window available.">
         <source>No host window available.</source>
-        <target></target>
+        <target>~Ez da helbide leiorik aurkitu.</target>
       </trans-unit>
       <trans-unit id="ta3dnhl" resname="Your set is empty. Start by adding a category.">
         <source>Your set is empty. Start by adding a category.</source>
-        <target></target>
+        <target>~Zure multzoa hutsik dago. Hasi kategoria bat gehituz.</target>
       </trans-unit>
       <trans-unit id="dpfdp59" resname="Add first category">
         <source>Add first category</source>
-        <target></target>
+        <target>~Gehitu lehenengo kategoria</target>
       </trans-unit>
       <trans-unit id="ss8hse0" resname="Mermaid code">
         <source>Mermaid code</source>
-        <target></target>
+        <target>~Mermaid kodea</target>
       </trans-unit>
       <trans-unit id="kv0alg5" resname="Need help? Visit %s">
         <source>Need help? Visit %s</source>
-        <target></target>
+        <target>~Laguntza behar duzu? Bisitatu %s</target>
       </trans-unit>
       <trans-unit id="dwjguyz" resname="Mermaid diagram">
         <source>Mermaid diagram</source>
-        <target></target>
+        <target>~Diagramaren Mermaid</target>
       </trans-unit>
       <trans-unit id="f7ztlpa" resname="Player compatible with .srt subtitles. Check only if using .srt subtitles.">
         <source>Player compatible with .srt subtitles. Check only if using .srt subtitles.</source>
-        <target></target>
+        <target>~Subtituluekin bateragarria den erreproduzigailua, SRT. Aukeratu ezazu aukera hau soilik SRT azpidatziekin erabiltzen duzunean.</target>
       </trans-unit>
       <trans-unit id="t0daxkd" resname="Task information">
         <source>Task information</source>
-        <target></target>
+        <target>~Zereginaren informazioa</target>
       </trans-unit>
       <trans-unit id="wvpk6dg" resname="You made %s errors. You have %s attempts left. Do you want to try again?">
         <source>You made %s errors. You have %s attempts left. Do you want to try again?</source>
-        <target></target>
+        <target>~%s errore izan dituzu. %s saiakera gelditzen zaizkizu. Saiatu nahi duzu berriro?</target>
       </trans-unit>
       <trans-unit id="b4mkkc2" resname="You must close the edited questionnaire before saving the activity.">
         <source>You must close the edited questionnaire before saving the activity.</source>
-        <target></target>
+        <target>~Aldatzen ari zaren inkesta gorde aurretik ixtea behar duzu.</target>
       </trans-unit>
       <trans-unit id="pwbf29j" resname="YouTube videos cannot be embedded in preview mode. ">
         <source>YouTube videos cannot be embedded in preview mode. </source>
-        <target></target>
+        <target>~YouTube bideoak ezin dira inbultatu aurrebistetan.</target>
       </trans-unit>
       <trans-unit id="6vjgohu" resname="Invalid file content">
         <source>Invalid file content</source>
-        <target></target>
+        <target>~Fitxategiaren edukia ez da baliozkoa</target>
       </trans-unit>
       <trans-unit id="r6lhn8c" resname="Answer type: Single">
         <source>Answer type: Single</source>
-        <target></target>
+        <target>~Erantzun mota: Bakarra</target>
       </trans-unit>
       <trans-unit id="chnuave" resname="Answer type: Multiple">
         <source>Answer type: Multiple</source>
-        <target></target>
+        <target>~Erantzun mota: Anitza</target>
       </trans-unit>
       <trans-unit id="kxc59hh" resname="Suggestion or hint (optional)">
         <source>Suggestion or hint (optional)</source>
-        <target></target>
+        <target>~Iradokizuna edo pista (aukerakoa)</target>
       </trans-unit>
       <trans-unit id="c3jzo52" resname="Hint or suggestion for the student">
         <source>Hint or suggestion for the student</source>
-        <target></target>
+        <target>~Pista edo iradokizuna ikaslearentzat</target>
       </trans-unit>
       <trans-unit id="774r6q9" resname="Feedback for correct answer (optional)">
         <source>Feedback for correct answer (optional)</source>
-        <target></target>
+        <target>~Erantzun zuzena emateko iruzkina (aukerakoa)</target>
       </trans-unit>
       <trans-unit id="spxq1j3" resname="Message shown when answer is correct">
         <source>Message shown when answer is correct</source>
-        <target></target>
+        <target>~Mezu hau erakusten da erantzuna zuzena denean</target>
       </trans-unit>
       <trans-unit id="kq6zzdp" resname="Feedback for wrong answer (optional)">
         <source>Feedback for wrong answer (optional)</source>
-        <target></target>
+        <target>~Erantzun okerra emateko iruzkina (aukerakoa)</target>
       </trans-unit>
       <trans-unit id="8jler55" resname="Message shown when answer is wrong">
         <source>Message shown when answer is wrong</source>
-        <target></target>
+        <target>~Mezu hau erakusten da erantzuna okerra denean</target>
       </trans-unit>
       <trans-unit id="wummnqb" resname="No indicators were selected for this activity.">
         <source>No indicators were selected for this activity.</source>
-        <target></target>
+        <target>~Ez daude adierazleak hautatu activity honetan.</target>
       </trans-unit>
       <trans-unit id="3oh4v45" resname="DigCompEdu summary">
         <source>DigCompEdu summary</source>
-        <target></target>
+        <target>~DigCompEdu Laburpena</target>
       </trans-unit>
       <trans-unit id="29mu38x" resname="Selected indicators: ">
         <source>Selected indicators: </source>
-        <target></target>
+        <target>~Hautatutako adierazleak: </target>
       </trans-unit>
       <trans-unit id="qjbqigl" resname="DigCompEdu: Digital Competence Manager">
         <source>DigCompEdu: Digital Competence Manager</source>
-        <target></target>
+        <target>~DigCompEdu: Gaitasun Digitalaren Kudeatzailea</target>
       </trans-unit>
       <trans-unit id="v2fycfd" resname="Framework data could not be loaded. Please verify the data file is available.">
         <source>Framework data could not be loaded. Please verify the data file is available.</source>
-        <target></target>
+        <target>~Ezin izan dira markoaren datuak kargatu. Egiaztatu datu-fitxategia eskuragarri dagoela.</target>
       </trans-unit>
       <trans-unit id="o71anzk" resname="Framework data is still loading. Please wait.">
         <source>Framework data is still loading. Please wait.</source>
-        <target></target>
+        <target>~Oraindik kargatzen ari dira markoaren datuak. Mesedez, itxaron...</target>
       </trans-unit>
       <trans-unit id="8i4fjci" resname="DigCompEdu framework viewer">
         <source>DigCompEdu framework viewer</source>
-        <target></target>
+        <target>~DigCompEdu markoaren bistailea</target>
       </trans-unit>
       <trans-unit id="tf7rwkq" resname="DigCompEdu framework">
         <source>DigCompEdu framework</source>
-        <target></target>
+        <target>~DigCompEdu Markoa</target>
       </trans-unit>
       <trans-unit id="czzj5rz" resname="Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.">
         <source>Use filters, search, or fullscreen to explore the framework. Indicators remain selected while filtering.</source>
-        <target></target>
+        <target>~Erabili filtroak, bilaketa edo pantaila osoa markoa esploratzea lortzeko. Indikadoreak hautatuta geratzen dira filtroa aplikatzen denean.</target>
       </trans-unit>
       <trans-unit id="iktb94b" resname="Area">
         <source>Area</source>
-        <target></target>
+        <target>~Arloa</target>
       </trans-unit>
       <trans-unit id="qg2trn4" resname="Competence">
         <source>Competence</source>
-        <target></target>
+        <target>~Gaitasuna</target>
       </trans-unit>
       <trans-unit id="3xni8jl" resname="Stage">
         <source>Stage</source>
-        <target></target>
+        <target>~Fasea</target>
       </trans-unit>
       <trans-unit id="tee95m1" resname="Indicator">
         <source>Indicator</source>
-        <target></target>
+        <target>~Indikagailua</target>
       </trans-unit>
       <trans-unit id="p7up0ua" resname="Performance and examples">
         <source>Performance and examples</source>
-        <target></target>
+        <target>~Ekoizpena eta adibideak</target>
       </trans-unit>
       <trans-unit id="1ji0a1h" resname="DigCompEdu settings">
         <source>DigCompEdu settings</source>
-        <target></target>
+        <target>~DigCompEdu konfigurazioa</target>
       </trans-unit>
       <trans-unit id="ebr9yse" resname="Español (MRCDD detallado)">
         <source>Español (MRCDD detallado)</source>
-        <target></target>
+        <target>~Euskara (MRCDD xehetasita)</target>
       </trans-unit>
       <trans-unit id="mr7nnhi" resname="Galego (MRCDD completo)">
         <source>Galego (MRCDD completo)</source>
-        <target></target>
+        <target>~Gallego (MRCDD osoa)</target>
       </trans-unit>
       <trans-unit id="mxgi13i" resname="English (DigCompEdu core)">
         <source>English (DigCompEdu core)</source>
-        <target></target>
+        <target>~Ingelesa (DigCompEdu gune)</target>
       </trans-unit>
       <trans-unit id="tcu6sch" resname="Display options">
         <source>Display options</source>
-        <target></target>
+        <target>~Erakutsi aukerak</target>
       </trans-unit>
       <trans-unit id="slt4x12" resname="Table only">
         <source>Table only</source>
-        <target></target>
+        <target>~Taula bakarra</target>
       </trans-unit>
       <trans-unit id="ulj6f9l" resname="Table + textual summary">
         <source>Table + textual summary</source>
-        <target></target>
+        <target>~Taula + laburpen testuala</target>
       </trans-unit>
       <trans-unit id="nw2ju0x" resname="Competency framework">
         <source>Competency framework</source>
-        <target></target>
+        <target>~Eskema gaitasuna</target>
       </trans-unit>
       <trans-unit id="847hidr" resname="Selection granularity">
         <source>Selection granularity</source>
-        <target></target>
+        <target>~Aukeraketa granula</target>
       </trans-unit>
       <trans-unit id="s6zmizn" resname="Competences">
         <source>Competences</source>
-        <target></target>
+        <target>~Gaitasunak</target>
       </trans-unit>
       <trans-unit id="gslpuz1" resname="Levels">
         <source>Levels</source>
-        <target></target>
+        <target>~Mailak</target>
       </trans-unit>
       <trans-unit id="8r01o8z" resname="Indicators">
         <source>Indicators</source>
-        <target></target>
+        <target>~Indikadoreak</target>
       </trans-unit>
       <trans-unit id="b2lr7vb" resname="Search indicators">
         <source>Search indicators</source>
-        <target></target>
+        <target>~Indikadoreak bilatu</target>
       </trans-unit>
       <trans-unit id="6o0j58f" resname="Search by area, competence, indicator...">
         <source>Search by area, competence, indicator...</source>
-        <target></target>
+        <target>~Erlazioa, gaitasuna, indicador... bidez bilatu</target>
       </trans-unit>
       <trans-unit id="1sxji3p" resname="Filter by level">
         <source>Filter by level</source>
-        <target></target>
+        <target>~Maila bidez iragazi</target>
       </trans-unit>
       <trans-unit id="a7pfxsl" resname="Toggle fullscreen">
         <source>Toggle fullscreen</source>
-        <target></target>
+        <target>~Pantaila osoa aktibatu/desaktibatu</target>
       </trans-unit>
       <trans-unit id="u9avdk8" resname="Reset selection">
         <source>Reset selection</source>
-        <target></target>
+        <target>~Aukeraketaren lehentasuna berrezarri</target>
       </trans-unit>
       <trans-unit id="bifd7i4" resname="Preview summary">
         <source>Preview summary</source>
-        <target></target>
+        <target>~Laburpenaren aurrebista</target>
       </trans-unit>
       <trans-unit id="j6p8ni3" resname="DigCompEdu framework (fullscreen)">
         <source>DigCompEdu framework (fullscreen)</source>
-        <target></target>
+        <target>~DigCompEdu Marko (pantaila osoa)</target>
       </trans-unit>
       <trans-unit id="dw2dtw7" resname="Selection summary preview">
         <source>Selection summary preview</source>
-        <target></target>
+        <target>~Aukeraketaren laburpenaren aurrebista</target>
       </trans-unit>
       <trans-unit id="ekeqgpd" resname="Examples:">
         <source>Examples:</source>
-        <target></target>
+        <target>~Adibideak:</target>
       </trans-unit>
       <trans-unit id="d4ct7q8" resname="No items selected.">
         <source>No items selected.</source>
-        <target></target>
+        <target>~Ez dago elementurik hautatuta.</target>
       </trans-unit>
       <trans-unit id="43bztuz" resname="Selected items: ">
         <source>Selected items: </source>
-        <target></target>
+        <target>~Hautatutako elementuak: </target>
       </trans-unit>
       <trans-unit id="f2iordj" resname="Area of">
         <source>Area of</source>
-        <target></target>
+        <target>~Gunea</target>
       </trans-unit>
       <trans-unit id="33a8sw0" resname="and ">
         <source>and </source>
-        <target></target>
+        <target>~eta</target>
       </trans-unit>
       <trans-unit id="rb7aiqb" resname="indicator">
         <source>indicator</source>
-        <target></target>
+        <target>~indikadorea</target>
       </trans-unit>
       <trans-unit id="h0uw3og" resname="level">
         <source>level</source>
-        <target></target>
+        <target>~maila</target>
       </trans-unit>
       <trans-unit id="x8cjtc6" resname="Unable to change framework. The previous data will remain loaded.">
         <source>Unable to change framework. The previous data will remain loaded.</source>
-        <target></target>
+        <target>~Ez da markoa aldatu ahal izan. Aurreko datuak mantenduko dira.</target>
       </trans-unit>
       <trans-unit id="3uypnwv" resname="Font color">
         <source>Font color</source>
-        <target></target>
+        <target>~Testuaren kolorea</target>
       </trans-unit>
     </body>
   </file>
