@@ -63,46 +63,36 @@ export default class Locale {
 
     getGUITranslation(string) {
         if (typeof string != 'string') return '';
-        string = string ? string.replace(/"/g, '\\"') : '';
 
-        if (
-            this.strings &&
-            this.strings.translations &&
-            string in this.strings.translations
-        ) {
-            let res = this.strings.translations[string]
-                .replace(/\\"/g, '"')
-                .replace(/\\\//g, '/');
-            // Remove ~ prefix if present
-            if (res.startsWith('~')) {
-                res = res.substring(1);
+        const catalogue = this.strings?.translations;
+        if (catalogue) {
+            // Try exact key first (server returns unescaped keys)
+            const key = string in catalogue ? string : string.replace(/"/g, '\\"');
+            if (key in catalogue) {
+                let res = catalogue[key].replace(/\\"/g, '"').replace(/\\\//g, '/');
+                if (res.startsWith('~')) res = res.substring(1);
+                return res;
             }
-            return res;
-        } else {
-            return string.replace(/\\"/g, '"');
         }
+
+        return string.replace(/\\\//g, '/');
     }
 
     getContentTranslation(string) {
         if (typeof string != 'string') return '';
-        string = string ? string.replace(/"/g, '\\"') : '';
 
-        if (
-            this.c_strings &&
-            this.c_strings.translations &&
-            string in this.c_strings.translations
-        ) {
-            let res = this.c_strings.translations[string]
-                .replace(/\\"/g, '"')
-                .replace(/\\\//g, '/');
-            // Remove ~ prefix if present
-            if (res.startsWith('~')) {
-                res = res.substring(1);
+        const catalogue = this.c_strings?.translations;
+        if (catalogue) {
+            // Try exact key first (server returns unescaped keys)
+            const key = string in catalogue ? string : string.replace(/"/g, '\\"');
+            if (key in catalogue) {
+                let res = catalogue[key].replace(/\\"/g, '"').replace(/\\\//g, '/');
+                if (res.startsWith('~')) res = res.substring(1);
+                return res;
             }
-            return res;
-        } else {
-            return string.replace(/\\"/g, '"').replace(/\\\//g, '/');
         }
+
+        return string.replace(/\\\//g, '/');
     }
 
     /**
