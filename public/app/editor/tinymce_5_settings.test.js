@@ -559,6 +559,7 @@ describe('TinyMCE 5 Settings', () => {
       // (exeimage plugin shows warning if alt is empty when saving)
       expect(cb).toHaveBeenCalledWith('blob://file', {
         title: 'file.png',
+        text: 'file.png',
         alt: '',
         'data-asset-id': 'abc123', // CRITICAL: Used by convertBlobURLsToAssetRefs
       });
@@ -596,6 +597,7 @@ describe('TinyMCE 5 Settings', () => {
       // alt is empty by default - exeimage plugin warns if empty when saving
       expect(cb).toHaveBeenCalledWith('blob://file', {
         title: 'file.png',
+        text: 'file.png',
         alt: '',
         'data-asset-id': 'abc123',
       });
@@ -674,6 +676,7 @@ describe('TinyMCE 5 Settings', () => {
       // alt is empty by default (videos don't require alt text, only images do)
       expect(cb).toHaveBeenCalledWith('blob:http://localhost:8081/video-blob', {
         title: 'video.mp4',
+        text: 'video.mp4',
         alt: '',
         'data-asset-id': assetUUID, // CRITICAL: Used by convertBlobURLsToAssetRefs
       });
