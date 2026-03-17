@@ -82,7 +82,7 @@ export default class ModalPrintPreview {
     async generatePreview() {
         // Check Yjs mode
         if (!eXeLearning.app.project?._yjsEnabled) {
-            throw new Error(_('Print preview requires Yjs mode'));
+            throw new Error(_('Print preview requires server mode'));
         }
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;

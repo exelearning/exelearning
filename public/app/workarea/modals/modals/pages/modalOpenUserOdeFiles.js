@@ -1441,7 +1441,7 @@ export default class modalOpenUserOdeFiles extends Modal {
                     // Use YjsBridge.importFromElpx directly (client-side, no server APIs)
                     const yjsBridge = eXeLearning.app.project._yjsBridge;
                     if (!yjsBridge) {
-                        throw new Error('Yjs bridge not initialized.');
+                        throw new Error('Collaboration service not ready.');
                     }
 
                     // Show inline progress in workarea (same as online mode)

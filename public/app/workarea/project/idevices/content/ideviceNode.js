@@ -1444,7 +1444,7 @@ export default class IdeviceNode {
             // Get the Yjs bridge and document manager
             const yjsBridge = eXeLearning.app.project._yjsBridge;
             if (!yjsBridge) {
-                throw new Error('Yjs bridge not initialized');
+                throw new Error('Collaboration service not ready');
             }
             const documentManager = yjsBridge.documentManager;
             const assetCache = eXeLearning.app.project._assetCache || null;
