@@ -814,8 +814,8 @@ describe('Constants', () => {
                 );
             });
 
-            it('should return fallback raw string for CC0 public domain', () => {
-                expect(formatShortLicenseText('creative commons: cc0 1.0')).toBe('creative commons: cc0 1.0');
+            it('should return Creative Commons CC0 1.0 for CC0 public domain', () => {
+                expect(formatShortLicenseText('creative commons: cc0 1.0')).toBe('Creative Commons CC0 1.0');
             });
 
             it('should return fallback displayName for other licenses', () => {

@@ -85,8 +85,14 @@ html.js:has(body.exe-export) .in-iframe .exe-content {
     border-bottom: 0;
 }
 
-#node-content-container.exe-content .box {
-    border: 1px dotted #ddd;
+#node-content-container .box-content {
+    background: #FCFCFC;
+    border: 1px solid #ECECEC;
+    padding: 10px;
+    border-radius: 8px;
+}
+article.box.idevice-element-in-content[mode="export"] .idevice_node {
+    background: none;
 }
 
 #node-content-container.exe-content .box.hidden-idevices {

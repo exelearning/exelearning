@@ -14,11 +14,11 @@
         <img src="{{ '/images/logo.svg' | asset }}" width="100" height="92" alt="eXeLearning">
     </div>
     {% if status_code == 404 %}
-        <h1 class="mb-5">{{ 'error.page_not_found' | trans }}</h1>
+        <h1 class="mb-5">{{ 'Page not found' | trans }}</h1>
     {% elif status_code == 403 %}
-        <h1 class="mb-5">{{ 'error.access_denied' | trans }}</h1>
+        <h1 class="mb-5">{{ 'Access denied' | trans }}</h1>
     {% elif status_code >= 500 %}
-        <h1 class="mb-5">{{ 'error.server_error' | trans }}</h1>
+        <h1 class="mb-5">{{ 'Server error' | trans }}</h1>
     {% else %}
         <h1 class="mb-5">{{ 'Error' | trans }}</h1>
     {% endif %}
@@ -26,23 +26,23 @@
 
     <div class="show mb-5 bg-light py-3 px-4 rounded-3" role="alert">
     {% if status_code == 404 %}
-        {{ 'error.page_cannot_be_displayed' | trans }}
+        {{ 'Sorry, but the page cannot be displayed.' | trans }}
     {% elif status_code == 403 %}
-        {{ 'error.access_denied_message' | trans }}
+        {{ "You don't have permission to access this project." | trans }}
     {% elif status_code >= 500 %}
-        {{ 'error.server_error_try_again' | trans }}
+        {{ 'The server encountered an error and could not complete your request. Please try again later.' | trans }}
     {% elif message %}
         {{ message }}
     {% else %}
-        {{ 'error.page_cannot_be_displayed' | trans }}
+        {{ 'Sorry, but the page cannot be displayed.' | trans }}
     {% endif %}
     </div>
 
     <div class="d-flex gap-3 justify-content-center">
     {% if is_authenticated %}
-        <a href="{{ basePath }}/workarea" class="btn btn-primary">{{ 'error.return_to_workarea' | trans }}</a>
+        <a href="{{ basePath }}/workarea" class="btn btn-primary">{{ 'Return to work area' | trans }}</a>
     {% else %}
-        <a href="{{ basePath }}/login" class="btn btn-primary">{{ 'error.return_to_login' | trans }}</a>
+        <a href="{{ basePath }}/login" class="btn btn-primary">{{ 'Return to login' | trans }}</a>
     {% endif %}
     </div>
 </section>

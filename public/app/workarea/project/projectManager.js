@@ -334,7 +334,7 @@ export default class projectManager {
         Logger.log('[ProjectManager] Importing ELP directly from memory:', file.name);
 
         if (!this._yjsBridge) {
-            throw new Error('Yjs bridge not initialized');
+            throw new Error('Collaboration service not ready');
         }
 
         // Use centralized import method (handles asset announcement)

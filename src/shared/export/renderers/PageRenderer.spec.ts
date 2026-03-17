@@ -1137,7 +1137,7 @@ describe('PageRenderer', () => {
             );
         });
 
-        it('should output raw string when license is a non-standard CC like CC0', () => {
+        it('should output a link when license is CC0', () => {
             const page = createTestPage({
                 blocks: [
                     {
@@ -1156,7 +1156,9 @@ describe('PageRenderer', () => {
                 license: 'creative commons: cc0 1.0',
             });
 
-            expect(html).toContain('<span class="exe-prop-license">creative commons: cc0 1.0</span>');
+            expect(html).toContain(
+                '<span class="exe-prop-license"><a href="https://creativecommons.org/publicdomain/zero/1.0/" rel="license" class="cc cc-0"><span></span>Creative Commons CC0 1.0</a></span>',
+            );
         });
 
         it('should output safe simple text when license is not configured without crashing', () => {

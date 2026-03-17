@@ -2161,7 +2161,7 @@ window.$eXeLearningCustom = {
             settingsSaveBtn.addEventListener('click', async () => {
                 settingsSaveBtn.setAttribute('disabled', 'disabled');
                 if (settingsSaveStatus) {
-                    settingsSaveStatus.textContent = 'Guardando...';
+                    settingsSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
                     settingsSaveStatus.classList.remove('success', 'error');
                 }
 
@@ -2181,14 +2181,14 @@ window.$eXeLearningCustom = {
                     }
 
                     if (settingsSaveStatus) {
-                        settingsSaveStatus.textContent = 'Guardado';
+                        settingsSaveStatus.textContent = '{{ t.saved or "Saved" }}';
                         settingsSaveStatus.classList.add('success');
                     }
                     updateCreateUserDefaultQuota(settings);
                 } catch (err) {
                     console.error('Failed to save settings:', err);
                     if (settingsSaveStatus) {
-                        settingsSaveStatus.textContent = err?.message || 'Error al guardar';
+                        settingsSaveStatus.textContent = err?.message || '{{ t.error_saving or "Error saving" }}';
                         settingsSaveStatus.classList.add('error');
                     }
                 } finally {
@@ -2205,7 +2205,7 @@ window.$eXeLearningCustom = {
             presentationSaveBtn.addEventListener('click', async () => {
                 presentationSaveBtn.setAttribute('disabled', 'disabled');
                 if (presentationSaveStatus) {
-                    presentationSaveStatus.textContent = 'Guardando...';
+                    presentationSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
                     presentationSaveStatus.classList.remove('success', 'error');
                 }
 
@@ -2229,7 +2229,7 @@ window.$eXeLearningCustom = {
                         textarea.value = resData.sanitizedValues.CUSTOM_HEAD_HTML;
                     }
                     if (presentationSaveStatus) {
-                        presentationSaveStatus.textContent = 'Guardado';
+                        presentationSaveStatus.textContent = '{{ t.saved or "Saved" }}';
                         presentationSaveStatus.classList.add('success');
                         setTimeout(() => {
                             presentationSaveStatus.textContent = '';
@@ -2238,7 +2238,7 @@ window.$eXeLearningCustom = {
                     }
                 } catch (err) {
                     if (presentationSaveStatus) {
-                        presentationSaveStatus.textContent = 'Error';
+                        presentationSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
                         presentationSaveStatus.classList.add('error');
                     }
                 } finally {
@@ -2255,7 +2255,7 @@ window.$eXeLearningCustom = {
             maintenanceSaveBtn.addEventListener('click', async () => {
                 maintenanceSaveBtn.setAttribute('disabled', 'disabled');
                 if (maintenanceSaveStatus) {
-                    maintenanceSaveStatus.textContent = 'Guardando...';
+                    maintenanceSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
                     maintenanceSaveStatus.classList.remove('success', 'error');
                 }
 
@@ -2304,7 +2304,7 @@ window.$eXeLearningCustom = {
                     }
 
                     if (maintenanceSaveStatus) {
-                        maintenanceSaveStatus.textContent = 'Guardado';
+                        maintenanceSaveStatus.textContent = '{{ t.saved or "Saved" }}';
                         maintenanceSaveStatus.classList.add('success');
                         setTimeout(() => {
                             maintenanceSaveStatus.textContent = '';
@@ -2313,7 +2313,7 @@ window.$eXeLearningCustom = {
                     }
                 } catch (err) {
                     if (maintenanceSaveStatus) {
-                        maintenanceSaveStatus.textContent = 'Error';
+                        maintenanceSaveStatus.textContent = '{{ t.error_saving or "Error saving" }}';
                         maintenanceSaveStatus.classList.add('error');
                     }
                 } finally {

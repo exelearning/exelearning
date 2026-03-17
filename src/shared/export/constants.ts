@@ -676,6 +676,10 @@ export function formatShortLicenseText(licenseName: string): string {
         }
     }
 
+    if (entry?.url?.includes('creativecommons.org/publicdomain/zero/')) {
+        return 'Creative Commons CC0 1.0';
+    }
+
     return licenseName;
 }
 

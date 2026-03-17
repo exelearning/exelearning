@@ -186,7 +186,7 @@ describe('pageExportHelper', () => {
 
             await expect(
                 exportPageAndDownload('node-123', mockEngine)
-            ).rejects.toThrow('Yjs bridge not initialized');
+            ).rejects.toThrow('Collaboration service not ready');
         });
 
         it('should create exporter with correct parameters', async () => {

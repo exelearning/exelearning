@@ -2047,7 +2047,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
-            expect(body.usedFiles[0].usedFiles).toBe('No files found');
+            expect(body.usedFiles).toEqual([]);
         });
 
         it('should detect asset:// URLs', async () => {
