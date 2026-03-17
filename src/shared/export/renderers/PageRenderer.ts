@@ -24,6 +24,7 @@ import {
     getLicenseUrl,
     formatShortLicenseText,
 } from '../constants';
+import { trans } from '../../../services/translation';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
