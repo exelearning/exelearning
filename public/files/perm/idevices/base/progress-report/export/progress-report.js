@@ -1851,7 +1851,12 @@ var $eXeInforme = {
                         });
                         const pageWidth = pdf.internal.pageSize.getWidth();
                         const pageHeight = pdf.internal.pageSize.getHeight();
-                        const imgWidth = pageWidth;
+                        const horizontalMargin = 10;
+                        const imgWidth = Math.max(
+                            20,
+                            pageWidth - horizontalMargin * 2
+                        );
+                        const xOffset = (pageWidth - imgWidth) / 2;
                         const imgProps = {
                             width: canvas.width,
                             height: canvas.height,
@@ -1898,7 +1903,7 @@ var $eXeInforme = {
                             pdf.addImage(
                                 sliceData,
                                 'PNG',
-                                0,
+                                xOffset,
                                 0,
                                 imgWidth,
                                 sliceHeightMM

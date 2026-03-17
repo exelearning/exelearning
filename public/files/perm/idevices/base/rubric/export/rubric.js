@@ -374,20 +374,23 @@ var $rubric = {
                 var imgData = canvas.toDataURL('image/png');
                 var pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
                 var imgProps = pdf.getImageProperties(imgData);
-                var pdfWidth = pdf.internal.pageSize.getWidth();
+                var pageWidth = pdf.internal.pageSize.getWidth();
                 var pdfHeight = pdf.internal.pageSize.getHeight();
+                var horizontalMargin = 10;
+                var pdfWidth = Math.max(20, pageWidth - horizontalMargin * 2);
+                var xOffset = (pageWidth - pdfWidth) / 2;
                 var imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
                 var heightLeft = imgHeight;
                 var position = 0;
 
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                pdf.addImage(imgData, 'PNG', xOffset, position, pdfWidth, imgHeight);
                 heightLeft -= pdfHeight;
 
                 while (heightLeft > 0) {
                     position -= pdfHeight;
                     pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    pdf.addImage(imgData, 'PNG', xOffset, position, pdfWidth, imgHeight);
                     heightLeft -= pdfHeight;
                 }
 

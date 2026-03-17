@@ -494,8 +494,14 @@ var $eXeListaCotejo = {
                         if (!window.jspdf || !window.jspdf.jsPDF) return false;
                         const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
                         const imgProps = pdf.getImageProperties(imgData);
-                        const pdfWidth = pdf.internal.pageSize.getWidth();
+                        const pageWidth = pdf.internal.pageSize.getWidth();
                         const pdfHeight = pdf.internal.pageSize.getHeight();
+                        const horizontalMargin = 10;
+                        const pdfWidth = Math.max(
+                            20,
+                            pageWidth - horizontalMargin * 2
+                        );
+                        const xOffset = (pageWidth - pdfWidth) / 2;
                         const imgHeight =
                             (imgProps.height * pdfWidth) / imgProps.width;
 
@@ -505,7 +511,7 @@ var $eXeListaCotejo = {
                         pdf.addImage(
                             imgData,
                             'PNG',
-                            0,
+                            xOffset,
                             position,
                             pdfWidth,
                             imgHeight
@@ -518,7 +524,7 @@ var $eXeListaCotejo = {
                             pdf.addImage(
                                 imgData,
                                 'PNG',
-                                0,
+                                xOffset,
                                 position,
                                 pdfWidth,
                                 imgHeight
