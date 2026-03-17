@@ -402,10 +402,6 @@ var $rubric = {
         this.ensureHtml2Canvas(
             function () {
                 target.classList.add(captureClass);
-                var detachedStyles = null;
-                if (window.location.pathname.indexOf('/viewer/') !== -1) {
-                    detachedStyles = $rubric.detachStylesheetsForCapture(document);
-                }
                 window.html2canvas(target, {
                     backgroundColor: '#ffffff',
                     scale: 2,
@@ -440,9 +436,6 @@ var $rubric = {
                         console.error('Error al capturar la rúbrica:', e);
                     })
                     .finally(function () {
-                        if (detachedStyles) {
-                            $rubric.restoreStylesheetsAfterCapture(detachedStyles);
-                        }
                         target.classList.remove(captureClass);
                         if (target && target.getAttribute('data-rubric-capture-temp') === '1') {
                             target.parentNode && target.parentNode.removeChild(target);
@@ -456,39 +449,6 @@ var $rubric = {
                 }
             }
         );
-    },
-
-    detachStylesheetsForCapture: function (doc) {
-        if (!doc || !doc.head) return [];
-
-        var detached = [];
-        var links = doc.querySelectorAll('link[rel="stylesheet"]');
-        for (var i = 0; i < links.length; i++) {
-            var link = links[i];
-            detached.push({
-                node: link,
-                parent: link.parentNode,
-                nextSibling: link.nextSibling,
-            });
-            link.parentNode && link.parentNode.removeChild(link);
-        }
-
-        return detached;
-    },
-
-    restoreStylesheetsAfterCapture: function (detached) {
-        if (!Array.isArray(detached) || detached.length === 0) return;
-
-        for (var i = detached.length - 1; i >= 0; i--) {
-            var entry = detached[i];
-            if (!entry || !entry.parent || !entry.node) continue;
-
-            if (entry.nextSibling && entry.nextSibling.parentNode === entry.parent) {
-                entry.parent.insertBefore(entry.node, entry.nextSibling);
-            } else {
-                entry.parent.appendChild(entry.node);
-            }
-        }
     },
 
     buildCaptureTarget: function (table) {

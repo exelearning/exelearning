@@ -1821,11 +1821,6 @@ var $eXeInforme = {
         }
         $(`#informeButtons-${idx}`).hide();
         const captureTarget = $eXeInforme.buildCaptureTarget(divElement);
-        let detachedStyles = null;
-        if (window.location.pathname.indexOf('/viewer/') !== -1) {
-            detachedStyles = $eXeInforme.detachStylesheetsForCapture(document);
-        }
-
         html2canvas(captureTarget || divElement, {
             backgroundColor: '#ffffff',
             scale: 2,
@@ -1946,9 +1941,6 @@ var $eXeInforme = {
                 console.error('Error al generar la captura: ', error);
             })
             .finally(function () {
-                if (detachedStyles) {
-                    $eXeInforme.restoreStylesheetsAfterCapture(detachedStyles);
-                }
                 if (
                     captureTarget &&
                     captureTarget.getAttribute &&
@@ -2017,39 +2009,6 @@ var $eXeInforme = {
                 sourceChildren[j],
                 targetChildren[j]
             );
-        }
-    },
-
-    detachStylesheetsForCapture: function (doc) {
-        if (!doc || !doc.head) return [];
-
-        var detached = [];
-        var links = doc.querySelectorAll('link[rel="stylesheet"]');
-        for (var i = 0; i < links.length; i++) {
-            var link = links[i];
-            detached.push({
-                node: link,
-                parent: link.parentNode,
-                nextSibling: link.nextSibling,
-            });
-            link.parentNode && link.parentNode.removeChild(link);
-        }
-
-        return detached;
-    },
-
-    restoreStylesheetsAfterCapture: function (detached) {
-        if (!Array.isArray(detached) || detached.length === 0) return;
-
-        for (var i = detached.length - 1; i >= 0; i--) {
-            var entry = detached[i];
-            if (!entry || !entry.parent || !entry.node) continue;
-
-            if (entry.nextSibling && entry.nextSibling.parentNode === entry.parent) {
-                entry.parent.insertBefore(entry.node, entry.nextSibling);
-            } else {
-                entry.parent.appendChild(entry.node);
-            }
         }
     },
 
