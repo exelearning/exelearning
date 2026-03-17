@@ -24,6 +24,7 @@ import {
     getLicenseUrl,
     formatShortLicenseText,
 } from '../constants';
+import { trans } from '../../../services/translation';
 /**
  * PageRenderer class
  * Renders complete HTML pages for export
@@ -112,6 +113,7 @@ export class PageRenderer {
             author: options.author,
             description: options.description,
             license: options.license,
+            language: options.language,
         });
 
         // Calculate page counter values
@@ -165,7 +167,7 @@ ${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadSc
 ${pageHeaderHtml}<div id="page-content-${page.id}" class="page-content">
 ${pageContent}
 </div></main>${navButtonsHtml}
-${this.renderFooterSection({ license, licenseUrl, userFooterContent })}
+${this.renderFooterSection({ license, licenseUrl, userFooterContent, language })}
 </div>
 ${madeWithExeHtml}
 </body>
@@ -606,7 +608,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         projectTitle?: string,
         assetExportPathMap?: Map<string, string>,
-        metadata?: { author?: string; description?: string; license?: string },
+        metadata?: { author?: string; description?: string; license?: string; language?: string },
     ): string {
         let html = '';
 
@@ -643,6 +645,17 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
                         const classAttr = cssClass ? ` class="${cssClass}"` : '';
                         safeLicenseHtml = `<a href="${licenseUrl}" rel="license"${classAttr}><span></span>${safeLicense}</a>`;
                     }
+                } else if (
+                    ['propietary license', 'not appropriate', 'public domain'].includes(
+                        metadata.license.toLowerCase().trim(),
+                    )
+                ) {
+                    let displayName = metadata.license;
+                    if (metadata.license.toLowerCase().trim() === 'propietary license')
+                        displayName = 'Proprietary license';
+                    if (metadata.license.toLowerCase().trim() === 'not appropriate') displayName = 'Not appropriate';
+                    if (metadata.license.toLowerCase().trim() === 'public domain') displayName = 'Public domain';
+                    safeLicenseHtml = this.escapeHtml(trans(displayName, {}, metadata.language));
                 }
             }
 
@@ -780,8 +793,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @param options - Footer options
      * @returns Footer HTML with siteFooter wrapper
      */
-    renderFooterSection(options: { license: string; licenseUrl?: string; userFooterContent?: string }): string {
-        const { license, licenseUrl = '', userFooterContent } = options;
+    renderFooterSection(options: {
+        license: string;
+        licenseUrl?: string;
+        userFooterContent?: string;
+        language?: string;
+    }): string {
+        const { license, licenseUrl = '', userFooterContent, language = 'en' } = options;
 
         let userFooterHtml = '';
         if (userFooterContent) {
@@ -796,12 +814,13 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         }
 
         const licenseText = formatLicenseText(license);
+        const translatedLicenseText = trans(licenseText, {}, language);
         const licenseClass = getLicenseClass(license);
 
         // If there's a license URL, create a link; otherwise, just show the text
         const licenseContent = licenseUrl
-            ? `<a href="${licenseUrl}" class="license">${licenseText}</a>`
-            : `<span class="license">${licenseText}</span>`;
+            ? `<a href="${licenseUrl}" class="license">${translatedLicenseText}</a>`
+            : `<span class="license">${translatedLicenseText}</span>`;
 
         return `<footer id="siteFooter"><div id="siteFooterContent"> <div id="packageLicense" class="${licenseClass}"> <p> <span class="license-label">Licencia: </span>${licenseContent}</p>
 </div>
@@ -1006,6 +1025,7 @@ ${this.renderPageContent(page, '', projectTitle, undefined, {
     author: options.author,
     description: options.description,
     license: options.license,
+    language: options.language,
 })}
 </div>
 </section>\n`;
