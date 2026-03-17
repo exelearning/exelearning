@@ -42,7 +42,10 @@ $exe_i18n = {
     "elpxGenerating": c_("Generating..."),
     "elpxFolderPickerTimeout": c_("The folder picker did not respond. This may happen when opening exported files directly from the filesystem (file:// protocol). Try opening the file through a local web server instead."),
     "elpxFolderPickerEmpty": c_("No files were returned by the folder picker. This is a known limitation when opening exported files with the file:// protocol in some browsers. Try using a different browser or opening the file through a local web server."),
-    "elpxFileProtocolWarning": c_("Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary.")
+    "elpxFileProtocolWarning": c_("Local mode: Due to browser security policy, you will need to select the folder from which you opened this file. On a web server this will not be necessary."),
+    "proprietaryLicense": c_("Proprietary license"),
+    "notAppropriate": c_("Not appropriate"),
+    "publicDomain": c_("Public domain")
 };
 // The following line should only be used if the ELP contains a hangman game:
 $exe_i18n.exeGames = {
