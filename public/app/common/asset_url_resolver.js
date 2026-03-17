@@ -73,6 +73,25 @@
         return match ? match[1] : null;
     }
 
+    const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico', 'avif', 'tiff', 'tif']);
+
+    /**
+     * Check whether an asset is an image based on MIME type or filename extension.
+     * Used to avoid setting `download` on image anchors (which would break lightbox).
+     *
+     * @param {string|undefined} mime
+     * @param {string|undefined} filename
+     * @returns {boolean}
+     */
+    function isImageAsset(mime, filename) {
+        if (mime && mime.startsWith('image/')) return true;
+        if (filename) {
+            const ext = filename.toLowerCase().split('.').pop();
+            return IMAGE_EXTENSIONS.has(ext);
+        }
+        return false;
+    }
+
     /**
      * Request missing asset from peers (deduplicated by assetId).
      * Fire-and-forget: resolver still returns null immediately.
@@ -543,12 +562,13 @@
         }
 
         // Resolve each asset:// URL for anchor elements
+        const assetManager = getAssetManager();
         anchorElements.forEach((el) => {
             const assetUrl = el.getAttribute('href');
             if (!assetUrl) return;
 
             // Store the original asset URL as data attribute for reference
-            trackElementAsset(el, assetUrl, { loading: true });
+            const assetId = trackElementAsset(el, assetUrl, { loading: true });
 
             // Don't set a placeholder - keep the asset:// URL in href
             // SimpleLightbox and other libraries need a valid href when they initialize
@@ -559,6 +579,16 @@
                 if (resolved) {
                     el.setAttribute('href', resolved);
                     el.removeAttribute('data-asset-loading');
+
+                    // Set download attribute for non-image files so the browser
+                    // uses the original filename instead of the blob UUID.
+                    // Skip images to avoid breaking lightbox galleries.
+                    if (assetManager && assetId) {
+                        const metadata = assetManager.getAssetMetadata(assetId);
+                        if (metadata && metadata.filename && !isImageAsset(metadata.mime, metadata.filename)) {
+                            el.setAttribute('download', metadata.filename);
+                        }
+                    }
                 }
             });
         });

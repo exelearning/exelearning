@@ -867,6 +867,79 @@ describe('AssetUrlResolver', () => {
       document.body.removeChild(anchor);
     });
 
+    it('sets download attribute for non-image file anchors (e.g. .docx)', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/doc-resolved');
+      mockAssetManager.getAssetMetadata.mockReturnValue({
+        filename: 'report.docx',
+        mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://doc-uuid-123/report.docx');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/doc-resolved');
+      expect(anchor.getAttribute('download')).toBe('report.docx');
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download attribute for image file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/img-resolved');
+      mockAssetManager.getAssetMetadata.mockReturnValue({
+        filename: 'photo.jpg',
+        mime: 'image/jpeg',
+      });
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://img-uuid-456/photo.jpg');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/img-resolved');
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('does NOT set download attribute when metadata is unavailable', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/no-meta-resolved');
+      mockAssetManager.getAssetMetadata.mockReturnValue(null);
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://no-meta-uuid/file.odt');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/no-meta-resolved');
+      expect(anchor.hasAttribute('download')).toBe(false);
+
+      document.body.removeChild(anchor);
+    });
+
+    it('sets download attribute for PDF file anchors', async () => {
+      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/pdf-resolved');
+      mockAssetManager.getAssetMetadata.mockReturnValue({
+        filename: 'document.pdf',
+        mime: 'application/pdf',
+      });
+
+      const anchor = document.createElement('a');
+      anchor.setAttribute('href', 'asset://pdf-uuid-789/document.pdf');
+      document.body.appendChild(anchor);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(anchor.getAttribute('href')).toBe('blob:http://localhost/pdf-resolved');
+      expect(anchor.getAttribute('download')).toBe('document.pdf');
+
+      document.body.removeChild(anchor);
+    });
+
 	    it('MutationObserver processes nested elements', async () => {
 	      mockAssetManager.resolveAssetURL.mockResolvedValue('blob:http://localhost/nested');
 
