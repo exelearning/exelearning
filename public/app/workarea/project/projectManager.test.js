@@ -984,12 +984,12 @@ describe('ProjectManager', () => {
     });
 
     describe('importElpDirectly', () => {
-        it('throws error when Yjs bridge not initialized', async () => {
+        it('throws error when Collaboration service not ready', async () => {
             projectManager._yjsBridge = null;
             const mockFile = new File(['content'], 'test.elp');
             await expect(
                 projectManager.importElpDirectly(mockFile),
-            ).rejects.toThrow('Yjs bridge not initialized');
+            ).rejects.toThrow('Collaboration service not ready');
         });
     });
 

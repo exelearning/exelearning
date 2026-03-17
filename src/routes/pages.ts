@@ -1098,7 +1098,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     roles: userRoles,
                 };
 
-                const t = buildAdminTranslations(locale);
+                const t = buildAdminTranslations('en'); // Admin panel is English-only; replace 'en' with `locale` to re-enable translations
 
                 let defaultQuota = process.env.DEFAULT_QUOTA ? parseInt(process.env.DEFAULT_QUOTA, 10) : 4096;
                 const parseBoolean = (value: string | undefined, fallback: boolean): boolean => {

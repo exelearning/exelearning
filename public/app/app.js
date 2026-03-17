@@ -574,7 +574,7 @@ export default class App {
             if (!this.project?._yjsEnabled || !this.project?.exportToElpxViaYjs) {
                 this.modals.alert.show({
                     title: _('Error'),
-                    body: _('Project not loaded or Yjs not enabled'),
+                    body: _('Project not ready for collaboration'),
                     contentId: 'error',
                 });
                 return;

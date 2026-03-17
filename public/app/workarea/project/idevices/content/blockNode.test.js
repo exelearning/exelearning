@@ -775,7 +775,7 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('downloadBlockSelected', () => {
-        it('throws error when Yjs bridge not initialized', async () => {
+        it('throws error when Collaboration service not ready', async () => {
             eXeLearning.app.project._yjsBridge = null;
             await block.downloadBlockSelected('block-1');
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(

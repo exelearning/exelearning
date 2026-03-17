@@ -28,6 +28,7 @@ import { XMLParser } from 'fast-xml-parser';
 
 // Import centralized configuration
 import { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES } from './static-bundle/static-config';
+import { buildConfigParams } from '../src/routes/config-params';
 
 // Re-export config for external use
 export { LOCALES, LOCALE_NAMES, PACKAGE_LOCALES, LICENSES };
@@ -832,12 +833,21 @@ export interface ApiParameters {
 }
 
 export function buildApiParameters(): ApiParameters {
-    // Group titles for project properties
-    const GROUPS_TITLE = {
-        properties_package: 'Content metadata',
-        export: 'Export options',
-        custom_code: 'Custom code',
-    };
+    const {
+        USER_PREFERENCES_CONFIG,
+        IDEVICE_INFO_FIELDS_CONFIG,
+        THEME_INFO_FIELDS_CONFIG,
+        ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG,
+        ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG,
+        ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG,
+        ODE_PROJECT_SYNC_PROPERTIES_CONFIG,
+        ODE_PROJECT_SYNC_CATALOGUING_CONFIG,
+    } = buildConfigParams({
+        TRANS_PREFIX: '',
+        LICENSES,
+        PACKAGE_LOCALES,
+        LOCALES: LOCALE_NAMES,
+    });
 
     // In static mode, we only need a minimal set of routes that are stubbed client-side
     return {
@@ -853,299 +863,16 @@ export function buildApiParameters(): ApiParameters {
             // Upload limits (handled by DataProvider)
             api_config_upload_limits: { path: '/api/config/upload-limits', methods: ['GET'] },
         },
-        // User preferences configuration (required by frontend)
-        userPreferencesConfig: {
-            locale: {
-                title: 'Language',
-                help: 'You can choose a different language for the current project.',
-                value: null,
-                type: 'select',
-                options: LOCALE_NAMES,
-                category: 'General settings',
-            },
-            advancedMode: {
-                title: 'Advanced mode',
-                value: 'true',
-                type: 'checkbox',
-                hide: true,
-                category: 'General settings',
-            },
-            defaultLicense: {
-                title: 'License for the new documents',
-                help: 'You can choose a different licence for the current project.',
-                value: 'creative commons: attribution - share alike 4.0',
-                type: 'select',
-                options: LICENSES,
-                category: 'General settings',
-            },
-            theme: {
-                title: 'Style',
-                value: 'base',
-                type: 'text',
-                hide: true,
-                category: 'General settings',
-            },
-            versionControl: {
-                title: 'Version control',
-                value: 'true',
-                type: 'checkbox',
-                category: 'General settings',
-            },
-            defaultAI: {
-                title: 'Default AI Assistant',
-                help: 'Select the AI that will be selected by default when editing iDevices.',
-                value: 'https://chatgpt.com/?q=',
-                type: 'select',
-                options: {
-                    'https://chatgpt.com/?q=': 'ChatGPT',
-                    'https://claude.ai/new?q=': 'Claude',
-                    'https://www.perplexity.ai/search?q=': 'Perplexity',
-                    'https://chat.mistral.ai/chat/?q=': 'Le Chat (Mistral)',
-                    'https://grok.com/?q=': 'Grok',
-                },
-                category: 'General settings',
-            },
-        },
-        // iDevice info fields configuration
-        ideviceInfoFieldsConfig: {
-            title: { title: 'Title', tag: 'text' },
-            description: { title: 'Description', tag: 'textarea' },
-            version: { title: 'Version', tag: 'text' },
-            author: { title: 'Authorship', tag: 'text' },
-            authorUrl: { title: 'Author URL', tag: 'text' },
-            license: { title: 'License', tag: 'textarea' },
-            licenseUrl: { title: 'License URL', tag: 'textarea' },
-        },
-        // Theme info fields configuration
-        themeInfoFieldsConfig: {
-            title: { title: 'Title', tag: 'text' },
-            description: { title: 'Description', tag: 'textarea' },
-            version: { title: 'Version', tag: 'text' },
-            author: { title: 'Authorship', tag: 'text' },
-            authorUrl: { title: 'Author URL', tag: 'text' },
-            license: { title: 'License', tag: 'textarea' },
-            licenseUrl: { title: 'License URL', tag: 'textarea' },
-        },
-        // Theme edition fields configuration (for style manager)
-        themeEditionFieldsConfig: {
-            // Empty config - theme editing disabled in static mode
-        },
-        // Project properties configuration (required by projectProperties.js)
-        odeProjectSyncPropertiesConfig: {
-            properties: {
-                pp_title: {
-                    title: 'Title',
-                    help: 'The name given to the resource.',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'text',
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                pp_subtitle: {
-                    title: 'Subtitle',
-                    help: 'Adds additional information to the main title.',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'text',
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                pp_lang: {
-                    title: 'Language',
-                    help: 'Select a language.',
-                    value: 'en',
-                    alwaysVisible: true,
-                    type: 'select',
-                    options: PACKAGE_LOCALES,
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                pp_author: {
-                    title: 'Authorship',
-                    help: 'Primary author/s of the resource.',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'text',
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                pp_license: {
-                    title: 'License',
-                    value: 'creative commons: attribution - share alike 4.0',
-                    alwaysVisible: true,
-                    type: 'select',
-                    options: LICENSES,
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                pp_description: {
-                    title: 'Description',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'textarea',
-                    category: 'properties',
-                    groups: { properties_package: GROUPS_TITLE.properties_package },
-                },
-                exportSource: {
-                    title: 'Editable export',
-                    help: 'The exported content will be editable with eXeLearning.',
-                    value: 'true',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_addExeLink: {
-                    title: '"Made with eXeLearning" link',
-                    help: 'Help us spreading eXeLearning.',
-                    value: 'true',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_addPagination: {
-                    title: 'Page counter',
-                    help: 'A text with the page number will be added on each page.',
-                    value: 'false',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_addSearchBox: {
-                    title: 'Search bar (Website export only)',
-                    help: 'A search box will be added to every page of the website.',
-                    value: 'false',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_addAccessibilityToolbar: {
-                    title: 'Accessibility toolbar',
-                    help: 'The accessibility toolbar allows visitors to manipulate some aspects of your site.',
-                    value: 'false',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_addMathJax: {
-                    title: 'MathJax (formulas)',
-                    help: 'Always include the MathJax library for mathematical formulas.',
-                    value: 'false',
-                    type: 'checkbox',
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_globalFont: {
-                    title: 'Global font',
-                    help: 'Select a font to use throughout the content.',
-                    value: 'default',
-                    type: 'select',
-                    options: {
-                        default: 'Theme default',
-                        opendyslexic: 'OpenDyslexic',
-                        andika: 'Andika',
-                        'atkinson-hyperlegible-next': 'Atkinson Hyperlegible Next',
-                        nunito: 'Nunito',
-                        'playwrite-es': 'Playwrite ES',
-                    },
-                    category: 'properties',
-                    groups: { export: GROUPS_TITLE.export },
-                },
-                pp_extraHeadContent: {
-                    title: 'HEAD',
-                    help: 'HTML to be included at the end of HEAD.',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'textarea',
-                    category: 'properties',
-                    groups: { custom_code: GROUPS_TITLE.custom_code },
-                },
-                footer: {
-                    title: 'Page footer',
-                    help: 'Type any HTML. It will be placed after every page content.',
-                    value: '',
-                    alwaysVisible: true,
-                    type: 'textarea',
-                    category: 'properties',
-                    groups: { custom_code: GROUPS_TITLE.custom_code },
-                },
-            },
-        },
-        // Cataloguing configuration (LOM - deprecated, kept empty for backwards compatibility)
-        odeProjectSyncCataloguingConfig: {},
-        // Component properties
-        odeComponentsSyncPropertiesConfig: {
-            visibility: {
-                title: 'Visible in export',
-                value: 'true',
-                type: 'checkbox',
-                category: null,
-                heritable: true,
-            },
-            teacherOnly: { title: 'Teacher only', value: 'false', type: 'checkbox', category: null, heritable: true },
-            cssClass: { title: 'CSS Class', value: '', type: 'text', category: null, heritable: true },
-        },
-        // Navigation structure properties
-        odeNavStructureSyncPropertiesConfig: {
-            titleNode: { title: 'Title', value: '', type: 'text', category: 'General', heritable: false },
-            hidePageTitle: {
-                title: 'Hide page title',
-                type: 'checkbox',
-                category: 'General',
-                value: 'false',
-                heritable: false,
-            },
-            titleHtml: { title: 'Title HTML', value: '', type: 'text', category: 'Advanced (SEO)', heritable: false },
-            editableInPage: {
-                title: 'Different title on the page',
-                type: 'checkbox',
-                category: 'General',
-                value: 'false',
-                alwaysVisible: true,
-            },
-            titlePage: { title: 'Title in page', value: '', type: 'text', category: 'General', heritable: false },
-            visibility: {
-                title: 'Visible in export',
-                value: 'true',
-                type: 'checkbox',
-                category: 'General',
-                heritable: true,
-            },
-            highlight: {
-                title: 'Highlight this page',
-                value: 'false',
-                type: 'checkbox',
-                category: 'General',
-                heritable: false,
-            },
-            description: {
-                title: 'Description',
-                value: '',
-                type: 'textarea',
-                category: 'Advanced (SEO)',
-                heritable: false,
-            },
-        },
-        // Block/page structure properties
-        odePagStructureSyncPropertiesConfig: {
-            visibility: {
-                title: 'Visible in export',
-                value: 'true',
-                type: 'checkbox',
-                category: null,
-                heritable: true,
-            },
-            teacherOnly: { title: 'Teacher only', value: 'false', type: 'checkbox', category: null, heritable: true },
-            allowToggle: {
-                title: 'Allows to minimize/display content',
-                value: 'true',
-                type: 'checkbox',
-                category: null,
-                heritable: true,
-            },
-            minimized: { title: 'Start minimized', value: 'false', type: 'checkbox', category: null, heritable: true },
-            cssClass: { title: 'CSS Class', value: '', type: 'text', category: null, heritable: true },
-        },
+        userPreferencesConfig: USER_PREFERENCES_CONFIG,
+        ideviceInfoFieldsConfig: IDEVICE_INFO_FIELDS_CONFIG,
+        themeInfoFieldsConfig: THEME_INFO_FIELDS_CONFIG,
+        // Theme edition disabled in static mode
+        themeEditionFieldsConfig: {},
+        odeProjectSyncPropertiesConfig: ODE_PROJECT_SYNC_PROPERTIES_CONFIG,
+        odeProjectSyncCataloguingConfig: ODE_PROJECT_SYNC_CATALOGUING_CONFIG,
+        odeComponentsSyncPropertiesConfig: ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG,
+        odeNavStructureSyncPropertiesConfig: ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG,
+        odePagStructureSyncPropertiesConfig: ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG,
     };
 }
 
