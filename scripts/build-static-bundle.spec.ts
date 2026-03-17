@@ -22,6 +22,9 @@ import {
     type IdeviceConfig,
     type ApiParameters,
 } from './build-static-bundle';
+import { buildConfigParams } from '../src/routes/config-params';
+import fs from 'fs';
+import path from 'path';
 
 // =============================================================================
 // appendVersionToUrls tests
@@ -798,5 +801,108 @@ describe('Configuration exports', () => {
             );
             expect(hasLegacy).toBe(false);
         });
+    });
+});
+
+// =============================================================================
+// Static HTML i18n coverage tests
+// =============================================================================
+
+describe('Static HTML i18n coverage', () => {
+    let html: string;
+
+    beforeAll(() => {
+        const templatePath = path.join(import.meta.dir, 'static-bundle/static-index.html');
+        html = fs.readFileSync(templatePath, 'utf-8');
+    });
+
+    it('should have data-i18n on styles title', () => {
+        expect(html).toContain('data-i18n="Styles"');
+    });
+
+    it('should have data-i18n on System tab button', () => {
+        expect(html).toContain('data-i18n="System"');
+    });
+
+    it('should have data-i18n on Imported tab button', () => {
+        expect(html).toContain('data-i18n="Imported"');
+    });
+
+    it('should have data-i18n on "No recent projects..." items', () => {
+        expect(html).toContain('data-i18n="No recent projects..."');
+    });
+
+    it('should use _() for delete project confirmation', () => {
+        expect(html).toContain("_('Delete this project?')");
+        expect(html).toContain("_('This action cannot be undone.')");
+    });
+});
+
+// =============================================================================
+// Translation key existence tests
+// =============================================================================
+
+describe('Translation key existence in XLF catalog', () => {
+    let xlfContent: string;
+
+    beforeAll(() => {
+        const xlfPath = path.join(import.meta.dir, '../translations/messages.es.xlf');
+        xlfContent = fs.readFileSync(xlfPath, 'utf-8');
+    });
+
+    const requiredKeys: Array<[string, string]> = [
+        ['Styles', 'Estilos'],
+        ['System', 'Sistema'],
+        ['Imported', 'Importado'],
+        ['No recent projects...', 'No hay proyectos recientes...'],
+        ['Delete this project?', '¿Eliminar este proyecto?'],
+        ['This action cannot be undone.', 'Esta acción no se puede deshacer.'],
+    ];
+
+    for (const [source, target] of requiredKeys) {
+        it(`should contain translation key "${source}" → "${target}"`, () => {
+            const translations = parseXlfContent(xlfContent);
+            expect(translations[source]).toBe(target);
+        });
+    }
+});
+
+// =============================================================================
+// Config parameter parity tests
+// =============================================================================
+
+describe('Config parameter parity between static and server', () => {
+    it('should return the same config keys from buildApiParameters and buildConfigParams', () => {
+        const staticParams = buildApiParameters();
+
+        const serverConfig = buildConfigParams({
+            TRANS_PREFIX: '',
+            LICENSES,
+            PACKAGE_LOCALES,
+            LOCALES: LOCALE_NAMES,
+        });
+
+        // Verify that all config keys from the shared buildConfigParams are used in static buildApiParameters
+        expect(Object.keys(staticParams.userPreferencesConfig).sort()).toEqual(
+            Object.keys(serverConfig.USER_PREFERENCES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.ideviceInfoFieldsConfig).sort()).toEqual(
+            Object.keys(serverConfig.IDEVICE_INFO_FIELDS_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.themeInfoFieldsConfig).sort()).toEqual(
+            Object.keys(serverConfig.THEME_INFO_FIELDS_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeProjectSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_PROJECT_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeComponentsSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_COMPONENTS_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odeNavStructureSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_NAV_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+        );
+        expect(Object.keys(staticParams.odePagStructureSyncPropertiesConfig).sort()).toEqual(
+            Object.keys(serverConfig.ODE_PAG_STRUCTURE_SYNC_PROPERTIES_CONFIG).sort()
+        );
     });
 });
